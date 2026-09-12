@@ -14,6 +14,7 @@ const PROTECTED = new Set([
   '/api/waitlist',
   '/api/ai-messages',
   '/api/car-specs',
+  '/api/auth-account-status',
 ]);
 
 // Per-IP sliding-window limits
@@ -27,6 +28,10 @@ const LIMITS = {
   '/api/waitlist':     { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
   '/api/ai-messages':  { window: '60 s',  max: 20, prefix: 'rl:ai' },
   '/api/car-specs':    { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
+  // SEC-B5: Turnstile is the real gate; this is belt-and-braces for the
+  // window where TURNSTILE_SECRET is unset and verifyTurnstile fails open.
+  // A real login retries a handful of times a minute at most.
+  '/api/auth-account-status': { window: '60 s', max: 10, prefix: 'rl:acctstatus' },
 };
 
 let limiters = null;
@@ -85,5 +90,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/waitlist', '/api/ai-messages', '/api/car-specs'],
+  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
 };

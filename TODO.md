@@ -524,8 +524,9 @@ login page. What the code actually looks like today:
   NOTE: this is the same secret Supabase needs pasted into its own dashboard for
   AUTH-6. Cloudflare secret goes in TWO places, Vercel and Supabase.
 
-- Related and still open: **SEC-B5** — `auth_account_status` answers "does this
-  email have an account here" to anyone who asks.
+- Related, DONE 2026-09-12: **SEC-B5** — `auth_account_status` answered "does
+  this email have an account here" to anyone who asked; now Turnstile-gated
+  (see the full writeup further down).
 
 ### Dealer account block — owner said explicitly this is a later job
 - [ ] **DEAL-1: a dealer cannot be verified even after the owner approves.**
@@ -796,18 +797,46 @@ project — any visitor who opens a chat can call these.
   plan, so the INNER JOIN drops the row and the settings card renders nothing.
   Residue of the C4 tiering split-brain. Either add the row or LEFT JOIN and
   render the caps as unlimited.
-- [ ] **SEC-B5 (NEEDS YOUR DECISION, not a bug): `auth_account_status(p_email)`
-  is an account-enumeration oracle open to `anon`.** Hand it any email, it
-  answers "does this have an account, and does it have a password". It is
-  deliberate — it drives "this email signed up with Google, use a magic link"
-  at `LoginPage.jsx:360` and `BuyerAuthPage.jsx:114`. There is no clean fix
-  that keeps the UX: PostgREST gives the function no caller IP, so the only
-  levers are (a) a global rate cap, which degrades to a WRONG "no account
-  found" message for a legitimate user unless both call sites learn to treat
-  null as "unknown", or (b) collapse the two booleans into one vaguer answer
-  and lose the Google-vs-password branch. Pairs with SEC-A1 (leaked-password
-  protection is off, Pro-only): enumeration plus weak passwords is the real
-  risk. Decide which trade you want.
+- [x] **SEC-B5 DONE 2026-09-12 — owner's call: keep the precise answer, gate it
+  behind Turnstile instead of degrading the UX.** `auth_account_status(p_email)`
+  was an enumeration oracle open to `anon` (and to PUBLIC, which anon inherits
+  from regardless of an anon-only revoke — same trap as the share-token
+  section above). Neither of the two options originally written up here was
+  taken: a rate cap would have locked out the real account owner (PostgREST
+  gives the function no caller IP, so it can only key on the email being
+  checked), and a vaguer answer would have killed the Google-vs-password
+  branch this function exists for. Third option, not written up originally:
+  **reuse the invisible Turnstile challenge already built for every other auth
+  call (AUTH-6)** — a scripted scraper now has to solve a challenge per
+  lookup; one real person typing one email never notices, since the widget
+  pre-solves on page load.
+  - `auth_account_status(text)` — EXECUTE revoked from `public`/`anon`/
+    `authenticated`, granted to `service_role` only (migration
+    `20260912b_gate_auth_account_status.sql`). Verified with
+    `has_function_privilege('anon', …)` = false, not by reading the migration
+    back — the same discipline the share-token section demands.
+  - New route `api/auth-account-status.js` is now the only caller: verifies
+    the Turnstile token via the existing `lib/turnstile.js` (same helper
+    enquiry/whatsapp-lead use), then calls the RPC with the service-role key.
+    Added to `middleware.js`'s per-IP limiter (10/min) as belt-and-braces for
+    the window where `TURNSTILE_SECRET` is unset and `verifyTurnstile` fails
+    open — Turnstile is the real gate.
+  - `LoginPage.jsx` and `BuyerAuthPage.jsx` both swapped their direct
+    `supabase.rpc("auth_account_status", …)` call for the new shared
+    `src/utils/authAccountStatus.js` helper, spending a fresh `getToken()`
+    right before it (the token used for the preceding failed sign-in is
+    already consumed by then). Both already call `useAuthCaptcha()`, so no
+    new widget mount.
+  - Why this can't silently break login if the server-side service-role key
+    were ever wrong: the route returns null-shaped data on any failure
+    (missing key, RPC error, non-200), and both callers already treat a
+    falsy status the same as "couldn't determine" — it degrades to the
+    generic "no account found" copy instead of throwing. Confirmed live: the
+    RPC itself still returns the right shape when called with owner
+    privileges (`account_exists`/`has_password` on a real email), unchanged
+    by the grant edit.
+  - Left alone, deliberately: SEC-A1 (leaked-password protection, Supabase
+    Pro-only toggle) is a separate, unrelated decision — not folded into this.
 - [ ] **PUSH-4 (LOW, design note): `push_swap_endpoint` REDIRECTS, its sibling
   only deletes.** Both treat the push endpoint as the credential, which is
   correct — `public/push-sw.js:134` calls it from a service worker where no
