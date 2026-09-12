@@ -37,7 +37,7 @@ import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import StarterTasks from "../components/onboarding/StarterTasks";
+import StarterTasks, { starterTasksAllDone } from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
 import {
@@ -1193,6 +1193,38 @@ export default function SalesmanLite() {
   // and it comes back on the next visit only while there is still work in it
   // (the card renders its own "you're set up" state once all three are done).
   const [starterHidden, setStarterHidden] = useState(false);
+  // Whether the listings query has actually come back. `loading` flips as soon
+  // as the PROFILE resolves, while listings are a separate, later fetch that
+  // seeds from an empty cache — so the starter checklist rendered with
+  // listingCount 0 and told a fully set-up seller to add their first car, for
+  // the fraction of a second before the real count landed. That flash is the
+  // "it still appears for a second every time I log in" report.
+  const [listingsLoaded, setListingsLoaded] = useState(false);
+
+  // Dismissal is PERSISTED, not component state. It was `useState(false)` with
+  // nothing written anywhere, so the card came back on every single login no
+  // matter what the seller had finished or dismissed. It goes in
+  // profiles.starter_tasks, the same place `minipage_visited` already lives.
+  const dismissStarterTasks = () => {
+    setStarterHidden(true);
+    markStarterTask(userId, "dismissed", profile?.starter_tasks);
+  };
+
+  // Finishing all three retires the card for good. Waits for `listingsLoaded`
+  // for the same reason the render does — before that, `listingCount` is 0 and
+  // "all done" is unanswerable.
+  //
+  // Deliberately does NOT touch local `profile` state: writing the flag back
+  // would unmount the card mid-session, so the seller would never see the
+  // "you're set up" state they just earned. It stays for this visit and is
+  // gone on the next load, which is what "disappears and never loads again"
+  // actually means.
+  useEffect(() => {
+    if (!userId || !listingsLoaded) return;
+    if (profile?.starter_tasks?.dismissed) return;
+    if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+    markStarterTask(userId, "dismissed", profile?.starter_tasks);
+  }, [userId, listingsLoaded, profile, myListings.length]);
 
   // Opening your own mini page is the one starter task nothing else can prove,
   // so the click that does it is what records it. Used by the starter card AND
@@ -1580,6 +1612,7 @@ export default function SalesmanLite() {
           )
           .eq("dealer_id", uid),
       ]).then(([r1, r2]) => {
+        setListingsLoaded(true);
         if (r1.error) console.error("fetchListings(assigned_to):", r1.error);
         if (r2.error) console.error("fetchListings(dealer_id):", r2.error);
         const seen = new Set();
@@ -3175,6 +3208,34 @@ export default function SalesmanLite() {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
+        {/* FIRST thing on the dashboard, under the account banners. It used to
+            sit below the Monthly Goal and the highlighted-listing card, which
+            is several screens down on a phone — a setup checklist nobody
+            scrolls to is not a setup checklist. */}
+        {/* ── Starter tasks ──
+            Replaces a "Get Started" checklist that could never be completed:
+            it was gated on `isNewUser && !onboarding_tour_done`, where isNewUser
+            meant no listings AND no leads — so doing step 1 unmounted the card,
+            and the tour (which runs on first landing) set the flag that hid it
+            anyway. Shared with Premium now; see StarterTasks for the details. */}
+        {listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed && (
+          <StarterTasks
+            profile={profile}
+            listingCount={myListings.length}
+            t={t}
+            palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
+            onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
+            onVisitMinipage={openMyMinipage}
+            onEditBio={() => {
+              // Bio sits in the Contact & Location card, not the default section.
+              setSettingsNav("contact");
+              switchTab("settings");
+              setTimeout(() => document.getElementById("lite-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+            }}
+            onDismiss={dismissStarterTasks}
+          />
+        )}
+
         {/* ── Hero: greeting + live portfolio value ── */}
         <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surfaceRaised} 100%)` }}>
           <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(C.accent, 0.14)} 0%, transparent 70%)`, pointerEvents: "none" }} />
@@ -3702,29 +3763,6 @@ export default function SalesmanLite() {
            commission-earned figure already shown in the Monthly Goal panel
            above. Revenue/avg-per-deal live in the Performance tab. */}
 
-        {/* ── Starter tasks ──
-            Replaces a "Get Started" checklist that could never be completed:
-            it was gated on `isNewUser && !onboarding_tour_done`, where isNewUser
-            meant no listings AND no leads — so doing step 1 unmounted the card,
-            and the tour (which runs on first landing) set the flag that hid it
-            anyway. Shared with Premium now; see StarterTasks for the details. */}
-        {!starterHidden && (
-          <StarterTasks
-            profile={profile}
-            listingCount={myListings.length}
-            t={t}
-            palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
-            onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
-            onVisitMinipage={openMyMinipage}
-            onEditBio={() => {
-              // Bio sits in the Contact & Location card, not the default section.
-              setSettingsNav("contact");
-              switchTab("settings");
-              setTimeout(() => document.getElementById("lite-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
-            }}
-            onDismiss={() => setStarterHidden(true)}
-          />
-        )}
         </div>
 
         <PrevMonthModal

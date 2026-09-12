@@ -522,7 +522,45 @@ fixes. Nothing in this batch has been built.
   onSubmit>` calling the same next-step handler, or add `onKeyDown`
   checking `e.key === 'Enter'` on the step's inputs.
 
-- [ ] **LITE-STARTER-1: the "get set up" checklist is two bugs, not one.**
+- [x] **LITE-STARTER-1 DONE 2026-09-12 — three bugs, and the same three
+  existed in Premium.**
+  - **Position.** It was already below the account banners but buried inside
+    `renderDashboard` under the Monthly Goal and the highlighted-listing
+    card — several screens down on a phone. A setup checklist nobody scrolls
+    to is not a setup checklist. It is now the first thing in the dashboard
+    column.
+  - **The flash — this was the interesting one.** `loading` flips as soon as
+    the PROFILE resolves (`:1503`), while listings are a separate, later
+    fetch seeded from an empty cache (`:899`). So the card rendered with
+    `listingCount: 0` and told a fully set-up seller to add their first car,
+    for the fraction of a second before the real count arrived. That is
+    exactly the "it still appears for a second when I logged in, time and
+    time again" report. New `listingsLoaded` flag, set when the listings
+    promise settles, gates both the render and the all-done check — before
+    it resolves, "have they added a car" is simply unanswerable.
+  - **Dismissal never persisted.** `starterHidden` was `useState(false)`
+    with nothing written anywhere, so the card returned on every login no
+    matter what was finished or dismissed. Now written to
+    `profiles.starter_tasks.dismissed` via the existing `markStarterTask` —
+    the same place `minipage_visited` already lives, so no new column and no
+    second mechanism.
+  - **Finishing all three now retires it for good**, which is the other half
+    of the ask. The effect deliberately does NOT write back to local
+    `profile` state: doing so would unmount the card mid-session and the
+    seller would never see the "you're set up" state they just earned. It
+    stays for this visit, and is gone on the next load.
+  - **Fixed in Premium too, unasked.** `SalesmanPremium.jsx:496` had the
+    identical `useState(false)` with no persistence and the same
+    unguarded render (`DashboardTab.jsx:500`). Patching only Lite would have
+    left the shared component with two different behaviours — the exact
+    drift the house rules exist to prevent.
+  - Declaration order checked in both files (the dependency array is
+    evaluated during render, so `profile`/`myListings` must be declared
+    above the effect — they are: 261/337 in Premium, 797/899 in Lite).
+    esbuild parses all three files. NOT eyeballed in a browser.
+
+- [ ] ~~LITE-STARTER-1 original finding:~~ **the "get set up" checklist is
+  two bugs, not one.**
   (1) Position: it IS already below the review banner
   (`SalesmanLite.jsx:8520-8531` banner, then `renderDashboard` at `:8533`),
   but it's buried mid-dashboard inside `renderDashboard` (`StarterTasks`,

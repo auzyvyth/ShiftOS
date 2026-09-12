@@ -110,6 +110,7 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 import { markStarterTask } from "../utils/starterTasks";
+import { starterTasksAllDone } from "../components/onboarding/StarterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -493,7 +494,27 @@ export default function SalesmanPremium() {
 
  // Starter tasks. Session-only hide: the card renders its own finished state
  // once all three are done, so it does not need a persisted dismissal.
+ const [listingsLoaded, setListingsLoaded] = useState(false);
  const [starterHidden, setStarterHidden] = useState(false);
+
+ // Same bug Lite had (LITE-STARTER-1): starterHidden was component state with
+ // nothing written anywhere, so the card returned on every login regardless of
+ // what the seller had finished or dismissed. Persisted to
+ // profiles.starter_tasks, where minipage_visited already lives.
+ const dismissStarterTasks = () => {
+ setStarterHidden(true);
+ markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ };
+
+ // Finishing all three retires it for good. Does not write back to local
+ // `profile`, so the seller still sees the "you're set up" state they earned;
+ // it is gone on the next load.
+ useEffect(() => {
+ if (!userId || !listingsLoaded) return;
+ if (profile?.starter_tasks?.dismissed) return;
+ if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+ markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ }, [userId, listingsLoaded, profile, myListings.length]);
 
  // Opening your own mini page is the one starter task no other data can prove
  // (analytics_events counts buyer views too), so the click records it.
@@ -1205,6 +1226,7 @@ export default function SalesmanPremium() {
  return true;
  })
  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+ setListingsLoaded(true);
  setMyListings(merged);
  writeCache(`sp_listings_${uid}`, merged);
  });
@@ -6656,7 +6678,8 @@ export default function SalesmanPremium() {
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
- onStarterDismiss={() => setStarterHidden(true)}
+ starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
+ onStarterDismiss={dismissStarterTasks}
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);

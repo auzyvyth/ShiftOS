@@ -29,7 +29,7 @@ export default function DashboardTab({
  setShowAddForm, setAiFollowups, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner, dismissTour,
- handleListingCopy, onVisitMinipage, starterHidden, onStarterDismiss, onEditBio,
+ handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
 }) {
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -497,7 +497,7 @@ export default function DashboardTab({
  {/* Starter tasks — same component Lite uses. Premium never had a
  setup checklist at all, so a new Premium seller got the tour and
  then nothing telling them what to actually do first. */}
- {!starterHidden && (
+ {starterTasksReady && !starterHidden && (
  <StarterTasks
  profile={profile}
  listingCount={myListings.length}
