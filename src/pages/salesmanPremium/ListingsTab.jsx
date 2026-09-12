@@ -370,6 +370,12 @@ export default function ListingsTab({
  : null;
  const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
  const isHovering = cvrHover === car.id;
+ // Included services sold with the car (car_listings.included_services:
+ // [{ name, category, cost, selling_price }]). Shown as an INLINE marker in
+ // the meta row below, never as its own row — the house rule here is that a
+ // card with add-ons must not be taller, nor push its own text lower, than a
+ // card without them.
+ const addOns = Array.isArray(car.included_services) ? car.included_services.filter(Boolean) : [];
  const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
  return (
  <div
@@ -403,7 +409,7 @@ export default function ListingsTab({
  {/* Status indicator — compact single-line strip */}
  {(isSold || isReserved || isPending || isRejected) && (
  <div style={{
- display: "flex", alignItems: "center", gap: 6, padding: "5px 12px",
+ display: "flex", alignItems: "center", gap: 6, padding: "5px 14px",
  borderBottom: `1px solid ${isRejected ? withAlpha(C.danger, 0.18) : isSold ? withAlpha(C.textMuted, 0.15) : withAlpha(C.warn, 0.15)}`,
  background: `${isRejected ? withAlpha(C.danger, 0.05) : isSold ? withAlpha(C.textMuted, 0.07) : withAlpha(C.warn, 0.05)}`,
  }}>
@@ -425,7 +431,7 @@ export default function ListingsTab({
 
  {/* Live on XDrive bar — only for available listings */}
  {!isSold &&!isReserved &&!isPending &&!isRejected && (
- <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
+ <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "5px 14px", display: "flex", alignItems: "center", gap: 6 }}>
  <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
  <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
  <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
@@ -524,8 +530,11 @@ export default function ListingsTab({
  </div>
  </div>
 
- {/* Meta */}
- <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textDim }}>
+ {/* Meta + add-on marker. minHeight is load-bearing: a listing with no
+     mileage/engine/transmission/colour would otherwise collapse this line to
+     zero and everything below it would sit higher than on its neighbours. */}
+ <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 8px", minHeight: 17 }}>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {[
  car.mileage? `${Number(car.mileage).toLocaleString()} km` : null,
  car.engine_cc? `${Number(car.engine_cc).toLocaleString()}cc` : null,
@@ -533,6 +542,15 @@ export default function ListingsTab({
  car.colour,
  ].filter(Boolean).join(" · ")}
  </p>
+ {addOns.length > 0 && (
+ <span
+ title={`Included: ${addOns.map(a => a?.name).filter(Boolean).join(", ")}`}
+ style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: R.pill, background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.22)}`, color: C.infoText, fontSize: T.size.xs, fontWeight: T.weight.semibold, lineHeight: 1.4 }}
+ >
+ <Sparkles size={9} style={{ flexShrink: 0 }} />{addOns.length}
+ </span>
+ )}
+ </div>
 
  {/* Listing completeness bar */}
  {!isSold && (() => {

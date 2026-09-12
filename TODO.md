@@ -602,8 +602,48 @@ fixes. Nothing in this batch has been built.
   `ic_last4 IS NOT NULL` or `kyc_submitted_at IS NOT NULL` — no new query
   needed, the data is already in hand.
 
-- [ ] **PREM-LISTINGS-2: card spacing + missing add-on icon + no Edit in
-  detail popup.** Three separate small fixes in
+- [~] **PREM-LISTINGS-2 MOSTLY DONE 2026-09-12 — three of the four parts
+  shipped; the pixel-level spacing pass still wants a browser.**
+  - **Edit in the detail popup — DONE, in BOTH panels.** Premium passed only
+    4 actions (Copy Link, WA Caption, AI Caption, Broadcast), so opening a
+    car to look at it and then wanting to change something meant closing the
+    popup and hunting for the card again. Added as the FIRST action — it is
+    the only one that changes the listing; the rest copy or announce it — and
+    it closes the popup BEFORE opening the edit sheet (overlay rule 3).
+    `SalesmanLite.jsx` had the identical gap and got the same action, since
+    the owner's rule ("every button on the card should appear in the detail
+    popup") is not Premium-specific.
+  - **Add-on marker — DONE, and deliberately INLINE.** Listings carrying
+    `included_services` (4 live) now show a small `Sparkles + count` pill
+    inside the existing meta row, with the service names as its tooltip. It
+    is in that row rather than on its own line precisely because of the
+    owner's rule: a card with add-ons must not be taller, nor push its own
+    text lower, than one without. As built it adds ZERO height.
+  - **Two real height inconsistencies fixed.** The status strip and the
+    "Live on XDrive" bar are mutually exclusive (one always renders) but used
+    different vertical padding — `5px 12px` vs `4px 14px` — so every card
+    differed by 2px depending on status, and the inset disagreed with the
+    content below it. Both are `5px 14px` now, matching the content padding.
+    The meta row also gained a `minHeight`: a listing with no
+    mileage/engine/transmission/colour collapsed that line to zero and
+    everything below it sat higher than on its neighbours.
+  - **Popup button clipping — a plausible cause fixed, NOT reproduced.** The
+    action column was `flex: 0 0 200px`, which cannot shrink, so it overflows
+    the dialog (and gets clipped by it) whenever the dialog is narrower than
+    left-pane + 200. Now `0 1 200px` with `minWidth: 0`, and the buttons
+    wrap instead of overflowing — the house rule for exactly this shape.
+    Mobile was already full-width, so that was never the failing case.
+  - **STILL OPEN — needs eyes on a real browser.** The remaining height
+    variance is structural: three blocks inside the card render conditionally
+    (listing-quality bar only under 90%, the CVR row, the photo nudge under
+    3 photos), so the middle of one card can sit lower than another's even
+    though the grid already equalises row height and pins the action bar with
+    `marginTop: auto`. Making those reserve space unconditionally is the fix,
+    but it trades blank space for alignment and that is a judgement call that
+    needs to be SEEN at 375px and on desktop. Not done blind.
+
+- [ ] ~~PREM-LISTINGS-2 original finding:~~ **card spacing + missing add-on
+  icon + no Edit in detail popup.** Three separate small fixes in
   `src/pages/salesmanPremium/ListingsTab.jsx` /
   `src/components/CarDetailPopup.jsx`: (1) no add-on badge exists on the
   listing card at all today (the "add-on" the owner means is likely

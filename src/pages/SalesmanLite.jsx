@@ -8969,6 +8969,18 @@ export default function SalesmanLite() {
           setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
           actions={[
             {
+              // Same gap Premium had: Edit lived only on the listing card, so
+              // opening a car and wanting to change something meant closing
+              // the popup and finding the card again. Popup closes first —
+              // two overlays must never be open at once (overlay rule 3).
+              key: "edit",
+              label: (<><Pencil size={13} style={{ flexShrink: 0 }} /> Edit</>),
+              color: C.infoText,
+              bg: "rgba(59,130,246,0.08)",
+              border: "rgba(59,130,246,0.25)",
+              onClick: () => { const car = selectedCar; setSelectedCar(null); setEditListing(car); },
+            },
+            {
               key: "link",
               label: (<><Copy size={13} style={{ flexShrink: 0 }} /> Copy Link</>),
               color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",

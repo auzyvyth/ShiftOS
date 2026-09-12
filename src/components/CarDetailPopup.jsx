@@ -384,13 +384,19 @@ export default function CarDetailPopup({
             </div>
 
             {/* RIGHT — actions + CVR */}
-            <div style={{ flex: isMobile ? "none" : "0 0 200px", width: isMobile ? "100%" : undefined, padding: isMobile ? "12px 16px 32px" : 20, display: "flex", flexDirection: "column", gap: 8, borderTop: isMobile ? `1px solid ${C.border}` : "none" }}>
+            {/* `0 1 200px`, not `0 0 200px`: a column that cannot shrink
+                overflows the dialog rather than fitting inside it the moment
+                the dialog is narrower than left-pane + 200, which is how a
+                button ends up clipped by the dialog's own overflow. minWidth 0
+                is the other half of that rule — without it a flex child still
+                refuses to go below its content width. */}
+            <div style={{ flex: isMobile ? "none" : "0 1 200px", minWidth: 0, width: isMobile ? "100%" : undefined, padding: isMobile ? "12px 16px 32px" : 20, display: "flex", flexDirection: "column", gap: 8, borderTop: isMobile ? `1px solid ${C.border}` : "none" }}>
               <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 4px" }}>Actions</p>
               {actions.map(({ key, label, color, bg, border, onClick }) => (
                 <button
                   key={key}
                   onClick={onClick}
-                  style={{ width: "100%", background: bg, border: `1px solid ${border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: T.size.sm, fontWeight: T.weight.medium, color, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 8, fontFamily: "system-ui, sans-serif" }}
+                  style={{ width: "100%", minWidth: 0, background: bg, border: `1px solid ${border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: T.size.sm, fontWeight: T.weight.medium, color, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 2, fontFamily: "system-ui, sans-serif" }}
                 >
                   {label}
                 </button>

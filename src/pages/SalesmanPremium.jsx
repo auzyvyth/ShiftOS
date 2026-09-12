@@ -6812,6 +6812,21 @@ export default function SalesmanPremium() {
  setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
  actions={[
  {
+ // Edit existed on the listing CARD (ListingsTab.jsx:596) and nowhere in
+ // this popup, so opening a car to look at it and then wanting to change
+ // something meant closing the popup and hunting for the card again.
+ // First in the list because it is the one thing here that changes the
+ // listing; everything below it copies or announces it.
+ // Closes the popup BEFORE opening the edit sheet — two overlays must
+ // never be open at once (overlay rule 3).
+ key: "edit",
+ label: (<><Pencil size={13} style={{ flexShrink: 0 }} />Edit</>),
+ color: C.infoText,
+ bg: "rgba(59,130,246,0.08)",
+ border: "rgba(59,130,246,0.25)",
+ onClick: () => { const car = selectedCar; setSelectedCar(null); setEditListing(car); },
+ },
+ {
  key: "link",
  label: (<><Copy size={13} style={{ flexShrink: 0 }} />Copy Link</>),
  color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
