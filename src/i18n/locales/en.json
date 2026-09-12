@@ -729,7 +729,13 @@
       "depositTermsPlaceholder": "e.g. Car reserved for 7 days.",
       "processingFee": "Handling / runner fee",
       "processingFeeHint": "Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.",
-      "processingFeePlaceholder": "e.g. 300"
+      "processingFeePlaceholder": "e.g. 300",
+      "navProfile": "Profile",
+      "navContact": "Contact & Location",
+      "navSelling": "Selling",
+      "navAlerts": "Alerts",
+      "navAccount": "Account",
+      "navHeading": "Settings"
     },
     "logout": {
       "title": "Log out?",

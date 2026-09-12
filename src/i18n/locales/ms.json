@@ -719,7 +719,13 @@
       "depositTermsPlaceholder": "cth. Kereta ditempah selama 7 hari.",
       "processingFee": "Caj pengendalian / runner",
       "processingFeeHint": "Caj anda sendiri di atas caj rasmi JPJ dan Puspakom. Masukkan 0 jika anda tidak mengenakan caj.",
-      "processingFeePlaceholder": "cth. 300"
+      "processingFeePlaceholder": "cth. 300",
+      "navProfile": "Profil",
+      "navContact": "Hubungan & Lokasi",
+      "navSelling": "Jualan",
+      "navAlerts": "Pemberitahuan",
+      "navAccount": "Akaun",
+      "navHeading": "Tetapan"
     },
     "logout": {
       "title": "Log keluar?",

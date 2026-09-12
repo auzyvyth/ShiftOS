@@ -759,6 +759,18 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 // Anything not in this list falls back to the dashboard.
 const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "performance", "services", "settings", "help"];
 
+// Settings sections, one subject each. Mirrors Premium's SETTINGS_GROUPS
+// (SalesmanPremium.jsx:200) so the two panels are the same screen with
+// different fields. Order is by how often a seller needs it, not by how the
+// fields happen to sit in the file.
+const LITE_SETTINGS_NAV = [
+  { key: "profile", labelKey: "salesmanLite.settings.navProfile", fallback: "Profile" },
+  { key: "contact", labelKey: "salesmanLite.settings.navContact", fallback: "Contact & Location" },
+  { key: "selling", labelKey: "salesmanLite.settings.navSelling", fallback: "Selling" },
+  { key: "alerts", labelKey: "salesmanLite.settings.navAlerts", fallback: "Alerts" },
+  { key: "account", labelKey: "salesmanLite.settings.navAccount", fallback: "Account" },
+];
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -1103,6 +1115,10 @@ export default function SalesmanLite() {
     processing_fee: "",
   });
   const [settingsSaving, setSettingsSaving] = useState(false);
+  // Which Settings subject is open. Defaults to the first rather than to a
+  // menu: on desktop the rail is always visible, and on mobile the pill row
+  // is, so there is never a state where the seller is looking at nothing.
+  const [settingsNav, setSettingsNav] = useState("profile");
   // Avatar cache is keyed by user id (set once profile loads) so it never
   // bleeds across salesmen sharing a device. Profile fetch repopulates it.
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -3701,6 +3717,8 @@ export default function SalesmanLite() {
             onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
             onVisitMinipage={openMyMinipage}
             onEditBio={() => {
+              // Bio sits in the Contact & Location card, not the default section.
+              setSettingsNav("contact");
               switchTab("settings");
               setTimeout(() => document.getElementById("lite-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
             }}
@@ -6711,8 +6729,34 @@ export default function SalesmanLite() {
 
     const initials = (profile?.full_name || profile?.slug || "S")[0].toUpperCase();
 
+    const snav = settingsNav;
+
+    // Lifted out of the tree because three sections own profile fields and all
+    // three need it. The form state lives on the page, not in the section, so
+    // switching section never drops what was typed and saving from any of them
+    // persists everything — same contract as Premium's Settings.
+    const saveBtn = (
+          <button
+            onClick={handleSave}
+            disabled={settingsSaving}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 8,
+              background: "#dc2626",
+              border: "none",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: settingsSaving ? "not-allowed" : "pointer",
+              opacity: settingsSaving ? 0.6 : 1,
+            }}
+          >
+            {settingsSaving ? t("salesmanLite.settings.savingBtn") : t("salesmanLite.settings.saveBtn")}
+          </button>
+    );
+
     return (
-      <div style={{ maxWidth: 560, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: isMobile ? 560 : 880, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
           <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
             {t("salesmanLite.settings.title")}
@@ -6728,7 +6772,55 @@ export default function SalesmanLite() {
             <BookOpen size={13} /> {t("salesmanLite.tabs.help")}
           </button>
         </div>
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
 
+        {/* Settings was ONE ~570-line scroll holding thirteen unrelated subjects —
+            avatar, cover, viewing hours, ID, profile, push, terms, location, IC,
+            bio, socials, language and account deletion — so finding any one of
+            them meant scrolling past the other twelve. Same grouped shape Premium
+            already uses (SETTINGS_GROUPS), and the house rule for this layout:
+            a rail on desktop, a horizontal scrolling pill row on mobile. */}
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 0 : 24, alignItems: "flex-start" }}>
+          <div
+            role="tablist"
+            style={isMobile
+              ? { display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 10, marginBottom: 14, WebkitOverflowScrolling: "touch" }
+              : { display: "flex", flexDirection: "column", gap: 2, width: 190, flexShrink: 0, position: "sticky", top: 16 }}
+          >
+            {LITE_SETTINGS_NAV.map(({ key, labelKey, fallback }) => {
+              const on = snav === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setSettingsNav(key)}
+                  style={{
+                    textAlign: isMobile ? "center" : "left",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    padding: isMobile ? "7px 14px" : "9px 12px",
+                    borderRadius: isMobile ? 999 : 8,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    background: on ? "rgba(220,38,38,0.12)" : "transparent",
+                    border: `1px solid ${on ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`,
+                    color: on ? "#fca5a5" : "#9ca3af",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {t(labelKey, { defaultValue: fallback })}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0, width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
+            {snav === "profile" && (
+              <>
         {/* Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
           <div
@@ -6762,7 +6854,6 @@ export default function SalesmanLite() {
             </button>
           </div>
         </div>
-
         {/* Cover photo — banner shown behind your profile photo on your public XDrive page */}
         <div style={{ marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
           <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanLite.settings.coverPhoto")}</p>
@@ -6780,24 +6871,6 @@ export default function SalesmanLite() {
             <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
           </div>
         </div>
-
-        {/* Viewing availability — buyers can only book the days/times set here */}
-        <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Identity verification — earns the public Verified badge. Sits first
-              because it is the one thing here that changes how buyers see every
-              listing. Purely opt-in: skipping it just means no badge. */}
-          <VerifyIdentity
-            profile={profile}
-            userId={userId}
-            onSubmitted={() =>
-              setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
-            }
-          />
-
           {/* Profile basics */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.profileSection")}</p>
@@ -6829,41 +6902,6 @@ export default function SalesmanLite() {
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.whatsappHint")}</p>
           </div>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> {t("salesmanLite.settings.telegram")}</label>
-              {profile?.telegram_chat_id
-                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanLite.settings.telegramConnected")}</span>
-                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanLite.settings.telegramNotSet")}</span>
-              }
-            </div>
-            <input
-              value={settingsForm.telegram_chat_id}
-              onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))}
-              placeholder={t("salesmanLite.settings.telegramPlaceholder")}
-              style={inputStyle}
-            />
-            <button
-              type="button"
-              onClick={testTelegramConnection}
-              disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
-              style={{
-                marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8,
-                background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
-                color: "#93c5fd", fontFamily: "inherit",
-                cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer",
-                opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1,
-              }}
-            >
-              <Send size={13} /> {tgTesting ? t("salesmanLite.settings.telegramTesting") : t("salesmanLite.settings.telegramTest")}
-            </button>
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
-              {t("salesmanLite.settings.telegramHint").split("@userinfobot").map((part, i) =>
-                i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>{part}</React.Fragment>
-              )}
-            </p>
-          </div>
-          <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.slug")}</label>
             <input
               value={profile?.slug || ""}
@@ -6874,58 +6912,11 @@ export default function SalesmanLite() {
           </div>
             </div>
           </div>
-
-          {/* Push notifications — works with the app closed, unlike the in-tab
-              Notification API banner used elsewhere in this file. */}
-          <PushToggle userId={userId} theme="dark" style={cardStyle} />
-
-          {/* Selling terms — a standalone agent sells their own cars, so the buyer
-              questions the dealer dashboard answers (is my deposit safe, what else
-              do I pay) have to be answerable here too. Without these the listing
-              tells the buyer to ask, which is honest but loses the sale's momentum. */}
-          <div style={{ ...cardStyle, marginBottom: 24 }}>
-            <p style={sectionLabelStyle}>{t("salesmanLite.settings.sellingTermsSection")}</p>
-            <p style={{ margin: "-6px 0 12px", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>
-              {t("salesmanLite.settings.sellingTermsHint")}
-            </p>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositPolicy")}</label>
-              <select
-                value={settingsForm.deposit_policy}
-                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))}
-                style={{ ...inputStyle, appearance: "none" }}
-              >
-                <option value="">{t("salesmanLite.settings.depositPolicySelect")}</option>
-                <option value="refundable">{t("salesmanLite.settings.depositRefundable")}</option>
-                <option value="refundable_on_loan_rejection">{t("salesmanLite.settings.depositLoanRejected")}</option>
-                <option value="non_refundable">{t("salesmanLite.settings.depositNonRefundable")}</option>
-              </select>
-            </div>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositTerms")}</label>
-              <input
-                value={settingsForm.deposit_terms}
-                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))}
-                placeholder={t("salesmanLite.settings.depositTermsPlaceholder")}
-                style={inputStyle}
-              />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.processingFee")}</label>
-              <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7280", pointerEvents: "none" }}>RM</span>
-                <input
-                  value={settingsForm.processing_fee}
-                  onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))}
-                  placeholder={t("salesmanLite.settings.processingFeePlaceholder")}
-                  inputMode="decimal"
-                  style={{ ...inputStyle, paddingLeft: 40 }}
-                />
-              </div>
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.5 }}>{t("salesmanLite.settings.processingFeeHint")}</p>
-            </div>
-          </div>
-
+            {saveBtn}
+              </>
+            )}
+            {snav === "contact" && (
+              <>
           {/* Location + IC */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.locationSection")}</p>
@@ -6991,7 +6982,6 @@ export default function SalesmanLite() {
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
             </div>
           </div>
-
           {/* Social links */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.socialSection")}</p>
@@ -7019,7 +7009,121 @@ export default function SalesmanLite() {
               ))}
             </div>
           </div>
-
+            {saveBtn}
+              </>
+            )}
+            {snav === "selling" && (
+              <>
+        {/* Viewing availability — buyers can only book the days/times set here */}
+        <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+          <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
+        </div>
+          {/* Selling terms — a standalone agent sells their own cars, so the buyer
+              questions the dealer dashboard answers (is my deposit safe, what else
+              do I pay) have to be answerable here too. Without these the listing
+              tells the buyer to ask, which is honest but loses the sale's momentum. */}
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <p style={sectionLabelStyle}>{t("salesmanLite.settings.sellingTermsSection")}</p>
+            <p style={{ margin: "-6px 0 12px", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>
+              {t("salesmanLite.settings.sellingTermsHint")}
+            </p>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositPolicy")}</label>
+              <select
+                value={settingsForm.deposit_policy}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))}
+                style={{ ...inputStyle, appearance: "none" }}
+              >
+                <option value="">{t("salesmanLite.settings.depositPolicySelect")}</option>
+                <option value="refundable">{t("salesmanLite.settings.depositRefundable")}</option>
+                <option value="refundable_on_loan_rejection">{t("salesmanLite.settings.depositLoanRejected")}</option>
+                <option value="non_refundable">{t("salesmanLite.settings.depositNonRefundable")}</option>
+              </select>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositTerms")}</label>
+              <input
+                value={settingsForm.deposit_terms}
+                onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))}
+                placeholder={t("salesmanLite.settings.depositTermsPlaceholder")}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.processingFee")}</label>
+              <div style={{ position: "relative" }}>
+                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7280", pointerEvents: "none" }}>RM</span>
+                <input
+                  value={settingsForm.processing_fee}
+                  onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))}
+                  placeholder={t("salesmanLite.settings.processingFeePlaceholder")}
+                  inputMode="decimal"
+                  style={{ ...inputStyle, paddingLeft: 40 }}
+                />
+              </div>
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.5 }}>{t("salesmanLite.settings.processingFeeHint")}</p>
+            </div>
+          </div>
+            {saveBtn}
+              </>
+            )}
+            {snav === "alerts" && (
+              <>
+          {/* Push notifications — works with the app closed, unlike the in-tab
+              Notification API banner used elsewhere in this file. */}
+          <PushToggle userId={userId} theme="dark" style={cardStyle} />
+              {/* Telegram lived in "Profile basics", three cards away from the push
+                  toggle it belongs beside — the two are the same decision ("where do
+                  alerts reach me"). Premium already pairs them in one Alerts section. */}
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+              <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> {t("salesmanLite.settings.telegram")}</label>
+              {profile?.telegram_chat_id
+                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanLite.settings.telegramConnected")}</span>
+                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanLite.settings.telegramNotSet")}</span>
+              }
+            </div>
+            <input
+              value={settingsForm.telegram_chat_id}
+              onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))}
+              placeholder={t("salesmanLite.settings.telegramPlaceholder")}
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={testTelegramConnection}
+              disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
+              style={{
+                marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+                fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8,
+                background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
+                color: "#93c5fd", fontFamily: "inherit",
+                cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer",
+                opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1,
+              }}
+            >
+              <Send size={13} /> {tgTesting ? t("salesmanLite.settings.telegramTesting") : t("salesmanLite.settings.telegramTest")}
+            </button>
+            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
+              {t("salesmanLite.settings.telegramHint").split("@userinfobot").map((part, i) =>
+                i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>{part}</React.Fragment>
+              )}
+            </p>
+          </div>
+              </>
+            )}
+            {snav === "account" && (
+              <>
+          {/* Identity verification — earns the public Verified badge. Sits first
+              because it is the one thing here that changes how buyers see every
+              listing. Purely opt-in: skipping it just means no badge. */}
+          <VerifyIdentity
+            profile={profile}
+            userId={userId}
+            onSubmitted={() =>
+              setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
+            }
+          />
           {/* Language toggle */}
           <div style={cardStyle}>
             <p style={{ ...sectionLabelStyle, marginBottom: 8 }}>{t("salesmanLite.settings.language")}</p>
@@ -7046,26 +7150,6 @@ export default function SalesmanLite() {
               ))}
             </div>
           </div>
-
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
-          <button
-            onClick={handleSave}
-            disabled={settingsSaving}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 8,
-              background: "#dc2626",
-              border: "none",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: settingsSaving ? "not-allowed" : "pointer",
-              opacity: settingsSaving ? 0.6 : 1,
-            }}
-          >
-            {settingsSaving ? t("salesmanLite.settings.savingBtn") : t("salesmanLite.settings.saveBtn")}
-          </button>
-
           {/* Danger Zone — self-service account deletion */}
           <div style={{ ...cardStyle, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.03)", marginTop: 8 }}>
             <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
@@ -7090,6 +7174,9 @@ export default function SalesmanLite() {
             >
               {t("salesmanLite.dangerZone.deleteBtn")}
             </button>
+          </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -8908,7 +8995,7 @@ export default function SalesmanLite() {
                 Not now
               </button>
               <button
-                onClick={() => { setTelegramSetupModal(false); switchTab("settings"); }}
+                onClick={() => { setTelegramSetupModal(false); setSettingsNav("alerts"); switchTab("settings"); }}
                 style={{ flex: 2, padding: "9px 0", borderRadius: 8, fontSize: 13, fontWeight: 700, background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", cursor: "pointer" }}
               >
                 Go to Settings →

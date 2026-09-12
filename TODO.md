@@ -373,8 +373,54 @@ fixes. Nothing in this batch has been built.
   the "still English in some sections" complaint is almost entirely
   Premium.
 
-- [ ] **LITE-SETTINGS-1: split Lite's Settings tab into one tab per
-  subject, mirroring Premium's already-built pattern.** `renderSettings`
+- [x] **LITE-SETTINGS-1 DONE 2026-09-12 — Lite's Settings is five sections
+  with a rail, not one 570-line scroll.** Sections, by what a seller is
+  actually doing: **Profile** (avatar, cover, profile basics) · **Contact &
+  Location** (address/IC card incl. bio, social links) · **Selling**
+  (viewing hours, selling terms) · **Alerts** (push, Telegram) ·
+  **Account** (ID verification, language, danger zone).
+  - Desktop gets a 190px sticky rail; mobile gets a horizontal scrolling
+    pill row — the house rule for this layout, not a drill-in menu, so there
+    is never a state where the seller is looking at nothing.
+    `LITE_SETTINGS_NAV` (`SalesmanLite.jsx:761`) is the one list driving it,
+    mirroring Premium's `SETTINGS_GROUPS`. Labels translated, keys added to
+    both locales.
+  - `saveBtn` is lifted out and rendered by the three sections that own
+    profile fields. The form state already lived on the page, not in the
+    section, so switching section never drops what was typed and saving from
+    any of them persists all of it — same contract as Premium.
+  - **Telegram MOVED from "Profile basics" to Alerts.** It was three cards
+    away from the push toggle while answering the same question ("where do
+    alerts reach me"); Premium already pairs them. This is the mis-grouping
+    the split was for.
+  - **Two deep links would have broken and were caught before shipping** —
+    this is the part worth remembering, because nothing about them is
+    visible in the settings file itself. Both jump into Settings expecting a
+    field to be on screen, which stops being true the moment sections are
+    tabbed: `onEditBio` (`:3719`, the StarterTasks "add a bio" nudge) scrolls
+    to `#lite-bio-field`, which now lives in **contact**; the Telegram setup
+    modal (`:8998`) sends the seller to the Telegram field, now in
+    **alerts**. Both now select their section before switching tab. Any
+    future deep link into Settings has to do the same.
+  - Checked for the same failure in the product tour: every `data-tour-id`
+    in the file is on a nav/sub-tab element or the always-visible Settings
+    header, so no tour step rings something now hidden.
+  - **How it was done, given no build available:** every block was moved
+    VERBATIM by line range and reassembled — nothing was retyped or edited
+    inside a section — then verified three ways: esbuild parses the file,
+    all 13 section markers still appear exactly once, and all 371 non-blank
+    lines of the original settings region are still present (the single
+    intentional exception is the old fixed `maxWidth: 560` wrapper, replaced
+    by the responsive shell). `saveBtn`: 1 definition, 3 usages.
+  - NOT eyeballed in a browser and NOT built (`npm ci` blocked by
+    `cdn.sheetjs.com`, 403). The structure is verified; the LOOK is not.
+    Worth one pass on staging at 375px before trusting the spacing — the
+    moved blocks keep their own `marginBottom: 24` inside a container that
+    also sets `gap: 16`, so a couple of seams may read loose.
+
+- [ ] ~~LITE-SETTINGS-1 original finding, kept for the reasoning:~~ **split
+  Lite's Settings tab into one tab per subject, mirroring Premium's
+  already-built pattern.** `renderSettings`
   (`SalesmanLite.jsx:6526-7098`) is one 570-line function with no sub-nav,
   13 subjects in a single scroll: avatar (`:6731`), cover photo (`:6765`),
   viewing hours (`:6783`), ID verification (`:6789`), profile basics
