@@ -1,0 +1,644 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-12",
+  "batch": {
+    "requested": 17,
+    "returned": 15,
+    "skipped": 2
+  },
+  "specs": [
+    {
+      "make": "Proton",
+      "model": "Waja",
+      "generation": "First generation",
+      "year_from": 2000,
+      "year_to": 2011,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1584,
+      "cylinders": 4,
+      "horsepower": 110,
+      "torque_nm": 148,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Malaysia's first home-designed sedan; 1.6 used Mitsubishi 4G18, CamPro 1.6 from 2006, Renault 1.8 (F4P) also offered. CKD.",
+      "variants": [
+        {
+          "name": "1.6",
+          "horsepower": 110,
+          "torque_nm": 148,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "4G18 1584cc; later CamPro 1597cc"
+        },
+        {
+          "name": "1.8",
+          "horsepower": 116,
+          "torque_nm": 156,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Renault F4P 1783cc"
+        }
+      ]
+    },
+    {
+      "make": "Proton",
+      "model": "Wira",
+      "generation": "C-platform (Lancer-based)",
+      "year_from": 1993,
+      "year_to": 2009,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "1.5",
+      "engine_cc": 1468,
+      "cylinders": 4,
+      "horsepower": 90,
+      "torque_nm": 121,
+      "transmission": "Manual",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Based on Mitsubishi Lancer/Colt; sedan and 5-door Aeroback hatch; engines 1.3/1.5 (4G13/4G15), 1.6 (4G92), 1.8 (4G93), plus 2.0 diesel.",
+      "variants": [
+        {
+          "name": "1.3",
+          "horsepower": 75,
+          "torque_nm": 106,
+          "transmission": "Manual",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "4G13 1298cc"
+        },
+        {
+          "name": "1.5",
+          "horsepower": 90,
+          "torque_nm": 121,
+          "transmission": "Manual",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "4G15 1468cc"
+        },
+        {
+          "name": "1.6",
+          "horsepower": 113,
+          "torque_nm": 137,
+          "transmission": "Manual",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "4G92 1597cc DOHC"
+        },
+        {
+          "name": "1.8 Aeroback",
+          "horsepower": 133,
+          "torque_nm": 160,
+          "transmission": "Manual",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "4G93 1834cc DOHC; 5-door hatch"
+        }
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "Freed",
+      "generation": "GB3/GB4",
+      "year_from": 2008,
+      "year_to": 2015,
+      "market": "JDM",
+      "chassis_codes": [
+        "GB3",
+        "GB4"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 7,
+      "primary_variant": "1.5 G",
+      "engine_cc": 1497,
+      "cylinders": 4,
+      "horsepower": 118,
+      "torque_nm": 146,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Compact MPV with sliding rear doors; recon imports common in Malaysia; L15A 1.5 i-VTEC; 6/7-seat layouts; GB4 is 4WD.",
+      "variants": [
+        {
+          "name": "1.5 G",
+          "horsepower": 118,
+          "torque_nm": 146,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 7,
+          "notes": "L15A 1497cc i-VTEC, 5-speed auto"
+        }
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "Freed",
+      "generation": "GB5/GB6/GB7/GB8",
+      "year_from": 2016,
+      "year_to": null,
+      "market": "JDM",
+      "chassis_codes": [
+        "GB5",
+        "GB6",
+        "GB7",
+        "GB8"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 7,
+      "primary_variant": "1.5 G (petrol)",
+      "engine_cc": 1496,
+      "cylinders": 4,
+      "horsepower": 131,
+      "torque_nm": 155,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Freed; L15B 1.5 petrol (GB5/GB6) with CVT, plus Sport Hybrid i-DCD (GB7/GB8). Recon imports.",
+      "variants": [
+        {
+          "name": "1.5 G (petrol)",
+          "horsepower": 131,
+          "torque_nm": 155,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 7,
+          "notes": "L15B 1496cc, CVT"
+        },
+        {
+          "name": "1.5 Hybrid",
+          "horsepower": 110,
+          "torque_nm": 134,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Hybrid",
+          "seats": 7,
+          "notes": "Sport Hybrid i-DCD, LEB engine + motor, 7-speed DCT"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Harrier",
+      "generation": "XU30",
+      "year_from": 2003,
+      "year_to": 2012,
+      "market": "JDM",
+      "chassis_codes": [
+        "ACU30",
+        "ACU35",
+        "MCU30",
+        "MCU35",
+        "GSU30",
+        "GSU35"
+      ],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "240G",
+      "engine_cc": 2362,
+      "cylinders": 4,
+      "horsepower": 160,
+      "torque_nm": 221,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "XU30 Harrier; 2.4 (2AZ-FE) 4-cyl and 3.0/3.5 V6; FWD or AWD; sold as Lexus RX elsewhere; recon imports common.",
+      "variants": [
+        {
+          "name": "240G",
+          "horsepower": 160,
+          "torque_nm": 221,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "2AZ-FE 2362cc"
+        },
+        {
+          "name": "300G",
+          "horsepower": 220,
+          "torque_nm": 304,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1MZ-FE 2994cc V6"
+        },
+        {
+          "name": "350G",
+          "horsepower": 280,
+          "torque_nm": 344,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "2GR-FE 3456cc V6"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Harrier",
+      "generation": "XU60",
+      "year_from": 2013,
+      "year_to": 2019,
+      "market": "JDM",
+      "chassis_codes": [
+        "ZSU60",
+        "ZSU65",
+        "ASU60",
+        "ASU65",
+        "AVU65"
+      ],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "2.0 Premium",
+      "engine_cc": 1986,
+      "cylinders": 4,
+      "horsepower": 151,
+      "torque_nm": 193,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "XU60 Harrier; 2.0 (3ZR-FAE) NA, 2.0 turbo (8AR-FTS) from 2017, 2.5 hybrid (2AR-FXE). Recon imports common in Malaysia.",
+      "variants": [
+        {
+          "name": "2.0 Premium",
+          "horsepower": 151,
+          "torque_nm": 193,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3ZR-FAE 1986cc, CVT"
+        },
+        {
+          "name": "2.0 Turbo",
+          "horsepower": 231,
+          "torque_nm": 350,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "8AR-FTS 1998cc turbo, 6AT; from 2017"
+        },
+        {
+          "name": "2.5 Hybrid",
+          "horsepower": 197,
+          "torque_nm": 206,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Hybrid",
+          "seats": 5,
+          "notes": "2AR-FXE + motors (E-Four), system output ~197ps"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Harrier",
+      "generation": "XU80",
+      "year_from": 2020,
+      "year_to": null,
+      "market": "JDM",
+      "chassis_codes": [
+        "MXUA80",
+        "MXUA85",
+        "AXUH80",
+        "AXUH85"
+      ],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1986,
+      "cylinders": 4,
+      "horsepower": 171,
+      "torque_nm": 207,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "XU80 Harrier on TNGA-K; 2.0 (M20A-FKS) petrol and 2.5 hybrid (A25A-FXS). Recon imports.",
+      "variants": [
+        {
+          "name": "2.0",
+          "horsepower": 171,
+          "torque_nm": 207,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M20A-FKS 1986cc, CVT"
+        },
+        {
+          "name": "2.5 Hybrid",
+          "horsepower": 218,
+          "torque_nm": 221,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Hybrid",
+          "seats": 5,
+          "notes": "A25A-FXS + motor, system ~218ps; E-Four AWD optional"
+        }
+      ]
+    },
+    {
+      "make": "Kia",
+      "model": "Picanto",
+      "generation": "SA",
+      "year_from": 2004,
+      "year_to": 2010,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.1",
+      "engine_cc": 1086,
+      "cylinders": 4,
+      "horsepower": 65,
+      "torque_nm": 97,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen Picanto (SA); in Malaysia assembled by Naza (also badged Naza Suria/Picanto). 1.0/1.1 petrol.",
+      "variants": [
+        {
+          "name": "1.1",
+          "horsepower": 65,
+          "torque_nm": 97,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "G4HG 1086cc"
+        }
+      ]
+    },
+    {
+      "make": "Kia",
+      "model": "Picanto",
+      "generation": "TA",
+      "year_from": 2011,
+      "year_to": 2016,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.2",
+      "engine_cc": 1248,
+      "cylinders": 4,
+      "horsepower": 87,
+      "torque_nm": 120,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen Picanto (TA); 1.0/1.25 Kappa petrol.",
+      "variants": [
+        {
+          "name": "1.2",
+          "horsepower": 87,
+          "torque_nm": 120,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Kappa 1.25 (1248cc)"
+        }
+      ]
+    },
+    {
+      "make": "Kia",
+      "model": "Picanto",
+      "generation": "JA",
+      "year_from": 2017,
+      "year_to": null,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.2 EX",
+      "engine_cc": 1248,
+      "cylinders": 4,
+      "horsepower": 84,
+      "torque_nm": 122,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Picanto (JA); 1.25 Kappa; GT-Line trim offered.",
+      "variants": [
+        {
+          "name": "1.2 EX",
+          "horsepower": 84,
+          "torque_nm": 122,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Kappa 1.25 (1248cc)"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Note",
+      "generation": "E11",
+      "year_from": 2005,
+      "year_to": 2011,
+      "market": "JDM",
+      "chassis_codes": [
+        "E11",
+        "NE11",
+        "ZE11"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.5 15G",
+      "engine_cc": 1498,
+      "cylinders": 4,
+      "horsepower": 109,
+      "torque_nm": 148,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Note (E11); 1.5 (HR15DE) & 1.6 (HR16DE); recon imports common in Malaysia.",
+      "variants": [
+        {
+          "name": "1.5 15G",
+          "horsepower": 109,
+          "torque_nm": 148,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "HR15DE 1498cc, CVT"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Note",
+      "generation": "E12",
+      "year_from": 2012,
+      "year_to": 2020,
+      "market": "JDM",
+      "chassis_codes": [
+        "E12",
+        "NE12",
+        "HE12"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.2 X",
+      "engine_cc": 1198,
+      "cylinders": 3,
+      "horsepower": 79,
+      "torque_nm": 106,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Note (E12); 1.2 3-cyl (HR12DE), 1.2 supercharged (HR12DDR), and e-Power series hybrid from 2016. Recon imports.",
+      "variants": [
+        {
+          "name": "1.2 X",
+          "horsepower": 79,
+          "torque_nm": 106,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "HR12DE 1198cc 3-cyl, CVT"
+        },
+        {
+          "name": "1.2 DIG-S",
+          "horsepower": 98,
+          "torque_nm": 147,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "HR12DDR 1198cc supercharged"
+        },
+        {
+          "name": "e-Power",
+          "horsepower": 109,
+          "torque_nm": 254,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Hybrid",
+          "seats": 5,
+          "notes": "HR12DE runs as generator; EM57 traction motor 109ps/254Nm; series hybrid"
+        }
+      ]
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "Attrage",
+      "generation": "A10",
+      "year_from": 2013,
+      "year_to": null,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "1.2",
+      "engine_cc": 1193,
+      "cylinders": 3,
+      "horsepower": 78,
+      "torque_nm": 100,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Attrage, sedan sibling of Mirage; 1.2 (3A92) 3-cyl with CVT; CKD in Malaysia; facelifts 2016 and 2020.",
+      "variants": [
+        {
+          "name": "1.2",
+          "horsepower": 78,
+          "torque_nm": 100,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3A92 1193cc 3-cyl, CVT"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "make": "Toyota",
+      "model": "Harrier",
+      "reason": "XU10 first gen (1997-2003) omitted; older recon stock, defer to a later batch"
+    },
+    {
+      "make": "Ford",
+      "model": "Ranger",
+      "reason": "PJ/PK gen (2006-2011) omitted; superseded by T6, thin current used volume"
+    },
+    {
+      "make": "Ford",
+      "model": "Ranger",
+      "generation": "T6",
+      "reason": "Already collected in 2026-09-05-batch-01.json as 'T6 (facelift)' (2015-2022, CBU, 160hp/385Nm 2.2). This batch re-collected the same generation with a wider year_from (2011) and different market/figures (CKD, 150hp/375Nm) — the validator flags this as an overlapping-generations conflict since both are collected (non-curated) rows. Dropped in favor of the earlier, already-verified entry rather than reconciling two AI-collected guesses against each other."
+    },
+    {
+      "make": "Ford",
+      "model": "Ranger",
+      "generation": "P703 (Next-gen)",
+      "reason": "Already collected in 2026-09-05-batch-01.json as 'P703 (next-gen)' (2023-null, CBU, 210hp/500Nm 2.0 Bi-Turbo, plus a fuller variant list including 3.0L V6 Platinum). Same duplicate-generation conflict as the T6 row above — dropped in favor of the earlier entry."
+    }
+  ]
+}

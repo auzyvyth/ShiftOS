@@ -74,7 +74,9 @@ const SPECS = [
   { make:"Honda", model:"BR-V",    yearFrom:2016, yearTo:2021, engine_cc:1497, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",       horsepower:120, doors:5, seats:7, fuel_consumption:14 },
   { make:"Honda", model:"BR-V",    yearFrom:2022, yearTo:2099, engine_cc:1498, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",       horsepower:121, doors:5, seats:7, fuel_consumption:15 },
   { make:"Honda", model:"WR-V",    yearFrom:2023, yearTo:2099, engine_cc:1498, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",       horsepower:121, doors:5, seats:5, fuel_consumption:16 },
-  { make:"Honda", model:"Odyssey", yearFrom:2013, yearTo:2020, engine_cc:2356, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",       horsepower:173, doors:5, seats:7, fuel_consumption:11 },
+  // Odyssey hand-curated row removed 2026-09-12: it blended RB3+RC1 into one
+  // 2013-2020 row with no chassis codes. tools/specs/data/2026-09-11-batch-02.json
+  // supersedes it with three real generations (RB1/RB3/RC1) and correct codes.
 
   // ─── Toyota ────────────────────────────────────────────────────────────────
   { make:"Toyota", model:"Vios",     yearFrom:2003, yearTo:2012, engine_cc:1497, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan",     horsepower:109, doors:4, seats:5, fuel_consumption:14 },
@@ -94,7 +96,10 @@ const SPECS = [
   { make:"Toyota", model:"Veloz",    yearFrom:2022, yearTo:2099, engine_cc:1496, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",       horsepower:104, doors:5, seats:7, fuel_consumption:15 },
   { make:"Toyota", model:"Alphard",  yearFrom:2015, yearTo:2022, engine_cc:2493, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",       horsepower:178, doors:5, seats:7, fuel_consumption:9  },
   { make:"Toyota", model:"Vellfire", yearFrom:2015, yearTo:2099, engine_cc:2493, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV",       horsepower:178, doors:5, seats:7, fuel_consumption:9  },
-  { make:"Toyota", model:"Harrier",  yearFrom:2017, yearTo:2099, engine_cc:1986, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV",       horsepower:171, doors:5, seats:5, fuel_consumption:12 },
+  // Harrier hand-curated row removed 2026-09-12: it blended the XU60 tail and
+  // XU80 into one 2017-2099 row with no chassis codes. tools/specs/data/
+  // 2026-09-12-batch-02.json supersedes it with three real generations
+  // (XU30/XU60/XU80) and correct codes.
 
   // ─── Nissan ────────────────────────────────────────────────────────────────
   { make:"Nissan", model:"Almera",  yearFrom:2012, yearTo:2019, engine_cc:1498, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan",  horsepower:99,  doors:4, seats:5, fuel_consumption:15 },
@@ -133,15 +138,41 @@ const SPECS = [
   { make:"BMW", model:"M8", yearFrom:2019, yearTo:2099, engine_cc:4395, cylinders:8, transmission:"Auto", fuel_type:"Petrol", body_type:"Coupe", horsepower:625, doors:2, seats:4, fuel_consumption:null },
   { make:"Ford", model:"Ranger", yearFrom:2015, yearTo:2022, engine_cc:2198, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:160, doors:4, seats:5, fuel_consumption:null },
   { make:"Ford", model:"Ranger", yearFrom:2023, yearTo:2099, engine_cc:1996, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:210, doors:4, seats:5, fuel_consumption:null },
+  { make:"Honda", model:"Freed", yearFrom:2008, yearTo:2015, engine_cc:1497, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:118, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Freed", yearFrom:2016, yearTo:2099, engine_cc:1496, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:131, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Odyssey", yearFrom:2003, yearTo:2008, engine_cc:2354, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:160, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Odyssey", yearFrom:2009, yearTo:2013, engine_cc:2354, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:173, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Odyssey", yearFrom:2014, yearTo:2021, engine_cc:2356, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:175, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Stream", yearFrom:2000, yearTo:2006, engine_cc:1668, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:130, doors:5, seats:7, fuel_consumption:null },
+  { make:"Honda", model:"Stream", yearFrom:2007, yearTo:2014, engine_cc:1799, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:140, doors:5, seats:7, fuel_consumption:null },
+  { make:"Hyundai", model:"Tucson", yearFrom:2010, yearTo:2015, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:163, doors:5, seats:5, fuel_consumption:null },
+  { make:"Hyundai", model:"Tucson", yearFrom:2016, yearTo:2020, engine_cc:1999, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:155, doors:5, seats:5, fuel_consumption:null },
+  { make:"Hyundai", model:"Tucson", yearFrom:2021, yearTo:2099, engine_cc:1999, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:156, doors:5, seats:5, fuel_consumption:null },
   { make:"Isuzu", model:"D-Max", yearFrom:2012, yearTo:2019, engine_cc:2499, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:136, doors:4, seats:5, fuel_consumption:null },
   { make:"Isuzu", model:"D-Max", yearFrom:2021, yearTo:2099, engine_cc:1898, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:150, doors:4, seats:5, fuel_consumption:null },
+  { make:"Kia", model:"Picanto", yearFrom:2004, yearTo:2010, engine_cc:1086, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:65, doors:5, seats:5, fuel_consumption:null },
+  { make:"Kia", model:"Picanto", yearFrom:2011, yearTo:2016, engine_cc:1248, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:87, doors:5, seats:5, fuel_consumption:null },
+  { make:"Kia", model:"Picanto", yearFrom:2017, yearTo:2099, engine_cc:1248, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:84, doors:5, seats:5, fuel_consumption:null },
   { make:"Lexus", model:"RX", yearFrom:2015, yearTo:2022, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:238, doors:5, seats:5, fuel_consumption:null },
   { make:"Mazda", model:"3", yearFrom:2009, yearTo:2013, engine_cc:1999, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:148, doors:4, seats:5, fuel_consumption:null },
   { make:"Mazda", model:"Mazda 2", yearFrom:2007, yearTo:2014, engine_cc:1498, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:103, doors:5, seats:5, fuel_consumption:null },
   { make:"Mazda", model:"Mazda 2", yearFrom:2015, yearTo:2099, engine_cc:1496, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:114, doors:5, seats:5, fuel_consumption:null },
+  { make:"Mitsubishi", model:"Attrage", yearFrom:2013, yearTo:2099, engine_cc:1193, cylinders:3, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:78, doors:4, seats:5, fuel_consumption:null },
+  { make:"Mitsubishi", model:"Lancer", yearFrom:2004, yearTo:2007, engine_cc:1584, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:98, doors:4, seats:5, fuel_consumption:null },
+  { make:"Mitsubishi", model:"Lancer", yearFrom:2008, yearTo:2017, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:150, doors:4, seats:5, fuel_consumption:null },
   { make:"Nissan", model:"Grand Livina", yearFrom:2007, yearTo:2019, engine_cc:1798, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:126, doors:5, seats:7, fuel_consumption:null },
   { make:"Nissan", model:"Navara", yearFrom:2005, yearTo:2014, engine_cc:2488, cylinders:4, transmission:"Auto", fuel_type:"Diesel", body_type:"Pickup", horsepower:174, doors:4, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Note", yearFrom:2005, yearTo:2011, engine_cc:1498, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:109, doors:5, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Note", yearFrom:2012, yearTo:2020, engine_cc:1198, cylinders:3, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:79, doors:5, seats:5, fuel_consumption:null },
   { make:"Nissan", model:"Serena", yearFrom:2014, yearTo:2017, engine_cc:1997, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:147, doors:5, seats:8, fuel_consumption:null },
+  { make:"Nissan", model:"Sylphy", yearFrom:2008, yearTo:2012, engine_cc:1997, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:136, doors:4, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Sylphy", yearFrom:2014, yearTo:2019, engine_cc:1798, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:131, doors:4, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Teana", yearFrom:2003, yearTo:2008, engine_cc:2349, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:173, doors:4, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Teana", yearFrom:2009, yearTo:2013, engine_cc:1997, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:136, doors:4, seats:5, fuel_consumption:null },
+  { make:"Nissan", model:"Teana", yearFrom:2014, yearTo:2019, engine_cc:2488, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:173, doors:4, seats:5, fuel_consumption:null },
+  { make:"Suzuki", model:"Swift", yearFrom:2005, yearTo:2010, engine_cc:1490, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:100, doors:5, seats:5, fuel_consumption:null },
+  { make:"Suzuki", model:"Swift", yearFrom:2011, yearTo:2017, engine_cc:1372, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:94, doors:5, seats:5, fuel_consumption:null },
+  { make:"Suzuki", model:"Swift", yearFrom:2018, yearTo:2099, engine_cc:1242, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Hatchback", horsepower:90, doors:5, seats:5, fuel_consumption:null },
   { make:"Toyota", model:"Alphard", yearFrom:2008, yearTo:2014, engine_cc:2362, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:170, doors:5, seats:7, fuel_consumption:null },
   { make:"Toyota", model:"Alphard", yearFrom:2023, yearTo:2099, engine_cc:2487, cylinders:4, transmission:"Auto", fuel_type:"Hybrid", body_type:"MPV", horsepower:null, doors:5, seats:7, fuel_consumption:null },
   { make:"Toyota", model:"Avanza", yearFrom:2004, yearTo:2011, engine_cc:1495, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:109, doors:5, seats:7, fuel_consumption:null },
@@ -151,8 +182,15 @@ const SPECS = [
   { make:"Toyota", model:"Corolla Altis", yearFrom:2014, yearTo:2018, engine_cc:1798, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:140, doors:4, seats:5, fuel_consumption:null },
   { make:"Toyota", model:"Corolla Altis", yearFrom:2019, yearTo:2099, engine_cc:1798, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"Sedan", horsepower:139, doors:4, seats:5, fuel_consumption:null },
   { make:"Toyota", model:"Estima", yearFrom:2006, yearTo:2019, engine_cc:2362, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:170, doors:5, seats:7, fuel_consumption:null },
+  { make:"Toyota", model:"Fortuner", yearFrom:2008, yearTo:2015, engine_cc:2694, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:160, doors:5, seats:7, fuel_consumption:null },
+  { make:"Toyota", model:"Harrier", yearFrom:2003, yearTo:2012, engine_cc:2362, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:160, doors:5, seats:5, fuel_consumption:null },
+  { make:"Toyota", model:"Harrier", yearFrom:2013, yearTo:2019, engine_cc:1986, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:151, doors:5, seats:5, fuel_consumption:null },
+  { make:"Toyota", model:"Harrier", yearFrom:2020, yearTo:2099, engine_cc:1986, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:171, doors:5, seats:5, fuel_consumption:null },
+  { make:"Toyota", model:"Innova", yearFrom:2005, yearTo:2015, engine_cc:1998, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:136, doors:5, seats:8, fuel_consumption:null },
   { make:"Toyota", model:"Rush", yearFrom:2008, yearTo:2017, engine_cc:1495, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"SUV", horsepower:109, doors:5, seats:7, fuel_consumption:null },
   { make:"Toyota", model:"Vellfire", yearFrom:2008, yearTo:2014, engine_cc:2362, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:170, doors:5, seats:7, fuel_consumption:null },
+  { make:"Toyota", model:"Wish", yearFrom:2003, yearTo:2009, engine_cc:1794, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:132, doors:5, seats:7, fuel_consumption:null },
+  { make:"Toyota", model:"Wish", yearFrom:2010, yearTo:2017, engine_cc:1797, cylinders:4, transmission:"Auto", fuel_type:"Petrol", body_type:"MPV", horsepower:144, doors:5, seats:7, fuel_consumption:null },
   // ─── generated ─── END
 ];
 

@@ -1,0 +1,278 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-12",
+  "batch": { "requested": 20, "returned": 17, "skipped": 3 },
+  "specs": [
+    {
+      "make": "Toyota", "model": "Fortuner", "generation": "AN50/AN60",
+      "year_from": 2008, "year_to": 2015, "market": "CKD",
+      "chassis_codes": ["TGN51", "KUN60"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.7V",
+      "engine_cc": 2694, "cylinders": 4, "horsepower": 160, "torque_nm": 246,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen body-on-frame SUV, CKD-assembled in Malaysia from ~2008 on the Hilux/IMV platform. Petrol 2.7 was the volume variant; 2.5 turbodiesel also offered.",
+      "variants": [
+        { "name": "2.7V", "horsepower": 160, "torque_nm": 246, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 7, "notes": "2TR-FE 2694cc" },
+        { "name": "2.5D", "horsepower": 144, "torque_nm": 343, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Diesel", "seats": 7, "notes": "2KD-FTV 2494cc turbodiesel; 4WD also offered" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Fortuner", "generation": "AN150/AN160",
+      "year_from": 2016, "year_to": null, "market": "CKD",
+      "chassis_codes": ["GUN156"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4 VRZ",
+      "engine_cc": 2393, "cylinders": 4, "horsepower": 150, "torque_nm": 400,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Fortuner, CKD in Malaysia. 2.4 VRZ turbodiesel 4WD is the volume variant; 2.7 SRZ petrol RWD also sold. Facelifted 2021 (still this generation).",
+      "variants": [
+        { "name": "2.4 VRZ", "horsepower": 150, "torque_nm": 400, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 7, "notes": "2GD-FTV 2393cc turbodiesel" },
+        { "name": "2.7 SRZ", "horsepower": 166, "torque_nm": 245, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 7, "notes": "2TR-FE 2694cc" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Wish", "generation": "XE10",
+      "year_from": 2003, "year_to": 2009, "market": "JDM",
+      "chassis_codes": ["ZNE10", "ANE11"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "1.8X",
+      "engine_cc": 1794, "cylinders": 4, "horsepower": 132, "torque_nm": 170,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen compact 7-seat MPV, present in Malaysia almost entirely as Japanese recond imports. 1.8 volume, 2.0 direct-injection above it.",
+      "variants": [
+        { "name": "1.8X", "horsepower": 132, "torque_nm": 170, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "1ZZ-FE 1794cc" },
+        { "name": "2.0", "horsepower": 155, "torque_nm": 192, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "1AZ-FSE 1998cc D-4 direct injection; 4WD versions exist" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Wish", "generation": "XE20",
+      "year_from": 2010, "year_to": 2017, "market": "JDM",
+      "chassis_codes": ["ZGE20", "ZGE25"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "1.8S",
+      "engine_cc": 1797, "cylinders": 4, "horsepower": 144, "torque_nm": 176,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Wish, recond import in Malaysia. 1.8 Valvematic volume; 2.0 above. Both CVT.",
+      "variants": [
+        { "name": "1.8S", "horsepower": 144, "torque_nm": 176, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "2ZR-FAE 1797cc Valvematic, CVT" },
+        { "name": "2.0Z", "horsepower": 158, "torque_nm": 196, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "3ZR-FAE 1986cc, CVT" }
+      ]
+    },
+    {
+      "make": "Perodua", "model": "Ativa", "generation": "D55L",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.0 Turbo AV",
+      "engine_cc": 998, "cylinders": 3, "horsepower": 98, "torque_nm": 140,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "high",
+      "source_note": "Perodua's compact SUV based on the Daihatsu Rocky/DNGA platform, CKD. Single 1.0 three-cylinder turbo engine across the range with D-CVT.",
+      "variants": [
+        { "name": "1.0 Turbo AV", "horsepower": 98, "torque_nm": 140, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1KR-VET 998cc turbo, D-CVT" }
+      ]
+    },
+    {
+      "make": "Proton", "model": "Gen-2", "generation": "BS",
+      "year_from": 2004, "year_to": 2012, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1597, "cylinders": 4, "horsepower": 110, "torque_nm": 148,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Proton's first Campro-engined hatchback, locally built. 1.6 was the mainstay; a 1.3 also sold. Early units used a 4-speed automatic.",
+      "variants": [
+        { "name": "1.6", "horsepower": 110, "torque_nm": 148, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Campro S4PH 1597cc; manual also offered" },
+        { "name": "1.3", "horsepower": 95, "torque_nm": 120, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Campro 1332cc" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Xpander", "generation": "A1",
+      "year_from": 2020, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "1.5L",
+      "engine_cc": 1499, "cylinders": 4, "horsepower": 105, "torque_nm": 141,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Seven-seat compact MPV, CKD-assembled in Malaysia. Single 1.5 MIVEC petrol across the range. Facelifted 2022 (same generation).",
+      "variants": [
+        { "name": "1.5L", "horsepower": 105, "torque_nm": 141, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "4A91 1499cc MIVEC" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Stream", "generation": "RN1-RN5",
+      "year_from": 2000, "year_to": 2006, "market": "JDM",
+      "chassis_codes": ["RN1", "RN3"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "1.7",
+      "engine_cc": 1668, "cylinders": 4, "horsepower": 130, "torque_nm": 155,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen compact 7-seat MPV, Malaysian presence via Japanese recond imports. 1.7 volume; 2.0 K-series above it. Figures from memory, verify.",
+      "variants": [
+        { "name": "1.7", "horsepower": 130, "torque_nm": 155, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "D17A 1668cc" },
+        { "name": "2.0", "horsepower": 156, "torque_nm": 190, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "K20A 1998cc" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Stream", "generation": "RN6-RN9",
+      "year_from": 2007, "year_to": 2014, "market": "JDM",
+      "chassis_codes": ["RN6", "RN8"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "1.8",
+      "engine_cc": 1799, "cylinders": 4, "horsepower": 140, "torque_nm": 174,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Stream, recond import in Malaysia. 1.8 R-series volume; 2.0 RSZ above. AWD versions exist in Japan.",
+      "variants": [
+        { "name": "1.8", "horsepower": 140, "torque_nm": 174, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "R18A 1799cc" },
+        { "name": "2.0 RSZ", "horsepower": 150, "torque_nm": 190, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "R20A 1997cc" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Sylphy", "generation": "G11",
+      "year_from": 2008, "year_to": 2012, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1997, "cylinders": 4, "horsepower": 136, "torque_nm": 200,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First Sylphy badged for Malaysia (Bluebird Sylphy lineage), CKD. 2.0 MR-series with Xtronic CVT.",
+      "variants": [
+        { "name": "2.0", "horsepower": 136, "torque_nm": 200, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "MR20DE 1997cc, CVT (Xtronic)" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Sylphy", "generation": "B17",
+      "year_from": 2014, "year_to": 2019, "market": "CKD",
+      "chassis_codes": ["B17"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "1.8",
+      "engine_cc": 1798, "cylinders": 4, "horsepower": 131, "torque_nm": 174,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "B17-gen Sylphy, CKD in Malaysia. Single 1.8 petrol with Xtronic CVT across the range.",
+      "variants": [
+        { "name": "1.8", "horsepower": 131, "torque_nm": 174, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "MRA8DE 1798cc, CVT (Xtronic)" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Swift", "generation": "ZC/2nd",
+      "year_from": 2005, "year_to": 2010, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.5",
+      "engine_cc": 1490, "cylinders": 4, "horsepower": 100, "torque_nm": 133,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Swift, CKD-assembled in Malaysia. 1.5 M-series petrol; 3-door and 5-door bodies offered, 5-door volume.",
+      "variants": [
+        { "name": "1.5", "horsepower": 100, "torque_nm": 133, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "M15A 1490cc; manual also offered" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Swift", "generation": "3rd",
+      "year_from": 2011, "year_to": 2017, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.4 GLX",
+      "engine_cc": 1372, "cylinders": 4, "horsepower": 94, "torque_nm": 130,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Swift, imported CBU. 1.4 volume; Swift Sport 1.6 performance variant above.",
+      "variants": [
+        { "name": "1.4 GLX", "horsepower": 94, "torque_nm": 130, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "K14B 1372cc" },
+        { "name": "Sport 1.6", "horsepower": 136, "torque_nm": 160, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "M16A 1586cc naturally aspirated" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Swift", "generation": "4th",
+      "year_from": 2018, "year_to": null, "market": "JDM",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.2",
+      "engine_cc": 1242, "cylinders": 4, "horsepower": 90, "torque_nm": 118,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Fourth-gen Swift in Malaysia largely as Japanese recond imports. 1.2 Dualjet volume; Swift Sport 1.4 turbo above. Verify figures.",
+      "variants": [
+        { "name": "1.2", "horsepower": 90, "torque_nm": 118, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "K12C 1242cc Dualjet, CVT" },
+        { "name": "Sport 1.4 Turbo", "horsepower": 140, "torque_nm": 230, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "K14C 1373cc BoosterJet turbo" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Tucson", "generation": "LM",
+      "year_from": 2010, "year_to": 2015, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 163, "torque_nm": 197,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Tucson (ix35 globally), CKD in Malaysia. 2.0 Theta II petrol the volume variant.",
+      "variants": [
+        { "name": "2.0", "horsepower": 163, "torque_nm": 197, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Theta II G4KD 1998cc; AWD also offered" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Tucson", "generation": "TL",
+      "year_from": 2016, "year_to": 2020, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0 Executive",
+      "engine_cc": 1999, "cylinders": 4, "horsepower": 155, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Tucson, CKD in Malaysia. 2.0 Nu petrol volume; 1.6 T-GDI turbo sportier variant.",
+      "variants": [
+        { "name": "2.0 Executive", "horsepower": 155, "torque_nm": 196, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Nu 1999cc" },
+        { "name": "1.6 T-GDI", "horsepower": 177, "torque_nm": 265, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Gamma 1591cc turbo, 7-speed DCT" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Tucson", "generation": "NX4",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1999, "cylinders": 4, "horsepower": 156, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Fourth-gen Tucson, CKD in Malaysia. 2.0 Smartstream petrol volume; 1.6 T-GDi turbo above.",
+      "variants": [
+        { "name": "2.0", "horsepower": 156, "torque_nm": 196, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Smartstream Nu 1999cc" },
+        { "name": "1.6 T-GDi", "horsepower": 180, "torque_nm": 265, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Smartstream 1598cc turbo" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Nissan", "model": "Sylphy B18", "reason": "2019+ generation not officially sold in Malaysia; rare grey imports only, insufficient local-market data to build a defensible row." },
+    { "make": "Hyundai", "model": "Tucson JM (1st gen)", "reason": "2004-2009 first generation had negligible Malaysian presence; specs too uncertain to meet low-confidence threshold." },
+    { "make": "Suzuki", "model": "Swift 1st gen (Cultus-based)", "reason": "Pre-2004 Cultus-era Swift predates the modern nameplate era relevant to the used-car platform; out of scope." }
+  ]
+}
