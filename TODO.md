@@ -123,9 +123,65 @@ fixes. Nothing in this batch has been built.
   after the fact. Needs the owner's call on which failure mode is
   acceptable before writing the migration.
 
-- [ ] **PREM-MINI-1: a Premium mini page shows "Agent not found" for ANY
-  account that hasn't finished the full onboarding wizard — not just empty
-  ones.** `get_salesman_by_slug`
+- [x] **PREM-MINI-1 DONE 2026-09-12 — the page renders for a seller awaiting
+  review, with an owner-only "finish your page" note.** Migration
+  `20260912c_minipage_visible_while_pending.sql` + `SalesmanProfilePage.jsx`.
+  - **The root cause was worse than "hasn't finished onboarding": NO seller
+    could ever activate themselves.** `SalesmanOnboarding.activate()`
+    (`:519-536`) writes `is_active: true`, and the BEFORE trigger
+    `prevent_profile_privilege_escalation()` reverts exactly that transition
+    (`IF NEW.is_active = true AND OLD.is_active = false THEN NEW.is_active
+    := false`) for every caller that is not a superadmin. Probed live: the
+    seller's own write returns `rowcount=1` and the value does not change.
+    So `decide_user_approval()` is the ONLY thing that can flip it, and
+    EVERY new seller's mini page 404'd until the owner approved them by
+    hand. Combined with LITE-GATE-1 they could neither list a car nor have a
+    page — a signup could do nothing at all until a human intervened.
+  - **That `is_active: true` line in `activate()` is dead code that reads as
+    working.** Deliberately NOT removed here (onboarding is its own
+    concern), but it should go or be made honest — see PREM-MINI-2 below.
+  - Fix widens `get_salesman_by_slug` by ONE case rather than dropping the
+    check, same reasoning as LITE-GATE-1: `is_active = true OR
+    approval_status = 'pending'`, with `suspended_at` / `account_status` /
+    `deleted_at` re-asserted. The re-assertion is load-bearing — a seller
+    suspended BEFORE ever being approved still has `approval_status =
+    'pending'`, so the approval clause alone would have un-hidden them.
+  - `CREATE OR REPLACE`, not DROP + CREATE: the return type is unchanged so
+    the anon/authenticated/service_role grants survive untouched (verified
+    with `has_function_privilege`, not by reading the migration back). One
+    signature, no overload.
+  - Probed live as `anon`, six states, each with the row state asserted:
+    pending -> 1 row (the fix); pending+suspended, rejected, deleted,
+    approved+suspended -> 0 rows; approved+active -> 1 row (unchanged).
+  - **Cars are unaffected in both directions.** `public_car_listings` filters
+    on `is_active` independently, so a pending seller's page renders with
+    zero listings until approval — the shell, exactly as asked.
+  - Owner-only note (`SalesmanProfilePage.jsx`): renders only when the
+    viewer's own id matches the profile id, lists what is missing (car,
+    photo, banner, bio — ordered by what actually earns a buyer) and links
+    to that tab in whichever panel their role resolves to. It waits for
+    `viewerHome` rather than guessing, so a Premium seller is never sent to
+    the Lite panel. A buyer never sees it.
+  - NOT verified by a build (`npm ci` still blocked by `cdn.sheetjs.com`,
+    403). Both changed files syntax-checked with esbuild. NOT eyeballed in a
+    browser.
+  - **Decision to revisit if you disagree:** a pending seller's page is now
+    public, not owner-only. Their name/photo/bio are visible with no cars
+    before you have approved them, which is a mild "look, I'm on XDrive"
+    laundering vector. Owner-only would also have satisfied the ask. One
+    clause in the RPC if you want it tightened.
+
+- [ ] **PREM-MINI-2: `SalesmanOnboarding.activate()` writes `is_active: true`
+  and the database throws it away.** Found while doing PREM-MINI-1 and proven
+  live (see above). The line reads as though a finished onboarding activates
+  the account; it never has. Either drop it, or move activation into a
+  SECURITY DEFINER function if self-activation is ever meant to be a thing.
+  Leaving it is how the next person concludes activation "should" work and
+  builds on a no-op.
+
+- [ ] ~~PREM-MINI-1 original finding, kept for the reasoning:~~ **a Premium
+  mini page shows "Agent not found" for ANY account that hasn't finished the
+  full onboarding wizard — not just empty ones.** `get_salesman_by_slug`
   (`20260815b_block_suspended_deleted_from_marketplace.sql:42-45`) filters
   `is_active = true`; every new signup starts `is_active = false`
   (`handle_new_user`, `20260422_add_plan_column_to_profiles.sql:37-44`)
