@@ -56,8 +56,58 @@ fixes. Nothing in this batch has been built.
 
 ### Blocks new users outright — work these first
 
-- [ ] **LITE-GATE-1: Lite's "can't list until approved" gate is enforced in
-  the DATABASE, not the UI — bigger change than it looks.**
+- [x] **LITE-GATE-1 DONE 2026-09-12 — a pending seller can list now, and a
+  suspended one still cannot.** Migration `20260912b_lift_listing_gate_for_
+  pending_sellers.sql`, applied live and probed. What shipped and why it is
+  not simply "the gate removed":
+  - **The product had been promising this in writing the whole time.**
+    `AccountReviewBanner.jsx:48` says "Keep adding your cars in the meantime.
+    Everything you list is saved and goes live on the marketplace the moment
+    you're approved", and its docstring says "Shown as a BANNER, never a
+    gate". The RLS policies never matched that copy. This was a fix to make
+    the database agree with the promise, not a new policy decision.
+  - **The marketplace was never protected by this gate, so nothing was
+    loosened.** `public_car_listings` already ends with `AND NOT EXISTS
+    (... pr.is_active = false OR pr.account_status = 'deleted')`, so a
+    pending seller's cars stay invisible to every public surface until
+    approval flips `is_active`. They now do the work while they wait; buyers
+    see nothing earlier than before.
+  - **Why not just drop the check: `is_active` means TWO things.**
+    `decide_user_approval()` sets it true on approval, and
+    `set_account_suspended()` sets it false on suspension — so the old
+    `is_active_salesman()` could not tell "not approved yet" from
+    "suspended", and dropping it would have handed suspended sellers their
+    write access back, undoing migration 20260426. New helper
+    `salesman_can_manage_listings()` tests the three states that are a
+    deliberate admin NO — suspended / rejected / deleted — and ignores the
+    one that just means nobody has got to them yet.
+  - `is_active_salesman()` is deliberately UNCHANGED and still in use by the
+    `leads` policies. Two helpers, two questions — do not merge them.
+  - Probed live in a self-rolling-back transaction, all four states with the
+    row state asserted in each case: pending -> INSERT OK; suspended,
+    rejected and soft-deleted -> refused 42501. Exactly one signature exists
+    for the new function (no overload). Guard triggers verified back
+    ENABLED afterwards and the pending account left untouched.
+  - **Trap worth remembering for the next probe of this kind:** three
+    separate BEFORE triggers on `profiles`
+    (`prevent_profile_privilege_escalation`, `guard_profile_approval_cols`)
+    silently REVERT `suspended_at`, `approval_status`, `account_status` and
+    `deleted_at` for any caller that is not a superadmin — the UPDATE
+    reports `rowcount=1` and the value does not change. Three probe runs
+    produced confident, wrong "LEAK" readings before this was spotted. Set
+    the columns with the guards disabled inside the rolled-back transaction,
+    and always print the row state you actually achieved next to the result.
+  - `CarForm.jsx:2130` copy updated: the 42501 toast said "isn't fully
+    activated yet. Refresh and try again", advice aimed at exactly the
+    sellers who no longer hit it. It now names suspension/decline, which is
+    all that can reach it.
+  - NOT verified by a build: `npm ci` cannot complete in this session
+    (`cdn.sheetjs.com` is blocked by the proxy, 403), so eslint and the
+    production build did not run. The JS change is one string literal plus a
+    comment inside an existing branch.
+
+- [ ] ~~LITE-GATE-1 original finding, kept for the reasoning:~~ **Lite's
+  "can't list until approved" gate is enforced in the DATABASE, not the UI.**
   `openAddListing()` (`SalesmanLite.jsx:850-857`) has no approval check at
   all; the real block is RLS policy `salesman_inserts_own_listings`
   (`supabase/migrations/20260426_enforce_salesman_lite_suspension.sql:38-40`),

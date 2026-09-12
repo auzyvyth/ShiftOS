@@ -2127,7 +2127,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       } else if (msg.includes('subscription_inactive')) {
         toast.error("Your trial or subscription has ended. Activate your plan to publish new listings.");
       } else if (err?.code === '42501' || msg.toLowerCase().includes('row-level security')) {
-        toast.error("Publishing was blocked — your account isn't fully activated yet. Refresh and try again, or contact support.");
+        // A seller awaiting approval reaches this no more (20260912b lifted that
+        // gate). The only accounts RLS still refuses here are suspended, declined
+        // or deleted — none of which a refresh fixes, so it no longer says so.
+        toast.error("Publishing was blocked — your account is suspended or was declined. Check the notice on your dashboard, or contact support.");
       } else if (err?.code === '23502') {
         // not-null violation slipped past pre-flight — name the column
         const col = msg.match(/column "?([a-z_]+)"?/i)?.[1];
