@@ -14,10 +14,10 @@
 const TABLE = {
   BMW: {
     "M2": [{ from: 2016, to: 2021, code: "F87" }, { from: 2023, to: null, code: "G87" }],
-    "M3": [{ from: 2000, to: 2006, code: "E46" }, { from: 2007, to: 2013, code: "E90/E92" }, { from: 2014, to: 2018, code: "F80" }, { from: 2021, to: null, code: "G80" }],
-    "M4": [{ from: 2014, to: 2020, code: "F82" }, { from: 2021, to: null, code: "G82" }],
-    "M5": [{ from: 2011, to: 2016, code: "F10" }, { from: 2018, to: 2023, code: "F90" }, { from: 2024, to: null, code: "G90" }],
-    "M8": [{ from: 2019, to: null, code: "F92" }],
+    "M3": [{ from: 2000, to: 2006, code: "E46" }, { from: 2007, to: 2013, code: "E90/E92/E93" }, { from: 2014, to: 2018, code: "F80" }, { from: 2021, to: null, code: "G80" }],
+    "M4": [{ from: 2014, to: 2020, code: "F82/F83" }, { from: 2021, to: null, code: "G82/G83" }],
+    "M5": [{ from: 2005, to: 2010, code: "E61" }, { from: 2011, to: 2016, code: "F10" }, { from: 2018, to: 2023, code: "F90" }, { from: 2024, to: null, code: "G90" }],
+    "M8": [{ from: 2019, to: null, code: "F92/F91/F93" }],
     "1 SERIES": [{ from: 2004, to: 2013, code: "E87" }, { from: 2011, to: 2019, code: "F20" }, { from: 2019, to: null, code: "F40" }],
     "2 SERIES": [{ from: 2014, to: 2021, code: "F22" }, { from: 2021, to: null, code: "G42" }],
     "3 SERIES": [{ from: 1998, to: 2006, code: "E46" }, { from: 2005, to: 2011, code: "E90" }, { from: 2012, to: 2018, code: "F30" }, { from: 2019, to: null, code: "G20" }],
