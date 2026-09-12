@@ -12,15 +12,35 @@ import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly } from '../utils/financing';
 
-// Inject the image-loading shimmer animation once.
+// Inject the image-loading shimmer animation once. Animates `transform`
+// (not `background-position`) so the compositor can run it on the GPU —
+// background-position forces a full repaint of the element every frame,
+// and with a dozen+ skeleton cards on screen at once (9 shimmering bars
+// each) that repaint was blocking the main thread for the whole time the
+// marketplace grid waited on data (Lighthouse: non-composited-animations).
 if (typeof document !== 'undefined') {
   const STYLE_ID = 'sc-shimmer-keyframes';
   if (!document.getElementById(STYLE_ID)) {
     const s = document.createElement('style');
     s.id = STYLE_ID;
-    s.textContent = '@keyframes sc-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}';
+    s.textContent = '@keyframes sc-shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}';
     document.head.appendChild(s);
   }
+}
+
+// Solid base layer + a gradient band swept across it via `transform`.
+// Same look as the old background-position shimmer, GPU-composited instead
+// of repainted every frame.
+function Shimmer({ style, className, dark = false, delay }) {
+  const base = dark ? '#0f1623' : '#e5e7eb';
+  const sweep = dark
+    ? 'linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)'
+    : 'linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent)';
+  return (
+    <div className={className} style={{ position: 'relative', overflow: 'hidden', background: base, ...style }}>
+      <div style={{ position: 'absolute', inset: 0, background: sweep, animation: `sc-shimmer 1.5s infinite${delay ? ` ${delay}` : ''}` }} />
+    </div>
+  );
 }
 
 // Fallback WhatsApp for listings with no dealer profile attached.
@@ -220,7 +240,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
       >
         {image ? (
           <>
-            {(!imgLoaded || !inView) && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)', backgroundSize: '200% 100%', animation: 'sc-shimmer 1.5s infinite' }} />}
+            {(!imgLoaded || !inView) && <Shimmer style={{ position: 'absolute', inset: 0 }} />}
             {/* The photo is positioned ABSOLUTELY so it can never drive the
                 card's height. As an ordinary in-flow child it carried
                 height:100%, but this column's own height is auto (it only gets
@@ -431,38 +451,33 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
 
 // Horizontal skeleton — mirrors ShowroomCard's exact row structure.
 export function ShowroomCardSkeleton({ dark = false }) {
-  const g   = dark
-    ? 'linear-gradient(90deg,#0f1623 25%,#182030 50%,#0f1623 75%)'
-    : 'linear-gradient(90deg,#e5e7eb 25%,#d1d5db 50%,#e5e7eb 75%)';
-  const gsz = '200% 100%';
-  const s   = 'sc-shimmer 1.5s infinite';
-  const bar = (extra) => ({ background: g, backgroundSize: gsz, animation: s, ...extra });
+  const bar = ({ animationDelay, ...style }) => <Shimmer dark={dark} delay={animationDelay} style={style} />;
   return (
     <div className="sc-root" style={{ background: dark ? '#0d1117' : '#ffffff', border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.07)', borderRadius: '12px', overflow: 'hidden', display: 'flex', height: '190px', pointerEvents: 'none' }}>
       {/* Image column — sc-img-col class picks up mobile media queries from ShowroomPage */}
-      <div className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0, background: g, backgroundSize: gsz, animation: s }} />
+      <Shimmer dark={dark} className="sc-img-col" style={{ width: '38%', maxWidth: '210px', flexShrink: 0 }} />
       {/* Content column */}
       <div className="sc-content-col" style={{ flex: 1, padding: '11px 14px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Row 1: condition pill + year pill */}
         <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
-          <div style={bar({ height: 20, width: 42, borderRadius: 20 })} />
-          <div style={bar({ height: 20, width: 32, borderRadius: 20, animationDelay: '0.05s' })} />
+          {bar({ height: 20, width: 42, borderRadius: 20 })}
+          {bar({ height: 20, width: 32, borderRadius: 20, animationDelay: '0.05s' })}
         </div>
         {/* Row 2: name — 2 lines */}
-        <div style={bar({ height: 13, width: '82%', borderRadius: 4, marginBottom: 5, animationDelay: '0.05s' })} />
-        <div style={bar({ height: 13, width: '58%', borderRadius: 4, marginBottom: 6, animationDelay: '0.07s' })} />
+        {bar({ height: 13, width: '82%', borderRadius: 4, marginBottom: 5, animationDelay: '0.05s' })}
+        {bar({ height: 13, width: '58%', borderRadius: 4, marginBottom: 6, animationDelay: '0.07s' })}
         {/* Row 3: spec line — clamps to 2 lines on the real card, reserve the same */}
-        <div style={bar({ height: 10, width: '90%', borderRadius: 4, marginBottom: 4, animationDelay: '0.1s' })} />
-        <div style={bar({ height: 10, width: '60%', borderRadius: 4, marginBottom: 6, animationDelay: '0.12s' })} />
+        {bar({ height: 10, width: '90%', borderRadius: 4, marginBottom: 4, animationDelay: '0.1s' })}
+        {bar({ height: 10, width: '60%', borderRadius: 4, marginBottom: 6, animationDelay: '0.12s' })}
         <div style={{ flex: 1 }} />
         {/* Row 4: compare button */}
-        <div style={bar({ height: 22, width: 78, borderRadius: 7, marginBottom: 5, animationDelay: '0.1s' })} />
+        {bar({ height: 22, width: 78, borderRadius: 7, marginBottom: 5, animationDelay: '0.1s' })}
         {/* Row 5: monthly estimate */}
-        <div style={bar({ height: 10, width: '52%', borderRadius: 4, marginBottom: 6, animationDelay: '0.12s' })} />
+        {bar({ height: 10, width: '52%', borderRadius: 4, marginBottom: 6, animationDelay: '0.12s' })}
         {/* Row 6: WA + save buttons */}
         <div style={{ display: 'flex', gap: 6 }}>
-          <div style={bar({ flex: 1, height: 34, borderRadius: 8, animationDelay: '0.15s' })} />
-          <div style={bar({ width: 36, height: 34, borderRadius: 8, flexShrink: 0, animationDelay: '0.15s' })} />
+          {bar({ flex: 1, height: 34, borderRadius: 8, animationDelay: '0.15s' })}
+          {bar({ width: 36, height: 34, borderRadius: 8, flexShrink: 0, animationDelay: '0.15s' })}
         </div>
       </div>
     </div>
