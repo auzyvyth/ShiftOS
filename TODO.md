@@ -601,11 +601,34 @@ login page. What the code actually looks like today:
   (`.cdp-arrow`, vertically centred). `CarDetailPage.jsx`.
 
 ### Push
-- [ ] **PUSH-5: "ID verification submitted" does not arrive as a phone push.**
-  Per CLAUDE.md a row in `dealer_notifications` / `salesman_notifications` IS
-  the push, and ops alerts go through `notify_ops`. So the question is whether
-  the ID-verification path inserts a notification row at all — check that
-  before looking at `send-push`, which is almost certainly not the problem.
+- [x] **PUSH-5 DONE 2026-09-12: "ID verification submitted" never arrived as a
+  phone push, and confirmed it was exactly the guess above — neither
+  `submit_kyc` nor `decide_kyc_verification` inserted a notification row at
+  all, so `send-push` was never the problem.** Fixed on BOTH ends of the flow
+  (migration `20260912a_kyc_push_notifications.sql`):
+  - **Submission → admin.** `submit_kyc` now calls `notify_ops('kyc_submitted:'
+    || v_uid, …)` after the insert — same channel as new-signup/pending-listing
+    alerts (Telegram ops channel + push to every superadmin), keyed per-seller
+    so a resubmission inside the 15-min throttle doesn't re-alert but a
+    different seller always does.
+  - **Decision → seller.** `decide_kyc_verification` had the same gap in the
+    other direction: once decided, the seller had no way to know except
+    reloading the page. Now inserts into `dealer_notifications` (role
+    dealer/owner) or `salesman_notifications` (role salesman — this is what
+    covers Salesman Lite, since a solo Lite account is `role='salesman',
+    dealer_id NULL` and gets routed home correctly by `push_home_path`), same
+    branch `set_account_suspended` already uses. Approved → "Identity
+    verified"; rejected → the actual `rejection_reason` text as the push body,
+    not a generic message.
+  - Both probed live inside rolled-back transactions (real profile rows, real
+    superadmin claims, real `decide_kyc_verification` call) before shipping:
+    a solo Lite salesman's submission produced an `ops_alert_state` row
+    (proves the admin-side alert fired); a superadmin rejecting with reason
+    "Photo was blurry" produced a `salesman_notifications` row of type
+    `kyc_rejected` carrying that exact string as `body`, `rejection_reason` set
+    on the profile, and the `kyc_documents` row purged. A dealer-role approval
+    produced a `dealer_notifications` row of type `kyc_approved`. No overload
+    created — `pg_proc` shows exactly one signature for each function.
 
 ### Auth — FIXED this session
 - [x] **AUTH-2 (was live, blocked dealer sign-in): signing in and being signed
