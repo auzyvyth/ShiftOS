@@ -431,8 +431,56 @@ fixes. Nothing in this batch has been built.
   drill-in menu on mobile, per UX-1 above) — reuse that pattern rather than
   inventing a second one for Lite.
 
-- [ ] **PREM-LEADS-ALERTS-1: deleting a lead is a soft flag, and nothing
-  downstream is told.** `handleDeleteLead` (`SalesmanPremium.jsx:1671-1682`)
+- [x] **PREM-LEADS-ALERTS-1 DONE 2026-09-12 — one trigger, and the audit's
+  own claim was half wrong.** Migration `20260912d_lead_soft_delete_fanout.sql`,
+  applied live, backfilled and probed.
+  - **Why anything leaked: a lead is SOFT-deleted.** `handleDeleteLead`
+    (`SalesmanPremium.jsx:1671`) and `useLeads.js:98` only set
+    `is_deleted = true`. Every foreign key into `leads` is written for a HARD
+    delete — `chat_threads` SET NULL, `scheduled_nudges` CASCADE and 15 more —
+    so not one of them ever fires. The schema looks like it cleans up after
+    itself and never does.
+  - **CORRECTION to the audit: there were never any orphaned
+    `salesman_notifications`.** Checked all 158 live rows — `ref_id` never
+    points at a lead in ANY of the seven types (`new_booking`,
+    `chat_message`, `broadcast`, `new_enquiry`, `listing_approved`,
+    `platform_broadcast`, `listing_rejected`); they reference bookings, chat
+    threads and listings. The one type that could is `nudge_due`, and it
+    references the NUDGE, not the lead. Zero of those exist because no nudge
+    has ever fired in production.
+  - **The real orphan was the chat thread, and it was measurable: 2 threads
+    still carrying a deleted lead's id.** `useChat.js:133` embeds
+    `lead:lead_id(id, stage)` with no is_deleted filter, so the thread kept
+    rendering the dead lead's stage pill. That is the "it still exists
+    somewhere else" in the report.
+  - **NOT fixed by filtering the embed, deliberately.** `leads` RLS returns
+    only rows where `salesman_id = auth.uid()`, so `SellerInbox.jsx:201`
+    separates "not yours to see" from "no lead" on `lead_id` set + `lead`
+    null. Filtering a deleted lead out of the embed lands the thread in the
+    "it's in the dealer pool, not yours" state — telling a rep a real buyer
+    belongs to someone else, the one thing that file says never to do.
+    Clearing the link makes both sides honest.
+  - Nudges were already handled, but only by the 5-minute `fire_due_nudges()`
+    sweep, so a rep could delete a lead and keep being nudged about it for
+    another five minutes. The trigger uses the SAME dismissal statement as
+    the cron (`status='dismissed', actioned_at=now()`) so the two can never
+    drift on what a dismissed nudge looks like.
+  - Deliberately untouched: `appointments.lead_id` and
+    `whatsapp_enquiries.lead_id`. A booked viewing and a received enquiry
+    are events that really happened; deciding the pipeline card is dead does
+    not un-book the appointment.
+  - Probed live in a rolled-back transaction: thread link cleared, open
+    nudge dismissed (1 dismissed / 0 open), and — the assertion that
+    matters — the conversation and the thread row BOTH survive. Backfill
+    verified: 0 orphans left, and the 10 threads whose lead is alive were
+    untouched, so it did not over-clear. One trigger, one function
+    signature, enabled.
+  - There is no un-delete path anywhere in the app (every `is_deleted: false`
+    is on an INSERT), so clearing the link is not destroying a recoverable
+    state. If an undo is ever added, this trigger has to be revisited.
+
+- [ ] ~~PREM-LEADS-ALERTS-1 original finding, kept for the reasoning:~~
+  **deleting a lead is a soft flag, and nothing downstream is told.** `handleDeleteLead` (`SalesmanPremium.jsx:1671-1682`)
   and `useLeads.js:98-105` only set `leads.is_deleted = true` — the row and
   everything pointing at it stays. Three real orphans: (1)
   `salesman_notifications` rows already inserted for that lead are NEVER
