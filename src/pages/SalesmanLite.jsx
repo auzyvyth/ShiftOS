@@ -31,6 +31,7 @@ import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import AccountReviewBanner from "../components/AccountReviewBanner";
+import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
@@ -8518,6 +8519,16 @@ export default function SalesmanLite() {
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
           <AccountReviewBanner profile={profile} />
+          {/* The "you're approved" moment used to have no announcement at all —
+              the under-review banner above just quietly stops rendering once
+              approval_status flips, so a seller had to notice its absence.
+              This reads the account_approved notification decide_user_approval
+              now inserts and stays up until the seller dismisses it, not just
+              for a few seconds. */}
+          <AccountApprovedBanner
+            notification={notifications.find((n) => n.type === "account_approved" && !n.is_read)}
+            onDismiss={(id) => markNotifsSeen([id])}
+          />
 
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
