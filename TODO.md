@@ -45,6 +45,222 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## Owner audit batch — 2026-09-12 (audited only, nothing built yet)
+
+Fifteen items came in together across onboarding, Salesman Lite, the admin
+platform console, and Salesman Premium. Investigated with three parallel
+read-only audits before touching anything, per the owner's own instruction:
+audit first, then work the list biggest to smallest. Ordered here by impact
+— items that block a user outright first, then large builds, then contained
+fixes. Nothing in this batch has been built.
+
+### Blocks new users outright — work these first
+
+- [ ] **LITE-GATE-1: Lite's "can't list until approved" gate is enforced in
+  the DATABASE, not the UI — bigger change than it looks.**
+  `openAddListing()` (`SalesmanLite.jsx:850-857`) has no approval check at
+  all; the real block is RLS policy `salesman_inserts_own_listings`
+  (`supabase/migrations/20260426_enforce_salesman_lite_suspension.sql:38-40`),
+  `WITH CHECK (dealer_id = auth.uid() AND is_active_salesman())` —
+  `is_active_salesman()` reads `profiles.is_active`, which starts `false`
+  for every new signup until an admin approves them. The insert is rejected
+  with a toast in `CarForm.jsx:2130`. Removing this is a migration, not a
+  component change, and `AccountReviewBanner.jsx:6-9` ALREADY claims a
+  pending seller can list while under review — the banner's own copy is
+  currently false. Decide: loosen the RLS check (e.g. allow the insert but
+  keep the listing unpublished/hidden from the marketplace until approved),
+  or drop the gate outright and let the review queue catch bad listings
+  after the fact. Needs the owner's call on which failure mode is
+  acceptable before writing the migration.
+
+- [ ] **PREM-MINI-1: a Premium mini page shows "Agent not found" for ANY
+  account that hasn't finished the full onboarding wizard — not just empty
+  ones.** `get_salesman_by_slug`
+  (`20260815b_block_suspended_deleted_from_marketplace.sql:42-45`) filters
+  `is_active = true`; every new signup starts `is_active = false`
+  (`handle_new_user`, `20260422_add_plan_column_to_profiles.sql:37-44`)
+  until the LAST step of `SalesmanOnboarding.activate()`
+  (`SalesmanOnboarding.jsx:519-536`) flips it. Anyone who hasn't reached
+  that exact final write — abandoned a step, a failed upsert, shared their
+  link mid-onboarding — gets "doesn't exist," not an empty shell.
+  `SalesmanProfilePage.jsx:120,232-237` never checks listings/photos; it
+  never gets that far. Two-part fix: (1) let the page render on
+  `is_active=false` too, gated only on `role='salesman' AND slug IS NOT
+  NULL`, so the empty shell the owner wants ("atleast the shells are there")
+  actually shows; (2) once it renders, add the nudge copy the owner
+  described ("your mini page is empty, list some cars, add a profile
+  picture and a banner") — visible only to the account's OWNER viewing
+  their own page, never to a public visitor.
+
+- [ ] **PUSH-PROMPT-1: push notifications are opt-in by accident, for both
+  Lite and Premium.** `push_register_device` only fires from a manual click
+  inside `usePushNotifications.enable()` (a user gesture is required by the
+  browser, so nothing can auto-register on signup). `PushToggle` is buried
+  in Settings (`SalesmanLite.jsx:6879`, `SalesmanPremium.jsx:5129`). The one
+  proactive nudge that exists, `PushPromptStrip`
+  (`src/components/chat/PushPromptStrip.jsx`), only mounts inside chat
+  (`SellerInbox.jsx:185`, `ChatThread.jsx:398`) — a brand-new seller who
+  hasn't opened Settings AND hasn't gotten a chat message never sees a push
+  prompt at all. This is almost certainly the whole "notifications still
+  isn't up" complaint. Fix: a dashboard-level prompt strip (same pattern as
+  `PushPromptStrip`, reused or adapted) that fires once, early, for both
+  Lite and Premium, independent of chat.
+
+- [ ] **PWA-2: install prompt likely excludes real mobile traffic via
+  in-app browsers, not mobile itself.** `isInAppBrowser()`
+  (`src/utils/installPrompt.js:142-145`) blocks Facebook/Instagram/Line/
+  WeChat/TikTok/generic Android `wv` webviews from ever seeing the prompt —
+  no such exclusion exists on desktop, and no `matchMedia`/viewport check
+  excludes mobile outright. Before changing anything: confirm which browser
+  the phone test actually used — a link opened from Instagram/WhatsApp IS
+  an in-app webview and the exclusion there is correct (a PWA cannot
+  install from inside one). If the test really was mobile Chrome/Safari
+  directly, this needs a live repro, not a guess.
+
+### Large builds — real effort, not quick fixes
+
+- [ ] **PREM-I18N-1: SalesmanPremium.jsx has ZERO i18n wiring — the whole
+  file, not "some sections."** No `useTranslation`/`i18n` import anywhere in
+  the 7,457-line file (Lite has it fully wired,
+  `SalesmanLite.jsx:6,477,542,629,679,764`, plus a language switcher at
+  `:7030,7916`). `src/i18n/locales/en.json` has no `salesmanPremium`
+  namespace at all — the keys don't exist to translate into. Sample
+  hardcoded strings: `"Leads"` (`:2505`), `"Settings"` (`:2540`),
+  `"Customers"` (`:5912`), `"Pick a stage"` (`:3147`), `"Link a car"`
+  (`:3469`), `"Remind me on"` (`:3567`), `"Objection Scripts"` (`:3900`),
+  and dozens more. This is a from-scratch build (new locale namespace +
+  every string wrapped + a language switcher added to Premium's Settings),
+  not a revision. Lite's translations are essentially complete (960 vs 950
+  keys between en/ms, the only gap being 10 plural-form `_one` variants) —
+  the "still English in some sections" complaint is almost entirely
+  Premium.
+
+- [ ] **LITE-SETTINGS-1: split Lite's Settings tab into one tab per
+  subject, mirroring Premium's already-built pattern.** `renderSettings`
+  (`SalesmanLite.jsx:6526-7098`) is one 570-line function with no sub-nav,
+  13 subjects in a single scroll: avatar (`:6731`), cover photo (`:6765`),
+  viewing hours (`:6783`), ID verification (`:6789`), profile basics
+  (`:6800`), push (`:6877`), selling terms (`:6881`), location/IC
+  (`:6928`), bio (`:6952`), social links (`:6994`), language (`:7022`),
+  danger zone (`:7068`). Premium already solved exactly this shape
+  (`SETTINGS_GROUPS`, `SalesmanPremium.jsx:183` — rail nav on desktop,
+  drill-in menu on mobile, per UX-1 above) — reuse that pattern rather than
+  inventing a second one for Lite.
+
+- [ ] **PREM-LEADS-ALERTS-1: deleting a lead is a soft flag, and nothing
+  downstream is told.** `handleDeleteLead` (`SalesmanPremium.jsx:1671-1682`)
+  and `useLeads.js:98-105` only set `leads.is_deleted = true` — the row and
+  everything pointing at it stays. Three real orphans: (1)
+  `salesman_notifications` rows already inserted for that lead are NEVER
+  cleaned, ever; (2) `scheduled_nudges` only gets dismissed by the
+  `fire_due_nudges()` cron sweep, up to ~5 minutes later
+  (`20260823_raptor_scheduled_nudges.sql:63-78`); (3) `chat_threads.lead_id`
+  is never cleared, so a deleted lead's thread still points at it
+  indefinitely. The pipeline UI itself is fine (`staleLeads` recomputes
+  immediately client-side) — the leak is entirely in already-fired
+  notifications and the chat linkage. Fix needs one cleanup path (ideally a
+  DB trigger on `is_deleted` flipping true — same "one trigger does
+  everything" rule as the won-lead trigger) rather than three per-surface
+  patches.
+
+### Contained fixes
+
+- [ ] **ONBOARD-ENTER-1: Enter key does nothing in either onboarding
+  wizard.** Neither `DealerOnboarding.jsx` nor `SalesmanOnboarding.jsx` uses
+  a `<form>`/`onSubmit`, and no input has `onKeyDown` — zero matches in
+  both files. Step advance is pure button `onClick`
+  (`DealerOnboarding.jsx:690,724,756,784`;
+  `SalesmanOnboarding.jsx:846,894`). Fix: wrap each step in a `<form
+  onSubmit>` calling the same next-step handler, or add `onKeyDown`
+  checking `e.key === 'Enter'` on the step's inputs.
+
+- [ ] **LITE-STARTER-1: the "get set up" checklist is two bugs, not one.**
+  (1) Position: it IS already below the review banner
+  (`SalesmanLite.jsx:8520-8531` banner, then `renderDashboard` at `:8533`),
+  but it's buried mid-dashboard inside `renderDashboard` (`StarterTasks`,
+  `:3694-3708`), not pinned at the top like the owner wants. (2) Flash-then-
+  vanish: `loading=false` fires as soon as the profile resolves (`:1486`),
+  while `myListings` is a separate, later async fetch that seeds empty
+  (`:886`) — so `starterTaskState()`
+  (`src/components/onboarding/StarterTasks.jsx:37-41`) briefly reports
+  "listing not done" for a fully set-up seller until the listings query
+  lands. (3) Dismissal never persists: `starterHidden` is `useState(false)`
+  (`:1178`), set only via `onDismiss` (`:3706`) — nothing is written to the
+  profile or localStorage, so it reappears every login regardless of
+  completion. Fix: move the card above the dashboard body, gate its "done"
+  check on `!loading && listingsLoaded` instead of just `!loading`, and
+  persist "all three done" (or explicit dismissal) to the profile row so it
+  stops rendering once finished.
+
+- [ ] **ADMIN-IC-BADGE-1: admin account rows already have the IC data,
+  just never show it as a badge.** Accounts render as table rows in
+  `AccountsTab.jsx`, not cards — the row (`:398-428`) shows only a green
+  "verified" pill from `is_verified` (`:410`); the KYC fields
+  (`profiles.ic_last4`, `kyc_submitted_at`, already fetched in
+  `AdminPage.jsx:506`) are buried as plain text inside the detail drawer
+  (`AccountsTab.jsx:571,573`), not visible at a glance. Add a blue "IC
+  submitted" pill next to the existing verified pill at `:410`, driven by
+  `ic_last4 IS NOT NULL` or `kyc_submitted_at IS NOT NULL` — no new query
+  needed, the data is already in hand.
+
+- [ ] **PREM-LISTINGS-2: card spacing + missing add-on icon + no Edit in
+  detail popup.** Three separate small fixes in
+  `src/pages/salesmanPremium/ListingsTab.jsx` /
+  `src/components/CarDetailPopup.jsx`: (1) no add-on badge exists on the
+  listing card at all today (the "add-on" the owner means is likely
+  `deal_products`/`included_services` — needs a decision on which one,
+  then a small badge added consistently); (2) card height varies listing-
+  to-listing because five blocks render conditionally (status strip, "Live
+  on XDrive" bar, completeness bar under 90%, CVR row, photo nudge under 3
+  photos — `ListingsTab.jsx:401-586`), so cards with fewer active blocks
+  sit shorter than ones with more — the "no card taller, no text lower"
+  complaint; (3) `CarDetailPopup` only receives 4 actions from Premium —
+  Copy Link, WA Caption, AI Caption, Broadcast
+  (`SalesmanPremium.jsx:6754-6783`) — Edit is genuinely missing there, it
+  only exists on the card (`ListingsTab.jsx:596-625`). Fix (3) is a
+  one-line addition to the actions array; (1) and (2) need the add-on
+  decision first, then reserving fixed slots for the optional blocks so
+  every card is the same height whether or not each block renders.
+
+- [ ] **PREM-PIPELINE-LABEL-1: "Last contact: 2d ago" next to "Never
+  contacted · 4d" isn't a bug, it's two different timestamps with a
+  misleading label.** "Last contact" (`SalesmanPremium.jsx:2818-2820`)
+  reads `lead.updated_at`, which bumps on ANY edit — a note, a stage
+  change, an AI re-score. "Never contacted · 4d" comes from
+  `followUpStatus()` (`src/lib/leadsHelpers.js:240,246`), which
+  deliberately reads `last_contacted_at`, NOT `updated_at` (comment at
+  `leadsHelpers.js:225-226` explains why — this was the PREM-4 fix already
+  in this file). So the card can correctly show both at once: someone
+  edited the lead 2 days ago, but nobody actually contacted the buyer in 4
+  days. Fix is a rename, not a data fix: relabel line 2819 to "Last
+  activity" so it stops reading as a contact claim, or drop it from cards
+  where the follow-up badge already covers the real signal.
+
+- [ ] **PREM-SIDEBAR-ICON-1: Chat and Inbox use the identical icon.** Both
+  nav entries render `<MessageSquare>` (`SalesmanPremium.jsx:2498-2501` and
+  `:2509-2513`). The onboarding tour copy already treats them as visually
+  distinct — `MessageSquare` for Inbox, `MessageCircle` for Chat
+  (`:5946,5951`) — so the fix is applying that same distinction to the
+  actual nav array.
+
+- [ ] **PREM-TODAY-REMOVE-1: remove "What to do today," rebuild later once
+  the AI API is paid for.** `src/pages/salesmanPremium/DashboardTab.jsx:
+  290-330+` — the developer's own comment there already flags it as
+  removable ("Flagging this in case you want it gone too"). Coupled state
+  to remove alongside it: `aiFollowups`/`followupsLoading`
+  (`SalesmanPremium.jsx:688-689`) and `fetchFollowupSuggestions` (`:2390`),
+  passed into `DashboardTab` at `:6604-6620` — pulling the section without
+  removing these leaves dead code, per the original comment's own warning.
+
+### Audited, no action needed
+- [x] **VERIFY-BADGE-AUDIT: "Get Verified" → admin review queue works
+  end-to-end, confirmed 2026-09-12.** `submit_kyc`
+  (`VerifyIdentity.jsx:140`) → `kyc_documents` + `profiles.kyc_submitted_at`
+  → `get_pending_kyc()` → `UserApprovalsTab.jsx:90,97,125` with
+  `kindFilter="kyc"` matched from `AdminPage.jsx:1310`. No broken hop
+  found. (The push notification on submission was already fixed separately
+  as PUSH-5, above.)
+
 ## Reported by the owner — 2026-09-06 batch
 
 Eight items came in together. Two are fixed (below, struck through); the rest
