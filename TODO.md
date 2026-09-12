@@ -497,8 +497,24 @@ fixes. Nothing in this batch has been built.
 
 ### Contained fixes
 
-- [ ] **ONBOARD-ENTER-1: Enter key does nothing in either onboarding
-  wizard.** Neither `DealerOnboarding.jsx` nor `SalesmanOnboarding.jsx` uses
+- [x] **ONBOARD-ENTER-1 DONE 2026-09-12.** `src/utils/onboardingKeys.js`
+  (`advanceOnEnter`), attached to the per-step container `.eo-form` in BOTH
+  wizards — it is keyed on `step`, so only one step's markup is ever mounted
+  and the handler can't reach another step's button.
+  - **It clicks the step's OWN button instead of calling its advance
+    function**, which is the part worth keeping: every CONTINUE carries its
+    validation in a `disabled` prop (`!form.state`, `!pwValid`,
+    `!canSubContinue`…), and a disabled button ignores `.click()`. So Enter
+    inherits every rule for free and cannot drift from the button.
+    Duplicating those conditions is how the two would end up disagreeing.
+  - Targets `button.eo-btn:not([disabled])` — `eo-ghost` is BACK, which
+    Enter must never fire. Textareas keep Enter as a newline; checkboxes and
+    radios keep theirs, so the legal-consent gate is untouched.
+  - Worth knowing why it mattered on mobile: Enter is the phone keyboard's
+    "Go" key, so the most natural way to move through a signup was a no-op.
+
+- [ ] ~~ONBOARD-ENTER-1 original finding:~~ **Enter key does nothing in
+  either onboarding wizard.** Neither `DealerOnboarding.jsx` nor `SalesmanOnboarding.jsx` uses
   a `<form>`/`onSubmit`, and no input has `onKeyDown` — zero matches in
   both files. Step advance is pure button `onClick`
   (`DealerOnboarding.jsx:690,724,756,784`;
@@ -524,8 +540,21 @@ fixes. Nothing in this batch has been built.
   persist "all three done" (or explicit dismissal) to the profile row so it
   stops rendering once finished.
 
-- [ ] **ADMIN-IC-BADGE-1: admin account rows already have the IC data,
-  just never show it as a badge.** Accounts render as table rows in
+- [x] **ADMIN-IC-BADGE-1 DONE 2026-09-12.** Blue "IC submitted" pill on the
+  account row (`AccountsTab.jsx:410`) and in the detail drawer's pill row,
+  from ONE condition (`icSubmitted`) so the two can't drift. No new query:
+  `ic_last4` and `kyc_submitted_at` were already on every row
+  (`AdminPage.jsx:506`) and were only being rendered as plain text deep in
+  the drawer, so an account waiting on an ID check looked identical to one
+  that had never submitted anything.
+  - Suppressed once `is_verified`, because the green "verified" pill beside
+    it then says strictly more and two pills about one fact is noise.
+  - Checked against live data before shipping, so it is a discriminating
+    signal rather than always-on: of 13 accounts, **4 would show the new
+    pill**, 3 are already verified, 6 have submitted nothing.
+
+- [ ] ~~ADMIN-IC-BADGE-1 original finding:~~ **admin account rows already
+  have the IC data, just never show it as a badge.** Accounts render as table rows in
   `AccountsTab.jsx`, not cards — the row (`:398-428`) shows only a green
   "verified" pill from `is_verified` (`:410`); the KYC fields
   (`profiles.ic_last4`, `kyc_submitted_at`, already fetched in

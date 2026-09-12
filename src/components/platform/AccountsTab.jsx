@@ -107,6 +107,17 @@ function statusOf(a) {
   return { id: "active", text: "Active", color: "#4ade80" };
 }
 
+// "They have done their part; nobody has reviewed it yet." — the state an
+// operator most needs to spot while scanning the list, and the one the table
+// never showed: ic_last4 / kyc_submitted_at were fetched with every row
+// (AdminPage.jsx:506) but only rendered as plain text deep inside the drawer,
+// so an account waiting on an ID check looked identical to one that had never
+// submitted anything. No extra query — both columns are already on the row.
+//
+// Suppressed once is_verified, because the green "verified" pill beside it
+// then says strictly more, and two pills about the same fact is noise.
+const icSubmitted = (a) => !a.is_verified && Boolean(a.kyc_submitted_at || a.ic_last4);
+
 function Pill({ children, color = "#94a3b8", bg = "rgba(148,163,184,0.14)" }) {
   return (
     <span style={{ fontSize: 9.5, fontWeight: 700, padding: "2px 7px", borderRadius: 99, background: bg, color, letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
@@ -408,6 +419,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                       <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
                         <span style={{ fontWeight: 600, color: "#f0f0f0" }}>{a.dealership || a.full_name || "No name"}</span>
                         {a.is_verified && <Pill color="#4ade80" bg="rgba(74,222,128,0.14)">verified</Pill>}
+                        {icSubmitted(a) && <Pill color="#60a5fa" bg="rgba(96,165,250,0.14)">IC submitted</Pill>}
                         {saved === a.id && <span style={{ fontSize: 10, color: "#4ade80" }}>✓</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>{a.email}</div>
@@ -455,6 +467,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               {open.is_verified
                 ? <Pill color="#4ade80" bg="rgba(74,222,128,0.14)">verified</Pill>
                 : <Pill color="#f59e0b" bg="rgba(245,158,11,0.12)">not verified</Pill>}
+              {icSubmitted(open) && <Pill color="#60a5fa" bg="rgba(96,165,250,0.14)">IC submitted</Pill>}
             </div>
 
             {open.is_active === false && open.suspension_reason && (

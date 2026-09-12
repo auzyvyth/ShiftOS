@@ -8,6 +8,7 @@ import { isAdultFromIC } from '../utils/icAge';
 import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import DealerPendingApproval from '../components/DealerPendingApproval';
 import useAuthCaptcha from '../hooks/useAuthCaptcha';
+import { advanceOnEnter } from '../utils/onboardingKeys';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -553,7 +554,7 @@ export default function DealerOnboarding() {
       <div className="eo-root">
         <LeftPanel step={step} tier={tier} onChangePlan={() => setShowPlans(true)} />
         <div className="eo-right">
-          <div className="eo-form" key={step}>
+          <div className="eo-form" key={step} onKeyDown={advanceOnEnter}>
 
             <div className="eo-mobile-bar">
               <div className="eo-logo" style={{ marginBottom: 0 }}>
