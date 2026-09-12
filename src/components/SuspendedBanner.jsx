@@ -13,10 +13,15 @@ export default function SuspendedBanner() {
       if (!user) return;
       const { data } = await supabase
         .from("profiles")
-        .select("is_active, suspension_reason")
+        .select("is_active, suspension_reason, suspended_at")
         .eq("id", user.id)
         .maybeSingle();
-      if (data?.is_active === false) {
+      // is_active is also false for an account that was never approved yet
+      // (fresh signup, or rejected) — neither has been suspended. Only
+      // set_account_suspended() ever stamps suspended_at, so that's the one
+      // reliable signal a real suspension happened; a pending/rejected seller
+      // gets AccountReviewBanner's message instead, not this wall.
+      if (data?.is_active === false && data?.suspended_at) {
         setSuspended(true);
         setReason(data.suspension_reason || null);
       }
