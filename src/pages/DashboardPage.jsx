@@ -9409,6 +9409,10 @@ export default function DashboardPage() {
     const gid = TAB_TO_GROUP[tabParam || "overview"];
     return gid ? new Set([gid]) : new Set();
   });
+  // Refs to each sidebar group's wrapper div, so opening a group near the
+  // bottom of the nav can scroll its expanded sub-items into view instead of
+  // leaving them hidden below the nav's own scroll fold.
+  const navGroupRefs = useRef({});
   const [priceEditListing, setPriceEditListing] = useState(null);
   const [markSoldListing, setMarkSoldListing] = useState(null);
   const [studioListing, setStudioListing] = useState(null);
@@ -10401,9 +10405,20 @@ export default function DashboardPage() {
             const isOpen = openGroups.has(group.id);
             const hasActive = group.items.some(i => i.id === activeTab);
             return (
-              <div key={group.id}>
+              <div key={group.id} ref={(el) => { navGroupRefs.current[group.id] = el; }}>
                 <button
-                  onClick={() => toggleGroup(group.id)}
+                  onClick={() => {
+                    const opening = !isOpen;
+                    toggleGroup(group.id);
+                    if (opening) {
+                      // Let the expanded sub-items render first, then scroll
+                      // just enough for the whole group (button + its
+                      // dropdown) to be visible in the nav's own scroll area.
+                      requestAnimationFrame(() => {
+                        navGroupRefs.current[group.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      });
+                    }
+                  }}
                   className="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
                   style={{ color: hasActive ? '#DC2626' : color.textMuted }}
                 >
