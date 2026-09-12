@@ -35,6 +35,7 @@ import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
+import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import NotificationPanel from "../components/notifications/NotificationPanel";
 import StarterTasks from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
@@ -8529,6 +8530,21 @@ export default function SalesmanLite() {
             notification={notifications.find((n) => n.type === "account_approved" && !n.is_read)}
             onDismiss={(id) => markNotifsSeen([id])}
           />
+
+          {/* Push had no proactive ask anywhere outside a chat thread, so the
+              only way a seller ever turned it on was finding PushToggle in
+              Settings — the one screen a rep never opens. A signup therefore
+              got no enquiry, booking or message alerts and no sign that was
+              even a setting. Mounted OUTSIDE the tab switch on purpose: it
+              stays put as they move around the panel (so one dismissal holds
+              for the visit), and it stops rendering for good the moment push
+              is actually on. */}
+          {/* Not on the chat tab — SellerInbox mounts its own copy above the
+              thread list, and two identical asks on one screen is worse than
+              none. */}
+          {activeTab !== "chat" && (
+            <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+          )}
 
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}

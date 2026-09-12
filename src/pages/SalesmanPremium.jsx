@@ -118,6 +118,9 @@ const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, sell
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+// Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
+// to render on first paint, and it pulls no chat code with it.
+import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { compareFollowUp, followUpStatus, isLeadStale } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
@@ -6599,6 +6602,17 @@ export default function SalesmanPremium() {
  paddingBottom: 24,
  }}
  >
+ {/* Push had no proactive ask outside a chat thread, so the only route to
+     turning it on was PushToggle in Settings — the screen a rep never opens.
+     Inside the content wrapper (not beside the sidebar, which is a flex ROW
+     on desktop) and outside the tab switch, so one dismissal holds while
+     they move around the panel and it disappears for good once push is on. */}
+ {/* Not on the chat tab — SellerInbox mounts its own copy above the thread
+     list, and two identical asks on one screen is worse than none. */}
+ {activeTab !== "chat" && (
+ <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+ )}
+
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
  <DashboardTab

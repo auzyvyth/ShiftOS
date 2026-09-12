@@ -198,8 +198,60 @@ fixes. Nothing in this batch has been built.
   picture and a banner") — visible only to the account's OWNER viewing
   their own page, never to a public visitor.
 
-- [ ] **PUSH-PROMPT-1: push notifications are opt-in by accident, for both
-  Lite and Premium.** `push_register_device` only fires from a manual click
+- [x] **PUSH-PROMPT-1 DONE 2026-09-12 — and the measurement found the real
+  reason the owner sees no notifications.** `PushPromptStrip` now also mounts
+  on the Lite panel, the Premium panel and the platform console home.
+  - **Push is NOT broken. `push_subscriptions` live: 11 rows, 8 users, one
+    registered the same day.** VAPID is configured and devices register
+    fine, so nothing here was a plumbing bug.
+  - **The devices are all SELLERS. `superadmin` has ZERO, `dealer` zero,
+    `owner` zero** (salesman_full 5, salesman_lite 2). So every
+    `notify_ops()` alert — new signup, listing awaiting review, KYC
+    submitted (including the PUSH-5 fix shipped the day before), error
+    spikes — was being raised correctly and delivered to nobody, because the
+    owner's own account has never registered a device. That is the whole
+    "the notification still isnt up" report. Nothing needed fixing in the
+    sender; the receiver was never signed up.
+  - Why it stayed that way: the ONLY route to registering a device was
+    `PushToggle`, which lives in Settings on the panels and in Safety >
+    Alerts in the console. `AdminPage.jsx:311` already had a comment
+    predicting exactly this ("...would stay unreachable until they happened
+    to open Security > Alerts"). `push_register_device` cannot be called
+    automatically — the browser requires a user gesture — so a prompt
+    somewhere visible is the only possible fix.
+  - Mounted in three places, all reusing the ONE component rather than a
+    second implementation: Lite (after the account banners), Premium (inside
+    the content wrapper, not beside the sidebar — that container is a flex
+    ROW on desktop), and the console's Home tab. All three sit OUTSIDE the
+    tab switch so one dismissal holds for the visit, and all three stop
+    rendering for good once `subscribed` is true.
+  - Suppressed on the `chat` tab in both panels: `SellerInbox` mounts its
+    own copy above the thread list, and two identical asks on one screen is
+    worse than none.
+  - Three small extensions to the shared component, no fork: a `seller_home`
+    and an `admin` copy set (a dashboard ask names enquiries and bookings,
+    not just chat replies), a `boxed` layout (its single top border reads as
+    an unfinished edge when it is not dividing two panes), and optional
+    `client` / `userId` props. The last is required, not cosmetic: the
+    console runs on the isolated `platformClient` session and
+    `push_subscriptions` is RLS'd on `auth.uid() = user_id`, so saving the
+    admin's device through the main client would file it under whichever
+    dealer is signed in on that browser — the same rule `PushToggle` and
+    `usePushNotifications` already follow.
+  - `PANEL_THEME` is exported from the strip so the two panels and the
+    console share one palette instead of three copies. It reads
+    `theme/tokens`, and deliberately does NOT import `THEMES` from
+    `ChatThread` — Premium lazy-loads the chat bundle and a static import
+    there would have pulled it back into the first paint.
+  - NOT verified by a build (`npm ci` blocked, `cdn.sheetjs.com` 403); all
+    four changed files syntax-checked with esbuild. NOT eyeballed in a
+    browser, and the actual permission prompt is untested from this session.
+  - **Owner action still required, and no code can do it for you:** open the
+    console (or either panel) and press Turn on. Until a device registers,
+    ops alerts still have nowhere to land.
+
+- [ ] ~~PUSH-PROMPT-1 original finding, kept for the reasoning:~~ **push
+  notifications are opt-in by accident, for both Lite and Premium.** `push_register_device` only fires from a manual click
   inside `usePushNotifications.enable()` (a user gesture is required by the
   browser, so nothing can auto-register on signup). `PushToggle` is buried
   in Settings (`SalesmanLite.jsx:6879`, `SalesmanPremium.jsx:5129`). The one

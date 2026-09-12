@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Bell, X } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import { usePushNotifications, isIOS, isStandalone } from '../../hooks/usePushNotifications';
+import { panel } from '../../theme/tokens';
+
+// Palette for the dashboard mounts (Lite + Premium), defined once here rather
+// than copied into each panel. The chat mounts keep passing their own THEMES
+// entry, because they have to match the thread they sit against.
+export const PANEL_THEME = {
+  panel: panel.surfaceRaised,
+  border: panel.border,
+  sub: panel.textSec,
+};
 
 // The one-line "turn on notifications" strip, shown to whoever is waiting on a
 // reply — a BUYER inside the conversation, or a SELLER above their inbox.
@@ -52,10 +62,44 @@ const COPY = {
     ios: 'To get alerts when a buyer messages you, add XDrive to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so new messages will only show up here.',
   },
+  // The panel-wide variant. Same mechanism, but it is not standing above a
+  // message list, so it names what a seller actually misses while the app is
+  // shut — an enquiry or a booking, not only a chat reply.
+  // Platform console. The toggle for this lives in Safety > Alerts, and the
+  // superadmin account had NO registered device at all — so every ops alert
+  // (new signup, listing awaiting review, KYC submitted, error spikes) was
+  // being raised and reaching nobody.
+  admin: {
+    ask: 'Turn on alerts for this device — signups, listings awaiting review, ID checks and errors.',
+    done: 'Done. Platform alerts will reach this device.',
+    ios: 'To get platform alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    denied: 'Notifications are blocked for this site in your browser settings, so platform alerts cannot reach this device.',
+  },
+  seller_home: {
+    ask: 'Turn on notifications so a new enquiry, booking or message reaches your phone.',
+    done: 'Done. New enquiries, bookings and messages will reach this device.',
+    ios: 'To get alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    denied: 'Notifications are blocked for this site in your browser settings, so nothing can reach this device.',
+  },
 };
 
-export default function PushPromptStrip({ t, audience = 'buyer' }) {
-  const [userId, setUserId] = useState(null);
+// `boxed` is for the dashboard mounts: standing on its own in a page body, the
+// chat variant's single top border reads as an unfinished edge rather than a
+// divider between two panes.
+export default function PushPromptStrip({
+  t,
+  audience = 'buyer',
+  boxed = false,
+  // The platform console runs on an ISOLATED supabase session, and
+  // push_subscriptions is RLS'd on auth.uid() = user_id — saving the admin's
+  // device through the main client files it under whichever dealer happens to
+  // be signed in on that browser, or rejects it outright. Same `client`
+  // argument PushToggle and usePushNotifications already take. When the caller
+  // knows who it is, it passes userId too and the lookup below is skipped.
+  client = supabase,
+  userId: userIdProp = null,
+}) {
+  const [userId, setUserId] = useState(userIdProp);
   const [dismissed, setDismissed] = useState(false);
   const [justEnabled, setJustEnabled] = useState(false);
   const [note, setNote] = useState(null);
@@ -65,14 +109,15 @@ export default function PushPromptStrip({ t, audience = 'buyer' }) {
   // push_subscriptions is RLS'd on auth.uid() = user_id, so their row saves like
   // anyone else's.
   useEffect(() => {
+    if (userIdProp) { setUserId(userIdProp); return undefined; }
     let cancelled = false;
-    supabase.auth.getUser().then(({ data }) => {
+    client.auth.getUser().then(({ data }) => {
       if (!cancelled) setUserId(data?.user?.id || null);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [client, userIdProp]);
 
-  const { supported, configured, permission, subscribed, busy, enable } = usePushNotifications(userId);
+  const { supported, configured, permission, subscribed, busy, enable } = usePushNotifications(userId, client);
 
   const handleEnable = async () => {
     setNote(null);
@@ -84,7 +129,13 @@ export default function PushPromptStrip({ t, audience = 'buyer' }) {
   };
 
   const row = (children) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', borderTop: `1px solid ${t.border}`, background: t.panel, padding: '9px 12px', flexShrink: 0 }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap',
+      background: t.panel, padding: '9px 12px', flexShrink: 0,
+      ...(boxed
+        ? { border: `1px solid ${t.border}`, borderRadius: 10, marginBottom: 14 }
+        : { borderTop: `1px solid ${t.border}` }),
+    }}>
       {children}
     </div>
   );
