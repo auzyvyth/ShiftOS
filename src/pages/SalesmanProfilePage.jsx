@@ -472,6 +472,14 @@ export default function SalesmanProfilePage() {
                   {profile.job_title}
                 </p>
               )}
+              {/* Buyers should know who they're dealing with before they message.
+                  Only shown standalone (no dealer) — a linked salesman already
+                  gets that identity from the Dealership row below instead. */}
+              {!dealer && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 5, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fb923c', background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.35)', borderRadius: 5, padding: '2px 7px' }}>
+                  {profile.seller_type === 'private' ? 'Private Seller' : 'Independent Agent'}
+                </span>
+              )}
             </div>
 
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
