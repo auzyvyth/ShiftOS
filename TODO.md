@@ -2273,11 +2273,16 @@ Decisions made when scoping it (owner confirmed both):
 - **Fully client-side, nothing persisted.** No new table, no anon-write RLS
   surface — salary/commitments never leave the browser. Revisit only if this
   is ever turned into a sign-up hook ("save your result").
-- **Both calc depths, "detailed" behind a toggle.** Basic = one commitments
-  number; the "Break down my commitments" toggle expands to 4 categories
-  (car/bike loan, personal loan, credit card min., other) that sum into the
-  same total — `src/utils/affordability.js` only ever sees the final total,
-  so it doesn't care which mode produced it.
+- **Detailed category breakdown was tried and pulled same-day.** The 4-field
+  version (car/bike loan, personal loan, credit card, other) felt like asking
+  an anon buyer for more personal detail than a quick self-check warrants —
+  reverted to one "existing commitments" total. `computeAffordability()` only
+  ever takes a final total, so this stayed a UI-only change.
+  Same fix also caught: the input `Field` was declared INSIDE
+  `AffordabilityCheck`'s function body, so it was a new component identity on
+  every render — React remounted the `<input>` on each keystroke, which is
+  why typing dropped focus (and the mobile keyboard) after one character.
+  `Field` is now hoisted to module scope, taking its styles as a prop.
 - **Reuses `calcMonthly` (`src/utils/financing.js`), not a new loan formula.**
   Same number already shown next to the price everywhere else on this page —
   avoids adding a THIRD disagreeing calculator on top of the drift

@@ -1,11 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Wallet, X, ChevronDown, MessageCircle } from 'lucide-react';
+import { Wallet, X, MessageCircle } from 'lucide-react';
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from '../utils/financing';
 import { computeAffordability } from '../utils/affordability';
 
 const fmt = (n) => (n != null && !Number.isNaN(n)) ? Math.round(n).toLocaleString('en-MY') : '—';
 const num = (v) => parseFloat(v) || 0;
+
+// Module-level, not defined inside AffordabilityCheck: a component declared
+// inside another component's body is a NEW function identity every render,
+// so React treats it as a different component type on each keystroke and
+// remounts the underlying <input> — which is what was dropping focus (and
+// the mobile keyboard) after every single character.
+const Field = ({ label, value, onChange, placeholder, styles }) => (
+  <div>
+    <p style={styles.label}>{label}</p>
+    <div style={{ position: 'relative' }}>
+      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: styles.sub, fontSize: 12, fontWeight: 600, pointerEvents: 'none' }}>RM</span>
+      <input type="number" inputMode="numeric" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={styles.input} />
+    </div>
+  </div>
+);
 
 // "Can I afford this?" — a self-contained trigger + popup, same shape as
 // BuyerChat.jsx (own open state, own portal, own scroll lock) so it can drop
@@ -13,7 +28,9 @@ const num = (v) => parseFloat(v) || 0;
 // CarDetailPage wiring any state for it. Entirely client-side: nothing here
 // is written to Supabase, so a buyer's salary/commitments never leave their
 // browser (deliberate — this is anon-reachable PII with no reason to persist
-// it for a v1 estimate tool).
+// it for a v1 estimate tool). Deliberately just ONE commitments total, not a
+// category breakdown — that read as asking for more personal detail than a
+// quick self-check warrants.
 export default function AffordabilityCheck({
   carPrice,
   carName,
@@ -22,13 +39,8 @@ export default function AffordabilityCheck({
   talkToSellerLabel = 'Talk to the seller',
 }) {
   const [open, setOpen] = useState(false);
-  const [detailed, setDetailed] = useState(false);
   const [income, setIncome] = useState('');
   const [commitments, setCommitments] = useState('');
-  const [carLoan, setCarLoan] = useState('');
-  const [personalLoan, setPersonalLoan] = useState('');
-  const [creditCard, setCreditCard] = useState('');
-  const [otherCommit, setOtherCommit] = useState('');
 
   // Overlay rule 2 — lock the page behind the popup.
   useEffect(() => {
@@ -40,11 +52,9 @@ export default function AffordabilityCheck({
   // The SAME estimate already printed next to the price on this page
   // (calcMonthly, financing.js) — never a second loan formula here.
   const monthlyInstallment = calcMonthly(carPrice);
-  const detailedTotal = [carLoan, personalLoan, creditCard, otherCommit].reduce((sum, v) => sum + num(v), 0);
-  const totalCommitments = detailed ? detailedTotal : num(commitments);
 
   const result = monthlyInstallment
-    ? computeAffordability({ netIncome: num(income), existingCommitments: totalCommitments, monthlyInstallment })
+    ? computeAffordability({ netIncome: num(income), existingCommitments: num(commitments), monthlyInstallment })
     : null;
 
   const close = () => setOpen(false);
@@ -56,22 +66,15 @@ export default function AffordabilityCheck({
     ? { bg: '#ffffff', border: '#e5e7eb', text: '#111827', sub: '#6b7280', inputBg: '#ffffff', inputBorder: '#DDE3EC', card: '#f9fafb', triggerBg: 'rgba(220,38,38,0.06)', triggerBorder: 'rgba(220,38,38,0.2)' }
     : { bg: '#0f1420', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6', sub: 'rgba(255,255,255,0.55)', inputBg: 'rgba(255,255,255,0.04)', inputBorder: 'rgba(255,255,255,0.12)', card: 'rgba(255,255,255,0.04)', triggerBg: 'rgba(220,38,38,0.1)', triggerBorder: 'rgba(220,38,38,0.3)' };
 
-  const inputStyle = {
-    width: '100%', background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 9,
-    color: c.text, fontSize: 13, fontWeight: 600, outline: 'none', padding: '9px 10px 9px 30px',
-    fontFamily: "var(--xd-font-body)", boxSizing: 'border-box',
+  const fieldStyles = {
+    sub: c.sub,
+    label: { color: c.sub, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' },
+    input: {
+      width: '100%', background: c.inputBg, border: `1px solid ${c.inputBorder}`, borderRadius: 9,
+      color: c.text, fontSize: 13, fontWeight: 600, outline: 'none', padding: '9px 10px 9px 30px',
+      fontFamily: "var(--xd-font-body)", boxSizing: 'border-box',
+    },
   };
-  const fieldLabel = { color: c.sub, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px' };
-
-  const Field = ({ label, value, onChange, placeholder }) => (
-    <div>
-      <p style={fieldLabel}>{label}</p>
-      <div style={{ position: 'relative' }}>
-        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: c.sub, fontSize: 12, fontWeight: 600, pointerEvents: 'none' }}>RM</span>
-        <input type="number" inputMode="numeric" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
-      </div>
-    </div>
-  );
 
   const sheet = (
     <div
@@ -106,26 +109,8 @@ export default function AffordabilityCheck({
                 <span style={{ color: c.text, fontSize: 14, fontWeight: 700 }}>RM {fmt(monthlyInstallment)}/mo</span>
               </div>
 
-              <Field label="Your net monthly income" value={income} onChange={setIncome} placeholder="5000" />
-
-              {!detailed ? (
-                <Field label="Existing monthly commitments (loans, cards, etc.)" value={commitments} onChange={setCommitments} placeholder="800" />
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  <Field label="Car / bike loan" value={carLoan} onChange={setCarLoan} placeholder="0" />
-                  <Field label="Personal loan" value={personalLoan} onChange={setPersonalLoan} placeholder="0" />
-                  <Field label="Credit card (min. pmt)" value={creditCard} onChange={setCreditCard} placeholder="0" />
-                  <Field label="Other commitments" value={otherCommit} onChange={setOtherCommit} placeholder="0" />
-                </div>
-              )}
-
-              <button
-                onClick={() => setDetailed(d => !d)}
-                style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: c.sub, fontSize: 11.5, fontWeight: 600, cursor: 'pointer', padding: 0, alignSelf: 'flex-start', fontFamily: "var(--xd-font-body)" }}
-              >
-                <ChevronDown size={13} style={{ transform: detailed ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
-                {detailed ? 'Use a single commitments total' : 'Break down my commitments'}
-              </button>
+              <Field label="Your net monthly income" value={income} onChange={setIncome} placeholder="5000" styles={fieldStyles} />
+              <Field label="Existing monthly commitments (loans, cards, etc.)" value={commitments} onChange={setCommitments} placeholder="800" styles={fieldStyles} />
 
               {result && (
                 <div style={{ background: `${result.band.color}14`, border: `1px solid ${result.band.color}40`, borderRadius: 12, padding: 14 }}>
