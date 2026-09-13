@@ -31,6 +31,7 @@ import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import AccountReviewBanner from "../components/AccountReviewBanner";
+import IcVerifyBanner from "../components/IcVerifyBanner";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
@@ -907,15 +908,21 @@ export default function SalesmanLite() {
   const [icGateVal, setIcGateVal] = useState("");
   const [icGateSaving, setIcGateSaving] = useState(false);
   // 1-week KYC enforcement: 7 days after signup, a salesman with no IC on file
-  // is hard-blocked until they verify (stored hashed). Before then IC is optional
-  // (only the listing action is gated). Keyed on the account's created_at.
+  // sees the urgent copy on IcVerifyBanner (below) instead of the softer one.
+  // This used to force-open icGateOpen on mount, which is what actually made
+  // an already-verified seller see the modal: the FIRST FRAME paints from the
+  // panelCache seed, which stripped ic_hash to keep raw identity material off
+  // disk, so `profile.ic_hash` read false for a few hundred ms even for a
+  // seller who verified at onboarding, popping the gate open with no way for a
+  // later correct fetch to close it back down. Fixed by having the cache keep
+  // a boolean instead of dropping the field (panelCache.js redactProfileForCache)
+  // and by never auto-opening the modal at all — IcVerifyBanner nudges instead,
+  // and the modal only opens from an explicit click (Settings, or Add a listing
+  // while genuinely unverified).
   const icEnforced = !!(
     profile && !profile.ic_hash && profile.created_at &&
     (Date.now() - new Date(profile.created_at).getTime()) >= 7 * 86400000
   );
-  useEffect(() => {
-    if (icEnforced) { setIcGateVal(""); setIcGateOpen(true); }
-  }, [icEnforced]);
   useEffect(() => {
     if (!icGateOpen) return;
     document.body.style.overflow = "hidden";
@@ -8645,6 +8652,11 @@ export default function SalesmanLite() {
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
           <AccountReviewBanner profile={profile} />
+          <IcVerifyBanner
+            profile={profile}
+            userId={userId}
+            onVerify={() => { setIcGateVal(""); setIcGateOpen(true); }}
+          />
           {/* The "you're approved" moment used to have no announcement at all —
               the under-review banner above just quietly stops rendering once
               approval_status flips, so a seller had to notice its absence.

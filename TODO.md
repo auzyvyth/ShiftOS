@@ -70,6 +70,38 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## IC verify popup regression — FIXED 2026-09-13
+
+The "Verify your IC to list cars" modal was popping up for sellers who had
+already verified at onboarding (confirmed live: `ic_hash` was correctly set
+in `profiles` for the reported account — this was never a DB bug).
+
+- **Root cause**: `panelCache.js redactProfileForCache` stripped `ic_hash`
+  entirely before writing the profile seed to localStorage (to keep identity
+  material off disk). The panel paints its FIRST FRAME from that cached seed,
+  before the live fetch lands — so `profile.ic_hash` read `undefined` for a
+  few hundred ms even for an already-verified seller. `SalesmanLite.jsx` had a
+  `useEffect` that force-opened the modal the instant `icEnforced` (or a click
+  on "Add a listing") saw a falsy `ic_hash`, and nothing ever closed it back
+  down once the live fetch corrected the value. Fixed by caching a `true`/
+  `null` boolean instead of dropping the field — a boolean isn't reversible to
+  a hash or a digit, so it doesn't reopen the "identity material on disk" hole
+  this redaction exists to close.
+- **Behavior change**: removed the auto-opening `useEffect` entirely. A
+  missing IC now shows a small dismissible banner (`src/components/
+  IcVerifyBanner.jsx`, same visual language as `AccountReviewBanner`) instead
+  of a blocking modal — dismiss hides it until the next calendar day
+  (localStorage-keyed per user, not permanent). The modal itself is unchanged
+  and still opens on an explicit click (the banner's "Add IC number", the
+  Settings "Verify IC" button, or "Add a listing" while genuinely unverified).
+- Confirmed NOT regressed, no change needed: the seller-facing ID PHOTO upload
+  (`src/components/kyc/VerifyIdentity.jsx`, Settings → Account on both Lite
+  and Premium) is optional/carrot-only by design and was never touched. The
+  admin review queue (`src/components/platform/UserApprovalsTab.jsx`) already
+  shows the photos and permanently deletes them from the `kyc-docs` bucket the
+  moment a superadmin approves or rejects — this was already built exactly as
+  requested, nothing to change.
+
 ## Owner audit batch — 2026-09-12 (audited only, nothing built yet)
 
 Fifteen items came in together across onboarding, Salesman Lite, the admin

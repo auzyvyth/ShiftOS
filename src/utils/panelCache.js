@@ -76,11 +76,20 @@ export const redactLeadsForCache = (rows) =>
 
 // The panel's OWN profile row is cached so the loading gate can clear on the
 // first frame. `ic_hash` / `ic_last4` are identity material and nothing on a
-// panel renders from them, so they never reach disk either.
+// panel renders from them, so the raw values never reach disk.
+//
+// The IC-verified STATUS is a different thing: SalesmanLite's icEnforced check
+// and its "verify IC" gate button both branch on `!!profile.ic_hash`. Dropping
+// the field entirely (as this used to) made that check read false on the very
+// first frame for every seller, including one who verified at onboarding —
+// the cached seed paints before the live fetch lands, so the panel force-opened
+// the IC modal on top of an already-verified account and nothing ever closed it
+// back down. Caching a plain boolean isn't identity material (it can't be
+// reversed to a hash or a digit), so it's safe to keep.
 export const redactProfileForCache = (p) => {
   if (!p) return null;
   const { ic_hash, ic_last4, ...rest } = p;
-  return rest;
+  return { ...rest, ic_hash: ic_hash ? true : null };
 };
 
 // A cached profile clears the panel's loading gate on the first frame, which
