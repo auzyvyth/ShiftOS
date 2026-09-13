@@ -1,5 +1,30 @@
 # ShiftOS — Pending Tasks
 
+> **A GREEN BUILD DOES NOT PROVE THE PAGE LOADS. Shipped a crash this way
+> 2026-09-13.** Removing the "what to do today" section deleted the
+> `aiFollowups` state but left `setAiFollowups={setAiFollowups}` being handed to
+> `DashboardTab` (`SalesmanPremium.jsx:6675`). Building the props object threw
+> `setAiFollowups is not defined`, so EVERY Premium seller got the error
+> boundary instead of their panel, live on xdrive.my. An esbuild syntax pass and
+> a full Vite production build BOTH accepted it — an undefined identifier is a
+> runtime `ReferenceError`, not a compile error, so the prod build for PR #383
+> went green and shipped it. Fixed in PR #385.
+> - **When you delete state, grep every reader before you commit.** A passing
+>   build is not evidence about a name you removed.
+> - **`npm ci` is blocked in the web session** (`cdn.sheetjs.com` 403 through the
+>   agent proxy), so `npm run lint` cannot run. It is still possible to get the
+>   one rule that catches this: install eslint on its own in the scratchpad
+>   (`npm i eslint globals` works — the registry is reachable, only the project
+>   lockfile's CDN is not), write a flat config with `no-undef` and
+>   `parserOptions.ecmaFeatures.jsx`, and run it with `--no-config-lookup` so it
+>   ignores the repo config whose plugins are missing. The 37
+>   `react-hooks/exhaustive-deps` "rule not found" errors it reports are noise
+>   from inline disable comments, not findings — grep the output for `no-undef`.
+> - **Run it from the repo root.** eslint silently skips anything outside the
+>   base path with "File ignored because outside of base path" and still exits 0,
+>   which reads exactly like a clean result. Prove the check works against a
+>   known-bad file before trusting a clean one.
+
 > **NO BRANCH IN FLIGHT — branch off `origin/main` (2026-09-06).**
 > Two branches that had been sitting unmerged since 2026-09-05 both landed today,
 > after prod was checked against the live Vercel deployment rather than assumed:
