@@ -223,7 +223,7 @@ export const CAR_DATA = {
     "M4",
     "M5",
   ],
-  Mercedes: [
+  "Mercedes-Benz": [
     "A-Class",
     "C-Class",
     "E-Class",

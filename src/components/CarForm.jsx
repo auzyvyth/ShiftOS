@@ -1423,6 +1423,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const offCatalogueModel =
     !!form.brand && !!form.model && modelOptions.length > 0 &&
     !modelOptions.some((m) => m.toLowerCase() === form.model.trim().toLowerCase());
+  // Brand keeps the same custom-value freedom as Model, for the same reason —
+  // ALL_BRANDS covers what we've seen so far, not every brand a real seller
+  // might have. Same fix: don't block the listing, just log what was typed so
+  // real gaps can be reviewed instead of guessed at (see logCatalogueGaps).
+  const offCatalogueBrand =
+    !!form.brand && !ALL_BRANDS.some((b) => b.toLowerCase() === form.brand.trim().toLowerCase());
   // Decode accepts a full VIN OR a Japanese chassis code. Gating on the VIN
   // alone is what left the button permanently dead for recon stock.
   const canDecodeVin =
@@ -1737,6 +1743,25 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     return () => clearTimeout(t);
   }, [step]);
 
+  // On mobile, opening the keyboard shrinks the visual viewport AFTER the
+  // browser has already decided whether the focused field was "in view" —
+  // for a field low on a long step, it wasn't, and the keyboard covers it.
+  // Re-center whatever is focused once the keyboard has finished animating
+  // in, on every direct tap, not just Enter-key navigation (handleKeyDown
+  // above already covers that case).
+  useEffect(() => {
+    const container = formRef.current;
+    const isTouchDevice = window.matchMedia?.("(pointer: coarse)").matches;
+    if (!container || !isTouchDevice) return undefined;
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (!el.matches?.('input:not([type="file"]), select, textarea')) return;
+      setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "center" }), 300);
+    };
+    container.addEventListener("focusin", onFocusIn);
+    return () => container.removeEventListener("focusin", onFocusIn);
+  }, []);
+
   // Enter key: advance to next field, or next step when all filled
   const handleKeyDown = (e) => {
     if (e.key !== "Enter") return;
@@ -1860,6 +1885,24 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
     }
     return urls;
+  };
+
+  // Fire-and-forget: never blocks or fails the listing save. Writes only the
+  // gaps that actually happened on this submit (offCatalogueBrand/Model are
+  // computed once at render time, not re-checked here) into
+  // unmatched_car_catalogue so the real catalogue gaps can be reviewed and
+  // backfilled instead of guessed at.
+  const logCatalogueGaps = (savedListingId) => {
+    const rows = [];
+    if (offCatalogueBrand) {
+      rows.push({ field: "brand", brand: null, typed_value: form.brand.trim(), dealer_id: dealerId, listing_id: savedListingId });
+    }
+    if (offCatalogueModel) {
+      rows.push({ field: "model", brand: form.brand, typed_value: form.model.trim(), dealer_id: dealerId, listing_id: savedListingId });
+    }
+    if (rows.length) {
+      supabase.from("unmatched_car_catalogue").insert(rows).then(null, () => {});
+    }
   };
 
   const handleSubmit = async (skipGapCheck = false) => {
@@ -2044,6 +2087,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           );
         const savedListing = data[0];
         onUpdate(savedListing);
+        logCatalogueGaps(savedListing.id);
         // Sync services to linked stock_unit
         if (savedListing?.id && dealerId) {
           await supabase
@@ -2097,6 +2141,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         }
         cfClearDraft(profile?.id);
         onCreate(savedListing);
+        logCatalogueGaps(savedListing.id);
         // Sync services to linked stock_unit (if one is auto-created)
         if (savedListing?.id) {
           await supabase
@@ -2473,6 +2518,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               allowCustom
             />
           </Field>
+          {offCatalogueBrand && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                "{form.brand}" is not a brand we recognise yet. The listing will still publish —
+                we're just noting the gap so it can be added properly.
+              </span>
+            </div>
+          )}
          <Field label="Model" required>
             <PickerField
               label="Select Model"
