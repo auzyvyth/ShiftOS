@@ -2261,6 +2261,31 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
 
+- **IDEA-8: "Can I afford this?" affordability check on CarDetailPage** — a
+  button next to the price that opens a popup/section where the buyer (incl.
+  anon) types salary + commitments, and it estimates whether they can afford
+  the car. Owner's framing (2026-09-13): a self-serve affordability read,
+  not a hard loan calculator.
+  Constraints flagged when this came up, to weigh before scoping it for real:
+  - Loan math must reuse whatever FinancingCalculator.jsx /
+    CalculatorPage.jsx already compute, not a third implementation —
+    AUDIT_DEALER_DASHBOARD.md's L8 already documents flat-rate vs
+    reducing-balance drift from two calculators disagreeing on one deal; a
+    third copy of the math makes that worse, not better.
+  - It must never render as a bank-style approval/rejection ("You are
+    approved") — same AI-trust-boundary rule as everywhere else on the
+    platform (no invented loan approval, no invented rate/discount): this is
+    an estimate the buyer confirms with a real salesman, worded as such.
+  - Open question: fully client-side/ephemeral (no DB write, safest for
+    anon PII like salary) vs. persisted and tied to sign-in — the latter
+    could double as a sign-up hook (save your result), which lines up with
+    the retention-perception work from this same session, but needs an
+    explicit decision before building since it changes the RLS/anon-write
+    surface.
+  - Open question: "basic" rule-of-thumb vs a real Malaysian DSR
+    (debt-service-ratio) calc factoring existing commitments — affects how
+    much of "salary + commitments" actually needs collecting.
+
 ## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
 
 Shipped on `claude/buyer-notification-emails-n0yv8d`. Backend is LIVE on the
