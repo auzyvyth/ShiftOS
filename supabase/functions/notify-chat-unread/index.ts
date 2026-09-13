@@ -49,6 +49,12 @@ function buildHtml(
   sellerName: string,
   items: { car: string; preview: string; seller: string }[],
   unsubUrl: string,
+  // True when this recipient typed their address into the anon chat box
+  // (profiles.notify_email) rather than owning a real, signed-in account
+  // (profiles.email). They read the reply here either way, but this is the
+  // one nudge to turn "a guest who left an address" into an actual account —
+  // saved chats, saved cars, one inbox instead of a fresh guest each visit.
+  showSignup: boolean,
 ) {
   const rows = items.map(it => `
     <tr><td style="padding:14px 0;border-bottom:1px solid #e5e7eb">
@@ -56,6 +62,13 @@ function buildHtml(
       <p style="margin:0 0 6px;font:400 12px system-ui,sans-serif;color:#6b7280">${esc(it.car)}</p>
       <p style="margin:0;font:400 14px system-ui,sans-serif;color:#374151;line-height:1.55">${esc(it.preview)}</p>
     </td></tr>`).join('');
+
+  const signupBlock = showSignup ? `
+      <p style="margin:18px 0 0;font:400 12px system-ui,sans-serif;color:#6b7280;line-height:1.6">
+        Reading this as a guest —
+        <a href="${SITE_URL}/buyer-signup" style="color:#dc2626;font-weight:600">sign up as a buyer</a>
+        to keep every chat and saved car in one place.
+      </p>` : '';
 
   return `<!doctype html><html><body style="margin:0;background:#f9fafb;padding:24px 12px">
   <table role="presentation" style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
@@ -70,6 +83,7 @@ function buildHtml(
           Open the chat to reply
         </a>
       </p>
+      ${signupBlock}
       <p style="margin:22px 0 0;font:400 11px system-ui,sans-serif;color:#9ca3af;line-height:1.6">
         You are getting this because you asked us to tell you when a seller replies on XDrive.
         <a href="${unsubUrl}" style="color:#9ca3af">Turn these emails off</a>.
@@ -130,7 +144,7 @@ Deno.serve(async (req) => {
     const ids = <T,>(xs: (T | null)[]) => [...new Set(xs.filter(Boolean))] as T[];
 
     const [{ data: buyers }, { data: sellers }, { data: cars }] = await Promise.all([
-      db.from('profiles').select('id, email, full_name, notify_email_opt_out, notify_unsub_token')
+      db.from('profiles').select('id, email, notify_email, full_name, notify_email_opt_out, notify_unsub_token')
         .in('id', ids(rows.map(r => r.buyer_id))),
       db.from('profiles').select('id, full_name, dealership')
         .in('id', ids([...rows.map(r => r.salesman_id), ...rows.map(r => r.dealer_id)])),
@@ -157,10 +171,12 @@ Deno.serve(async (req) => {
     }
 
     // Group by buyer: two cars with the same person is one email.
+    // notify_email is the unverified address typed into the anon chat box —
+    // fall back to it only when there is no real account email.
     const byBuyer = new Map<string, Row[]>();
     for (const r of rows) {
       const b = buyerBy.get(r.buyer_id);
-      if (!b?.email || b.notify_email_opt_out) continue;
+      if (!(b?.email || b?.notify_email) || b.notify_email_opt_out) continue;
       byBuyer.set(r.buyer_id, [...(byBuyer.get(r.buyer_id) ?? []), r]);
     }
 
@@ -184,9 +200,10 @@ Deno.serve(async (req) => {
         ? `${headline} and others replied on XDrive`
         : `${headline} sent you a message`;
       const unsubUrl = `${SITE_URL}/unsubscribe?t=${buyer.notify_unsub_token}`;
+      const to = buyer.email || buyer.notify_email;
 
       try {
-        await sendEmail(buyer.email, subject, buildHtml(headline, items, unsubUrl));
+        await sendEmail(to, subject, buildHtml(headline, items, unsubUrl, !buyer.email));
         sent++;
         notified.push(...list.map(r => r.id));
       } catch (e) {

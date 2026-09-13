@@ -64,6 +64,7 @@ function Bubble({ msg, mine, t }) {
           padding:'9px 13px', fontSize:14, lineHeight:1.55,
           wordBreak:'break-word', whiteSpace:'pre-wrap',
           opacity: msg.pending ? 0.65 : 1,
+          boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
         }}>
           {hidden
             ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
