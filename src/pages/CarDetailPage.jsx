@@ -528,13 +528,19 @@ function hasDealerIdentity(dealer) {
 // other half was in the DB: get_salesman_by_id derived is_verified from a
 // plaintext ic_number that the secure hashed IC path leaves null.) One
 // component now, so the two layouts cannot drift apart again.
-function SellerTypeLine({ isAgent, salesmanProfile, dealer, th, isXdrive, anchorId }) {
+function SellerTypeLine({ isAgent, sellerType, salesmanProfile, dealer, th, isXdrive, anchorId }) {
   const tick = <ShieldCheck size={12} strokeWidth={2.5} style={{ color: isXdrive ? '#2563eb' : '#60a5fa' }} />;
 
   if (isAgent) {
+    // isAgent (seller_role === 'salesman') only ever fires for a standalone
+    // seller — a linked salesman's cars carry their parent dealer's identity
+    // instead. sellerType splits that standalone seller into the two real
+    // cases the badge used to collapse: a private owner selling their own
+    // car, and a broker selling on behalf of others.
+    const label = sellerType === 'private' ? 'Private Seller' : 'Independent Agent';
     return salesmanProfile?.is_verified
-      ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{tick} Verified Agent</span>
-      : <>Independent Agent</>;
+      ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>{tick} Verified {sellerType === 'private' ? 'Seller' : 'Agent'}</span>
+      : <>{label}</>;
   }
   if (!dealer) return <>Seller</>;
   // The badge used to be a dead end — a shield with no referent. When there
@@ -1234,7 +1240,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
+      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,seller_type,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -2733,7 +2739,7 @@ export default function CarDetailPage() {
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
                     <p style={{ fontSize:11, color: th.textSec }}>
-                      <SellerTypeLine isAgent={isAgent} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
+                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
                     </p>
                   </div>
                   <div style={{ textAlign:'right' }}>
@@ -4010,7 +4016,7 @@ export default function CarDetailPage() {
                     <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
                     <p style={{ fontSize: 11, color: th.textSec }}>
-                      <SellerTypeLine isAgent={isAgent} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
+                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
                     </p>
                   </div>
                   {listedDays !== null && (

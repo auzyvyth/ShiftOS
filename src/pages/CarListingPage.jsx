@@ -51,9 +51,9 @@ const SORT_OPTIONS = [
   { label:'Year: Oldest',       short:'Year ↑',   value:'year_asc'    },
   { label:'Lowest Mileage',     short:'Mileage',  value:'mileage_asc' },
 ];
-const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:'Agent' }];
+const SELLER_TYPES = [{ value:'dealer', label:'Dealer' },{ value:'agent', label:'Agent' },{ value:'private', label:'Private Seller' }];
 
-const CAR_FIELDS  = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role,dealer_is_verified,seller_sold_count';
+const CAR_FIELDS  = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,market_avg_price,seller_role,seller_type,dealer_is_verified,seller_sold_count';
 const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
 
 /* ── Sanitisers ─────────────────────────────────────────────────────
@@ -555,10 +555,17 @@ export default function CarListingPage() {
       // at all (so the embed is null for every logged-out buyer), and a
       // non-inner embedded filter does not restrict top-level rows anyway — so
       // picking Dealer or Agent either errored or quietly returned everything.
-      // Mirror the marketplace grid exactly: role 'salesman' reads as "Agent",
-      // everything else as "Dealer", the same rule ShowroomCard's badge uses.
-      if (isMarketplace && sellerType === 'agent')       query = query.eq('seller_role', 'salesman');
-      else if (isMarketplace && sellerType === 'dealer') query = query.neq('seller_role', 'salesman');
+      // Mirror ShowroomCard's badge rule exactly: role !== 'salesman' is
+      // "Dealer"; role === 'salesman' splits on seller_type into "Private
+      // Seller" vs "Agent" (broker, or seller_type not set yet — treat null
+      // as agent so pre-existing standalone sellers keep matching "Agent").
+      if (isMarketplace && sellerType === 'agent') {
+        query = query.eq('seller_role', 'salesman').or('seller_type.neq.private,seller_type.is.null');
+      } else if (isMarketplace && sellerType === 'private') {
+        query = query.eq('seller_role', 'salesman').eq('seller_type', 'private');
+      } else if (isMarketplace && sellerType === 'dealer') {
+        query = query.neq('seller_role', 'salesman');
+      }
 
       if (sort==='price_asc')    query = query.order('selling_price', { ascending:true });
       else if (sort==='price_desc')  query = query.order('selling_price', { ascending:false });
@@ -615,7 +622,7 @@ export default function CarListingPage() {
     hotDeals   && { key:'hot_deals',   label:'Hot Deals' },
     fuelType   && { key:'fuel_type',   label:fuelType },
     colour     && { key:'colour',      label:colour },
-    sellerType && { key:'seller_type', label:sellerType==='agent'?'Agent':'Dealer' },
+    sellerType && { key:'seller_type', label: SELLER_TYPES.find(st => st.value === sellerType)?.label || sellerType },
   ].filter(Boolean);
 
   const removeChip = key => {

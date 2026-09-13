@@ -288,13 +288,23 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Top badge row */}
         <div style={{ position: 'absolute', top: 6, left: 6, right: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>
           {(() => {
-            // seller_role comes from the public_car_listings view (anon-safe);
-            // the car.dealer embed is RLS-blocked for logged-out visitors, which
-            // made every card fall back to "Dealer".
+            // seller_role/seller_type come from the public_car_listings view
+            // (anon-safe); the car.dealer embed is RLS-blocked for logged-out
+            // visitors, which made every card fall back to "Dealer".
+            // role='salesman' here always means a STANDALONE seller — a linked
+            // salesman's cars are attributed to their parent dealer's profile
+            // (role='dealer'), never their own, so this branch never mixes the
+            // two. Standalone splits on seller_type: "Private Seller" (their
+            // own one-off car) vs "Agent" (broker, sells for others) — the
+            // distinction this pill used to erase entirely.
             const role = car.seller_role || car.dealer?.role;
-            const isAgent = role === 'salesman';
-            const chipColor = isAgent ? '#fb923c' : '#60a5fa';
-            const rgb = isAgent ? '251,146,60' : '59,130,246';
+            const sellerType = car.seller_type || car.dealer?.seller_type;
+            const isIndividual = role === 'salesman';
+            const label = !isIndividual ? 'Dealer'
+              : sellerType === 'private' ? 'Private Seller'
+              : 'Agent';
+            const chipColor = isIndividual ? '#fb923c' : '#60a5fa';
+            const rgb = isIndividual ? '251,146,60' : '59,130,246';
             // Verified says so in WORDS. It shipped as a 9px tick tucked in
             // beside the role label and was invisible at that size — a trust
             // signal nobody can read is not a trust signal. It stays inside
@@ -307,7 +317,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: `rgba(${rgb},${isVerified ? 0.3 : 0.18})`, border: `1px solid rgba(${rgb},${isVerified ? 0.6 : 0.4})`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
                 <RoleIcon size={isVerified ? 10 : 8} color={chipColor} strokeWidth={isVerified ? 2.6 : 2} style={{ flexShrink: 0 }} />
                 <span style={{ fontSize: '9px', fontWeight: '700', color: chipColor, whiteSpace: 'nowrap' }}>
-                  {isVerified ? 'Verified ' : ''}{isAgent ? 'Agent' : 'Dealer'}
+                  {isVerified ? 'Verified ' : ''}{label}
                 </span>
               </div>
             );

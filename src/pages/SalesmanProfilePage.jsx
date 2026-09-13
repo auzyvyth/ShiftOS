@@ -386,29 +386,23 @@ export default function SalesmanProfilePage() {
             side gutters as the rest of the column — as a bare child of sp-left
             it would run to the screen edge on a phone. Sits ABOVE the banner
             deliberately: the avatar is positioned absolutely against the banner
-            wrapper, so anything inserted between them would strand it. */}
+            wrapper, so anything inserted between them would strand it.
+            One line, one action — it used to be a full card with a bulleted
+            list of everything left to do, which pushed the banner down and
+            read as a wall of homework before a visitor had seen a single car.
+            Just the next single step; the count rides along in parentheses
+            rather than as its own list. */}
         {isOwner && setupHref && (
-          <div className="sp-narrow" style={{ paddingTop: 14 }}>
-            <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 12 }}>
-              <p style={{ fontSize: 10, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, marginBottom: 6 }}>
-                Only you can see this
-              </p>
-              <p style={{ fontSize: 13.5, color: '#e2e8f0', fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
-                Your page is looking empty.{' '}
-                {setupTodo.length === 1 ? 'One thing left to finish it.' : `${setupTodo.length} quick things to finish it.`}
-              </p>
-              <ul style={{ listStyle: 'none', margin: '0 0 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {setupTodo.map((t) => (
-                  <li key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#94a3b8' }}>
-                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#475569', flexShrink: 0 }} />
-                    {t.label}
-                  </li>
-                ))}
-              </ul>
-              <Link to={setupHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb', color: '#fff', borderRadius: 9, padding: '9px 16px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
-                {setupTodo[0].label} <ChevronRight size={14} />
-              </Link>
-            </div>
+          <div className="sp-narrow" style={{ paddingTop: 10 }}>
+            <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, textDecoration: 'none' }}>
+              <span style={{ fontSize: 9, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, flexShrink: 0 }}>
+                Only you
+              </span>
+              <span style={{ fontSize: 12, color: '#94a3b8', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {setupTodo[0].label}{setupTodo.length > 1 ? ` (+${setupTodo.length - 1} more)` : ''}
+              </span>
+              <ChevronRight size={13} color="#64748b" style={{ flexShrink: 0 }} />
+            </Link>
           </div>
         )}
 
@@ -471,6 +465,14 @@ export default function SalesmanProfilePage() {
                 <p style={{ fontSize: 11, color: '#6b7280', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile.job_title}
                 </p>
+              )}
+              {/* Buyers should know who they're dealing with before they message.
+                  Only shown standalone (no dealer) — a linked salesman already
+                  gets that identity from the Dealership row below instead. */}
+              {!dealer && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 5, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fb923c', background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.35)', borderRadius: 5, padding: '2px 7px' }}>
+                  {profile.seller_type === 'private' ? 'Private Seller' : 'Independent Agent'}
+                </span>
               )}
             </div>
 

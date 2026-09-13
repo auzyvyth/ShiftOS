@@ -241,6 +241,10 @@ export default function SalesmanOnboarding() {
     fullName: '', icNumber: '',
     phone: '+60',
     brand: '', slug: '', state: '', city: '',
+    // Defaults to the framing this product has always used for a standalone
+    // signup (commission-first dashboard, "Agent" badge) — private is an
+    // opt-in distinction, not a behavior change for anyone who skips this.
+    sellerType: 'broker',
   });
 
   const slugTimer = useRef(null);
@@ -286,7 +290,7 @@ export default function SalesmanOnboarding() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('onboarding_complete, full_name, phone, ic_number, slug, role')
+        .select('onboarding_complete, full_name, phone, ic_number, slug, role, seller_type')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -314,6 +318,7 @@ export default function SalesmanOnboarding() {
           icNumber: profile.ic_number || p.icNumber,
           phone: profile.phone || p.phone,
           slug: profile.slug || p.slug,
+          sellerType: profile.seller_type || p.sellerType,
         }));
         setResumeIsBuyer(isBuyer);
         setShowResumeChoice(true);
@@ -443,6 +448,7 @@ export default function SalesmanOnboarding() {
           id: userId,
           full_name: form.fullName.trim(),
           role: 'salesman',
+          seller_type: form.sellerType,
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -476,6 +482,7 @@ export default function SalesmanOnboarding() {
           id: userId,
           full_name: form.fullName.trim(),
           role: 'salesman',
+          seller_type: form.sellerType,
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -574,7 +581,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sellerType: 'broker' });
     setStep(0);
   };
 
@@ -795,6 +802,29 @@ export default function SalesmanOnboarding() {
                     ? 'Your name is what buyers see. Premium requires IC verification upfront — it keeps every listing accountable, and your first month is free.'
                     : 'Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.'}
                 </p>
+
+                <label className="eo-label">HOW DO YOU SELL CARS?</label>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                  {[
+                    { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
+                    { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
+                  ].map((opt) => (
+                    <button key={opt.key} type="button" onClick={() => upd('sellerType')(opt.key)}
+                      style={{
+                        flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                        background: form.sellerType === opt.key ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${form.sellerType === opt.key ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
+                        fontFamily: 'inherit',
+                      }}>
+                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: form.sellerType === opt.key ? '#fca5a5' : '#E8EDF5' }}>{opt.title}</p>
+                      <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>{opt.sub}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="eo-hint" style={{ marginBottom: 18 }}>
+                  Already work at a dealership? Ask them to send you an invite instead — your dealership shows up on your page automatically, verified, no typing it in yourself.
+                </p>
+
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
