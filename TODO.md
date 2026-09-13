@@ -45,6 +45,698 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## Owner audit batch — 2026-09-12 (audited only, nothing built yet)
+
+Fifteen items came in together across onboarding, Salesman Lite, the admin
+platform console, and Salesman Premium. Investigated with three parallel
+read-only audits before touching anything, per the owner's own instruction:
+audit first, then work the list biggest to smallest. Ordered here by impact
+— items that block a user outright first, then large builds, then contained
+fixes. Nothing in this batch has been built.
+
+### Blocks new users outright — work these first
+
+- [x] **LITE-GATE-1 DONE 2026-09-12 — a pending seller can list now, and a
+  suspended one still cannot.** Migration `20260912b_lift_listing_gate_for_
+  pending_sellers.sql`, applied live and probed. What shipped and why it is
+  not simply "the gate removed":
+  - **The product had been promising this in writing the whole time.**
+    `AccountReviewBanner.jsx:48` says "Keep adding your cars in the meantime.
+    Everything you list is saved and goes live on the marketplace the moment
+    you're approved", and its docstring says "Shown as a BANNER, never a
+    gate". The RLS policies never matched that copy. This was a fix to make
+    the database agree with the promise, not a new policy decision.
+  - **The marketplace was never protected by this gate, so nothing was
+    loosened.** `public_car_listings` already ends with `AND NOT EXISTS
+    (... pr.is_active = false OR pr.account_status = 'deleted')`, so a
+    pending seller's cars stay invisible to every public surface until
+    approval flips `is_active`. They now do the work while they wait; buyers
+    see nothing earlier than before.
+  - **Why not just drop the check: `is_active` means TWO things.**
+    `decide_user_approval()` sets it true on approval, and
+    `set_account_suspended()` sets it false on suspension — so the old
+    `is_active_salesman()` could not tell "not approved yet" from
+    "suspended", and dropping it would have handed suspended sellers their
+    write access back, undoing migration 20260426. New helper
+    `salesman_can_manage_listings()` tests the three states that are a
+    deliberate admin NO — suspended / rejected / deleted — and ignores the
+    one that just means nobody has got to them yet.
+  - `is_active_salesman()` is deliberately UNCHANGED and still in use by the
+    `leads` policies. Two helpers, two questions — do not merge them.
+  - Probed live in a self-rolling-back transaction, all four states with the
+    row state asserted in each case: pending -> INSERT OK; suspended,
+    rejected and soft-deleted -> refused 42501. Exactly one signature exists
+    for the new function (no overload). Guard triggers verified back
+    ENABLED afterwards and the pending account left untouched.
+  - **Trap worth remembering for the next probe of this kind:** three
+    separate BEFORE triggers on `profiles`
+    (`prevent_profile_privilege_escalation`, `guard_profile_approval_cols`)
+    silently REVERT `suspended_at`, `approval_status`, `account_status` and
+    `deleted_at` for any caller that is not a superadmin — the UPDATE
+    reports `rowcount=1` and the value does not change. Three probe runs
+    produced confident, wrong "LEAK" readings before this was spotted. Set
+    the columns with the guards disabled inside the rolled-back transaction,
+    and always print the row state you actually achieved next to the result.
+  - `CarForm.jsx:2130` copy updated: the 42501 toast said "isn't fully
+    activated yet. Refresh and try again", advice aimed at exactly the
+    sellers who no longer hit it. It now names suspension/decline, which is
+    all that can reach it.
+  - NOT verified by a build: `npm ci` cannot complete in this session
+    (`cdn.sheetjs.com` is blocked by the proxy, 403), so eslint and the
+    production build did not run. The JS change is one string literal plus a
+    comment inside an existing branch.
+
+- [ ] ~~LITE-GATE-1 original finding, kept for the reasoning:~~ **Lite's
+  "can't list until approved" gate is enforced in the DATABASE, not the UI.**
+  `openAddListing()` (`SalesmanLite.jsx:850-857`) has no approval check at
+  all; the real block is RLS policy `salesman_inserts_own_listings`
+  (`supabase/migrations/20260426_enforce_salesman_lite_suspension.sql:38-40`),
+  `WITH CHECK (dealer_id = auth.uid() AND is_active_salesman())` —
+  `is_active_salesman()` reads `profiles.is_active`, which starts `false`
+  for every new signup until an admin approves them. The insert is rejected
+  with a toast in `CarForm.jsx:2130`. Removing this is a migration, not a
+  component change, and `AccountReviewBanner.jsx:6-9` ALREADY claims a
+  pending seller can list while under review — the banner's own copy is
+  currently false. Decide: loosen the RLS check (e.g. allow the insert but
+  keep the listing unpublished/hidden from the marketplace until approved),
+  or drop the gate outright and let the review queue catch bad listings
+  after the fact. Needs the owner's call on which failure mode is
+  acceptable before writing the migration.
+
+- [x] **PREM-MINI-1 DONE 2026-09-12 — the page renders for a seller awaiting
+  review, with an owner-only "finish your page" note.** Migration
+  `20260912c_minipage_visible_while_pending.sql` + `SalesmanProfilePage.jsx`.
+  - **The root cause was worse than "hasn't finished onboarding": NO seller
+    could ever activate themselves.** `SalesmanOnboarding.activate()`
+    (`:519-536`) writes `is_active: true`, and the BEFORE trigger
+    `prevent_profile_privilege_escalation()` reverts exactly that transition
+    (`IF NEW.is_active = true AND OLD.is_active = false THEN NEW.is_active
+    := false`) for every caller that is not a superadmin. Probed live: the
+    seller's own write returns `rowcount=1` and the value does not change.
+    So `decide_user_approval()` is the ONLY thing that can flip it, and
+    EVERY new seller's mini page 404'd until the owner approved them by
+    hand. Combined with LITE-GATE-1 they could neither list a car nor have a
+    page — a signup could do nothing at all until a human intervened.
+  - **That `is_active: true` line in `activate()` is dead code that reads as
+    working.** Deliberately NOT removed here (onboarding is its own
+    concern), but it should go or be made honest — see PREM-MINI-2 below.
+  - Fix widens `get_salesman_by_slug` by ONE case rather than dropping the
+    check, same reasoning as LITE-GATE-1: `is_active = true OR
+    approval_status = 'pending'`, with `suspended_at` / `account_status` /
+    `deleted_at` re-asserted. The re-assertion is load-bearing — a seller
+    suspended BEFORE ever being approved still has `approval_status =
+    'pending'`, so the approval clause alone would have un-hidden them.
+  - `CREATE OR REPLACE`, not DROP + CREATE: the return type is unchanged so
+    the anon/authenticated/service_role grants survive untouched (verified
+    with `has_function_privilege`, not by reading the migration back). One
+    signature, no overload.
+  - Probed live as `anon`, six states, each with the row state asserted:
+    pending -> 1 row (the fix); pending+suspended, rejected, deleted,
+    approved+suspended -> 0 rows; approved+active -> 1 row (unchanged).
+  - **Cars are unaffected in both directions.** `public_car_listings` filters
+    on `is_active` independently, so a pending seller's page renders with
+    zero listings until approval — the shell, exactly as asked.
+  - Owner-only note (`SalesmanProfilePage.jsx`): renders only when the
+    viewer's own id matches the profile id, lists what is missing (car,
+    photo, banner, bio — ordered by what actually earns a buyer) and links
+    to that tab in whichever panel their role resolves to. It waits for
+    `viewerHome` rather than guessing, so a Premium seller is never sent to
+    the Lite panel. A buyer never sees it.
+  - NOT verified by a build (`npm ci` still blocked by `cdn.sheetjs.com`,
+    403). Both changed files syntax-checked with esbuild. NOT eyeballed in a
+    browser.
+  - **Decision to revisit if you disagree:** a pending seller's page is now
+    public, not owner-only. Their name/photo/bio are visible with no cars
+    before you have approved them, which is a mild "look, I'm on XDrive"
+    laundering vector. Owner-only would also have satisfied the ask. One
+    clause in the RPC if you want it tightened.
+
+- [ ] **PREM-MINI-2: `SalesmanOnboarding.activate()` writes `is_active: true`
+  and the database throws it away.** Found while doing PREM-MINI-1 and proven
+  live (see above). The line reads as though a finished onboarding activates
+  the account; it never has. Either drop it, or move activation into a
+  SECURITY DEFINER function if self-activation is ever meant to be a thing.
+  Leaving it is how the next person concludes activation "should" work and
+  builds on a no-op.
+
+- [ ] ~~PREM-MINI-1 original finding, kept for the reasoning:~~ **a Premium
+  mini page shows "Agent not found" for ANY account that hasn't finished the
+  full onboarding wizard — not just empty ones.** `get_salesman_by_slug`
+  (`20260815b_block_suspended_deleted_from_marketplace.sql:42-45`) filters
+  `is_active = true`; every new signup starts `is_active = false`
+  (`handle_new_user`, `20260422_add_plan_column_to_profiles.sql:37-44`)
+  until the LAST step of `SalesmanOnboarding.activate()`
+  (`SalesmanOnboarding.jsx:519-536`) flips it. Anyone who hasn't reached
+  that exact final write — abandoned a step, a failed upsert, shared their
+  link mid-onboarding — gets "doesn't exist," not an empty shell.
+  `SalesmanProfilePage.jsx:120,232-237` never checks listings/photos; it
+  never gets that far. Two-part fix: (1) let the page render on
+  `is_active=false` too, gated only on `role='salesman' AND slug IS NOT
+  NULL`, so the empty shell the owner wants ("atleast the shells are there")
+  actually shows; (2) once it renders, add the nudge copy the owner
+  described ("your mini page is empty, list some cars, add a profile
+  picture and a banner") — visible only to the account's OWNER viewing
+  their own page, never to a public visitor.
+
+- [x] **PUSH-PROMPT-1 DONE 2026-09-12 — and the measurement found the real
+  reason the owner sees no notifications.** `PushPromptStrip` now also mounts
+  on the Lite panel, the Premium panel and the platform console home.
+  - **Push is NOT broken. `push_subscriptions` live: 11 rows, 8 users, one
+    registered the same day.** VAPID is configured and devices register
+    fine, so nothing here was a plumbing bug.
+  - **The devices are all SELLERS. `superadmin` has ZERO, `dealer` zero,
+    `owner` zero** (salesman_full 5, salesman_lite 2). So every
+    `notify_ops()` alert — new signup, listing awaiting review, KYC
+    submitted (including the PUSH-5 fix shipped the day before), error
+    spikes — was being raised correctly and delivered to nobody, because the
+    owner's own account has never registered a device. That is the whole
+    "the notification still isnt up" report. Nothing needed fixing in the
+    sender; the receiver was never signed up.
+  - Why it stayed that way: the ONLY route to registering a device was
+    `PushToggle`, which lives in Settings on the panels and in Safety >
+    Alerts in the console. `AdminPage.jsx:311` already had a comment
+    predicting exactly this ("...would stay unreachable until they happened
+    to open Security > Alerts"). `push_register_device` cannot be called
+    automatically — the browser requires a user gesture — so a prompt
+    somewhere visible is the only possible fix.
+  - Mounted in three places, all reusing the ONE component rather than a
+    second implementation: Lite (after the account banners), Premium (inside
+    the content wrapper, not beside the sidebar — that container is a flex
+    ROW on desktop), and the console's Home tab. All three sit OUTSIDE the
+    tab switch so one dismissal holds for the visit, and all three stop
+    rendering for good once `subscribed` is true.
+  - Suppressed on the `chat` tab in both panels: `SellerInbox` mounts its
+    own copy above the thread list, and two identical asks on one screen is
+    worse than none.
+  - Three small extensions to the shared component, no fork: a `seller_home`
+    and an `admin` copy set (a dashboard ask names enquiries and bookings,
+    not just chat replies), a `boxed` layout (its single top border reads as
+    an unfinished edge when it is not dividing two panes), and optional
+    `client` / `userId` props. The last is required, not cosmetic: the
+    console runs on the isolated `platformClient` session and
+    `push_subscriptions` is RLS'd on `auth.uid() = user_id`, so saving the
+    admin's device through the main client would file it under whichever
+    dealer is signed in on that browser — the same rule `PushToggle` and
+    `usePushNotifications` already follow.
+  - `PANEL_THEME` is exported from the strip so the two panels and the
+    console share one palette instead of three copies. It reads
+    `theme/tokens`, and deliberately does NOT import `THEMES` from
+    `ChatThread` — Premium lazy-loads the chat bundle and a static import
+    there would have pulled it back into the first paint.
+  - NOT verified by a build (`npm ci` blocked, `cdn.sheetjs.com` 403); all
+    four changed files syntax-checked with esbuild. NOT eyeballed in a
+    browser, and the actual permission prompt is untested from this session.
+  - **Owner action still required, and no code can do it for you:** open the
+    console (or either panel) and press Turn on. Until a device registers,
+    ops alerts still have nowhere to land.
+
+- [ ] ~~PUSH-PROMPT-1 original finding, kept for the reasoning:~~ **push
+  notifications are opt-in by accident, for both Lite and Premium.** `push_register_device` only fires from a manual click
+  inside `usePushNotifications.enable()` (a user gesture is required by the
+  browser, so nothing can auto-register on signup). `PushToggle` is buried
+  in Settings (`SalesmanLite.jsx:6879`, `SalesmanPremium.jsx:5129`). The one
+  proactive nudge that exists, `PushPromptStrip`
+  (`src/components/chat/PushPromptStrip.jsx`), only mounts inside chat
+  (`SellerInbox.jsx:185`, `ChatThread.jsx:398`) — a brand-new seller who
+  hasn't opened Settings AND hasn't gotten a chat message never sees a push
+  prompt at all. This is almost certainly the whole "notifications still
+  isn't up" complaint. Fix: a dashboard-level prompt strip (same pattern as
+  `PushPromptStrip`, reused or adapted) that fires once, early, for both
+  Lite and Premium, independent of chat.
+
+- [x] **PWA-2 DONE 2026-09-12 — no defect in the install logic itself, but
+  two real gaps found, one of which explains the missing ops pushes.**
+  Checked first, rather than "fixing" a prompt that works: the manifest is
+  complete and correct (`vite.config.js:35` — name, short_name,
+  `display: standalone`, `start_url`, `id`, `scope`, 192 + 512 icons with a
+  plain-`any` 192), so Android's installability criteria are met and
+  `beforeinstallprompt` has no reason not to fire. The module-scope listener
+  (`installPrompt.js:47`) already handles the event arriving before React
+  mounts. Nothing there needed changing.
+  - **REAL FIX 1 — `/platform` was excluded from the install prompt, and
+    that closed a loop.** `APP_PREFIXES` (`InstallPrompt.jsx:32`) left the
+    console out as "the isolated superadmin console", which confuses AUTH
+    isolation with whether the person wants the app on their phone. iOS
+    permits web push ONLY to an installed PWA, so an owner running the
+    console from an iPhone was never invited to install, could therefore
+    never grant push, and every `notify_ops()` alert had nowhere to land —
+    the same zero-devices measurement as PUSH-PROMPT-1. The admin is the
+    user most dependent on alerts arriving while the app is shut. Added.
+  - **REAL FIX 2 — dismissal hid the prompt for 30 days with no way back.**
+    `snoozeInstallPrompt()` writes `xdrive_install_snooze` to that device's
+    localStorage for 30 days, which is unreachable from a phone without a
+    debugger. So "it doesn't show on mobile" and "I tapped Not now once,
+    weeks ago" are indistinguishable — to the owner AND to anyone testing a
+    fix. `?install=1` now lifts the snooze (only the snooze: an installed
+    app and an in-app webview still correctly get nothing).
+    **This is most likely why the owner's phone showed nothing** — add
+    `?install=1` to the URL to re-test.
+  - **NOT changed, all correct as written:** `isInAppBrowser()` excludes
+    Facebook/Instagram/TikTok/Line/Android `wv` webviews, which genuinely
+    cannot install anything; `isIOSSafari()` excludes Chrome/Firefox/Edge on
+    iOS, which create a bookmark rather than an install. If the phone test
+    was a link opened from Instagram or WhatsApp, or from Chrome on iOS,
+    both silences are the right behaviour and not a bug.
+  - Syntax-checked with esbuild; no build (`npm ci` blocked). NOT tested on
+    a real phone from this session — that one needs the owner.
+
+- [ ] ~~PWA-2 original finding, kept for the reasoning:~~ **install prompt
+  likely excludes real mobile traffic via in-app browsers, not mobile
+  itself.** `isInAppBrowser()`
+  (`src/utils/installPrompt.js:142-145`) blocks Facebook/Instagram/Line/
+  WeChat/TikTok/generic Android `wv` webviews from ever seeing the prompt —
+  no such exclusion exists on desktop, and no `matchMedia`/viewport check
+  excludes mobile outright. Before changing anything: confirm which browser
+  the phone test actually used — a link opened from Instagram/WhatsApp IS
+  an in-app webview and the exclusion there is correct (a PWA cannot
+  install from inside one). If the test really was mobile Chrome/Safari
+  directly, this needs a live repro, not a guess.
+
+### Large builds — real effort, not quick fixes
+
+- [~] **PREM-I18N-1 PHASE 1 DONE 2026-09-12 — Premium now HAS a language
+  switcher and a translated nav. The body of the panel is still English
+  (PREM-I18N-2).** Deliberately staged: wrapping ~7,500 lines in one pass is
+  not reviewable and is exactly how a working file gets broken.
+  - Measured before and after, precisely (word-boundary `t("` count, not a
+    naive grep — `at(`, `split(`, `startsWith(` all false-positive):
+    **Lite 580 call sites against 581 keys — effectively fully translated.
+    Premium was 0. It is now 12, against 14 keys.** The three lazy sub-tab
+    files (`DashboardTab`, `AnalyticsTab`, `ListingsTab`) and `shared.jsx`
+    are still 0.
+  - **So the owner's "some sections are still English" is almost entirely
+    Premium, and it was not a gap in the translations — it was the absence
+    of any i18n at all.** There was no `useTranslation`, no switcher, and no
+    `salesmanPremium` namespace to translate INTO, so a seller who chose
+    Malay in Lite walked into Premium and saw English with no way to change
+    it.
+  - Shipped: `useTranslation` wired into `SalesmanPremium`, a
+    `salesmanPremium` namespace in BOTH `en.json` and `ms.json` (additive —
+    20 lines each, no reformat of the existing 960 keys), all 10 nav labels
+    translated, and a Language section in Settings (Account group) using the
+    same `i18n` instance as Lite, so the choice follows the seller between
+    panels instead of being per-panel.
+  - **A second false positive corrected: `ms.json` is NOT missing 10 keys.**
+    The audit flagged 10 `*_one` plural variants present in `en` and absent
+    in `ms`. Malay has a single plural category — verified,
+    `new Intl.PluralRules('ms').resolvedOptions().pluralCategories` is
+    `['other']` against `['one','other']` for English — so the `_one` forms
+    are correctly absent and every one of them has its `_other` counterpart
+    present. Adding them would create keys i18next can never select. **Do
+    not "fix" this.** Lite's translation coverage has no gap at all.
+  - Syntax-checked (esbuild) and both locale files re-parsed as valid JSON.
+    No build (`npm ci` blocked). NOT eyeballed in a browser.
+
+- [ ] **PREM-I18N-2: translate Premium's body copy — the actual bulk of the
+  job.** Phase 1 above gave Premium the wiring, the namespace and the
+  switcher; the panel's own strings are still hardcoded English at 12 of
+  roughly 600 call sites' worth of copy. Work it per tab so each pass is
+  reviewable, mirroring how `salesmanLite` is structured (581 keys across
+  33 sections): `SalesmanPremium.jsx` body copy first, then
+  `salesmanPremium/DashboardTab.jsx`, `AnalyticsTab.jsx`, `ListingsTab.jsx`
+  and `shared.jsx`, which are at ZERO. Two specifics carried over:
+  `SETTINGS_GROUPS` (`SalesmanPremium.jsx:200`) is module scope, so
+  translating its labels means making it a function of `t`; and every new
+  key needs its `ms` counterpart added in the same pass, or the switcher
+  silently falls back to English for it. No `useTranslation`/`i18n` import anywhere in
+  the 7,457-line file (Lite has it fully wired,
+  `SalesmanLite.jsx:6,477,542,629,679,764`, plus a language switcher at
+  `:7030,7916`). `src/i18n/locales/en.json` has no `salesmanPremium`
+  namespace at all — the keys don't exist to translate into. Sample
+  hardcoded strings: `"Leads"` (`:2505`), `"Settings"` (`:2540`),
+  `"Customers"` (`:5912`), `"Pick a stage"` (`:3147`), `"Link a car"`
+  (`:3469`), `"Remind me on"` (`:3567`), `"Objection Scripts"` (`:3900`),
+  and dozens more. This is a from-scratch build (new locale namespace +
+  every string wrapped + a language switcher added to Premium's Settings),
+  not a revision. Lite's translations are essentially complete (960 vs 950
+  keys between en/ms, the only gap being 10 plural-form `_one` variants) —
+  the "still English in some sections" complaint is almost entirely
+  Premium.
+
+- [x] **LITE-SETTINGS-1 DONE 2026-09-12 — Lite's Settings is five sections
+  with a rail, not one 570-line scroll.** Sections, by what a seller is
+  actually doing: **Profile** (avatar, cover, profile basics) · **Contact &
+  Location** (address/IC card incl. bio, social links) · **Selling**
+  (viewing hours, selling terms) · **Alerts** (push, Telegram) ·
+  **Account** (ID verification, language, danger zone).
+  - Desktop gets a 190px sticky rail; mobile gets a horizontal scrolling
+    pill row — the house rule for this layout, not a drill-in menu, so there
+    is never a state where the seller is looking at nothing.
+    `LITE_SETTINGS_NAV` (`SalesmanLite.jsx:761`) is the one list driving it,
+    mirroring Premium's `SETTINGS_GROUPS`. Labels translated, keys added to
+    both locales.
+  - `saveBtn` is lifted out and rendered by the three sections that own
+    profile fields. The form state already lived on the page, not in the
+    section, so switching section never drops what was typed and saving from
+    any of them persists all of it — same contract as Premium.
+  - **Telegram MOVED from "Profile basics" to Alerts.** It was three cards
+    away from the push toggle while answering the same question ("where do
+    alerts reach me"); Premium already pairs them. This is the mis-grouping
+    the split was for.
+  - **Two deep links would have broken and were caught before shipping** —
+    this is the part worth remembering, because nothing about them is
+    visible in the settings file itself. Both jump into Settings expecting a
+    field to be on screen, which stops being true the moment sections are
+    tabbed: `onEditBio` (`:3719`, the StarterTasks "add a bio" nudge) scrolls
+    to `#lite-bio-field`, which now lives in **contact**; the Telegram setup
+    modal (`:8998`) sends the seller to the Telegram field, now in
+    **alerts**. Both now select their section before switching tab. Any
+    future deep link into Settings has to do the same.
+  - Checked for the same failure in the product tour: every `data-tour-id`
+    in the file is on a nav/sub-tab element or the always-visible Settings
+    header, so no tour step rings something now hidden.
+  - **How it was done, given no build available:** every block was moved
+    VERBATIM by line range and reassembled — nothing was retyped or edited
+    inside a section — then verified three ways: esbuild parses the file,
+    all 13 section markers still appear exactly once, and all 371 non-blank
+    lines of the original settings region are still present (the single
+    intentional exception is the old fixed `maxWidth: 560` wrapper, replaced
+    by the responsive shell). `saveBtn`: 1 definition, 3 usages.
+  - NOT eyeballed in a browser and NOT built (`npm ci` blocked by
+    `cdn.sheetjs.com`, 403). The structure is verified; the LOOK is not.
+    Worth one pass on staging at 375px before trusting the spacing — the
+    moved blocks keep their own `marginBottom: 24` inside a container that
+    also sets `gap: 16`, so a couple of seams may read loose.
+
+- [ ] ~~LITE-SETTINGS-1 original finding, kept for the reasoning:~~ **split
+  Lite's Settings tab into one tab per subject, mirroring Premium's
+  already-built pattern.** `renderSettings`
+  (`SalesmanLite.jsx:6526-7098`) is one 570-line function with no sub-nav,
+  13 subjects in a single scroll: avatar (`:6731`), cover photo (`:6765`),
+  viewing hours (`:6783`), ID verification (`:6789`), profile basics
+  (`:6800`), push (`:6877`), selling terms (`:6881`), location/IC
+  (`:6928`), bio (`:6952`), social links (`:6994`), language (`:7022`),
+  danger zone (`:7068`). Premium already solved exactly this shape
+  (`SETTINGS_GROUPS`, `SalesmanPremium.jsx:183` — rail nav on desktop,
+  drill-in menu on mobile, per UX-1 above) — reuse that pattern rather than
+  inventing a second one for Lite.
+
+- [x] **PREM-LEADS-ALERTS-1 DONE 2026-09-12 — one trigger, and the audit's
+  own claim was half wrong.** Migration `20260912d_lead_soft_delete_fanout.sql`,
+  applied live, backfilled and probed.
+  - **Why anything leaked: a lead is SOFT-deleted.** `handleDeleteLead`
+    (`SalesmanPremium.jsx:1671`) and `useLeads.js:98` only set
+    `is_deleted = true`. Every foreign key into `leads` is written for a HARD
+    delete — `chat_threads` SET NULL, `scheduled_nudges` CASCADE and 15 more —
+    so not one of them ever fires. The schema looks like it cleans up after
+    itself and never does.
+  - **CORRECTION to the audit: there were never any orphaned
+    `salesman_notifications`.** Checked all 158 live rows — `ref_id` never
+    points at a lead in ANY of the seven types (`new_booking`,
+    `chat_message`, `broadcast`, `new_enquiry`, `listing_approved`,
+    `platform_broadcast`, `listing_rejected`); they reference bookings, chat
+    threads and listings. The one type that could is `nudge_due`, and it
+    references the NUDGE, not the lead. Zero of those exist because no nudge
+    has ever fired in production.
+  - **The real orphan was the chat thread, and it was measurable: 2 threads
+    still carrying a deleted lead's id.** `useChat.js:133` embeds
+    `lead:lead_id(id, stage)` with no is_deleted filter, so the thread kept
+    rendering the dead lead's stage pill. That is the "it still exists
+    somewhere else" in the report.
+  - **NOT fixed by filtering the embed, deliberately.** `leads` RLS returns
+    only rows where `salesman_id = auth.uid()`, so `SellerInbox.jsx:201`
+    separates "not yours to see" from "no lead" on `lead_id` set + `lead`
+    null. Filtering a deleted lead out of the embed lands the thread in the
+    "it's in the dealer pool, not yours" state — telling a rep a real buyer
+    belongs to someone else, the one thing that file says never to do.
+    Clearing the link makes both sides honest.
+  - Nudges were already handled, but only by the 5-minute `fire_due_nudges()`
+    sweep, so a rep could delete a lead and keep being nudged about it for
+    another five minutes. The trigger uses the SAME dismissal statement as
+    the cron (`status='dismissed', actioned_at=now()`) so the two can never
+    drift on what a dismissed nudge looks like.
+  - Deliberately untouched: `appointments.lead_id` and
+    `whatsapp_enquiries.lead_id`. A booked viewing and a received enquiry
+    are events that really happened; deciding the pipeline card is dead does
+    not un-book the appointment.
+  - Probed live in a rolled-back transaction: thread link cleared, open
+    nudge dismissed (1 dismissed / 0 open), and — the assertion that
+    matters — the conversation and the thread row BOTH survive. Backfill
+    verified: 0 orphans left, and the 10 threads whose lead is alive were
+    untouched, so it did not over-clear. One trigger, one function
+    signature, enabled.
+  - There is no un-delete path anywhere in the app (every `is_deleted: false`
+    is on an INSERT), so clearing the link is not destroying a recoverable
+    state. If an undo is ever added, this trigger has to be revisited.
+
+- [ ] ~~PREM-LEADS-ALERTS-1 original finding, kept for the reasoning:~~
+  **deleting a lead is a soft flag, and nothing downstream is told.** `handleDeleteLead` (`SalesmanPremium.jsx:1671-1682`)
+  and `useLeads.js:98-105` only set `leads.is_deleted = true` — the row and
+  everything pointing at it stays. Three real orphans: (1)
+  `salesman_notifications` rows already inserted for that lead are NEVER
+  cleaned, ever; (2) `scheduled_nudges` only gets dismissed by the
+  `fire_due_nudges()` cron sweep, up to ~5 minutes later
+  (`20260823_raptor_scheduled_nudges.sql:63-78`); (3) `chat_threads.lead_id`
+  is never cleared, so a deleted lead's thread still points at it
+  indefinitely. The pipeline UI itself is fine (`staleLeads` recomputes
+  immediately client-side) — the leak is entirely in already-fired
+  notifications and the chat linkage. Fix needs one cleanup path (ideally a
+  DB trigger on `is_deleted` flipping true — same "one trigger does
+  everything" rule as the won-lead trigger) rather than three per-surface
+  patches.
+
+### Contained fixes
+
+- [x] **ONBOARD-ENTER-1 DONE 2026-09-12.** `src/utils/onboardingKeys.js`
+  (`advanceOnEnter`), attached to the per-step container `.eo-form` in BOTH
+  wizards — it is keyed on `step`, so only one step's markup is ever mounted
+  and the handler can't reach another step's button.
+  - **It clicks the step's OWN button instead of calling its advance
+    function**, which is the part worth keeping: every CONTINUE carries its
+    validation in a `disabled` prop (`!form.state`, `!pwValid`,
+    `!canSubContinue`…), and a disabled button ignores `.click()`. So Enter
+    inherits every rule for free and cannot drift from the button.
+    Duplicating those conditions is how the two would end up disagreeing.
+  - Targets `button.eo-btn:not([disabled])` — `eo-ghost` is BACK, which
+    Enter must never fire. Textareas keep Enter as a newline; checkboxes and
+    radios keep theirs, so the legal-consent gate is untouched.
+  - Worth knowing why it mattered on mobile: Enter is the phone keyboard's
+    "Go" key, so the most natural way to move through a signup was a no-op.
+
+- [ ] ~~ONBOARD-ENTER-1 original finding:~~ **Enter key does nothing in
+  either onboarding wizard.** Neither `DealerOnboarding.jsx` nor `SalesmanOnboarding.jsx` uses
+  a `<form>`/`onSubmit`, and no input has `onKeyDown` — zero matches in
+  both files. Step advance is pure button `onClick`
+  (`DealerOnboarding.jsx:690,724,756,784`;
+  `SalesmanOnboarding.jsx:846,894`). Fix: wrap each step in a `<form
+  onSubmit>` calling the same next-step handler, or add `onKeyDown`
+  checking `e.key === 'Enter'` on the step's inputs.
+
+- [x] **LITE-STARTER-1 DONE 2026-09-12 — three bugs, and the same three
+  existed in Premium.**
+  - **Position.** It was already below the account banners but buried inside
+    `renderDashboard` under the Monthly Goal and the highlighted-listing
+    card — several screens down on a phone. A setup checklist nobody scrolls
+    to is not a setup checklist. It is now the first thing in the dashboard
+    column.
+  - **The flash — this was the interesting one.** `loading` flips as soon as
+    the PROFILE resolves (`:1503`), while listings are a separate, later
+    fetch seeded from an empty cache (`:899`). So the card rendered with
+    `listingCount: 0` and told a fully set-up seller to add their first car,
+    for the fraction of a second before the real count arrived. That is
+    exactly the "it still appears for a second when I logged in, time and
+    time again" report. New `listingsLoaded` flag, set when the listings
+    promise settles, gates both the render and the all-done check — before
+    it resolves, "have they added a car" is simply unanswerable.
+  - **Dismissal never persisted.** `starterHidden` was `useState(false)`
+    with nothing written anywhere, so the card returned on every login no
+    matter what was finished or dismissed. Now written to
+    `profiles.starter_tasks.dismissed` via the existing `markStarterTask` —
+    the same place `minipage_visited` already lives, so no new column and no
+    second mechanism.
+  - **Finishing all three now retires it for good**, which is the other half
+    of the ask. The effect deliberately does NOT write back to local
+    `profile` state: doing so would unmount the card mid-session and the
+    seller would never see the "you're set up" state they just earned. It
+    stays for this visit, and is gone on the next load.
+  - **Fixed in Premium too, unasked.** `SalesmanPremium.jsx:496` had the
+    identical `useState(false)` with no persistence and the same
+    unguarded render (`DashboardTab.jsx:500`). Patching only Lite would have
+    left the shared component with two different behaviours — the exact
+    drift the house rules exist to prevent.
+  - Declaration order checked in both files (the dependency array is
+    evaluated during render, so `profile`/`myListings` must be declared
+    above the effect — they are: 261/337 in Premium, 797/899 in Lite).
+    esbuild parses all three files. NOT eyeballed in a browser.
+
+- [ ] ~~LITE-STARTER-1 original finding:~~ **the "get set up" checklist is
+  two bugs, not one.**
+  (1) Position: it IS already below the review banner
+  (`SalesmanLite.jsx:8520-8531` banner, then `renderDashboard` at `:8533`),
+  but it's buried mid-dashboard inside `renderDashboard` (`StarterTasks`,
+  `:3694-3708`), not pinned at the top like the owner wants. (2) Flash-then-
+  vanish: `loading=false` fires as soon as the profile resolves (`:1486`),
+  while `myListings` is a separate, later async fetch that seeds empty
+  (`:886`) — so `starterTaskState()`
+  (`src/components/onboarding/StarterTasks.jsx:37-41`) briefly reports
+  "listing not done" for a fully set-up seller until the listings query
+  lands. (3) Dismissal never persists: `starterHidden` is `useState(false)`
+  (`:1178`), set only via `onDismiss` (`:3706`) — nothing is written to the
+  profile or localStorage, so it reappears every login regardless of
+  completion. Fix: move the card above the dashboard body, gate its "done"
+  check on `!loading && listingsLoaded` instead of just `!loading`, and
+  persist "all three done" (or explicit dismissal) to the profile row so it
+  stops rendering once finished.
+
+- [x] **ADMIN-IC-BADGE-1 DONE 2026-09-12.** Blue "IC submitted" pill on the
+  account row (`AccountsTab.jsx:410`) and in the detail drawer's pill row,
+  from ONE condition (`icSubmitted`) so the two can't drift. No new query:
+  `ic_last4` and `kyc_submitted_at` were already on every row
+  (`AdminPage.jsx:506`) and were only being rendered as plain text deep in
+  the drawer, so an account waiting on an ID check looked identical to one
+  that had never submitted anything.
+  - Suppressed once `is_verified`, because the green "verified" pill beside
+    it then says strictly more and two pills about one fact is noise.
+  - Checked against live data before shipping, so it is a discriminating
+    signal rather than always-on: of 13 accounts, **4 would show the new
+    pill**, 3 are already verified, 6 have submitted nothing.
+
+- [ ] ~~ADMIN-IC-BADGE-1 original finding:~~ **admin account rows already
+  have the IC data, just never show it as a badge.** Accounts render as table rows in
+  `AccountsTab.jsx`, not cards — the row (`:398-428`) shows only a green
+  "verified" pill from `is_verified` (`:410`); the KYC fields
+  (`profiles.ic_last4`, `kyc_submitted_at`, already fetched in
+  `AdminPage.jsx:506`) are buried as plain text inside the detail drawer
+  (`AccountsTab.jsx:571,573`), not visible at a glance. Add a blue "IC
+  submitted" pill next to the existing verified pill at `:410`, driven by
+  `ic_last4 IS NOT NULL` or `kyc_submitted_at IS NOT NULL` — no new query
+  needed, the data is already in hand.
+
+- [~] **PREM-LISTINGS-2 MOSTLY DONE 2026-09-12 — three of the four parts
+  shipped; the pixel-level spacing pass still wants a browser.**
+  - **Edit in the detail popup — DONE, in BOTH panels.** Premium passed only
+    4 actions (Copy Link, WA Caption, AI Caption, Broadcast), so opening a
+    car to look at it and then wanting to change something meant closing the
+    popup and hunting for the card again. Added as the FIRST action — it is
+    the only one that changes the listing; the rest copy or announce it — and
+    it closes the popup BEFORE opening the edit sheet (overlay rule 3).
+    `SalesmanLite.jsx` had the identical gap and got the same action, since
+    the owner's rule ("every button on the card should appear in the detail
+    popup") is not Premium-specific.
+  - **Add-on marker — DONE, and deliberately INLINE.** Listings carrying
+    `included_services` (4 live) now show a small `Sparkles + count` pill
+    inside the existing meta row, with the service names as its tooltip. It
+    is in that row rather than on its own line precisely because of the
+    owner's rule: a card with add-ons must not be taller, nor push its own
+    text lower, than one without. As built it adds ZERO height.
+  - **Two real height inconsistencies fixed.** The status strip and the
+    "Live on XDrive" bar are mutually exclusive (one always renders) but used
+    different vertical padding — `5px 12px` vs `4px 14px` — so every card
+    differed by 2px depending on status, and the inset disagreed with the
+    content below it. Both are `5px 14px` now, matching the content padding.
+    The meta row also gained a `minHeight`: a listing with no
+    mileage/engine/transmission/colour collapsed that line to zero and
+    everything below it sat higher than on its neighbours.
+  - **Popup button clipping — a plausible cause fixed, NOT reproduced.** The
+    action column was `flex: 0 0 200px`, which cannot shrink, so it overflows
+    the dialog (and gets clipped by it) whenever the dialog is narrower than
+    left-pane + 200. Now `0 1 200px` with `minWidth: 0`, and the buttons
+    wrap instead of overflowing — the house rule for exactly this shape.
+    Mobile was already full-width, so that was never the failing case.
+  - **STILL OPEN — needs eyes on a real browser.** The remaining height
+    variance is structural: three blocks inside the card render conditionally
+    (listing-quality bar only under 90%, the CVR row, the photo nudge under
+    3 photos), so the middle of one card can sit lower than another's even
+    though the grid already equalises row height and pins the action bar with
+    `marginTop: auto`. Making those reserve space unconditionally is the fix,
+    but it trades blank space for alignment and that is a judgement call that
+    needs to be SEEN at 375px and on desktop. Not done blind.
+
+- [ ] ~~PREM-LISTINGS-2 original finding:~~ **card spacing + missing add-on
+  icon + no Edit in detail popup.** Three separate small fixes in
+  `src/pages/salesmanPremium/ListingsTab.jsx` /
+  `src/components/CarDetailPopup.jsx`: (1) no add-on badge exists on the
+  listing card at all today (the "add-on" the owner means is likely
+  `deal_products`/`included_services` — needs a decision on which one,
+  then a small badge added consistently); (2) card height varies listing-
+  to-listing because five blocks render conditionally (status strip, "Live
+  on XDrive" bar, completeness bar under 90%, CVR row, photo nudge under 3
+  photos — `ListingsTab.jsx:401-586`), so cards with fewer active blocks
+  sit shorter than ones with more — the "no card taller, no text lower"
+  complaint; (3) `CarDetailPopup` only receives 4 actions from Premium —
+  Copy Link, WA Caption, AI Caption, Broadcast
+  (`SalesmanPremium.jsx:6754-6783`) — Edit is genuinely missing there, it
+  only exists on the card (`ListingsTab.jsx:596-625`). Fix (3) is a
+  one-line addition to the actions array; (1) and (2) need the add-on
+  decision first, then reserving fixed slots for the optional blocks so
+  every card is the same height whether or not each block renders.
+
+- [x] **PREM-PIPELINE-LABEL-1 DONE 2026-09-12 — the label now follows the
+  data, in all FIVE places it was wrong.** The card said "Last contact:
+  {timeAgo(lead.updated_at)}" directly above a badge reading
+  `last_contacted_at`, so one card could say "Last contact: 2d ago" AND
+  "Never contacted · 4d" at once. Both were technically true and together
+  they were nonsense: the lead was EDITED two days ago and nobody had ever
+  called the buyer.
+  - Fixed by making the LABEL honest rather than moving the badge — the
+    badge is the signal that must not drift (see PREM-4). New shared helper
+    `lastTouch(lead)` in `src/lib/leadsHelpers.js`, beside `followUpStatus`
+    so the two can't diverge: it says "Last contact" only when
+    `last_contacted_at` exists, and "Last activity" otherwise.
+  - It was not one site, it was five, across three panels — Premium card +
+    detail row, Lite card, Salesmanpanel card + detail. All five now read
+    the helper, so the next change is one function.
+
+- [ ] ~~PREM-PIPELINE-LABEL-1 original finding:~~ **two different timestamps
+  with a misleading label.** "Last contact" (`SalesmanPremium.jsx:2818-2820`)
+  reads `lead.updated_at`, which bumps on ANY edit — a note, a stage
+  change, an AI re-score. "Never contacted · 4d" comes from
+  `followUpStatus()` (`src/lib/leadsHelpers.js:240,246`), which
+  deliberately reads `last_contacted_at`, NOT `updated_at` (comment at
+  `leadsHelpers.js:225-226` explains why — this was the PREM-4 fix already
+  in this file). So the card can correctly show both at once: someone
+  edited the lead 2 days ago, but nobody actually contacted the buyer in 4
+  days. Fix is a rename, not a data fix: relabel line 2819 to "Last
+  activity" so it stops reading as a contact claim, or drop it from cards
+  where the follow-up badge already covers the real signal.
+
+- [x] **PREM-SIDEBAR-ICON-1 DONE 2026-09-12.** Both nav rows rendered
+  `MessageSquare`, so they were distinguishable only by their text. The tour
+  copy in the same file had always drawn the distinction the nav never
+  applied — `MessageSquare` for Inbox (`:5998`), `MessageCircle` for Chat
+  (`:6003`) — so that is what was applied, rather than picking a third icon.
+
+- [ ] ~~PREM-SIDEBAR-ICON-1 original finding:~~ **Chat and Inbox use the
+  identical icon.** Both
+  nav entries render `<MessageSquare>` (`SalesmanPremium.jsx:2498-2501` and
+  `:2509-2513`). The onboarding tour copy already treats them as visually
+  distinct — `MessageSquare` for Inbox, `MessageCircle` for Chat
+  (`:5946,5951`) — so the fix is applying that same distinction to the
+  actual nav array.
+
+- [x] **PREM-TODAY-REMOVE-1 DONE 2026-09-12 — section gone, and the state
+  behind it went with it.** Removed from
+  `salesmanPremium/DashboardTab.jsx` along with everything it was the only
+  consumer of: the `aiFollowups` / `followupsLoading` state and the
+  `fetchFollowupSuggestions` call in `SalesmanPremium.jsx`, the props
+  wiring, and the now-unused `UpgradeBanner` / `AiLoadingState` imports.
+  Leaving those behind is the "dead code that reads as working" trap
+  (cf. PREM-MINI-2) — the git history has the implementation when the
+  Anthropic credits are funded and it gets rebuilt.
+  - **Scoped to Premium on purpose.** `Salesmanpanel.jsx` (the panel for a
+    salesman under a dealer) has its OWN copy at `:2451` and keeps it — the
+    owner's request was in the Premium audit. `SalesmanPanelHelp.jsx:52`
+    still documents it and is rendered only by that panel, so the help text
+    stays accurate. Say the word if it should go there too.
+
+- [ ] ~~PREM-TODAY-REMOVE-1 original finding:~~ **remove "What to do today,"
+  rebuild later once the AI API is paid for.** `src/pages/salesmanPremium/DashboardTab.jsx:
+  290-330+` — the developer's own comment there already flags it as
+  removable ("Flagging this in case you want it gone too"). Coupled state
+  to remove alongside it: `aiFollowups`/`followupsLoading`
+  (`SalesmanPremium.jsx:688-689`) and `fetchFollowupSuggestions` (`:2390`),
+  passed into `DashboardTab` at `:6604-6620` — pulling the section without
+  removing these leaves dead code, per the original comment's own warning.
+
+### Audited, no action needed
+- [x] **VERIFY-BADGE-AUDIT: "Get Verified" → admin review queue works
+  end-to-end, confirmed 2026-09-12.** `submit_kyc`
+  (`VerifyIdentity.jsx:140`) → `kyc_documents` + `profiles.kyc_submitted_at`
+  → `get_pending_kyc()` → `UserApprovalsTab.jsx:90,97,125` with
+  `kindFilter="kyc"` matched from `AdminPage.jsx:1310`. No broken hop
+  found. (The push notification on submission was already fixed separately
+  as PUSH-5, above.)
+
 ## Reported by the owner — 2026-09-06 batch
 
 Eight items came in together. Two are fixed (below, struck through); the rest
@@ -435,6 +1127,47 @@ login page. What the code actually looks like today:
     apart — compare against Vercel's `VITE_TURNSTILE_SITE_KEY`; if it matches,
     the wrong one was pasted.
   - STILL TO TEST: guest chat from a logged-out browser, and a magic link.
+
+- [x] **AUTH-9 DONE 2026-09-13: you cannot sign in on a Vercel PREVIEW URL, and
+  the error blamed an ad blocker for it.** Owner hit this on
+  `shift-ley4rk8vg-shift-os.vercel.app` and read "Couldn't verify you're human
+  — if you use an ad blocker, allow challenges.cloudflare.com". There was no ad
+  blocker. Cloudflare returns error **110200 = this hostname is not on the
+  widget's domain list**, the widget produces no token, Supabase (captcha
+  toggle ON, project-wide) rejects the call, and `isCaptchaError` painted the
+  one generic message over it. Refreshing can never fix it.
+  - WHY IT MATTERS BEYOND ONE LOGIN: the deploy pipeline in CLAUDE.md is
+    "staging first, confirm on the Vercel preview". Every authenticated surface
+    was unreviewable on staging — nobody could get past the login screen.
+  - CODE FIX (`src/hooks/useAuthCaptcha.js`): the widget's `error-callback`
+    already knew the code and only `console.warn`'d it, which is invisible on a
+    phone. It now keeps it in `lastErrorCode`, and `captchaErrorMessage()`
+    names the three configuration failures instead of guessing: no site key in
+    this build, `110200` (hostname not listed), `1101xx` (site key invalid).
+    Anything else keeps the original ad-blocker advice — that is the only case
+    where it is true. Call sites: `LoginPage:369`, `AdminPage:435`,
+    `BuyerAuthPage:151`. `CAPTCHA_ERROR_MESSAGE` is still exported as the
+    fallback; do not point a call site back at it.
+  - OWNER FIX, one time, in Cloudflare → Turnstile → the widget → Domains. Add
+    the two STABLE Vercel branch aliases (verified live via the Vercel API):
+      `shift-os-git-staging-shift-os.vercel.app`
+      `shift-os-git-main-shift-os.vercel.app`
+    Turnstile domain entries cover subdomains, which is why `xdrive.my` already
+    covers every `<sub>.xdrive.my` dealer storefront and prod was never
+    affected.
+  - **Then always review staging on the BRANCH ALIAS, never the hash URL.**
+    `shift-ley4rk8vg-…` changes on every single deploy, so allowlisting one is
+    worthless a push later. `shift-os-git-staging-shift-os.vercel.app` always
+    points at the newest staging deployment.
+  - A separate Cloudflare "always passes" test key for previews does NOT work:
+    Supabase verifies the token server-side with the real secret, so a dummy
+    token is rejected there. The domain list is the only lever.
+  - NOT verified from this session: whether `VITE_TURNSTILE_SITE_KEY` is scoped
+    to Preview as well as Production on Vercel. Outbound fetches to
+    `*.vercel.app` are blocked by the web session's network policy, so the
+    built preview bundle could not be grepped for the key. If the new message
+    reads "this build has no Turnstile site key", that is the answer and the
+    fix is the env var's environment scope, not Cloudflare.
 
 - [x] **AUTH-8 DONE 2026-09-07 (code): password reset is a 6-DIGIT CODE, not a
   link. NEEDS ONE OWNER STEP BEFORE IT WORKS — see below.**

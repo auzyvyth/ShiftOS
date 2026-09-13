@@ -5,8 +5,9 @@ import React, { useEffect, useState } from "react";
 // used once, to adopt an existing superadmin session handed off from the public
 // /login redirect (see checkAuth).
 import { platformClient as supabase } from "../lib/platformClient";
+import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
-import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
@@ -431,7 +432,7 @@ export default function AdminPage() {
       // isInvalidCreds test below spends one of this account's three attempts
       // on a password that was never actually judged.
       if (isCaptchaError(error)) {
-        setAuthError(CAPTCHA_ERROR_MESSAGE);
+        setAuthError(captchaErrorMessage());
         setLoginBusy(false);
         return;
       }
@@ -1245,7 +1246,24 @@ export default function AdminPage() {
             <ReportsTab />
           ) : activeTab === "home" ? (
             /* ── HOME ── the console opens on the work, not a directory (P3) */
-            <HomeTab />
+            <>
+              {/* The only way to register this device was Safety > Alerts, and
+                  the superadmin account had no push subscription at all — so
+                  notify_ops() was firing signups, pending listings, KYC
+                  submissions and error spikes at a user with nowhere to send
+                  them. `client`/`userId` are passed because the console runs on
+                  the isolated platformClient session (here imported AS
+                  `supabase`); saving through the main client would file the
+                  device under whichever dealer is signed in on this browser. */}
+              <PushPromptStrip
+                t={PANEL_THEME}
+                audience="admin"
+                boxed
+                client={supabase}
+                userId={meId}
+              />
+              <HomeTab />
+            </>
           ) : activeTab === "review" ? (
             /* ── REVIEW ── one queue, three kinds of item, filter by type (P4) */
             <div>

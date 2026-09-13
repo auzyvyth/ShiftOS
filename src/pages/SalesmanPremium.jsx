@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -79,6 +80,7 @@ import {
  Search,
  DollarSign,
  ShieldCheck,
+ Globe,
  ThumbsUp,
  ThumbsDown,
  Clock,
@@ -108,6 +110,7 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 import { markStarterTask } from "../utils/starterTasks";
+import { starterTasksAllDone } from "../components/onboarding/StarterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -118,7 +121,10 @@ const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, sell
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
-import { compareFollowUp, followUpStatus, isLeadStale } from "../lib/leadsHelpers";
+// Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
+// to render on first paint, and it pulls no chat code with it.
+import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
+import { compareFollowUp, followUpStatus, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
@@ -209,6 +215,12 @@ const SETTINGS_GROUPS = [
  { group: "Account", items: [
  { key: "verify", icon: ShieldCheck, label: "Verified Badge", desc: "ID & IC verification" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
+ // Premium had no language control anywhere, so a seller who picked Malay in
+ // Lite found no way to change it back (or set it at all) on this panel.
+ // Labels in this list are still English like its siblings — the list is
+ // module scope, so translating it means making it a function of `t`
+ // (PREM-I18N-2).
+ { key: "language", icon: Globe, label: "Language", desc: "Panel display language" },
  { key: "help", icon: Sparkles, label: "Product Tour", desc: "Replay the walkthrough" },
  ]},
 ];
@@ -231,6 +243,12 @@ const TOUR_TABS = [
 
 export default function SalesmanPremium() {
  const navigate = useNavigate();
+ // Premium shipped with NO i18n wiring at all — no useTranslation, no language
+ // switcher, and no `salesmanPremium` namespace to translate into — while Lite
+ // was fully wired. So the toggle a seller set in Lite appeared to do nothing
+ // here. The nav and the switcher are translated; the rest of the file is still
+ // hardcoded English (PREM-I18N-2).
+ const { t, i18n } = useTranslation();
  const isMobile = useWindowSize() < 768;
 
  // First-frame cache seed. Everything below initialises from what this device
@@ -476,7 +494,27 @@ export default function SalesmanPremium() {
 
  // Starter tasks. Session-only hide: the card renders its own finished state
  // once all three are done, so it does not need a persisted dismissal.
+ const [listingsLoaded, setListingsLoaded] = useState(false);
  const [starterHidden, setStarterHidden] = useState(false);
+
+ // Same bug Lite had (LITE-STARTER-1): starterHidden was component state with
+ // nothing written anywhere, so the card returned on every login regardless of
+ // what the seller had finished or dismissed. Persisted to
+ // profiles.starter_tasks, where minipage_visited already lives.
+ const dismissStarterTasks = () => {
+ setStarterHidden(true);
+ markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ };
+
+ // Finishing all three retires it for good. Does not write back to local
+ // `profile`, so the seller still sees the "you're set up" state they earned;
+ // it is gone on the next load.
+ useEffect(() => {
+ if (!userId || !listingsLoaded) return;
+ if (profile?.starter_tasks?.dismissed) return;
+ if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+ markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ }, [userId, listingsLoaded, profile, myListings.length]);
 
  // Opening your own mini page is the one starter task no other data can prove
  // (analytics_events counts buyer views too), so the click records it.
@@ -685,8 +723,6 @@ export default function SalesmanPremium() {
  const [scoreLoading, setScoreLoading] = useState(false);
 
  // AI follow-up suggestions
- const [aiFollowups, setAiFollowups] = useState([]);
- const [followupsLoading, setFollowupsLoading] = useState(false);
  // AI WA reply per lead
  const [aiWaReplies, setAiWaReplies] = useState({});
  const [waReplyLoading, setWaReplyLoading] = useState({});
@@ -1190,6 +1226,7 @@ export default function SalesmanPremium() {
  return true;
  })
  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+ setListingsLoaded(true);
  setMyListings(merged);
  writeCache(`sp_listings_${uid}`, merged);
  });
@@ -2387,42 +2424,6 @@ export default function SalesmanPremium() {
  }
  };
 
- const fetchFollowupSuggestions = async () => {
- if (!isPremium) return;
- setFollowupsLoading(true);
- try {
- const today = new Date().toISOString().slice(0, 10);
- const topLeads = leads
- .filter((l) =>!["closed_won", "closed_lost"].includes(l.stage))
- .filter((l) =>!l.follow_up_at || l.follow_up_at <= today)
- .sort((a, b) => {
- const scoreOrder = { hot: 3, warm: 2, cold: 1 };
- const aScore = scoreOrder[a.ai_score] || 0;
- const bScore = scoreOrder[b.ai_score] || 0;
- if (bScore!== aScore) return bScore - aScore;
- return new Date(a.created_at) - new Date(b.created_at);
- })
- .slice(0, 3);
- const results = await Promise.all(
- topLeads.map(async (lead) => {
- const daysSince = lead.updated_at? Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000) : 0;
- const prompt = `Suggest one follow-up action for this car sales lead.\nRespond ONLY with JSON:\n{"type":"call"|"whatsapp"|"visit"|"offer"|"close","suggestion":"string max 20 words in BM/English mix"}\nLead stage: ${lead.stage}, score: ${lead.ai_score || "unknown"}, days since last contact: ${daysSince}, last outcome: ${lead.last_call_outcome || "none"}`;
- try {
- const raw = await callClaude(prompt, "You are a sales coach. Respond with JSON only.");
- const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
- return { lead, ...parsed, is_acted_on: false };
- } catch { return { lead, type: "whatsapp", suggestion: "Hantar mesej WhatsApp semak status", is_acted_on: false }; }
- })
- );
- setAiFollowups(results);
- const rows = results.map((r) => ({ salesman_id: userId, lead_id: r.lead.id, suggestion_type: r.type, suggestion_text: r.suggestion }));
- if (rows.length) await supabase.from("ai_followup_suggestions").insert(rows).then(null, () => {});
- await logAiUsage("followup");
- } finally {
- setFollowupsLoading(false);
- }
- };
-
  const openBroadcast = (car) => {
  const name = [car.year, car.brand, car.model, car.variant]
  .filter(Boolean)
@@ -2485,30 +2486,35 @@ export default function SalesmanPremium() {
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
- label: "Dashboard",
+ label: t("salesmanPremium.tabs.dashboard", { defaultValue: "Dashboard" }),
  icon: <LayoutGrid style={{ width: 14, height: 14 }} />,
  },
  {
  tab: "listings",
- label: "My Listings",
+ label: t("salesmanPremium.tabs.listings", { defaultValue: "My Listings" }),
  icon: <Car style={{ width: 14, height: 14 }} />,
  badge: myListings.length || null,
  },
  {
  tab: "chat",
- label: "Chat",
- icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ label: t("salesmanPremium.tabs.chat", { defaultValue: "Chat" }),
+ // Chat and Inbox both rendered MessageSquare, so the two nav rows were
+ // distinguishable only by their text. The tour copy below has always drawn
+ // the distinction the nav never applied — MessageSquare for Inbox (:5998),
+ // MessageCircle for Chat (:6003) — so it is applied here rather than a
+ // third icon being picked.
+ icon: <MessageCircle style={{ width: 14, height: 14 }} />,
  badge: chatUnread || null,
  },
  {
  tab: "leads",
- label: "Leads",
+ label: t("salesmanPremium.tabs.leads", { defaultValue: "Leads" }),
  icon: <User style={{ width: 14, height: 14 }} />,
  badge: leadsNeedingFollowUp || null,
  },
  {
  tab: "enquiries",
- label: "Inbox",
+ label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
  icon: <MessageSquare style={{ width: 14, height: 14 }} />,
  badge: inboxBadge || null,
  },
@@ -2516,28 +2522,28 @@ export default function SalesmanPremium() {
  // The end of the funnel: leads -> won -> paperwork + owner. Sold used to have
  // no nav slot at all, reachable only from two tiles on the Dashboard.
  tab: "sold",
- label: "Sold",
+ label: t("salesmanPremium.tabs.sold", { defaultValue: "Sold" }),
  icon: <ClipboardList style={{ width: 14, height: 14 }} />,
  badge: handover.activeCount || null,
  },
  {
  tab: "analytics",
- label: "Analytics",
+ label: t("salesmanPremium.tabs.analytics", { defaultValue: "Analytics" }),
  icon: <TrendingUp style={{ width: 14, height: 14 }} />,
  },
  {
  tab: "loans",
- label: "Loans",
+ label: t("salesmanPremium.tabs.loans", { defaultValue: "Loans" }),
  icon: <Banknote style={{ width: 14, height: 14 }} />,
  },
  ...(showOutreach ? [{
  tab: "outreach",
- label: "Outreach",
+ label: t("salesmanPremium.tabs.outreach", { defaultValue: "Outreach" }),
  icon: <Megaphone style={{ width: 14, height: 14 }} />,
  }] : []),
  {
  tab: "settings",
- label: "Settings",
+ label: t("salesmanPremium.tabs.settings", { defaultValue: "Settings" }),
  icon: <Settings style={{ width: 14, height: 14 }} />,
  },
  ];
@@ -2815,10 +2821,17 @@ export default function SalesmanPremium() {
  {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
  </div>
  )}
- {lead.updated_at && (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>Last contact: {timeAgo(lead.updated_at)}
+ {(() => {
+ // Was "Last contact: {timeAgo(lead.updated_at)}", which sat directly above a
+ // follow-up badge reading last_contacted_at — so one card could say "Last
+ // contact: 2d ago" and "Never contacted · 4d" at the same time.
+ const lt = lastTouch(lead);
+ if (!lt.at) return null;
+ return (
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.label}: {timeAgo(lt.at)}
  </p>
- )}
+ );
+ })()}
  {lead.last_call_outcome && (() => {
  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
  const o = OUTCOME[lead.last_call_outcome];
@@ -3809,7 +3822,7 @@ export default function SalesmanPremium() {
  );
  })()}
  {pl.updated_at && (
- <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>Last contact {timeAgo(pl.updated_at)}</span>
+ <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>{lastTouch(pl).label} {timeAgo(lastTouch(pl).at)}</span>
  )}
  </div>
  </div>
@@ -5146,6 +5159,41 @@ export default function SalesmanPremium() {
  </div>
  {saveBtn}
  </>
+ )}
+ {nav === "language" && (
+ <div>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
+ {t("salesmanPremium.settings.language", { defaultValue: "Language" })}
+ </p>
+ <p style={{ margin: "4px 0 12px", fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>
+ {t("salesmanPremium.settings.languageSubtext", { defaultValue: "Choose the language used across your panel." })}
+ </p>
+ {/* Same control and the same i18n instance as Lite's, so the choice
+     follows the seller between panels rather than being per-panel. */}
+ <div style={{ display: "flex", gap: 8 }}>
+ {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
+ <button
+ key={code}
+ type="button"
+ onClick={() => i18n.changeLanguage(code)}
+ style={{
+ padding: "7px 18px",
+ borderRadius: 8,
+ fontSize: 13,
+ fontWeight: 600,
+ cursor: "pointer",
+ fontFamily: "inherit",
+ background: i18n.language === code ? C.accent : "rgba(255,255,255,0.04)",
+ border: `1px solid ${i18n.language === code ? C.accent : "rgba(255,255,255,0.1)"}`,
+ color: i18n.language === code ? "#fff" : "#9ca3af",
+ transition: "all 0.15s",
+ }}
+ >
+ {label}
+ </button>
+ ))}
+ </div>
+ </div>
  )}
  {nav === "verify" && (
  <>
@@ -6599,6 +6647,17 @@ export default function SalesmanPremium() {
  paddingBottom: 24,
  }}
  >
+ {/* Push had no proactive ask outside a chat thread, so the only route to
+     turning it on was PushToggle in Settings — the screen a rep never opens.
+     Inside the content wrapper (not beside the sidebar, which is a flex ROW
+     on desktop) and outside the tab switch, so one dismissal holds while
+     they move around the panel and it disappears for good once push is on. */}
+ {/* Not on the chat tab — SellerInbox mounts its own copy above the thread
+     list, and two identical asks on one screen is worse than none. */}
+ {activeTab !== "chat" && (
+ <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+ )}
+
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
  <DashboardTab
@@ -6606,7 +6665,7 @@ export default function SalesmanPremium() {
  enquiries={enquiries} staleLeads={staleLeads} isReturning={isReturning}
  goal={goal} goalEditing={goalEditing} goalDraft={goalDraft} showPrevMonth={showPrevMonth}
  customers={customers} dueNudges={dueNudges} profile={profile}
- minipageStats={minipageStats} aiFollowups={aiFollowups} followupsLoading={followupsLoading}
+ minipageStats={minipageStats}
  servicePackages={servicePackages}
  handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}
@@ -6615,11 +6674,12 @@ export default function SalesmanPremium() {
  setGoalEditing={setGoalEditing} setShowPrevMonth={setShowPrevMonth} setShowAddForm={setShowAddForm}
  setAiFollowups={setAiFollowups} setInboxSubTab={setInboxSubTab}
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}
- handleThisWeekContacted={handleThisWeekContacted} fetchFollowupSuggestions={fetchFollowupSuggestions}
+ handleThisWeekContacted={handleThisWeekContacted}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
- onStarterDismiss={() => setStarterHidden(true)}
+ starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
+ onStarterDismiss={dismissStarterTasks}
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
@@ -6751,6 +6811,21 @@ export default function SalesmanPremium() {
  setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
  setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
  actions={[
+ {
+ // Edit existed on the listing CARD (ListingsTab.jsx:596) and nowhere in
+ // this popup, so opening a car to look at it and then wanting to change
+ // something meant closing the popup and hunting for the card again.
+ // First in the list because it is the one thing here that changes the
+ // listing; everything below it copies or announces it.
+ // Closes the popup BEFORE opening the edit sheet — two overlays must
+ // never be open at once (overlay rule 3).
+ key: "edit",
+ label: (<><Pencil size={13} style={{ flexShrink: 0 }} />Edit</>),
+ color: C.infoText,
+ bg: "rgba(59,130,246,0.08)",
+ border: "rgba(59,130,246,0.25)",
+ onClick: () => { const car = selectedCar; setSelectedCar(null); setEditListing(car); },
+ },
  {
  key: "link",
  label: (<><Copy size={13} style={{ flexShrink: 0 }} />Copy Link</>),

@@ -729,7 +729,13 @@
       "depositTermsPlaceholder": "e.g. Car reserved for 7 days.",
       "processingFee": "Handling / runner fee",
       "processingFeeHint": "Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.",
-      "processingFeePlaceholder": "e.g. 300"
+      "processingFeePlaceholder": "e.g. 300",
+      "navProfile": "Profile",
+      "navContact": "Contact & Location",
+      "navSelling": "Selling",
+      "navAlerts": "Alerts",
+      "navAccount": "Account",
+      "navHeading": "Settings"
     },
     "logout": {
       "title": "Log out?",
@@ -973,6 +979,26 @@
       "perfTitle": "Performance locked",
       "perfSub": "Add a vehicle to see your performance data — views, close rate and pipeline health all build from your listings.",
       "cta": "Add a vehicle"
+    }
+  },
+  "salesmanPremium": {
+    "tabs": {
+      "dashboard": "Dashboard",
+      "listings": "My Listings",
+      "chat": "Chat",
+      "leads": "Leads",
+      "inbox": "Inbox",
+      "sold": "Sold",
+      "analytics": "Analytics",
+      "loans": "Loans",
+      "outreach": "Outreach",
+      "settings": "Settings"
+    },
+    "settings": {
+      "navLanguage": "Language",
+      "navLanguageDesc": "Panel display language",
+      "language": "Language",
+      "languageSubtext": "Choose the language used across your panel."
     }
   },
   "availability": {

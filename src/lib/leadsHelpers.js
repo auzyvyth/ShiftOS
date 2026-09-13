@@ -237,6 +237,29 @@ const NOT_DUE = Object.freeze({
  *
  * Terminal (won/lost) leads never qualify.
  */
+/**
+ * What the line under a pipeline card's buyer name should actually say.
+ * Returns `{ at, label, contacted }`.
+ *
+ * Every pipeline surface printed "Last contact: {timeAgo(lead.updated_at)}",
+ * which is not what `updated_at` means — it moves on any write at all. So a
+ * card could read "Last contact: 2d ago" directly above a follow-up badge
+ * saying "Never contacted · 4d", because the two lines were reading different
+ * columns. Both were technically right and together they were nonsense: the
+ * lead was EDITED 2 days ago and nobody had ever called the buyer.
+ *
+ * The badge is the one that must not move (see `followUpStatus` — the whole
+ * reason it measures from `last_contacted_at`), so this makes the label follow
+ * the data instead: say "Last contact" only when there IS one, and call it
+ * what it is otherwise.
+ */
+export function lastTouch(lead) {
+  if (lead?.last_contacted_at) {
+    return { at: lead.last_contacted_at, label: 'Last contact', contacted: true };
+  }
+  return { at: lead?.updated_at || lead?.created_at || null, label: 'Last activity', contacted: false };
+}
+
 export function followUpStatus(lead, now = Date.now()) {
   if (!lead) return NOT_DUE;
   const stage = canonicalStage(lead.stage);

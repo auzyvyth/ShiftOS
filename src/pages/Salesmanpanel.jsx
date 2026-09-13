@@ -83,7 +83,7 @@ import {
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
-import { followUpHoursFor, isLeadStale } from "../lib/leadsHelpers";
+import { followUpHoursFor, isLeadStale, lastTouch } from "../lib/leadsHelpers";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -4722,7 +4722,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
  <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{current.buyer_name || "—"}</p>
  <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>
- {car? `${car.brand} ${car.model}` : "No car linked"} · Last contact {timeAgo(current.updated_at)}
+ {car? `${car.brand} ${car.model}` : "No car linked"} · {lastTouch(current).label} {timeAgo(lastTouch(current).at)}
  </p>
  </div>
  <p style={{ margin: "0 0 14px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -5135,7 +5135,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  )}
  {lead.updated_at && (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lead.updated_at).getTime() > followUpHoursFor(lead.stage) * 3600 * 1000? "#fb923c" : "#374151" }}>Last contact: {timeAgo(lead.updated_at)}
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lastTouch(lead).at).getTime() > followUpHoursFor(lead.stage) * 3600 * 1000? "#fb923c" : "#374151" }}>{lastTouch(lead).label}: {timeAgo(lastTouch(lead).at)}
  </p>
  )}
  {lead.last_call_outcome && (() => {

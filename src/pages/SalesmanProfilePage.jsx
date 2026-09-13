@@ -44,6 +44,10 @@ export default function SalesmanProfilePage() {
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
   const [viewerHome, setViewerHome] = useState(null);
+  // Who is looking. Only ever compared against the profile's own id, to decide
+  // whether the "finish your page" note renders — it must never be shown to a
+  // buyer sitting on someone else's page.
+  const [viewerId, setViewerId] = useState(null);
   // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
   const visitTracked = useRef(false);
 
@@ -81,6 +85,7 @@ export default function SalesmanProfilePage() {
     supabase.auth.getSession().then(async ({ data }) => {
       const uid = data?.session?.user?.id;
       if (!uid || cancelled) return;
+      setViewerId(uid);
       const { data: viewer } = await supabase
         .from('profiles').select('role, dealer_id, plan').eq('id', uid).maybeSingle();
       if (cancelled || !viewer?.role) return;
@@ -189,6 +194,27 @@ export default function SalesmanProfilePage() {
   const locationCity = profile?.city || dealer?.city;
   const locationState = profile?.state || dealer?.state;
   const locationStr = [locationCity, locationState].filter(Boolean).join(', ');
+
+  // A new seller's page is reachable the moment they have a slug (the RPC stops
+  // hiding them while they wait on review — 20260912c), so the first thing many
+  // of them ever see of it is an empty shell. This is the nudge that turns that
+  // shell into a to-do list, and it renders for the OWNER ONLY: a buyer must
+  // never be told what the seller hasn't filled in.
+  // Ordered by what actually earns them a buyer — a car first, decoration after.
+  const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  const setupTodo = !isOwner ? [] : [
+    listings.length === 0 && { key: 'car', label: 'List your first car', tab: 'listings' },
+    !profile.avatar_url && { key: 'avatar', label: 'Add a profile photo', tab: 'settings' },
+    !profile.cover_url && { key: 'cover', label: 'Add a banner image', tab: 'settings' },
+    !(profile.bio || '').trim() && { key: 'bio', label: 'Write a short bio', tab: 'settings' },
+  ].filter(Boolean);
+  // viewerHome.to is whichever panel their role resolves to (/salesman-lite,
+  // /salesman-premium, /salesman) — both panels take an optional :tab segment.
+  // It lands one await LATER than viewerId, so the note waits for it rather
+  // than guessing a panel and sending a Premium seller to the Lite one.
+  const setupHref = setupTodo.length && viewerHome
+    ? `${viewerHome.to}/${setupTodo[0].tab}`
+    : null;
 
   // One description for <meta name="description"> and og:description, so a
   // Google snippet and a WhatsApp link preview never disagree. A bio is written
@@ -355,6 +381,36 @@ export default function SalesmanProfilePage() {
 
         <div className="sp-shell">
         <div className="sp-left">
+
+        {/* Owner-only setup nudge. Wrapped in sp-narrow so it inherits the same
+            side gutters as the rest of the column — as a bare child of sp-left
+            it would run to the screen edge on a phone. Sits ABOVE the banner
+            deliberately: the avatar is positioned absolutely against the banner
+            wrapper, so anything inserted between them would strand it. */}
+        {isOwner && setupHref && (
+          <div className="sp-narrow" style={{ paddingTop: 14 }}>
+            <div style={{ padding: '14px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: 12 }}>
+              <p style={{ fontSize: 10, letterSpacing: '0.09em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, marginBottom: 6 }}>
+                Only you can see this
+              </p>
+              <p style={{ fontSize: 13.5, color: '#e2e8f0', fontWeight: 600, marginBottom: 10, lineHeight: 1.5 }}>
+                Your page is looking empty.{' '}
+                {setupTodo.length === 1 ? 'One thing left to finish it.' : `${setupTodo.length} quick things to finish it.`}
+              </p>
+              <ul style={{ listStyle: 'none', margin: '0 0 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {setupTodo.map((t) => (
+                  <li key={t.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: '#94a3b8' }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#475569', flexShrink: 0 }} />
+                    {t.label}
+                  </li>
+                ))}
+              </ul>
+              <Link to={setupHref} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#2563eb', color: '#fff', borderRadius: 9, padding: '9px 16px', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}>
+                {setupTodo[0].label} <ChevronRight size={14} />
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* ── Cover banner — Facebook/blog-post style: capped to the same
             max width as the content below (not full-bleed across the

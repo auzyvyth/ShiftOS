@@ -7,6 +7,7 @@ import { isAdultFromIC } from '../utils/icAge';
 import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import useAuthCaptcha from '../hooks/useAuthCaptcha';
 import { emailActionGate, EMAIL_ACTIONS } from '../utils/authThrottle';
+import { advanceOnEnter } from '../utils/onboardingKeys';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -665,7 +666,7 @@ export default function SalesmanOnboarding() {
       <div className="eo-root">
         <LeftPanel step={step} tier={tier} onChangePlan={() => setShowPlans(true)} />
         <div className="eo-right">
-          <div className="eo-form" key={step}>
+          <div className="eo-form" key={step} onKeyDown={advanceOnEnter}>
 
             {/* Mobile top bar */}
             <div className="eo-mobile-bar">

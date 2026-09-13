@@ -7,7 +7,7 @@ import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
 import { markBuyerIntent } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
-import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
 
 const Field = ({ id, label, focused, children }) => (
@@ -366,7 +366,7 @@ export default function LoginPage() {
       // burn one of the three attempts and tell someone their correct password
       // is wrong. Nothing about their credentials failed here.
       if (isCaptchaError(signInError)) {
-        setError(CAPTCHA_ERROR_MESSAGE);
+        setError(captchaErrorMessage());
         setLoading(false);
         return;
       }

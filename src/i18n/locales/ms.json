@@ -719,7 +719,13 @@
       "depositTermsPlaceholder": "cth. Kereta ditempah selama 7 hari.",
       "processingFee": "Caj pengendalian / runner",
       "processingFeeHint": "Caj anda sendiri di atas caj rasmi JPJ dan Puspakom. Masukkan 0 jika anda tidak mengenakan caj.",
-      "processingFeePlaceholder": "cth. 300"
+      "processingFeePlaceholder": "cth. 300",
+      "navProfile": "Profil",
+      "navContact": "Hubungan & Lokasi",
+      "navSelling": "Jualan",
+      "navAlerts": "Pemberitahuan",
+      "navAccount": "Akaun",
+      "navHeading": "Tetapan"
     },
     "logout": {
       "title": "Log keluar?",
@@ -963,6 +969,26 @@
       "perfTitle": "Prestasi dikunci",
       "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — paparan, kadar tutup dan kesihatan pipeline semuanya terbina daripada listing anda.",
       "cta": "Tambah kenderaan"
+    }
+  },
+  "salesmanPremium": {
+    "tabs": {
+      "dashboard": "Papan Pemuka",
+      "listings": "Listing Saya",
+      "chat": "Sembang",
+      "leads": "Lead",
+      "inbox": "Peti Masuk",
+      "sold": "Terjual",
+      "analytics": "Analitik",
+      "loans": "Pinjaman",
+      "outreach": "Jangkauan",
+      "settings": "Tetapan"
+    },
+    "settings": {
+      "navLanguage": "Bahasa",
+      "navLanguageDesc": "Bahasa paparan panel",
+      "language": "Bahasa",
+      "languageSubtext": "Pilih bahasa yang digunakan di seluruh panel anda."
     }
   },
   "availability": {

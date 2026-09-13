@@ -6,7 +6,7 @@ import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
-import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
 
 const CONSENT_ERR =
@@ -148,7 +148,7 @@ export default function BuyerAuthPage() {
       if (isCaptchaError(error)) {
         setShowMagic(false);
         setShowForgot(false);
-        setError(CAPTCHA_ERROR_MESSAGE);
+        setError(captchaErrorMessage());
         setLoading(false);
         return;
       }
