@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
-import { Clock, LayoutDashboard, MapPin, ChevronRight, User } from 'lucide-react';
+import { Clock, LayoutDashboard, MapPin, ChevronRight, User, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
@@ -9,6 +9,14 @@ import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
+
+// Owner-only setup nudge: closing it dismisses only the CURRENT next step —
+// stored against that step's key, not a flat yes/no. So closing "Add a
+// profile photo" and later actually adding one clears the photo step out of
+// setupTodo, the stored key stops matching the new next step, and the nudge
+// comes back for whatever's next. Closing it is never "gone for good" while
+// something real is still missing.
+const setupDismissKey = (uid) => `sp_setup_dismissed_${uid}`;
 
 // Dark-surface theme tokens for ReviewsSection on the mini pages.
 const DARK_REVIEW_TH = {
@@ -216,6 +224,35 @@ export default function SalesmanProfilePage() {
     ? `${viewerHome.to}/${setupTodo[0].tab}`
     : null;
 
+  // Was a static row wedged between the banner and the avatar — inserting
+  // anything there risked stranding the avatar (see the wrapper's own
+  // comment below), and it read as part of the page rather than a nudge.
+  // Now a fixed, slide-down strip over the top of the page, closeable
+  // per-step (see setupDismissKey above).
+  const nextTodoKey = setupTodo[0]?.key || null;
+  const [setupDismissed, setSetupDismissed] = useState(false);
+  const [setupSlideIn, setSetupSlideIn] = useState(false);
+  useEffect(() => {
+    if (!isOwner || !profile?.id || !nextTodoKey) { setSetupDismissed(false); return; }
+    try {
+      setSetupDismissed(localStorage.getItem(setupDismissKey(profile.id)) === nextTodoKey);
+    } catch {
+      setSetupDismissed(false);
+    }
+  }, [isOwner, profile?.id, nextTodoKey]);
+  useEffect(() => {
+    if (!isOwner || !nextTodoKey || setupDismissed) { setSetupSlideIn(false); return undefined; }
+    const t = setTimeout(() => setSetupSlideIn(true), 60);
+    return () => clearTimeout(t);
+  }, [isOwner, nextTodoKey, setupDismissed]);
+  const dismissSetupNudge = () => {
+    setSetupSlideIn(false);
+    setTimeout(() => {
+      setSetupDismissed(true);
+      try { if (profile?.id && nextTodoKey) localStorage.setItem(setupDismissKey(profile.id), nextTodoKey); } catch { /* ignore */ }
+    }, 240);
+  };
+
   // One description for <meta name="description"> and og:description, so a
   // Google snippet and a WhatsApp link preview never disagree. A bio is written
   // as a paragraph, so collapse its line breaks and cap it near the length
@@ -382,27 +419,42 @@ export default function SalesmanProfilePage() {
         <div className="sp-shell">
         <div className="sp-left">
 
-        {/* Owner-only setup nudge. Wrapped in sp-narrow so it inherits the same
-            side gutters as the rest of the column — as a bare child of sp-left
-            it would run to the screen edge on a phone. Sits ABOVE the banner
-            deliberately: the avatar is positioned absolutely against the banner
-            wrapper, so anything inserted between them would strand it.
-            One line, one action — it used to be a full card with a bulleted
-            list of everything left to do, which pushed the banner down and
-            read as a wall of homework before a visitor had seen a single car.
-            Just the next single step; the count rides along in parentheses
-            rather than as its own list. */}
-        {isOwner && setupHref && (
-          <div className="sp-narrow" style={{ paddingTop: 10 }}>
-            <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, textDecoration: 'none' }}>
-              <span style={{ fontSize: 9, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#475569', fontWeight: 700, flexShrink: 0 }}>
-                Only you
-              </span>
-              <span style={{ fontSize: 12, color: '#94a3b8', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {setupTodo[0].label}{setupTodo.length > 1 ? ` (+${setupTodo.length - 1} more)` : ''}
-              </span>
-              <ChevronRight size={13} color="#64748b" style={{ flexShrink: 0 }} />
-            </Link>
+        {/* Owner-only setup nudge — a fixed strip that slides down over the
+            top of the page rather than sitting in the document flow (it used
+            to be wedged between the banner and the avatar, which is
+            positioned absolutely against that same wrapper, so anything
+            static there risked stranding it). Closing it is per-step, not
+            forever — see setupDismissKey above and dismissSetupNudge. The
+            redirect on tap is unchanged: it still lands on the exact
+            settings tab the next step lives on. */}
+        {isOwner && setupHref && !setupDismissed && (
+          <div
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
+              background: '#111827', borderBottom: '1px solid rgba(255,255,255,0.1)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+              transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)',
+              transition: 'transform 0.24s ease',
+            }}
+          >
+            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '9px clamp(14px,5vw,24px)', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, textDecoration: 'none' }}>
+                <span style={{ fontSize: 9, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, flexShrink: 0 }}>
+                  Only you
+                </span>
+                <span style={{ fontSize: 12.5, color: '#cbd5e1', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {setupTodo[0].label}{setupTodo.length > 1 ? ` (+${setupTodo.length - 1} more)` : ''}
+                </span>
+                <ChevronRight size={13} color="#64748b" style={{ flexShrink: 0 }} />
+              </Link>
+              <button
+                onClick={dismissSetupNudge}
+                aria-label="Dismiss"
+                style={{ flexShrink: 0, background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4, display: 'flex' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
         )}
 
