@@ -50,6 +50,7 @@ import DamageMap from "../components/DamageMap";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
+import AffordabilityCheck from "../components/AffordabilityCheck";
 import SimilarCars from "../components/car/SimilarCars";
 import BookingCalendar from "../components/BookingCalendar";
 import Turnstile from "../components/Turnstile";
@@ -2611,6 +2612,15 @@ export default function CarDetailPage() {
             ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
               <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
+            {!isOwnListing && (
+              <AffordabilityCheck
+                carPrice={car.selling_price}
+                carName={`${car.brand} ${nameplate}`}
+                isLight={isXdrive}
+                onTalkToSeller={enquiryClick}
+                talkToSellerLabel={enquiryLabel}
+              />
+            )}
             {/* Report sits at the end of the price row, pushed right. */}
             <span style={{ marginLeft:'auto', alignSelf:'center' }}>
               <ReportListingButton listingId={car?.id} th={th} variant="icon" />
@@ -4058,6 +4068,15 @@ export default function CarDetailPage() {
                     ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
                       <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Financing available on request</p>
                     ) : null}
+                    {!isOwnListing && (
+                      <AffordabilityCheck
+                        carPrice={car.selling_price}
+                        carName={carTitle}
+                        isLight={isXdrive}
+                        onTalkToSeller={enquiryClick}
+                        talkToSellerLabel={enquiryLabel}
+                      />
+                    )}
                     <span style={{ marginLeft: 'auto' }}>
                       <ReportListingButton listingId={car?.id} th={th} variant="icon" />
                     </span>

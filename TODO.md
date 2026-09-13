@@ -2261,30 +2261,37 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
 
-- **IDEA-8: "Can I afford this?" affordability check on CarDetailPage** — a
-  button next to the price that opens a popup/section where the buyer (incl.
-  anon) types salary + commitments, and it estimates whether they can afford
-  the car. Owner's framing (2026-09-13): a self-serve affordability read,
-  not a hard loan calculator.
-  Constraints flagged when this came up, to weigh before scoping it for real:
-  - Loan math must reuse whatever FinancingCalculator.jsx /
-    CalculatorPage.jsx already compute, not a third implementation —
-    AUDIT_DEALER_DASHBOARD.md's L8 already documents flat-rate vs
-    reducing-balance drift from two calculators disagreeing on one deal; a
-    third copy of the math makes that worse, not better.
-  - It must never render as a bank-style approval/rejection ("You are
-    approved") — same AI-trust-boundary rule as everywhere else on the
-    platform (no invented loan approval, no invented rate/discount): this is
-    an estimate the buyer confirms with a real salesman, worded as such.
-  - Open question: fully client-side/ephemeral (no DB write, safest for
-    anon PII like salary) vs. persisted and tied to sign-in — the latter
-    could double as a sign-up hook (save your result), which lines up with
-    the retention-perception work from this same session, but needs an
-    explicit decision before building since it changes the RLS/anon-write
-    surface.
-  - Open question: "basic" rule-of-thumb vs a real Malaysian DSR
-    (debt-service-ratio) calc factoring existing commitments — affects how
-    much of "salary + commitments" actually needs collecting.
+## AFFORD-1 — "Can I afford this?" — BUILT 2026-09-13
+
+Was IDEA-8. Button next to the price on CarDetailPage (both the mobile M2
+price row and the desktop sidebar price block — both blocks updated so they
+don't drift) opens `src/components/AffordabilityCheck.jsx`, a popup where the
+buyer (incl. anon) types net income + existing commitments and gets a DSR-based
+read: comfortable / manageable / stretched, plus disposable income left over.
+
+Decisions made when scoping it (owner confirmed both):
+- **Fully client-side, nothing persisted.** No new table, no anon-write RLS
+  surface — salary/commitments never leave the browser. Revisit only if this
+  is ever turned into a sign-up hook ("save your result").
+- **Both calc depths, "detailed" behind a toggle.** Basic = one commitments
+  number; the "Break down my commitments" toggle expands to 4 categories
+  (car/bike loan, personal loan, credit card min., other) that sum into the
+  same total — `src/utils/affordability.js` only ever sees the final total,
+  so it doesn't care which mode produced it.
+- **Reuses `calcMonthly` (`src/utils/financing.js`), not a new loan formula.**
+  Same number already shown next to the price everywhere else on this page —
+  avoids adding a THIRD disagreeing calculator on top of the drift
+  AUDIT_DEALER_DASHBOARD.md's L8 already documents between FinancingCalculator
+  and the dealer-side inline calc. Cars over `HIGH_VALUE_THRESHOLD` (RM300k)
+  get a "talk to the seller" message instead of a number, same as the rest of
+  the page.
+- **Never renders as approval/rejection.** DSR bands are labelled "a common
+  rule of thumb... not a bank decision" in the UI copy itself
+  (`affordability.js` DSR_BANDS comment + the disclaimer line in the popup) —
+  same AI-trust-boundary rule as everywhere else on the platform.
+- Talk-to-seller CTA inside the result reuses the page's existing
+  `enquiryClick`/`enquiryLabel` (already passed to `BuyerChat`) rather than a
+  new WhatsApp link, so it opens the same contact flow as the rest of the page.
 
 ## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
 
