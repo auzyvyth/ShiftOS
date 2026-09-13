@@ -26,7 +26,7 @@ export default function DashboardTab({
  minipageStats, browserNotifPerm, notifBannerDismissed,
  isMobile,
  setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
- setShowAddForm, setAiFollowups, setInboxSubTab,
+ setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner, dismissTour,
  handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
