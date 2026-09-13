@@ -67,6 +67,7 @@ const UnsubscribePage    = lazy(() => import("./pages/UnsubscribePage"));
 const SalesmanSetup      = lazy(() => import("./pages/SalesmanSetup"));
 const ImportStockPage    = lazy(() => import("./pages/ImportStockPage"));
 const ComparePage        = lazy(() => import("./pages/ComparePage"));
+const ComingSoonPage     = lazy(() => import("./pages/ComingSoonPage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
 const AccountMessagesPage = lazy(() => import("./pages/AccountMessagesPage"));
 const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
@@ -151,6 +152,9 @@ function App() {
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
+          {/* Sub-nav frame only (MarketplaceSubNav) — no functionality yet */}
+          <Route path="/vehicle-services" element={<ComingSoonPage title="Vehicle Services" description="Servicing, inspections and maintenance booked straight from XDrive. We're building it — check back soon." />} />
+          <Route path="/automotive-products" element={<ComingSoonPage title="Automotive Products" description="Parts, accessories and add-ons from trusted sellers. We're building it — check back soon." />} />
           <Route path="/saved" element={<SavedCarsPage />} />
           {/* Buyer-facing loan document checklist, opened from a link the
               salesman sends. Public + token-gated (get_loan_share). */}
