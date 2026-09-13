@@ -2261,6 +2261,43 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
 
+## AFFORD-1 — "Can I afford this?" — BUILT 2026-09-13
+
+Was IDEA-8. Button next to the price on CarDetailPage (both the mobile M2
+price row and the desktop sidebar price block — both blocks updated so they
+don't drift) opens `src/components/AffordabilityCheck.jsx`, a popup where the
+buyer (incl. anon) types net income + existing commitments and gets a DSR-based
+read: comfortable / manageable / stretched, plus disposable income left over.
+
+Decisions made when scoping it (owner confirmed both):
+- **Fully client-side, nothing persisted.** No new table, no anon-write RLS
+  surface — salary/commitments never leave the browser. Revisit only if this
+  is ever turned into a sign-up hook ("save your result").
+- **Detailed category breakdown was tried and pulled same-day.** The 4-field
+  version (car/bike loan, personal loan, credit card, other) felt like asking
+  an anon buyer for more personal detail than a quick self-check warrants —
+  reverted to one "existing commitments" total. `computeAffordability()` only
+  ever takes a final total, so this stayed a UI-only change.
+  Same fix also caught: the input `Field` was declared INSIDE
+  `AffordabilityCheck`'s function body, so it was a new component identity on
+  every render — React remounted the `<input>` on each keystroke, which is
+  why typing dropped focus (and the mobile keyboard) after one character.
+  `Field` is now hoisted to module scope, taking its styles as a prop.
+- **Reuses `calcMonthly` (`src/utils/financing.js`), not a new loan formula.**
+  Same number already shown next to the price everywhere else on this page —
+  avoids adding a THIRD disagreeing calculator on top of the drift
+  AUDIT_DEALER_DASHBOARD.md's L8 already documents between FinancingCalculator
+  and the dealer-side inline calc. Cars over `HIGH_VALUE_THRESHOLD` (RM300k)
+  get a "talk to the seller" message instead of a number, same as the rest of
+  the page.
+- **Never renders as approval/rejection.** DSR bands are labelled "a common
+  rule of thumb... not a bank decision" in the UI copy itself
+  (`affordability.js` DSR_BANDS comment + the disclaimer line in the popup) —
+  same AI-trust-boundary rule as everywhere else on the platform.
+- Talk-to-seller CTA inside the result reuses the page's existing
+  `enquiryClick`/`enquiryLabel` (already passed to `BuyerChat`) rather than a
+  new WhatsApp link, so it opens the same contact flow as the rest of the page.
+
 ## CHAT-EMAIL — BUILT 2026-08-31 (see CLAUDE.md for the rules)
 
 Shipped on `claude/buyer-notification-emails-n0yv8d`. Backend is LIVE on the

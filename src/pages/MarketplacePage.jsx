@@ -7,6 +7,7 @@ import { useCompare } from '../hooks/useCompare';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import ShowroomCard, { ShowroomCardSkeleton } from '@/components/ShowroomCard';
 import MarketplaceHeader from '../components/MarketplaceHeader';
+import MarketplaceSubNav from '../components/MarketplaceSubNav';
 import GoogleOneTapSlot from '../components/GoogleOneTapSlot';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -932,6 +933,7 @@ export default function MarketplacePage() {
       `}</style>
 
       <MarketplaceHeader />
+      <MarketplaceSubNav />
       <GoogleOneTapSlot />
 
       <AdvancedSearchModal
