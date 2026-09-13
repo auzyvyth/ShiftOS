@@ -46,9 +46,30 @@ const APP_PREFIXES = [
   '/manager', '/accountant', '/fi', '/admin', '/accounts', '/platform',
 ];
 
+// The buyer half of the marketplace, added 2026-09-13. The paragraph above was
+// written before in-app buyer chat existed and is now half-wrong: an install is
+// NOT worth "close to nothing" to a buyer, because iOS refuses web push to
+// anything but an installed PWA. So an iPhone buyer who messages a seller can
+// never be told the reply arrived — the seller answers into a channel the buyer
+// has already closed. That is the same shut loop that had the platform console
+// excluded, and it is worth more here: there are far more buyers than operators
+// and they are the side that leaves.
+//
+// What has NOT changed is that a first-time visitor scrolling one car must not
+// be nagged, so this half waits more than twice as long before it appears
+// (BUYER_REVEAL_DELAY_MS), keeps the same 30-day snooze on dismissal, and still
+// never shows inside an installed app or an in-app webview.
+//
+// '/login', '/buyer-login', onboarding and every marketing route stay out: an
+// install card over a signup form is an interruption, not an invitation.
+const BUYER_PREFIXES = [
+  '/', '/showroom', '/cars', '/saved', '/compare', '/account',
+];
+
 // Long enough that the card never competes with the panel's own first paint or
 // its data-loading skeletons.
 const REVEAL_DELAY_MS = 2500;
+const BUYER_REVEAL_DELAY_MS = 6000;
 
 export default function InstallPrompt() {
   const { pathname, search } = useLocation();
@@ -79,6 +100,11 @@ export default function InstallPrompt() {
   useEffect(() => subscribeInstallPrompt(setDeferred), []);
 
   const onAppRoute = matchesPathPrefix(pathname, APP_PREFIXES);
+  // App routes win: several of them are reachable on a dealer subdomain where a
+  // buyer prefix could also match, and the operator copy is the right one there.
+  const audience = onAppRoute
+    ? 'app'
+    : (matchesPathPrefix(pathname, BUYER_PREFIXES) ? 'buyer' : null);
   const mode = deferred ? 'native' : (iosSafari ? 'ios' : null);
 
   // Credits an install the first time this device is seen running standalone
@@ -91,10 +117,13 @@ export default function InstallPrompt() {
   }, [onAppRoute]);
 
   useEffect(() => {
-    if (!eligible || !onAppRoute || !mode) { setVisible(false); return undefined; }
-    const t = setTimeout(() => setVisible(true), REVEAL_DELAY_MS);
+    if (!eligible || !audience || !mode) { setVisible(false); return undefined; }
+    const t = setTimeout(
+      () => setVisible(true),
+      audience === 'buyer' ? BUYER_REVEAL_DELAY_MS : REVEAL_DELAY_MS,
+    );
     return () => clearTimeout(t);
-  }, [eligible, onAppRoute, mode]);
+  }, [eligible, audience, mode]);
 
   if (!visible || !mode) return null;
 
@@ -110,7 +139,7 @@ export default function InstallPrompt() {
 
   return (
     <Suspense fallback={null}>
-      <InstallPromptCard mode={mode} onInstall={install} onDismiss={dismiss} />
+      <InstallPromptCard mode={mode} audience={audience} onInstall={install} onDismiss={dismiss} />
     </Suspense>
   );
 }

@@ -49,6 +49,14 @@ export const PANEL_THEME = {
 // fine on the tester's own. Say the reason in one line instead; there is
 // nothing to tap in either case, so no button.
 
+// The success confirmation is a RECEIPT, not a banner: it exists to close the
+// loop on a tap that otherwise has no visible result (the browser's own
+// permission dialog vanishes and nothing on the page changes). Once it has been
+// read it is clutter, and it used to be permanent — `justEnabled` was checked
+// before the `subscribed` early-return, so the green "Done." line sat at the top
+// of the dashboard for the rest of the session with nothing to close it.
+const DONE_VISIBLE_MS = 6000;
+
 const COPY = {
   buyer: {
     ask: 'Get notified when the seller replies — no need to keep this open.',
@@ -119,6 +127,14 @@ export default function PushPromptStrip({
 
   const { supported, configured, permission, subscribed, busy, enable } = usePushNotifications(userId, client);
 
+  // Retire the confirmation on its own. Cleared on unmount so a panel switched
+  // away from mid-countdown does not set state into a dead component.
+  useEffect(() => {
+    if (!justEnabled) return undefined;
+    const timer = setTimeout(() => setDismissed(true), DONE_VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, [justEnabled]);
+
   const handleEnable = async () => {
     setNote(null);
     const res = await enable();
@@ -140,14 +156,19 @@ export default function PushPromptStrip({
     </div>
   );
 
+  // Checked FIRST, ahead of the confirmation: this is the one flag every exit
+  // route sets, so anything it cannot reach can never be closed.
+  if (dismissed) return null;
+
   if (justEnabled) {
     return row(<>
       <Bell size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-      <p style={{ margin: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>{copy.done}</p>
+      <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>{copy.done}</p>
+      <DismissBtn t={t} onClick={() => setDismissed(true)} />
     </>);
   }
 
-  if (dismissed || !userId || !supported || !configured || subscribed) return null;
+  if (!userId || !supported || !configured || subscribed) return null;
 
   // iOS refuses web push outside an installed PWA, so the button could never
   // succeed there. Say why rather than showing a dead button — or nothing.
