@@ -2078,7 +2078,24 @@ export default function SalesmanLite() {
       setTourTarget(el.getBoundingClientRect());
     };
     const t = setTimeout(measure, targetId === "bookings" ? 140 : 80);
-    return () => clearTimeout(t);
+    // Re-measure (no scrollIntoView) while this step is up, so the ring keeps
+    // tracking the real button through any layout shift that happens after the
+    // initial measure — a banner (account-approved, IC, suspension) sliding
+    // in/out above it, a notification loading in, a resize. It used to measure
+    // once and freeze, so the ring drifted off the button whenever something
+    // above it changed height. The existing 0.28s CSS transition on the ring's
+    // position turns each correction into a smooth follow instead of a jump.
+    const reposition = () => {
+      const el = document.querySelector(`[data-tour-id="${targetId}"]`);
+      if (el) setTourTarget(el.getBoundingClientRect());
+    };
+    const interval = setInterval(reposition, 200);
+    window.addEventListener("resize", reposition);
+    return () => {
+      clearTimeout(t);
+      clearInterval(interval);
+      window.removeEventListener("resize", reposition);
+    };
   }, [tourStep]);
 
   // Browser notification: fire when user returns to tab and has stale leads
@@ -8638,6 +8655,7 @@ export default function SalesmanLite() {
         {/* Page content */}
         <div
           style={{
+            position: "relative",
             padding: isMobile ? "16px 12px" : 24,
             flex: 1,
             paddingBottom: isMobile ? 80 : 24,
