@@ -6672,7 +6672,7 @@ export default function SalesmanPremium() {
  isPremium={isPremium} isMobile={isMobile}
  setActiveTab={setActiveTab} setActiveLeadStage={setActiveLeadStage} setGoalDraft={setGoalDraft}
  setGoalEditing={setGoalEditing} setShowPrevMonth={setShowPrevMonth} setShowAddForm={setShowAddForm}
- setAiFollowups={setAiFollowups} setInboxSubTab={setInboxSubTab}
+ setInboxSubTab={setInboxSubTab}
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}
  handleThisWeekContacted={handleThisWeekContacted}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
