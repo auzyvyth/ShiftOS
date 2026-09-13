@@ -7,7 +7,7 @@ import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../lib/platformClient";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
-import useAuthCaptcha, { isCaptchaError, CAPTCHA_ERROR_MESSAGE } from "../hooks/useAuthCaptcha";
+import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
@@ -432,7 +432,7 @@ export default function AdminPage() {
       // isInvalidCreds test below spends one of this account's three attempts
       // on a password that was never actually judged.
       if (isCaptchaError(error)) {
-        setAuthError(CAPTCHA_ERROR_MESSAGE);
+        setAuthError(captchaErrorMessage());
         setLoginBusy(false);
         return;
       }

@@ -67,6 +67,37 @@ const TEARDOWN_GRACE_MS = 1000;
 export const CAPTCHA_ERROR_MESSAGE =
   "Couldn't verify you're human. Please refresh and try again — if you use an ad blocker, allow challenges.cloudflare.com.";
 
+/**
+ * The message to SHOW a person whose auth call was rejected for a captcha reason.
+ *
+ * Three of the four reasons are a CONFIGURATION mismatch that no amount of
+ * refreshing or ad-blocker fiddling can fix, and the generic message sent the
+ * owner hunting an ad blocker for an hour on a Vercel preview URL. Each one is
+ * named instead, because the reader is the only person who can fix it:
+ *   - no site key in this build  -> VITE_TURNSTILE_SITE_KEY is missing here
+ *   - 110200                     -> this hostname is not on the widget's
+ *                                   domain list (EVERY per-deploy preview URL)
+ *   - 1101xx                     -> the site key itself is not valid
+ * Anything else keeps the original advice, which is the one case where a
+ * refresh or an allowlist entry genuinely is the answer.
+ *
+ * On xdrive.my none of the first three can happen — the domain is listed and
+ * the key is set — so a real buyer only ever sees the generic message.
+ */
+export function captchaErrorMessage() {
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'this address';
+  if (!TURNSTILE_SITE_KEY) {
+    return `Sign-in can't be verified on ${host} — this build has no Turnstile site key (VITE_TURNSTILE_SITE_KEY). Use xdrive.my.`;
+  }
+  if (lastErrorCode === '110200') {
+    return `Sign-in is blocked on ${host} — this address isn't on the Turnstile domain list, so the check can't run (not an ad blocker). Use xdrive.my, or add this hostname to the widget in Cloudflare.`;
+  }
+  if (lastErrorCode && lastErrorCode.startsWith('1101')) {
+    return `Sign-in is blocked on ${host} — the Turnstile site key this build was made with isn't valid. Use xdrive.my.`;
+  }
+  return CAPTCHA_ERROR_MESSAGE;
+}
+
 /** True when Supabase rejected the call for a captcha reason rather than a bad credential. */
 export function isCaptchaError(error) {
   return /captcha/i.test(error?.message || '');
@@ -89,6 +120,10 @@ let revealed = false;
 // True when the widget's last outcome was an error and no challenge is running,
 // so it will not produce a token until it is reset.
 let failed = false;
+// The numeric code from the last 'error-callback', kept so the form can say
+// WHICH failure this was instead of blaming an ad blocker for all of them.
+// See captchaErrorMessage().
+let lastErrorCode = null;
 let prevOverflow = '';
 
 // NOTE ON HIDING: we never hide a widget that has not finished.
@@ -195,7 +230,7 @@ function mountWidget() {
         appearance: 'interaction-only',
         action: 'auth',
         'before-interactive-callback': () => reveal(),
-        callback: (t) => { failed = false; deliver(t); },
+        callback: (t) => { failed = false; lastErrorCode = null; deliver(t); },
         // A parked token goes stale after ~5 minutes. Drop it and earn a fresh
         // one, or someone who left the login page open sends an expired token
         // and gets told their password is wrong.
@@ -219,6 +254,7 @@ function mountWidget() {
         'error-callback': (code) => {
           console.warn(`[turnstile] auth widget error ${code} on ${window.location.hostname}` +
             (String(code) === '110200' ? ' — this hostname is not on the Turnstile widget\'s domain list' : ''));
+          lastErrorCode = String(code ?? '');
           parkedToken = null;
           // Nothing more is coming from this widget until it is reset, so a
           // later getToken() must not sit out the full timeout waiting for it.

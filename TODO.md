@@ -1128,6 +1128,47 @@ login page. What the code actually looks like today:
     the wrong one was pasted.
   - STILL TO TEST: guest chat from a logged-out browser, and a magic link.
 
+- [x] **AUTH-9 DONE 2026-09-13: you cannot sign in on a Vercel PREVIEW URL, and
+  the error blamed an ad blocker for it.** Owner hit this on
+  `shift-ley4rk8vg-shift-os.vercel.app` and read "Couldn't verify you're human
+  — if you use an ad blocker, allow challenges.cloudflare.com". There was no ad
+  blocker. Cloudflare returns error **110200 = this hostname is not on the
+  widget's domain list**, the widget produces no token, Supabase (captcha
+  toggle ON, project-wide) rejects the call, and `isCaptchaError` painted the
+  one generic message over it. Refreshing can never fix it.
+  - WHY IT MATTERS BEYOND ONE LOGIN: the deploy pipeline in CLAUDE.md is
+    "staging first, confirm on the Vercel preview". Every authenticated surface
+    was unreviewable on staging — nobody could get past the login screen.
+  - CODE FIX (`src/hooks/useAuthCaptcha.js`): the widget's `error-callback`
+    already knew the code and only `console.warn`'d it, which is invisible on a
+    phone. It now keeps it in `lastErrorCode`, and `captchaErrorMessage()`
+    names the three configuration failures instead of guessing: no site key in
+    this build, `110200` (hostname not listed), `1101xx` (site key invalid).
+    Anything else keeps the original ad-blocker advice — that is the only case
+    where it is true. Call sites: `LoginPage:369`, `AdminPage:435`,
+    `BuyerAuthPage:151`. `CAPTCHA_ERROR_MESSAGE` is still exported as the
+    fallback; do not point a call site back at it.
+  - OWNER FIX, one time, in Cloudflare → Turnstile → the widget → Domains. Add
+    the two STABLE Vercel branch aliases (verified live via the Vercel API):
+      `shift-os-git-staging-shift-os.vercel.app`
+      `shift-os-git-main-shift-os.vercel.app`
+    Turnstile domain entries cover subdomains, which is why `xdrive.my` already
+    covers every `<sub>.xdrive.my` dealer storefront and prod was never
+    affected.
+  - **Then always review staging on the BRANCH ALIAS, never the hash URL.**
+    `shift-ley4rk8vg-…` changes on every single deploy, so allowlisting one is
+    worthless a push later. `shift-os-git-staging-shift-os.vercel.app` always
+    points at the newest staging deployment.
+  - A separate Cloudflare "always passes" test key for previews does NOT work:
+    Supabase verifies the token server-side with the real secret, so a dummy
+    token is rejected there. The domain list is the only lever.
+  - NOT verified from this session: whether `VITE_TURNSTILE_SITE_KEY` is scoped
+    to Preview as well as Production on Vercel. Outbound fetches to
+    `*.vercel.app` are blocked by the web session's network policy, so the
+    built preview bundle could not be grepped for the key. If the new message
+    reads "this build has no Turnstile site key", that is the answer and the
+    fix is the env var's environment scope, not Cloudflare.
+
 - [x] **AUTH-8 DONE 2026-09-07 (code): password reset is a 6-DIGIT CODE, not a
   link. NEEDS ONE OWNER STEP BEFORE IT WORKS — see below.**
   Owner reported a reset link "expired as soon as I got to work" and asked for a
