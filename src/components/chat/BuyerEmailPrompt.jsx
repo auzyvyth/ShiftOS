@@ -10,11 +10,15 @@ import { supabase } from '../../supabaseClient';
 // guest who closed the tab had no channel at all — the seller answered into a
 // void. Email is the one channel that survives the tab closing.
 //
-// THE POINT IS THE ADDRESS, NOT THE ACCOUNT. We need somewhere to send a
-// notification; we never need to fuse two identities. That is what makes the
-// collision case below safe to decline rather than clever.
+// NO VERIFICATION. This writes straight to profiles.notify_email, never
+// profiles.email (the verified column the auth email-change flow + lead
+// de-dup rely on) — a typo or a stranger's address here just means a stray
+// notification, never a mixed-up account or lead. Trying to verify it first
+// was a code-by-email step that depended on Supabase's auth mailer, which
+// buyers were not receiving — a real account (with a real inbox check) is the
+// `taken` case below, pointing them at /buyer-signup instead.
 //
-// Timing is deliberately the same as BuyerPushPrompt: after they have sent
+// Timing is deliberately the same as PushPromptStrip: after they have sent
 // something, never on open. Someone who has typed nothing has not asked us for
 // anything yet, and an ask in front of the thing they came to do reads as a
 // signup wall — losing the message to save an email is a bad trade.
@@ -34,18 +38,14 @@ function dismissedRecently() {
 
 const looksLikeEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s).trim());
 
-// Supabase reports a taken address a few different ways depending on version
-// and on whether "confirm email" is on. Match the shape, not one exact string.
-const isTakenError = (msg) => /already|exists|registered|taken/i.test(String(msg || ''));
-
 export default function BuyerEmailPrompt({ t, onResolved }) {
   // null = still checking. Prevents a flash of the prompt for a buyer who
-  // already has an email, and tells ChatThread which of the two asks to show.
+  // already has an email on file, and tells ChatThread which of the two asks
+  // to show.
   const [needed, setNeeded] = useState(null);
   const [dismissed, setDismissed] = useState(dismissedRecently);
-  const [step, setStep] = useState('email');   // email | code | done | taken
+  const [step, setStep] = useState('email');   // email | done
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const resolvedRef = useRef(onResolved);
@@ -55,69 +55,27 @@ export default function BuyerEmailPrompt({ t, onResolved }) {
     let alive = true;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      // No session at all: the thread cannot exist, so nothing to ask about.
-      const has = !!user?.email;
+      if (!user) { if (alive) { setNeeded(false); resolvedRef.current?.(false); } return; }
+      const { data: profile } = await supabase
+        .from('profiles').select('email, notify_email').eq('id', user.id).maybeSingle();
       if (!alive) return;
-      setNeeded(!!user && !has);
+      const has = !!(profile?.email || profile?.notify_email);
+      setNeeded(!has);
       resolvedRef.current?.(has);
     })();
     return () => { alive = false; };
   }, []);
 
-  // If they confirm in another tab — they clicked the link in the email instead
-  // of copying the code — supabase-js syncs the session across tabs and fires
-  // USER_UPDATED here. Without this the prompt would sit there asking for a
-  // code that has already been used.
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'USER_UPDATED' && session?.user?.email) {
-        // Deliberately does NOT report up: telling the parent we have an email
-        // swaps this whole strip out for the push prompt in the same frame, so
-        // the confirmation below would never be seen. The next mount picks it
-        // up from the session and shows the push ask then.
-        setStep('done');
-      }
-    });
-    return () => sub?.subscription?.unsubscribe();
-  }, []);
-
-  const sendCode = async (e) => {
+  const save = async (e) => {
     e?.preventDefault();
     const addr = email.trim();
     if (!looksLikeEmail(addr)) { setErr('That email does not look right.'); return; }
     setBusy(true); setErr(null);
-    // updateUser upgrades the ANONYMOUS user in place and keeps the same
-    // auth.uid(), so this conversation, its messages and the seller's pipeline
-    // lead all carry over with nothing to migrate. Do NOT swap this for
-    // signInWithOtp (what BuyerAuthPage uses) — that signs into a DIFFERENT
-    // user and strands the whole thread.
-    const { error } = await supabase.auth.updateUser({ email: addr });
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('profiles')
+      .update({ notify_email: addr }).eq('id', user.id);
     setBusy(false);
-    if (error) {
-      // The address already has an account. We deliberately do NOT try to move
-      // this conversation onto it: re-pointing a chat at another account
-      // because someone typed its address in this tab is an account-takeover
-      // shape, and it is irreversible. Say so and leave the guest thread alone.
-      if (isTakenError(error.message)) { setStep('taken'); return; }
-      setErr(error.message || 'Could not send the code. Try again.');
-      return;
-    }
-    setStep('code');
-  };
-
-  const verify = async (e) => {
-    e?.preventDefault();
-    const token = code.trim();
-    if (token.length < 6) { setErr('Enter the 6-digit code from the email.'); return; }
-    setBusy(true); setErr(null);
-    const { error } = await supabase.auth.verifyOtp({
-      email: email.trim(), token, type: 'email_change',
-    });
-    setBusy(false);
-    if (error) { setErr('That code did not work. Check it and try again.'); return; }
-    // Everything downstream — profiles.email, this thread's label, the seller's
-    // pipeline lead — is done by the sync_identity_from_auth_user trigger. There
-    // is deliberately no client-side follow-up write here.
+    if (error) { setErr('Could not save that. Try again.'); return; }
     setStep('done');
   };
 
@@ -150,26 +108,8 @@ export default function BuyerEmailPrompt({ t, onResolved }) {
       <div style={wrap}>
         <p style={{ margin:0, display:'flex', alignItems:'center', gap:7, fontSize:11.5, color:t.sub, lineHeight:1.5 }}>
           <Check size={13} style={{ color:'#16a34a', flexShrink:0 }} />
-          Email saved. We will let you know when the seller replies.
+          Saved. We will let you know when the seller replies.
         </p>
-      </div>
-    );
-  }
-
-  if (step === 'taken') {
-    return (
-      <div style={wrap}>
-        <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-          <Mail size={13} style={{ color:t.sub, flexShrink:0, marginTop:2 }} />
-          <p style={{ margin:0, flex:1, fontSize:11.5, color:t.sub, lineHeight:1.55 }}>
-            That email already has an account. Sign in from the menu to keep all
-            your chats in one place — this conversation stays here either way.
-          </p>
-          <button onClick={dismiss} aria-label="Dismiss"
-            style={{ background:'none', border:'none', color:t.sub, cursor:'pointer', padding:0, flexShrink:0 }}>
-            <X size={13} />
-          </button>
-        </div>
       </div>
     );
   }
@@ -179,9 +119,7 @@ export default function BuyerEmailPrompt({ t, onResolved }) {
       <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
         <Mail size={13} style={{ color:t.sub, flexShrink:0, marginTop:2 }} />
         <p style={{ margin:0, flex:1, fontSize:11.5, color:t.sub, lineHeight:1.55 }}>
-          {step === 'email'
-            ? 'Add your email and we will tell you when the seller replies — even if you close this page.'
-            : `Enter the 6-digit code we sent to ${email.trim()}.`}
+          Add your email and we will tell you when the seller replies — even if you close this page.
         </p>
         <button onClick={dismiss} aria-label="Not now"
           style={{ background:'none', border:'none', color:t.sub, cursor:'pointer', padding:0, flexShrink:0 }}>
@@ -189,28 +127,14 @@ export default function BuyerEmailPrompt({ t, onResolved }) {
         </button>
       </div>
 
-      <form onSubmit={step === 'email' ? sendCode : verify}
-        style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
-        {step === 'email' ? (
-          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="you@email.com" aria-label="Your email address"
-            autoComplete="email" inputMode="email" style={field} />
-        ) : (
-          <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            placeholder="123456" aria-label="Six-digit code"
-            autoComplete="one-time-code" inputMode="numeric" style={{ ...field, letterSpacing:2 }} />
-        )}
+      <form onSubmit={save} style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
+        <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+          placeholder="you@email.com" aria-label="Your email address"
+          autoComplete="email" inputMode="email" style={field} />
         <button type="submit" disabled={busy} style={cta}>
-          {busy ? 'Working…' : step === 'email' ? 'Notify me' : 'Confirm'}
+          {busy ? 'Saving…' : 'Notify me'}
         </button>
       </form>
-
-      {step === 'code' && (
-        <button onClick={() => { setStep('email'); setCode(''); setErr(null); }}
-          style={{ alignSelf:'flex-start', background:'none', border:'none', padding:0, fontSize:11, color:t.sub, textDecoration:'underline', cursor:'pointer', fontFamily:'system-ui,sans-serif' }}>
-          Use a different email
-        </button>
-      )}
 
       {err && <p style={{ margin:0, fontSize:11, color:'#f87171', lineHeight:1.5 }}>{err}</p>}
     </div>
