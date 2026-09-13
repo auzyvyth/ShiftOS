@@ -75,7 +75,7 @@ export function sanitizeMileageMax(val) {
 }
 export function sanitizeFuelType(val)  { return FUEL_TYPES.includes(val) ? val : null; }
 export function sanitizeColour(val)    { return COLOURS.includes(val) ? val : null; }
-export function sanitizeSellerType(val){ return ['dealer','agent'].includes(val) ? val : null; }
+export function sanitizeSellerType(val){ return ['dealer','agent','private'].includes(val) ? val : null; }
 export function sanitizeStr(val)       { return (!val || typeof val !== 'string') ? '' : val.replace(/[%_\\]/g,'').slice(0,80).trim(); }
 export function sanitizePrice(val, PRICE_STEPS) {
   const n = parseInt(val, 10);

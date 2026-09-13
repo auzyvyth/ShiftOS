@@ -282,12 +282,19 @@ export default function MarketplacePage() {
       if (colour)     query = query.ilike('colour', `%${colour}%`);
       if (model)      query = query.eq('model', model);
       if (variant)    query = query.ilike('variant', `%${variant}%`);
-      // seller_role comes from public_car_listings (the listing owner's profile
-      // role). Mirror ShowroomCard's badge rule exactly — role 'salesman' reads
-      // as "Agent", everything else as "Dealer" — so the filter and the badge
-      // can never disagree about what a card is.
-      if (sellerType === 'agent')  query = query.eq('seller_role', 'salesman');
-      else if (sellerType === 'dealer') query = query.neq('seller_role', 'salesman');
+      // seller_role/seller_type come from public_car_listings (the listing
+      // owner's profile). Mirror ShowroomCard's badge rule exactly: role
+      // !== 'salesman' is "Dealer"; role === 'salesman' splits on seller_type
+      // into "Private Seller" vs "Agent" (null seller_type treated as agent,
+      // for standalone sellers who signed up before this field existed) — so
+      // the filter and the badge can never disagree about what a card is.
+      if (sellerType === 'agent') {
+        query = query.eq('seller_role', 'salesman').or('seller_type.neq.private,seller_type.is.null');
+      } else if (sellerType === 'private') {
+        query = query.eq('seller_role', 'salesman').eq('seller_type', 'private');
+      } else if (sellerType === 'dealer') {
+        query = query.neq('seller_role', 'salesman');
+      }
 
       if (sort === 'price_asc')  query = query.order('selling_price', { ascending: true });
       else if (sort === 'price_desc') query = query.order('selling_price', { ascending: false });
@@ -368,7 +375,7 @@ export default function MarketplacePage() {
     hotDeals     && { key: 'hot_deals',   label: 'Hot Deals' },
     fuelType     && { key: 'fuel_type',   label: fuelType },
     colour       && { key: 'colour',      label: colour },
-    sellerType   && { key: 'seller_type', label: sellerType === 'agent' ? 'Agent' : 'Dealer' },
+    sellerType   && { key: 'seller_type', label: sellerType === 'agent' ? 'Agent' : sellerType === 'private' ? 'Private Seller' : 'Dealer' },
     model        && { key: 'model',       label: model },
     variant      && { key: 'variant',     label: `Variant: ${variant}` },
   ].filter(Boolean);
