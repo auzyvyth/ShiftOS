@@ -3,11 +3,32 @@ import { createPortal } from 'react-dom';
 import { Download, Share, X } from 'lucide-react';
 
 // Presentation only. Lazy-loaded by InstallPrompt so none of this markup rides
-// in the entry bundle — the public marketplace is the highest-traffic surface
-// and never renders this card at all. (Same reasoning as ConsentBanner's lazy
-// LegalModal.) All the gating logic lives in the eager gate; by the time this
-// mounts the decision to show has already been made.
-export default function InstallPromptCard({ mode, onInstall, onDismiss }) {
+// in the entry bundle. That mattered more when the card was operator-only; the
+// marketplace can render it now, but most of its traffic still never sees it —
+// already installed, an in-app webview, snoozed, or gone before the six-second
+// delay elapses — so the chunk stays deferred. (Same reasoning as
+// ConsentBanner's lazy LegalModal.) All the gating logic lives in the eager
+// gate; by the time this mounts the decision to show has already been made.
+// The name is ShiftOS on both surfaces because there is ONE manifest and it
+// installs one app: short_name 'ShiftOS' (vite.config.js) is what the home
+// screen will read, so promising a buyer "XDrive" here would hand them an icon
+// called something else. Only the reason changes — an operator installs to work
+// out of it, a buyer installs to be reachable.
+const COPY = {
+  app: {
+    native: 'Open it full screen from your home screen, without the browser bar.',
+    ios: null,
+  },
+  buyer: {
+    native: 'Save cars, pick up where you left off, and get told the moment a seller replies.',
+    // Worth the extra clause: on an iPhone this is not a convenience, it is the
+    // only way a seller's reply can ever reach them.
+    ios: "It's the only way an iPhone can alert you when a seller replies.",
+  },
+};
+
+export default function InstallPromptCard({ mode, audience = 'app', onInstall, onDismiss }) {
+  const copy = COPY[audience] || COPY.app;
   return createPortal(
     <>
       <style>{`@keyframes xdriveInstallIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}`}</style>
@@ -61,11 +82,12 @@ export default function InstallPromptCard({ mode, onInstall, onDismiss }) {
               <p style={{ margin: '5px 0 0', fontSize: 12.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.62)' }}>
                 Tap the Share button in Safari, then choose{' '}
                 <span style={{ color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>Add to Home Screen</span>.
+                {copy.ios ? ` ${copy.ios}` : ''}
               </p>
             ) : (
               <>
                 <p style={{ margin: '5px 0 0', fontSize: 12.5, lineHeight: 1.55, color: 'rgba(255,255,255,0.62)' }}>
-                  Open it full screen from your home screen, without the browser bar.
+                  {copy.native}
                 </p>
                 <button
                   type="button"
