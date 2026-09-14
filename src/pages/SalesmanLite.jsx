@@ -6196,8 +6196,11 @@ export default function SalesmanLite() {
                   </span>
                 </div>
                 {(carTitle || carPrice) && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
-                    <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carTitle}</p>
+                  <div
+                    onClick={(e) => { if (car?.slug) { e.stopPropagation(); window.open(`/cars/${car.slug}`, "_blank"); } }}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8, cursor: car?.slug ? "pointer" : "default" }}
+                  >
+                    <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(203,213,225,0.35)" }}>{carTitle}</p>
                     {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
                   </div>
                 )}
@@ -6289,8 +6292,13 @@ export default function SalesmanLite() {
               </button>
             </div>
 
-            {/* Car */}
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+            {/* Car — clicking it opens the actual listing, same pattern as the
+                pipeline lead drawer's car block. Was pure static text/image
+                here, so a booking's car never linked to anything. */}
+            <div
+              onClick={() => car?.slug && window.open(`/cars/${car.slug}`, "_blank")}
+              style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14, cursor: car?.slug ? "pointer" : "default" }}
+            >
               {carImg ? (
                 <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.1)" }} />
               ) : (
@@ -6299,7 +6307,7 @@ export default function SalesmanLite() {
                 </div>
               )}
               <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{carTitle}</p>
+                <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(241,245,249,0.3)" }}>{carTitle}</p>
                 {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
                 {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
                 {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number ? "VIN " : "Plate "}{carVin}</p>}
@@ -6546,7 +6554,14 @@ export default function SalesmanLite() {
                       </p>
                       {(carLabel || apt.buyer_phone) && (
                         <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
-                          {carLabel}
+                          {carLabel && (
+                            <span
+                              onClick={() => car?.slug && window.open(`/cars/${car.slug}`, "_blank")}
+                              style={{ cursor: car?.slug ? "pointer" : "default", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(75,85,99,0.6)" }}
+                            >
+                              {carLabel}
+                            </span>
+                          )}
                           {carLabel && apt.buyer_phone && <span>·</span>}
                           {apt.buyer_phone && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Phone size={11} /> {apt.buyer_phone}</span>}
                         </p>
