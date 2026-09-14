@@ -6,6 +6,30 @@
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
 
+## App Store / Play Store readiness — standing work item, every session
+The owner wants forward progress toward shipping on the Apple App Store and
+Google Play in EVERY session, not only when asked. Treat it as a background
+work stream running alongside whatever else the session is doing: before
+ending a session, check whether an open MOBILE-*/PWA-* item in `TODO.md` was
+moved forward. Don't let a session close having advanced nothing here — unless
+the whole stream is genuinely blocked on an owner decision (see below), in
+which case say so rather than picking a path yourself.
+- Roadmap lives in `TODO.md` under `MOBILE-1`..`MOBILE-5` and `PWA-1`..`PWA-3`
+  (search those keys). Read the full entry before touching auth flow, the
+  manifest, or edge function CORS — this area has already taken down prod
+  once (MOBILE-1 PKCE migration, #369→#370, reverted same day) and a retry
+  needs a staging click-through, not a code-read.
+- **MOBILE-2 is DECIDED (2026-09-14): Capacitor.** `capacitor.config.json`,
+  `android/`, `ios/` are scaffolded — see `TODO.md` MOBILE-2 for what's real
+  vs. still provisional (`appId` is a placeholder pending an owner call on
+  whether the store listing is branded ShiftOS or XDrive). **Current
+  standing blocker: none technical** — next bricks (MOBILE-4 CORS,
+  MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
+  Developer + Google Play Console signups, a privacy policy URL, an
+  Android signing keystore) can all proceed independently; pick the next
+  unclaimed one each session. Update this line as each is resolved so it
+  never goes stale.
+
 ## Capturing ideas — do this any time, unprompted
 Whenever the user floats a product/feature idea mid-conversation (not a direct
 task request — a "what if" / "I once had an idea" / brainstorm aside), add it
