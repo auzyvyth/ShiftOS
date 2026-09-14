@@ -25,7 +25,7 @@ export default function DashboardTab({
  handoverActive, handoverNext,
  minipageStats, browserNotifPerm, notifBannerDismissed,
  isMobile,
- setActiveTab, setMobileLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
+ setActiveTab, setActiveLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
  setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner, dismissTour,
@@ -150,7 +150,7 @@ export default function DashboardTab({
  const goToLeadForAppt = (a) => {
  const ph = normalizePhone(a.buyer_phone);
  const lead = ph ? leads.find((l) => normalizePhone(l.phone) === ph) : null;
- if (lead) { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }
+ if (lead) { setActiveTab("leads"); setActiveLeadStage(lead.stage); triggerGlow([lead.id]); }
  else { switchTab("enquiries"); setInboxSubTab("bookings"); }
  };
 
@@ -302,7 +302,7 @@ export default function DashboardTab({
  onClick={() => {
  const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
  const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
- if (firstStaleStage) setMobileLeadStage(firstStaleStage);
+ if (firstStaleStage) setActiveLeadStage(firstStaleStage);
  switchTab("leads");
  triggerGlow(staleLeads.map((l) => l.id));
  }}
@@ -532,7 +532,7 @@ export default function DashboardTab({
  return (
  <div
  key={lead.id}
- onClick={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
+ onClick={() => { setActiveTab("leads"); setActiveLeadStage(lead.stage); triggerGlow([lead.id]); }}
  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: ROW_LINE(i < arr.length - 1), background: withAlpha(hue, 0.07), cursor: "pointer" }}
  >
  <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.fillStrong, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.textSec, flexShrink: 0 }}>
@@ -604,7 +604,7 @@ export default function DashboardTab({
  </div>
  ))}
  {agendaFollowUps.map((l) => (
- <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
+ <div key={l.id} onClick={() => { setActiveTab("leads"); setActiveLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.warn, 0.12), color: C.warn, flexShrink: 0 }}>
  <Clock size={13} strokeWidth={2.5} />
  </span>
@@ -737,7 +737,7 @@ export default function DashboardTab({
  <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: T.size.base, padding: "6px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>Save</button>
  <button onClick={() => setGoalEditing(false)} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
  </div>
- <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>Set commission per car in your Listings tab. Sold cars count toward this goal.</p>
+ <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>Commission is your margin (selling price minus base price) on each sold car — it's automatic. Sold cars count toward this goal.</p>
  </div>
  ) : goal.target > 0 ? (
  <div>

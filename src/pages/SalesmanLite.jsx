@@ -2928,7 +2928,7 @@ export default function SalesmanLite() {
       tab: "leads",
       label: t("salesmanLite.tabs.leads"),
       icon: <User style={{ width: 14, height: 14 }} />,
-      badge: leads.filter((l) => l.stage !== "lost").length || null,
+      badge: leads.filter((l) => !TERMINAL_STAGES.includes(l.stage)).length || null,
     },
     {
       tab: "enquiries",
@@ -2960,7 +2960,7 @@ export default function SalesmanLite() {
       tab: "leads",
       label: t("salesmanLite.tabs.leads"),
       icon: <User size={18} />,
-      badge: leads.filter((l) => l.stage !== "lost").length || null,
+      badge: leads.filter((l) => !TERMINAL_STAGES.includes(l.stage)).length || null,
     },
     {
       tab: "enquiries",
