@@ -107,6 +107,10 @@ const initialListing = {
   warranty_months: "",
   deposit_amount: "",
   payment_type: "cash",
+  // Lives on stock_units, not car_listings — patched after save (see handleSubmit)
+  // and prefilled by its own effect below. Defaults to 'unknown', matching the
+  // DB default, so a car is never shown as "clear" without someone confirming it.
+  encumbranceStatus: "unknown",
   // Sambung bayar (loan takeover) — only used when payment_type === 'sambung_bayar'
   sambungMonthly: "",
   sambungMonthsLeft: "",
@@ -393,15 +397,16 @@ function parseTags(raw) {
   return String(raw).split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
 }
 
-function PillSelect({ options, value, onChange }) {
+function PillSelect({ options, value, onChange, disabled = false }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
         <button
           key={opt}
           type="button"
+          disabled={disabled}
           onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {opt}
         </button>
@@ -1152,6 +1157,22 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       setStep(1);
     }
   }, [listing]);
+
+  // encumbrance_status lives on stock_units, not car_listings, so it never
+  // arrives via the `listing` prop above — fetch it directly by listing_id,
+  // the same table/key the save handler patches it back to (see handleSubmit).
+  useEffect(() => {
+    if (!listing?.id || !dealerId) return;
+    supabase
+      .from("stock_units")
+      .select("encumbrance_status")
+      .eq("listing_id", listing.id)
+      .eq("dealer_id", dealerId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setForm((f) => ({ ...f, encumbranceStatus: data.encumbrance_status || "unknown" }));
+      });
+  }, [listing?.id, dealerId]);
 
   // ── Auto-fill specs when brand + model + year are known ────────────────────
   // The LOCAL table is the only source that locks the fields. It is curated,
@@ -2088,11 +2109,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         const savedListing = data[0];
         onUpdate(savedListing);
         logCatalogueGaps(savedListing.id);
-        // Sync services to linked stock_unit
+        // Sync services + encumbrance status to linked stock_unit
         if (savedListing?.id && dealerId) {
           await supabase
             .from("stock_units")
-            .update({ included_services: form.included_services || [] })
+            .update({
+              included_services: form.included_services || [],
+              encumbrance_status: form.encumbranceStatus || "unknown",
+            })
             .eq("listing_id", savedListing.id)
             .eq("dealer_id", dealerId);
         }
@@ -2142,11 +2166,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         cfClearDraft(profile?.id);
         onCreate(savedListing);
         logCatalogueGaps(savedListing.id);
-        // Sync services to linked stock_unit (if one is auto-created)
+        // Sync services + encumbrance status to linked stock_unit (auto-created by trigger)
         if (savedListing?.id) {
           await supabase
             .from("stock_units")
-            .update({ included_services: form.included_services || [] })
+            .update({
+              included_services: form.included_services || [],
+              encumbrance_status: form.encumbranceStatus || "unknown",
+            })
             .eq("listing_id", savedListing.id)
             .eq("dealer_id", dealerId);
         }
@@ -3045,10 +3072,42 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                     ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
                     : "Cash"
               }
+              onChange={(v) => {
+                const next = v === "Sambung Bayar" ? "sambung_bayar" : v.toLowerCase();
+                // A Sambung Bayar car is by definition still under an active HP
+                // loan being taken over — it can never honestly be "Clear".
+                setForm((f) => ({
+                  ...f,
+                  payment_type: next,
+                  encumbranceStatus: next === "sambung_bayar" ? "under_hp" : f.encumbranceStatus,
+                }));
+              }}
+            />
+          </Field>
+
+          <Field
+            label="Encumbrance Status"
+            hint="Is there still an outstanding loan on this car?"
+          >
+            <PillSelect
+              options={["Clear", "Under Hire-Purchase", "Unknown"]}
+              value={
+                form.encumbranceStatus === "clear"
+                  ? "Clear"
+                  : form.encumbranceStatus === "under_hp"
+                    ? "Under Hire-Purchase"
+                    : "Unknown"
+              }
+              disabled={form.payment_type === "sambung_bayar"}
               onChange={(v) =>
-                set("payment_type", v === "Sambung Bayar" ? "sambung_bayar" : v.toLowerCase())
+                set("encumbranceStatus", v === "Clear" ? "clear" : v === "Under Hire-Purchase" ? "under_hp" : "unknown")
               }
             />
+            {form.payment_type === "sambung_bayar" && (
+              <p className="text-xs text-amber-700 mt-1.5">
+                Locked to "Under Hire-Purchase" — Sambung Bayar cars are still on the original owner's loan.
+              </p>
+            )}
           </Field>
 
           {/* Sambung bayar (loan takeover) — buyers decide on monthly + upfront cash +
@@ -3805,6 +3864,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                 <ReviewItem label="Payment" value={form.payment_type === "sambung_bayar" ? "Sambung Bayar" : (form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
                 {form.payment_type === "sambung_bayar" ? (
                   <>
                     <ReviewItem label="Monthly (ansuran)" value={rm(form.sambungMonthly)} />
