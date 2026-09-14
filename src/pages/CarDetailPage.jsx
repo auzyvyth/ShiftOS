@@ -153,11 +153,14 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   if (thin) {
     return (
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
-          Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong>
-          {` — but only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low.`}
-        </p>
-        <p style={{ fontSize: 11, color: th.textMuted, margin: '6px 0 0', lineHeight: 1.6 }}>{method}</p>
+        <details>
+          <summary style={{ fontSize: 12, color: th.textSec, cursor: "pointer", listStyle: "none", lineHeight: 1.6 }}>
+            Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong> · price detail
+          </summary>
+          <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>
+            {`Only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low. ${method}`}
+          </p>
+        </details>
       </div>
     );
   }
