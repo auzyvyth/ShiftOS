@@ -15,8 +15,8 @@ import { supabase } from '../../supabaseClient';
 // de-dup rely on) — a typo or a stranger's address here just means a stray
 // notification, never a mixed-up account or lead. Trying to verify it first
 // was a code-by-email step that depended on Supabase's auth mailer, which
-// buyers were not receiving — a real account (with a real inbox check) is the
-// `taken` case below, pointing them at /buyer-signup instead.
+// buyers were not receiving, so that flow (and its "already has a verified
+// account" `taken` branch) was removed — this is deliberately simpler now.
 //
 // Timing is deliberately the same as PushPromptStrip: after they have sent
 // something, never on open. Someone who has typed nothing has not asked us for
@@ -72,6 +72,7 @@ export default function BuyerEmailPrompt({ t, onResolved }) {
     if (!looksLikeEmail(addr)) { setErr('That email does not look right.'); return; }
     setBusy(true); setErr(null);
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setBusy(false); setErr('Session expired — refresh and try again.'); return; }
     const { error } = await supabase.from('profiles')
       .update({ notify_email: addr }).eq('id', user.id);
     setBusy(false);
