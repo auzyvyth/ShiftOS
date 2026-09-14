@@ -87,7 +87,10 @@ export default function BuyerChat({
   const c = isLight
     ? { bg: '#ffffff', border: 'rgba(15,23,42,0.09)', text: '#111827', sub: '#6b7280',
         rowBg: '#f9fafb', rowBorder: '#e5e7eb', iconBg: '#f3f4f6', chevron: 'rgba(15,23,42,0.35)' }
-    : { bg: '#0f1420', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6', sub: 'rgba(255,255,255,0.55)',
+    // Matches ChatThread's `dark` theme (THEMES.dark, ChatThread.jsx) so the
+    // chooser sheet and the thread it opens into read as one surface, not two
+    // different near-blacks stitched together.
+    : { bg: '#080a12', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6', sub: 'rgba(255,255,255,0.55)',
         rowBg: 'rgba(255,255,255,0.04)', rowBorder: 'rgba(255,255,255,0.10)', iconBg: 'rgba(255,255,255,0.07)', chevron: 'rgba(255,255,255,0.35)' };
 
   const beginChat = async () => {

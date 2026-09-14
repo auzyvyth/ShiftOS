@@ -15,16 +15,25 @@ import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
 // stored `body_ai` with numbers already replaced; this renders that, and swaps
 // to `body` only when the reader taps. One rule, in the database.
 
+// Exactly two surfaces, never a third shade in between: the public/marketplace
+// side of chat (BuyerChat, BuyerInbox) is white; every panel side (SellerInbox,
+// ChatSheet) inside a salesman's dark working panel is black. `dark` is pinned
+// to the same near-black used by the salesman panel itself (theme/tokens.js
+// `panel.bg`/`panel.surface`) rather than an independent navy, so a bubble
+// sitting inside SalesmanLite/Premium reads as one surface, not a component
+// that brought its own background color.
 export const THEMES = {
   light: {
     bg: '#fff', panel: '#f9fafb', border: '#e5e7eb', text: '#111827',
     sub: '#6b7280', mine: '#dc2626', mineText: '#fff',
     theirs: '#f3f4f6', theirsText: '#111827', inputBg: '#fff',
+    shadow: '0 2px 6px rgba(15,23,42,0.08)',
   },
   dark: {
-    bg: '#0f1420', panel: '#141b2b', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6',
-    sub: 'rgba(255,255,255,0.55)', mine: '#dc2626', mineText: '#fff',
-    theirs: 'rgba(255,255,255,0.07)', theirsText: '#f3f4f6', inputBg: 'rgba(255,255,255,0.05)',
+    bg: '#080a12', panel: '#0d1117', border: 'rgba(255,255,255,0.07)', text: '#f1f5f9',
+    sub: '#94a3b8', mine: '#dc2626', mineText: '#fff',
+    theirs: 'rgba(255,255,255,0.06)', theirsText: '#f1f5f9', inputBg: 'rgba(255,255,255,0.04)',
+    shadow: '0 3px 10px rgba(0,0,0,0.45)',
   },
 };
 
@@ -54,21 +63,44 @@ function Bubble({ msg, mine, t }) {
   const state = tickState(msg);
   const hidden = msg.has_sensitive && !revealed;
 
+  // Ambient glow — anchored at the bubble's OUTER edge (the one facing the wall
+  // of the thread: right for a sent bubble, left for a received one) and fading
+  // out toward the centre, so each side reads like light cast off its own edge.
+  // "to left" on a sent bubble puts full colour at the right (0%) fading to
+  // nothing at the left (100%); "to right" on a received one mirrors it.
+  const glow = mine
+    ? 'linear-gradient(to left, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)'
+    : 'linear-gradient(to right, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)';
+
   return (
     <div style={{ display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom:8 }}>
       <div style={{ maxWidth:'78%', minWidth:0 }}>
-        <div style={{
-          background: mine ? t.mine : t.theirs,
-          color: mine ? t.mineText : t.theirsText,
-          borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-          padding:'9px 13px', fontSize:14, lineHeight:1.55,
-          wordBreak:'break-word', whiteSpace:'pre-wrap',
-          opacity: msg.pending ? 0.65 : 1,
-          boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-        }}>
-          {hidden
-            ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
-            : msg.body}
+        {/* Scoped to the bubble alone (not the timestamp row below it), so the
+            blurred glow — which bleeds a little past its own edges — never
+            washes over the ticks/time line under a short message. */}
+        <div style={{ position:'relative' }}>
+          {/* The glow sits behind the bubble, blurred and low-opacity so it
+              reads as ambient light, not a second shape. pointer-events:none
+              keeps it out of the way of taps/selection. */}
+          <div aria-hidden style={{
+            position:'absolute', inset:'-10px', background: glow,
+            filter:'blur(11px)', opacity:0.6, pointerEvents:'none', zIndex:0,
+          }} />
+          <div style={{
+            position:'relative', zIndex:1,
+            background: mine ? t.mine : t.theirs,
+            color: mine ? t.mineText : t.theirsText,
+            border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
+            borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+            padding:'9px 13px', fontSize:14, lineHeight:1.55,
+            wordBreak:'break-word', whiteSpace:'pre-wrap',
+            opacity: msg.pending ? 0.65 : 1,
+            boxShadow: t.shadow,
+          }}>
+            {hidden
+              ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
+              : msg.body}
+          </div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:5, justifyContent: mine ? 'flex-end' : 'flex-start', marginTop:3, padding:'0 3px' }}>
           <span style={{ fontSize:10.5, color:t.sub }}>{fmtTime(msg.created_at)}</span>
