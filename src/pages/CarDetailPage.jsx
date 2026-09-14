@@ -687,7 +687,7 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 // field is simply undefined, nothing errors, and "Cars like this" is where a
 // buyer is comparing sellers hardest.
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price";
 
 /* ─── skeleton ─── */
 function Skeleton() {
