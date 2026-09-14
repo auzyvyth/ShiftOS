@@ -64,7 +64,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
 
 const CAR_FIELDS =
-  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type,sambung_monthly,sambung_deposit,sambung_months_left";
+  "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type";
 
 const BRANDS = [
   "Perodua",
