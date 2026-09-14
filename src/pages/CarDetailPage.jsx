@@ -987,9 +987,10 @@ export default function CarDetailPage() {
     setImgLoaded(false);
   }, [slideKey]);
 
-  /* sticky title */
-  const [showTitle, setShowTitle] = useState(false);
+  /* sticky/gradual header — 0 (top, transparent) to 1 (hero scrolled past, solid) */
+  const [headerProgress, setHeaderProgress] = useState(0);
   const heroRef = useRef(null);
+  const heroMobileRef = useRef(null);
 
   /* current user — used to suppress booking button on own listings */
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -1396,13 +1397,32 @@ export default function CarDetailPage() {
   }, [activeIdx, car]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!heroRef.current) return;
-    const obs = new IntersectionObserver(
-      ([e]) => setShowTitle(!e.isIntersecting),
-      { threshold: 0 },
-    );
-    obs.observe(heroRef.current);
-    return () => obs.disconnect();
+    // Whichever hero is actually laid out (mobile M1 vs. the desktop mosaic)
+    // drives the fade — the other sits at 0 height, hidden by the ≤900px /
+    // 901px+ CSS toggle. Watching the wrong one (the old bug here) meant the
+    // observer tracked a hidden, offscreen desktop element on mobile, so the
+    // header read "scrolled" from the very first paint.
+    const HEADER_H = 60;
+    let raf = null;
+    const compute = () => {
+      const mobileH = heroMobileRef.current?.offsetHeight || 0;
+      const el = mobileH > 0 ? heroMobileRef.current : heroRef.current;
+      if (!el) return 0;
+      const fadeDistance = Math.max((el.offsetHeight || 1) - HEADER_H, 1);
+      return Math.min(Math.max(window.scrollY / fadeDistance, 0), 1);
+    };
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => { raf = null; setHeaderProgress(compute()); });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [car]);
 
   /* ── "You might also like" buckets — fetched only once the section nears the
@@ -1859,6 +1879,11 @@ export default function CarDetailPage() {
   // Chassis/generation code (e.g. "G82") so buyers searching "m4 g82" match us.
   const chassis = car ? getChassisCode(car.brand, car.model, car.year, car.variant) : null;
   const chassisSuffix = chassis ? ` (${chassis})` : "";
+  // Header solidifies gradually with headerProgress (0 = top of page, 1 = hero
+  // fully scrolled behind the fixed header) — see the scroll effect above.
+  // Icon colour / title text still snap at a threshold rather than crossfade
+  // (a half-white half-grey icon reads as broken, not gradual).
+  const showTitle = headerProgress > 0.55;
 
   return (
     <>
@@ -1948,35 +1973,31 @@ export default function CarDetailPage() {
         .cdp-root { background: #060c14; min-height: 100vh; font-family: var(--xd-font-body); color: #e2e8f0; }
 
         /* ── header ── */
-        /* Transparent-over-hero until scrolled past it, so the hero photo
-           fills the entire top of the viewport with no header-reserved gap.
-           position: fixed (not sticky) so it floats over the hero instead of
-           pushing it down; .cdp-header-scrolled (toggled off the existing
-           heroRef IntersectionObserver's showTitle state) brings the
-           background/blur back once the hero has scrolled out of view. */
+        /* Transparent over the hero at the top of the page, solidifying
+           gradually as the user scrolls the hero behind it — driven by the
+           --cdp-progress custom property set inline on <header> each frame
+           (see the scroll effect above). position: fixed (not sticky) so it
+           floats over the hero instead of pushing it down. */
         .cdp-header {
           position: fixed; top: 0; left: 0; right: 0; z-index: 100;
           display: flex; align-items: center; justify-content: space-between;
           padding: 0 28px; height: 60px;
-          background: transparent;
-          backdrop-filter: none; -webkit-backdrop-filter: none;
-          border-bottom: 1px solid transparent;
-          transition: background 0.25s ease, backdrop-filter 0.25s ease, border-color 0.25s ease;
-        }
-        .cdp-header-scrolled {
-          background: rgba(6,12,20,0.93);
-          backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-          border-bottom-color: rgba(255,255,255,0.06);
+          /* --cdp-progress (0-1) is set inline per-frame from scroll position
+             (see the effect above) — background/blur/border ride it directly
+             instead of snapping between two fixed states. */
+          background: rgba(6,12,20, calc(0.93 * var(--cdp-progress, 0)));
+          backdrop-filter: blur(calc(24px * var(--cdp-progress, 0)));
+          -webkit-backdrop-filter: blur(calc(24px * var(--cdp-progress, 0)));
+          border-bottom: 1px solid rgba(255,255,255, calc(0.06 * var(--cdp-progress, 0)));
         }
         /* Soft scrim behind the bare icons — a white car under a transparent
-           header washes them out otherwise. Hands over to the solid
-           background at exactly the point that appears. */
+           header washes them out otherwise. Fades out as the solid
+           background fades in. */
         .cdp-header::before {
           content: ''; position: absolute; top: 0; left: 0; right: 0; height: 120px;
           background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
-          pointer-events: none; opacity: 1; transition: opacity 0.25s ease;
+          pointer-events: none; opacity: calc(1 - var(--cdp-progress, 0));
         }
-        .cdp-header-scrolled::before { opacity: 0; }
         .cdp-header > * { position: relative; z-index: 1; }
 
         /* Icon-only, borderless controls. Padding (not icon size) carries the
@@ -1999,11 +2020,10 @@ export default function CarDetailPage() {
         .cdp-back-btn { margin-left: -7px; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
-          opacity: 0; transition: opacity 0.3s; pointer-events: none;
+          opacity: var(--cdp-progress, 0); pointer-events: none;
           max-width: 40%; text-align: center;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .cdp-header-title.visible { opacity: 1; }
 
         /* ── mosaic ── now a single boxed photo beside the sidebar, not a
            full-bleed 3-cell grid above it — the two small side cells are
@@ -2127,8 +2147,12 @@ export default function CarDetailPage() {
       {isXdrive && <style>{`
         body { background: #F6F7F9 !important; }
         .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
-        .cdp-header { background: transparent !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; border-bottom-color: transparent !important; }
-        .cdp-header-scrolled { background: rgba(246,247,249,0.85) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important; border-bottom-color: rgba(15,23,42,0.07) !important; }
+        .cdp-header {
+          background: rgba(246,247,249, calc(0.85 * var(--cdp-progress, 0))) !important;
+          backdrop-filter: blur(calc(20px * var(--cdp-progress, 0))) !important;
+          -webkit-backdrop-filter: blur(calc(20px * var(--cdp-progress, 0))) !important;
+          border-bottom-color: rgba(15,23,42, calc(0.07 * var(--cdp-progress, 0))) !important;
+        }
         /* Icons stay white while they sit on the photo, in this theme too —
            they only take the light palette once the header is opaque. */
         .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: #64748b !important; }
@@ -2155,11 +2179,11 @@ export default function CarDetailPage() {
           a target on the highest-traffic buyer page. */}
       <div className="cdp-root" id="main-content" role="main" tabIndex={-1}>
         {/* ── header ── */}
-        <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`}>
+        <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`} style={{ '--cdp-progress': headerProgress }}>
           <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">
             <ArrowLeft size={22} />
           </button>
-          <span className={`cdp-header-title${showTitle ? " visible" : ""}`}>
+          <span className="cdp-header-title">
             {carTitle}
           </span>
           <div className="cdp-header-actions">
@@ -2192,7 +2216,7 @@ export default function CarDetailPage() {
             edge — `contain` left dark letterbox bars beside any photo whose
             aspect ratio didn't match the frame. The full uncropped photo is
             one tap away in the lightbox. */}
-        <div className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
+        <div ref={heroMobileRef} className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
           onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}

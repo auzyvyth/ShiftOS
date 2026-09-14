@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,6 +8,7 @@ import {
   Gauge,
   Sparkles,
   ArrowRight,
+  Search,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { cdnImg, imgFallback } from "../utils/img";
@@ -682,6 +683,17 @@ function formatPrice(val) {
 
 export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   const { tenant } = useTenant();
+  const navigate = useNavigate();
+  const [heroQuery, setHeroQuery] = useState("");
+  // Same nav-only pattern as MarketplacePage's hero search (runHeroSearch):
+  // the hero just carries the query, CarListingPage owns filtering + the full
+  // filter UI. /cars is the subdomain route, /showroom is xdrive.my's.
+  const submitHeroSearch = (e) => {
+    e.preventDefault();
+    const val = heroQuery.trim();
+    const path = isSubdomain() ? "/cars" : "/showroom";
+    navigate(val ? `${path}?q=${encodeURIComponent(val)}` : path);
+  };
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [idx, setIdx] = useState(0);
@@ -1024,6 +1036,22 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             <div className={`hc-content-row${s.mode === "text" ? " hc-text-only" : ""}`}>
               {/* 1. Title */}
               <div className="hc-text">
+                <div className="hc-search-bar">
+                  <form className="hc-search-form" onSubmit={submitHeroSearch} role="search">
+                    <Search className="hc-search-icon" />
+                    <input
+                      className="hc-search-input"
+                      type="text"
+                      value={heroQuery}
+                      onChange={(e) => setHeroQuery(e.target.value)}
+                      placeholder="Search by brand, model or keyword…"
+                      aria-label="Search cars"
+                    />
+                    <button type="submit" className="hc-search-btn" aria-label="Search">
+                      <Search size={15} />
+                    </button>
+                  </form>
+                </div>
                 <div key={`c-${animKey}`} className="hc-anim">
                   <div className="hc-eyebrow">
                     <div className="hc-eyebrow-dot" />
