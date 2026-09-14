@@ -153,11 +153,14 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   if (thin) {
     return (
       <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
-          Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong>
-          {` — but only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low.`}
-        </p>
-        <p style={{ fontSize: 11, color: th.textMuted, margin: '6px 0 0', lineHeight: 1.6 }}>{method}</p>
+        <details>
+          <summary style={{ fontSize: 12, color: th.textSec, cursor: "pointer", listStyle: "none", lineHeight: 1.6 }}>
+            Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong> · price detail
+          </summary>
+          <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>
+            {`Only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low. ${method}`}
+          </p>
+        </details>
       </div>
     );
   }
@@ -212,7 +215,7 @@ const SpecHighlights = ({ car, th }) => {
 
 /* Prominent warranty banner — promotes the dealer's warranty months from a thin
    line to a highlighted strip directly under the price. Real data only. */
-const WarrantyBanner = ({ car, isXdrive }) => {
+const WarrantyBanner = ({ car, isXdrive, style }) => {
   if (!(car.warranty_months > 0)) return null;
   const head = isXdrive ? '#16a34a' : '#4ade80';
   const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
@@ -221,7 +224,7 @@ const WarrantyBanner = ({ car, isXdrive }) => {
   // and point at the question worth asking instead of inventing reassurance.
   const hasCert = (car.document_types || []).includes('warranty');
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10, ...style }}>
       <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
@@ -687,7 +690,7 @@ const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 // field is simply undefined, nothing errors, and "Cars like this" is where a
 // buyer is comparing sellers hardest.
 const SIM_FIELDS =
-  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified";
+  "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price";
 
 /* ─── skeleton ─── */
 function Skeleton() {
@@ -720,18 +723,13 @@ function Skeleton() {
         </div>
       </div>
 
-      {/* ── DESKTOP (>900px) ── */}
-      {/* Mosaic — matches .cdp-mosaic-grid */}
-      <div className="sk-desktop" style={{ display:'grid', gridTemplateColumns:'1.65fr 1fr', gridTemplateRows:'1fr 1fr', gap:3, background:mosaicGap, height:'58vh', minHeight:400, maxHeight:660 }}>
-        <div className="sk-b" style={{ gridRow:'1/3', borderRadius:0 }} />
-        <div className="sk-b" style={{ borderRadius:0 }} />
-        <div className="sk-b" style={{ borderRadius:0 }} />
-      </div>
-
-      {/* Body — matches .cdp-body-wrap */}
+      {/* ── DESKTOP (>900px) — matches .cdp-body-wrap; the photo now sits
+          inside the left column beside the sidebar, not full-bleed above it. */}
       <div className="sk-desktop" style={{ maxWidth:1280, margin:'0 auto', padding:'40px 32px', display:'flex', gap:48, alignItems:'flex-start' }}>
         {/* Left — flex 1.55 */}
         <div style={{ flex:1.55, minWidth:0 }}>
+          {/* Photo — matches .cdp-mosaic-grid */}
+          <div className="sk-b" style={{ aspectRatio:'3 / 2', maxHeight:560, borderRadius:16, marginBottom:14, background:mosaicGap }} />
           <div className="sk-b" style={{ height:10, width:'14%', marginBottom:10 }} />
           <div className="sk-b" style={{ height:52, width:'72%', marginBottom:10 }} />
           <div className="sk-b" style={{ height:13, width:'38%', marginBottom:20 }} />
@@ -747,25 +745,22 @@ function Skeleton() {
           <div className="sk-b" style={{ height:13, width:'74%' }} />
         </div>
 
-        {/* Sidebar — 360px */}
+        {/* Sidebar — 360px, shorter now (no warranty banner or agent card at
+            the bottom — those moved out / were removed from the real page) */}
         <div style={{ width:360, flexShrink:0, background:card, border:`1px solid ${border}`, borderRadius:16, padding:'28px 24px', boxSizing:'border-box' }}>
+          <div style={{ display:'flex', gap:10, alignItems:'center', marginBottom:20 }}>
+            <div className="sk-b" style={{ width:32, height:32, borderRadius:'50%', flexShrink:0 }} />
+            <div style={{ flex:1 }}>
+              <div className="sk-b" style={{ height:12, width:'55%', marginBottom:6 }} />
+              <div className="sk-b" style={{ height:10, width:'35%' }} />
+            </div>
+          </div>
           <div className="sk-b" style={{ height:11, width:'36%', marginBottom:12 }} />
           <div className="sk-b" style={{ height:46, width:'68%', marginBottom:8 }} />
           <div className="sk-b" style={{ height:11, width:'50%', marginBottom:20 }} />
           <div className="sk-b" style={{ height:1, marginBottom:16 }} />
           <div className="sk-b" style={{ height:48, borderRadius:10, marginBottom:8 }} />
-          <div style={{ display:'flex', gap:8, marginBottom:8 }}>
-            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
-            <div className="sk-b" style={{ flex:1, height:44, borderRadius:10 }} />
-          </div>
-          <div className="sk-b" style={{ height:1, margin:'14px 0' }} />
-          <div style={{ display:'flex', gap:10, alignItems:'center' }}>
-            <div className="sk-b" style={{ width:36, height:36, borderRadius:'50%', flexShrink:0 }} />
-            <div style={{ flex:1 }}>
-              <div className="sk-b" style={{ height:12, width:'60%', marginBottom:6 }} />
-              <div className="sk-b" style={{ height:10, width:'40%' }} />
-            </div>
-          </div>
+          <div className="sk-b" style={{ height:44, borderRadius:10 }} />
         </div>
       </div>
 
@@ -2008,17 +2003,17 @@ export default function CarDetailPage() {
         }
         .cdp-header-title.visible { opacity: 1; }
 
-        /* ── mosaic ── */
+        /* ── mosaic ── now a single boxed photo beside the sidebar, not a
+           full-bleed 3-cell grid above it — the two small side cells are
+           gone, that's the sidebar's space now. */
         .cdp-mosaic-grid {
-          display: grid; grid-template-columns: 1.65fr 1fr; grid-template-rows: 1fr 1fr;
-          gap: 3px; background: #000;
-          height: 58vh; min-height: 400px; max-height: 660px;
+          position: relative; overflow: hidden; border-radius: 16px;
+          background: #000; aspect-ratio: 3 / 2; max-height: 560px;
         }
-        .cdp-mosaic-cell { overflow: hidden; position: relative; cursor: zoom-in; transition: filter 0.3s; }
+        .cdp-mosaic-cell { overflow: hidden; position: relative; cursor: zoom-in; transition: filter 0.3s; width: 100%; height: 100%; }
         .cdp-mosaic-cell:hover { filter: brightness(1.08); }
         .cdp-mosaic-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
         .cdp-mosaic-cell:hover img { transform: scale(1.03); }
-        .cdp-mosaic-primary { grid-row: 1 / 3; }
         .cdp-mosaic-mobile { display: none; position: relative; overflow: hidden; background: #080f18; }
 
         /* ── mobile nav arrows (shared with mosaic-mobile) ── */
@@ -2186,262 +2181,6 @@ export default function CarDetailPage() {
             </button>
           </div>
         </header>
-
-        {/* ── SECTION 1: Photo Mosaic ── */}
-        <div ref={heroRef}>
-          {/* Desktop 3-cell grid */}
-          <div className="cdp-mosaic-grid cdp-desktop-only">
-            {/* Primary — spans both rows, swipeable */}
-            <div
-              className="cdp-mosaic-cell cdp-mosaic-primary"
-              onClick={() => setLbOpen(true)}
-            >
-              <img
-                key={slideKey}
-                src={disp(images[activeIdx], 1280)}
-                srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
-                sizes={HERO_SIZES}
-                alt={carTitle}
-                fetchPriority="high"
-                decoding="async"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={onImgErr(images[activeIdx])}
-              />
-              {imgCount > 1 && (
-                <>
-                  <button
-                    className="cdp-arrow cdp-arrow-l"
-                    onClick={(e) => { e.stopPropagation(); go(prevIdx, "prev"); }}
-                    aria-label="Previous photo"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    className="cdp-arrow cdp-arrow-r"
-                    onClick={(e) => { e.stopPropagation(); go(nextIdx, "next"); }}
-                    aria-label="Next photo"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                  {/* Bottom-RIGHT, not top-left: the floating back/share chrome
-                      is an absolute bar across the top of the mosaic, so a pill
-                      at top:14/left:14 sat underneath the back button. Bottom
-                      right is clear of that, of the centred dots and of the
-                      vertically-centred arrows. Mobile matches. */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 14,
-                      right: 14,
-                      zIndex: 4,
-                      background: "rgba(6,8,15,0.62)",
-                      backdropFilter: "blur(10px)",
-                      border: "1px solid rgba(255,255,255,0.14)",
-                      borderRadius: 20,
-                      padding: "4px 12px",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.9)",
-                      fontFamily: "var(--xd-font-body)",
-                      letterSpacing: "0.03em",
-                      pointerEvents: "none",
-                    }}
-                  >
-                    {activeIdx + 1} / {imgCount}
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Cell 2 — top right */}
-            <div
-              className="cdp-mosaic-cell"
-              style={{ gridRow: 1, gridColumn: 2 }}
-              onClick={() => {
-                go(Math.min(1, imgCount - 1), "next");
-                setLbOpen(true);
-              }}
-            >
-              <img
-                src={disp(images[1] || images[0], 760)}
-                alt={`${carTitle} view 2`}
-                loading="lazy"
-                decoding="async"
-                onError={onImgErr(images[1] || images[0])}
-              />
-            </div>
-
-            {/* Cell 3 — bottom right */}
-            <div
-              className="cdp-mosaic-cell"
-              style={{ gridRow: 2, gridColumn: 2 }}
-              onClick={() => {
-                go(Math.min(2, imgCount - 1), "next");
-                setLbOpen(true);
-              }}
-            >
-              <img
-                src={disp(images[2] || images[0], 760)}
-                alt={`${carTitle} view 3`}
-                loading="lazy"
-                decoding="async"
-                onError={onImgErr(images[2] || images[0])}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  go(0, "next");
-                  setLbOpen(true);
-                }}
-                style={{
-                  position: "absolute",
-                  bottom: 14,
-                  right: 14,
-                  zIndex: 4,
-                  background: "rgba(6,8,15,0.75)",
-                  backdropFilter: "blur(12px)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 8,
-                  padding: "8px 14px",
-                  color: "white",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "var(--xd-font-body)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  letterSpacing: "0.03em",
-                }}
-              >
-                <Camera size={13} style={{ color: "#dc2626" }} />
-                View all {imgCount} photos
-              </button>
-            </div>
-          </div>
-
-          {/* Thumbnail strip (desktop) — jump straight to any photo */}
-          {imgCount > 1 && (
-            <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
-              {images.map((src, i) => (
-                <button
-                  key={i}
-                  onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
-                  aria-label={`View photo ${i + 1}`}
-                  style={{ flex: '0 0 auto', width: 84, height: 60, padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
-                  onMouseLeave={e => { e.currentTarget.style.opacity = i === activeIdx ? 1 : 0.6; }}
-                >
-                  <img src={disp(src, 200)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Mobile single swipeable panel — desktop-only since M1 handles mobile */}
-          <div
-            className="cdp-mosaic-mobile cdp-desktop-only"
-            onTouchStart={galleryTouchStart}
-            onTouchEnd={galleryTouchEnd}
-          >
-            {!imgLoaded && <div className="cdp-img-shimmer" />}
-            <img
-              key={slideKey}
-              className={`cdp-main-img cdp-slide-${slideDir}`}
-              src={disp(images[activeIdx], 1280)}
-              srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
-              sizes={HERO_SIZES}
-              alt={carTitle}
-              fetchPriority={activeIdx === 0 ? "high" : "auto"}
-              loading={activeIdx === 0 ? "eager" : "lazy"}
-              decoding="async"
-              onClick={() => setLbOpen(true)}
-              onLoad={() => setImgLoaded(true)}
-              onError={(e) => {
-                if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
-                  e.currentTarget.dataset.fb = '1';
-                  e.currentTarget.src = images[activeIdx];
-                } else {
-                  e.target.src = "/placeholder-car.jpg";
-                }
-                setImgLoaded(true);
-              }}
-            />
-            {imgCount > 1 && (
-              <>
-                <button
-                  className="cdp-arrow cdp-arrow-l"
-                  onClick={() => go(prevIdx, "prev")}
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <button
-                  className="cdp-arrow cdp-arrow-r"
-                  onClick={() => go(nextIdx, "next")}
-                  aria-label="Next"
-                >
-                  <ChevronRight size={18} />
-                </button>
-                {(() => {
-                  const DOT_SLOT = 12;
-                  const rawOffset = -(activeIdx - 2) * DOT_SLOT;
-                  const minOffset =
-                    imgCount > 5 ? -(imgCount - 5) * DOT_SLOT : 0;
-                  const trackShift = Math.min(
-                    0,
-                    Math.max(minOffset, rawOffset),
-                  );
-                  return (
-                    <div className="cdp-dots">
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 6,
-                          transform: `translateX(${trackShift}px)`,
-                          transition: "transform 0.35s ease",
-                        }}
-                      >
-                        {images.map((_, i) => {
-                          const dist = Math.abs(i - activeIdx);
-                          return (
-                            <button
-                              key={i}
-                              className={`cdp-dot${i === activeIdx ? " active" : ""}`}
-                              onClick={() =>
-                                go(i, i > activeIdx ? "next" : "prev")
-                              }
-                              aria-label={`Image ${i + 1}`}
-                              style={{
-                                opacity:
-                                  dist === 0
-                                    ? 1
-                                    : dist === 1
-                                      ? 0.65
-                                      : dist === 2
-                                        ? 0.35
-                                        : 0,
-                                transform:
-                                  dist === 0
-                                    ? "scaleX(2.8)"
-                                    : dist === 1
-                                      ? "scale(0.9)"
-                                      : dist === 2
-                                        ? "scale(0.7)"
-                                        : "scale(0)",
-                                pointerEvents: dist > 2 ? "none" : "auto",
-                              }}
-                            />
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </>
-            )}
-          </div>
-        </div>
 
         {/* ══════════════════════════════════════════
             MOBILE LAYOUT (≤900px) — M1 through M8
@@ -3140,6 +2879,193 @@ export default function CarDetailPage() {
         <div className="cdp-body-wrap cdp-desktop-only">
           {/* ── LEFT COLUMN ── */}
           <div className="cdp-body-left">
+            {/* ── Photo — beside the trust sidebar now, not a separate
+                full-bleed section above it. The two small mosaic cells that
+                used to sit to its right are gone; that's the sidebar's space
+                now. The filmstrip stays, but only spans this column's width
+                (it used to run edge-to-edge under the full-bleed mosaic). */}
+            <div ref={heroRef}>
+              <div className="cdp-mosaic-grid cdp-desktop-only">
+                <div
+                  className="cdp-mosaic-cell cdp-mosaic-primary"
+                  onClick={() => setLbOpen(true)}
+                >
+                  <img
+                    key={slideKey}
+                    src={disp(images[activeIdx], 1280)}
+                    srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+                    sizes={HERO_SIZES}
+                    alt={carTitle}
+                    fetchPriority="high"
+                    decoding="async"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={onImgErr(images[activeIdx])}
+                  />
+                  {imgCount > 1 && (
+                    <>
+                      <button
+                        className="cdp-arrow cdp-arrow-l"
+                        onClick={(e) => { e.stopPropagation(); go(prevIdx, "prev"); }}
+                        aria-label="Previous photo"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        className="cdp-arrow cdp-arrow-r"
+                        onClick={(e) => { e.stopPropagation(); go(nextIdx, "next"); }}
+                        aria-label="Next photo"
+                      >
+                        <ChevronRight size={18} />
+                      </button>
+                      <div
+                        style={{
+                          position: "absolute",
+                          bottom: 14,
+                          right: 14,
+                          zIndex: 4,
+                          background: "rgba(6,8,15,0.62)",
+                          backdropFilter: "blur(10px)",
+                          border: "1px solid rgba(255,255,255,0.14)",
+                          borderRadius: 20,
+                          padding: "4px 12px",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: "rgba(255,255,255,0.9)",
+                          fontFamily: "var(--xd-font-body)",
+                          letterSpacing: "0.03em",
+                          pointerEvents: "none",
+                        }}
+                      >
+                        {activeIdx + 1} / {imgCount}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Thumbnail strip (desktop) — jump straight to any photo */}
+              {imgCount > 1 && (
+                <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+                  {images.map((src, i) => (
+                    <button
+                      key={i}
+                      onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
+                      aria-label={`View photo ${i + 1}`}
+                      style={{ flex: '0 0 auto', width: 84, height: 60, padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = i === activeIdx ? 1 : 0.6; }}
+                    >
+                      <img src={disp(src, 200)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Mobile single swipeable panel — desktop-only since M1 handles mobile */}
+              <div
+                className="cdp-mosaic-mobile cdp-desktop-only"
+                onTouchStart={galleryTouchStart}
+                onTouchEnd={galleryTouchEnd}
+              >
+                {!imgLoaded && <div className="cdp-img-shimmer" />}
+                <img
+                  key={slideKey}
+                  className={`cdp-main-img cdp-slide-${slideDir}`}
+                  src={disp(images[activeIdx], 1280)}
+                  srcSet={cdnSrcSet(images[activeIdx], HERO_WIDTHS, 72)}
+                  sizes={HERO_SIZES}
+                  alt={carTitle}
+                  fetchPriority={activeIdx === 0 ? "high" : "auto"}
+                  loading={activeIdx === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  onClick={() => setLbOpen(true)}
+                  onLoad={() => setImgLoaded(true)}
+                  onError={(e) => {
+                    if (images[activeIdx] && !e.currentTarget.dataset.fb && e.currentTarget.src !== images[activeIdx]) {
+                      e.currentTarget.dataset.fb = '1';
+                      e.currentTarget.src = images[activeIdx];
+                    } else {
+                      e.target.src = "/placeholder-car.jpg";
+                    }
+                    setImgLoaded(true);
+                  }}
+                />
+                {imgCount > 1 && (
+                  <>
+                    <button
+                      className="cdp-arrow cdp-arrow-l"
+                      onClick={() => go(prevIdx, "prev")}
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      className="cdp-arrow cdp-arrow-r"
+                      onClick={() => go(nextIdx, "next")}
+                      aria-label="Next"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                    {(() => {
+                      const DOT_SLOT = 12;
+                      const rawOffset = -(activeIdx - 2) * DOT_SLOT;
+                      const minOffset =
+                        imgCount > 5 ? -(imgCount - 5) * DOT_SLOT : 0;
+                      const trackShift = Math.min(
+                        0,
+                        Math.max(minOffset, rawOffset),
+                      );
+                      return (
+                        <div className="cdp-dots">
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: 6,
+                              transform: `translateX(${trackShift}px)`,
+                              transition: "transform 0.35s ease",
+                            }}
+                          >
+                            {images.map((_, i) => {
+                              const dist = Math.abs(i - activeIdx);
+                              return (
+                                <button
+                                  key={i}
+                                  className={`cdp-dot${i === activeIdx ? " active" : ""}`}
+                                  onClick={() =>
+                                    go(i, i > activeIdx ? "next" : "prev")
+                                  }
+                                  aria-label={`Image ${i + 1}`}
+                                  style={{
+                                    opacity:
+                                      dist === 0
+                                        ? 1
+                                        : dist === 1
+                                          ? 0.65
+                                          : dist === 2
+                                            ? 0.35
+                                            : 0,
+                                    transform:
+                                      dist === 0
+                                        ? "scaleX(2.8)"
+                                        : dist === 1
+                                          ? "scale(0.9)"
+                                          : dist === 2
+                                            ? "scale(0.7)"
+                                            : "scale(0)",
+                                    pointerEvents: dist > 2 ? "none" : "auto",
+                                  }}
+                                />
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Title block — brand sits at the same scale as the nameplate below it
                 (was a tiny 10px caption dwarfed by the 3-4.4rem heading), so brand
                 and model read as one masthead, differentiated by color only. */}
@@ -3176,14 +3102,26 @@ export default function CarDetailPage() {
                 .join("  ·  ")}
             </p>
             {/* Plain "Recon" chip dropped — the icon'd Recon chip in ReconTrust
-                below is the single source, so it isn't shown twice in one view. */}
-            {(isReserved || isHot || hasDocuments) && (
+                below is the single source, so it isn't shown twice in one view.
+                Warranty rides in this same row now, next to Docs on File —
+                it used to be a full-width strip buried in the sidebar, which
+                is exactly the kind of length that pushed the sidebar past a
+                glance. */}
+            {(isReserved || isHot || hasDocuments || car.warranty_months > 0) && (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 24,
+                }}
+              >
               <div
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
                   gap: 6,
-                  marginBottom: 24,
                 }}
               >
                 {isReserved && (
@@ -3259,6 +3197,8 @@ export default function CarDetailPage() {
                     <FileText size={11} /> Docs on File
                   </span>
                 ))}
+              </div>
+              <WarrantyBanner car={car} isXdrive={isXdrive} style={{ marginBottom: 0, flex: "0 1 auto" }} />
               </div>
             )}
             <div
@@ -4039,7 +3979,10 @@ export default function CarDetailPage() {
               <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
             </div>
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
-            <WarrantyBanner car={car} isXdrive={isXdrive} />
+            {/* Warranty moved up next to the Docs on File chip, beside the
+                photo — this whole sidebar used to run past a glance on a
+                fully-filled listing, so nothing rides here that doesn't earn
+                its place in a fast scan: price, deposit, book, contact. */}
             <PriceIncludes car={car} seller={seller} th={th} />
             <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
 
@@ -4052,56 +3995,28 @@ export default function CarDetailPage() {
             </button>
             )}
 
+            {/* Financing calculator — the only tertiary link left; Visit
+                Seller's Page and the agent card below were dropped (the
+                Asking Price link above is the one seller-page link this
+                sidebar keeps). Sits above Contact so Contact stays the last
+                thing in the sidebar. */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 14 }}>
+              <button onClick={() => setCalcOpen(true)}
+                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
+                <Calculator size={13} style={{ color: '#dc2626' }} /> Financing calculator
+              </button>
+            </div>
+
             {/* RAPTOR-6 — same single Contact button as the mobile card above.
-                Both blocks must stay in step or the two layouts drift. */}
-            <div style={{ marginTop: 8 }}>
+                Both blocks must stay in step or the two layouts drift. Last
+                thing in the sidebar, on purpose. */}
+            <div style={{ marginTop: 10 }}>
               <BuyerChat listingId={car.id} isLight={isXdrive}
                 carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
                 sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
                 onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
                 onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
             </div>
-
-            {/* Tertiary actions — quiet text links, not more buttons */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, marginTop: 14 }}>
-              <button onClick={() => setCalcOpen(true)}
-                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
-                <Calculator size={13} style={{ color: '#dc2626' }} /> Financing calculator
-              </button>
-              {sellerPageUrl && !isSubdomain() && (
-                <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, textDecoration: 'none', fontFamily: "var(--xd-font-body)", borderBottom: `1px solid ${th.border}`, paddingBottom: 2 }}>
-                  <ExternalLink size={13} /> {sellerPageLabel}
-                </a>
-              )}
-            </div>
-
-            {/* SALESMAN CARD */}
-            {salesmanProfile && (() => {
-              const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
-              return (
-                <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-                    {salesmanProfile.avatar_url
-                      ? <img src={salesmanProfile.avatar_url} alt={salesmanProfile.full_name} style={{ width: 52, height: 52, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                      : <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#1d4ed8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: '#fff' }}>
-                          {(salesmanProfile.full_name || 'S')[0].toUpperCase()}
-                        </div>
-                    }
-                    <div>
-                      <p style={{ fontSize: 15, fontWeight: 700, color: th.text, margin: 0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                      {salesmanProfile.job_title && <p style={{ fontSize: 12, color: th.textMuted, margin: '3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                      <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0', letterSpacing: '0.05em' }}>Independent Agent · XDrive</p>
-                    </div>
-                  </div>
-                  {salesmanProfile.slug && (
-                    <Link to={`/s/${salesmanProfile.slug}`} style={{ display: 'block', textAlign: 'center', fontSize: 12, color: th.textSec, fontWeight: 600, textDecoration: 'none' }}>
-                      {firstName}&apos;s other listings &rarr;
-                    </Link>
-                  )}
-                </div>
-              );
-            })()}
           </div>{/* end sidebar */}
         </div>{/* end body wrap */}
 
