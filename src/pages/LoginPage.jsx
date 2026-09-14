@@ -1139,7 +1139,7 @@ export default function LoginPage() {
             <span className="lr-create-text">New here?</span>
             <a href="/buyer-login" className="lr-create-link">Sign up to buy →</a>
             <span className="lr-create-text" aria-hidden>·</span>
-            <a href="/for-salesmen" className="lr-create-link">Sign up to sell →</a>
+            <a href="/plans" className="lr-create-link">Sign up to sell →</a>
           </div>
         </div>
       </div>
