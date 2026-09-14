@@ -19,12 +19,16 @@ which case say so rather than picking a path yourself.
   manifest, or edge function CORS — this area has already taken down prod
   once (MOBILE-1 PKCE migration, #369→#370, reverted same day) and a retry
   needs a staging click-through, not a code-read.
-- **MOBILE-2 is the standing blocker**: Capacitor-wrap this React app vs. a
-  separate React Native client. It gates MOBILE-3/4/5 — nothing downstream
-  should be built assuming a path until the owner picks one. Surface this at
-  the start of any session that touches this stream until it's decided.
-- When the blocking decision is resolved, replace this note's "standing
-  blocker" line with the next one, so it never goes stale.
+- **MOBILE-2 is DECIDED (2026-09-14): Capacitor.** `capacitor.config.json`,
+  `android/`, `ios/` are scaffolded — see `TODO.md` MOBILE-2 for what's real
+  vs. still provisional (`appId` is a placeholder pending an owner call on
+  whether the store listing is branded ShiftOS or XDrive). **Current
+  standing blocker: none technical** — next bricks (MOBILE-4 CORS,
+  MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
+  Developer + Google Play Console signups, a privacy policy URL, an
+  Android signing keystore) can all proceed independently; pick the next
+  unclaimed one each session. Update this line as each is resolved so it
+  never goes stale.
 
 ## Capturing ideas — do this any time, unprompted
 Whenever the user floats a product/feature idea mid-conversation (not a direct

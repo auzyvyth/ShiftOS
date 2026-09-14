@@ -4009,12 +4009,39 @@ native build.
   the revert — recover it from #369). PKCE keeps its secret in the browser that
   STARTED the flow, and on Android the reset email opens in Gmail's in-app
   browser, a different browser, so a PKCE reset link dies with "link expired".
-- [ ] **MOBILE-2 (BLOCKING DECISION — gates MOBILE-3 and MOBILE-4): pick the native path.**
-  Capacitor-wrapping this React app vs a separate React Native client. This single call
-  determines the shape of the push-notification work, the CORS allowlist change, and whether
-  iOS 4.2 is satisfiable. Decide before any native work starts. Recommendation: Capacitor —
-  it reuses this codebase, and 4.2 is clearable by shipping native capabilities (push,
-  camera for listing photos, biometric unlock) rather than a rebuild.
+- [x] **MOBILE-2 DECIDED 2026-09-14 — Capacitor, owner confirmed.** Foundation laid same
+  session: `@capacitor/core` + `@capacitor/ios` + `@capacitor/android` (deps) and
+  `@capacitor/cli` (devDep) installed; `capacitor.config.json` created (`appId:
+  my.xdrive.shiftos`, `appName: ShiftOS`, `webDir: dist`); `android/` and `ios/` native
+  project shells scaffolded via `npx cap add`. Both platforms scaffold cleanly in this
+  Linux sandbox (no Xcode needed just to generate the iOS project skeleton — that's a
+  Swift Package Manager project, not CocoaPods, in this Capacitor version) — but an
+  actual buildable `.ipa` still needs a real Mac with Xcode; Android can build headless
+  (`cd android && ./gradlew assembleDebug`) once the Android SDK is present, untested
+  here (no SDK in this sandbox, only the JDK).
+  `eslint.config.mjs` ignores added for `android/**` and `ios/**` — the native
+  projects' copied-in web build (`app/src/main/assets/public`,
+  `App/App/public`, both gitignored by Capacitor's own scaffolded `.gitignore`
+  files) was getting linted as source and threw 492 `no-undef` errors on minified
+  bundle output.
+  **`appId: my.xdrive.shiftos` is PROVISIONAL — confirm before first store submission.**
+  Reverse-DNS of xdrive.my + product name. Cheap to rename now (edit
+  `capacitor.config.json` + re-run `npx cap sync`); expensive to rename AFTER the first
+  App Store / Play Console listing exists under it (effectively a new app, losing any
+  reviews/ranking). Also unresolved: is the store listing "ShiftOS" (the dealer OS) or
+  "XDrive" (the buyer-facing marketplace brand) — the PWA manifest already conflates them
+  as "ShiftOS by XDrive"; worth a deliberate call before submission, not an accretion.
+  **New tracked debt:** `npm audit` now shows 3 moderate vulnerabilities
+  (`@capacitor/cli` -> `uuid`, `xcode`) — devDependency, build-tool-only, same
+  non-production-reachable shape as DEP-1's cleared batch. `npm audit fix --force`
+  claims a fix but flags it `isSemVerMajor`, i.e. would downgrade `@capacitor/cli`.
+  Left alone deliberately; revisit if it climbs to high/critical.
+  **Next bricks toward an actual store submission (none started):** MOBILE-4 (CORS
+  allowlist per edge function), MOBILE-5 (subdomain-tenancy-in-one-bundle decision),
+  app icon/splash screen assets for native (PWA-3's icon/background mismatch applies
+  here too), an Apple Developer account (US$99/yr) + Google Play Console account
+  (US$25 one-time) — both owner-owned signups, a privacy policy page (stores require
+  a URL, not just in-app text), and a signing keystore for Android release builds.
 - [x] **MOBILE-3 — CORRECTED AND LARGELY DONE (2026-08-16).** The original entry said "no
   push notification infrastructure exists (no FCM/APNs anywhere in the repo)". That was
   wrong, and wrong in the expensive direction: **web push was ~60% built months ago, live

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ShiftOS</string>
+    <string name="title_activity_main">ShiftOS</string>
+    <string name="package_name">my.xdrive.shiftos</string>
+    <string name="custom_url_scheme">my.xdrive.shiftos</string>
+</resources>
