@@ -66,41 +66,32 @@ function Bubble({ msg, mine, t }) {
   // Ambient glow — anchored at the bubble's OUTER edge (the one facing the wall
   // of the thread: right for a sent bubble, left for a received one) and fading
   // out toward the centre, so each side reads like light cast off its own edge.
-  // "to left" on a sent bubble puts full colour at the right (0%) fading to
-  // nothing at the left (100%); "to right" on a received one mirrors it.
-  const glow = mine
-    ? 'linear-gradient(to left, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)'
-    : 'linear-gradient(to right, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)';
+  // This is a box-shadow on the bubble itself, not a layer sitting behind it —
+  // a behind-layer only showed through the RECEIVED bubble, because its fill is
+  // translucent (THEMES.*.theirs). The SENT bubble is solid `t.mine` red, which
+  // fully occluded that layer and left it with no visible glow at all — the
+  // "sender bubble doesn't match" bug. A box-shadow paints outside the box, so
+  // it reads the same regardless of the bubble's own fill opacity.
+  const glowShadow = mine
+    ? '8px 0 20px -5px rgba(220,38,38,0.55)'
+    : '-8px 0 20px -5px rgba(220,38,38,0.45)';
 
   return (
     <div style={{ display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom:8 }}>
       <div style={{ maxWidth:'78%', minWidth:0 }}>
-        {/* Scoped to the bubble alone (not the timestamp row below it), so the
-            blurred glow — which bleeds a little past its own edges — never
-            washes over the ticks/time line under a short message. */}
-        <div style={{ position:'relative' }}>
-          {/* The glow sits behind the bubble, blurred and low-opacity so it
-              reads as ambient light, not a second shape. pointer-events:none
-              keeps it out of the way of taps/selection. */}
-          <div aria-hidden style={{
-            position:'absolute', inset:'-10px', background: glow,
-            filter:'blur(11px)', opacity:0.6, pointerEvents:'none', zIndex:0,
-          }} />
-          <div style={{
-            position:'relative', zIndex:1,
-            background: mine ? t.mine : t.theirs,
-            color: mine ? t.mineText : t.theirsText,
-            border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
-            borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-            padding:'9px 13px', fontSize:14, lineHeight:1.55,
-            wordBreak:'break-word', whiteSpace:'pre-wrap',
-            opacity: msg.pending ? 0.65 : 1,
-            boxShadow: t.shadow,
-          }}>
-            {hidden
-              ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
-              : msg.body}
-          </div>
+        <div style={{
+          background: mine ? t.mine : t.theirs,
+          color: mine ? t.mineText : t.theirsText,
+          border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
+          borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+          padding:'9px 13px', fontSize:14, lineHeight:1.55,
+          wordBreak:'break-word', whiteSpace:'pre-wrap',
+          opacity: msg.pending ? 0.65 : 1,
+          boxShadow: `${t.shadow}, ${glowShadow}`,
+        }}>
+          {hidden
+            ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
+            : msg.body}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:5, justifyContent: mine ? 'flex-end' : 'flex-start', marginTop:3, padding:'0 3px' }}>
           <span style={{ fontSize:10.5, color:t.sub }}>{fmtTime(msg.created_at)}</span>
@@ -444,8 +435,12 @@ export default function ChatThread({
           which do create a containing block) pass viewportPinned and never pin. */}
       <form onSubmit={submit} ref={formRef}
         style={{
-          padding:10, borderTop:`1px solid ${t.border}`,
-          background:t.panel, flexShrink:0, boxSizing:'border-box',
+          // No panel fill / top border anymore — the composer is a floating
+          // pill sitting OVER the message list, not a docked toolbar flush
+          // with the edges. The padding here IS the float: it's the gap
+          // between the pill and the screen edges (and the keyboard, when
+          // pinned).
+          padding:'8px 12px 12px', background:'transparent', flexShrink:0, boxSizing:'border-box',
           ...(pinned ? {
             position:'fixed', left:0, right:0,
             // The bottom edge of the visible area in layout-viewport
@@ -454,18 +449,18 @@ export default function ChatThread({
             zIndex:60,
           } : null),
         }}>
-        <div style={{ display:'flex', gap:8, alignItems:'flex-end', ...centre }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:6, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:22, padding:'6px 6px 6px 16px', boxShadow:t.shadow, ...centre }}>
         <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
           rows={1} maxLength={4000} aria-label="Message"
-          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
+          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
         {/* Keeps focus in the input: without this the tap blurs it, the bar
             unpins out from under the finger before the click lands, and the
             keyboard shuts between every message. */}
         <button type="submit" onMouseDown={e => e.preventDefault()}
           disabled={!draft.trim() || sending} aria-label="Send"
-          style={{ flexShrink:0, width:44, height:44, borderRadius:10, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Send size={17} />
+          style={{ flexShrink:0, width:38, height:38, marginBottom:2, borderRadius:16, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Send size={16} />
         </button>
         </div>
       </form>
