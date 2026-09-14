@@ -491,7 +491,7 @@ export default function SalesmanPanel() {
  moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || waModalLead ||
  logCallLeadId || followUpModalLead || (batchWALeads && batchWALeads.length) || selectedCar ||
  aiCaptionCar || broadcastCar || showAddLead || telegramSetupModal || deleteConfirmId ||
- cancelConfirmId || reminderPickerAptId || reschedulingAptId || studioCar
+ cancelConfirmId || reminderPickerAptId || reschedulingAptId || studioCar || drawerLeadId
  );
  useEffect(() => {
  if (!anyOverlayOpen) return;
@@ -1191,6 +1191,7 @@ Rules:
  new: "#60a5fa",
  contacted: "#fbbf24",
  viewing_booked: "#c084fc",
+ test_drive: "#34d399",
  negotiating: "#fb923c",
  deposit_taken: "#4ade80",
  won: "#22c55e",
@@ -1317,7 +1318,11 @@ Rules:
  }
  if (existing) {
  const curIdx = STAGES.indexOf(existing.stage);
- if (curIdx > -1 && curIdx < viewIdx) {
+ // Advance a lead sitting behind the booking stage. ALSO revive a lost lead
+ // — the buyer just booked a fresh viewing. A won lead is left alone.
+ // (Mirrors SalesmanPremium.jsx's autoUpsertLeadFromAppt.)
+ const revive = existing.stage === "lost" || existing.stage === "closed_lost";
+ if ((curIdx > -1 && curIdx < viewIdx) || revive) {
  await supabase.from("leads").update({ stage: "viewing_booked" }).eq("id", existing.id);
  setLeads((p) => p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked" } : l));
  toast.success("Lead moved to Viewing Booked!");
@@ -1646,7 +1651,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  try {
  const today = new Date().toISOString().slice(0, 10);
  const topLeads = leads
- .filter((l) =>!["closed_won", "closed_lost"].includes(l.stage))
+ .filter((l) =>!["won", "closed_won", "lost", "closed_lost"].includes(l.stage))
  .filter((l) =>!l.follow_up_at || l.follow_up_at <= today)
  .sort((a, b) => {
  const scoreOrder = { hot: 3, warm: 2, cold: 1 };
@@ -3551,10 +3556,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  : "2px solid transparent",
  background: "none",
  border: "none",
- borderBottom:
- carDetailTab === tab
-? "2px solid #ef4444"
- : "2px solid transparent",
  cursor: "pointer",
  fontFamily: "system-ui, sans-serif",
  }}
@@ -8109,7 +8110,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {activeTab === "loans" && renderLoans()}
  {activeTab === "handover" && renderHandover()}
  {activeTab === "outreach" && showOutreach && (
- <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="dark" />
  )}
  {activeTab === "customers" && showCustomers && (
  <CustomersTab dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} />

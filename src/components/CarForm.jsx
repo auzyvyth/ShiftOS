@@ -774,6 +774,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // Dealers go through AddCarForm's intake first, so they keep their decode there.
   const isSalesman = profile?.role === "salesman";
   const isPremiumPlan = isSalesman && isPremiumSalesman(profile);
+  // Salesman Lite & Premium are sole sellers (dealer_id NULL, no salesman
+  // reporting to them — anyone doing that is a broker, not an employee), so a
+  // flat commission payout to "the salesman who closes this deal" doesn't
+  // apply. Their margin (selling price − base price) IS their earnings, shown
+  // automatically instead of asking them to type a number.
+  const hideCommission = isSalesman;
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -1001,8 +1007,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const navigate = useNavigate();
 
   // SET-4: load dealer commission rule for the suggested-commission helper
+  // (irrelevant for a sole seller — see hideCommission above)
   useEffect(() => {
-    if (!dealerId) return;
+    if (!dealerId || hideCommission) return;
     supabase.from("profiles").select("commission_config, handles_roadtax_insurance, state, city").eq("id", dealerId).maybeSingle()
       .then(({ data }) => {
         setCommissionConfig(data?.commission_config || null);
@@ -2030,7 +2037,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         condition_declared_at: form.conditionDeclared
           ? listing?.condition_declared_at || new Date().toISOString()
           : null,
-        commission_amount: form.commissionAmount ? parseFloat(form.commissionAmount) : null,
+        // Sole sellers (Lite/Premium): commission_amount is the margin itself,
+        // not a typed-in payout — see hideCommission at the top of this file.
+        commission_amount: hideCommission
+          ? (() => {
+              const base = parseFloat(form.basePrice);
+              const sell = parseFloat(form.sellingPrice);
+              return !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : 0;
+            })()
+          : form.commissionAmount ? parseFloat(form.commissionAmount) : null,
         included_services: form.included_services || [],
         included_services_cost: servicesCost,
         recon_cost: (form.baseReconCost || 0) + servicesCost,
@@ -3132,6 +3147,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 : `⚠ Selling price is RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()} below your cost (base price) — you'd sell this at a loss`}
             </div>
           )}
+          {!hideCommission && (
           <Field
             label="Salesman Commission (RM)"
             hint="Flat payout to salesman who closes this deal"
@@ -3190,6 +3206,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               );
             })()}
           </Field>
+          )}
           <Field
             label="Warranty (months)"
             hint="Warranty offered with this car — shown to buyers"
@@ -3792,7 +3809,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
                 <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
                 <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
-                <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                {hideCommission ? (
+                  <ReviewItem
+                    label="Your margin"
+                    value={(() => {
+                      const base = parseFloat(form.basePrice);
+                      const sell = parseFloat(form.sellingPrice);
+                      return !isNaN(base) && !isNaN(sell) && sell > base ? rm(String(sell - base)) : null;
+                    })()}
+                  />
+                ) : (
+                  <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                )}
                 <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
                 <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
                 <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />

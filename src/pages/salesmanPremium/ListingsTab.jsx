@@ -82,7 +82,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
- generateAiCaptions, refreshCommissionData, onVerifyId,
+ generateAiCaptions, onVerifyId,
 }) {
  const enriched = myListings.map((car) => {
  const stats = carStatsMap[car.id]?? {};
@@ -509,26 +509,23 @@ export default function ListingsTab({
  {price}
  </p>
 
- {/* My commission input */}
+ {/* My margin — you're a sole seller, no salesman under you to pay a
+     commission to, so this is just selling price minus base price.
+     Computed, not typed in. */}
+ {(() => {
+ const base = Number(car.base_price);
+ const sell = Number(car.selling_price);
+ const hasBoth = !isNaN(base) && base > 0 && !isNaN(sell) && sell > 0;
+ const margin = hasBoth? sell - base : null;
+ return (
  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
- <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My commission:</span>
- <div style={{ display: "flex", alignItems: "stretch", gap: 0, flex: 1 }}>
- <span style={{ display: "flex", alignItems: "center", fontSize: T.size.sm, color: C.textMuted, padding: "0 8px", background: C.fill, border: `1px solid ${C.border}`, borderRight: "none", borderRadius: `${R.sm}px 0 0 ${R.sm}px` }}>RM</span>
- <input
- key={`comm-${car.id}-${car.commission_amount?? "x"}`}
- type="number" min="0" step="100" placeholder="0"
- defaultValue={car.commission_amount!= null? car.commission_amount : ""}
- onBlur={async e => {
- const val = e.target.value === ""? null : Number(e.target.value);
- if (val === (car.commission_amount?? null)) return;
- await supabase.from("car_listings").update({ commission_amount: val }).eq("id", car.id);
- setMyListings(prev => prev.map(c => c.id === car.id? { ...c, commission_amount: val } : c));
- refreshCommissionData();
- }}
- style={{ flex: 1, minWidth: 0, width: 0, background: C.fill, border: `1px solid ${C.border}`, borderLeft: "none", borderRadius: `0 ${R.sm}px ${R.sm}px 0`, padding: "5px 8px", color: car.commission_amount? C.infoText : C.textMuted, fontSize: T.size.base, fontWeight: car.commission_amount? T.weight.bold : T.weight.normal, fontFamily: "inherit", outline: "none", lineHeight: 1.2, boxSizing: "border-box" }}
- />
+ <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My margin:</span>
+ <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: margin == null? C.textMuted : margin >= 0? C.successText : C.dangerText }}>
+ {margin == null? "—" : `RM ${margin.toLocaleString()}`}
+ </span>
  </div>
- </div>
+ );
+ })()}
 
  {/* Meta + add-on marker. minHeight is load-bearing: a listing with no
      mileage/engine/transmission/colour would otherwise collapse this line to
