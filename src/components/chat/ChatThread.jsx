@@ -444,8 +444,12 @@ export default function ChatThread({
           which do create a containing block) pass viewportPinned and never pin. */}
       <form onSubmit={submit} ref={formRef}
         style={{
-          padding:10, borderTop:`1px solid ${t.border}`,
-          background:t.panel, flexShrink:0, boxSizing:'border-box',
+          // No panel fill / top border anymore — the composer is a floating
+          // pill sitting OVER the message list, not a docked toolbar flush
+          // with the edges. The padding here IS the float: it's the gap
+          // between the pill and the screen edges (and the keyboard, when
+          // pinned).
+          padding:'8px 12px 12px', background:'transparent', flexShrink:0, boxSizing:'border-box',
           ...(pinned ? {
             position:'fixed', left:0, right:0,
             // The bottom edge of the visible area in layout-viewport
@@ -454,18 +458,18 @@ export default function ChatThread({
             zIndex:60,
           } : null),
         }}>
-        <div style={{ display:'flex', gap:8, alignItems:'flex-end', ...centre }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:6, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:22, padding:'6px 6px 6px 16px', boxShadow:t.shadow, ...centre }}>
         <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
           rows={1} maxLength={4000} aria-label="Message"
-          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'11px 14px', borderRadius:10, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
+          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
         {/* Keeps focus in the input: without this the tap blurs it, the bar
             unpins out from under the finger before the click lands, and the
             keyboard shuts between every message. */}
         <button type="submit" onMouseDown={e => e.preventDefault()}
           disabled={!draft.trim() || sending} aria-label="Send"
-          style={{ flexShrink:0, width:44, height:44, borderRadius:10, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Send size={17} />
+          style={{ flexShrink:0, width:38, height:38, marginBottom:2, borderRadius:16, border:'none', background: draft.trim() ? '#dc2626' : t.theirs, color: draft.trim() ? '#fff' : t.sub, cursor: draft.trim() ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Send size={16} />
         </button>
         </div>
       </form>
