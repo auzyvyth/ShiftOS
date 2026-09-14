@@ -6,7 +6,7 @@
  * closing the tab; push only reaches a device that granted permission and is
  * still around, and most buyers here start as guests.
  *
- * Runs on pg_cron. Secrets (same ones notify-price-alerts already uses):
+ * Runs on pg_cron (jobid 13, every 30 min). Secrets:
  *   RESEND_API_KEY, SITE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET (optional)
  *
  * Rules baked in, do not "simplify" them away:
@@ -18,6 +18,14 @@
  *  - GRACE_MIN: a reply is only "unread" if it has been sitting a while. Without
  *    it we email someone who is still looking at the conversation.
  *  - One email per BUYER, not per thread. Two cars, one person, one email.
+ *  - UNVERIFIED recipients (buyer.notify_email — typed into the anon chat box,
+ *    never confirmed) get a CONTENT-FREE email: no car, no seller name, no
+ *    message preview. profiles.email (a real signed-in account) is the only
+ *    address that has proven it belongs to the buyer — anyone can type a
+ *    stranger's address into the chat box, and a rich email with real
+ *    conversation details would turn that into a harassment vector. Keep the
+ *    car/seller/preview rows gated on `verified`, don't "simplify" that away
+ *    to make the two branches look more alike.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -49,33 +57,41 @@ function buildHtml(
   sellerName: string,
   items: { car: string; preview: string; seller: string }[],
   unsubUrl: string,
-  // True when this recipient typed their address into the anon chat box
-  // (profiles.notify_email) rather than owning a real, signed-in account
-  // (profiles.email). They read the reply here either way, but this is the
-  // one nudge to turn "a guest who left an address" into an actual account —
-  // saved chats, saved cars, one inbox instead of a fresh guest each visit.
-  showSignup: boolean,
+  // True only for a real, signed-in account email (profiles.email). False for
+  // profiles.notify_email — typed into the anon chat box, never confirmed to
+  // belong to this buyer. Everything specific (headline, car, seller name,
+  // message preview) is gated on this; an unverified recipient gets a
+  // content-free ping instead.
+  verified: boolean,
 ) {
-  const rows = items.map(it => `
+  const rows = verified ? items.map(it => `
     <tr><td style="padding:14px 0;border-bottom:1px solid #e5e7eb">
       <p style="margin:0 0 4px;font:600 14px system-ui,sans-serif;color:#111827">${esc(it.seller)}</p>
       <p style="margin:0 0 6px;font:400 12px system-ui,sans-serif;color:#6b7280">${esc(it.car)}</p>
       <p style="margin:0;font:400 14px system-ui,sans-serif;color:#374151;line-height:1.55">${esc(it.preview)}</p>
-    </td></tr>`).join('');
+    </td></tr>`).join('') : '';
 
-  const signupBlock = showSignup ? `
+  const genericBody = verified ? '' : `
+      <p style="margin:0 0 16px;font:400 14px system-ui,sans-serif;color:#374151;line-height:1.6">
+        Someone replied to a conversation you started on XDrive. Sign in to view it.
+      </p>`;
+
+  const signupBlock = verified ? '' : `
       <p style="margin:18px 0 0;font:400 12px system-ui,sans-serif;color:#6b7280;line-height:1.6">
         Reading this as a guest —
         <a href="${SITE_URL}/buyer-signup" style="color:#dc2626;font-weight:600">sign up as a buyer</a>
         to keep every chat and saved car in one place.
-      </p>` : '';
+      </p>`;
+
+  const headline = verified ? `${esc(sellerName)} sent you a message` : 'You have a new message on XDrive';
 
   return `<!doctype html><html><body style="margin:0;background:#f9fafb;padding:24px 12px">
   <table role="presentation" style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:22px">
     <tr><td>
       <p style="margin:0 0 16px;font:700 17px system-ui,sans-serif;color:#111827">
-        ${esc(sellerName)} sent you a message
+        ${headline}
       </p>
+      ${genericBody}
       <table role="presentation" style="width:100%;border-collapse:collapse">${rows}</table>
       <p style="margin:20px 0 0">
         <a href="${SITE_URL}/account/messages"
@@ -195,15 +211,18 @@ Deno.serve(async (req) => {
         };
       });
 
+      const verified = !!buyer.email;
       const headline = items[0].seller;
-      const subject = list.length > 1
-        ? `${headline} and others replied on XDrive`
-        : `${headline} sent you a message`;
+      const subject = !verified
+        ? 'You have a new message on XDrive'
+        : list.length > 1
+          ? `${headline} and others replied on XDrive`
+          : `${headline} sent you a message`;
       const unsubUrl = `${SITE_URL}/unsubscribe?t=${buyer.notify_unsub_token}`;
       const to = buyer.email || buyer.notify_email;
 
       try {
-        await sendEmail(to, subject, buildHtml(headline, items, unsubUrl, !buyer.email));
+        await sendEmail(to, subject, buildHtml(headline, items, unsubUrl, verified));
         sent++;
         notified.push(...list.map(r => r.id));
       } catch (e) {
