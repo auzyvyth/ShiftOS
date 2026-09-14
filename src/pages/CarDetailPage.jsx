@@ -189,39 +189,8 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
 const fmtFinancing = (car) => {
   const pt = car.payment_type || car.financing_type;
   if (pt === "cash") return "Cash Only";
-  if (pt === "sambung_bayar") return "Sambung Bayar";
   if (pt === "loan") return "Loan Available";
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
-};
-
-// A sambung bayar car isn't sold at a full price — the buyer takes over the loan —
-// so the price area leads with the real monthly + upfront cash + months left + bank,
-// not the (meaningless) selling_price and a bogus loan estimate.
-const isSambungCar = (car) => car.payment_type === "sambung_bayar" && Number(car.sambung_monthly) > 0;
-
-const SambungPriceBlock = ({ car, th, big }) => {
-  const rm = (n) => "RM " + Number(n || 0).toLocaleString("en-MY");
-  const parts = [
-    Number(car.sambung_deposit) > 0 ? `${rm(car.sambung_deposit)} deposit` : null,
-    Number(car.sambung_months_left) > 0 ? `${car.sambung_months_left} bulan lagi` : null,
-    Number(car.sambung_balance) > 0 ? `baki ${rm(car.sambung_balance)}` : null,
-    car.sambung_bank ? car.sambung_bank : null,
-  ].filter(Boolean);
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: big, color: th.text, lineHeight: 1, margin: 0 }}>
-          {rm(car.sambung_monthly)}<span style={{ fontSize: "0.42em", letterSpacing: "0.02em" }}>/bulan</span>
-        </p>
-        <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#f59e0b", background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", padding: "3px 8px", borderRadius: 4 }}>
-          Sambung Bayar
-        </span>
-      </div>
-      {parts.length > 0 && (
-        <p style={{ fontSize: 12, color: th.textMuted, marginTop: 6 }}>{parts.join("  ·  ")}</p>
-      )}
-    </div>
-  );
 };
 
 /* Spec Highlights — surfaces the dealer's own feature tags as scannable chips
@@ -392,7 +361,7 @@ const TRANSFER_FEES = [
 ];
 
 function PriceIncludes({ car, seller, th }) {
-  if (!(car.selling_price > 0) || isSambungCar(car)) return null;
+  if (!(car.selling_price > 0)) return null;
   const fixed = TRANSFER_FEES.filter((f) => f.always).reduce((t, f) => t + f.amount, 0);
   const includedCount = Array.isArray(car.included_services) ? car.included_services.length : 0;
   // profiles.handles_roadtax_insurance is NOT NULL DEFAULT true and every row in
@@ -1241,7 +1210,7 @@ export default function CarDetailPage() {
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
       // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,seller_type,payment_type,sambung_monthly,sambung_months_left,sambung_balance,sambung_deposit,sambung_bank,docs_verified,geran_status,condition_declared_at";
+      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,seller_type,payment_type,docs_verified,geran_status,condition_declared_at";
       let { data: carData, error } = await supabase
         .from("public_car_listings")
         .select(PUBLIC_FIELDS)
@@ -2596,11 +2565,6 @@ export default function CarDetailPage() {
             {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
           </p>
           {/* Price section — directly under the title / mini details */}
-          {isSambungCar(car) ? (
-            <div style={{ marginBottom:4 }}>
-              <SambungPriceBlock car={car} th={th} big="2.6rem" />
-            </div>
-          ) : (
           <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
             <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color: th.text, lineHeight:1, margin:0 }}>
               {fmtPrice(car.selling_price)}
@@ -2626,16 +2590,8 @@ export default function CarDetailPage() {
               <ReportListingButton listingId={car?.id} th={th} variant="icon" />
             </span>
           </div>
-          )}
-          {/* Sambung cars render their own price block, so the report control
-              needs its own row there or those listings could not be reported. */}
-          {isSambungCar(car) && (
-            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:4 }}>
-              <ReportListingButton listingId={car?.id} th={th} variant="icon" />
-            </div>
-          )}
-          {!isSambungCar(car) && <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />}
-          {!isSambungCar(car) && isHot && (
+          <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
+          {isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
               <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
               <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
@@ -4050,51 +4006,38 @@ export default function CarDetailPage() {
                   </a>
                 )}
               </div>
-              {isSambungCar(car) ? (
-                <>
-                  <SambungPriceBlock car={car} th={th} big="clamp(2.4rem,3.5vw,3rem)" />
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                    <ReportListingButton listingId={car?.id} th={th} variant="icon" />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
-                  {/* Monthly estimate and the report control share one row, so
-                      the flag sits beside the figure rather than on the photo. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    {calcMonthly(car.selling_price) ? (
-                      <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
-                    ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
-                      <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Financing available on request</p>
-                    ) : null}
-                    {!isOwnListing && (
-                      <AffordabilityCheck
-                        carPrice={car.selling_price}
-                        carName={carTitle}
-                        isLight={isXdrive}
-                        onTalkToSeller={enquiryClick}
-                        talkToSellerLabel={enquiryLabel}
-                      />
-                    )}
-                    <span style={{ marginLeft: 'auto' }}>
-                      <ReportListingButton listingId={car?.id} th={th} variant="icon" />
-                    </span>
-                  </div>
-                  {isHot && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                      <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                      <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
-                    </div>
-                  )}
-                </>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
+              {/* Monthly estimate and the report control share one row, so
+                  the flag sits beside the figure rather than on the photo. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                {calcMonthly(car.selling_price) ? (
+                  <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
+                ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+                  <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Financing available on request</p>
+                ) : null}
+                {!isOwnListing && (
+                  <AffordabilityCheck
+                    carPrice={car.selling_price}
+                    carName={carTitle}
+                    isLight={isXdrive}
+                    onTalkToSeller={enquiryClick}
+                    talkToSellerLabel={enquiryLabel}
+                  />
+                )}
+                <span style={{ marginLeft: 'auto' }}>
+                  <ReportListingButton listingId={car?.id} th={th} variant="icon" />
+                </span>
+              </div>
+              {isHot && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
+                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                </div>
               )}
             </div>
-            {!isSambungCar(car) && (
             <div style={{ marginTop: 16 }}>
               <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
             </div>
-            )}
             <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
             <WarrantyBanner car={car} isXdrive={isXdrive} />
             <PriceIncludes car={car} seller={seller} th={th} />

@@ -44,6 +44,34 @@ the better option with reasoning — then let me make the final call.
 - This is not permission to bikeshed or refuse work — make the case concisely, and
   if I still want it my way, do it my way.
 
+## Legal subjects — always verify, never reason from vibes (mistake made 2026-09-14)
+When a feature touches something that could be illegal, regulated, or expose the
+platform to liability (a payment/financing arrangement, data privacy, consumer
+protection, anything with a real-world "who's at fault if this goes wrong"), DO
+NOT answer from parametric memory or a gut sense of "feels legally murky." Web
+search the actual law/regulator position FIRST, before giving a recommendation,
+the same way an AI-provider question gets checked against real docs instead of
+memory.
+- **What happened:** Sambung Bayar (car loan takeover) was treated as "informal
+  but tolerated" and the advice was to keep it and just add disclosure. That was
+  wrong — it's a criminal offence under s.38 of the Hire Purchase Act 1967
+  (Malaysia): fine up to RM10,000, up to 3 years jail, contract void under the
+  Contracts Act 1950. A search would have caught this before, not after, a
+  recommendation was given and partially built.
+- **The tell to watch for:** if a justification for keeping/building something
+  sounds like "well it's common practice" or "it's a gray area" on a subject
+  with real legal weight, that itself is the signal to go verify — common
+  practice and legal are not the same thing.
+- Once verified, if something needs to come out, remove it fully (feature +
+  data), don't just soften it with a disclosure/warning label bolted on —
+  that was the first (also wrong) instinct here.
+- Checked at the same time and confirmed clean: `financing_type` FINANCING_TYPES
+  filter also had a 'sambung_bayar' option (dead column, always NULL, but still
+  a selectable buyer-facing filter) — removed alongside CarForm's option. Same
+  root cause (a feature list including a value nobody checked the legality of),
+  so anywhere a new payment/financing/ownership-transfer TYPE is added to this
+  product, check it against real law before it ships, not after a user catches it.
+
 ## How to talk to me — plain English + always show me the code
 I am not reading this to be impressed. Explain things in SIMPLE terms.
 - Use plain words. If a technical term is unavoidable, define it in half a sentence

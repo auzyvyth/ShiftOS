@@ -564,7 +564,6 @@ export default function AdminPage() {
         engine_number, registration_date, previous_owners, road_tax_expiry, warranty_months, deposit_amount,
         transmission, fuel_type, body_type, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption,
         selling_price, original_price, previous_price, payment_type, loan_eligible, financing_type,
-        sambung_monthly, sambung_months_left, sambung_balance, sambung_deposit, sambung_bank,
         description, features, options, specs, video_url, damage_map, condition_declared_at,
         included_services, included_services_cost,
         images, status, created_at, rejection_reason, admin_notes, dealer_id, city, state, slug,

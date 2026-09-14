@@ -107,12 +107,10 @@ const initialListing = {
   warranty_months: "",
   deposit_amount: "",
   payment_type: "cash",
-  // Sambung bayar (loan takeover) — only used when payment_type === 'sambung_bayar'
-  sambungMonthly: "",
-  sambungMonthsLeft: "",
-  sambungBalance: "",
-  sambungDeposit: "",
-  sambungBank: "",
+  // Lives on stock_units, not car_listings — patched after save (see handleSubmit)
+  // and prefilled by its own effect below. Defaults to 'unknown', matching the
+  // DB default, so a car is never shown as "clear" without someone confirming it.
+  encumbranceStatus: "unknown",
 };
 
 // CAR_DATA moved to ../data/carData so lightweight consumers avoid this module.
@@ -393,15 +391,16 @@ function parseTags(raw) {
   return String(raw).split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
 }
 
-function PillSelect({ options, value, onChange }) {
+function PillSelect({ options, value, onChange, disabled = false }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((opt) => (
         <button
           key={opt}
           type="button"
+          disabled={disabled}
           onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${value === opt ? "bg-blue-600 border-blue-600 text-white" : "bg-white border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
         >
           {opt}
         </button>
@@ -1142,16 +1141,27 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             : "",
         deposit_amount:
           listing.deposit_amount != null ? String(listing.deposit_amount) : "",
-        sambungMonthly:    listing.sambung_monthly     != null ? String(listing.sambung_monthly)     : "",
-        sambungMonthsLeft: listing.sambung_months_left != null ? String(listing.sambung_months_left) : "",
-        sambungBalance:    listing.sambung_balance     != null ? String(listing.sambung_balance)     : "",
-        sambungDeposit:    listing.sambung_deposit     != null ? String(listing.sambung_deposit)     : "",
-        sambungBank:       listing.sambung_bank        || "",
       });
       setPreviews(listing.images || []);
       setStep(1);
     }
   }, [listing]);
+
+  // encumbrance_status lives on stock_units, not car_listings, so it never
+  // arrives via the `listing` prop above — fetch it directly by listing_id,
+  // the same table/key the save handler patches it back to (see handleSubmit).
+  useEffect(() => {
+    if (!listing?.id || !dealerId) return;
+    supabase
+      .from("stock_units")
+      .select("encumbrance_status")
+      .eq("listing_id", listing.id)
+      .eq("dealer_id", dealerId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setForm((f) => ({ ...f, encumbranceStatus: data.encumbrance_status || "unknown" }));
+      });
+  }, [listing?.id, dealerId]);
 
   // ── Auto-fill specs when brand + model + year are known ────────────────────
   // The LOCAL table is the only source that locks the fields. It is curated,
@@ -1801,9 +1811,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
     if (step === 4) return form.state && form.city;
-    if (step === 5) return form.payment_type === "sambung_bayar"
-      ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
-      : (form.basePrice && form.sellingPrice);
+    if (step === 5) return form.basePrice && form.sellingPrice;
     if (step === 6) return listing ? true : geranSatisfied;
     return true;
   };
@@ -1823,8 +1831,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (s === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
     if (s === 5) {
       if (intakeDone) return [];
-      if (form.payment_type === "sambung_bayar")
-        return [[!(Number(form.sambungMonthly) > 0), "Monthly (ansuran)"], [!(Number(form.sambungDeposit) > 0), "Deposit / duit nampak"]].filter(([m]) => m).map(([, l]) => l);
       return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
     }
     if (s === 6)
@@ -1923,10 +1929,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       toast.error("Please add at least 1 photo");
       return;
     }
-    // Sambung bayar cars aren't sold at a full price — the buyer takes over the
-    // loan — so base/selling price are optional there (default 0) and the sambung
-    // monthly/deposit are what matter. Everything else stays required as before.
-    const isSambung = form.payment_type === "sambung_bayar";
     const mileage = parseInt(form.mileage);
     const basePrice = form.basePrice ? parseFloat(form.basePrice) : 0;
     const sellingPrice = form.sellingPrice ? parseFloat(form.sellingPrice) : 0;
@@ -1937,18 +1939,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       toast.error("Invalid mileage");
       return;
     }
-    if (isSambung) {
-      if (!(Number(form.sambungMonthly) > 0)) { toast.error("Sambung Bayar: monthly (ansuran) is required"); return; }
-      if (!(Number(form.sambungDeposit) > 0)) { toast.error("Sambung Bayar: deposit / duit nampak is required"); return; }
-    } else {
-      if (isNaN(basePrice) || basePrice < 0) {
-        toast.error("Invalid base price");
-        return;
-      }
-      if (isNaN(sellingPrice) || sellingPrice < 0) {
-        toast.error("Invalid selling price");
-        return;
-      }
+    if (isNaN(basePrice) || basePrice < 0) {
+      toast.error("Invalid base price");
+      return;
+    }
+    if (isNaN(sellingPrice) || sellingPrice < 0) {
+      toast.error("Invalid selling price");
+      return;
     }
     if (isNaN(year) || year < 1900) {
       toast.error("Invalid year");
@@ -1960,7 +1957,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     // won't sell well or read as trustworthy. Surface it once and let the
     // dealer choose to fix it or post anyway, rather than silently letting
     // an incomplete listing go live.
-    if (!skipGapCheck && !isSambung) {
+    if (!skipGapCheck) {
       const gaps = getListingGaps({
         images: form.images,
         selling_price: sellingPrice,
@@ -2056,13 +2053,15 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           ? parseFloat(form.deposit_amount)
           : null,
         payment_type: form.payment_type || "cash",
-        // Sambung bayar figures — only persisted when this is a sambung listing,
-        // cleared otherwise so switching payment type doesn't leave stale numbers.
-        sambung_monthly:     form.payment_type === "sambung_bayar" && form.sambungMonthly     ? parseFloat(form.sambungMonthly)     : null,
-        sambung_months_left: form.payment_type === "sambung_bayar" && form.sambungMonthsLeft  ? parseInt(form.sambungMonthsLeft)    : null,
-        sambung_balance:     form.payment_type === "sambung_bayar" && form.sambungBalance     ? parseFloat(form.sambungBalance)     : null,
-        sambung_deposit:     form.payment_type === "sambung_bayar" && form.sambungDeposit     ? parseFloat(form.sambungDeposit)     : null,
-        sambung_bank:        form.payment_type === "sambung_bayar" && form.sambungBank        ? form.sambungBank.trim()             : null,
+        // Sambung Bayar (loan takeover) is no longer an offered payment type —
+        // it's a criminal offence under s.38 Hire Purchase Act 1967. Always
+        // null these out so re-saving an old listing through this form scrubs
+        // any figures it was carrying.
+        sambung_monthly: null,
+        sambung_months_left: null,
+        sambung_balance: null,
+        sambung_deposit: null,
+        sambung_bank: null,
       };
 
       // All salesmen require approval — standalone → superadmin, under-dealer → manager
@@ -2088,11 +2087,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         const savedListing = data[0];
         onUpdate(savedListing);
         logCatalogueGaps(savedListing.id);
-        // Sync services to linked stock_unit
+        // Sync services + encumbrance status to linked stock_unit
         if (savedListing?.id && dealerId) {
           await supabase
             .from("stock_units")
-            .update({ included_services: form.included_services || [] })
+            .update({
+              included_services: form.included_services || [],
+              encumbrance_status: form.encumbranceStatus || "unknown",
+            })
             .eq("listing_id", savedListing.id)
             .eq("dealer_id", dealerId);
         }
@@ -2142,11 +2144,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         cfClearDraft(profile?.id);
         onCreate(savedListing);
         logCatalogueGaps(savedListing.id);
-        // Sync services to linked stock_unit (if one is auto-created)
+        // Sync services + encumbrance status to linked stock_unit (auto-created by trigger)
         if (savedListing?.id) {
           await supabase
             .from("stock_units")
-            .update({ included_services: form.included_services || [] })
+            .update({
+              included_services: form.included_services || [],
+              encumbrance_status: form.encumbranceStatus || "unknown",
+            })
             .eq("listing_id", savedListing.id)
             .eq("dealer_id", dealerId);
         }
@@ -2207,9 +2212,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
       case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
       case 4: return !!(form.state && form.city);
-      case 5: return intakeDone ? true : (form.payment_type === "sambung_bayar"
-        ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0)
-        : !!(form.basePrice && form.sellingPrice));
+      case 5: return intakeDone ? true : !!(form.basePrice && form.sellingPrice);
       case 6: return listing ? true : geranSatisfied;
       case 7: return true;
       default: return false;
@@ -3037,53 +3040,34 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
           <Field label="Payment Type" required>
             <PillSelect
-              options={["Cash", "Loan", "Sambung Bayar"]}
+              options={["Cash", "Loan"]}
               value={
-                form.payment_type === "sambung_bayar"
-                  ? "Sambung Bayar"
-                  : form.payment_type
-                    ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
-                    : "Cash"
+                form.payment_type
+                  ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
+                  : "Cash"
               }
-              onChange={(v) =>
-                set("payment_type", v === "Sambung Bayar" ? "sambung_bayar" : v.toLowerCase())
-              }
+              onChange={(v) => set("payment_type", v.toLowerCase())}
             />
           </Field>
 
-          {/* Sambung bayar (loan takeover) — buyers decide on monthly + upfront cash +
-              months left, not a full price, so capture those directly. */}
-          {form.payment_type === "sambung_bayar" && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-4 space-y-4">
-              <p className="text-xs font-semibold text-amber-700">Sambung Bayar details — what buyers see first</p>
-              <div className="space-y-4">
-                <Field label="Monthly (Ansuran)" required hint="Buyer's monthly payment">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
-                    <input type="number" name="sambungMonthly" value={form.sambungMonthly} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
-                  </div>
-                </Field>
-                <Field label="Deposit / Duit Nampak" required hint="Upfront cash to take over">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
-                    <input type="number" name="sambungDeposit" value={form.sambungDeposit} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
-                  </div>
-                </Field>
-                <Field label="Months Left (Baki Tempoh)" hint="Remaining tenure">
-                  <input type="number" name="sambungMonthsLeft" value={form.sambungMonthsLeft} onChange={handleChange} placeholder="e.g. 36" min="0" max="120" inputMode="numeric" className={inputCls} />
-                </Field>
-                <Field label="Balance (Baki Pinjaman)" hint="Outstanding loan — optional">
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">RM</span>
-                    <input type="number" name="sambungBalance" value={form.sambungBalance} onChange={handleChange} placeholder="0" min="0" inputMode="numeric" className={`${inputCls} pl-12`} />
-                  </div>
-                </Field>
-              </div>
-              <Field label="Bank" hint="Which bank holds the loan">
-                <input name="sambungBank" value={form.sambungBank} onChange={handleChange} placeholder="e.g. Maybank, Public Bank" className={inputCls} />
-              </Field>
-            </div>
-          )}
+          <Field
+            label="Encumbrance Status"
+            hint="Is there still an outstanding loan on this car?"
+          >
+            <PillSelect
+              options={["Clear", "Under Hire-Purchase", "Unknown"]}
+              value={
+                form.encumbranceStatus === "clear"
+                  ? "Clear"
+                  : form.encumbranceStatus === "under_hp"
+                    ? "Under Hire-Purchase"
+                    : "Unknown"
+              }
+              onChange={(v) =>
+                set("encumbranceStatus", v === "Clear" ? "clear" : v === "Under Hire-Purchase" ? "under_hp" : "unknown")
+              }
+            />
+          </Field>
 
           {!intakeDone && (
           <>
@@ -3804,24 +3788,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </ReviewSection>
             <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Payment" value={form.payment_type === "sambung_bayar" ? "Sambung Bayar" : (form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
-                {form.payment_type === "sambung_bayar" ? (
-                  <>
-                    <ReviewItem label="Monthly (ansuran)" value={rm(form.sambungMonthly)} />
-                    <ReviewItem label="Deposit / duit nampak" value={rm(form.sambungDeposit)} />
-                    <ReviewItem label="Months left" value={form.sambungMonthsLeft ? `${form.sambungMonthsLeft} months` : null} />
-                    <ReviewItem label="Balance" value={rm(form.sambungBalance)} />
-                    <ReviewItem label="Bank" value={form.sambungBank} />
-                  </>
-                ) : (
-                  <>
-                    <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
-                    <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
-                    <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
-                    <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
-                    <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
-                  </>
-                )}
+                <ReviewItem label="Payment" value={(form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
+                <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
+                <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
+                <ReviewItem label="Commission" value={rm(form.commissionAmount)} />
+                <ReviewItem label="Deposit to reserve" value={rm(form.deposit_amount)} />
+                <ReviewItem label="Warranty" value={form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : null} />
                 <ReviewItem label="Included services" value={form.included_services.length ? `${form.included_services.length} · RM ${svcTotal.toLocaleString()}` : null} />
               </div>
             </ReviewSection>
@@ -4000,7 +3973,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.payment_type === "sambung_bayar" ? (Number(form.sambungMonthly) > 0 && Number(form.sambungDeposit) > 0) : (form.basePrice && form.sellingPrice)))}
+            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

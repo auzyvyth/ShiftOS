@@ -79,8 +79,6 @@ export default function CarDetailPopup({
   const rtColor = rtDays == null ? C.textSec : rtDays < 0 ? C.dangerText : rtDays <= 30 ? C.warnText : C.textSec;
   const rtLabel = rtExpiry ? `${fmtDate(rtExpiry)}${rtDays < 0 ? " (expired)" : rtDays <= 30 ? ` (${rtDays}d left)` : ""}` : null;
 
-  const isSambung = car.payment_type === "sambung_bayar" || car.sambung_monthly || car.sambung_months_left || car.sambung_balance || car.sambung_deposit || car.sambung_bank;
-
   const close = () => {
     setSelectedCar(null);
     setCarDetailImgIdx(0);
@@ -299,19 +297,6 @@ export default function CarDetailPopup({
                     { k: "Auction House", v: car.auction_house || "—" },
                     { k: "Local Reg. Date", v: fmtDate(car.local_reg_date) || "—" },
                   ]} />
-
-                  {isSambung && (
-                    <>
-                      <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 4px" }}>Sambung Bayar</p>
-                      <Grid rows={[
-                        { k: "Monthly", v: car.sambung_monthly ? `RM ${Number(car.sambung_monthly).toLocaleString("en-MY")}` : "—" },
-                        { k: "Months Left", v: car.sambung_months_left ?? "—" },
-                        { k: "Outstanding Balance", v: car.sambung_balance ? `RM ${Number(car.sambung_balance).toLocaleString("en-MY")}` : "—" },
-                        { k: "Deposit", v: car.sambung_deposit ? `RM ${Number(car.sambung_deposit).toLocaleString("en-MY")}` : "—" },
-                        { k: "Bank", v: car.sambung_bank || "—" },
-                      ]} />
-                    </>
-                  )}
 
                   <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 8px" }}>Documents</p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>

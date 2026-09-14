@@ -142,20 +142,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const interiorGrade = car.interior_grade || null;
   const hasGrade      = auctionGrade || interiorGrade;
 
-  // Sambung bayar (loan takeover): a full price is meaningless — the buyer takes
-  // over the loan, so the headline is the real monthly + upfront cash + months left.
-  const isSambung = (car.payment_type === 'sambung_bayar') && Number(car.sambung_monthly) > 0;
-  const sambungMonthly = Number(car.sambung_monthly) || 0;
-  const sambungDeposit = Number(car.sambung_deposit) || 0;
-  const sambungMonths  = Number(car.sambung_months_left) || 0;
-  const fmtRM = (n) => 'RM ' + Number(n).toLocaleString('en-MY');
-
-  const formattedPrice   = isSambung
-    ? fmtRM(sambungMonthly) + '/mo'
-    : (price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R');
-  // For sambung the "monthly pill" slot carries the deposit + months-left instead
-  // of an estimated instalment (which doesn't apply to a takeover).
-  const monthly          = isSambung ? null : calcMonthly(price);
+  const formattedPrice   = price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R';
+  const monthly          = calcMonthly(price);
   const formattedMileage = mileage ? Number(mileage).toLocaleString('en-MY') + ' km' : null;
   const normalTx =
     ['Auto', 'Automatic', 'AT'].includes(transmission) ? 'Auto' :
@@ -295,8 +283,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
         }
 
         /* Compact variant (body-type carousel): equal-height cards that fill
-           their stretched wrapper, so a sambung/discount card can never grow
-           the row out of alignment. */
+           their stretched wrapper, so a discount card can never grow the row
+           out of alignment. */
         .cc-compact { height: 100%; }
 
         /* On mobile the 2-up carousel cards are narrow — give the image more
@@ -589,22 +577,12 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
           <div className="cc-price-block" style={{ marginBottom: 10 }}>
 
             {/* Strikethrough + save — only reserves height when it has content
-                (discount or sambung); collapsed otherwise so the price sits
-                tight under the details and the card stays short/impactful.
-                Compact cards ALWAYS reserve this row so a sambung/discount chip
-                can never make one card taller than its neighbours. */}
-            <div style={{ height: (compact || isSambung || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
-              {isSambung ? (
-                <span style={{
-                  fontSize: 9, fontWeight: 700, lineHeight: 1, flexShrink: 0, letterSpacing: '0.04em',
-                  padding: '2px 6px', borderRadius: 20,
-                  background: xdrive ? 'rgba(245,158,11,0.15)' : 'rgba(217,119,6,0.09)',
-                  color: xdrive ? '#fbbf24' : '#b45309',
-                  border: `1px solid ${xdrive ? 'rgba(245,158,11,0.3)' : 'rgba(217,119,6,0.2)'}`,
-                }}>
-                  SAMBUNG BAYAR
-                </span>
-              ) : hasDiscount && (
+                (a discount); collapsed otherwise so the price sits tight under
+                the details and the card stays short/impactful. Compact cards
+                ALWAYS reserve this row so a discount chip can never make one
+                card taller than its neighbours. */}
+            <div style={{ height: (compact || hasDiscount) ? 16 : 0, display: 'flex', alignItems: 'center', gap: 5, overflow: 'hidden' }}>
+              {hasDiscount && (
                 <>
                   <span style={{ fontSize: 10, color: xd.strike, textDecoration: 'line-through', lineHeight: 1, flexShrink: 0 }}>
                     RM {originalPrice.toLocaleString('en-MY')}
@@ -633,21 +611,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               {formattedPrice}
             </span>
 
-            {/* Monthly pill — 20px reserved, hidden as full row on mobile. For
-                sambung bayar this carries the upfront deposit + months left. */}
+            {/* Monthly pill — 20px reserved, hidden as full row on mobile. */}
             <div className="cc-monthly-row" style={{ height: 20, display: 'flex', alignItems: 'center', marginTop: 4 }}>
-              {isSambung ? (
-                (sambungDeposit > 0 || sambungMonths > 0) ? (
-                  <span className="cc-monthly-pill" style={{
-                    display: 'inline-flex', alignItems: 'center', fontSize: 10, fontWeight: 600,
-                    color: xd.monthlyColor, background: xd.monthlyBg, border: xd.monthlyBdr,
-                    padding: '3px 8px', borderRadius: 20, lineHeight: 1,
-                  }}>
-                    {[sambungDeposit > 0 ? `${fmtRM(sambungDeposit)} deposit` : null,
-                      sambungMonths > 0 ? `${sambungMonths} bln lagi` : null].filter(Boolean).join(' · ')}
-                  </span>
-                ) : <span />
-              ) : monthly ? (
+              {monthly ? (
                 <span className="cc-monthly-pill" style={{
                   display:      'inline-flex',
                   alignItems:   'center',

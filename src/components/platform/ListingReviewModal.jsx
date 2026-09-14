@@ -179,9 +179,6 @@ export default function ListingReviewModal({
   const missingTrustDocs = TRUST_DOCS.filter((t) => !docs.some((d) => d.type === t.key));
   const damageMarks = Array.isArray(listing.damage_map) ? listing.damage_map : [];
   const showCondition = damageMarks.length > 0 || !!listing.condition_declared_at;
-  const isSambung =
-    listing.payment_type === "sambung_bayar" || listing.sambung_monthly || listing.sambung_months_left ||
-    listing.sambung_balance || listing.sambung_deposit || listing.sambung_bank;
 
   const current = pane === "photos" ? images[photoIdx] : docs[docIdx];
   const currentUrl = pane === "photos" ? current : current?.url;
@@ -459,16 +456,6 @@ export default function ListingReviewModal({
                   <Row k="Auction house" v={listing.auction_house} />
                   <Row k="Auction grade" v={listing.auction_grade} />
                   <Row k="Interior grade" v={listing.interior_grade} />
-                </Section>
-              )}
-
-              {isSambung && (
-                <Section title="Sambung bayar">
-                  <Row k="Monthly" v={fmtMoney(listing.sambung_monthly)} />
-                  <Row k="Months left" v={listing.sambung_months_left} />
-                  <Row k="Balance" v={fmtMoney(listing.sambung_balance)} />
-                  <Row k="Deposit" v={fmtMoney(listing.sambung_deposit)} />
-                  <Row k="Bank" v={listing.sambung_bank} />
                 </Section>
               )}
 

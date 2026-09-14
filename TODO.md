@@ -4160,6 +4160,18 @@ native build.
 
 ## Done (reference)
 
+- **LEGAL-1: Sambung Bayar removed — criminal offence, not just "informal"
+  (2026-09-14).** Was offered as a payment type in `CarForm.jsx` (Salesman
+  Lite/Premium listing form) plus a dead-but-visible `financing_type` filter
+  option on the marketplace. Verified via web search: illegal under s.38 Hire
+  Purchase Act 1967 (fine up to RM10,000, up to 3 years jail), contracts void
+  under the Contracts Act 1950. Removed the payment type, its dedicated fields,
+  and every render surface across `CarCard.jsx`, `CarDetailPopup.jsx`,
+  `CarDetailPage.jsx`, `ListingReviewModal.jsx`, `AdminPage.jsx`, `HomePage.jsx`,
+  `SalesmanLite.jsx`, `SalesmanPremium.jsx`, `marketplaceConfig.js` (0 live rows
+  affected — checked first). Tightened the `financing_type` CHECK constraint at
+  the DB level too. See CLAUDE.md "Legal subjects" for the process rule this
+  mistake produced.
 - **PS-A: Post-sale handover board (Module A)** — post_sale_tasks table; Handover tab on dealer dashboard + salesman panel; Malaysian transfer checklist (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover) with per-step status/owner/cost/due date and processing-cost total.
 - **FIX: Salesman pipeline pollution** — Add-to-deals now uses salesman_listings (many-to-many feature), no longer dumps fake "New prospect" leads into the dealer pipeline.
 - **FIX: Lead attribution** — Dealer pipeline cards show "by {salesman}" via salesman_id join.

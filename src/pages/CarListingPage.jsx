@@ -42,7 +42,7 @@ const PER_PAGE = 15;
    adding a brand in one place silently made that brand unfilterable on
    /showroom. Only the things that genuinely differ from the marketplace grid
    stay local: this page's own sort options, CAR_FIELDS (it selects
-   market_avg_price and skips the sambung columns) and the seller pills. */
+   market_avg_price) and the seller pills. */
 const SORT_OPTIONS = [
   { label:'Newest First',       short:'Newest',   value:'newest'      },
   { label:'Price: Low to High', short:'Price ↑',  value:'price_asc'   },
