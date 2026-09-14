@@ -900,7 +900,6 @@ export default function SalesmanLite() {
   const [myListings, setMyListings] = useState(seed.listings);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [commissionConfig, setCommissionConfig] = useState(null); // dealer's commission rule, same source CarForm uses
   // IC gate — no anonymous selling: a car can't be listed until the seller's IC
   // is on file. IC is optional at signup (1-week grace) but this blocks the
   // actual listing action until verified.
@@ -1985,36 +1984,21 @@ export default function SalesmanLite() {
     };
   }, []);
 
-  // Dealer's commission rule — same source CarForm's "Suggested commission" reads,
-  // via the canonical dealer-id resolver (must mirror getDealerIdFromProfile /
-  // get_my_dealer_id() exactly — see CLAUDE.md; a hand-rolled dealerId here has
-  // bitten this app twice before).
-  useEffect(() => {
-    const dealerId = getDealerIdFromProfile(profile);
-    if (!dealerId) return;
-    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
-      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
-  }, [profile?.id, profile?.dealer_id, profile?.role]);
-
-  // Mirrors CarForm's "Suggested commission" formula exactly (flat / % of sale /
-  // % of margin over base price), defaulting to 10% of margin like CarForm does
-  // when no explicit commission_config row exists.
+  // Sole seller, no salesman under them to pay a commission to (a "salesman"
+  // in that role would be a broker instead) — their commission IS their
+  // margin: selling price minus base price. No dealer commission_config
+  // applies here (that's for a salesman a dealer employs).
   const suggestedCommission = (car) => {
     const base = Number(car.base_price);
     const sell = Number(car.selling_price);
-    const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
-    const cfg = commissionConfig || { type: "percent_gross", value: 10 };
-    if (cfg.type === "flat" && cfg.value > 0) return Math.round(cfg.value);
-    if (cfg.type === "percent_sale" && !isNaN(sell) && sell > 0 && cfg.value > 0) return Math.round(sell * cfg.value / 100 / 50) * 50;
-    if (margin && cfg.value > 0) return Math.round(margin * cfg.value / 100 / 50) * 50;
-    return null;
+    return !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
   };
 
-  // Auto-fill commission on any listing missing it — the manual "My commission"
-  // box was the only way to set this, so unfilled boxes silently zeroed out
-  // Monthly Goal / commission stats on real wins. Never touches a listing that
-  // already has a value (including an intentional 0 — that's a real decision,
-  // not a gap). Tracks processed ids so it fires once per listing, not on every
+  // Auto-fill commission (= margin) on any listing missing it — covers listings
+  // created before this became automatic, so Monthly Goal / commission stats
+  // don't silently zero out on real wins. Never touches a listing that already
+  // has a value (including an intentional 0 — that's a real decision, not a
+  // gap). Tracks processed ids so it fires once per listing, not on every
   // myListings state update.
   const commissionBackfilledRef = useRef(new Set());
   useEffect(() => {
@@ -2029,7 +2013,7 @@ export default function SalesmanLite() {
           setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: suggested } : c));
         });
     });
-  }, [myListings, commissionConfig]);
+  }, [myListings]);
 
   // Live minute tick — keeps inbox "Xh Ym ago" / "in Xh Ym" labels current
   // without a reload. 60s cadence is enough for minute-granular display.
@@ -4739,31 +4723,23 @@ export default function SalesmanLite() {
                       {price}
                     </p>
 
-                    {/* My commission input — RM prefix + field share one height
-                        (alignItems: stretch) so the addon never reads shorter
-                        than the number box. */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                      <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My commission:</span>
-                      <div style={{ display: "flex", alignItems: "stretch", gap: 0, flex: 1 }}>
-                        <span style={{ display: "flex", alignItems: "center", fontSize: T.size.sm, color: C.textMuted, padding: "0 8px", background: C.fill, border: `1px solid ${C.border}`, borderRight: "none", borderRadius: `${R.sm}px 0 0 ${R.sm}px` }}>RM</span>
-                        <input
-                          key={`comm-${car.id}-${car.commission_amount ?? "x"}`}
-                          type="number"
-                          min="0"
-                          step="100"
-                          placeholder="0"
-                          defaultValue={car.commission_amount != null ? car.commission_amount : ""}
-                          onBlur={async e => {
-                            const val = e.target.value === "" ? null : Number(e.target.value);
-                            if (val === (car.commission_amount ?? null)) return;
-                            await supabase.from("car_listings").update({ commission_amount: val }).eq("id", car.id);
-                            setMyListings(prev => prev.map(c => c.id === car.id ? { ...c, commission_amount: val } : c));
-                            refreshCommissionData();
-                          }}
-                          style={{ flex: 1, minWidth: 0, width: 0, background: C.fill, border: `1px solid ${C.border}`, borderLeft: "none", borderRadius: `0 ${R.sm}px ${R.sm}px 0`, padding: "5px 8px", color: car.commission_amount ? C.infoText : C.textMuted, fontSize: T.size.base, fontWeight: car.commission_amount ? T.weight.bold : T.weight.normal, fontFamily: "inherit", outline: "none", lineHeight: 1.2, boxSizing: "border-box" }}
-                        />
-                      </div>
-                    </div>
+                    {/* My margin — you're a sole seller, no salesman under you to pay
+                        a commission to, so this is just selling price minus base
+                        price. Computed, not typed in. */}
+                    {(() => {
+                      const base = Number(car.base_price);
+                      const sell = Number(car.selling_price);
+                      const hasBoth = !isNaN(base) && base > 0 && !isNaN(sell) && sell > 0;
+                      const margin = hasBoth ? sell - base : null;
+                      return (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                          <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My margin:</span>
+                          <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: margin == null ? C.textMuted : margin >= 0 ? C.successText : C.dangerText }}>
+                            {margin == null ? "—" : `RM ${margin.toLocaleString()}`}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Meta */}
                     <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textDim }}>
