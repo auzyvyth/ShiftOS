@@ -27,7 +27,7 @@ function json(data: unknown, status = 200, origin: string | null = null) {
   });
 }
 
-function buildHtml(name: string, loginUrl: string): string {
+function buildHtml(name: string, continueUrl: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Finish setting up ShiftOS</title></head>
@@ -42,7 +42,7 @@ function buildHtml(name: string, loginUrl: string): string {
       <p style="margin:0 0 18px;font-size:14px;line-height:1.7;color:#374151;">
         Your ShiftOS account isn't finished setting up yet. Complete it now to start listing cars and selling faster.
       </p>
-      <a href="${loginUrl}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:700;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;padding:13px 26px;border-radius:8px;">Finish setting up</a>
+      <a href="${continueUrl}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:700;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;padding:13px 26px;border-radius:8px;">Finish setting up</a>
       <p style="margin:22px 0 0;font-size:12px;color:#9ca3af;">If you didn't try to sign up for ShiftOS, you can ignore this email.</p>
     </div>
   </div>
@@ -99,7 +99,26 @@ serve(async (req) => {
   if (!RESEND_API_KEY) return json({ error: "Email service not configured — RESEND_API_KEY not set" }, 500, origin);
   const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
 
-  const html = buildHtml(target.full_name || "there", "https://xdrive.my/login");
+  // Same shape as the original signup verification link, not a plain /login
+  // link: a magiclink token_hash that /auth/confirm (AuthConfirmPage.jsx)
+  // verifies and, on success, routes straight into the unfinished onboarding
+  // wizard via its existing onboarding_complete===false branches — instead of
+  // dropping the user on the sign-in form with no session and no memory of
+  // where they were. type: "magiclink" (not "recovery") because this account
+  // may have no password at all (Google sign-in never sets one).
+  const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    type: "magiclink",
+    email: target.email,
+    options: { redirectTo: "https://xdrive.my/auth/confirm" },
+  });
+  const hashedToken = linkData?.properties?.hashed_token;
+  if (linkErr || !hashedToken) {
+    console.error("[send-signup-reminder] generateLink error:", linkErr);
+    return json({ error: "Could not generate a continue link" }, 500, origin);
+  }
+  const continueUrl = `https://xdrive.my/auth/confirm?token_hash=${hashedToken}&type=magiclink`;
+
+  const html = buildHtml(target.full_name || "there", continueUrl);
 
   const resendRes = await fetch("https://api.resend.com/emails", {
     method: "POST",
