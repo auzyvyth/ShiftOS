@@ -274,6 +274,19 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     });
   };
 
+  // Same nudge email Review's Incomplete pill sends (UserApprovalsTab.jsx) --
+  // an operator who opens an account straight from People had no way to
+  // reach this at all before, since the button only lived in the other queue.
+  const sendReminder = (a) =>
+    run(a.id, "Sending reminder", async () => {
+      const { data, error: e } = await supabase.functions.invoke("send-signup-reminder", {
+        body: { user_id: a.id },
+      });
+      if (!e && data?.error) return { error: { message: data.error } };
+      if (!e) onPatch(a.id, { signup_reminder_sent_at: new Date().toISOString() });
+      return { error: e || null };
+    });
+
   // Suspend/unsuspend goes through set_account_suspended, which also writes the
   // reason and notifies the seller (A5). Never write is_active here directly.
   const setSuspended = async (a, suspended, reason) => {
@@ -486,6 +499,11 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               </p>
             ) : (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {!open.onboarding_complete && open.account_status !== "deleted" && (
+                <button disabled={busy === open.id} onClick={() => sendReminder(open)} style={btn("warn")}>
+                  {open.signup_reminder_sent_at ? "Resend reminder email" : "Send reminder email"}
+                </button>
+              )}
               <button disabled={busy === open.id} onClick={() => toggleVerified(open)} style={btn(open.is_verified ? "neutral" : "good")}>
                 {open.is_verified ? "Remove verified badge" : "Mark verified"}
               </button>
@@ -574,6 +592,10 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                 <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good")}>Mark payment received</button>
               )}
             </div>
+
+            {!open.onboarding_complete && (
+              <Field label="Reminder" value={open.signup_reminder_sent_at ? `Sent ${fmtDate(open.signup_reminder_sent_at)}` : "Not sent yet"} />
+            )}
 
             <SectionTitle>Identity</SectionTitle>
             <Field label="Full name" value={open.full_name} />

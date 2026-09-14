@@ -508,7 +508,7 @@ export default function AdminPage() {
     // a full IC has no business crossing the wire to build a table.
     const { data: accountData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at, approval_status, rejection_reason")
+      .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at, approval_status, rejection_reason, onboarding_complete, signup_reminder_sent_at")
       .in("role", ["dealer", "owner", "superadmin", "salesman"])
       .order("created_at", { ascending: false });
 
