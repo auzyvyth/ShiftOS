@@ -66,41 +66,32 @@ function Bubble({ msg, mine, t }) {
   // Ambient glow — anchored at the bubble's OUTER edge (the one facing the wall
   // of the thread: right for a sent bubble, left for a received one) and fading
   // out toward the centre, so each side reads like light cast off its own edge.
-  // "to left" on a sent bubble puts full colour at the right (0%) fading to
-  // nothing at the left (100%); "to right" on a received one mirrors it.
-  const glow = mine
-    ? 'linear-gradient(to left, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)'
-    : 'linear-gradient(to right, rgba(220,38,38,0.30), rgba(220,38,38,0) 65%)';
+  // This is a box-shadow on the bubble itself, not a layer sitting behind it —
+  // a behind-layer only showed through the RECEIVED bubble, because its fill is
+  // translucent (THEMES.*.theirs). The SENT bubble is solid `t.mine` red, which
+  // fully occluded that layer and left it with no visible glow at all — the
+  // "sender bubble doesn't match" bug. A box-shadow paints outside the box, so
+  // it reads the same regardless of the bubble's own fill opacity.
+  const glowShadow = mine
+    ? '8px 0 20px -5px rgba(220,38,38,0.55)'
+    : '-8px 0 20px -5px rgba(220,38,38,0.45)';
 
   return (
     <div style={{ display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom:8 }}>
       <div style={{ maxWidth:'78%', minWidth:0 }}>
-        {/* Scoped to the bubble alone (not the timestamp row below it), so the
-            blurred glow — which bleeds a little past its own edges — never
-            washes over the ticks/time line under a short message. */}
-        <div style={{ position:'relative' }}>
-          {/* The glow sits behind the bubble, blurred and low-opacity so it
-              reads as ambient light, not a second shape. pointer-events:none
-              keeps it out of the way of taps/selection. */}
-          <div aria-hidden style={{
-            position:'absolute', inset:'-10px', background: glow,
-            filter:'blur(11px)', opacity:0.6, pointerEvents:'none', zIndex:0,
-          }} />
-          <div style={{
-            position:'relative', zIndex:1,
-            background: mine ? t.mine : t.theirs,
-            color: mine ? t.mineText : t.theirsText,
-            border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
-            borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-            padding:'9px 13px', fontSize:14, lineHeight:1.55,
-            wordBreak:'break-word', whiteSpace:'pre-wrap',
-            opacity: msg.pending ? 0.65 : 1,
-            boxShadow: t.shadow,
-          }}>
-            {hidden
-              ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
-              : msg.body}
-          </div>
+        <div style={{
+          background: mine ? t.mine : t.theirs,
+          color: mine ? t.mineText : t.theirsText,
+          border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
+          borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+          padding:'9px 13px', fontSize:14, lineHeight:1.55,
+          wordBreak:'break-word', whiteSpace:'pre-wrap',
+          opacity: msg.pending ? 0.65 : 1,
+          boxShadow: `${t.shadow}, ${glowShadow}`,
+        }}>
+          {hidden
+            ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
+            : msg.body}
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:5, justifyContent: mine ? 'flex-end' : 'flex-start', marginTop:3, padding:'0 3px' }}>
           <span style={{ fontSize:10.5, color:t.sub }}>{fmtTime(msg.created_at)}</span>
