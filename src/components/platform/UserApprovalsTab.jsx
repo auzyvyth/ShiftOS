@@ -199,7 +199,7 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map((r) => {
             const open = expanded === r.id;
-            const tier = r.kyc_tier || (["salesman_lite"].includes(r.plan) ? "free" : "premium");
+            const tier = r.kyc_tier || (!r.plan ? "no plan" : ["salesman_lite"].includes(r.plan) ? "free" : "premium");
             const u = urls[r.id] || {};
             const busy = acting === r.id;
             return (
@@ -248,10 +248,10 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
                             <DocThumb label="IC back" url={u.back} />
                             <DocThumb label="Selfie" url={u.selfie} />
                           </div>
-                        ) : tier === "free" ? (
-                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no ID photos submitted.</p>
-                        ) : (
+                        ) : tier === "premium" ? (
                           <p style={{ fontSize: 12, color: "#facc15" }}>Premium account, no documents submitted yet.</p>
+                        ) : (
+                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no ID photos submitted.</p>
                         )}
                       </div>
                     </div>
