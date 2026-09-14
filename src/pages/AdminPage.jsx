@@ -283,6 +283,10 @@ export default function AdminPage() {
   const [openReportCount, setOpenReportCount] = useState(0);
   const [pendingSignupCount, setPendingSignupCount] = useState(0);
   const [pendingKycCount, setPendingKycCount] = useState(0);
+  // Abandoned signups (onboarding never finished) -- informational only, never
+  // added into pendingUsersCount/reviewCount below: there is nothing to decide
+  // on one, so it must not inflate "things need your decision".
+  const [pendingIncompleteCount, setPendingIncompleteCount] = useState(0);
   // Which listing's Review sheet is open. Held as an ID, not the row object, so
   // the sheet re-renders off the live pendingListings entry after a docs-verified
   // or note write instead of showing a stale snapshot.
@@ -1285,6 +1289,7 @@ export default function AdminPage() {
                   { id: "listings", label: "Cars", n: pendingListings.length },
                   { id: "signups", label: "New sellers", n: pendingSignupCount },
                   { id: "ids", label: "ID checks", n: pendingKycCount },
+                  { id: "incomplete", label: "Incomplete", n: pendingIncompleteCount },
                 ].map(f => {
                   const on = reviewFilter === f.id;
                   return (
@@ -1303,7 +1308,7 @@ export default function AdminPage() {
                 })}
               </div>
 
-              {reviewCount === 0 && (
+              {reviewCount === 0 && reviewFilter !== "incomplete" && (
                 <div style={{ textAlign: "center", padding: "60px 0", color: "#374151" }}>
                   <p style={{ fontSize: 32, marginBottom: 8 }}>✓</p>
                   <p style={{ fontSize: 14, color: "#4b5563" }}>Nothing waiting. You are all clear.</p>
@@ -1311,6 +1316,9 @@ export default function AdminPage() {
               )}
 
               {/* Empty for THIS filter while other queues still have work. */}
+              {reviewFilter === "incomplete" && pendingIncompleteCount === 0 && (
+                <p style={{ fontSize: 13, color: "#4b5563", padding: "34px 0", textAlign: "center" }}>No incomplete signups right now.</p>
+              )}
               {reviewCount > 0 && (
                 (reviewFilter === "listings" && pendingListings.length === 0) ||
                 (reviewFilter === "signups" && pendingSignupCount === 0) ||
@@ -1319,13 +1327,13 @@ export default function AdminPage() {
                 <p style={{ fontSize: 13, color: "#4b5563", padding: "34px 0", textAlign: "center" }}>Nothing in this queue.</p>
               )}
 
-              {(reviewFilter === "all" || reviewFilter === "signups" || reviewFilter === "ids") && (
+              {(reviewFilter === "all" || reviewFilter === "signups" || reviewFilter === "ids" || reviewFilter === "incomplete") && (
                 <div style={{ marginBottom: reviewFilter === "all" ? 28 : 0 }}>
                   <UserApprovalsTab
                     embedded
                     refreshKey={reviewRefreshKey}
-                    kindFilter={reviewFilter === "signups" ? "signup" : reviewFilter === "ids" ? "kyc" : null}
-                    onCounts={({ signups, ids }) => { setPendingSignupCount(signups); setPendingKycCount(ids); setPendingUsersCount(signups + ids); }}
+                    kindFilter={reviewFilter === "signups" ? "signup" : reviewFilter === "ids" ? "kyc" : reviewFilter === "incomplete" ? "incomplete" : null}
+                    onCounts={({ signups, ids, incomplete }) => { setPendingSignupCount(signups); setPendingKycCount(ids); setPendingIncompleteCount(incomplete); setPendingUsersCount(signups + ids); }}
                   />
                 </div>
               )}

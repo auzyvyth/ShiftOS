@@ -33,6 +33,17 @@ const PLAN_LABEL = {
   dealer_pro: "Dealer Pro", dealer_group: "Dealer Group", dealer_full: "Dealer",
 };
 
+// Short pill text, paired with the role pill next to it (e.g. role "SALESMAN" +
+// chip "PREMIUM" reads as Salesman Premium -- never a generic "premium" that
+// could be mistaken for a plan that doesn't exist, like a "premium dealer").
+// A dealer plan gets its own tier name (Starter/Growth/Pro/Group), never
+// "Premium" -- that word belongs to salesman_full alone.
+const PLAN_CHIP = {
+  salesman_lite: "Lite", salesman_full: "Premium",
+  dealer_starter: "Starter", dealer_growth: "Growth",
+  dealer_pro: "Pro", dealer_group: "Group", dealer_full: "Dealer plan",
+};
+
 function DocThumb({ label, url }) {
   const [open, setOpen] = useState(false);
   if (!url) return null;
@@ -65,10 +76,13 @@ function Row({ label, value }) {
 
 // Props exist so the merged Review queue can host this list (P4). Standalone it
 // still renders exactly as before: no props = own heading, own refresh, no filter.
-//   kindFilter  "signup" | "kyc" | null -- which rows to show
+//   kindFilter  "signup" | "kyc" | "incomplete" | null -- which rows to show.
+//               null (the "All" pill) means every DECIDABLE row (signup + kyc);
+//               "incomplete" rows never render under null -- there is nothing
+//               to decide on them, so they only show when explicitly selected.
 //   embedded    hide the heading/refresh; the host renders one set for all types
 //   refreshKey  bump to reload, so the host's single Refresh covers this list too
-//   onCounts    reports { signups, ids } up so the host can label its filter pills
+//   onCounts    reports { signups, ids, incomplete } up so the host can label its filter pills
 export default function UserApprovalsTab({ kindFilter = null, embedded = false, refreshKey = 0, onCounts } = {}) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -85,12 +99,14 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
   // renders, so they share the card — only the decision RPC differs.
   const load = useCallback(async () => {
     setLoading(true); setErr(null);
-    const [signup, kyc] = await Promise.all([
+    const [signup, kyc, incomplete] = await Promise.all([
       supabase.rpc("get_pending_approvals"),
       supabase.rpc("get_pending_kyc"),
+      supabase.rpc("get_incomplete_signups"),
     ]);
     if (signup.error) { setErr(signup.error.message); setLoading(false); return; }
     if (kyc.error) { setErr(kyc.error.message); setLoading(false); return; }
+    if (incomplete.error) { setErr(incomplete.error.message); setLoading(false); return; }
 
     const signupRows = (signup.data || []).map((r) => ({ ...r, _kind: "signup" }));
     const seen = new Set(signupRows.map((r) => r.id));
@@ -103,7 +119,10 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
         kyc_submitted_at: r.submitted_at,
         has_docs: !!(r.front_path || r.back_path || r.selfie_path),
       }));
-    setRows([...signupRows, ...kycRows]);
+    // Never finished onboarding, so never approval_status='pending' -- distinct
+    // people from signupRows, no de-dup needed.
+    const incompleteRows = (incomplete.data || []).map((r) => ({ ...r, _kind: "incomplete" }));
+    setRows([...signupRows, ...kycRows, ...incompleteRows]);
     setLoading(false);
   }, []);
 
@@ -119,10 +138,16 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
     onCountsRef.current?.({
       signups: rows.filter((r) => r._kind === "signup").length,
       ids: rows.filter((r) => r._kind === "kyc").length,
+      incomplete: rows.filter((r) => r._kind === "incomplete").length,
     });
   }, [rows]);
 
-  const visible = kindFilter ? rows.filter((r) => r._kind === kindFilter) : rows;
+  // "All" (kindFilter null) is every row waiting on a DECISION -- incomplete
+  // signups have nothing to decide, so they only show up when their own pill
+  // is explicitly selected.
+  const visible = kindFilter
+    ? rows.filter((r) => r._kind === kindFilter)
+    : rows.filter((r) => r._kind !== "incomplete");
 
   // Sign the three image paths only when a card is opened (short 2-min TTL).
   const openCard = async (r) => {
@@ -167,13 +192,25 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
     setRejectFor(null); setRejectReason("");
   };
 
+  // Nudge, not a decision -- an incomplete signup stays in the list after
+  // sending (they may never come back), just marked with when we last emailed.
+  const sendReminder = async (userId) => {
+    setActing(userId);
+    const { data, error } = await supabase.functions.invoke("send-signup-reminder", {
+      body: { user_id: userId },
+    });
+    setActing(null);
+    if (error || data?.error) { setErr(data?.error || error.message); return; }
+    setRows((p) => p.map((r) => (r.id === userId ? { ...r, signup_reminder_sent_at: new Date().toISOString() } : r)));
+  };
+
   return (
     <div>
       {!embedded && (
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>User Approvals
-            <InfoHint title="What is this?" text="Two queues in one list. Plain rows are new dealers and solo salesmen who can't reach their dashboard until you approve them. Rows tagged ID CHECK are sellers who are already approved and have submitted their MyKad to earn the public Verified badge — approving one only grants the badge, it changes nothing about their access. Photos are shown as private, expiring links and are permanently deleted the instant you approve or reject." />
+            <InfoHint title="What is this?" text="Three kinds of row. Plain rows are new dealers and solo salesmen who can't reach their dashboard until you approve them. Rows tagged ID CHECK are sellers who are already approved and have submitted their MyKad to earn the public Verified badge — approving one only grants the badge, it changes nothing about their access. Photos are shown as private, expiring links and are permanently deleted the instant you approve or reject. Rows tagged INCOMPLETE started signing up (often a Google sign-in) but never finished the form — there's nothing to approve, only a Send reminder email button to nudge them back." />
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Account approvals and identity (ID) checks</p>
         </div>
@@ -199,7 +236,13 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {visible.map((r) => {
             const open = expanded === r.id;
-            const tier = r.kyc_tier || (["salesman_lite"].includes(r.plan) ? "free" : "premium");
+            const isIncomplete = r._kind === "incomplete";
+            // Drives the ID-document expectation below (three photos vs. IC
+            // number only) -- kept separate from the chip text so the badge
+            // always shows the real plan name, never a generic "premium".
+            const docsTier = r.kyc_tier || (!r.plan ? "no plan" : ["salesman_lite"].includes(r.plan) ? "free" : "premium");
+            const planChip = PLAN_CHIP[r.plan] || "No plan";
+            const isPaidPlan = !!r.plan && r.plan !== "salesman_lite";
             const u = urls[r.id] || {};
             const busy = acting === r.id;
             return (
@@ -212,7 +255,11 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 2 }}>
                       <span style={{ fontSize: 13.5, color: "#e5e7eb", fontWeight: 600 }}>{r.full_name || "No name"}</span>
-                      <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: tier === "premium" ? "rgba(192,132,252,0.14)" : "rgba(148,163,184,0.14)", color: tier === "premium" ? "#c084fc" : "#94a3b8", letterSpacing: "0.04em", textTransform: "uppercase" }}>{tier}</span>
+                      {isIncomplete ? (
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(234,179,8,0.14)", color: "#facc15", letterSpacing: "0.04em", textTransform: "uppercase" }}>Incomplete</span>
+                      ) : (
+                        <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: isPaidPlan ? "rgba(192,132,252,0.14)" : "rgba(148,163,184,0.14)", color: isPaidPlan ? "#c084fc" : "#94a3b8", letterSpacing: "0.04em", textTransform: "uppercase" }}>{planChip}</span>
+                      )}
                       <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(96,165,250,0.14)", color: "#60a5fa", letterSpacing: "0.04em", textTransform: "uppercase" }}>{r.role}</span>
                       {r._kind === "kyc" && (
                         <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 7px", borderRadius: 99, background: "rgba(34,197,94,0.14)", color: "#4ade80", letterSpacing: "0.04em", textTransform: "uppercase" }}>ID check</span>
@@ -231,12 +278,23 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
                       <div>
                         <Row label="Full name" value={r.full_name} />
                         <Row label="Email" value={r.email} />
-                        <Row label="Phone" value={r.phone} />
-                        <Row label="IC" value={r.ic_last4 ? `••••••-••-${r.ic_last4}` : null} />
-                        <Row label="Plan" value={PLAN_LABEL[r.plan] || r.plan} />
+                        {isIncomplete ? (
+                          <Row label="Started" value={fmtDate(r.created_at)} />
+                        ) : (
+                          <>
+                            <Row label="Phone" value={r.phone} />
+                            <Row label="IC" value={r.ic_last4 ? `••••••-••-${r.ic_last4}` : null} />
+                            <Row label="Plan" value={PLAN_LABEL[r.plan] || r.plan} />
+                          </>
+                        )}
                         <Row label="Business" value={r.dealership} />
-                        <Row label="Submitted" value={fmtDate(r.kyc_submitted_at)} />
+                        {isIncomplete ? (
+                          <Row label="Reminder" value={r.signup_reminder_sent_at ? `Sent ${fmtDate(r.signup_reminder_sent_at)}` : "Not sent yet"} />
+                        ) : (
+                          <Row label="Submitted" value={fmtDate(r.kyc_submitted_at)} />
+                        )}
                       </div>
+                      {!isIncomplete && (
                       <div>
                         <p style={{ fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 8px" }}>ID documents</p>
                         {/* Free sellers may now attach ID too (that is how a Lite
@@ -248,15 +306,23 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
                             <DocThumb label="IC back" url={u.back} />
                             <DocThumb label="Selfie" url={u.selfie} />
                           </div>
-                        ) : tier === "free" ? (
-                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no ID photos submitted.</p>
-                        ) : (
+                        ) : docsTier === "premium" ? (
                           <p style={{ fontSize: 12, color: "#facc15" }}>Premium account, no documents submitted yet.</p>
+                        ) : (
+                          <p style={{ fontSize: 12, color: "#4b5563" }}>Free account — IC number only, no ID photos submitted.</p>
                         )}
                       </div>
+                      )}
                     </div>
 
-                    {rejectFor === r.id ? (
+                    {isIncomplete ? (
+                      <div style={{ display: "flex", gap: 8, marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                        <button disabled={busy} onClick={() => sendReminder(r.id)}
+                          style={{ marginLeft: "auto", padding: "8px 20px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.3)", color: "#facc15", cursor: busy ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: busy ? 0.6 : 1 }}>
+                          {busy ? "Sending…" : r.signup_reminder_sent_at ? "Resend reminder email" : "Send reminder email"}
+                        </button>
+                      </div>
+                    ) : rejectFor === r.id ? (
                       <div style={{ marginTop: 16, padding: "12px 14px", background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)", borderRadius: 8 }}>
                         <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171", fontWeight: 600 }}>Reason for rejection — shown to the user</p>
                         {/* Preset reasons: the seller reads this verbatim in
@@ -306,7 +372,9 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
                         </button>
                       </div>
                     )}
-                    <p style={{ margin: "12px 0 0", fontSize: 10.5, color: "#475569" }}>Deciding permanently deletes any uploaded ID photos.</p>
+                    {!isIncomplete && (
+                      <p style={{ margin: "12px 0 0", fontSize: 10.5, color: "#475569" }}>Deciding permanently deletes any uploaded ID photos.</p>
+                    )}
                   </div>
                 )}
               </div>
