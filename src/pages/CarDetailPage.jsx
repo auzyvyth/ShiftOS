@@ -723,15 +723,17 @@ function Skeleton() {
         </div>
       </div>
 
-      {/* ── DESKTOP (>900px) — matches .cdp-body-wrap; the photo now sits
-          inside the left column beside the sidebar, not full-bleed above it. */}
+      {/* ── DESKTOP (>900px) — matches .cdp-body-wrap; the title sits above
+          the photo now (a small caption-scale line, not the old hero-sized
+          one), and the photo is inside the left column beside the sidebar
+          instead of full-bleed above it. */}
       <div className="sk-desktop" style={{ maxWidth:1280, margin:'0 auto', padding:'40px 32px', display:'flex', gap:48, alignItems:'flex-start' }}>
         {/* Left — flex 1.55 */}
         <div style={{ flex:1.55, minWidth:0 }}>
+          {/* Title — matches the small h1 above the photo */}
+          <div className="sk-b" style={{ height:28, width:'46%', marginBottom:14 }} />
           {/* Photo — matches .cdp-mosaic-grid */}
           <div className="sk-b" style={{ aspectRatio:'3 / 2', maxHeight:560, borderRadius:16, marginBottom:14, background:mosaicGap }} />
-          <div className="sk-b" style={{ height:10, width:'14%', marginBottom:10 }} />
-          <div className="sk-b" style={{ height:52, width:'72%', marginBottom:10 }} />
           <div className="sk-b" style={{ height:13, width:'38%', marginBottom:20 }} />
           <div className="sk-b" style={{ height:1, marginBottom:28 }} />
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden', marginBottom:32 }}>
@@ -2879,6 +2881,33 @@ export default function CarDetailPage() {
         <div className="cdp-body-wrap cdp-desktop-only">
           {/* ── LEFT COLUMN ── */}
           <div className="cdp-body-left">
+            {/* Title — sits above the photo now, not below it. Still Bebas
+                Neue (DESIGN.md: "one headline system... never introduce a
+                third UI font" — this is the one surface-wide display face),
+                just at a much smaller, page-caption scale instead of the old
+                hero-sized clamp(3rem,4.4rem): sitting right on top of a
+                boxed, column-width photo (not a full-bleed hero) reads as
+                oversized/shouty at that size, and a quieter caption above
+                the photo is closer to how a listing title reads elsewhere
+                (marketplace cards) — brand + nameplate, said once, plainly. */}
+            <h1
+              style={{
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: "clamp(1.6rem,2.4vw,2.1rem)",
+                lineHeight: 1.05,
+                letterSpacing: "0.015em",
+                marginBottom: sellerHeadline ? 4 : 14,
+              }}
+            >
+              {/* Masthead, theme-aware via `th` (was hardcoded #374151) — brand and
+                  model/variant/year share one strong colour. */}
+              <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
+            </h1>
+            {sellerHeadline && (
+              <p style={{ fontSize: 13, lineHeight: 1.45, color: th.textSec, fontFamily: "var(--xd-font-body)", margin: "0 0 14px" }}>
+                {sellerHeadline}
+              </p>
+            )}
             {/* ── Photo — beside the trust sidebar now, not a separate
                 full-bleed section above it. The two small mosaic cells that
                 used to sit to its right are gone; that's the sidebar's space
@@ -3066,27 +3095,6 @@ export default function CarDetailPage() {
               </div>
             </div>
 
-            {/* Title block — brand sits at the same scale as the nameplate below it
-                (was a tiny 10px caption dwarfed by the 3-4.4rem heading), so brand
-                and model read as one masthead, differentiated by color only. */}
-         <h1
-  style={{
-    fontFamily: "'Bebas Neue',sans-serif",
-    fontSize: "clamp(3rem,5vw,4.4rem)",
-    lineHeight: 0.98,
-    letterSpacing: "0.01em",
-    marginBottom: 12,
-  }}
->
-  {/* Masthead, theme-aware via `th` (was hardcoded #374151) — brand and
-      model/variant/year share one strong colour. */}
-  <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
-</h1>
-            {sellerHeadline && (
-              <p style={{ fontSize: 15, lineHeight: 1.45, color: th.textSec, fontFamily: "var(--xd-font-body)", margin: "-4px 0 16px" }}>
-                {sellerHeadline}
-              </p>
-            )}
             <p
               style={{
                 fontSize: 12,
