@@ -148,6 +148,7 @@ const JDM = {
   GXPA16: { brand: 'Toyota', model: 'GR Yaris', from: 2020, to: null },
   ZN6:    { brand: 'Toyota', model: '86', from: 2012, to: 2020, alt: 'Subaru BRZ' },
   ZN8:    { brand: 'Toyota', model: 'GR86', from: 2021, to: null, alt: 'Subaru BRZ' },
+  ZSG10:  { brand: 'Toyota', model: 'Corolla Cross', from: 2021, to: null },
 
   // ─── Lexus ───────────────────────────────────────────────────────────────
   GSE20:  { brand: 'Lexus', model: 'IS', from: 2005, to: 2013 },
@@ -347,6 +348,7 @@ const JDM = {
   GA4W: { brand: 'Mitsubishi', model: 'ASX', from: 2010, to: null, alt: 'RVR' },
   KL1T: { brand: 'Mitsubishi', model: 'Triton', from: 2018, to: null },
   A05A: { brand: 'Mitsubishi', model: 'Mirage', from: 2012, to: 2019 },
+  NA4W: { brand: 'Mitsubishi', model: 'Grandis', from: 2005, to: 2010 },
 
   // ─── Daihatsu (kei recon + the Perodua donor cars) ───────────────────────
   L375S: { brand: 'Daihatsu', model: 'Tanto', from: 2007, to: 2013 },

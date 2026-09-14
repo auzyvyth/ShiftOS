@@ -23,6 +23,7 @@ const TABLE = {
     "3 SERIES": [{ from: 1998, to: 2006, code: "E46" }, { from: 2005, to: 2011, code: "E90" }, { from: 2012, to: 2018, code: "F30" }, { from: 2019, to: null, code: "G20" }],
     "4 SERIES": [{ from: 2013, to: 2020, code: "F32" }, { from: 2020, to: null, code: "G22" }],
     "5 SERIES": [{ from: 2003, to: 2010, code: "E60" }, { from: 2010, to: 2016, code: "F10" }, { from: 2017, to: 2023, code: "G30" }, { from: 2024, to: null, code: "G60" }],
+    "X1": [{ from: 2010, to: 2015, code: "E84" }, { from: 2016, to: 2022, code: "F48" }],
   },
   MERCEDES: {
     "A-CLASS": [{ from: 2012, to: 2018, code: "W176" }, { from: 2018, to: null, code: "W177" }],

@@ -1,0 +1,252 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-14",
+  "batch": { "requested": 19, "returned": 15, "skipped": 4 },
+  "specs": [
+    {
+      "make": "Toyota", "model": "Corolla Cross", "generation": "XG10",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": ["ZSG10"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.8V",
+      "engine_cc": 1798, "cylinders": 4, "horsepower": 139, "torque_nm": 172,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "high",
+      "source_note": "Malaysian CKD Corolla Cross; 2ZR-FE 1.8 petrol with CVT. Hybrid variant offered alongside.",
+      "variants": [
+        { "name": "1.8G", "horsepower": 139, "torque_nm": 172, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "2ZR-FE 1798cc, CVT" },
+        { "name": "1.8V", "horsepower": 139, "torque_nm": 172, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "2ZR-FE 1798cc, CVT; volume variant" },
+        { "name": "1.8 Hybrid", "horsepower": 122, "torque_nm": 142, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 5, "notes": "2ZR-FXE 1798cc + electric motor, ~122 PS system, e-CVT" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Santa Fe", "generation": "CM",
+      "year_from": 2007, "year_to": 2012, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2188, "cylinders": 4, "horsepower": 155, "torque_nm": 335,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "2nd-gen Santa Fe, Malaysian CKD; 2.2 CRDi (D4EB) diesel as volume variant. 2.7 V6 petrol also offered. Drivetrain varied by trim.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 155, "torque_nm": 335, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Diesel", "seats": 7, "notes": "D4EB 2188cc turbodiesel" },
+        { "name": "2.7 V6", "horsepower": 189, "torque_nm": 248, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "G6EA 2656cc V6 petrol" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Santa Fe", "generation": "DM",
+      "year_from": 2013, "year_to": 2018, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2199, "cylinders": 4, "horsepower": 197, "torque_nm": 436,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "3rd-gen Santa Fe, Malaysian CKD; 2.2 CRDi (R-engine) diesel volume variant. 2.4 GDI petrol also sold.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 197, "torque_nm": 436, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "R2.2 2199cc turbodiesel, 6AT" },
+        { "name": "2.4 GDI", "horsepower": 188, "torque_nm": 241, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "Theta II 2359cc GDI petrol" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Santa Fe", "generation": "TM",
+      "year_from": 2019, "year_to": 2024, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2199, "cylinders": 4, "horsepower": 202, "torque_nm": 440,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "4th-gen Santa Fe, Malaysian CKD; 2.2 CRDi diesel with 8-speed auto as volume variant. 2.4 GDI petrol also offered.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 202, "torque_nm": 440, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "R2.2 2199cc turbodiesel, 8AT" },
+        { "name": "2.4 GDI", "horsepower": 188, "torque_nm": 241, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "Theta II 2359cc GDI petrol" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Sorento", "generation": "XM",
+      "year_from": 2009, "year_to": 2014, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2199, "cylinders": 4, "horsepower": 197, "torque_nm": 421,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen Sorento, Malaysian CKD; 2.2 CRDi (R-engine) diesel volume variant. 2.4 petrol also offered.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 197, "torque_nm": 421, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "R2.2 2199cc turbodiesel" },
+        { "name": "2.4 GDI", "horsepower": 174, "torque_nm": 226, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "Theta II 2359cc petrol" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Sorento", "generation": "UM",
+      "year_from": 2015, "year_to": 2020, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2199, "cylinders": 4, "horsepower": 200, "torque_nm": 441,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "3rd-gen Sorento, Malaysian CKD; 2.2 CRDi diesel volume variant. 2.4 GDI petrol also sold.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 200, "torque_nm": 441, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "R2.2 2199cc turbodiesel" },
+        { "name": "2.4 GDI", "horsepower": 188, "torque_nm": 241, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "Theta II 2359cc GDI petrol" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Sorento", "generation": "MQ4",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2 CRDi",
+      "engine_cc": 2151, "cylinders": 4, "horsepower": 202, "torque_nm": 440,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "4th-gen Sorento, Malaysian CKD (launched 2022); Smartstream 2.2 CRDi diesel with 8-speed dual-clutch as volume variant.",
+      "variants": [
+        { "name": "2.2 CRDi", "horsepower": 202, "torque_nm": 440, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "Smartstream D2.2 2151cc turbodiesel, 8-speed wet DCT" }
+      ]
+    },
+    {
+      "make": "Ford", "model": "Focus", "generation": "Mk2",
+      "year_from": 2005, "year_to": 2011, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1999, "cylinders": 4, "horsepower": 145, "torque_nm": 185,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen Focus, Malaysian CKD; sold as hatchback and sedan. 2.0 Duratec petrol volume variant with 4-speed auto.",
+      "variants": [
+        { "name": "1.8", "horsepower": 125, "torque_nm": 165, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1.8 Duratec petrol" },
+        { "name": "2.0", "horsepower": 145, "torque_nm": 185, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "2.0 Duratec 1999cc, 4-speed auto; hatch and sedan" }
+      ]
+    },
+    {
+      "make": "Ford", "model": "Focus", "generation": "Mk3",
+      "year_from": 2012, "year_to": 2018, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "2.0 GDI Sport",
+      "engine_cc": 1999, "cylinders": 4, "horsepower": 170, "torque_nm": 202,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "3rd-gen Focus, Malaysian CKD; hatch and sedan. 2.0 GDI Ti-VCT Sport with 6-speed dual-clutch (PowerShift) as volume variant.",
+      "variants": [
+        { "name": "1.6 Ti-VCT", "horsepower": 125, "torque_nm": 159, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1596cc, 6-speed PowerShift dry DCT" },
+        { "name": "2.0 GDI Sport", "horsepower": 170, "torque_nm": 202, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1999cc GDI Ti-VCT, 6-speed PowerShift DCT" },
+        { "name": "1.5 EcoBoost", "horsepower": 180, "torque_nm": 240, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1498cc turbo, later facelift variant, 6-speed auto" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Grandis", "generation": "NA",
+      "year_from": 2005, "year_to": 2010, "market": "CKD",
+      "chassis_codes": ["NA4W"],
+      "body_type": "MPV", "doors": 5, "seats": 7,
+      "primary_variant": "2.4",
+      "engine_cc": 2378, "cylinders": 4, "horsepower": 165, "torque_nm": 219,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Grandis MPV, Malaysian CKD; 2.4 MIVEC (4G69) petrol with 4-speed INVECS auto, single volume variant.",
+      "variants": [
+        { "name": "2.4", "horsepower": 165, "torque_nm": 219, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "4G69 2378cc MIVEC, 4-speed INVECS-II auto" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "XV", "generation": "GP",
+      "year_from": 2012, "year_to": 2017, "market": "CKD",
+      "chassis_codes": ["GP7"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0i",
+      "engine_cc": 1995, "cylinders": 4, "horsepower": 150, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "1st-gen XV, Malaysian CKD (Tan Chong); FB20 2.0 boxer petrol with Lineartronic CVT and symmetrical AWD.",
+      "variants": [
+        { "name": "2.0i", "horsepower": 150, "torque_nm": 196, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "FB20 1995cc boxer, Lineartronic CVT, symmetrical AWD" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "XV", "generation": "GT",
+      "year_from": 2018, "year_to": 2023, "market": "CKD",
+      "chassis_codes": ["GT7"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0i-P",
+      "engine_cc": 1995, "cylinders": 4, "horsepower": 156, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen XV on Subaru Global Platform, Malaysian CKD; FB20 direct-injection boxer petrol with CVT and symmetrical AWD.",
+      "variants": [
+        { "name": "2.0i-P", "horsepower": 156, "torque_nm": 196, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "FB20 1995cc DI boxer, Lineartronic CVT, symmetrical AWD" }
+      ]
+    },
+    {
+      "make": "Proton", "model": "Inspira", "generation": "CY",
+      "year_from": 2010, "year_to": 2015, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "1.8 CVT",
+      "engine_cc": 1798, "cylinders": 4, "horsepower": 139, "torque_nm": 176,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Rebadged Mitsubishi Lancer (CY), Malaysian CKD; 1.8 (4B10) volume variant with CVT. 5-speed manual and a 2.0 (4B11) also offered.",
+      "variants": [
+        { "name": "1.8 CVT", "horsepower": 139, "torque_nm": 176, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4B10 1798cc, INVECS-III CVT" },
+        { "name": "1.8 Manual", "horsepower": 139, "torque_nm": 176, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4B10 1798cc, 5-speed manual" },
+        { "name": "2.0 CVT", "horsepower": 154, "torque_nm": 198, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4B11 1998cc, INVECS-III CVT with paddle shift" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X1", "generation": "E84",
+      "year_from": 2010, "year_to": 2015, "market": "CBU",
+      "chassis_codes": ["E84"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "sDrive20i",
+      "engine_cc": 1997, "cylinders": 4, "horsepower": 184, "torque_nm": 270,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "1st-gen X1 (longitudinal, rear-drive based), Malaysia CBU with later CKD assembly; sDrive20i N20 turbo volume variant with 8-speed auto.",
+      "variants": [
+        { "name": "sDrive18i", "horsepower": 150, "torque_nm": 220, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "N20 1997cc turbo (detuned), 8-speed auto" },
+        { "name": "sDrive20i", "horsepower": 184, "torque_nm": 270, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "N20 1997cc turbo, 8-speed auto" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X1", "generation": "F48",
+      "year_from": 2016, "year_to": 2022, "market": "CKD",
+      "chassis_codes": ["F48"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "sDrive20i",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 192, "torque_nm": 280,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen X1 (transverse, front-drive UKL platform), Malaysian CKD; sDrive20i B48 2.0 turbo volume variant. sDrive18i used a 1.5 3-cylinder.",
+      "variants": [
+        { "name": "sDrive18i", "horsepower": 140, "torque_nm": 220, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "B38 1499cc 3-cylinder turbo, 7-speed dual-clutch" },
+        { "name": "sDrive20i", "horsepower": 192, "torque_nm": 280, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "B48 1998cc 4-cylinder turbo, 8-speed auto" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Hyundai", "model": "Santa Fe (MX5, 2024+)", "reason": "5th-gen boxy redesign; Malaysian launch and drivetrain/output figures not confirmable from memory, deferred to a run that can verify" },
+    { "make": "Ford", "model": "Focus (Mk1)", "reason": "1st-gen not assembled/sold at volume in Malaysia; deferred" },
+    { "make": "Subaru", "model": "XV e-Boxer Hybrid", "reason": "mild-hybrid variant of GT gen; system output figures uncertain, would be a guess, deferred" },
+    { "make": "BMW", "model": "X1 (U11, 2022+)", "reason": "3rd-gen X1; recent, Malaysian CKD specs not confirmable from memory, deferred" }
+  ]
+}
