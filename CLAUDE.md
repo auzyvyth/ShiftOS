@@ -6,6 +6,26 @@
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
 
+## App Store / Play Store readiness — standing work item, every session
+The owner wants forward progress toward shipping on the Apple App Store and
+Google Play in EVERY session, not only when asked. Treat it as a background
+work stream running alongside whatever else the session is doing: before
+ending a session, check whether an open MOBILE-*/PWA-* item in `TODO.md` was
+moved forward. Don't let a session close having advanced nothing here — unless
+the whole stream is genuinely blocked on an owner decision (see below), in
+which case say so rather than picking a path yourself.
+- Roadmap lives in `TODO.md` under `MOBILE-1`..`MOBILE-5` and `PWA-1`..`PWA-3`
+  (search those keys). Read the full entry before touching auth flow, the
+  manifest, or edge function CORS — this area has already taken down prod
+  once (MOBILE-1 PKCE migration, #369→#370, reverted same day) and a retry
+  needs a staging click-through, not a code-read.
+- **MOBILE-2 is the standing blocker**: Capacitor-wrap this React app vs. a
+  separate React Native client. It gates MOBILE-3/4/5 — nothing downstream
+  should be built assuming a path until the owner picks one. Surface this at
+  the start of any session that touches this stream until it's decided.
+- When the blocking decision is resolved, replace this note's "standing
+  blocker" line with the next one, so it never goes stale.
+
 ## Capturing ideas — do this any time, unprompted
 Whenever the user floats a product/feature idea mid-conversation (not a direct
 task request — a "what if" / "I once had an idea" / brainstorm aside), add it
