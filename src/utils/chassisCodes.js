@@ -23,6 +23,7 @@ const TABLE = {
     "3 SERIES": [{ from: 1998, to: 2006, code: "E46" }, { from: 2005, to: 2011, code: "E90" }, { from: 2012, to: 2018, code: "F30" }, { from: 2019, to: null, code: "G20" }],
     "4 SERIES": [{ from: 2013, to: 2020, code: "F32" }, { from: 2020, to: null, code: "G22" }],
     "5 SERIES": [{ from: 2003, to: 2010, code: "E60" }, { from: 2010, to: 2016, code: "F10" }, { from: 2017, to: 2023, code: "G30" }, { from: 2024, to: null, code: "G60" }],
+    "X3": [{ from: 2011, to: 2017, code: "F25" }, { from: 2018, to: 2024, code: "G01" }],
   },
   MERCEDES: {
     "A-CLASS": [{ from: 2012, to: 2018, code: "W176" }, { from: 2018, to: null, code: "W177" }],
@@ -31,6 +32,7 @@ const TABLE = {
     "E-CLASS": [{ from: 2009, to: 2016, code: "W212" }, { from: 2016, to: 2023, code: "W213" }, { from: 2024, to: null, code: "W214" }],
     "CLA": [{ from: 2013, to: 2019, code: "C117" }, { from: 2019, to: null, code: "C118" }],
     "GLA": [{ from: 2014, to: 2020, code: "X156" }, { from: 2020, to: null, code: "H247" }],
+    "GLC": [{ from: 2016, to: 2022, code: "X253" }, { from: 2023, to: null, code: "X254" }],
     "S-CLASS": [{ from: 2005, to: 2013, code: "W221" }, { from: 2013, to: 2020, code: "W222" }, { from: 2020, to: null, code: "W223" }],
   },
   AUDI: {
@@ -66,12 +68,17 @@ const TABLE = {
     "350Z": [{ from: 2002, to: 2009, code: "Z33" }],
     "370Z": [{ from: 2009, to: 2020, code: "Z34" }],
     "FAIRLADY Z": [{ from: 2002, to: 2009, code: "Z33" }, { from: 2009, to: 2020, code: "Z34" }, { from: 2022, to: null, code: "RZ34" }],
+    "CEFIRO": [{ from: 1988, to: 1993, code: "A31" }, { from: 1994, to: 1998, code: "A32" }, { from: 1999, to: 2003, code: "A33" }],
   },
   MAZDA: {
     "MX-5": [{ from: 1989, to: 1997, code: "NA" }, { from: 1998, to: 2005, code: "NB" }, { from: 2005, to: 2015, code: "NC" }, { from: 2015, to: null, code: "ND" }],
     "RX-7": [{ from: 1985, to: 1992, code: "FC" }, { from: 1992, to: 2002, code: "FD" }],
     "RX-8": [{ from: 2003, to: 2012, code: "SE3P" }],
     "MAZDA3": [{ from: 2003, to: 2009, code: "BK" }, { from: 2009, to: 2013, code: "BL" }, { from: 2013, to: 2019, code: "BM/BN" }, { from: 2019, to: null, code: "BP" }],
+    "5": [{ from: 2005, to: 2010, code: "CR" }, { from: 2011, to: 2018, code: "CW" }],
+  },
+  KIA: {
+    "OPTIMA": [{ from: 2011, to: 2015, code: "TF" }, { from: 2016, to: 2020, code: "JF" }],
   },
   SUBARU: {
     "WRX STI": [{ from: 2000, to: 2007, code: "GDB" }, { from: 2007, to: 2014, code: "GRB" }, { from: 2014, to: 2021, code: "VAB" }],

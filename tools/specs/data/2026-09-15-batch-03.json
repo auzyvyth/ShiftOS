@@ -1,0 +1,243 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-15",
+  "batch": { "requested": 17, "returned": 15, "skipped": 2 },
+  "specs": [
+    {
+      "make": "Nissan", "model": "Juke", "generation": "F15",
+      "year_from": 2010, "year_to": 2019, "market": "CBU",
+      "chassis_codes": ["YF15", "NF15"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1598, "cylinders": 4, "horsepower": 117, "torque_nm": 158,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Malaysian CBU Juke was mainly the 1.6 HR16DE NA with Xtronic CVT; hot Nismo/turbo variants were low-volume grey/CBU.",
+      "variants": [
+        { "name": "1.6", "horsepower": 117, "torque_nm": 158, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "HR16DE 1598cc NA, Xtronic CVT" },
+        { "name": "1.6 DIG-T", "horsepower": 190, "torque_nm": 240, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "MR16DDT 1618cc turbo; Nismo variants higher" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Pajero", "generation": "V60",
+      "year_from": 2000, "year_to": 2006, "market": "CBU",
+      "chassis_codes": ["V68W", "V78W"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "3.2 DI-D",
+      "engine_cc": 3200, "cylinders": 4, "horsepower": 165, "torque_nm": 373,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "3rd-gen full-size Pajero (distinct from Pajero Sport). Malaysian market favoured the 3.2 4M41 turbodiesel with Super Select 4WD; a 3.5 V6 GDI petrol also existed.",
+      "variants": [
+        { "name": "3.2 DI-D", "horsepower": 165, "torque_nm": 373, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 7, "notes": "4M41 3200cc turbodiesel, Super Select 4WD" },
+        { "name": "3.5 GDI", "horsepower": 202, "torque_nm": 314, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 7, "notes": "6G74 3.5 V6 petrol" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Pajero", "generation": "V80",
+      "year_from": 2007, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["V88W", "V98W"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "3.2 DI-D",
+      "engine_cc": 3200, "cylinders": 4, "horsepower": 190, "torque_nm": 441,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "4th-gen Pajero, sold in Malaysia to end of life. 3.2 4M41 turbodiesel with 5-speed INVECS auto and Super Select II 4WD was the mainstay.",
+      "variants": [
+        { "name": "3.2 DI-D", "horsepower": 190, "torque_nm": 441, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 7, "notes": "4M41 3200cc turbodiesel, 5-speed auto, Super Select II" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "MX-5", "generation": "NA",
+      "year_from": 1989, "year_to": 1997, "market": "JDM",
+      "chassis_codes": ["NA6CE", "NA8C"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "1.6",
+      "engine_cc": 1597, "cylinders": 4, "horsepower": 115, "torque_nm": 136,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Eunos/MX-5 roadster; a common grey-import in Malaysia. Pop-up headlights, 1.6 then 1.8. Roadster body (no closed-coupe enum value).",
+      "variants": [
+        { "name": "1.6", "horsepower": 115, "torque_nm": 136, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "B6ZE 1597cc; roadster/convertible, 5-speed manual" },
+        { "name": "1.8", "horsepower": 130, "torque_nm": 152, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "BP 1839cc, from 1994" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "MX-5", "generation": "NB",
+      "year_from": 1998, "year_to": 2004, "market": "JDM",
+      "chassis_codes": ["NB6C", "NB8C"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "1.8",
+      "engine_cc": 1839, "cylinders": 4, "horsepower": 146, "torque_nm": 168,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen MX-5, fixed headlights. Grey-import roadster in Malaysia; 1.6 and 1.8 BP-Z3. Roadster body under Coupe enum.",
+      "variants": [
+        { "name": "1.8", "horsepower": 146, "torque_nm": 168, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "BP-Z3 1839cc, roadster/convertible" },
+        { "name": "1.6", "horsepower": 110, "torque_nm": 140, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "B6 1597cc" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "MX-5", "generation": "NC",
+      "year_from": 2005, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["NCEC"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "2.0",
+      "engine_cc": 1999, "cylinders": 4, "horsepower": 160, "torque_nm": 188,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen MX-5, offered officially in Malaysia including the PRHT retractable hardtop. 2.0 LF-VE, 6-speed manual or auto. Roadster/hardtop body under Coupe enum.",
+      "variants": [
+        { "name": "2.0", "horsepower": 160, "torque_nm": 188, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "LF-VE 1999cc; soft-top and PRHT hardtop; 6-speed auto also offered" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "MX-5", "generation": "ND",
+      "year_from": 2015, "year_to": null, "market": "CBU",
+      "chassis_codes": ["ND5RC"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "2.0",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 181, "torque_nm": 205,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Fourth-gen MX-5 sold in Malaysia as the 2.0 (soft-top and RF retractable fastback). Output rose to ~181 PS with the 2018 update. Roadster/RF body under Coupe enum.",
+      "variants": [
+        { "name": "2.0", "horsepower": 181, "torque_nm": 205, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "SkyActiv-G 2.0 1998cc; RF fastback and soft-top; earlier cars 158 PS; 6-speed auto also offered" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "86", "generation": "ZN6",
+      "year_from": 2012, "year_to": 2020, "market": "CBU",
+      "chassis_codes": ["ZN6"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "2.0",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 200, "torque_nm": 205,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen 86 (Subaru BRZ twin). FA20 2.0 boxer, 6-speed manual or auto, rear-drive. Sold in Malaysia through the ZN6 run.",
+      "variants": [
+        { "name": "2.0", "horsepower": 200, "torque_nm": 205, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "FA20 1998cc flat-four; 6-speed auto also offered" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "86", "generation": "ZN8",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": ["ZN8"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "GR86 2.4",
+      "engine_cc": 2387, "cylinders": 4, "horsepower": 237, "torque_nm": 250,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen car sold as GR86. FA24 2.4 boxer, 6-speed manual or auto, rear-drive.",
+      "variants": [
+        { "name": "GR86 2.4", "horsepower": 237, "torque_nm": 250, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "FA24 2387cc flat-four; 6-speed auto also offered" }
+      ]
+    },
+    {
+      "make": "Ford", "model": "EcoSport", "generation": "B515",
+      "year_from": 2013, "year_to": 2017, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.5 Titanium",
+      "engine_cc": 1499, "cylinders": 4, "horsepower": 112, "torque_nm": 140,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Subcompact SUV imported for Malaysia. 1.5 Ti-VCT with 6-speed PowerShift; a 1.0 EcoBoost turbo was also offered.",
+      "variants": [
+        { "name": "1.5 Titanium", "horsepower": 112, "torque_nm": 140, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1499cc Ti-VCT; 6-speed dual-clutch PowerShift" },
+        { "name": "1.0 EcoBoost", "horsepower": 125, "torque_nm": 170, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "998cc 3-cyl turbo; dual-clutch PowerShift" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Cefiro", "generation": "A31",
+      "year_from": 1988, "year_to": 1993, "market": "JDM",
+      "chassis_codes": ["A31"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 RB20DE",
+      "engine_cc": 1998, "cylinders": 6, "horsepower": 125, "torque_nm": 181,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen Cefiro, a rear-drive RB-engined sedan popular as a grey-import tuner platform in Malaysia. Turbo RB variants exist but figures vary widely.",
+      "variants": [
+        { "name": "2.0 RB20DE", "horsepower": 125, "torque_nm": 181, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "RB20DE 1998cc inline-6, RWD; RB20DET turbo and RB25DE also fitted" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Cefiro", "generation": "A32",
+      "year_from": 1994, "year_to": 1998, "market": "JDM",
+      "chassis_codes": ["A32"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 VQ20DE",
+      "engine_cc": 1995, "cylinders": 6, "horsepower": 150, "torque_nm": 181,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Cefiro switched to front-wheel drive with the VQ V6 family. Common used sedan in Malaysia.",
+      "variants": [
+        { "name": "2.0 VQ20DE", "horsepower": 150, "torque_nm": 181, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ20DE 1995cc V6" },
+        { "name": "2.5 VQ25DE", "horsepower": 190, "torque_nm": 226, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ25DE 2496cc V6" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Cefiro", "generation": "A33",
+      "year_from": 1999, "year_to": 2003, "market": "CKD",
+      "chassis_codes": ["A33"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 VQ20DE",
+      "engine_cc": 1995, "cylinders": 6, "horsepower": 140, "torque_nm": 186,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen Cefiro (Maxima elsewhere), assembled locally for Malaysia. Front-drive VQ V6, 2.0 and 2.3.",
+      "variants": [
+        { "name": "2.0 VQ20DE", "horsepower": 140, "torque_nm": 186, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ20DE 1995cc V6" },
+        { "name": "2.3 VQ23DE", "horsepower": 170, "torque_nm": 217, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ23DE 2349cc V6" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "SX4", "generation": "EY/GY",
+      "year_from": 2007, "year_to": 2014, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1586, "cylinders": 4, "horsepower": 107, "torque_nm": 145,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "SX4 crossover hatch assembled locally for Malaysia with the 1.6 M16A, 4-speed auto or 5-speed manual, front-drive. A sedan bodystyle was also sold.",
+      "variants": [
+        { "name": "1.6", "horsepower": 107, "torque_nm": 145, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "M16A 1586cc; 4-speed auto or 5-speed manual" }
+      ]
+    },
+    {
+      "make": "Proton", "model": "Savvy", "generation": "1st",
+      "year_from": 2005, "year_to": 2011, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.2",
+      "engine_cc": 1149, "cylinders": 4, "horsepower": 75, "torque_nm": 105,
+      "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "City hatchback using a Renault D4F 1.2 engine. Offered with a 5-speed manual or a robotised AMT gearbox.",
+      "variants": [
+        { "name": "1.2", "horsepower": 75, "torque_nm": 105, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "Renault D4F 1149cc; AMT automated-manual also offered (map as Auto)" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Mitsubishi", "model": "Pajero", "reason": "2nd-gen V20 (1991-1999) omitted — Malaysian-market diesel output/torque uncertain, would be low confidence" },
+    { "make": "Suzuki", "model": "SX4 S-Cross", "reason": "2nd-gen S-Cross (JY, 2013+) omitted — limited/uncertain Malaysian availability and spec" }
+  ]
+}
