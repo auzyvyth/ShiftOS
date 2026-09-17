@@ -23,6 +23,7 @@ const TABLE = {
     "3 SERIES": [{ from: 1998, to: 2006, code: "E46" }, { from: 2005, to: 2011, code: "E90" }, { from: 2012, to: 2018, code: "F30" }, { from: 2019, to: null, code: "G20" }],
     "4 SERIES": [{ from: 2013, to: 2020, code: "F32" }, { from: 2020, to: null, code: "G22" }],
     "5 SERIES": [{ from: 2003, to: 2010, code: "E60" }, { from: 2010, to: 2016, code: "F10" }, { from: 2017, to: 2023, code: "G30" }, { from: 2024, to: null, code: "G60" }],
+    "7 SERIES": [{ from: 2002, to: 2008, code: "E65/E66" }, { from: 2009, to: 2015, code: "F01/F02" }, { from: 2016, to: 2022, code: "G11/G12" }],
     "X3": [{ from: 2011, to: 2017, code: "F25" }, { from: 2018, to: 2024, code: "G01" }],
   },
   MERCEDES: {
@@ -33,10 +34,13 @@ const TABLE = {
     "CLA": [{ from: 2013, to: 2019, code: "C117" }, { from: 2019, to: null, code: "C118" }],
     "GLA": [{ from: 2014, to: 2020, code: "X156" }, { from: 2020, to: null, code: "H247" }],
     "GLC": [{ from: 2016, to: 2022, code: "X253" }, { from: 2023, to: null, code: "X254" }],
+    "GLE": [{ from: 2015, to: 2018, code: "W166" }, { from: 2019, to: null, code: "V167" }],
+    "B-CLASS": [{ from: 2005, to: 2011, code: "W245" }, { from: 2012, to: 2018, code: "W246" }, { from: 2019, to: null, code: "W247" }],
     "S-CLASS": [{ from: 2005, to: 2013, code: "W221" }, { from: 2013, to: 2020, code: "W222" }, { from: 2020, to: null, code: "W223" }],
   },
   AUDI: {
     "A3": [{ from: 2003, to: 2012, code: "8P" }, { from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
+    "A6": [{ from: 2012, to: 2018, code: "4G" }, { from: 2019, to: null, code: "4K" }],
     "A4": [{ from: 2008, to: 2015, code: "B8" }, { from: 2016, to: null, code: "B9" }],
     "A5": [{ from: 2007, to: 2016, code: "B8" }, { from: 2016, to: null, code: "B9" }],
     "S3": [{ from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
@@ -62,6 +66,7 @@ const TABLE = {
     "CITY": [{ from: 2008, to: 2014, code: "GM2" }, { from: 2014, to: 2020, code: "GM6" }, { from: 2020, to: null, code: "GN" }],
   },
   NISSAN: {
+    "KICKS": [{ from: 2016, to: null, code: "P15" }],
     "GT-R": [{ from: 1999, to: 2002, code: "R34" }, { from: 2007, to: null, code: "R35" }],
     "SKYLINE": [{ from: 1993, to: 1998, code: "R33" }, { from: 1999, to: 2002, code: "R34" }],
     "SILVIA": [{ from: 1993, to: 1998, code: "S14" }, { from: 1999, to: 2002, code: "S15" }],
@@ -85,6 +90,10 @@ const TABLE = {
     "WRX": [{ from: 2014, to: 2021, code: "VA" }, { from: 2022, to: null, code: "VB" }],
     "BRZ": [{ from: 2012, to: 2020, code: "ZC6" }, { from: 2021, to: null, code: "ZD8" }],
     "IMPREZA": [{ from: 2000, to: 2007, code: "GD" }, { from: 2007, to: 2014, code: "GR/GV" }],
+    "OUTBACK": [{ from: 2009, to: 2014, code: "BR" }, { from: 2015, to: 2020, code: "BS" }, { from: 2021, to: null, code: "BT" }],
+  },
+  SUZUKI: {
+    "VITARA": [{ from: 2015, to: null, code: "LY" }],
   },
   PORSCHE: {
     "911": [{ from: 1998, to: 2004, code: "996" }, { from: 2004, to: 2012, code: "997" }, { from: 2012, to: 2019, code: "991" }, { from: 2019, to: null, code: "992" }],
