@@ -2485,6 +2485,103 @@ until these are done:**
 
 ---
 
+### SESSION 2026-09-23 — Dealer dashboard + storefront sweep, AI agent scope, CSI tab (scoped, nothing built)
+
+Found by querying the live DB, not by reading code — every count below is real.
+
+#### Bugs
+- [ ] **SWEEP-1 (HIGH) — a sold car can be set back to "available" while its deal stays won.**
+  12 won leads point at cars that are not `sold` (11 `available`, 1 `reserved`).
+  Every one had `sold_at` stamped, then a human flipped it back (activity_log shows
+  owner + salesman `sold -> available`, latest 2026-09-11). The car shows as for
+  sale again while the customer row, the 8 handover steps and the commission all
+  still exist — the won=sold rule broken in the reverse direction.
+  Path: `OwnerCarPanel.jsx:328` status `<select>` -> `handleStatus`
+  (`DashboardPage.jsx:9838`), which writes any status with no check, and only
+  `console.error`s a failure (the dealer sees nothing). Salesman-side flips too.
+  FIX: in the DB, not per client — refuse `sold -> anything` on `car_listings`
+  while a `won` lead points at it, and add an explicit "Undo sale" that moves the
+  lead back to `negotiating` in the same step. Decide what happens to the customer
+  row + handover steps on undo (recommend: keep, mark the customer `sale_reversed`).
+  Many of the 12 look like test clicks — clean those up after the guard lands.
+- [ ] **SWEEP-2 (MEDIUM) — dealer Overview pipeline chart drops 51 live leads.**
+  `OverviewTab.jsx:33` `ACTIVE_STAGES` lists `presented`, `reserved`,
+  `documents`, `hp_submitted` (no lead has ever had these) and misses
+  `viewing_booked` (32), `test_drive` (11), `deposit_taken` (8). The chart at
+  `:284` only draws `ACTIVE_STAGES`. FIX: import `STAGE_ORDER` from
+  `src/lib/leadsHelpers.js` instead of a local copy (the drift is the bug).
+- [ ] **SWEEP-3 (MEDIUM) — 18 of 25 sold cars have commission 0; 10 have no salesman.**
+  Commission reports, per-rep gross and RevOps read these. Either the mark-sold
+  flow must ask for commission + closer, or reports must say "not recorded"
+  instead of RM0. Check which mark-sold path skips it before fixing.
+- [ ] **SWEEP-4 (MEDIUM) — 49 appointments in the past still `pending`/`confirmed`.**
+  Nothing asks "did this viewing happen?", so show/no-show rates are unknowable
+  and the booking list fills with dead rows. Needed by CSI and the AI digest.
+- [ ] **SWEEP-5 (LOW) — storefront hero carousel writes a second, empty enquiry.**
+  `HeroCarousel.jsx:637` inserts a phoneless `whatsapp_enquiries` row AFTER
+  `ContactGate` already created the real lead. 3 such rows (last April). Drop the insert.
+- [ ] **SWEEP-6 (LOW) — 5 won leads have no customer row, 6 have no handover steps.**
+  Legacy rows from before the trigger (latest May). One-off backfill, not a code fix.
+- Checked, no action: security advisor ERRORs are the three intended public views
+  (`public_car_listings`, `seller_public_stats`, ...); 72 anon-sign-in WARNs are
+  guest chat by design.
+
+#### AI-AGENT — scope (owner decision 2026-09-23: the AI MAY reply to buyers)
+This REPLACES the "AI drafts, a human sends" rule in CLAUDE.md for the chat
+channel only. Rewrite that CLAUDE.md section in the same PR that ships AGENT-1.
+- **Where it plugs in:** `BuyerChat` / `chat_threads`. Dealer storefronts and the
+  marketplace render the SAME `CarDetailPage` + `BuyerChat`, so one integration
+  covers every dealer site with no per-site work.
+- **AGENT-1 — AI replies in chat.** Server-side (edge function), tools that read the
+  DB: get listing, availability, free viewing slots, book viewing (creates the
+  appointment + lead through the existing trigger), capture name/phone, hand off.
+  Per-dealer toggle: off / after hours / always. Buyer is told it is an assistant.
+  A human reply takes the thread over for good.
+- **AGENT-2 — lead extraction.** After each AI turn, a structured-output call fills
+  the lead: budget stated, cash/loan, trade-in yes/no, timeframe, preferred viewing
+  time, objections. Stored as lead fields + one activity note. This is how chat
+  becomes pipeline data instead of a transcript nobody reads.
+- **AGENT-3 — dealer inbox.** The dealer dashboard has no chat inbox (only
+  `ChatSheet` from a lead). Add one so the dealer can watch what the AI said.
+- **AGENT-4 — weekly insight digest (AI Manager tab + one push).** Nightly batch
+  over extracted lead data + `analytics_events`: demand the dealer does not stock
+  ("5 buyers asked for a Vios under RM50k, you have none" — ties to Market
+  Demand), top objections, reply speed, why deals were lost, CSI themes. Every
+  line quotes a real count and has a minimum sample, like the Performance tab.
+- **AI must NOT:** state any discount, instalment, loan approval, trade-in value,
+  deposit or number it cannot read from the DB; negotiate; answer complaints or
+  CSI detractors (human only); write money fields (P&L, commission, price) — it
+  may suggest, never save; see raw `body` (reads `chat_messages_ai` only) or IC
+  numbers; message a buyer outside a conversation the buyer started.
+- **Model:** decide Haiku 4.5 vs Sonnet 5 after testing on real threads. Also
+  retire `claude-sonnet-4-20250514` (deprecated) in `ai-proxy/index.ts:20-21`
+  and `chat-assist/index.ts:23` — raise their max_tokens (Sonnet 5 counts ~30% more).
+- **WhatsApp** is a later step: needs a Meta-approved business number per dealer;
+  verify Meta's current AI-reply rules before starting.
+
+#### CSI-1 — Customer Satisfaction tab (dealer dashboard, Operations group)
+- **Trigger:** the handover step `handover` ticked done -> a DB trigger creates a
+  `csi_surveys` row (dealer_id, customer_id, lead_id, salesman_id, token, sent_at,
+  answered_at, answers). A 2nd touch at +30 days ("how is the car?") catches
+  post-purchase defects, the main used-car complaint.
+- **Send:** the salesman gets a ready WhatsApp message with the survey link and
+  presses send (buyer-facing, outside a chat the buyer started -> human sends).
+  Email when `customers.email` exists.
+- **Survey page** `/survey/:token`, 5 questions, no login: recommend 0-10, the
+  salesman 1-5, car matched the listing (yes/partly/no), paperwork speed 1-5, free
+  text. Read/write ONLY through a SECURITY DEFINER function taking the token as an
+  argument (share-token rules in CLAUDE.md); never return the token as a column.
+- **"Post as a review?"** opt-in writes a `reviews` row with `verified_purchase =
+  true` — the column exists and nothing can set it honestly today. Real sales
+  become the marketplace's only verified reviews.
+- **Tab:** score trend, per salesman, per question, response rate, comments.
+  Hide averages under 5 answers. A score <= 6 fires a `dealer_notifications` row
+  (= a push) so the owner calls within a day.
+- Volume today: 26 customers, 2 handovers marked done — CSI also depends on
+  handovers actually being ticked, so surface "unticked handovers" in the tab.
+
+---
+
 ### SESSION 2026-09-05 — CarDetailPage competitor audit (Mudah + Carlist), scoped
 
 A competitor teardown of Mudah and Carlist was run against `CarDetailPage.jsx`
