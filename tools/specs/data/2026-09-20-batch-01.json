@@ -1,0 +1,239 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-20",
+  "batch": { "requested": 18, "returned": 14, "skipped": 4 },
+  "specs": [
+    {
+      "make": "BMW", "model": "Z4", "generation": "E85/E86",
+      "year_from": 2002, "year_to": 2008, "market": "JDM",
+      "chassis_codes": ["E85", "E86"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "Z4 3.0i",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 231, "torque_nm": 300,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen Z4 roadster (E85) and coupe (E86); mostly grey-import recon units in Malaysia so trims vary. Flat block = 3.0i M54B30.",
+      "variants": [
+        { "name": "Z4 2.5i", "horsepower": 192, "torque_nm": 245, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "M54B25 2494cc inline-6 roadster" },
+        { "name": "Z4 3.0i", "horsepower": 231, "torque_nm": 300, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "M54B30 2979cc inline-6; N52 in later facelift" },
+        { "name": "Z4 M Coupe", "horsepower": 343, "torque_nm": 365, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "E86 S54B32 3246cc inline-6; rare grey unit" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "Z4", "generation": "E89",
+      "year_from": 2009, "year_to": 2016, "market": "CBU",
+      "chassis_codes": ["E89"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "sDrive20i",
+      "engine_cc": 1997, "cylinders": 4, "horsepower": 184, "torque_nm": 270,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Retractable-hardtop roadster. Malaysia CBU; volume sDrive20i N20 turbo. Facelift 2013.",
+      "variants": [
+        { "name": "sDrive20i", "horsepower": 184, "torque_nm": 270, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "N20B20 1997cc turbo, 8-speed auto" },
+        { "name": "sDrive28i", "horsepower": 245, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "N20B20 1997cc turbo, higher tune" },
+        { "name": "sDrive35i", "horsepower": 306, "torque_nm": 400, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "N54B30 2979cc twin-turbo, 7-speed DCT" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "Z4", "generation": "G29",
+      "year_from": 2019, "year_to": null, "market": "CBU",
+      "chassis_codes": ["G29"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "sDrive30i",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 258, "torque_nm": 400,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Soft-top roadster (Toyota Supra sibling). Malaysia sDrive30i M Sport is volume; M40i offered.",
+      "variants": [
+        { "name": "sDrive30i", "horsepower": 258, "torque_nm": 400, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "B48 1998cc turbo, 8-speed auto" },
+        { "name": "M40i", "horsepower": 340, "torque_nm": 500, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "B58 2998cc inline-6 turbo" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "GLB", "generation": "X247",
+      "year_from": 2020, "year_to": null, "market": "CKD",
+      "chassis_codes": ["X247"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "GLB200",
+      "engine_cc": 1332, "cylinders": 4, "horsepower": 163, "torque_nm": 250,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "7-seat compact SUV. Malaysia launched CBU 2020, CKD from 2021; volume GLB200. AMG GLB35 offered.",
+      "variants": [
+        { "name": "GLB200", "horsepower": 163, "torque_nm": 250, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 7, "notes": "M282 1332cc turbo, 7-speed DCT" },
+        { "name": "GLB250 4MATIC", "horsepower": 224, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "M260 1991cc turbo, 8-speed DCT" },
+        { "name": "AMG GLB35 4MATIC", "horsepower": 306, "torque_nm": 400, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "M260 1991cc turbo, AMG tune" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "Q2", "generation": "Typ GA",
+      "year_from": 2017, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.4 TFSI",
+      "engine_cc": 1395, "cylinders": 4, "horsepower": 150, "torque_nm": 250,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Subcompact SUV on MQB. Malaysia volume 1.4 TFSI (35 TFSI). Facelift 2021.",
+      "variants": [
+        { "name": "1.4 TFSI", "horsepower": 150, "torque_nm": 250, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "EA211 1395cc turbo with cylinder-on-demand, 7-speed S tronic" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "CT", "generation": "ZWA10",
+      "year_from": 2011, "year_to": 2022, "market": "CBU",
+      "chassis_codes": ["ZWA10"],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "CT200h",
+      "engine_cc": 1798, "cylinders": 4, "horsepower": 136, "torque_nm": 142,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Premium hybrid hatch sharing the Prius powertrain. Combined system output 136PS. Facelifts 2014 and 2017.",
+      "variants": [
+        { "name": "CT200h", "horsepower": 136, "torque_nm": 142, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 5, "notes": "2ZR-FXE 1798cc Atkinson + electric motor, eCVT; 142Nm is engine torque" }
+      ]
+    },
+    {
+      "make": "Volkswagen", "model": "Arteon", "generation": "3H",
+      "year_from": 2020, "year_to": null, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "2.0 TSI R-Line",
+      "engine_cc": 1984, "cylinders": 4, "horsepower": 190, "torque_nm": 320,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Five-door fastback (liftback tailgate). Malaysia CBU from 2020; volume 2.0 TSI R-Line 190PS FWD.",
+      "variants": [
+        { "name": "2.0 TSI R-Line", "horsepower": 190, "torque_nm": 320, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "EA888 1984cc turbo, 7-speed DSG" },
+        { "name": "2.0 TSI 4Motion", "horsepower": 280, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "EA888 1984cc turbo, higher output, 7-speed DSG" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Mark X", "generation": "X120",
+      "year_from": 2004, "year_to": 2009, "market": "JDM",
+      "chassis_codes": ["GRX120", "GRX121", "GRX125"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "250G",
+      "engine_cc": 2499, "cylinders": 6, "horsepower": 215, "torque_nm": 260,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "RWD executive sedan, grey-import from Japan; successor to the Mark II. Flat block = 250G 2.5 V6.",
+      "variants": [
+        { "name": "250G", "horsepower": 215, "torque_nm": 260, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "4GR-FSE 2499cc V6, 6-speed auto; GRX125 is AWD" },
+        { "name": "300G", "horsepower": 256, "torque_nm": 314, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "3GR-FSE 2994cc V6" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Mark X", "generation": "X130",
+      "year_from": 2010, "year_to": 2019, "market": "JDM",
+      "chassis_codes": ["GRX130", "GRX133", "GRX135"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "250G",
+      "engine_cc": 2499, "cylinders": 6, "horsepower": 203, "torque_nm": 243,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen Mark X, grey-import. Flat block = 250G 2.5 V6; 350S with 3.5 V6 offered.",
+      "variants": [
+        { "name": "250G", "horsepower": 203, "torque_nm": 243, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "4GR-FSE 2499cc V6, 6-speed auto" },
+        { "name": "350S", "horsepower": 318, "torque_nm": 380, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "2GR-FSE 3456cc V6" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Crown", "generation": "S180",
+      "year_from": 2003, "year_to": 2008, "market": "JDM",
+      "chassis_codes": ["GRS180", "GRS182", "GRS183"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "Royal Saloon 2.5",
+      "engine_cc": 2499, "cylinders": 6, "horsepower": 215, "torque_nm": 260,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "12th-gen Crown (Zero Crown), grey-import RWD sedan. Flat block = 2.5 Royal Saloon.",
+      "variants": [
+        { "name": "Royal Saloon 2.5", "horsepower": 215, "torque_nm": 260, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "4GR-FSE 2499cc V6, 6-speed auto" },
+        { "name": "Royal Saloon 3.0", "horsepower": 256, "torque_nm": 314, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "3GR-FSE 2994cc V6" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Crown", "generation": "S200",
+      "year_from": 2009, "year_to": 2013, "market": "JDM",
+      "chassis_codes": ["GRS200", "GRS201", "GRS202"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "Royal Saloon 2.5",
+      "engine_cc": 2499, "cylinders": 6, "horsepower": 203, "torque_nm": 243,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "13th-gen Crown Royal/Athlete, grey-import. A 2.5 hybrid also existed. Flat block = 2.5 Royal.",
+      "variants": [
+        { "name": "Royal Saloon 2.5", "horsepower": 203, "torque_nm": 243, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "4GR-FSE 2499cc V6, 6-speed auto" },
+        { "name": "Athlete 3.5", "horsepower": 315, "torque_nm": 377, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "2GR-FSE 3456cc V6" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Crown", "generation": "S210",
+      "year_from": 2014, "year_to": 2018, "market": "JDM",
+      "chassis_codes": ["ARS210", "GRS210", "GRS214", "AWS210"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "Athlete 2.0T",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 235, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "14th-gen Crown, grey-import. 2.0 turbo (8AR-FTS) is common; 2.5/3.5 hybrids offered. Flat block = 2.0 turbo.",
+      "variants": [
+        { "name": "Athlete 2.0T", "horsepower": 235, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "8AR-FTS 1998cc turbo, 8-speed auto" },
+        { "name": "Royal Saloon 2.5 Hybrid", "horsepower": 220, "torque_nm": 221, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Hybrid", "seats": 5, "notes": "2AR-FSE 2493cc + electric, eCVT; combined system output" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Fuga", "generation": "Y50",
+      "year_from": 2004, "year_to": 2009, "market": "JDM",
+      "chassis_codes": ["Y50", "PY50", "GY50"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "350GT",
+      "engine_cc": 3498, "cylinders": 6, "horsepower": 280, "torque_nm": 358,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "RWD luxury sedan (Infiniti M sister), grey-import from Japan. Flat block = 350GT 3.5 V6.",
+      "variants": [
+        { "name": "250GT", "horsepower": 215, "torque_nm": 270, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ25DE 2495cc V6, 5-speed auto" },
+        { "name": "350GT", "horsepower": 280, "torque_nm": 358, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ35DE 3498cc V6, 5-speed auto" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Fuga", "generation": "Y51",
+      "year_from": 2010, "year_to": 2022, "market": "JDM",
+      "chassis_codes": ["Y51", "KY51", "HY51"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "370GT",
+      "engine_cc": 3696, "cylinders": 6, "horsepower": 333, "torque_nm": 363,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen Fuga, grey-import. 2.5/3.7 V6 plus a 3.5 hybrid. Flat block = 370GT 3.7 V6.",
+      "variants": [
+        { "name": "250GT", "horsepower": 225, "torque_nm": 263, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ25HR 2495cc V6, 7-speed auto" },
+        { "name": "370GT", "horsepower": 333, "torque_nm": 363, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "VQ37VHR 3696cc V6, 7-speed auto" },
+        { "name": "Hybrid", "horsepower": 364, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Hybrid", "seats": 5, "notes": "VQ35HR 3498cc + electric; combined system output, 7-speed auto" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Volkswagen", "model": "Arteon Shooting Brake", "reason": "Estate body variant; Malaysian availability unconfirmed, omitted rather than guessed" },
+    { "make": "Toyota", "model": "Crown", "reason": "S220 (2018-2022 TNGA) deferred to keep this row set to three non-overlapping generations" },
+    { "make": "Toyota", "model": "Crown Majesta", "reason": "Long-wheelbase flagship on a distinct chassis; treated as a separate nameplate, deferred" },
+    { "make": "Nissan", "model": "Cima", "reason": "Fuga-based long-wheelbase flagship (Y51 derivative); distinct nameplate, deferred" }
+  ]
+}

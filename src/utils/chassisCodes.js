@@ -24,6 +24,11 @@ const TABLE = {
     "4 SERIES": [{ from: 2013, to: 2020, code: "F32" }, { from: 2020, to: null, code: "G22" }],
     "5 SERIES": [{ from: 2003, to: 2010, code: "E60" }, { from: 2010, to: 2016, code: "F10" }, { from: 2017, to: 2023, code: "G30" }, { from: 2024, to: null, code: "G60" }],
     "X3": [{ from: 2011, to: 2017, code: "F25" }, { from: 2018, to: 2024, code: "G01" }],
+    "X2": [{ from: 2018, to: 2023, code: "F39" }],
+    "X4": [{ from: 2014, to: 2018, code: "F26" }, { from: 2019, to: 2025, code: "G02" }],
+    "X6": [{ from: 2008, to: 2014, code: "E71" }, { from: 2015, to: 2019, code: "F16" }, { from: 2020, to: null, code: "G06" }],
+    "X7": [{ from: 2019, to: null, code: "G07" }],
+    "Z4": [{ from: 2002, to: 2008, code: "E85/E86" }, { from: 2009, to: 2016, code: "E89" }, { from: 2019, to: null, code: "G29" }],
   },
   MERCEDES: {
     "A-CLASS": [{ from: 2012, to: 2018, code: "W176" }, { from: 2018, to: null, code: "W177" }],
@@ -34,6 +39,11 @@ const TABLE = {
     "GLA": [{ from: 2014, to: 2020, code: "X156" }, { from: 2020, to: null, code: "H247" }],
     "GLC": [{ from: 2016, to: 2022, code: "X253" }, { from: 2023, to: null, code: "X254" }],
     "S-CLASS": [{ from: 2005, to: 2013, code: "W221" }, { from: 2013, to: 2020, code: "W222" }, { from: 2020, to: null, code: "W223" }],
+    "G-CLASS": [{ from: 1990, to: 2018, code: "W463" }, { from: 2019, to: null, code: "W463A" }],
+    "V-CLASS": [{ from: 2014, to: 2023, code: "W447" }],
+    "GLB": [{ from: 2020, to: null, code: "X247" }],
+    "GLS": [{ from: 2016, to: 2019, code: "X166" }, { from: 2020, to: null, code: "X167" }],
+    "SLK": [{ from: 1996, to: 2003, code: "R170" }, { from: 2004, to: 2010, code: "R171" }, { from: 2011, to: 2016, code: "R172" }],
   },
   AUDI: {
     "A3": [{ from: 2003, to: 2012, code: "8P" }, { from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
@@ -41,6 +51,8 @@ const TABLE = {
     "A5": [{ from: 2007, to: 2016, code: "B8" }, { from: 2016, to: null, code: "B9" }],
     "S3": [{ from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
     "RS3": [{ from: 2015, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
+    "Q3": [{ from: 2011, to: 2018, code: "8U" }, { from: 2019, to: null, code: "F3" }],
+    "Q7": [{ from: 2006, to: 2015, code: "4L" }, { from: 2016, to: null, code: "4M" }],
   },
   VOLKSWAGEN: {
     "GOLF": [{ from: 2009, to: 2013, code: "MK6" }, { from: 2013, to: 2020, code: "MK7" }, { from: 2020, to: null, code: "MK8" }],
@@ -63,8 +75,8 @@ const TABLE = {
   },
   NISSAN: {
     "GT-R": [{ from: 1999, to: 2002, code: "R34" }, { from: 2007, to: null, code: "R35" }],
-    "SKYLINE": [{ from: 1993, to: 1998, code: "R33" }, { from: 1999, to: 2002, code: "R34" }],
-    "SILVIA": [{ from: 1993, to: 1998, code: "S14" }, { from: 1999, to: 2002, code: "S15" }],
+    "SKYLINE": [{ from: 1989, to: 1993, code: "R32" }, { from: 1994, to: 1998, code: "R33" }, { from: 1999, to: 2002, code: "R34" }],
+    "SILVIA": [{ from: 1988, to: 1993, code: "S13" }, { from: 1994, to: 1998, code: "S14" }, { from: 1999, to: 2002, code: "S15" }],
     "350Z": [{ from: 2002, to: 2009, code: "Z33" }],
     "370Z": [{ from: 2009, to: 2020, code: "Z34" }],
     "FAIRLADY Z": [{ from: 2002, to: 2009, code: "Z33" }, { from: 2009, to: 2020, code: "Z34" }, { from: 2022, to: null, code: "RZ34" }],
@@ -79,6 +91,17 @@ const TABLE = {
   },
   KIA: {
     "OPTIMA": [{ from: 2011, to: 2015, code: "TF" }, { from: 2016, to: 2020, code: "JF" }],
+    "SOUL": [{ from: 2009, to: 2013, code: "AM" }, { from: 2014, to: 2019, code: "PS" }],
+    "EV6": [{ from: 2022, to: null, code: "CV" }],
+  },
+  HYUNDAI: {
+    "PALISADE": [{ from: 2020, to: null, code: "LX2" }],
+  },
+  PEUGEOT: {
+    "2008": [{ from: 2013, to: 2019, code: "A94" }, { from: 2020, to: null, code: "P24" }],
+  },
+  MINI: {
+    "CLUBMAN": [{ from: 2008, to: 2014, code: "R55" }, { from: 2016, to: 2023, code: "F54" }],
   },
   SUBARU: {
     "WRX STI": [{ from: 2000, to: 2007, code: "GDB" }, { from: 2007, to: 2014, code: "GRB" }, { from: 2014, to: 2021, code: "VAB" }],

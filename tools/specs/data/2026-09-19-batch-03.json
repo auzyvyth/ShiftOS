@@ -1,0 +1,200 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-19",
+  "batch": { "requested": 15, "returned": 12, "skipped": 3 },
+  "specs": [
+    {
+      "make": "Honda", "model": "Insight", "generation": "ZE1",
+      "year_from": 1999, "year_to": 2006, "market": "JDM",
+      "chassis_codes": ["ZE1"],
+      "body_type": "Hatchback", "doors": 3, "seats": 2,
+      "primary_variant": "Insight 1.0 IMA",
+      "engine_cc": 995, "cylinders": 3, "horsepower": 73, "torque_nm": null,
+      "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen aluminium 2-seat aero coupe/hatch; grey-import from Japan, rare in Malaysia. Combined output from memory.",
+      "variants": [
+        { "name": "Insight 1.0 IMA", "horsepower": 73, "torque_nm": null, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 2, "notes": "ECA 995cc 3-cyl + IMA assist; 5MT or CVT; combined ~73 PS" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Insight", "generation": "ZE2/ZE3",
+      "year_from": 2009, "year_to": 2014, "market": "JDM",
+      "chassis_codes": ["ZE2", "ZE3"],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "Insight 1.3 Hybrid",
+      "engine_cc": 1339, "cylinders": 4, "horsepower": 98, "torque_nm": null,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen 5-door liftback IMA hybrid; grey-import from Japan into Malaysia.",
+      "variants": [
+        { "name": "Insight 1.3 Hybrid", "horsepower": 98, "torque_nm": null, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 5, "notes": "LDA 1339cc 4-cyl + IMA; CVT; combined ~98 PS" }
+      ]
+    },
+    {
+      "make": "Honda", "model": "Insight", "generation": "ZE4",
+      "year_from": 2018, "year_to": 2022, "market": "JDM",
+      "chassis_codes": ["ZE4"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "Insight 1.5 e:HEV",
+      "engine_cc": 1498, "cylinders": 4, "horsepower": 151, "torque_nm": 267,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen sedan on two-motor e:HEV system; grey-import from Japan.",
+      "variants": [
+        { "name": "Insight 1.5 e:HEV", "horsepower": 151, "torque_nm": 267, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Hybrid", "seats": 5, "notes": "LEB 1498cc 2-motor e:HEV; e-CVT; 267 Nm motor torque" }
+      ]
+    },
+    {
+      "make": "Peugeot", "model": "2008", "generation": "A94",
+      "year_from": 2013, "year_to": 2019, "market": "CKD",
+      "chassis_codes": ["A94"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2008 1.6 VTi",
+      "engine_cc": 1598, "cylinders": 4, "horsepower": 120, "torque_nm": 160,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen crossover, locally assembled in Malaysia; naturally-aspirated 1.6 was the volume variant.",
+      "variants": [
+        { "name": "2008 1.6 VTi", "horsepower": 120, "torque_nm": 160, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "EC5 1598cc NA; 4-speed auto" },
+        { "name": "2008 1.2 PureTech", "horsepower": 110, "torque_nm": 205, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1199cc 3-cyl turbo, later facelift" }
+      ]
+    },
+    {
+      "make": "Peugeot", "model": "2008", "generation": "P24",
+      "year_from": 2020, "year_to": null, "market": "CBU",
+      "chassis_codes": ["P24"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2008 1.2 PureTech",
+      "engine_cc": 1199, "cylinders": 3, "horsepower": 130, "torque_nm": 230,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen, fully imported into Malaysia; 1.2 turbo three-cylinder with 8-speed auto. BEV e-2008 offered alongside.",
+      "variants": [
+        { "name": "2008 1.2 PureTech", "horsepower": 130, "torque_nm": 230, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1199cc 3-cyl turbo; 8-speed torque-converter auto" },
+        { "name": "e-2008", "horsepower": 136, "torque_nm": 260, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Electric", "seats": 5, "notes": "~50 kWh BEV, single-speed reduction gear; separate electric variant" }
+      ]
+    },
+    {
+      "make": "Isuzu", "model": "Trooper", "generation": "UBS (2nd gen)",
+      "year_from": 1991, "year_to": 2002, "market": "CKD",
+      "chassis_codes": ["UBS73", "UBS69"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "Trooper 3.0 DiTD",
+      "engine_cc": 2999, "cylinders": 4, "horsepower": 159, "torque_nm": 333,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen body-on-frame 4x4; 3.0 turbodiesel was the common Malaysian variant. Also sold as a 3-door short-wheelbase.",
+      "variants": [
+        { "name": "Trooper 3.0 DiTD", "horsepower": 159, "torque_nm": 333, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 5, "notes": "4JX1 2999cc DI turbodiesel; also 5MT" },
+        { "name": "Trooper 3.5 V6", "horsepower": 215, "torque_nm": 314, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 7, "notes": "6VE1 3494cc V6 petrol" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X4", "generation": "F26",
+      "year_from": 2014, "year_to": 2018, "market": "CBU",
+      "chassis_codes": ["F26"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "X4 xDrive28i",
+      "engine_cc": 1997, "cylinders": 4, "horsepower": 245, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen coupe-SUV, fully imported; xDrive28i 2.0 turbo was the Malaysian volume variant.",
+      "variants": [
+        { "name": "X4 xDrive28i", "horsepower": 245, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "N20 1997cc turbo; 8-speed auto" },
+        { "name": "X4 xDrive35i", "horsepower": 306, "torque_nm": 400, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "N55 2979cc inline-6 turbo" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X4", "generation": "G02",
+      "year_from": 2019, "year_to": 2025, "market": "CBU",
+      "chassis_codes": ["G02"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "X4 xDrive30i",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 252, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen coupe-SUV; xDrive30i M Sport was the main Malaysian variant.",
+      "variants": [
+        { "name": "X4 xDrive30i", "horsepower": 252, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "B48 1998cc turbo; 8-speed auto; M Sport trim" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "Tribute", "generation": "EP",
+      "year_from": 2001, "year_to": 2006, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "Tribute 2.3",
+      "engine_cc": 2261, "cylinders": 4, "horsepower": 150, "torque_nm": null,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Ford Escape sister model; 2.3 four-cylinder arrived with the mid-life update. Early cars used a 2.0 (FWD) and 3.0 V6 (AWD). Torque left null pending confirmation.",
+      "variants": [
+        { "name": "Tribute 2.3", "horsepower": 150, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "L3 2261cc 4-cyl (2005+ facelift)" },
+        { "name": "Tribute 2.0", "horsepower": 124, "torque_nm": null, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "YF 1989cc 4-cyl (early cars)" },
+        { "name": "Tribute 3.0 V6", "horsepower": 200, "torque_nm": null, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "AJ 2967cc V6" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Matrix", "generation": "FC",
+      "year_from": 2001, "year_to": 2010, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "MPV", "doors": 5, "seats": 5,
+      "primary_variant": "Matrix 1.6",
+      "engine_cc": 1599, "cylinders": 4, "horsepower": 103, "torque_nm": 143,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Compact tall-wagon MPV, locally assembled (Inokom). 1.6 was the common Malaysian variant; a 1.8 was also offered.",
+      "variants": [
+        { "name": "Matrix 1.6", "horsepower": 103, "torque_nm": 143, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1599cc 4-cyl; also 5MT" },
+        { "name": "Matrix 1.8", "horsepower": 122, "torque_nm": 162, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1795cc 4-cyl" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Alto", "generation": "HA25",
+      "year_from": 2009, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["HA25"],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "Alto 1.0 GL",
+      "engine_cc": 996, "cylinders": 3, "horsepower": 68, "torque_nm": 90,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "City hatchback (India/Japan-built), imported into Malaysia; 1.0 three-cylinder.",
+      "variants": [
+        { "name": "Alto 1.0 GL", "horsepower": 68, "torque_nm": 90, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "K10B 996cc 3-cyl; 4-speed auto or 5MT" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "bZ4X", "generation": "EA10",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "bZ4X FWD",
+      "engine_cc": null, "cylinders": null, "horsepower": 204, "torque_nm": 266,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Electric",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Battery-electric SUV on e-TNGA, imported into Malaysia. Single front motor is the volume variant; dual-motor AWD also offered.",
+      "variants": [
+        { "name": "bZ4X FWD", "horsepower": 204, "torque_nm": 266, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Electric", "seats": 5, "notes": "Single front motor, ~71.4 kWh battery, single-speed reduction gear" },
+        { "name": "bZ4X AWD", "horsepower": 218, "torque_nm": 337, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Electric", "seats": 5, "notes": "Dual motor; single-speed reduction gear" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Isuzu", "model": "Trooper (1st gen UBS, 1981-1991)", "reason": "Malaysian-market engine spec and availability uncertain; only 2nd-gen UBS specced this batch." },
+    { "make": "Mazda", "model": "Tribute (2nd gen, 2008-2011)", "reason": "Not sold new in Malaysia; only 1st-gen EP specced." },
+    { "make": "Peugeot", "model": "5008", "reason": "Separate 7-seat nameplate, outside 2008 scope; still open for a future batch." }
+  ]
+}

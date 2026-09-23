@@ -1,0 +1,245 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-19",
+  "batch": { "requested": 19, "returned": 15, "skipped": 4 },
+  "specs": [
+    {
+      "make": "Mitsubishi", "model": "Galant", "generation": "E50 (7th gen)",
+      "year_from": 1992, "year_to": 1996, "market": "CBU",
+      "chassis_codes": ["E52A", "E55A", "E57A"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 V6-24",
+      "engine_cc": 1998, "cylinders": 6, "horsepower": 145, "torque_nm": 181,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "7th-gen Galant sold in Malaysia; volume variant was the 2.0 V6-24 (6A12). 1.8 4-cyl also offered. Figures from memory of Malaysian-spec cars.",
+      "variants": [
+        { "name": "2.0 V6-24", "horsepower": 145, "torque_nm": 181, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "6A12 1998cc DOHC 24-valve V6" },
+        { "name": "1.8", "horsepower": null, "torque_nm": null, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "4G93 1834cc inline-4; figures uncertain" }
+      ]
+    },
+    {
+      "make": "Mitsubishi", "model": "Galant", "generation": "EA0 (8th gen)",
+      "year_from": 1997, "year_to": 2003, "market": "CBU",
+      "chassis_codes": ["EA3A", "EA5A"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0 V6",
+      "engine_cc": 1998, "cylinders": 6, "horsepower": 145, "torque_nm": 190,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "8th-gen Galant; Malaysian volume variant 2.0 V6 (6A13). 2.5 V6 also offered. JDM VR-4 twin-turbo not part of Malaysian range. Figures from memory.",
+      "variants": [
+        { "name": "2.0 V6", "horsepower": 145, "torque_nm": 190, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "6A13 1998cc V6 24-valve" },
+        { "name": "2.5 V6", "horsepower": 163, "torque_nm": 220, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "6A13 2498cc V6; figures approximate" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "i10", "generation": "PA (1st gen)",
+      "year_from": 2007, "year_to": 2013, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.25",
+      "engine_cc": 1248, "cylinders": 4, "horsepower": 85, "torque_nm": 120,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen i10 city hatch imported to Malaysia; 1.25 (G4LA) and 1.1 (G4HG) offered. Figures for the 1.25 from memory.",
+      "variants": [
+        { "name": "1.25", "horsepower": 85, "torque_nm": 120, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "G4LA 1248cc inline-4" },
+        { "name": "1.1", "horsepower": 66, "torque_nm": 99, "transmission": "Manual", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "G4HG 1086cc inline-4; figures approximate" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Soul", "generation": "AM (1st gen)",
+      "year_from": 2009, "year_to": 2013, "market": "CBU",
+      "chassis_codes": ["AM"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1591, "cylinders": 4, "horsepower": 124, "torque_nm": 156,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen boxy crossover; Malaysian range 1.6 (Gamma) and 2.0 (Beta). Tagged SUV per marketplace convention though FWD-only car-based crossover. Figures from memory.",
+      "variants": [
+        { "name": "1.6", "horsepower": 124, "torque_nm": 156, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1591cc Gamma inline-4" },
+        { "name": "2.0", "horsepower": 142, "torque_nm": 194, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1998cc Beta II inline-4" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Soul", "generation": "PS (2nd gen)",
+      "year_from": 2014, "year_to": 2019, "market": "CBU",
+      "chassis_codes": ["PS"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1591, "cylinders": 4, "horsepower": 130, "torque_nm": 161,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Soul crossover; volume 1.6 dual-CVVT, 2.0 GDI also offered. Figures from memory.",
+      "variants": [
+        { "name": "1.6", "horsepower": 130, "torque_nm": 161, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1591cc Gamma dual-CVVT inline-4" },
+        { "name": "2.0 GDI", "horsepower": 164, "torque_nm": 191, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1999cc Nu GDI inline-4; figures approximate" }
+      ]
+    },
+    {
+      "make": "Volkswagen", "model": "Beetle", "generation": "A4 (New Beetle)",
+      "year_from": 2000, "year_to": 2011, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 2, "seats": 4,
+      "primary_variant": "2.0",
+      "engine_cc": 1984, "cylinders": 4, "horsepower": 115, "torque_nm": 172,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "New Beetle (A4/Golf Mk4 platform) sold in Malaysia; volume 2.0 naturally aspirated (AQY). Two-door hatchback body. Figures from memory.",
+      "variants": [
+        { "name": "2.0", "horsepower": 115, "torque_nm": 172, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 4, "notes": "1984cc AQY inline-4, naturally aspirated" }
+      ]
+    },
+    {
+      "make": "Volkswagen", "model": "Beetle", "generation": "A5 (5C)",
+      "year_from": 2012, "year_to": 2019, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 2, "seats": 4,
+      "primary_variant": "1.2 TSI",
+      "engine_cc": 1197, "cylinders": 4, "horsepower": 105, "torque_nm": 175,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Beetle (A5) sold in Malaysia; volume 1.2 TSI, 1.4 TSI Sport also offered. Two-door hatchback. Figures from memory.",
+      "variants": [
+        { "name": "1.2 TSI", "horsepower": 105, "torque_nm": 175, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 4, "notes": "1197cc turbo inline-4, 7-speed DSG dual-clutch" },
+        { "name": "1.4 TSI Sport", "horsepower": 160, "torque_nm": 240, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 4, "notes": "1390cc turbo inline-4, 7-speed DSG dual-clutch" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Baleno", "generation": "Cultus Crescent (1st gen)",
+      "year_from": 1995, "year_to": 2002, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1590, "cylinders": 4, "horsepower": 97, "torque_nm": 135,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Original Baleno (Cultus Crescent) sold/assembled in Malaysia in the late 1990s; sedan volume with 1.6 (G16B). Hatch and wagon also existed. Figures reconstructed from memory.",
+      "variants": [
+        { "name": "1.6", "horsepower": 97, "torque_nm": 135, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "G16B 1590cc inline-4; figures approximate" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "Baleno", "generation": "WB (2nd gen)",
+      "year_from": 2016, "year_to": 2021, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Hatchback", "doors": 5, "seats": 5,
+      "primary_variant": "1.4",
+      "engine_cc": 1373, "cylinders": 4, "horsepower": 92, "torque_nm": 130,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Baleno hatch (India-built CBU) sold in Malaysia; 1.4 (K14B) with 4-speed auto or 5-speed manual. Figures from memory.",
+      "variants": [
+        { "name": "1.4", "horsepower": 92, "torque_nm": 130, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "K14B 1373cc inline-4, 4-speed torque-converter auto" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Fairlady Z", "generation": "Z33 (350Z)",
+      "year_from": 2002, "year_to": 2008, "market": "JDM",
+      "chassis_codes": ["Z33"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "350Z",
+      "engine_cc": 3498, "cylinders": 6, "horsepower": 280, "torque_nm": 363,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "350Z (Z33) present in Malaysia as grey-import JDM/CBU enthusiast car; VQ35DE 3.5 V6, later HR variants slightly higher output. Roadster also exists. Figures from memory of early VQ35DE spec.",
+      "variants": [
+        { "name": "350Z", "horsepower": 280, "torque_nm": 363, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "VQ35DE 3498cc V6; also offered with 6-speed manual" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Fairlady Z", "generation": "Z34 (370Z)",
+      "year_from": 2009, "year_to": 2020, "market": "JDM",
+      "chassis_codes": ["Z34"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "370Z",
+      "engine_cc": 3696, "cylinders": 6, "horsepower": 336, "torque_nm": 363,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "370Z (Z34) present in Malaysia as grey-import JDM/CBU enthusiast car; VQ37VHR 3.7 V6. Nismo and roadster variants also exist. Figures from memory.",
+      "variants": [
+        { "name": "370Z", "horsepower": 336, "torque_nm": 363, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "VQ37VHR 3696cc V6; also offered with 6-speed manual" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "SLK", "generation": "R170 (1st gen)",
+      "year_from": 1996, "year_to": 2003, "market": "CBU",
+      "chassis_codes": ["R170"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "SLK200 Kompressor",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 163, "torque_nm": 230,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen SLK retractable-hardtop roadster; Malaysian volume SLK200 Kompressor (supercharged). SLK230K and SLK320 V6 also offered. Figures from memory.",
+      "variants": [
+        { "name": "SLK200 Kompressor", "horsepower": 163, "torque_nm": 230, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "1998cc supercharged inline-4; retractable hardtop" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "SLK", "generation": "R171 (2nd gen)",
+      "year_from": 2004, "year_to": 2010, "market": "CBU",
+      "chassis_codes": ["R171"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "SLK200 Kompressor",
+      "engine_cc": 1796, "cylinders": 4, "horsepower": 184, "torque_nm": 250,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen SLK; Malaysian volume SLK200 Kompressor (M271 1.8 supercharged). SLK350 V6 also offered. Figures from memory.",
+      "variants": [
+        { "name": "SLK200 Kompressor", "horsepower": 184, "torque_nm": 250, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "M271 1796cc supercharged inline-4; retractable hardtop" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "SLK", "generation": "R172 (3rd gen)",
+      "year_from": 2011, "year_to": 2016, "market": "CBU",
+      "chassis_codes": ["R172"],
+      "body_type": "Coupe", "doors": 2, "seats": 2,
+      "primary_variant": "SLK200",
+      "engine_cc": 1991, "cylinders": 4, "horsepower": 184, "torque_nm": 300,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen SLK (R172); Malaysian volume SLK200 turbo. Renamed SLC in the 2016 facelift (tracked separately). SLK350 V6 also offered. Figures from memory.",
+      "variants": [
+        { "name": "SLK200", "horsepower": 184, "torque_nm": 300, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 2, "notes": "M274 1991cc turbo inline-4; 7G-Tronic; retractable hardtop" }
+      ]
+    },
+    {
+      "make": "Ford", "model": "Escape", "generation": "1st gen (CD2)",
+      "year_from": 2005, "year_to": 2008, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.3 XLS",
+      "engine_cc": 2261, "cylinders": 4, "horsepower": 153, "torque_nm": 205,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen Escape sold in Malaysia in the mid-2000s; 2.3 inline-4 and 3.0 V6 (Duratec) offered with on-demand 4WD. Malaysian sale window and figures reconstructed from memory.",
+      "variants": [
+        { "name": "2.3 XLS", "horsepower": 153, "torque_nm": 205, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "2261cc Duratec inline-4" },
+        { "name": "3.0 XLT", "horsepower": 203, "torque_nm": 262, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "2967cc Duratec V6; figures approximate" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Mitsubishi", "model": "Galant 9th gen (2003-2012)", "reason": "North American/China-market front-drive model (2.4 inline-4 / 3.8 V6); not part of the Malaysian new-car range, so no reliable Malaysian-market spec." },
+    { "make": "Hyundai", "model": "i10 2nd gen (BA/IA, Grand i10, 2013-2019)", "reason": "Not officially sold new in Malaysia as i10; would be an unreliable Malaysian-market row." },
+    { "make": "Kia", "model": "Soul 3rd gen (SK3, 2019+)", "reason": "Not officially imported to Malaysia; insufficient confidence in a Malaysian-market row." },
+    { "make": "Ford", "model": "Escape 2nd gen (2008-2012 facelift) / Kuga-based Escape", "reason": "Facelifted gen was North America only; the later Escape is the Kuga-based platform (separate nameplate). Neither sold as Escape in Malaysia." }
+  ]
+}

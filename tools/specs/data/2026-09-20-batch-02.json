@@ -1,0 +1,248 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-20",
+  "batch": { "requested": 13, "returned": 8, "skipped": 5 },
+  "specs": [
+    {
+      "make": "Ford", "model": "Territory", "generation": "CX743",
+      "year_from": 2024, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "Titanium",
+      "engine_cc": 1497, "cylinders": 4, "horsepower": 160, "torque_nm": 248,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Malaysian CKD SUV launched 2024; 1.5L EcoBoost turbo, 7-speed wet dual-clutch.",
+      "variants": [
+        { "name": "Titanium", "horsepower": 160, "torque_nm": 248, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1.5L EcoBoost turbo 4-cyl, 7-speed wet dual-clutch" },
+        { "name": "Titanium X", "horsepower": 160, "torque_nm": 248, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "top trim, same 1.5T EcoBoost powertrain" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LS", "generation": "XF30",
+      "year_from": 2000, "year_to": 2005, "market": "CBU",
+      "chassis_codes": ["UCF30", "UCF31"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "LS430",
+      "engine_cc": 4293, "cylinders": 8, "horsepower": 282, "torque_nm": 417,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "4th-gen flagship, mostly grey-import/CBU in Malaysia; 3UZ-FE 4.3L V8.",
+      "variants": [
+        { "name": "LS430", "horsepower": 282, "torque_nm": 417, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "3UZ-FE 4.3L V8; 6-speed auto in later years" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LS", "generation": "XF40",
+      "year_from": 2006, "year_to": 2016, "market": "CBU",
+      "chassis_codes": ["USF40", "USF41", "UVF45"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "LS460",
+      "engine_cc": 4608, "cylinders": 8, "horsepower": 380, "torque_nm": 493,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "5th-gen; LS460 1UR-FSE V8 with 8-speed auto; LS600h V8 hybrid also imported.",
+      "variants": [
+        { "name": "LS460", "horsepower": 380, "torque_nm": 493, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "1UR-FSE 4.6L V8, 8-speed auto" },
+        { "name": "LS600h", "horsepower": 445, "torque_nm": 520, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 4, "notes": "2UR-FSE 5.0L V8 + hybrid, e-CVT, combined system output" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LS", "generation": "XF50",
+      "year_from": 2017, "year_to": null, "market": "CBU",
+      "chassis_codes": ["VXFA50", "VXFA55", "GVF50"],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "LS500",
+      "engine_cc": 3444, "cylinders": 6, "horsepower": 416, "torque_nm": 600,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Current gen; LS500 V35A-FTS 3.5L twin-turbo V6, 10-speed auto; LS500h multi-stage hybrid.",
+      "variants": [
+        { "name": "LS500", "horsepower": 416, "torque_nm": 600, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 5, "notes": "V35A-FTS 3.5L twin-turbo V6, 10-speed auto" },
+        { "name": "LS500h", "horsepower": 359, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Hybrid", "seats": 5, "notes": "8GR-FXS 3.5L V6 multi-stage hybrid, combined ~359 PS" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "G-Class", "generation": "W463",
+      "year_from": 1990, "year_to": 2018, "market": "CBU",
+      "chassis_codes": ["W463"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "G500",
+      "engine_cc": 5461, "cylinders": 8, "horsepower": 388, "torque_nm": 530,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Long-running W463; figures for late M273 5.5L V8 G500. Many engines across the run; mostly CBU/grey in Malaysia.",
+      "variants": [
+        { "name": "G500", "horsepower": 388, "torque_nm": 530, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "M273 5.5L V8; permanent 4WD with low range" },
+        { "name": "G63 AMG", "horsepower": 544, "torque_nm": 760, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "M157 5.5L biturbo V8, 7-speed auto" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "G-Class", "generation": "W463A",
+      "year_from": 2019, "year_to": null, "market": "CBU",
+      "chassis_codes": ["W463"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "G63 AMG",
+      "engine_cc": 3982, "cylinders": 8, "horsepower": 585, "torque_nm": 850,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Redesigned 2018 (MY ~2019); G63 AMG M177 4.0L biturbo V8, 9-speed auto; permanent 4WD with low range.",
+      "variants": [
+        { "name": "G63 AMG", "horsepower": 585, "torque_nm": 850, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "M177 4.0L biturbo V8, AMG SPEEDSHIFT 9G" },
+        { "name": "G500", "horsepower": 422, "torque_nm": 610, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 5, "notes": "M176 4.0L biturbo V8, 9-speed auto" }
+      ]
+    },
+    {
+      "make": "Peugeot", "model": "508", "generation": "Mk1",
+      "year_from": 2011, "year_to": 2018, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "508 THP",
+      "engine_cc": 1598, "cylinders": 4, "horsepower": 156, "torque_nm": 240,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "CKD at Gurun; 1.6L THP turbo petrol, 6-speed torque-converter auto.",
+      "variants": [
+        { "name": "508 THP", "horsepower": 156, "torque_nm": 240, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "EP6 1.6L THP turbo, 6-speed auto" }
+      ]
+    },
+    {
+      "make": "Volvo", "model": "S90", "generation": "Mk2",
+      "year_from": 2016, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "T8",
+      "engine_cc": 1969, "cylinders": 4, "horsepower": 407, "torque_nm": 640,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "CKD in Malaysia; T8 Recharge plug-in hybrid (2.0L turbo+supercharged petrol + rear e-motor), 8-speed auto.",
+      "variants": [
+        { "name": "T8", "horsepower": 407, "torque_nm": 640, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 5, "notes": "2.0L turbo+supercharged petrol + electric rear axle, plug-in hybrid; combined output" },
+        { "name": "T5", "horsepower": 254, "torque_nm": 350, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "2.0L turbo petrol, 8-speed auto" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "A8", "generation": "D3",
+      "year_from": 2003, "year_to": 2010, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "A8 4.2 FSI quattro",
+      "engine_cc": 4163, "cylinders": 8, "horsepower": 350, "torque_nm": 440,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "CBU flagship; 4.2L FSI V8 quattro figures; limited Malaysian volume.",
+      "variants": [
+        { "name": "A8 4.2 FSI quattro", "horsepower": 350, "torque_nm": 440, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "4.2L FSI V8, 6-speed tiptronic, quattro" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "A8", "generation": "D4",
+      "year_from": 2011, "year_to": 2017, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "A8L 3.0 TFSI quattro",
+      "engine_cc": 2995, "cylinders": 6, "horsepower": 290, "torque_nm": 420,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "CBU; A8L 3.0 TFSI supercharged V6, 8-speed tiptronic, quattro.",
+      "variants": [
+        { "name": "A8L 3.0 TFSI quattro", "horsepower": 290, "torque_nm": 420, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "3.0L supercharged V6 TFSI, 8-speed tiptronic" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "A8", "generation": "D5",
+      "year_from": 2018, "year_to": null, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "A8L 55 TFSI quattro",
+      "engine_cc": 2995, "cylinders": 6, "horsepower": 340, "torque_nm": 500,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "CBU; 55 TFSI 3.0L turbo V6 with 48V mild-hybrid, 8-speed tiptronic, quattro. Limited Malaysian availability.",
+      "variants": [
+        { "name": "A8L 55 TFSI quattro", "horsepower": 340, "torque_nm": 500, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "3.0L turbo V6, 48V mild-hybrid, 8-speed tiptronic" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "Legacy", "generation": "BL/BP",
+      "year_from": 2003, "year_to": 2009, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.0R",
+      "engine_cc": 1994, "cylinders": 4, "horsepower": 165, "torque_nm": 196,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "4th-gen; EJ20 2.0R boxer, symmetrical AWD; grey-import/CBU. 3.0R flat-6 and 2.5GT turbo also seen.",
+      "variants": [
+        { "name": "2.0R", "horsepower": 165, "torque_nm": 196, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "EJ20 2.0L flat-4, 4-speed auto" },
+        { "name": "3.0R", "horsepower": 245, "torque_nm": 297, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "EZ30 3.0L flat-6, 5-speed auto" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "Legacy", "generation": "BM/BR",
+      "year_from": 2010, "year_to": 2014, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.5i",
+      "engine_cc": 2457, "cylinders": 4, "horsepower": 167, "torque_nm": 229,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "5th-gen; EJ25 2.5i boxer with Lineartronic CVT, symmetrical AWD. 2.5GT turbo also imported.",
+      "variants": [
+        { "name": "2.5i", "horsepower": 167, "torque_nm": 229, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "EJ25 2.5L flat-4, Lineartronic CVT" },
+        { "name": "2.5GT", "horsepower": 265, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "EJ255 2.5L turbo flat-4, 5-speed auto" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "Legacy", "generation": "BN/BS",
+      "year_from": 2015, "year_to": 2019, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "2.5i-S",
+      "engine_cc": 2498, "cylinders": 4, "horsepower": 175, "torque_nm": 235,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "6th-gen; FB25 2.5i boxer, Lineartronic CVT, symmetrical AWD. Limited Malaysian availability.",
+      "variants": [
+        { "name": "2.5i-S", "horsepower": 175, "torque_nm": 235, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "FB25 2.5L flat-4, Lineartronic CVT" }
+      ]
+    },
+    {
+      "make": "Suzuki", "model": "APV", "generation": "GC",
+      "year_from": 2005, "year_to": 2010, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "MPV", "doors": 5, "seats": 8,
+      "primary_variant": "1.6 GLX",
+      "engine_cc": 1590, "cylinders": 4, "horsepower": 92, "torque_nm": 126,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "CBU from Indonesia; 1.6L G16A petrol, rear-wheel-drive people-carrier; 5MT and 4AT offered.",
+      "variants": [
+        { "name": "1.6 GLX", "horsepower": 92, "torque_nm": 126, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 8, "notes": "G16A 1.6L 4-cyl; 5-speed manual" },
+        { "name": "1.6 (Auto)", "horsepower": 92, "torque_nm": 126, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 8, "notes": "4-speed automatic" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Peugeot", "model": "508 Mk2 (R8)", "reason": "Second-generation 508 fastback Malaysian availability uncertain post-Bermaz takeover; not confirmed sold new." },
+    { "make": "Lexus", "model": "LS XF10/XF20 (LS400, 1990-2000)", "reason": "First/second-gen LS400 grey-import only; Malaysian-spec figures uncertain." },
+    { "make": "Audi", "model": "A8 D2 (1994-2002)", "reason": "D2 A8 predates official Audi Malaysia distribution; not part of the Malaysian range." },
+    { "make": "Mercedes-Benz", "model": "G-Class W460/W461", "reason": "Older/utility G-Wagen not sold through Malaysian retail; military/grey provenance." },
+    { "make": "Suzuki", "model": "APV Arena / Luxury facelift", "reason": "Facelift trims folded into the single GC generation row above." }
+  ]
+}
