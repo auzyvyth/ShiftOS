@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
+import PlanTour from "../components/salesmanLanding/PlanTour";
 
 // ─── Scroll-reveal (restrained on purpose — see DESIGN.md: no ambient/looping
 // decoration). One-shot fade+rise per section, staggered per grid item, so
@@ -245,6 +246,9 @@ export default function SalesmanLiteLanding() {
             Your cars, live on Malaysia's car marketplace — <strong>xdrive.my</strong>
           </div>
         </div>
+
+        {/* ── What you get with each plan: one real screenshot per tab ── */}
+        <PlanTour />
 
         {/* ── Pain → comparison ── */}
         <motion.section className="sll-section" variants={fadeUp} {...reveal}>
