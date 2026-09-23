@@ -44,7 +44,7 @@ const SkeletonCarouselCard = ({ width }) => {
           <div className="btc-skel-price-main" style={{ height: 23, width: '68%', background: b, borderRadius: 5, marginTop: 1, animation: s, animationDelay: '0.07s' }} />
           {/* Monthly pill — matches cc-monthly-row height:20, marginTop:4; that same global mobile query sets .cc-monthly-row{display:none}, so it fully disappears under 520px on every card, compact included */}
           <div className="btc-skel-monthly" style={{ height: 20, marginTop: 4, display: 'flex', alignItems: 'center' }}>
-            <div style={{ height: 20, width: '58%', background: b, borderRadius: 20, animation: s, animationDelay: '0.1s' }} />
+            <div style={{ height: 20, width: '58%', background: b, borderRadius: 4, animation: s, animationDelay: '0.1s' }} />
           </div>
         </div>
         {/* 2×2 spec grid — matches cc-specgrid rowGap:6 columnGap:8 marginBottom:10 (4/6/6 on mobile compact) */}

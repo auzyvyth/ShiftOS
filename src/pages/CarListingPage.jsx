@@ -202,15 +202,17 @@ function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
   const fpVars = dark ? {
     '--fp-input': SF.surface2, '--fp-border': SF.border,
     '--fp-text': SF.text, '--fp-muted': SF.textMuted, '--fp-line': SF.line,
+    '--fp-ink': '#ffffff', '--fp-ink-text': '#0f1115',
   } : {
     '--fp-input': '#fff', '--fp-border': '#e5e7eb',
     '--fp-text': '#111827', '--fp-muted': '#9ca3af', '--fp-line': '#f3f4f6',
+    '--fp-ink': '#0f1115', '--fp-ink-text': '#ffffff',
   };
   const pill = active => ({
-    padding:'6px 13px', borderRadius:'50px',
-    border:`1px solid ${active ? '#dc2626' : 'var(--fp-border)'}`,
-    background: active ? 'rgba(220,38,38,0.06)' : 'var(--fp-input)',
-    color: active ? '#dc2626' : 'var(--fp-text)',
+    padding:'6px 11px', borderRadius:'6px',
+    border:`1px solid ${active ? 'var(--fp-ink)' : 'var(--fp-border)'}`,
+    background: active ? 'var(--fp-ink)' : 'var(--fp-input)',
+    color: active ? 'var(--fp-ink-text)' : 'var(--fp-text)',
     fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s',
     lineHeight:'1.4',
   });
@@ -369,11 +371,13 @@ export default function CarListingPage() {
     ? { pageBg:'#08090f', barBg:'rgba(13,17,23,0.97)', barBorder:'rgba(255,255,255,0.08)',
         ctrlBg:'rgba(255,255,255,0.06)', ctrlBorder:'rgba(255,255,255,0.12)',
         text:'#f3f4f6', textMuted:'#9ca3af', chipBg:'rgba(255,255,255,0.04)',
-        chipBorder:'rgba(255,255,255,0.12)', chipText:'#d1d5db', overlay:'rgba(8,9,15,0.55)' }
+        chipBorder:'rgba(255,255,255,0.12)', chipText:'#d1d5db', overlay:'rgba(8,9,15,0.55)',
+        ink:'#ffffff', inkText:'#0f1115', tagBg:'rgba(255,255,255,0.08)', tagBorder:'rgba(255,255,255,0.12)' }
     : { pageBg:'#F7F6F2', barBg:'rgba(247,246,242,0.96)', barBorder:'rgba(0,0,0,0.07)',
         ctrlBg:'#fff', ctrlBorder:'#e5e7eb',
         text:'#111827', textMuted:'#6b7280', chipBg:'#fff',
-        chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)' };
+        chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)',
+        ink:'#0f1115', inkText:'#ffffff', tagBg:'#ECEAE4', tagBorder:'#E0DDD5' };
 
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
@@ -723,7 +727,7 @@ export default function CarListingPage() {
           <h2 style={{ margin:0, fontSize:'15px', fontWeight:'800', color: dark ? SF.text : '#111827', display:'flex', alignItems:'center', gap:'8px', fontFamily:"'Outfit',sans-serif" }}>
             <SlidersHorizontal size={15} style={{ color:'#dc2626' }}/> Filters
             {activeChips.length > 0 && (
-              <span style={{ background:'#dc2626', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 7px', borderRadius:'20px' }}>{activeChips.length}</span>
+              <span style={{ background:'#dc2626', color:'#fff', fontSize:'10px', fontWeight:'800', padding:'2px 6px', borderRadius:'4px' }}>{activeChips.length}</span>
             )}
           </h2>
           <button onClick={()=>setDrawerOpen(false)} style={{ background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', border:'none', cursor:'pointer', color: dark ? SF.textSec : '#6b7280', borderRadius:'8px', padding:'6px', display:'flex', alignItems:'center' }}>
@@ -812,14 +816,14 @@ export default function CarListingPage() {
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-chips-scroll" style={{ display:'flex', gap:'7px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
               <button
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 13px', borderRadius:'50px', border:`1px solid ${hotDeals?'rgba(251,146,60,0.35)':T.chipBorder}`, background:hotDeals?'rgba(251,146,60,0.07)':T.chipBg, color:hotDeals?'#d97706':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 11px', borderRadius:'6px', border:`1px solid ${hotDeals?T.ink:T.chipBorder}`, background:hotDeals?T.ink:T.chipBg, color:hotDeals?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                 onClick={()=>setParam('hot_deals',hotDeals?'':'true')}
               >
-                <Flame size={11}/> Hot Deals
+                <Flame size={11} color={hotDeals ? T.inkText : '#ea580c'}/> Hot Deals
               </button>
               {BODY_TYPES.map(bt=>(
                 <button key={bt}
-                  style={{ flexShrink:0, padding:'5px 13px', borderRadius:'50px', border:`1px solid ${bodyType===bt?'rgba(220,38,38,0.3)':T.chipBorder}`, background:bodyType===bt?'rgba(220,38,38,0.06)':T.chipBg, color:bodyType===bt?'#dc2626':T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'5px 11px', borderRadius:'6px', border:`1px solid ${bodyType===bt?T.ink:T.chipBorder}`, background:bodyType===bt?T.ink:T.chipBg, color:bodyType===bt?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
                   onClick={()=>setParam('body_type',bodyType===bt?'':bt)}
                 >
                   {bt}
@@ -851,9 +855,9 @@ export default function CarListingPage() {
                 <span style={{ color:T.text, fontWeight:'700' }}>{loading ? '…' : totalCount.toLocaleString()}</span> cars found
               </span>
               {activeChips.map(chip=>(
-                <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.2)', color:'#dc2626', fontSize:'12px', fontWeight:'600', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>
+                <span key={chip.key} style={{ display:'inline-flex', alignItems:'center', gap:'4px', background:T.tagBg, border:`1px solid ${T.tagBorder}`, color:T.text, fontSize:'12px', fontWeight:'600', padding:'4px 7px 4px 9px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>
                   {chip.label}
-                  <button onClick={()=>removeChip(chip.key)} style={{ background:'none', border:'none', cursor:'pointer', color:'#dc2626', padding:0, display:'flex', alignItems:'center', marginLeft:1 }}><X size={10}/></button>
+                  <button onClick={()=>removeChip(chip.key)} aria-label={`Remove ${chip.label} filter`} style={{ background:'none', border:'none', cursor:'pointer', color:T.textMuted, padding:0, display:'flex', alignItems:'center', marginLeft:1 }}><X size={10}/></button>
                 </span>
               ))}
               {hasFilters && (
@@ -879,7 +883,7 @@ export default function CarListingPage() {
                 <div style={{ position:'relative' }}>
                   {fetching && (
                     <div style={{ position:'absolute', inset:0, zIndex:5, background:T.overlay, borderRadius:'12px', backdropFilter:'blur(2px)', display:'flex', alignItems:'flex-start', justifyContent:'flex-end', padding:'8px' }}>
-                      <span style={{ background:'rgba(220,38,38,0.9)', color:'#fff', fontSize:'11px', fontWeight:'700', padding:'4px 10px', borderRadius:'20px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
+                      <span style={{ background:T.ink, color:T.inkText, fontSize:'11px', fontWeight:'700', padding:'4px 8px', borderRadius:'4px', fontFamily:"'Outfit',sans-serif" }}>Updating…</span>
                     </div>
                   )}
                   <div className="cl-grid" style={{ display:'grid', gridTemplateColumns: isTwoCols ? 'repeat(2,1fr)' : '1fr', gap: isTwoCols ? '14px' : '10px', opacity:fetching?0.5:1, transition:'opacity 0.18s' }}>
@@ -891,7 +895,7 @@ export default function CarListingPage() {
                             <Car size={48} color="#d1d5db" style={{ marginBottom:'16px' }}/>
                             <p style={{ color:T.text, fontSize:'18px', fontWeight:'700', margin:'0 0 8px', fontFamily:"'Outfit',sans-serif" }}>No cars match your filters</p>
                             <p style={{ color:T.textMuted, fontSize:'14px', margin:'0 0 24px' }}>Try adjusting your search or clear some filters.</p>
-                            <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'linear-gradient(135deg,#dc2626,#b91c1c)', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
+                            <button onClick={resetAll} style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'#dc2626', border:'none', color:'#fff', fontSize:'13px', fontWeight:'700', padding:'11px 24px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif" }}>
                               <RotateCcw size={13}/> Clear all filters
                             </button>
                           </div>
@@ -931,7 +935,7 @@ export default function CarListingPage() {
                 <h2 style={{ color:T.text, fontSize:'13px', fontWeight:'800', margin:0, display:'flex', alignItems:'center', gap:'6px', fontFamily:"'Outfit',sans-serif" }}>
                   <SlidersHorizontal size={13} style={{ color:'#dc2626' }}/> Filters
                   {activeChips.length > 0 && (
-                    <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 6px', borderRadius:'20px' }}>{activeChips.length}</span>
+                    <span style={{ background:'#dc2626', color:'#fff', fontSize:'9px', fontWeight:'800', padding:'1px 5px', borderRadius:'4px' }}>{activeChips.length}</span>
                   )}
                 </h2>
                 {hasFilters && (

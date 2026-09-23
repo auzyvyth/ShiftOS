@@ -147,7 +147,7 @@ export default function AffordabilityCheck({
     <>
       <button
         onClick={() => setOpen(true)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: c.triggerBg, border: `1px solid ${c.triggerBorder}`, borderRadius: 20, color: '#dc2626', fontSize: 11.5, fontWeight: 700, padding: '5px 10px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap' }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: c.triggerBg, border: `1px solid ${c.triggerBorder}`, borderRadius: 6, color: '#dc2626', fontSize: 11.5, fontWeight: 700, padding: '5px 10px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap' }}
       >
         <Wallet size={12} /> Can I afford this?
       </button>

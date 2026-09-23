@@ -2114,7 +2114,7 @@ export default function CarDetailPage() {
         .cdp-lb-img { max-width: 90vw; max-height: 88vh; object-fit: contain; display: block; transition: transform 0.08s linear; pointer-events: none; }
         .cdp-lb-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.08); border: none; color: white; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 2; }
         .cdp-lb-close:hover { background: rgba(255,255,255,0.18); }
-        .cdp-lb-zoom-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 40px; padding: 8px 16px; }
+        .cdp-lb-zoom-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 16px; }
         .cdp-lb-zoom-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 2px; transition: color 0.15s; }
         .cdp-lb-zoom-btn:hover { color: white; }
         .cdp-lb-zoom-label { font-size: 12px; color: rgba(255,255,255,0.6); font-family: var(--xd-font-body); min-width: 40px; text-align: center; }
@@ -2235,7 +2235,7 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          <div style={{ position:'absolute', bottom:14, right:14, zIndex:5, background:'rgba(6,8,15,0.7)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
+          <div style={{ position:'absolute', bottom:14, right:14, zIndex:5, background:'rgba(6,8,15,0.78)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:4, padding:'3px 8px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
             {activeIdx + 1} / {imgCount}
           </div>
           {imgCount > 1 && (() => {
@@ -2359,7 +2359,7 @@ export default function CarDetailPage() {
           {isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
               <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
-              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 10px', borderRadius:'20px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
+              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 7px', borderRadius:'4px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
             </div>
           )}
           {/* Seller storefront link — kept high up, right under the price, so
@@ -2607,12 +2607,12 @@ export default function CarDetailPage() {
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
               {[
-                { key:'registration_card', icon:<CreditCard size={13} />, label:'Geran / Registration Card', okColor:'#38bdf8', okBg:'rgba(56,189,248,0.1)', okBorder:'rgba(56,189,248,0.3)' },
-                { key:'puspakom',      icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBg:'rgba(34,197,94,0.1)',   okBorder:'rgba(34,197,94,0.3)'   },
-                { key:'service_history',icon:<FileText size={13} />,   label:'Service History',      okColor:'#60a5fa', okBg:'rgba(96,165,250,0.1)',  okBorder:'rgba(96,165,250,0.3)'  },
-                { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance',       okColor:'#34d399', okBg:'rgba(52,211,153,0.1)',  okBorder:'rgba(52,211,153,0.3)'  },
-                { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBg:'rgba(251,191,36,0.1)',  okBorder:'rgba(251,191,36,0.3)'  },
-              ].map(({ key, icon, label, okColor: baseColor, okBg: baseBg, okBorder: baseBorder }) => {
+                { key:'registration_card', icon:<CreditCard size={13} />, label:'Geran / Registration Card', okColor:'#38bdf8', okBorder:'rgba(56,189,248,0.3)' },
+                { key:'puspakom',      icon:<ShieldCheck size={13} />, label:'Puspakom Inspection', okColor:'#4ade80', okBorder:'rgba(34,197,94,0.3)'   },
+                { key:'service_history',icon:<FileText size={13} />,   label:'Service History',      okColor:'#60a5fa', okBorder:'rgba(96,165,250,0.3)'  },
+                { key:'loan_clearance', icon:<BadgeCheck size={13} />, label:'Loan Clearance',       okColor:'#34d399', okBorder:'rgba(52,211,153,0.3)'  },
+                { key:'ownership',      icon:<Eye size={13} />,        label:'Ownership Docs',       okColor:'#fbbf24', okBorder:'rgba(251,191,36,0.3)'  },
+              ].map(({ key, icon, label, okColor: baseColor, okBorder: baseBorder }) => {
                 const doc = car.car_documents?.find(d => d.type === key);
                 const isPusp = key === 'puspakom';
                 const b5 = isPusp ? car.puspakom_b5_date : null;
@@ -2623,7 +2623,6 @@ export default function CarDetailPage() {
                 // here rather than at the deposit stage.
                 const geranNote = key === 'registration_card' && !doc ? geranStatusLabel(car.geran_status) : null;
                 const okColor  = accent(geranNote ? '#f59e0b' : baseColor, isXdrive);
-                const okBg     = geranNote ? 'rgba(245,158,11,0.1)' : baseBg;
                 const okBorder = geranNote ? 'rgba(245,158,11,0.3)' : baseBorder;
                 const available = !!doc || byDate || !!geranNote;
                 if (!available) return null;
@@ -2638,8 +2637,8 @@ export default function CarDetailPage() {
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background: available ? okBg : 'rgba(100,116,139,0.08)', border:`1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace:'nowrap' }}>
-                          {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:10, fontWeight:600, color:available ? okColor : th.textSec, whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />
+                          {doc ? 'Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                         </span>
                         {available && <ChevronDown size={12} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />}
                       </div>
@@ -2668,7 +2667,7 @@ export default function CarDetailPage() {
                     <div onClick={() => toggleDoc(rk)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
                       <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{cfg.label}</p>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${cfg.color}15`, border:`1px solid ${cfg.color}30`, color:cfg.color }}>✓ Available</span>
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:10, fontWeight:600, color:cfg.color, whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />Available</span>
                         <ChevronDown size={12} style={{ color: th.textSec, transform: isOpen ? 'rotate(180deg)' : 'none', transition:'transform 0.2s', flexShrink:0 }} />
                       </div>
                     </div>
@@ -2697,7 +2696,7 @@ export default function CarDetailPage() {
                   <Shield size={13} style={{ color: accent('#34d399', isXdrive) }} />
                   <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>Warranty</p>
                 </div>
-                <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:'rgba(52,211,153,0.1)', border:'1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:10, fontWeight:600, color:accent('#34d399', isXdrive), whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />
                   {`${car.warranty_months} months`}
                 </span>
               </div>
@@ -2718,7 +2717,7 @@ export default function CarDetailPage() {
                     {PC.map(({ key, label, color }) => (
                       <div key={key} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background: th.card, border:`1px solid ${th.border}`, borderRadius:9 }}>
                         <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{label}</p>
-                        <span style={{ fontSize:10, fontWeight:600, padding:'2px 8px', borderRadius:20, background:`${color}15`, border:`1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
+                        <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:10, fontWeight:600, color:accent(color, isXdrive), whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />Available</span>
                       </div>
                     ))}
                   </>
@@ -2976,11 +2975,11 @@ export default function CarDetailPage() {
                           bottom: 14,
                           right: 14,
                           zIndex: 4,
-                          background: "rgba(6,8,15,0.62)",
-                          backdropFilter: "blur(10px)",
+                          background: "rgba(6,8,15,0.78)",
                           border: "1px solid rgba(255,255,255,0.14)",
-                          borderRadius: 20,
-                          padding: "4px 12px",
+                          borderRadius: 4,
+                          padding: "3px 8px",
+                          fontVariantNumeric: "tabular-nums",
                           fontSize: 11,
                           fontWeight: 600,
                           color: "rgba(255,255,255,0.9)",
@@ -3677,8 +3676,8 @@ export default function CarDetailPage() {
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: available ? `${okColor}15` : 'rgba(100,116,139,0.08)', border: `1px solid ${available ? okBorder : 'rgba(100,116,139,0.15)'}`, color: available ? okColor : th.textSec, whiteSpace: 'nowrap' }}>
-                            {doc ? '✓ Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:available ? okColor : th.textSec, whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />
+                            {doc ? 'Available' : byDate ? 'Dates given' : geranNote ? 'Not available' : 'Not Provided'}
                           </span>
                           {available && <ChevronDown size={15} style={{ color: okColor, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', flexShrink: 0 }} />}
                         </div>
@@ -3709,7 +3708,7 @@ export default function CarDetailPage() {
                           <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{cfg.label}</p>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${cfg.color}15`, border: `1px solid ${cfg.color}30`, color: cfg.color }}>✓ Available</span>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:cfg.color, whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />Available</span>
                           <ChevronDown size={15} style={{ color: cfg.color, transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
                         </div>
                       </div>
@@ -3744,7 +3743,7 @@ export default function CarDetailPage() {
                       <p style={{ fontSize: 11, color: th.textMuted, margin: '2px 0 0' }}>Included with purchase</p>
                     </div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.3)', color: accent('#34d399', isXdrive) }}>
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:accent('#34d399', isXdrive), whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />
                     {`${car.warranty_months} months`}
                   </span>
                 </div>
@@ -3765,7 +3764,7 @@ export default function CarDetailPage() {
                       {PERK_CFG.map(({ key, label, color }) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: th.card, border: `1px solid ${th.borderSec}`, borderRadius: 10 }}>
                           <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{label}</p>
-                          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: `${color}15`, border: `1px solid ${color}30`, color: accent(color, isXdrive) }}>✓ Available</span>
+                          <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:11, fontWeight:600, color:accent(color, isXdrive), whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />Available</span>
                         </div>
                       ))}
                     </>
@@ -4003,7 +4002,7 @@ export default function CarDetailPage() {
               {isHot && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                   <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 10px', borderRadius: '20px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 7px', borderRadius: '4px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
                 </div>
               )}
             </div>

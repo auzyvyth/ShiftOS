@@ -162,7 +162,20 @@ Section vertical rhythm ~72px desktop / ~48px mobile.
 ## Elevation / radius
 - Resting card shadow `0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)`
 - Hover `0 12px 32px rgba(15,23,42,0.14)`, lift `translateY(-3px)`
-- Radius: cards 16, buttons/inputs 9–10, pills/badges 20–50
+- Radius: cards 16, buttons/inputs 10, filter chips / segments 6–8, badges /
+  tags 4. **No pill (fully rounded) shapes on anything that holds text** — the
+  soft red-tinted pill (red 8% fill + red border + red text) was on every chip,
+  tag and badge and is the most generic look this surface had. Circles stay for
+  icon-only buttons, avatars and status dots.
+- Selected state (filter chip, segment, tab) = INK fill (`#0f1115` on light,
+  `#fff` on dark) with inverse text. Red is the primary action; a selected
+  filter is not one.
+- Removable active-filter tags are neutral (`#ECEAE4` fill, `#111827` text,
+  muted ×), never red.
+- Status ("Available", warranty) = a 6px dot in the status colour + text, no
+  bubble behind it.
+- Overlays on photos (photo count, discount) are solid dark at 0.78 alpha, no
+  `backdrop-filter` blur — that is the glassmorphism rule above.
 
 ## Motion
 - Transitions 0.15–0.25s ease. Hover = subtle lift + shadow + accent border.

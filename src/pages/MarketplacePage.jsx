@@ -403,20 +403,6 @@ export default function MarketplacePage() {
       position: 'relative',
       zIndex: 1,
     },
-    eyebrow: {
-      display: 'inline-flex',
-      alignItems: 'center',
-      gap: '8px',
-      background: 'rgba(220,38,38,0.1)',
-      border: '1px solid rgba(220,38,38,0.25)',
-      color: '#f87171',
-      fontSize: '13px',
-      fontWeight: '600',
-      padding: '6px 14px',
-      borderRadius: '20px',
-      marginBottom: '20px',
-      letterSpacing: '0.04em',
-    },
     headline: {
       fontFamily: "'Bebas Neue', sans-serif",
       fontSize: 'clamp(48px, 8vw, 80px)',
@@ -459,20 +445,6 @@ export default function MarketplacePage() {
       paddingBottom: '4px',
       scrollbarWidth: 'none',
     },
-    brandPill: (active) => ({
-      flexShrink: 0,
-      padding: '10px 18px',
-      borderRadius: '50px',
-      border: `1px solid ${active ? '#dc2626' : 'rgba(0,0,0,0.1)'}`,
-      background: active ? '#dc2626' : 'transparent',
-      color: active ? '#fff' : '#6b7280',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.15s',
-      whiteSpace: 'nowrap',
-      fontFamily: "'Outfit', sans-serif",
-    }),
     filtersSection: {
       padding: '20px 0',
       borderBottom: '1px solid rgba(0,0,0,0.06)',
@@ -519,23 +491,6 @@ export default function MarketplacePage() {
       outline: 'none',
       fontFamily: "'Outfit', sans-serif",
     },
-    pillGroup: {
-      display: 'flex',
-      gap: '6px',
-      flexWrap: 'wrap',
-    },
-    pill: (active) => ({
-      padding: '10px 16px',
-      borderRadius: '50px',
-      border: `1px solid ${active ? '#dc2626' : 'rgba(0,0,0,0.1)'}`,
-      background: active ? 'rgba(220,38,38,0.08)' : '#ffffff',
-      color: active ? '#dc2626' : '#6b7280',
-      fontSize: '14px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.15s',
-      fontFamily: "'Outfit', sans-serif",
-    }),
     chipsRow: {
       display: 'flex',
       gap: '8px',
@@ -547,19 +502,19 @@ export default function MarketplacePage() {
       display: 'inline-flex',
       alignItems: 'center',
       gap: '6px',
-      background: 'rgba(220,38,38,0.1)',
-      border: '1px solid rgba(220,38,38,0.25)',
-      color: '#f87171',
+      background: '#ECEAE4',
+      border: '1px solid #E0DDD5',
+      color: '#111827',
       fontSize: '13px',
       fontWeight: '600',
-      padding: '6px 12px',
-      borderRadius: '20px',
+      padding: '5px 8px 5px 10px',
+      borderRadius: '4px',
     },
     chipX: {
       background: 'none',
       border: 'none',
       cursor: 'pointer',
-      color: '#f87171',
+      color: '#6b7280',
       padding: 0,
       display: 'flex',
       alignItems: 'center',
@@ -742,6 +697,14 @@ export default function MarketplacePage() {
           border: 1.5px solid transparent;
           background: linear-gradient(#F4F3EF, #F4F3EF) padding-box, var(--mp-ring-g) border-box;
         }
+        /* Quick filters: one segmented control per group, not a row of pills.
+           Selected = ink fill; red stays reserved for the primary action. */
+        .mp-seg { display:inline-flex; background:#fff; border:1px solid #E2DFD6; border-radius:8px; padding:2px; gap:2px; }
+        .mp-seg-btn { font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; color:#374151; background:transparent;
+          border:none; border-radius:6px; padding:5px 11px; cursor:pointer; white-space:nowrap; transition:background .15s ease, color .15s ease; }
+        .mp-seg-btn:hover { background:#F1EFEA; color:#0f1115; }
+        .mp-seg-btn[aria-pressed="true"] { background:#0f1115; color:#fff; }
+        .mp-seg-btn:focus-visible { outline:2px solid #0f1115; outline-offset:1px; }
         @keyframes mp-ring-spin { to { --mp-ring-a: 360deg; } }
         @media (prefers-reduced-motion: reduce) { .mp-ring { animation: none; } }
         .mp-hero-search > button { width:100%; justify-content:center; padding:14px 22px; }
@@ -937,7 +900,7 @@ export default function MarketplacePage() {
           display:inline-flex; align-items:center; justify-content:center; gap:8px;
           background:#dc2626; color:#fff; text-decoration:none;
           font-family:'Outfit',sans-serif; font-size:14px; font-weight:700;
-          padding:13px 32px; border-radius:50px; white-space:nowrap;
+          padding:13px 32px; border-radius:10px; white-space:nowrap;
           transition:background 0.15s ease;
         }
         .mp-agent-cta:hover { background:#b91c1c; }
@@ -1183,27 +1146,24 @@ export default function MarketplacePage() {
                   { label: 'Manual', paramKey: 'transmission', paramVal: 'Manual' },
                 ]},
               ].map(({ groupLabel, pills }) => (
-                <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div key={groupLabel} style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   <span style={{ fontSize: '10px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: "'Outfit',sans-serif", whiteSpace: 'nowrap' }}>{groupLabel}</span>
+                  <div className="mp-seg" role="group" aria-label={groupLabel}>
                   {pills.map(({ label, paramKey, paramVal }) => {
                     const isActive = searchParams.get(paramKey) === paramVal;
                     return (
                       <button
                         key={label}
+                        className="mp-seg-btn"
+                        aria-pressed={isActive}
                         onClick={() => {
                           setParam(paramKey, isActive ? '' : paramVal);
                           document.getElementById('mp-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }}
-                        style={{
-                          padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '600',
-                          fontFamily: "'Outfit',sans-serif", cursor: 'pointer', border: 'none', transition: 'all 0.15s',
-                          background: isActive ? 'rgba(220,38,38,0.1)' : '#ffffff',
-                          color: isActive ? '#dc2626' : '#374151',
-                          outline: isActive ? '1.5px solid rgba(220,38,38,0.4)' : '1.5px solid #E7E4DB',
-                        }}
                       >{label}</button>
                     );
                   })}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1338,7 +1298,7 @@ export default function MarketplacePage() {
                   {loadPage < 2 ? (
                     <button
                       onClick={() => setLoadPage(p => p + 1)}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
                       onMouseEnter={e=>{ e.currentTarget.style.background='#fef2f2'; }}
                       onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
                     >
@@ -1363,7 +1323,7 @@ export default function MarketplacePage() {
                         if (q)            p.set('q', q);
                         navigate(`/showroom?${p.toString()}`);
                       }}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'50px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
                       onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                       onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                     >
