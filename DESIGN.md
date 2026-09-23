@@ -53,6 +53,17 @@ invent a new one.
     SVG on the page silently steals the fill.
   - It REPLACED the dot-grid overlay. One decoration system in the hero, not two.
 
+- **Hero search ring — the ONE sanctioned exception to "no looping animation"
+  and "no red glow on light" (owner's call, 2026-09-23).** `.mp-ring` in
+  MarketplacePage: a 1.5px conic border, red / white / ink `#0f1115` each three
+  times, rotating once per 9s, with a blurred copy of the same gradient behind
+  the field as a bloom. Guard rails that keep it inside the spirit of the rules:
+  the bloom sits BEHIND the opaque `#F4F3EF` field so it only shows outside the
+  edge, blur 7px at opacity .28 (.45 on focus) so red never spreads into a pink
+  wash, and `prefers-reduced-motion` stops the spin. It marks the one control
+  the hero exists for, so it is not ornament. Do not copy it to a second
+  element; a second glowing ring is decoration.
+
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight
   line-height (0.92–1.0), letter-spacing ~0.02em. Hero h1 `clamp(38px,10vw,96px)`.

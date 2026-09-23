@@ -716,6 +716,34 @@ export default function MarketplacePage() {
               the "Find Cars" button and clipping. Row layout returns at the
               ≥900px hero breakpoint below. ── */
         .mp-hero-search { flex-direction:column; }
+
+        /* ── Hero search ring — owner's call (2026-09-23), a deliberate exception
+              to DESIGN.md's no-loop / no-red-glow rules; see DESIGN.md "Hero
+              search ring". A 1.5px conic border (red, white, ink — each three
+              times) that slowly turns, plus a tight low-opacity bloom of the
+              same gradient behind it. The bloom sits on .mp-ring BEHIND the
+              opaque field, so it only shows outside the edge — kept small and
+              faint so the red never spreads into a pink wash on the light hero. */
+        @property --mp-ring-a { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+        .mp-ring {
+          --mp-ring-g: conic-gradient(from var(--mp-ring-a),
+            #dc2626, #ffffff, #0f1115, #dc2626, #ffffff, #0f1115,
+            #dc2626, #ffffff, #0f1115, #dc2626);
+          position: relative; isolation: isolate; border-radius: 14px; margin-bottom: 10px;
+          animation: mp-ring-spin 9s linear infinite;
+        }
+        .mp-ring::before {
+          content: ''; position: absolute; inset: -1px; z-index: -1; border-radius: 15px;
+          background: var(--mp-ring-g); filter: blur(7px); opacity: .28;
+          transition: opacity .25s ease; pointer-events: none;
+        }
+        .mp-ring:focus-within::before { opacity: .45; }
+        .mp-ring > .mp-hero-search {
+          border: 1.5px solid transparent;
+          background: linear-gradient(#F4F3EF, #F4F3EF) padding-box, var(--mp-ring-g) border-box;
+        }
+        @keyframes mp-ring-spin { to { --mp-ring-a: 360deg; } }
+        @media (prefers-reduced-motion: reduce) { .mp-ring { animation: none; } }
         .mp-hero-search > button { width:100%; justify-content:center; padding:14px 22px; }
 
         /* ════════════════════════════════════════
@@ -1035,7 +1063,11 @@ export default function MarketplacePage() {
                     The autocomplete's shell is flattened via formStyle: left at
                     its own #ffffff it would render a white pill nested inside the
                     dimmed bar, which is two boxes where the design wants one. */}
-                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', background:'#F4F3EF', border:'1.5px solid #E7E4DB', borderRadius:'14px', padding:'5px', marginBottom:'10px' }}>
+                {/* .mp-ring carries the rotating red/white/black edge + its bloom
+                    (CSS below). The fill stays #F4F3EF via padding-box, so the
+                    field is still the inset object described above. */}
+                <div className="mp-ring">
+                <div ref={heroSearchBarRef} className="mp-hero-search" style={{ display:'flex', alignItems:'stretch', gap:'5px', borderRadius:'14px', padding:'5px' }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <SearchAutocomplete
                       value={heroQ}
@@ -1053,6 +1085,7 @@ export default function MarketplacePage() {
                     onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                   ><Search size={14}/> Find Cars</button>
+                </div>
                 </div>
 
                 {/* The budget / state / "More filters" pill row that used to sit

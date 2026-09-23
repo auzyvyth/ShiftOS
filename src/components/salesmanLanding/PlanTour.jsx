@@ -17,8 +17,7 @@ import { ArrowRight, Check } from "lucide-react";
 const LITE = [
   {
     key: "dashboard", tab: "Dashboard",
-    img: "/for-salesmen/lite-dashboard.png", w: 390, h: 437,
-    alt: "Salesman Lite dashboard showing 4 overdue follow-ups, 30-day views, page visits and WhatsApp taps, and a 7-day traffic chart",
+    img: null,
     title: "Open the app. Know who needs you today.",
     pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
     moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
@@ -32,8 +31,7 @@ const LITE = [
   },
   {
     key: "performance", tab: "Performance",
-    img: "/for-salesmen/lite-performance.png", w: 391, h: 285,
-    alt: "Per-car performance list showing views, WhatsApp taps and conversion rate, with one car tagged Rising",
+    img: null,
     title: "See which car pulls buyers, and which one is stuck.",
     pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
     moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
@@ -47,8 +45,7 @@ const LITE = [
   },
   {
     key: "leads", tab: "Leads",
-    img: "/for-salesmen/lite-leads.png", w: 403, h: 496,
-    alt: "Lead pipeline with stage filters and buyer cards flagged Never contacted with the number of days waiting",
+    img: null,
     title: "Every buyer in a stage, not lost in a chat.",
     pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
     moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
@@ -64,6 +61,51 @@ const LITE = [
 
 const PREMIUM = [
   {
+    key: "p-dashboard", tab: "Dashboard",
+    img: "/for-salesmen/premium-dashboard.png", w: 390, h: 437,
+    alt: "Salesman Premium dashboard showing 4 overdue follow-ups, 30-day views, page visits and WhatsApp taps, and a 7-day traffic chart",
+    title: "Open the app. Know who needs you today.",
+    pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
+    moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
+    points: [
+      "Overdue follow-ups counted for you, right at the top",
+      "Views, page visits and WhatsApp taps for the last 30 days",
+      "Your page link: copy, share or open it in one tap",
+      "Where visitors came from: Instagram, Facebook or direct",
+    ],
+    pays: "The buyer you remember to call back is the deal you close.",
+  },
+  {
+    key: "p-performance", tab: "Dashboard",
+    img: "/for-salesmen/premium-performance.png", w: 391, h: 285,
+    alt: "Per-car performance list showing views, WhatsApp taps and conversion rate, with one car tagged Rising",
+    title: "See which car pulls buyers, and which one is stuck.",
+    pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
+    moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
+    points: [
+      "Views, WhatsApp taps and conversion rate for every car",
+      "A Rising tag on the cars buyers are warming to",
+      "Views with no taps point to a price or photo problem",
+      "A 30-day window, so you see what works right now",
+    ],
+    pays: "Put your effort behind the cars buyers already want, and fix the stuck ones before they cost you the month.",
+  },
+  {
+    key: "p-leads", tab: "Leads",
+    img: "/for-salesmen/premium-leads.png", w: 403, h: 496,
+    alt: "Lead pipeline with stage filters and buyer cards flagged Never contacted with the number of days waiting",
+    title: "Every buyer in a stage, not lost in a chat.",
+    pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
+    moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
+    points: [
+      "Stages from New through Contacted, Viewing and Test drive to Won",
+      "Flags buyers nobody has replied to, and how long they have waited",
+      "Move the deal forward or open the chat from the card",
+      "Queue a follow-up reminder with the message already drafted",
+    ],
+    pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
+  },
+  {
     key: "thisweek", tab: "Dashboard", img: null,
     title: "A call list for this week, already sorted.",
     pain: "Past buyers, quiet leads and reminders you set all live on different screens, so the calls that bring repeat business never get made.",
@@ -75,19 +117,6 @@ const PREMIUM = [
       "Tap Message and WhatsApp opens with a draft. You press send.",
     ],
     pays: "Repeat buyers and referrals are the cheapest deals you will ever close.",
-  },
-  {
-    key: "nudges", tab: "Leads", img: null,
-    title: "Set the follow-up once. It comes back with the message written.",
-    pain: "You tell a buyer you will check back on Thursday. Thursday comes and goes.",
-    moment: "After a test drive the buyer says \"let me talk to my wife\". You queue a reminder for three days later with a drafted message. On the day your phone buzzes, you read it, adjust it and send.",
-    points: [
-      "One reminder queued against each buyer",
-      "AI can draft the message; you always read it and press send",
-      "A phone notification when it is due",
-      "Reminders you ignore clear themselves after 7 days",
-    ],
-    pays: "The second and third follow-up is where most cars get sold. Now it happens every time.",
   },
   {
     key: "sold", tab: "Sold", img: null,
@@ -270,7 +299,7 @@ export default function PlanTour() {
         </div>
         {plan === "premium" && (
           <p className="pt-plus">
-            Everything in Lite, plus the tools below.{" "}
+            Everything in Lite, plus more on every tab.{" "}
             <button type="button" onClick={() => setPlan("lite")}>See Lite</button>
           </p>
         )}
