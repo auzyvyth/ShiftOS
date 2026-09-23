@@ -445,18 +445,34 @@ const SPECS = [
 // "CX-5" / "cx 5" all collapse to the same key.
 const norm = (s) => (s || "").toLowerCase().replace(/[-\s]+/g, "");
 
+// Model key with the make dropped from the front, so "Mazda 3" (what the form's
+// picker offers) and "3" (what the curated rows say) are the same model. They
+// were not: picking "Mazda 3" filled nothing, from any row.
+const modelKey = (make, model) => {
+  const mk = norm(make);
+  const mo = norm(model);
+  return mo.length > mk.length && mo.startsWith(mk) ? mo.slice(mk.length) : mo;
+};
+
 // Rich lookup — the full spec row. Prefers the generation whose year range
-// contains `year`; with no year (or no range hit) falls back to the newest
-// generation as the best guess. Returns null when the model isn't curated.
+// contains `year`. A year that misses every range takes the nearest generation
+// only when it is one year off (tables draw boundaries a year apart); further
+// out it returns null rather than the newest generation. That guess filled a
+// 2014 Legend with the 2015 hybrid's specs and a V37 Skyline with an R34's —
+// a confidently wrong row is worse than the network lookup a null falls to.
+// With no year at all it still returns the newest generation.
 export function lookupFullSpec(make, model, year) {
   const m = norm(make);
-  const mo = norm(model);
-  const rows = SPECS.filter((r) => norm(r.make) === m && norm(r.model) === mo);
+  const mo = modelKey(make, model);
+  const rows = SPECS.filter((r) => norm(r.make) === m && modelKey(r.make, r.model) === mo);
   if (!rows.length) return null;
   const y = parseInt(year) || 0;
   if (y) {
     const hit = rows.find((r) => y >= r.yearFrom && y <= r.yearTo);
     if (hit) return hit;
+    const gap = (r) => (y < r.yearFrom ? r.yearFrom - y : y - r.yearTo);
+    const near = rows.filter((r) => gap(r) === 1);
+    return near.length ? near.reduce((a, b) => (b.yearFrom > a.yearFrom ? b : a)) : null;
   }
   return rows.reduce((a, b) => (b.yearFrom > a.yearFrom ? b : a));
 }

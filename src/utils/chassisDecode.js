@@ -565,21 +565,26 @@ export function decodeChassis(raw) {
   // index rather than keeping a second copy of the same knowledge here.
   const gen = chassisSearch(r);
   if (gen) {
-    // chassisSearch keys everything UPPERCASE. Brand is handed back as-is so
-    // the caller can match it against its own brand list case-insensitively
-    // ("BMW" and "MERCEDES" both resolve there); only the model needs casing.
+    // chassisSearch keys everything UPPERCASE and shortens Mercedes-Benz to
+    // MERCEDES. Hand back the form's own spelling: "MERCEDES" matched nothing
+    // in the brand picker (the raw string was written into the form) and
+    // nothing in carSpecs ("Mercedes-Benz"), so a W205 filled no specs at all.
     return {
-      brand: gen.brand,
+      brand: GEN_BRAND[gen.brand] || titleCase(gen.brand),
       model: titleCase(gen.models[0]),
       alt: null,
-      from: null,
-      to: null,
+      from: gen.from ?? null,
+      to: gen.to ?? null,
       code: r,
       source: 'generation',
     };
   }
   return null;
 }
+
+// chassisCodes.js brand keys -> the spelling CAR_DATA and carSpecs use, where
+// title-casing alone gets it wrong.
+const GEN_BRAND = { BMW: 'BMW', MERCEDES: 'Mercedes-Benz', MINI: 'MINI' };
 
 // "C-CLASS" -> "C-Class", "3 SERIES" -> "3 Series". Segments that are all
 // digits or a letter+digit badge (M4, X5) are left alone.

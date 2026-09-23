@@ -86,7 +86,9 @@ const TABLE = {
     "MX-5": [{ from: 1989, to: 1997, code: "NA" }, { from: 1998, to: 2005, code: "NB" }, { from: 2005, to: 2015, code: "NC" }, { from: 2015, to: null, code: "ND" }],
     "RX-7": [{ from: 1985, to: 1992, code: "FC" }, { from: 1992, to: 2002, code: "FD" }],
     "RX-8": [{ from: 2003, to: 2012, code: "SE3P" }],
-    "MAZDA3": [{ from: 2003, to: 2009, code: "BK" }, { from: 2009, to: 2013, code: "BL" }, { from: 2013, to: 2019, code: "BM/BN" }, { from: 2019, to: null, code: "BP" }],
+    // Spaced, as the form's picker and every listing store it. "MAZDA3" never
+    // matched a listing's "Mazda 3", so those pages carried no BK/BL/BM code.
+    "MAZDA 3": [{ from: 2003, to: 2009, code: "BK" }, { from: 2009, to: 2013, code: "BL" }, { from: 2013, to: 2019, code: "BM/BN" }, { from: 2019, to: null, code: "BP" }],
     "5": [{ from: 2005, to: 2010, code: "CR" }, { from: 2011, to: 2018, code: "CW" }],
   },
   KIA: {
@@ -175,21 +177,25 @@ for (const brand of Object.keys(TABLE)) {
   for (const key of Object.keys(TABLE[brand])) {
     const head = key.split(" ")[0];
     // Head word only helps when it's distinctive — skip a bare single digit
-    // ("3 SERIES" → "3") which would match far too broadly.
-    const models = head !== key && head.length >= 2 && !/^\d$/.test(head)
+    // ("3 SERIES" → "3") or the brand itself ("MAZDA 3" → "MAZDA"), either of
+    // which would match far too broadly.
+    const models = head !== key && head !== brand && head.length >= 2 && !/^\d$/.test(head)
       ? [key, head]
       : [key];
     for (const row of TABLE[brand][key]) {
       for (const part of String(row.code).split("/")) {
         const k = part.trim().toUpperCase();
-        if (k && !CODE_INDEX[k]) CODE_INDEX[k] = { brand, models };
+        // from/to travel with the code: without them the chassis decode had no
+        // generation to probe, and filled the NEWEST generation's specs onto an
+        // E46 or an E71.
+        if (k && !CODE_INDEX[k]) CODE_INDEX[k] = { brand, models, from: row.from, to: row.to };
       }
     }
   }
 }
 
 /**
- * If a raw search token is a known chassis code, return { brand, models[] } so
+ * If a raw search token is a known chassis code, return { brand, models[], from, to } so
  * the caller can widen the query (e.g. "g82" → BMW / ["M4"]). Returns null
  * otherwise. Case-insensitive.
  */

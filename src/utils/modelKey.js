@@ -16,7 +16,10 @@ import { chassisSearch } from './chassisCodes.js';
 
 // Free text -> a CAR_DATA brand key. Left side is already normalised.
 const BRAND_ALIASES = {
-  'MERCEDES BENZ': 'Mercedes', 'MERC': 'Mercedes', 'BENZ': 'Mercedes',
+  // CAR_DATA's key is 'Mercedes-Benz'. These pointed at 'Mercedes' after the
+  // rename, so the guard below dropped all three and the AMG-badge branch in
+  // findModel never ran.
+  'MERCEDES': 'Mercedes-Benz', 'MERC': 'Mercedes-Benz', 'BENZ': 'Mercedes-Benz',
   'ROLLS ROYCE': 'Rolls Royce', 'LAND ROVER': 'Land Rover',
   'RANGE ROVER': 'Land Rover', 'VW': 'Volkswagen', 'CHEVROLET': 'Chevrolet',
   'MINI COOPER': 'MINI', 'BMW MINI': 'MINI',
@@ -85,7 +88,7 @@ function findModel(brand, hay) {
   // Mercedes names its cars by class ("G-Class") but badges them with an
   // AMG number ("G63", "C43"). Strip a trailing two-digit badge off the
   // first token and retry: G63 -> G -> G-Class, GLC43 -> GLC.
-  if (brand === 'Mercedes') {
+  if (brand === 'Mercedes-Benz') {
     const stem = hay.split(' ')[0].replace(/\d{2}$/, '');
     if (stem.length >= 1) {
       for (const m of list) if (m.n === stem || m.n.startsWith(stem + ' ')) return m;
