@@ -99,6 +99,34 @@ ok('AGH30 petrol Alphard is not skipped', !fillFor('AGH30W-0123456').skipped);
   ok('at least the volume recon models have specs', covered >= 3);
 }
 
+// ── European generation codes fill THEIR generation, not the newest ─────────
+// chassisCodes.js carried no years into the decode, so every code probed with
+// no year and got the newest row: an E71 X6 filled the G06's specs.
+{
+  const e71 = fillFor('E71');
+  eq('E71 carries its generation years', `${e71.hit.from}-${e71.hit.to}`, '2008-2014');
+  eq('E71 fills the E71 row', e71.spec && e71.spec.yearFrom, 2008);
+  const g06 = fillFor('G06');
+  eq('G06 fills the G06 row', g06.spec && g06.spec.yearFrom, 2020);
+}
+{
+  const { hit, spec } = fillFor('W463');
+  eq('W463 hands back the picker spelling', hit.brand, 'Mercedes-Benz');
+  eq('W463 fills the 1990-2018 G-Class', spec && spec.yearFrom, 1990);
+}
+
+// ── a year no generation covers is a miss, not the newest generation ────────
+eq('V37 Skyline has no row: no R34 specs', fillFor('V37').spec, null);
+eq('C25 Serena has no row: no 2018 specs', fillFor('C25').spec, null);
+eq('a year far outside every row returns null', lookupFullSpec('Suzuki', 'Baleno', 2005), null);
+eq('one year off takes the neighbour', lookupFullSpec('Honda', 'Legend', 2013)?.yearFrom, 2005);
+eq('no year still means newest', lookupFullSpec('Honda', 'Legend')?.yearFrom, 2015);
+
+// ── "Mazda 3" in the picker and "3" in the table are one model ──────────────
+ok('picker name "Mazda 3" finds the curated "3" rows', !!lookupFullSpec('Mazda', 'Mazda 3', 2016));
+ok('bare "2" finds a "Mazda 2" row', !!lookupFullSpec('Mazda', '2', 2010));
+ok('BM5FS (Mazda 3) now fills specs', !!fillFor('BM5FS').spec);
+
 console.log('');
 if (fails.length) {
   console.log(`chassisSpec: ${pass} passed, ${fails.length} FAILED`);

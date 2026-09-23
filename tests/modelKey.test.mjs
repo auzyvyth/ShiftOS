@@ -46,7 +46,7 @@ eq(key('BMW', 'M4'), 'bmw:m4', 'live: M4');
 eq(key('Chery', 'Tiggo 8'), 'chery:tiggo-8', 'live: two-word model');
 eq(key('Lamborghini', 'Urus'), 'lamborghini:urus', 'live: Urus');
 eq(key('Rolls Royce', 'Cullinan'), 'rolls-royce:cullinan', 'live: two-word brand');
-eq(key('Mercedes-Benz', 'G63'), 'mercedes:g-class', 'live: Mercedes-Benz alias + AMG badge');
+eq(key('Mercedes-Benz', 'G63'), 'mercedes-benz:g-class', 'live: Mercedes-Benz alias + AMG badge');
 eq(key('Alfa Romeo', 'Giulia'), 'alfa-romeo:giulia', 'Alfa Romeo (1 live listing)');
 
 // --- generation codes fall through to chassisCodes.js -------------------
@@ -113,7 +113,8 @@ eq([...mf('Land Rover', 'Range Rover').like, ...mf('Land Rover', 'Range Rover').
 eq(norm('CIVIC 2.0L(T)'), 'CIVIC 2 0L T', 'norm collapses punctuation');
 eq(norm('  CR-V  '), 'CR V', 'norm trims and collapses');
 eq(norm(null), '', 'norm handles null');
-eq(resolveBrand('mercedes benz'), 'Mercedes', 'brand alias');
+eq(resolveBrand('mercedes benz'), 'Mercedes-Benz', 'brand alias');
+eq(resolveBrand('merc'), 'Mercedes-Benz', 'short brand alias');
 eq(resolveBrand('  toyota '), 'Toyota', 'brand is trimmed and case-insensitive');
 eq(resolveBrand('Nope'), null, 'unknown brand is null');
 eq(keyOf('Land Rover', 'Range Rover Sport'), 'land-rover:range-rover-sport', 'key slug shape');

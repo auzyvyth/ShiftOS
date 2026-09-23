@@ -1,0 +1,247 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-18",
+  "batch": { "requested": 21, "returned": 15, "skipped": 6 },
+  "specs": [
+    {
+      "make": "BMW", "model": "X6", "generation": "E71",
+      "year_from": 2008, "year_to": 2014, "market": "CBU",
+      "chassis_codes": ["E71"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "xDrive35i",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 306, "torque_nm": 400,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen X6 coupe-SUV; Malaysian imports mostly the xDrive35i.",
+      "variants": [
+        { "name": "xDrive35i", "horsepower": 306, "torque_nm": 400, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "N54 then N55 2979cc twin/single-turbo I6" },
+        { "name": "xDrive50i", "horsepower": 407, "torque_nm": 600, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "N63 4395cc twin-turbo V8" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X6", "generation": "F16",
+      "year_from": 2015, "year_to": 2019, "market": "CBU",
+      "chassis_codes": ["F16"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "xDrive35i",
+      "engine_cc": 2979, "cylinders": 6, "horsepower": 306, "torque_nm": 400,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen X6; xDrive35i the common Malaysian spec.",
+      "variants": [
+        { "name": "xDrive35i", "horsepower": 306, "torque_nm": 400, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "N55 2979cc turbo I6, 8-speed auto" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X6", "generation": "G06",
+      "year_from": 2020, "year_to": null, "market": "CBU",
+      "chassis_codes": ["G06"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "xDrive40i",
+      "engine_cc": 2998, "cylinders": 6, "horsepower": 340, "torque_nm": 450,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen X6; xDrive40i mild-hybrid the volume Malaysian import.",
+      "variants": [
+        { "name": "xDrive40i", "horsepower": 340, "torque_nm": 450, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "B58 2998cc turbo I6 with 48V mild hybrid" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "Q7", "generation": "4L",
+      "year_from": 2006, "year_to": 2015, "market": "CBU",
+      "chassis_codes": ["4L"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "3.0 TFSI quattro",
+      "engine_cc": 2995, "cylinders": 6, "horsepower": 333, "torque_nm": 440,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Q7; post-2010 facelift 3.0 TFSI supercharged the common Malaysian petrol spec.",
+      "variants": [
+        { "name": "3.0 TFSI quattro", "horsepower": 333, "torque_nm": 440, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "2995cc supercharged V6, 8-speed Tiptronic" },
+        { "name": "3.0 TDI quattro", "horsepower": 240, "torque_nm": 550, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "2967cc turbodiesel V6" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "Q7", "generation": "4M",
+      "year_from": 2016, "year_to": null, "market": "CBU",
+      "chassis_codes": ["4M"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "3.0 TFSI quattro",
+      "engine_cc": 2995, "cylinders": 6, "horsepower": 340, "torque_nm": 500,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Q7; 3.0 TFSI quattro the mainstream Malaysian variant.",
+      "variants": [
+        { "name": "3.0 TFSI quattro", "horsepower": 340, "torque_nm": 500, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "2995cc turbo V6, 8-speed Tiptronic" },
+        { "name": "2.0 TFSI quattro", "horsepower": 252, "torque_nm": 370, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "1984cc turbo I4" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "GLS", "generation": "X166",
+      "year_from": 2016, "year_to": 2019, "market": "CBU",
+      "chassis_codes": ["X166"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "GLS 400 4MATIC",
+      "engine_cc": 2996, "cylinders": 6, "horsepower": 333, "torque_nm": 480,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "GLS renamed from GL at the 2016 facelift; GLS 400 4MATIC the common Malaysian petrol.",
+      "variants": [
+        { "name": "GLS 400 4MATIC", "horsepower": 333, "torque_nm": 480, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "2996cc biturbo V6, 9G-Tronic" },
+        { "name": "GLS 350 d 4MATIC", "horsepower": 258, "torque_nm": 620, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "2987cc turbodiesel V6" }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz", "model": "GLS", "generation": "X167",
+      "year_from": 2020, "year_to": null, "market": "CBU",
+      "chassis_codes": ["X167"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "GLS 450 4MATIC",
+      "engine_cc": 2999, "cylinders": 6, "horsepower": 367, "torque_nm": 500,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen GLS; GLS 450 4MATIC mild-hybrid the mainstream Malaysian spec.",
+      "variants": [
+        { "name": "GLS 450 4MATIC", "horsepower": 367, "torque_nm": 500, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "2999cc turbo I6 with EQ Boost 48V, 9G-Tronic" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LX", "generation": "J100",
+      "year_from": 1998, "year_to": 2007, "market": "JDM",
+      "chassis_codes": ["UZJ100"],
+      "body_type": "SUV", "doors": 5, "seats": 8,
+      "primary_variant": "LX470",
+      "engine_cc": 4664, "cylinders": 8, "horsepower": 275, "torque_nm": 434,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "LX470 (Land Cruiser 100 platform); grey imports in Malaysia, figures from memory.",
+      "variants": [
+        { "name": "LX470", "horsepower": 275, "torque_nm": 434, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 8, "notes": "2UZ-FE 4664cc V8, full-time 4WD" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LX", "generation": "J200",
+      "year_from": 2008, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["URJ201"],
+      "body_type": "SUV", "doors": 5, "seats": 8,
+      "primary_variant": "LX570",
+      "engine_cc": 5663, "cylinders": 8, "horsepower": 367, "torque_nm": 530,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "LX570 (Land Cruiser 200 platform); 6-speed then 8-speed auto from the 2016 facelift.",
+      "variants": [
+        { "name": "LX570", "horsepower": 367, "torque_nm": 530, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 8, "notes": "3UR-FE 5663cc V8, full-time 4WD" }
+      ]
+    },
+    {
+      "make": "Lexus", "model": "LX", "generation": "J310",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": ["VJA310"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "LX600",
+      "engine_cc": 3444, "cylinders": 6, "horsepower": 415, "torque_nm": 650,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "LX600 (Land Cruiser 300 platform); twin-turbo V6 replaces the V8.",
+      "variants": [
+        { "name": "LX600", "horsepower": 415, "torque_nm": 650, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 7, "notes": "V35A-FTS 3444cc twin-turbo V6, 10-speed auto; also offered in 4/5-seat VIP layouts" }
+      ]
+    },
+    {
+      "make": "Volvo", "model": "XC40", "generation": "533",
+      "year_from": 2018, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "T5 AWD",
+      "engine_cc": 1969, "cylinders": 4, "horsepower": 252, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen XC40, CKD in Malaysia; launched as T5 AWD, later B4 mild-hybrid and Recharge EV.",
+      "variants": [
+        { "name": "T5 AWD", "horsepower": 252, "torque_nm": 350, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "1969cc turbo I4, 8-speed auto" },
+        { "name": "Recharge Pure Electric", "horsepower": 408, "torque_nm": 660, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Electric", "seats": 5, "notes": "twin-motor BEV, single-speed reduction gear" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Ioniq 5", "generation": "NE",
+      "year_from": 2021, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "Long Range RWD",
+      "engine_cc": null, "cylinders": null, "horsepower": 217, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "E-GMP crossover BEV; CKD Long Range RWD (72.6 kWh) the volume Malaysian variant.",
+      "variants": [
+        { "name": "Long Range RWD", "horsepower": 217, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric", "seats": 5, "notes": "72.6 kWh, single rear motor, single-speed reduction gear" },
+        { "name": "Long Range AWD (Max)", "horsepower": 305, "torque_nm": 605, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Electric", "seats": 5, "notes": "72.6 kWh, dual motor" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "Seltos", "generation": "SP2",
+      "year_from": 2023, "year_to": null, "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.5",
+      "engine_cc": 1497, "cylinders": 4, "horsepower": 115, "torque_nm": 144,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "CKD Malaysian Seltos launched 2023 in EX and GT-Line, both 1.5 Smartstream NA.",
+      "variants": [
+        { "name": "1.5", "horsepower": 115, "torque_nm": 144, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1497cc Smartstream MPI, IVT (CVT)" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "Q3", "generation": "8U",
+      "year_from": 2011, "year_to": 2018, "market": "CKD",
+      "chassis_codes": ["8U"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "2.0 TFSI quattro",
+      "engine_cc": 1984, "cylinders": 4, "horsepower": 170, "torque_nm": 280,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Q3, locally assembled in Malaysia; 2.0 TFSI quattro and later 1.4 TFSI FWD.",
+      "variants": [
+        { "name": "2.0 TFSI quattro", "horsepower": 170, "torque_nm": 280, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "1984cc turbo I4, 7-speed S tronic" },
+        { "name": "1.4 TFSI", "horsepower": 150, "torque_nm": 250, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1395cc turbo I4, FWD" }
+      ]
+    },
+    {
+      "make": "Audi", "model": "Q3", "generation": "F3",
+      "year_from": 2019, "year_to": null, "market": "CBU",
+      "chassis_codes": ["F3"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "1.4 TFSI",
+      "engine_cc": 1395, "cylinders": 4, "horsepower": 150, "torque_nm": 250,
+      "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-gen Q3; 1.4 TFSI the mainstream Malaysian variant.",
+      "variants": [
+        { "name": "1.4 TFSI", "horsepower": 150, "torque_nm": 250, "transmission": "Auto", "drivetrain": "FWD", "fuel_type": "Petrol", "seats": 5, "notes": "1395cc turbo I4, 6-speed S tronic" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "BMW", "model": "X6 M", "reason": "High-performance S63 V8 M variant (F86/F96); omitted from the mainstream X6 rows." },
+    { "make": "Audi", "model": "SQ7", "reason": "Performance V8 derivative of the Q7; omitted from mainstream Q7 rows." },
+    { "make": "Mercedes-Benz", "model": "Mercedes-AMG GLS 63 / Maybach GLS", "reason": "AMG and Maybach derivatives; omitted from mainstream GLS rows." },
+    { "make": "Hyundai", "model": "Ioniq 5 N", "reason": "High-performance BEV variant; Malaysian availability/spec uncertain." },
+    { "make": "Kia", "model": "Seltos 1.4 T-GDI", "reason": "Turbo variant not confirmed for the Malaysian CKD line-up (launched 1.5 NA only)." },
+    { "make": "Audi", "model": "RS Q3", "reason": "5-cylinder RS performance derivative; omitted from mainstream Q3 rows." }
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-20",
+  "batch": { "requested": 19, "returned": 15, "skipped": 4 },
+  "specs": [
+    {
+      "make": "Toyota", "model": "Land Cruiser", "generation": "J80",
+      "year_from": 1990, "year_to": 1997, "market": "JDM",
+      "chassis_codes": ["FZJ80", "HDJ80", "HZJ80"],
+      "body_type": "SUV", "doors": 5, "seats": 8,
+      "primary_variant": "4.5 (1FZ-FE)",
+      "engine_cc": 4477, "cylinders": 6, "horsepower": 215, "torque_nm": 407,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import full-size Land Cruiser; Malaysian units are mostly used JDM imports, petrol and diesel both seen.",
+      "variants": [
+        { "name": "4.5 (1FZ-FE)", "horsepower": 215, "torque_nm": 407, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 8, "notes": "1FZ-FE 4477cc inline-6 petrol" },
+        { "name": "4.2TD (1HD-T)", "horsepower": 165, "torque_nm": 358, "transmission": "Manual", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 8, "notes": "1HD-T 4164cc turbo diesel" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Land Cruiser", "generation": "J100",
+      "year_from": 1998, "year_to": 2007, "market": "CBU",
+      "chassis_codes": ["UZJ100", "HDJ100", "FZJ100"],
+      "body_type": "SUV", "doors": 5, "seats": 8,
+      "primary_variant": "4.7 V8 (2UZ-FE)",
+      "engine_cc": 4664, "cylinders": 8, "horsepower": 235, "torque_nm": 434,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "100-series; Malaysian market largely CBU/grey. 4.7 V8 petrol most common, 4.2 turbo-diesel also imported.",
+      "variants": [
+        { "name": "4.7 V8 (2UZ-FE)", "horsepower": 235, "torque_nm": 434, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 8, "notes": "2UZ-FE 4664cc V8 petrol" },
+        { "name": "4.2TD (1HD-FTE)", "horsepower": 204, "torque_nm": 430, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 8, "notes": "1HD-FTE 4164cc turbo diesel" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Land Cruiser", "generation": "J200",
+      "year_from": 2008, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["URJ202", "VDJ200", "UZJ200"],
+      "body_type": "SUV", "doors": 5, "seats": 8,
+      "primary_variant": "4.6 V8 (1UR-FE)",
+      "engine_cc": 4608, "cylinders": 8, "horsepower": 309, "torque_nm": 439,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "200-series; petrol 4.6 V8 (post-2012) and 4.5 twin-turbo V8 diesel both offered. Facelifts 2012 and 2015.",
+      "variants": [
+        { "name": "4.6 V8 (1UR-FE)", "horsepower": 309, "torque_nm": 439, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 8, "notes": "1UR-FE 4608cc V8, 6-speed auto (post-2012)" },
+        { "name": "4.5TD V8 (1VD-FTV)", "horsepower": 272, "torque_nm": 650, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 8, "notes": "1VD-FTV 4461cc twin-turbo V8 diesel" }
+      ]
+    },
+    {
+      "make": "Toyota", "model": "Land Cruiser", "generation": "J300",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": ["VJA300", "FJA300"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "3.5TT V6 (V35A-FTS)",
+      "engine_cc": 3445, "cylinders": 6, "horsepower": 415, "torque_nm": 650,
+      "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "300-series; 3.5 twin-turbo V6 petrol and 3.3 twin-turbo V6 diesel, 10-speed auto.",
+      "variants": [
+        { "name": "3.5TT V6 (V35A-FTS)", "horsepower": 415, "torque_nm": 650, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Petrol", "seats": 7, "notes": "V35A-FTS 3445cc twin-turbo V6, 10-speed auto" },
+        { "name": "3.3TD V6 (F33A-FTV)", "horsepower": 309, "torque_nm": 700, "transmission": "Auto", "drivetrain": "4WD", "fuel_type": "Diesel", "seats": 7, "notes": "F33A-FTV 3346cc twin-turbo V6 diesel" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Silvia", "generation": "S13",
+      "year_from": 1988, "year_to": 1993, "market": "JDM",
+      "chassis_codes": ["S13", "PS13"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "K's (SR20DET)",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 202, "torque_nm": 263,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "JDM grey-import sport coupe; later S13 K's used SR20DET turbo, early cars CA18DET.",
+      "variants": [
+        { "name": "K's (SR20DET)", "horsepower": 202, "torque_nm": 263, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "SR20DET 1998cc turbo (1991 onward)" },
+        { "name": "K's (CA18DET)", "horsepower": 169, "torque_nm": 228, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "CA18DET 1809cc turbo (early)" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Silvia", "generation": "S14",
+      "year_from": 1994, "year_to": 1998, "market": "JDM",
+      "chassis_codes": ["S14"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "K's (SR20DET)",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 217, "torque_nm": 274,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "JDM grey-import; SR20DET turbo, Q's naturally-aspirated variant also existed.",
+      "variants": [
+        { "name": "K's (SR20DET)", "horsepower": 217, "torque_nm": 274, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "SR20DET 1998cc turbo" }
+      ]
+    },
+    {
+      "make": "Nissan", "model": "Silvia", "generation": "S15",
+      "year_from": 1999, "year_to": 2002, "market": "JDM",
+      "chassis_codes": ["S15"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "Spec-R (SR20DET)",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 247, "torque_nm": 275,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "JDM grey-import; Spec-R turbo (6-speed) and Spec-S naturally-aspirated (SR20DE).",
+      "variants": [
+        { "name": "Spec-R (SR20DET)", "horsepower": 247, "torque_nm": 275, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "SR20DET 1998cc turbo, 6-speed" },
+        { "name": "Spec-S (SR20DE)", "horsepower": 163, "torque_nm": 193, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "SR20DE 1998cc naturally aspirated" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "RX-7", "generation": "FC",
+      "year_from": 1985, "year_to": 1991, "market": "JDM",
+      "chassis_codes": ["FC3S"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "Turbo II (13B-T)",
+      "engine_cc": 1308, "cylinders": null, "horsepower": 182, "torque_nm": 248,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "JDM grey-import; 13B twin-rotor Wankel, turbo (Turbo II) and NA. 1308cc is chamber volume, not a piston engine.",
+      "variants": [
+        { "name": "Turbo II (13B-T)", "horsepower": 182, "torque_nm": 248, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "13B-T twin-rotor turbo Wankel, no cylinders" }
+      ]
+    },
+    {
+      "make": "Mazda", "model": "RX-7", "generation": "FD",
+      "year_from": 1992, "year_to": 2002, "market": "JDM",
+      "chassis_codes": ["FD3S"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "Type RS (13B-REW)",
+      "engine_cc": 1308, "cylinders": null, "horsepower": 276, "torque_nm": 314,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "JDM grey-import; 13B-REW sequential twin-turbo twin-rotor Wankel. Japanese output capped at 280 PS on late cars.",
+      "variants": [
+        { "name": "Type RS (13B-REW)", "horsepower": 276, "torque_nm": 314, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "13B-REW sequential twin-turbo rotary, no cylinders" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "BRZ", "generation": "ZC6",
+      "year_from": 2012, "year_to": 2021, "market": "CBU",
+      "chassis_codes": ["ZC6"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "2.0",
+      "engine_cc": 1998, "cylinders": 4, "horsepower": 200, "torque_nm": 205,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "FA20 naturally-aspirated flat-four; sold in Malaysia CBU. Manual and 6-speed auto offered.",
+      "variants": [
+        { "name": "2.0", "horsepower": 200, "torque_nm": 205, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "FA20 1998cc boxer NA; auto variant similar output" }
+      ]
+    },
+    {
+      "make": "Subaru", "model": "BRZ", "generation": "ZD8",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": ["ZD8"],
+      "body_type": "Coupe", "doors": 2, "seats": 4,
+      "primary_variant": "2.4",
+      "engine_cc": 2387, "cylinders": 4, "horsepower": 228, "torque_nm": 250,
+      "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Second-generation BRZ, FA24 2.4 NA boxer; Malaysia CBU. 6-speed manual and 6-speed auto.",
+      "variants": [
+        { "name": "2.4", "horsepower": 228, "torque_nm": 250, "transmission": "Manual", "drivetrain": "RWD", "fuel_type": "Petrol", "seats": 4, "notes": "FA24 2387cc boxer NA" }
+      ]
+    },
+    {
+      "make": "Hyundai", "model": "Palisade", "generation": "LX2",
+      "year_from": 2020, "year_to": null, "market": "CKD",
+      "chassis_codes": ["LX2"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "2.2D",
+      "engine_cc": 2199, "cylinders": 4, "horsepower": 200, "torque_nm": 440,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Full-size 3-row SUV; Malaysian market centred on 2.2 CRDi diesel (D4HB), 8-speed auto. 7- and 8-seat layouts, FWD and AWD.",
+      "variants": [
+        { "name": "2.2D", "horsepower": 200, "torque_nm": 440, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Diesel", "seats": 7, "notes": "D4HB 2199cc CRDi diesel, 8-speed auto; FWD and AWD offered" }
+      ]
+    },
+    {
+      "make": "Kia", "model": "EV6", "generation": "CV",
+      "year_from": 2022, "year_to": null, "market": "CBU",
+      "chassis_codes": ["CV"],
+      "body_type": "SUV", "doors": 5, "seats": 5,
+      "primary_variant": "GT-Line RWD",
+      "engine_cc": null, "cylinders": null, "horsepower": 229, "torque_nm": 350,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "E-GMP electric crossover; Malaysia offered single-motor RWD long-range and dual-motor GT. 800V architecture.",
+      "variants": [
+        { "name": "GT-Line RWD", "horsepower": 229, "torque_nm": 350, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric", "seats": 5, "notes": "168kW single rear motor, 77.4kWh; single-speed reduction gear" },
+        { "name": "GT AWD", "horsepower": 585, "torque_nm": 740, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Electric", "seats": 5, "notes": "430kW dual-motor GT" }
+      ]
+    },
+    {
+      "make": "BMW", "model": "X7", "generation": "G07",
+      "year_from": 2019, "year_to": null, "market": "CKD",
+      "chassis_codes": ["G07"],
+      "body_type": "SUV", "doors": 5, "seats": 7,
+      "primary_variant": "xDrive40i",
+      "engine_cc": 2998, "cylinders": 6, "horsepower": 340, "torque_nm": 450,
+      "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Full-size luxury SUV; Malaysia CKD xDrive40i with B58 3.0 turbo inline-6 (mild-hybrid on LCI). Facelift 2022.",
+      "variants": [
+        { "name": "xDrive40i", "horsepower": 340, "torque_nm": 450, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 7, "notes": "B58 2998cc turbo I6, 8-speed auto; ~375hp on LCI mild-hybrid" }
+      ]
+    },
+    {
+      "make": "BYD", "model": "Seal", "generation": "1",
+      "year_from": 2023, "year_to": null, "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "Sedan", "doors": 4, "seats": 5,
+      "primary_variant": "Premium RWD",
+      "engine_cc": null, "cylinders": null, "horsepower": 313, "torque_nm": 360,
+      "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Electric sedan on BYD e-Platform 3.0 with Blade LFP battery; Malaysia offered RWD Premium and AWD Performance.",
+      "variants": [
+        { "name": "Premium RWD", "horsepower": 313, "torque_nm": 360, "transmission": "Auto", "drivetrain": "RWD", "fuel_type": "Electric", "seats": 5, "notes": "230kW single rear motor, 82.5kWh Blade LFP" },
+        { "name": "Performance AWD", "horsepower": 530, "torque_nm": 670, "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Electric", "seats": 5, "notes": "390kW dual-motor" }
+      ]
+    }
+  ],
+  "skipped": [
+    { "make": "Toyota", "model": "Land Cruiser 70", "reason": "Separate 70-series nameplate; Malaysian grey-import engine spec too uncertain to state confidently." },
+    { "make": "Mazda", "model": "RX-7 (SA/FB)", "reason": "First-gen SA22C/FB (1978-1985) rarely reached Malaysia; specs unverified." },
+    { "make": "Nissan", "model": "180SX", "reason": "S13-based fastback often marketed as a distinct nameplate; deferred to avoid overlap with Silvia S13." },
+    { "make": "BYD", "model": "Seal U", "reason": "Separate SUV nameplate (not the Seal sedan); deferred to a future batch." }
+  ]
+}
