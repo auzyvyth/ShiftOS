@@ -1,22 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
-function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
-    // The allowed origin varies per request, so any shared cache must key on it.
-    "Vary": "Origin",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
 serve(async (req) => {
   const origin = req.headers.get("origin");

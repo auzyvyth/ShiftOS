@@ -1,11 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
+import { corsHeaders } from "../_shared/cors.ts";
 
 // Daily request cap shared by a dealer and every sub-account under them
 // (salesman, manager, admin, fi_officer, accountant all draw from one pool).
@@ -33,15 +27,7 @@ const ROLE_LABELS: Record<string, string> = {
   fi_officer: "an F&I (finance & insurance) officer",
 };
 
-function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, baggage, sentry-trace",
-    "Access-Control-Max-Age": "86400",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
 function jsonResponse(body: unknown, status: number, origin: string | null) {
   return new Response(JSON.stringify(body), {
@@ -121,6 +107,9 @@ serve(async (req) => {
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
     if (!apiKey) {
+      // Logged: this was the one silent 500, and every AI feature died on it
+      // with nothing in the function logs to say why.
+      console.error("ai-proxy: ANTHROPIC_API_KEY edge secret is not set");
       return jsonResponse({ error: "AI not configured" }, 500, origin);
     }
 
