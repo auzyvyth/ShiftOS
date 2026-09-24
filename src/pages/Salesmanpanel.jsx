@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { suggestCommission } from "../utils/commission";
 import { createPortal } from "react-dom";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { Helmet } from "react-helmet";
@@ -1013,12 +1014,9 @@ Rules:
  const carCommission = (car) => {
  const explicit = Number(car?.commission_amount) || 0;
  if (explicit > 0) return explicit;
- const cfg = dealerCommConfig;
- if (!cfg) return null;
- const price = Number(car?.selling_price) || 0;
- if (cfg.type === "flat") return Number(cfg.value) || 0;
- if (cfg.type === "percent_sale") return Math.round(price * (Number(cfg.value) || 0) / 100);
- return null; // percent_gross needs cost data not exposed to salesmen
+ if (!dealerCommConfig) return null;
+ // No cost passed on purpose: a margin rule returns null here.
+ return suggestCommission(dealerCommConfig, { sell: car?.selling_price });
  };
 
  // Feature a dealer car on this salesman's own listings/mini-page.

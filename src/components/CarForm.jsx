@@ -45,6 +45,7 @@ import { DOC_TYPES } from "../utils/docTypes";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { decodeChassis, isChassisCode, isMalaysianVin, generationYears, specVariantDiffers, specProbeYear } from "../utils/chassisDecode";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
+import { suggestCommission, describeCommissionRule } from "../utils/commission";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -1430,6 +1431,23 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const handleChange = (e) => set(e.target.name, e.target.value);
+
+  // Commission fills itself from the dealer's rule as the prices go in, and
+  // keeps following them until someone types their own figure. "Theirs" = any
+  // value that isn't the last one we wrote, so an edited listing or a restored
+  // draft keeps what was saved.
+  const suggestedCommission = hideCommission
+    ? null
+    : suggestCommission(commissionConfig, { sell: form.sellingPrice, cost: form.basePrice });
+  const lastAutoCommission = useRef(null);
+  useEffect(() => {
+    if (suggestedCommission == null) return;
+    const cur = form.commissionAmount;
+    if (cur !== "" && cur !== lastAutoCommission.current) return;
+    const next = String(suggestedCommission);
+    lastAutoCommission.current = next;
+    if (cur !== next) set("commissionAmount", next);
+  }, [suggestedCommission]); // eslint-disable-line react-hooks/exhaustive-deps
   const modelOptions =
     form.brand && CAR_DATA[form.brand] ? CAR_DATA[form.brand] : [];
   // The model picker allows a custom value, and that freedom is what produced
@@ -3150,61 +3168,45 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           {!hideCommission && (
           <Field
             label="Salesman Commission (RM)"
-            hint="Flat payout to salesman who closes this deal"
+            hint="Paid to the salesman who closes this deal. Filled from your commission rule in Settings."
           >
-            {(() => {
-              const base = parseFloat(form.basePrice);
-              const sell = parseFloat(form.sellingPrice);
-              const margin = !isNaN(base) && !isNaN(sell) && sell > base ? sell - base : null;
-              // SET-4: derive from the dealer's commission rule (default 10% of margin)
-              const cfg = commissionConfig || { type: 'percent_gross', value: 10 };
-              let suggested = null;
-              let suggestNote = '';
-              if (cfg.type === 'flat' && cfg.value > 0) {
-                suggested = Math.round(cfg.value);
-                suggestNote = `flat rate`;
-              } else if (cfg.type === 'percent_sale' && !isNaN(sell) && cfg.value > 0) {
-                suggested = Math.round(sell * cfg.value / 100 / 50) * 50;
-                suggestNote = `${cfg.value}% of sale price`;
-              } else if (margin && cfg.value > 0) {
-                suggested = Math.round(margin * cfg.value / 100 / 50) * 50;
-                suggestNote = `${cfg.value}% of margin`;
-              }
-              return (
-                <>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
-                      RM
-                    </span>
-                    <input
-                      type="number"
-                      name="commissionAmount"
-                      value={form.commissionAmount}
-                      onChange={handleChange}
-                      placeholder="0"
-                      min="0"
-                      enterKeyHint="next"
-                      inputMode="numeric"
-                      className={`${inputCls} pl-12`}
-                    />
-                  </div>
-                  {suggested && (
-                    <p className="text-xs text-gray-500 mt-1.5">
-                      Suggested: RM {suggested.toLocaleString()} ({suggestNote})
-                      {!form.commissionAmount && (
-                        <button
-                          type="button"
-                          onClick={() => set("commissionAmount", String(suggested))}
-                          className="ml-2 text-red-400 underline underline-offset-2"
-                        >
-                          Apply
-                        </button>
-                      )}
-                    </p>
+            <>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
+                  RM
+                </span>
+                <input
+                  type="number"
+                  name="commissionAmount"
+                  value={form.commissionAmount}
+                  onChange={handleChange}
+                  placeholder="0"
+                  min="0"
+                  enterKeyHint="next"
+                  inputMode="numeric"
+                  className={`${inputCls} pl-12`}
+                />
+              </div>
+              {suggestedCommission != null && (
+                <p className="text-xs text-gray-500 mt-1.5">
+                  {form.commissionAmount === String(suggestedCommission)
+                    ? `Filled from your rule (${describeCommissionRule(commissionConfig)}). Edit if this deal pays differently.`
+                    : `Your rule gives RM ${suggestedCommission.toLocaleString()} (${describeCommissionRule(commissionConfig)}).`}
+                  {form.commissionAmount !== String(suggestedCommission) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        lastAutoCommission.current = String(suggestedCommission);
+                        set("commissionAmount", String(suggestedCommission));
+                      }}
+                      className="ml-2 text-red-400 underline underline-offset-2"
+                    >
+                      Use RM {suggestedCommission.toLocaleString()}
+                    </button>
                   )}
-                </>
-              );
-            })()}
+                </p>
+              )}
+            </>
           </Field>
           )}
           <Field

@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, R
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
 import { isWonDealBlock, offerUndoSale, relistCar } from "../utils/undoSale";
+import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -2990,6 +2991,24 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading }) 
   const [soldBy, setSoldBy] = useState(listing.assigned_to || "");
   const [soldPrice, setSoldPrice] = useState(listing.selling_price != null ? String(listing.selling_price) : "");
   const [commission, setCommission] = useState(Number(listing.commission_amount) > 0 ? String(listing.commission_amount) : "");
+  // No commission saved on the car -> fill it from the dealer's rule on the
+  // price it actually sold for, and keep following that price until someone
+  // types their own figure. A figure already on the car is kept as-is.
+  const [commissionConfig, setCommissionConfig] = useState(null);
+  useEffect(() => {
+    if (!listing.dealer_id) return;
+    supabase.from("profiles").select("commission_config").eq("id", listing.dealer_id).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [listing.dealer_id]);
+  const suggestedCommission = suggestCommission(commissionConfig, { sell: soldPrice, cost: listing.base_price });
+  const lastAutoCommission = useRef(null);
+  useEffect(() => {
+    if (suggestedCommission == null) return;
+    if (commission !== "" && commission !== lastAutoCommission.current) return;
+    const next = String(suggestedCommission);
+    lastAutoCommission.current = next;
+    setCommission(next);
+  }, [suggestedCommission]); // eslint-disable-line react-hooks/exhaustive-deps
   const fieldCls = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400";
   const labelCls = "block text-xs font-semibold text-gray-600 mb-1";
   const submit = () => onConfirm({
@@ -3038,6 +3057,9 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading }) 
             <div>
               <label className={labelCls}>Commission (RM)</label>
               <input type="number" inputMode="numeric" min="0" value={commission} placeholder="Not set" onChange={(e) => setCommission(e.target.value)} className={fieldCls} />
+              {suggestedCommission != null && commission === String(suggestedCommission) && (
+                <p className="text-[11px] text-gray-500 mt-1">From your rule ({describeCommissionRule(commissionConfig)})</p>
+              )}
             </div>
           </div>
         </div>
