@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
+import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../lib/leadsHelpers';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
@@ -8,16 +9,12 @@ import {
 import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const STAGE_COLORS = {
-  new: '#3B82F6', contacted: '#8B5CF6', negotiating: '#F59E0B',
-  presented: '#06B6D4', reserved: '#10B981', documents: '#F97316',
-  hp_submitted: '#EC4899', sold: '#22C55E', lost: '#EF4444',
-};
-const STAGE_LABELS = {
-  new: 'New', contacted: 'Contacted', negotiating: 'Negotiating',
-  presented: 'Presented', reserved: 'Reserved', documents: 'Documents',
-  hp_submitted: 'HP Submitted', sold: 'Sold', lost: 'Lost',
-};
+// Stage names, labels and colours come from the ONE stage list the leads board
+// uses (src/lib/leadsHelpers.js). This file kept its own copy, which drifted to
+// stages no lead has ever had (presented / reserved / documents / hp_submitted)
+// and missed viewing_booked, test_drive and deposit_taken — so the pipeline
+// chart silently dropped every lead sitting in those three.
+const stageLabel = (s) => STAGE_CONFIG[canonicalStage(s)]?.label || s;
 const SOURCE_LABELS = {
   drevo_enquiry: 'Enquiry', walk_in: 'Walk-In', mudah: 'Mudah',
   carlist: 'Carlist', facebook: 'Facebook', tiktok: 'TikTok',
@@ -30,7 +27,7 @@ const ROLE_LABELS = {
   dealer: 'Owner', superadmin: 'Owner',
 };
 const SOURCE_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#F97316', '#EC4899'];
-const ACTIVE_STAGES = ['new','contacted','negotiating','presented','reserved','documents','hp_submitted'];
+const ACTIVE_STAGES = STAGE_ORDER.filter(s => s !== 'won' && s !== 'lost');
 const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','#DC2626','#06B6D4'];
 const ACT_CFG = {
   whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle,   color: '#16A34A', bg: '#F0FDF4' },
@@ -199,7 +196,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       }
 
       const stageCounts = {};
-      for (const l of allLeads) stageCounts[l.stage] = (stageCounts[l.stage] || 0) + 1;
+      for (const l of allLeads) { const k = canonicalStage(l.stage); stageCounts[k] = (stageCounts[k] || 0) + 1; }
 
       const sourceCounts = {};
       for (const l of activeLeads) {
@@ -281,7 +278,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
   const gpTrend   = delta(Number(mtd.gross_profit || 0), Number(lmtd.gross_profit || 0));
 
   const pipelineData = snapshot
-    ? ACTIVE_STAGES.map(s => ({ stage: STAGE_LABELS[s], count: snapshot.stageCounts[s] || 0, color: STAGE_COLORS[s] })).filter(d => d.count > 0)
+    ? ACTIVE_STAGES.map(s => ({ stage: stageLabel(s), count: snapshot.stageCounts[s] || 0, color: STAGE_CONFIG[s].headerBorder })).filter(d => d.count > 0)
     : [];
 
   const sourceData = snapshot
@@ -543,7 +540,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                 const Icon = cfg.icon;
                 const who  = a.creator?.full_name || 'Salesman';
                 const cust = a.lead?.buyer_name || 'Unknown';
-                const stage = a.to_stage ? STAGE_LABELS[a.to_stage] || a.to_stage : null;
+                const stage = a.to_stage ? stageLabel(a.to_stage) : null;
                 const note  = a.note ? (a.note.length > 48 ? a.note.slice(0, 45) + '…' : a.note) : null;
                 return (
                   <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}>

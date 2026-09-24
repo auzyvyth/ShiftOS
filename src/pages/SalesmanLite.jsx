@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
@@ -1263,7 +1264,15 @@ export default function SalesmanLite() {
     if (statusErr) {
       console.error("updateListingStatus:", statusErr);
       setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus, sold_at: prevSoldAt } : c));
-      toast.error(t("salesmanLite.toast.statusUpdateFailed"));
+      if (isWonDealBlock(statusErr)) {
+        offerUndoSale(car.id, () => {
+          setMyListings(relistCar(car.id));
+          setLeads(reopenWonLeads(car.id));
+          refreshCommissionData();
+        });
+      } else {
+        toast.error(t("salesmanLite.toast.statusUpdateFailed"));
+      }
       return;
     }
     writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));

@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { isWonDealBlock, offerUndoSale, relistCar } from "../utils/undoSale";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -2980,7 +2981,22 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
 }
 
 // ─── MarkSoldModal ────────────────────────────────────────────────────────────
-function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
+// Asks for the three things a sale needs and nothing else did: who sold it,
+// what it actually sold for, and the commission. Without them 18 of 25 sold cars
+// showed RM0 commission and 10 had no salesman, so commission and per-rep gross
+// were wrong everywhere they are read. Each field starts from the car's own
+// values, so a dealer who already filled them in just confirms.
+function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading }) {
+  const [soldBy, setSoldBy] = useState(listing.assigned_to || "");
+  const [soldPrice, setSoldPrice] = useState(listing.selling_price != null ? String(listing.selling_price) : "");
+  const [commission, setCommission] = useState(Number(listing.commission_amount) > 0 ? String(listing.commission_amount) : "");
+  const fieldCls = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400";
+  const labelCls = "block text-xs font-semibold text-gray-600 mb-1";
+  const submit = () => onConfirm({
+    soldBy: soldBy || null,
+    soldPrice: soldPrice === "" ? null : Number(soldPrice),
+    commission: commission === "" ? null : Number(commission),
+  });
   return (
     <div
       className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -3004,22 +3020,25 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div
-          className="rounded-xl px-4 py-3 mb-5 flex items-start gap-3"
-          style={{
-            background: "rgba(34,197,94,0.06)",
-            border: "1px solid rgba(34,197,94,0.18)",
-          }}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+        <div className="flex flex-col gap-3 mb-5">
           <div>
-            <p className="text-emerald-700 text-sm font-semibold">
-              Sold count will update automatically
-            </p>
-            <p className="text-emerald-600 text-xs mt-0.5">
-              This listing moves to "Sold" and the sold counter updates in
-              real-time.
-            </p>
+            <label className={labelCls}>Sold by</label>
+            <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className={fieldCls}>
+              <option value="">No salesman (sold by the dealership)</option>
+              {salesmen.map((sm) => (
+                <option key={sm.id} value={sm.id}>{sm.full_name || sm.email || "Salesman"}</option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Sold for (RM)</label>
+              <input type="number" inputMode="numeric" min="0" value={soldPrice} onChange={(e) => setSoldPrice(e.target.value)} className={fieldCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Commission (RM)</label>
+              <input type="number" inputMode="numeric" min="0" value={commission} placeholder="Not set" onChange={(e) => setCommission(e.target.value)} className={fieldCls} />
+            </div>
           </div>
         </div>
         <div className="flex gap-3">
@@ -3030,7 +3049,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={submit}
             disabled={loading}
             className="btn-shimmer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
             style={{
@@ -9852,6 +9871,11 @@ export default function DashboardPage() {
       );
     } catch (e) {
       console.error(e);
+      // A car with a won deal cannot leave 'sold' (trg_guard_sold_car). Offer
+      // the one way out instead of failing silently, which is what let 12 won
+      // deals end up pointing at relisted cars.
+      if (isWonDealBlock(e)) offerUndoSale(id, () => setListings(relistCar(id)));
+      else toast.error("Could not update the car's status. Try again.");
     } finally {
       setUpdatingStatus(null);
     }
@@ -9877,13 +9901,23 @@ export default function DashboardPage() {
   // Which Settings section the Verify-ID prompt should land on.
   const [settingsJump, setSettingsJump] = useState(null);
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null } = {}) => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
+      const update = {
+        status: "sold",
+        sold_at: new Date().toISOString(),
+        sold_price: soldPrice ?? markSoldListing.selling_price ?? null,
+        sold_date: new Date().toISOString().slice(0, 10),
+      };
+      // Only write what the dealer actually gave — a blank never overwrites a
+      // value already on the car.
+      if (soldBy) update.assigned_to = soldBy;
+      if (commission != null && !Number.isNaN(commission)) update.commission_amount = commission;
       const { data, error } = await supabase
         .from("car_listings")
-        .update({ status: "sold", sold_at: new Date().toISOString(), sold_price: markSoldListing.selling_price ?? null, sold_date: new Date().toISOString().slice(0, 10) })
+        .update(update)
         .eq("id", markSoldListing.id)
         .select();
       if (error) throw error;
@@ -9896,6 +9930,7 @@ export default function DashboardPage() {
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
+      toast.error("Could not mark the car as sold. Try again.");
     }
     setMarkSoldLoading(false);
   };
@@ -11822,6 +11857,7 @@ export default function DashboardPage() {
       {markSoldListing && (
         <MarkSoldModal
           listing={markSoldListing}
+          salesmen={salesmen}
           onClose={() => setMarkSoldListing(null)}
           onConfirm={handleMarkSold}
           loading={markSoldLoading}

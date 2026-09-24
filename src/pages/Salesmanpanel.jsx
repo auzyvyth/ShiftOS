@@ -1276,10 +1276,15 @@ Rules:
  };
 
  const updateApptStatus = async (apptId, newStatus) => {
+ const prevStatus = appointments.find((a) => a.id === apptId)?.status;
  setAppointments((prev) =>
  prev.map((a) => (a.id === apptId? { ...a, status: newStatus } : a)),
  );
- await supabase.from("appointments").update({ status: newStatus }).eq("id", apptId);
+ const { error } = await supabase.from("appointments").update({ status: newStatus }).eq("id", apptId);
+ if (error) {
+ setAppointments((prev) => prev.map((a) => (a.id === apptId ? { ...a, status: prevStatus } : a)));
+ toast.error("Could not update the appointment. Try again.");
+ }
  };
 
  const scheduleAptReminder = async (apt) => {
@@ -6076,6 +6081,14 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <button onClick={() => setCancelConfirmId(null)} style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Keep it</button>
  <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); }} style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>Yes, cancel appt</button>
  </div>
+ </div>
+ )}
+ {/* A past viewing left open had no way to be closed here, so it sat in
+ the list forever. Offer the two real outcomes. */}
+ {!isRescheduling && !isCancelConfirm && ["pending", "confirmed"].includes(apt.status) && apt.appointment_date && new Date(apt.appointment_date) < new Date() && !aptIsToday(apt.appointment_date) && (
+ <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+ <button onClick={() => updateApptStatus(apt.id, "completed")} style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer" }}>Viewing done</button>
+ <button onClick={() => updateApptStatus(apt.id, "no_show")} style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "7px 0", borderRadius: 7, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer" }}>No-show</button>
  </div>
  )}
  {notCancelled && !isRescheduling && !isCancelConfirm && (

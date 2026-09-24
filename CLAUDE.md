@@ -195,6 +195,15 @@ client moves the lead (salesman panel `advanceLeadStage`, dealer `LeadDrawer`, k
 - Sold-count, commission breakdown, RevOps and Overview all key off `car_listings.status='sold'`
   + `sold_at` + `commission_amount` (+ `assigned_to` for per-salesman). If a won deal isn't
   showing there, the car didn't get flipped — check the trigger, not the UI.
+- **The reverse is guarded too: a car with a live won deal cannot leave `sold`.**
+  `trg_guard_sold_car` (on `car_listings`) raises `car_has_won_deal`. 12 won deals
+  had been orphaned by someone flipping the car back to `available` from a status
+  dropdown. The ONE way out is `undo_car_sale(listing_id)`: it moves the won
+  lead(s) to `negotiating`, deletes the customer + handover rows the won-trigger
+  made (a re-win recreates them), and relists the car; it refuses if a service
+  package was sold on the deal. Every status control routes the error through
+  `src/utils/undoSale.js` (`offerUndoSale`). Never add a status write that
+  bypasses it or sets `app.undo_sale` from the client.
 - Frontend `advanceLeadStage` (Salesmanpanel) also optimistically flips the car in local
   `myListings` state on win so the card updates without a reload; the DB trigger is the
   real persistence.

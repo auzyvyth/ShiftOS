@@ -2489,42 +2489,20 @@ until these are done:**
 
 Found by querying the live DB, not by reading code — every count below is real.
 
-#### Bugs
-- [ ] **SWEEP-1 (HIGH) — a sold car can be set back to "available" while its deal stays won.**
-  12 won leads point at cars that are not `sold` (11 `available`, 1 `reserved`).
-  Every one had `sold_at` stamped, then a human flipped it back (activity_log shows
-  owner + salesman `sold -> available`, latest 2026-09-11). The car shows as for
-  sale again while the customer row, the 8 handover steps and the commission all
-  still exist — the won=sold rule broken in the reverse direction.
-  Path: `OwnerCarPanel.jsx:328` status `<select>` -> `handleStatus`
-  (`DashboardPage.jsx:9838`), which writes any status with no check, and only
-  `console.error`s a failure (the dealer sees nothing). Salesman-side flips too.
-  FIX: in the DB, not per client — refuse `sold -> anything` on `car_listings`
-  while a `won` lead points at it, and add an explicit "Undo sale" that moves the
-  lead back to `negotiating` in the same step. Decide what happens to the customer
-  row + handover steps on undo (recommend: keep, mark the customer `sale_reversed`).
-  Many of the 12 look like test clicks — clean those up after the guard lands.
-- [ ] **SWEEP-2 (MEDIUM) — dealer Overview pipeline chart drops 51 live leads.**
-  `OverviewTab.jsx:33` `ACTIVE_STAGES` lists `presented`, `reserved`,
-  `documents`, `hp_submitted` (no lead has ever had these) and misses
-  `viewing_booked` (32), `test_drive` (11), `deposit_taken` (8). The chart at
-  `:284` only draws `ACTIVE_STAGES`. FIX: import `STAGE_ORDER` from
-  `src/lib/leadsHelpers.js` instead of a local copy (the drift is the bug).
-- [ ] **SWEEP-3 (MEDIUM) — 18 of 25 sold cars have commission 0; 10 have no salesman.**
-  Commission reports, per-rep gross and RevOps read these. Either the mark-sold
-  flow must ask for commission + closer, or reports must say "not recorded"
-  instead of RM0. Check which mark-sold path skips it before fixing.
-- [ ] **SWEEP-4 (MEDIUM) — 49 appointments in the past still `pending`/`confirmed`.**
-  Nothing asks "did this viewing happen?", so show/no-show rates are unknowable
-  and the booking list fills with dead rows. Needed by CSI and the AI digest.
-- [ ] **SWEEP-5 (LOW) — storefront hero carousel writes a second, empty enquiry.**
-  `HeroCarousel.jsx:637` inserts a phoneless `whatsapp_enquiries` row AFTER
-  `ContactGate` already created the real lead. 3 such rows (last April). Drop the insert.
-- [ ] **SWEEP-6 (LOW) — 5 won leads have no customer row, 6 have no handover steps.**
-  Legacy rows from before the trigger (latest May). One-off backfill, not a code fix.
-- Checked, no action: security advisor ERRORs are the three intended public views
-  (`public_car_listings`, `seller_public_stats`, ...); 72 anon-sign-in WARNs are
-  guest chat by design.
+#### Bugs — FIXED 2026-09-24 (staging), one open decision
+- [ ] **SWEEP-1 follow-up (OWNER DECISION): the 12 won deals whose car is back on
+  sale.** The guard stops NEW cases; these 12 existing rows are untouched because
+  each one needs a call: was the sale real (put the car back to sold) or a test
+  click / fallen-through deal (undo the sale)? List them with
+  `select l.id, c.brand, c.model, c.status from leads l join car_listings c on
+  c.id=l.car_listing_id where l.stage='won' and c.status<>'sold'`.
+- Also seen, not fixed: one car (`67b534ce…`) carries 3 won leads, last touched
+  June, before the sibling-lost fix (H8). Resolve with the 12 above.
+- Shipped: SWEEP-1 guard + Undo sale (`20260924a`, `src/utils/undoSale.js`),
+  SWEEP-2 Overview stages, SWEEP-3 mark-sold asks closer/price/commission,
+  SWEEP-4 No-show buttons + `ask_viewing_outcomes()` cron, SWEEP-5 hero duplicate
+  enquiry removed, SWEEP-6 backfill (`20260924c`). The 18 sold cars already at
+  RM0 commission still need the dealer to enter it (edit car -> commission).
 
 #### AI-AGENT — scope (owner decision 2026-09-23: the AI MAY reply to buyers)
 This REPLACES the "AI drafts, a human sends" rule in CLAUDE.md for the chat

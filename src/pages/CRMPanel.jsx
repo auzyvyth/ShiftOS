@@ -1484,7 +1484,8 @@ function BookingsTab({ userId, listings, salesmen }) {
   };
 
   const updateStatus = async (id, status) => {
-    await supabase.from("appointments").update({ status }).eq("id", id);
+    const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
+    if (error) { toast.error("Could not update the booking. Try again."); return; }
     setBookings((p) => p.map((b) => (b.id === id ? { ...b, status } : b)));
   };
 
@@ -1573,7 +1574,7 @@ function BookingsTab({ userId, listings, salesmen }) {
     const isReminderPicking = reminderPickerAptId === b.id;
     const isRescheduling    = rescheduleAptId === b.id;
     const isCancelConfirm   = cancelConfirmId === b.id;
-    const notDone = b.status !== "cancelled" && b.status !== "completed";
+    const notDone = b.status !== "cancelled" && b.status !== "completed" && b.status !== "no_show";
 
     const dateDisplay = b.appointment_date
       ? new Date(b.appointment_date).toLocaleString("en-MY", { dateStyle: "medium", timeStyle: "short" })
@@ -1679,6 +1680,11 @@ function BookingsTab({ userId, listings, salesmen }) {
           )}
           {(b.status === "pending" || b.status === "confirmed") && (
             <button onClick={() => updateStatus(b.id, "completed")} style={{ fontSize: 10, color: "#059669", background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Done</button>
+          )}
+          {/* A past viewing needs an honest outcome. Without No-show the only way
+              to clear it was "Done", so 49 past bookings were left open instead. */}
+          {isPast && (b.status === "pending" || b.status === "confirmed") && (
+            <button onClick={() => updateStatus(b.id, "no_show")} style={{ fontSize: 10, color: "#b45309", background: "rgba(180,83,9,0.08)", border: "1px solid rgba(180,83,9,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>No-show</button>
           )}
           {notDone && (
             <button onClick={() => { setRescheduleAptId(b.id === rescheduleAptId ? null : b.id); setRescheduleDate(""); }} style={{ fontSize: 10, color: "#7c3aed", background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: 5, padding: "4px 10px", cursor: "pointer" }}>Reschedule</button>
