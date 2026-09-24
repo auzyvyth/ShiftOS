@@ -106,7 +106,9 @@ const PREMIUM = [
     pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
   },
   {
-    key: "thisweek", tab: "Dashboard", img: null,
+    key: "thisweek", tab: "Dashboard",
+    img: "/for-salesmen/premium-thisweek.png", w: 555, h: 468,
+    alt: "Today's Agenda showing missed appointments, test drives and scheduled follow-ups for the day",
     title: "A call list for this week, already sorted.",
     pain: "Past buyers, quiet leads and reminders you set all live on different screens, so the calls that bring repeat business never get made.",
     moment: "Monday morning. One list: two buyers nobody replied to, one lead going quiet, and a past customer whose insurance is due. One row per person, even when there are two reasons to call.",
@@ -119,7 +121,9 @@ const PREMIUM = [
     pays: "Repeat buyers and referrals are the cheapest deals you will ever close.",
   },
   {
-    key: "sold", tab: "Sold", img: null,
+    key: "sold", tab: "Sold",
+    img: "/for-salesmen/premium-sold.png", w: 435, h: 617,
+    alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
     title: "Won is not done. The handover, step by step.",
     pain: "After the deal comes loan settlement, insurance, Puspakom, the JPJ transfer and road tax. Miss one and the buyer calls you angry instead of recommending you.",
     moment: "You mark a deal Won. An 8-step handover checklist appears in the right order with the official fees filled in. Tick insurance done and next year's renewal date is saved.",
@@ -132,7 +136,9 @@ const PREMIUM = [
     pays: "A smooth handover is how one sale turns into the buyer's brother, cousin and colleague.",
   },
   {
-    key: "analytics", tab: "Analytics", img: null,
+    key: "analytics", tab: "Analytics",
+    img: "/for-salesmen/premium-analytics.png", w: 763, h: 609,
+    alt: "Close rate funnel showing where deals stop, with Contacted marked as the weakest step, plus median reply speed",
     title: "Find out where you are losing deals.",
     pain: "You know you closed three this month. You do not know whether you lost the rest at the first reply, the viewing or the test drive.",
     moment: "End of the month. The funnel shows most of your lost buyers dropped after booking a viewing. That is what you fix next month, not your ads.",
