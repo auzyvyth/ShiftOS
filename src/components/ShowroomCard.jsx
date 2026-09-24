@@ -11,6 +11,7 @@ import { getRef } from '../utils/refTracking';
 import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly } from '../utils/financing';
+import { isSubdomain } from '../hooks/useTenant';
 
 // Inject the image-loading shimmer animation once. Animates `transform`
 // (not `background-position`) so the compositor can run it on the GPU —
@@ -213,7 +214,12 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   // and screen reader. The title below is a real <Link>, which is the
   // accessible (and crawlable) path into the car. Both routes run this same
   // function so tracking cannot drift between them.
-  const carHref = (dark ? '/cars/' : '/showroom/') + (car.slug || car.id);
+  // The route depends on which HOST this is rendering on, not the card's
+  // visual theme — those used to be the same thing (every subdomain page was
+  // dark), but the dealer storefront is light now while still living on a
+  // subdomain, so basing this on `dark` would send a light-themed storefront
+  // card to /showroom/ (the marketplace-wide route) instead of /cars/.
+  const carHref = (isSubdomain() ? '/cars/' : '/showroom/') + (car.slug || car.id);
   const trackCardClick = () => {
     trackEvent(supabase, 'card_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
   };

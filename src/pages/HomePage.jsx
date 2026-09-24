@@ -32,10 +32,12 @@ import SciFiLoader from "../components/SciFiLoader";
 import Footer from "@/components/Footer";
 import StickyWhatsAppButton from "@/components/StickyWhatsAppButton";
 import CarCard from "@/components/CarCard";
+import ShowroomCard, { ShowroomCardSkeleton } from "@/components/ShowroomCard";
 import HeroCarousel from "@/components/HeroCarousel";
 import SearchAutocomplete from "@/components/SearchAutocomplete";
 import { supabase } from "../supabaseClient";
 import { readCache, writeCache } from "../utils/localCache";
+import { useCompare, MAX as COMPARE_MAX } from "../hooks/useCompare";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import ReviewsSection from "../components/reviews/ReviewsSection";
 import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks/useTenant";
@@ -257,6 +259,7 @@ const HomePage = () => {
   const { siteName, waUrl, profile } = useSiteProfile();
   const { tenant, loading: tenantLoading } = useTenant();
   const ctaCtx = useCTAContext();
+  const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
   // PERF-2: resolve dealer_id from URL subdomain immediately — no auth wait.
   // Unblocks the listings + sold-count fetch before useTenant finishes its
@@ -727,6 +730,14 @@ const HomePage = () => {
         @media(max-width:640px) {
           .car-grid-hp { grid-template-columns:repeat(2,1fr) !important; gap:10px !important; }
           .stats-band-grid { grid-template-columns:repeat(2,1fr) !important; }
+        }
+
+        /* ShowroomCard grid — a horizontal row card, not a portrait tile, so it
+           wants at most 2 columns (matches CarListingPage's cl-grid: 1 col up to
+           640px, 2 above it) rather than car-grid-hp's narrow auto-fill tiles. */
+        .sc-grid-hp { display:grid; grid-template-columns:1fr; gap:10px; }
+        @media(min-width:641px) {
+          .sc-grid-hp { grid-template-columns:repeat(2,1fr); gap:14px; }
         }
 
         /* Search grid */
@@ -1265,11 +1276,20 @@ const HomePage = () => {
                   <Link key={bt} to={`${carsBase}?body_type=${encodeURIComponent(bt)}`} style={chip(false)}>{bt}</Link>
                 ))}
               </div>
-              <div className="car-grid-hp" style={{ marginBottom: "36px" }}>
+              <div className="sc-grid-hp" style={{ marginBottom: "36px" }}>
                 {loading
-                  ? [...Array(3)].map((_, i) => <SkeletonCard key={i} />)
+                  ? [...Array(3)].map((_, i) => <ShowroomCardSkeleton key={i} dark={false} />)
                   : featured.map((c, i) => (
-                      <CarCard key={c.id} car={c} ctaContext={ctaCtx} priority={i === 0} />
+                      <ShowroomCard
+                        key={c.id}
+                        car={c}
+                        ctaContext={ctaCtx}
+                        priority={i === 0}
+                        dark={false}
+                        inCompare={isInCompare(c.id)}
+                        compareFull={compareIds.length >= COMPARE_MAX}
+                        onCompare={() => (isInCompare(c.id) ? removeFromCompare(c.id) : addToCompare(c.id))}
+                      />
                     ))}
               </div>
               <div style={{ textAlign: "center" }}>

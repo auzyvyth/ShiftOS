@@ -435,13 +435,13 @@ const HC_CSS = `
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 
-  /* ── Hero search bar — sits above eyebrow on the left ── */
+  /* ── Hero search bar — sits below the meta/price/CTAs, in normal flow so it
+     can never be covered by the photo card (that was the clipping bug: it
+     used to be pulled out with position:absolute and no z-index). ── */
   .hc-search-bar {
     width: 100%;
     max-width: 520px;
-    margin-bottom: 20px;
-    position: relative;
-    z-index: 6;
+    margin-top: 20px;
   }
   .hc-search-form {
     position: relative;
@@ -522,7 +522,7 @@ const HC_CSS = `
     .hc-price-section { margin-bottom: 28px; }
     .hc-ctas { gap: 14px; }
     .hc-enquire, .hc-view { font-size: 15px; padding: 13px 28px; }
-    .hc-search-bar { max-width: 560px; margin-bottom: 26px; }
+    .hc-search-bar { max-width: 560px; margin-top: 26px; }
     .hc-search-input { font-size: 16px; padding: 16px 58px 16px 50px; }
     .hc-search-icon { width: 18px; height: 18px; left: 18px; }
     .hc-search-btn { width: 44px; height: 44px; right: 8px; }
@@ -540,16 +540,12 @@ const HC_CSS = `
     .hc-search-btn svg { width: 13px; height: 13px; }
   }
 
-  /* Mobile ≤768px — restore absolute bar, dissolve content-row wrapper */
+  /* Mobile ≤768px — dissolve content-row wrapper; search bar stays in normal
+     flow (see base rule) so it renders after the CTAs, never overlapping. */
   @media (max-width:768px) {
     .hc-search-bar {
-      position: absolute;
-      top: 84px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 0 20px;
       max-width: 100%;
-      align-self: auto;
+      margin-top: 16px;
     }
     .hc-content-row { display: contents; }
     .hc-search-input {
@@ -1025,6 +1021,20 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             <div className={`hc-content-row${s.mode === "text" ? " hc-text-only" : ""}`}>
               {/* 1. Title */}
               <div className="hc-text">
+                <div key={`c-${animKey}`} className="hc-anim">
+                  <div className="hc-eyebrow">
+                    <div className="hc-eyebrow-dot" />
+                    <span className="hc-eyebrow-label">
+                      {badge || "Verified Listing"}
+                    </span>
+                  </div>
+                  <h2 className="hc-car-name hc-syne">
+                    {s.year && <span className="hc-year-accent">{s.year} </span>}
+                    {nameClean}
+                  </h2>
+                  {/* Desktop: meta/price/ctas inline */}
+                  <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
+                </div>
                 <div className="hc-search-bar">
                   <form className="hc-search-form" onSubmit={submitHeroSearch} role="search">
                     <Search className="hc-search-icon" />
@@ -1040,20 +1050,6 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                       <Search size={15} />
                     </button>
                   </form>
-                </div>
-                <div key={`c-${animKey}`} className="hc-anim">
-                  <div className="hc-eyebrow">
-                    <div className="hc-eyebrow-dot" />
-                    <span className="hc-eyebrow-label">
-                      {badge || "Verified Listing"}
-                    </span>
-                  </div>
-                  <h2 className="hc-car-name hc-syne">
-                    {s.year && <span className="hc-year-accent">{s.year} </span>}
-                    {nameClean}
-                  </h2>
-                  {/* Desktop: meta/price/ctas inline */}
-                  <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
                 </div>
               </div>
 
