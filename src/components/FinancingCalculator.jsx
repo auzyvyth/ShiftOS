@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calculator, RefreshCw, MessageCircle, Search, Download, ChevronDown } from 'lucide-react';
+import { Calculator, RefreshCw, MessageCircle, Search, Download, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AmortizationSchedule from './AmortizationSchedule';
@@ -528,6 +528,11 @@ const FinancingCalculator = ({
   // Poster (image) generation state
   const [imgLoading, setImgLoading] = useState(false);
 
+  // Compact by default: only monthly / deposit / full price / interest show.
+  // Road tax, insurance, EIR, loan breakdown, the poster's car-detail fields
+  // and the amortization schedule all live behind this one toggle.
+  const [advanced, setAdvanced] = useState(false);
+
   useEffect(() => { setCarPrice(initialPrice); setInsSum(initialPrice); }, [initialPrice]);
   useEffect(() => { if (engineCc) setRtCc(String(engineCc)); }, [engineCc]);
   useEffect(() => { if (bodyType) setRtBody(bodyType); }, [bodyType]);
@@ -825,8 +830,8 @@ const FinancingCalculator = ({
               </div>
             </div>
 
-            {/* Road Tax & Insurance section */}
-            <div style={card}>
+            {/* Road Tax & Insurance section — advanced only */}
+            {advanced && <div style={card}>
               {sectionTitle('Road Tax & Insurance')}
               {/* Vehicle Type Toggle */}
               <div style={{ marginBottom: 14 }}>
@@ -909,10 +914,10 @@ const FinancingCalculator = ({
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
 
-            {/* Car Details for the quotation poster (optional) */}
-            <div style={card}>
+            {/* Car Details for the quotation poster (optional) — advanced only */}
+            {advanced && <div style={card}>
               {sectionTitle('Car Details (for Quotation Poster)')}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
@@ -946,7 +951,7 @@ const FinancingCalculator = ({
                   />
                 </div>
               </div>
-            </div>
+            </div>}
 
           </div>
 
@@ -979,38 +984,60 @@ const FinancingCalculator = ({
                 </motion.div>
               </div>
 
-              {/* Breakdown rows */}
+              {/* Breakdown rows — compact default: deposit, full price, interest */}
               <div style={{ marginBottom: 14 }}>
-                <ResultRow label="Loan Amount"       value={isValid ? `RM ${fmt(loanAmt)}` : '—'} />
-                <ResultRow label="Down Payment"      value={isValid ? `RM ${fmt(downPayment)}` : '—'} />
+                <ResultRow label="Deposit"           value={isValid ? `RM ${fmt(downPayment)}` : '—'} />
+                <ResultRow label="Full Price"         value={isValid ? `RM ${fmt(carPrice)}` : '—'} />
                 <ResultRow label="Total Interest"    value={isValid ? `RM ${fmt(interest)}` : '—'} />
-                <ResultRow label="Total Repayment"   value={isValid ? `RM ${fmt(totalLoan)}` : '—'} highlight />
-                <ResultRow label="EIR (est.)"        value={isValid ? `${eir}% p.a.` : '—'}         muted />
               </div>
 
-              {/* Road tax + insurance */}
-              <div style={{ borderTop: `1px solid ${c.divider}`, paddingTop: 12, marginBottom: 14 }}>
-                <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>On-Road Costs</p>
-                <ResultRow
-                  label={rtCc ? `Road Tax — ${Number(rtCc).toLocaleString()}cc` : 'Road Tax (annual)'}
-                  value={roadTax != null ? `RM ${fmt(Math.round(roadTax))}` : 'Enter CC'}
-                  muted={roadTax == null}
-                />
-                <ResultRow label={`Insurance gross`}        value={insCalc ? `RM ${fmt(insCalc.gross)}` : '—'}                      muted={!insCalc} />
-                <ResultRow label={`  NCD ${insNcd}% savings`} value={insCalc ? `− RM ${fmt(insCalc.gross - insCalc.netPremium)}` : '—'} muted />
-                <ResultRow label={`  SST (8%)`}               value={insCalc ? `RM ${fmt(insCalc.sst)}` : '—'}                          muted />
-                <ResultRow label={`  Stamp duty`}              value={`RM 10`}                                                           muted />
-                <ResultRow label={`Insurance total`}           value={insCalc ? `RM ${fmt(insCalc.total)}` : '—'}                        highlight />
-              </div>
+              {/* Advanced toggle */}
+              <button
+                onClick={() => setAdvanced(v => !v)}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  width: '100%', background: 'none', border: `1px solid ${c.divider}`, borderRadius: 8,
+                  color: c.pillColor, fontSize: 12, fontWeight: 600, padding: '8px', cursor: 'pointer',
+                  fontFamily: "system-ui,sans-serif", marginBottom: 14,
+                }}
+              >
+                <SlidersHorizontal size={12} />
+                {advanced ? 'Hide Advanced' : 'Advanced'}
+                <ChevronDown size={12} style={{ transform: advanced ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+              </button>
 
-              {/* Grand total */}
-              <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#9ca3af', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>On-Road Price</span>
-                  <span style={{ color: '#f87171', fontSize: 18, fontWeight: 800 }}>RM {fmt(onRoadPrice)}</span>
+              {advanced && <>
+                {/* Loan breakdown */}
+                <div style={{ marginBottom: 14 }}>
+                  <ResultRow label="Loan Amount"       value={isValid ? `RM ${fmt(loanAmt)}` : '—'} />
+                  <ResultRow label="Total Repayment"   value={isValid ? `RM ${fmt(totalLoan)}` : '—'} highlight />
+                  <ResultRow label="EIR (est.)"        value={isValid ? `${eir}% p.a.` : '—'}         muted />
                 </div>
-                <p style={{ color: '#6b7280', fontSize: 10, margin: '4px 0 0' }}>Incl. road tax + insurance est.</p>
-              </div>
+
+                {/* Road tax + insurance */}
+                <div style={{ borderTop: `1px solid ${c.divider}`, paddingTop: 12, marginBottom: 14 }}>
+                  <p style={{ color: '#6b7280', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>On-Road Costs</p>
+                  <ResultRow
+                    label={rtCc ? `Road Tax — ${Number(rtCc).toLocaleString()}cc` : 'Road Tax (annual)'}
+                    value={roadTax != null ? `RM ${fmt(Math.round(roadTax))}` : 'Enter CC'}
+                    muted={roadTax == null}
+                  />
+                  <ResultRow label={`Insurance gross`}        value={insCalc ? `RM ${fmt(insCalc.gross)}` : '—'}                      muted={!insCalc} />
+                  <ResultRow label={`  NCD ${insNcd}% savings`} value={insCalc ? `− RM ${fmt(insCalc.gross - insCalc.netPremium)}` : '—'} muted />
+                  <ResultRow label={`  SST (8%)`}               value={insCalc ? `RM ${fmt(insCalc.sst)}` : '—'}                          muted />
+                  <ResultRow label={`  Stamp duty`}              value={`RM 10`}                                                           muted />
+                  <ResultRow label={`Insurance total`}           value={insCalc ? `RM ${fmt(insCalc.total)}` : '—'}                        highlight />
+                </div>
+
+                {/* Grand total */}
+                <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ color: '#9ca3af', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>On-Road Price</span>
+                    <span style={{ color: '#f87171', fontSize: 18, fontWeight: 800 }}>RM {fmt(onRoadPrice)}</span>
+                  </div>
+                  <p style={{ color: '#6b7280', fontSize: 10, margin: '4px 0 0' }}>Incl. road tax + insurance est.</p>
+                </div>
+              </>}
 
               {/* Actions */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -1069,8 +1096,8 @@ const FinancingCalculator = ({
 
         </div>
 
-        {/* Amortization schedule */}
-        {isValid && loanAmt > 0 && (
+        {/* Amortization schedule — advanced only */}
+        {advanced && isValid && loanAmt > 0 && (
           <div style={{ marginTop: 20 }}>
             <AmortizationSchedule loanAmount={loanAmt} interestRate={intRate} years={loanTerm} />
           </div>
