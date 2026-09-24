@@ -4389,12 +4389,15 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const fetchSoldPerSalesman = async () => {
     if (!dealerId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, price, purchase_price, base_price, recon_cost, included_services_cost")
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, purchase_price, base_price, recon_cost, included_services_cost")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
+    // This select once named a column that does not exist ("price"); PostgREST
+    // rejected the whole query and every salesman showed 0 sold / RM0. Say so.
+    if (error) { console.error("[TeamTab] sold per salesman:", error.message); return; }
     if (!data) return;
     const map = {};
     data.forEach((row) => {
@@ -4411,7 +4414,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       // when some cost exists, so units with zero cost don't show "full sale = profit".
       const cost = Number(row.purchase_price) || Number(row.base_price) || 0;
       if (cost > 0) {
-        const sale = Number(row.sold_price ?? row.selling_price ?? row.price) || 0;
+        const sale = Number(row.sold_price ?? row.selling_price) || 0;
         map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
       }
     });
@@ -9840,6 +9843,11 @@ export default function DashboardPage() {
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       ai_manager:  { tab: "ai_manager", sub: [] },
+      // Merged into Leads / CRM. Old notifications (link_to) and saved URLs
+      // still carry these; without the alias they open a blank pane.
+      enquiries:   { tab: "crm", sub: [] },
+      bookings:    { tab: "crm", sub: [] },
+      outreach:    { tab: "crm", sub: [] },
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {

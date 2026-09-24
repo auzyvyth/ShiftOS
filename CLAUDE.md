@@ -599,6 +599,11 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   otherwise silenced the single prompt whose whole job is to arrive at the
   moment it matters, and the person then sat in a chat that could never reach
   them. The strip stops rendering for good only when `subscribed` is true.
+- **`salesman_notifications` has NO `dealer_id` column** (dealer_notifications
+  does). `expiry-reminders` filtered + inserted on it for months: every salesman
+  handover alert was a 400 and nothing noticed, because pg_cron reports the HTTP
+  call as "succeeded". Recurring alerts ROLL UP to one row per person per day —
+  one row per item sent a dealer 53 pushes in a morning.
 - iOS only allows web push for a PWA installed to the home screen (16.4+). PWA-1 shipped
   the install prompt, so that prerequisite is met — `src/components/InstallPrompt.jsx`.
 - The local `Notification.permission` code in Salesman Lite

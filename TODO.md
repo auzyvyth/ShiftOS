@@ -2504,6 +2504,24 @@ Found by querying the live DB, not by reading code — every count below is real
   enquiry removed, SWEEP-6 backfill (`20260924c`). The 18 sold cars already at
   RM0 commission still need the dealer to enter it (edit car -> commission).
 
+#### Dashboard communication sweep 2026-09-24 — fixed (staging + live DB), 2 open
+- [ ] **OWNER ACTION: every AI feature is down — `ANTHROPIC_API_KEY` edge secret.**
+  `ai-proxy` answered 4 of 4 calls on 2026-09-23 with a 500 and has never written
+  a row to `ai_request_log`. The only 500 path that logs nothing is the missing-key
+  check (`supabase/functions/ai-proxy/index.ts:124`), and it runs before usage is
+  recorded — which matches the empty log. Set the secret in Supabase -> Edge
+  Functions -> Secrets, then try AI Manager once. `sales_manager`/`crm_assist`
+  still pin the deprecated `claude-sonnet-4-20250514` (AGENT work retires it).
+- [ ] 1 deleted account due for purge can go through tonight (02:30 UTC) now that
+  `sync_delete_stock_on_listing_delete` is definer (`20260924e`); check
+  `purge-deleted-accounts` logs tomorrow for "Database error deleting user".
+- Shipped: Team tab sold/commission (`price` column that doesn't exist), salesman
+  handover-overdue alerts (`salesman_notifications.dealer_id` doesn't exist) +
+  one roll-up per person per day (`expiry-reminders` v13), account purge, enquiry
+  bell link (`enquiries` tab gone -> `crm`, + legacy tab aliases), recon jobs for
+  managers (`20260924f`), viewing-outcome bell link (`20260924g`), sale price/date
+  kept through the stock<->listing sync (`20260924d`).
+
 #### AI-AGENT — scope (owner decision 2026-09-23: the AI MAY reply to buyers)
 This REPLACES the "AI drafts, a human sends" rule in CLAUDE.md for the chat
 channel only. Rewrite that CLAUDE.md section in the same PR that ships AGENT-1.
