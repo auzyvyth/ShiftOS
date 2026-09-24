@@ -136,6 +136,12 @@ export default function ChatThread({
   // nothing between. Cap the CONTENT (not the scroller, or the scrollbar leaves
   // the edge) and centre it, the way every full-width chat reads.
   contentMaxWidth = null,
+  // A preview for someone who is not (yet) this buyer's seller — a rep looking
+  // at an unclaimed lead. No composer, no AI, and it must NOT mark the thread
+  // read: seller_unread is shared, and zeroing it would hide the new message
+  // from whoever actually claims the lead. `footer` replaces the composer.
+  readOnly = false,
+  footer = null,
 }) {
   const t = THEMES[theme] || THEMES.light;
   const { messages, loading, sending, send, markRead } = useChatThread(threadId, role);
@@ -275,7 +281,7 @@ export default function ChatThread({
 
   // Opening the thread, and every message that lands while it is open, counts
   // as read.
-  useEffect(() => { if (threadId) markRead(); }, [threadId, messages.length, markRead]);
+  useEffect(() => { if (threadId && !readOnly) markRead(); }, [threadId, messages.length, markRead, readOnly]);
   // Bottom-pin the message list itself. scrollIntoView() on a bottom marker
   // walks every scrollable ANCESTOR into view too — including the page body
   // this sits inside on /account — so a short early conversation kept yanking
@@ -426,6 +432,8 @@ export default function ChatThread({
           does not grow into the gap and shunt the conversation. */}
       {pinned && <div aria-hidden style={{ height: composerH, flexShrink:0 }} />}
 
+      {readOnly && footer}
+
       {/* Deliberately NOT portalled, against the usual overlay rule: moving this
           form in the DOM would remount the input, drop focus, close the keyboard
           and immediately unpin — a flicker loop. Flipping `position` leaves the
@@ -433,7 +441,7 @@ export default function ChatThread({
           child escapes an ancestor's overflow:hidden, and the only containers
           that would trap it (ChatSheet's and BuyerChat's backdrop-filter layers,
           which do create a containing block) pass viewportPinned and never pin. */}
-      <form onSubmit={submit} ref={formRef}
+      {!readOnly && <form onSubmit={submit} ref={formRef}
         style={{
           // No panel fill / top border anymore — the composer is a floating
           // pill sitting OVER the message list, not a docked toolbar flush
@@ -463,7 +471,7 @@ export default function ChatThread({
           <Send size={16} />
         </button>
         </div>
-      </form>
+      </form>}
     </div>
   );
 }

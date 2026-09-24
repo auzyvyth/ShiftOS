@@ -104,6 +104,24 @@ import {
 // Cache namespace for this panel (keys look like `spanel_leads_<uid>`).
 const PANEL_CACHE_KEY = "spanel";
 
+// One column list for every read of a pipeline lead, so a lead fetched on its
+// own (claimed from the pool, assigned by the dealer) has the same shape as the
+// ones loaded with the page.
+const LEAD_SELECT = "*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)";
+
+const LEAD_SOURCE_LABEL = {
+  chat: "In-app chat",
+  whatsapp: "WhatsApp",
+  enquiry: "Enquiry form",
+  drevo_enquiry: "XDrive enquiry",
+  walk_in: "Walk-in",
+  referral: "Referral",
+  manual: "Added manually",
+};
+
+// chat_after_message writes this prefix ahead of the buyer's first message.
+const chatOpener = (notes) => (notes || "").replace(/^Started an in-app chat:\s*/i, "").trim();
+
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
@@ -283,41 +301,112 @@ export default function SalesmanPanel() {
  const [leadScores, setLeadScores] = useState({});
  const [scoreLoading, setScoreLoading] = useState(false);
 
+ // lead_id -> newest chat thread, for pool leads only. useChatThreads above is
+ // scoped to this rep's own threads, and an unclaimed lead's thread has no
+ // salesman yet, so without this the pool could never show the conversation.
+ // RLS already lets any rep of this dealer read it (chat_thread_role matches on
+ // dealer_id).
+ const [poolThreads, setPoolThreads] = useState({});
+
  // Incoming-leads pool: dealer leads not yet claimed by any salesman. Realtime
  // so a lead claimed by a teammate disappears here instantly.
  useEffect(() => {
    const poolDealer = profile?.dealer_id;
    if (!poolDealer) { setIncomingLeads([]); setIncomingLoading(false); return; }
-   const fetchPool = () => supabase
-     .from("leads")
-     .select("*, car_listings(brand, model, year, selling_price)")
-     .eq("dealer_id", poolDealer)
-     .is("salesman_id", null)
-     .eq("is_deleted", false)
-     .order("created_at", { ascending: false })
-     .then(({ data }) => { setIncomingLeads(data || []); setIncomingLoading(false); });
+   let cancelled = false;
+   const fetchPool = async () => {
+     const { data } = await supabase
+       .from("leads")
+       .select("*, car_listings(brand, model, year, selling_price)")
+       .eq("dealer_id", poolDealer)
+       .is("salesman_id", null)
+       .eq("is_deleted", false)
+       .order("created_at", { ascending: false });
+     if (cancelled) return;
+     const rows = data || [];
+     setIncomingLeads(rows);
+     setIncomingLoading(false);
+     if (!rows.length) { setPoolThreads({}); return; }
+     const { data: th } = await supabase
+       .from("chat_threads")
+       .select("id, lead_id, seller_unread, last_message_at")
+       .in("lead_id", rows.map((r) => r.id))
+       .order("last_message_at", { ascending: false, nullsFirst: false });
+     if (cancelled) return;
+     const map = {};
+     (th || []).forEach((t) => { if (!map[t.lead_id]) map[t.lead_id] = t; });
+     setPoolThreads(map);
+   };
    fetchPool();
    const ch = supabase
      .channel("incoming_leads_" + poolDealer)
      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${poolDealer}` }, fetchPool)
      .subscribe();
-   return () => { supabase.removeChannel(ch); };
+   return () => { cancelled = true; supabase.removeChannel(ch); };
  }, [profile?.dealer_id]);
 
+ // Fetch one pipeline lead and put it in (or take it out of) local state. The
+ // page loads `leads` once, so anything that hands this rep a lead after that —
+ // a claim, a dealer assigning one — has to land here or it is invisible.
+ const pullLead = async (id) => {
+   const { data } = await supabase.from("leads").select(LEAD_SELECT).eq("id", id).maybeSingle();
+   if (!data || data.is_deleted) {
+     setLeads((prev) => prev.filter((l) => l.id !== id));
+     return null;
+   }
+   setLeads((prev) => (prev.some((l) => l.id === id)
+     ? prev.map((l) => (l.id === id ? data : l))
+     : [data, ...prev]));
+   return data;
+ };
+
+ // Returns true only when the claim actually landed. A failed call keeps the
+ // lead in the pool so the rep can try again; "already claimed" removes it.
  const claimLead = async (lead) => {
-   if (claimingId) return;
+   if (claimingId) return false;
    setClaimingId(lead.id);
    const { data, error } = await supabase.rpc("claim_lead", { p_lead_id: lead.id });
-   setClaimingId(null);
-   setIncomingLeads((prev) => prev.filter((l) => l.id !== lead.id));
-   if (error) { toast.error("Could not claim the lead. Please try again."); return; }
-   if (data === true) {
-     toast.success("Lead claimed — it's yours.");
-     setActiveTab("leads");
-   } else {
-     toast.error("Too late — another salesman already claimed this lead.");
+   if (error) {
+     setClaimingId(null);
+     toast.error("Could not claim the lead. Check your connection and try again.");
+     return false;
    }
+   setIncomingLeads((prev) => prev.filter((l) => l.id !== lead.id));
+   if (data !== true) {
+     setClaimingId(null);
+     toast.error("Too late. Another salesman already claimed this lead.");
+     return false;
+   }
+   const claimed = await pullLead(lead.id);
+   setClaimingId(null);
+   toast.success("Lead claimed. It's in your pipeline.");
+   setActiveTab("leads");
+   if (claimed?.stage) setMobileLeadStage(claimed.stage);
+   return true;
  };
+
+ // Live pipeline: a lead assigned to this rep from anywhere else (the dealer's
+ // dashboard, a teammate's device, a chat or WhatsApp lead resolved to them)
+ // appears without a reload, and one the dealer deletes goes away.
+ const leadsRef = useRef(leads);
+ useEffect(() => { leadsRef.current = leads; }, [leads]);
+ useEffect(() => {
+   if (!userId) return;
+   const ch = supabase
+     .channel("my_leads_" + userId)
+     .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${userId}` }, ({ new: row }) => {
+       if (!row?.id) return;
+       if (row.is_deleted) { setLeads((prev) => prev.filter((l) => l.id !== row.id)); return; }
+       const known = leadsRef.current.find((l) => l.id === row.id);
+       // New to this rep, or pointed at a different car (the joined car is not
+       // in a realtime payload): fetch the full row.
+       if (!known || known.car_listing_id !== row.car_listing_id) { pullLead(row.id); return; }
+       setLeads((prev) => prev.map((l) => (l.id === row.id ? { ...l, ...row } : l)));
+     })
+     .subscribe();
+   return () => { supabase.removeChannel(ch); };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [userId]);
 
  // AI features state
  const [aiFollowups, setAiFollowups] = useState([]);
@@ -812,7 +901,7 @@ export default function SalesmanPanel() {
  (() => {
  let q = supabase
  .from("leads")
- .select("*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)")
+ .select(LEAD_SELECT)
  .eq("dealer_id", getDealerIdFromProfile(profile))
  .eq("is_deleted", false);
  if (!canPerm("view_all_leads")) q = q.eq("salesman_id", userId);
@@ -4986,18 +5075,24 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  })
  : leads;
 
- const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
+ // Every lead lands in exactly one bucket, so the legend always adds up to
+ // the pipeline total. Chat leads used to be counted in the total but drawn
+ // nowhere.
+ const SRC_BUCKETS = [
+ { key: "enquiry", label: "Enquiry", color: "#4ade80" },
+ { key: "whatsapp", label: "WhatsApp", color: "#22c55e" },
+ { key: "chat", label: "Chat", color: "#a78bfa" },
+ { key: "manual", label: "Manual", color: "#6b7280" },
+ { key: "other", label: "Other", color: "#60a5fa" },
+ ];
+ const srcMap = {};
  leads.forEach(l => {
  const s = l.lead_source || "manual";
- srcMap[s] = (srcMap[s] || 0) + 1;
+ const k = SRC_BUCKETS.some((b) => b.key === s) ? s : "other";
+ srcMap[k] = (srcMap[k] || 0) + 1;
  });
  const srcTotal = leads.length;
- const srcCfg = [
- { key: "enquiry", label: "WhatsApp", color: "#4ade80" },
- { key: "booking", label: "Booking", color: "#60a5fa" },
- { key: "xdrive", label: "XDrive", color: "#f87171" },
- { key: "manual", label: "Manual", color: "#6b7280" },
- ].filter(s => srcMap[s.key] > 0);
+ const srcCfg = SRC_BUCKETS.filter(s => srcMap[s.key] > 0);
 
  const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
 
@@ -6230,7 +6325,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
  <div>
  <h2 style={{ fontSize: 18, fontWeight: 700, color: "#fff", margin: 0 }}>Incoming Leads</h2>
- <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>Unclaimed enquiries from the marketplace — first to claim gets the lead.</p>
+ <p style={{ fontSize: 13, color: "#6b7280", margin: "2px 0 0" }}>Unclaimed buyers for your dealership. Read the chat, then claim. First to claim gets the lead.</p>
  </div>
  <span style={{ fontSize: 12, fontWeight: 700, color: "#f87171", background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", borderRadius: 8, padding: "5px 12px" }}>
  {incomingLeads.length} waiting
@@ -6244,31 +6339,64 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  No unclaimed leads right now. New marketplace enquiries will appear here instantly.
  </div>
  ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  {incomingLeads.map((l) => {
  const carName = l.car_listings ? [l.car_listings.year, l.car_listings.brand, l.car_listings.model].filter(Boolean).join(" ") : null;
  const claiming = claimingId === l.id;
+ const thread = poolThreads[l.id] || null;
+ const quote = l.lead_source === "chat" ? chatOpener(l.notes) : (l.buyer_message || l.notes || "");
+ const initials = (l.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+ const meta = { display: "inline-flex", alignItems: "center", gap: 5, minWidth: 0 };
  return (
- <div key={l.id} style={card}>
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+ <div key={l.id} style={{ ...card, padding: 14 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+ <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: "rgba(255,255,255,0.06)", color: "#e5e7eb", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700 }}>{initials}</div>
  <div style={{ minWidth: 0, flex: 1 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
- <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0 }}>{l.buyer_name || "Unknown buyer"}</p>
- {l.lead_source && <span style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#93c5fd", background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 6, padding: "2px 7px" }}>{String(l.lead_source).replace(/_/g, " ")}</span>}
- <span style={{ fontSize: 11, color: "#6b7280" }}>{fmtAgo(l.created_at)}</span>
+ <p style={{ fontSize: 15, fontWeight: 700, color: "#fff", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "Unknown buyer"}</p>
+ <p style={{ fontSize: 12, color: "#6b7280", margin: "1px 0 0" }}>
+ {LEAD_SOURCE_LABEL[l.lead_source] || "Lead"} · {fmtAgo(l.created_at)}
+ </p>
  </div>
- <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 8, fontSize: 13, color: "#cbd5e1" }}>
- {l.phone && <span>📱 {l.phone}</span>}
- {carName && <span>🚗 {carName}{l.car_listings?.selling_price ? ` · RM ${Number(l.car_listings.selling_price).toLocaleString()}` : ""}</span>}
- {l.buyer_state && <span>📍 {l.buyer_state}</span>}
- {l.buyer_message && <span style={{ color: "#94a3b8", fontStyle: "italic" }}>💬 “{l.buyer_message}”</span>}
- {l.notes && !l.buyer_message && <span style={{ color: "#94a3b8", fontStyle: "italic" }}>📝 {l.notes}</span>}
+ {thread?.seller_unread > 0 && (
+ <span style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: "#fca5a5", background: "rgba(220,38,38,0.12)", borderRadius: 6, padding: "3px 8px" }}>
+ {thread.seller_unread} unread
+ </span>
+ )}
  </div>
+
+ <div style={{ display: "flex", flexWrap: "wrap", columnGap: 14, rowGap: 4, marginTop: 10, fontSize: 12.5, color: "#9ca3af" }}>
+ {carName && (
+ <span style={meta}>
+ <Car size={13} style={{ flexShrink: 0 }} />
+ <span style={{ color: "#e5e7eb" }}>{carName}</span>
+ {l.car_listings?.selling_price ? <span>· RM {Number(l.car_listings.selling_price).toLocaleString("en-MY")}</span> : null}
+ </span>
+ )}
+ {l.phone
+ ? <span style={meta}><Phone size={13} style={{ flexShrink: 0 }} />{l.phone}</span>
+ : l.lead_source === "chat" && <span style={meta}><Phone size={13} style={{ flexShrink: 0 }} />No number yet, reply in chat</span>}
+ {l.buyer_state && <span style={meta}><MapPin size={13} style={{ flexShrink: 0 }} />{l.buyer_state}</span>}
  </div>
+
+ {quote && (
+ <p style={{ margin: "10px 0 0", padding: "8px 10px", borderRadius: 8, background: "rgba(255,255,255,0.04)", fontSize: 13, lineHeight: 1.5, color: "#cbd5e1", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+ {quote}
+ </p>
+ )}
+
+ <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+ {thread && (
+ <button
+ onClick={() => setChatSheet({ threadId: thread.id, buyerName: l.buyer_name || "Buyer", carLabel: carName, previewLead: l })}
+ style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "transparent", color: "#e5e7eb", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 12px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
+ >
+ <MessageSquare size={14} /> Read chat
+ </button>
+ )}
  <button
  onClick={() => claimLead(l)}
  disabled={claiming}
- style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 6, background: claiming ? "rgba(255,255,255,0.08)" : "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 14, fontWeight: 700, cursor: claiming ? "default" : "pointer" }}
+ style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: claiming ? "rgba(255,255,255,0.08)" : "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "10px 12px", fontSize: 13.5, fontWeight: 700, cursor: claiming ? "default" : "pointer" }}
  >
  {claiming ? "Claiming…" : "Claim lead"}
  </button>
@@ -8955,10 +9083,33 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      bar here — chat-assist is a salesman-plan feature. */}
  {chatSheet && (
  <ChatSheet
+ // Remount when a preview turns into the live conversation after a claim.
+ key={`${chatSheet.threadId}:${chatSheet.previewLead ? "preview" : "live"}`}
  threadId={chatSheet.threadId}
  buyerName={chatSheet.buyerName}
  carLabel={chatSheet.carLabel}
  theme="dark"
+ // An unclaimed lead is read-only: two reps answering one buyer is
+ // exactly what claiming exists to prevent.
+ readOnly={!!chatSheet.previewLead}
+ footer={chatSheet.previewLead ? (
+ <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px 12px", borderTop: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+ <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: 12, lineHeight: 1.45, color: "#9ca3af" }}>
+ Nobody has claimed this buyer yet. Claim to reply.
+ </p>
+ <button
+ disabled={claimingId === chatSheet.previewLead.id}
+ onClick={async () => {
+ const sheet = chatSheet;
+ const ok = await claimLead(sheet.previewLead);
+ setChatSheet(ok ? { threadId: sheet.threadId, buyerName: sheet.buyerName, carLabel: sheet.carLabel } : null);
+ }}
+ style={{ flexShrink: 0, background: "#dc2626", color: "#fff", border: "none", borderRadius: 10, padding: "9px 14px", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: claimingId === chatSheet.previewLead.id ? 0.6 : 1 }}
+ >
+ {claimingId === chatSheet.previewLead.id ? "Claiming…" : "Claim and reply"}
+ </button>
+ </div>
+ ) : null}
  onClose={() => setChatSheet(null)}
  />
  )}
