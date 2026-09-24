@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
+import { getStorefrontUrl } from "../hooks/useTenant";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { usePermissions } from "../hooks/usePermissions";
 import { hasFeature } from "../lib/permissions";
@@ -1259,11 +1260,8 @@ Rules:
  }
  };
 
- const _siteBase = dealerSubdomain
-  ? `https://${dealerSubdomain}.xdrive.my`
-  : "https://xdrive.my";
  const uniqueLink = profile?.slug
-  ? `${_siteBase}/cars?ref=${profile.slug}`
+  ? getStorefrontUrl(dealerSubdomain, `/cars?ref=${profile.slug}`)
   : null;
 
  const handleCopy = () => {
@@ -1395,8 +1393,7 @@ Rules:
  };
 
  const handleListingCopy = (car, type) => {
- const _base = dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my";
- const link = `${_base}/cars/${car.slug}?ref=${profile?.slug || ""}`;
+ const link = getStorefrontUrl(dealerSubdomain, `/cars/${car.slug}?ref=${profile?.slug || ""}`);
  let text = link;
  if (type === "wa") {
  const price = Number(car.selling_price || 0);
@@ -1691,7 +1688,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const price = car.selling_price
 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
  : null;
- const link = car.slug ? `${_siteBase}/cars/${car.slug}` : null;
+ const link = car.slug ? getStorefrontUrl(dealerSubdomain, `/cars/${car.slug}`) : null;
  const msg = [
  `Hi! Tengok ni — ${name} dah ada dalam lineup kita!`,
  price? `Harga: ${price}` : null,
@@ -3692,7 +3689,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <ShareMenu
  dark
  label="Share Listing"
- baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${car.slug}`}
+ baseUrl={getStorefrontUrl(dealerSubdomain, `/cars/${car.slug}`)}
  refSlug={profile?.slug || ""}
  style={{ width: "100%", padding: "10px 12px", borderRadius: 6, fontSize: 12, fontWeight: 500 }}
  waCaption={(link) => [
@@ -5508,7 +5505,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {plCar ? (
  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden" }}>
  <div
- onClick={() => { if (plCar.slug) window.open(`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : "https://xdrive.my"}/cars/${plCar.slug}`, "_blank"); }}
+ onClick={() => { if (plCar.slug) window.open(getStorefrontUrl(dealerSubdomain, `/cars/${plCar.slug}`), "_blank"); }}
  style={{ position: "relative", aspectRatio: "4 / 3", background: "rgba(255,255,255,0.04)", cursor: plCar.slug ? "pointer" : "default" }}
  >
  {Array.isArray(plCar.images) && plCar.images[0]

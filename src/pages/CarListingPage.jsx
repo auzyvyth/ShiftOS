@@ -362,7 +362,7 @@ export default function CarListingPage() {
   // page with different inventory. Point subdomain pages at their own host.
   const canonicalUrl = isMarketplace
     ? `https://xdrive.my${basePath}`
-    : `${getStorefrontUrl(getSubdomain())}${basePath}`;
+    : getStorefrontUrl(getSubdomain(), basePath);
 
   // Subdomain storefront = dark theme (matches the rest of the dealer page);
   // marketplace = light. Drives the page surfaces below.

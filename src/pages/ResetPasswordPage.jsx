@@ -32,7 +32,12 @@ async function redirectByRole(session, navigate) {
   }
 
   if (role === 'dealer') {
-    if (subdomain) {
+    // Cross-subdomain handoff only makes sense on the real domain — a Vercel
+    // preview/localhost has no dealer subdomains to jump to, and doing it
+    // anyway leaves the preview build entirely (lands on real prod). Mirrors
+    // LoginPage.jsx's isProd guard.
+    const isProd = window.location.hostname === 'xdrive.my' || window.location.hostname.endsWith('.xdrive.my');
+    if (subdomain && isProd) {
       // Carry the session across to the subdomain via the hash-fragment handoff
       // (same mechanism useTenant consumes). Query-string tokens were never read
       // by the subdomain (so the dealer landed logged out) and leak via referer.

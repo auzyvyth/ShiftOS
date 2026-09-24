@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getStorefrontUrl } from '../hooks/useTenant';
 import NotFoundPage from './NotFoundPage';
 
 export default function DealerSlugRedirect() {
@@ -28,7 +29,7 @@ export default function DealerSlugRedirect() {
       if (cancelled) return;
       // Validate subdomain is alphanumeric/hyphens only before using in URL
       if (sub && /^[a-z0-9-]{1,63}$/.test(sub)) {
-        window.location.href = `https://${sub}.xdrive.my`;
+        window.location.href = getStorefrontUrl(sub);
       } else {
         setState('notfound');
       }

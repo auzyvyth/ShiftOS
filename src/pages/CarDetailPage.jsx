@@ -58,7 +58,7 @@ import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
-import { isSubdomain } from "../hooks/useTenant";
+import { isSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
@@ -839,7 +839,7 @@ function useCarSchema(listing, dealer) {
         : undefined,
       image: listing.images ?? undefined,
       url: dealer?.subdomain
-        ? `https://${dealer.subdomain}.xdrive.my/cars/${listing.slug}`
+        ? getStorefrontUrl(dealer.subdomain, `/cars/${listing.slug}`)
         : `https://xdrive.my/showroom/${listing.slug}`,
       offers: {
         "@type": "Offer",
@@ -1829,7 +1829,7 @@ export default function CarDetailPage() {
   // Standalone agents (Salesman Lite) have no dealer profile, so without this their
   // listing showed no "Visit page" link at all.
   const sellerPageUrl = dealer?.subdomain
-    ? `https://${dealer.subdomain}.xdrive.my`
+    ? getStorefrontUrl(dealer.subdomain)
     : dealer?.slug
       ? `https://xdrive.my/s/${dealer.slug}`
       : salesmanProfile?.slug
@@ -1905,7 +1905,7 @@ export default function CarDetailPage() {
           const img = car?.images?.[0] || `${origin}/og-default.jpg`;
           const url = car
             ? (dealer?.subdomain
-                ? `https://${dealer.subdomain}.xdrive.my/cars/${car.slug}`
+                ? getStorefrontUrl(dealer.subdomain, `/cars/${car.slug}`)
                 : `https://xdrive.my/showroom/${car.slug}`)
             : origin;
           // react-helmet can't traverse a Fragment child (dev invariant crash,
@@ -2366,7 +2366,7 @@ export default function CarDetailPage() {
               buyers actually see whose showroom this is */}
           {dealer?.subdomain && !isSubdomain() && (
             <a
-              href={`https://${dealer.subdomain}.xdrive.my`}
+              href={getStorefrontUrl(dealer.subdomain)}
               target="_blank" rel="noopener noreferrer"
               style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
             >

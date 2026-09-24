@@ -38,7 +38,7 @@ import { supabase } from "../supabaseClient";
 import { readCache, writeCache } from "../utils/localCache";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import ReviewsSection from "../components/reviews/ReviewsSection";
-import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
+import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 
 // Lazy — only the root domain (no dealer subdomain) ever needs this. Loaded
 // here instead of navigated to, so the public marketplace lives at "/"
@@ -407,7 +407,7 @@ const HomePage = () => {
         .eq("id", user.id)
         .maybeSingle();
       if (profile?.role === "dealer" && profile?.subdomain && !isSubdomain()) {
-        window.location.href = `https://${profile.subdomain}.xdrive.my`;
+        window.location.href = getStorefrontUrl(profile.subdomain);
       }
     }
     checkDealerRedirect();
