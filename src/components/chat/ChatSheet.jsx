@@ -26,6 +26,8 @@ export default function ChatSheet({
   aiAssist = false,
   aiUpgrade = false,
   upgradeHref = '/choose-plan',
+  readOnly = false,
+  footer = null,
   onClose,
 }) {
   // Size to the area the keyboard leaves behind, not to `vh` — see
@@ -143,6 +145,8 @@ export default function ChatSheet({
               headerName={buyerName}
               headerSub={carLabel}
               headerRight={closeBtn}
+              readOnly={readOnly}
+              footer={footer}
             />
           )}
         </div>

@@ -17,7 +17,8 @@ import { ArrowRight, Check } from "lucide-react";
 const LITE = [
   {
     key: "dashboard", tab: "Dashboard",
-    img: null,
+    img: "/for-salesmen/lite-dashboard.png", w: 569, h: 565,
+    alt: "Follow-up needed list of 28 leads, colour-coded by stage from New to Deposit Taken, with a WhatsApp button on each row",
     title: "Open the app. Know who needs you today.",
     pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
     moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
@@ -31,7 +32,8 @@ const LITE = [
   },
   {
     key: "performance", tab: "Performance",
-    img: null,
+    img: "/for-salesmen/lite-performance.png", w: 567, h: 534,
+    alt: "My Performance over 30 days: 216 views, 136 WhatsApp taps, 63% conversion, with a Top Views tag on the leading cars",
     title: "See which car pulls buyers, and which one is stuck.",
     pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
     moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
@@ -45,7 +47,8 @@ const LITE = [
   },
   {
     key: "leads", tab: "Leads",
-    img: null,
+    img: "/for-salesmen/lite-leads.png", w: 413, h: 444,
+    alt: "Lead pipeline of 37 buyers with source breakdown, stage filters and buyer cards showing warm tags and a WhatsApp button",
     title: "Every buyer in a stage, not lost in a chat.",
     pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
     moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
@@ -106,7 +109,9 @@ const PREMIUM = [
     pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
   },
   {
-    key: "thisweek", tab: "Dashboard", img: null,
+    key: "thisweek", tab: "Dashboard",
+    img: "/for-salesmen/premium-thisweek.png", w: 555, h: 468,
+    alt: "Today's Agenda showing missed appointments, test drives and scheduled follow-ups for the day",
     title: "A call list for this week, already sorted.",
     pain: "Past buyers, quiet leads and reminders you set all live on different screens, so the calls that bring repeat business never get made.",
     moment: "Monday morning. One list: two buyers nobody replied to, one lead going quiet, and a past customer whose insurance is due. One row per person, even when there are two reasons to call.",
@@ -119,7 +124,9 @@ const PREMIUM = [
     pays: "Repeat buyers and referrals are the cheapest deals you will ever close.",
   },
   {
-    key: "sold", tab: "Sold", img: null,
+    key: "sold", tab: "Sold",
+    img: "/for-salesmen/premium-sold.png", w: 435, h: 617,
+    alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
     title: "Won is not done. The handover, step by step.",
     pain: "After the deal comes loan settlement, insurance, Puspakom, the JPJ transfer and road tax. Miss one and the buyer calls you angry instead of recommending you.",
     moment: "You mark a deal Won. An 8-step handover checklist appears in the right order with the official fees filled in. Tick insurance done and next year's renewal date is saved.",
@@ -132,7 +139,9 @@ const PREMIUM = [
     pays: "A smooth handover is how one sale turns into the buyer's brother, cousin and colleague.",
   },
   {
-    key: "analytics", tab: "Analytics", img: null,
+    key: "analytics", tab: "Analytics",
+    img: "/for-salesmen/premium-analytics.png", w: 763, h: 609,
+    alt: "Close rate funnel showing where deals stop, with Contacted marked as the weakest step, plus median reply speed",
     title: "Find out where you are losing deals.",
     pain: "You know you closed three this month. You do not know whether you lost the rest at the first reply, the viewing or the test drive.",
     moment: "End of the month. The funnel shows most of your lost buyers dropped after booking a viewing. That is what you fix next month, not your ads.",

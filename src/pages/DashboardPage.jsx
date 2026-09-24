@@ -4337,6 +4337,17 @@ function MarketplaceAnalyticsTab({ profile }) {
 
 // FIXED: auth-first account creation
 // ─── TeamTab ──────────────────────────────────────────────────────────────────
+function lastActiveText(ts) {
+  if (!ts) return 'No activity yet';
+  const mins = Math.floor((Date.now() - new Date(ts)) / 60000);
+  if (mins < 60) return mins <= 1 ? 'Just now' : `${mins}m ago`;
+  if (mins < 1440) return `${Math.floor(mins / 60)}h ago`;
+  const d = Math.floor(mins / 1440);
+  if (d === 1) return 'Yesterday';
+  if (d < 30) return `${d}d ago`;
+  return '30d+ ago';
+}
+
 function TeamTab({ managerDealership, dealerId, profile }) {
   const [salespeople, setSalespeople] = useState([]);
   const [loadingTeam, setLoadingTeam] = useState(true);
@@ -4368,6 +4379,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [soldMap, setSoldMap] = useState({});
   const [lastActivityMap, setLastActivityMap] = useState({});
   const [activityCountMap, setActivityCountMap] = useState({});
+  const [chatCountMap, setChatCountMap] = useState({});
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
   const [commissionWorking, setCommissionWorking] = useState(false);
@@ -4421,25 +4433,26 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     setSoldMap(map);
   };
 
+  // Real activity per team member. This read activity_log alone, which only
+  // THIS dashboard writes — nothing a salesman does lands there, so every
+  // salesman older than 30 days showed "Inactive 30d+" however hard they worked.
+  // get_team_activity also counts lead_activities (stage moves, calls,
+  // WhatsApps, notes, claims) and seller chat replies. Counts only.
   const fetchLastActivity = async () => {
     if (!dealerId) return;
-    const { data } = await supabase
-      .from('activity_log')
-      .select('actor_id, action, created_at')
-      .eq('dealer_id', dealerId)
-      .not('actor_id', 'is', null)
-      .order('created_at', { ascending: false });
-    if (!data) return;
+    const { data, error } = await supabase.rpc('get_team_activity', { p_dealer_id: dealerId });
+    if (error) { console.error('[TeamTab] team activity:', error.message); return; }
     const map = {};
-    const counts = {};            // actor_id -> actions in last 30 days
-    const cutoff = Date.now() - 30 * 86400000;
-    data.forEach(({ actor_id, created_at }) => {
-      if (!actor_id) return;
-      if (!map[actor_id]) map[actor_id] = created_at;
-      if (new Date(created_at).getTime() >= cutoff) counts[actor_id] = (counts[actor_id] || 0) + 1;
+    const counts = {};
+    const chats = {};
+    (data || []).forEach((r) => {
+      map[r.user_id] = r.last_active_at;
+      counts[r.user_id] = r.actions_30d || 0;
+      chats[r.user_id] = r.chats_30d || 0;
     });
     setLastActivityMap(map);
     setActivityCountMap(counts);
+    setChatCountMap(chats);
   };
 
   // Assigned-cars (exclusivity lock) per salesman. Sold units keep assigned_to as
@@ -5154,6 +5167,22 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                             </div>
                           ))}
                         </div>
+                        {/* What this rep has actually done lately: pipeline work
+                            (stage moves, calls, WhatsApps, notes, claims) and chat
+                            replies to buyers, from get_team_activity. */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-gray-500">
+                          <span className="inline-flex items-center gap-1.5">
+                            <Clock className="w-3 h-3 text-gray-400" />
+                            Last active <span className="font-semibold text-gray-900">{lastActiveText(lastActivityMap[s.id])}</span>
+                          </span>
+                          <span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{activityCountMap[s.id] || 0}</span> pipeline actions
+                          </span>
+                          <span>
+                            <span className="font-semibold text-gray-900 tabular-nums">{chatCountMap[s.id] || 0}</span> chat replies
+                          </span>
+                          <span className="text-gray-400">last 30 days</span>
+                        </div>
                         {/* Assigned cars — exclusivity lock. Shows which units this rep
                             is solely responsible for (commission locked to them). */}
                         <div style={{ marginTop: 10 }}>
@@ -5231,16 +5260,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                           fi_officer: { desc: 'Hire-purchase submissions & bank approvals' },
                         };
                         const meta = ROLE_META[s.role] || { desc: 'Team member' };
-                        const last = lastActivityMap[s.id];
-                        const lastTxt = last
-                          ? (() => {
-                              const d = Math.floor((Date.now() - new Date(last)) / 86400000);
-                              if (d <= 0) return 'Today';
-                              if (d === 1) return 'Yesterday';
-                              if (d < 30) return `${d}d ago`;
-                              return '30d+ ago';
-                            })()
-                          : 'No activity';
+                        const lastTxt = lastActiveText(lastActivityMap[s.id]);
                         return (
                           <>
                             <p className="text-xs text-gray-500 mb-3">{meta.desc}</p>
