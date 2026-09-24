@@ -4066,7 +4066,7 @@ export default function CarDetailPage() {
                   <X size={16} />
                 </button>
               </div>
-              <div style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px 24px' }}>
                 <FinancingCalculator
                   initialPrice={car.selling_price}
                   engineCc={car.engine_cc}

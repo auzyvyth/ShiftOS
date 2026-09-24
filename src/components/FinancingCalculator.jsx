@@ -732,7 +732,11 @@ const FinancingCalculator = ({
       }}>
 
         {/* ── Two-column layout ── */}
-        <div className="calc-layout" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
+        {/* alignItems: 'stretch' (the flex default) so the shorter results
+            column matches the inputs column's height instead of floating at
+            its own, much shorter, natural height — see the card below, which
+            fills that stretched height and pushes Actions to the bottom. */}
+        <div className="calc-layout" style={{ display: 'flex', gap: 20, alignItems: 'stretch' }}>
 
           {/* ══ LEFT: Inputs ══════════════════════════════════════════════════ */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -963,7 +967,7 @@ const FinancingCalculator = ({
               other host of this component (dealer dashboard, F&I panel, car
               page — none of which set --mh-h) on exactly the 88px it has now. */}
           <div className="calc-results" style={{ width: 300, flexShrink: 0, position: 'sticky', top: 'calc(var(--mh-h, 70px) + 18px)', transition: 'top .28s ease' }}>
-            <div style={{ ...card, border: `1px solid ${light ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}` }}>
+            <div style={{ ...card, border: `1px solid ${light ? 'rgba(220,38,38,0.25)' : 'rgba(220,38,38,0.18)'}`, height: '100%', display: 'flex', flexDirection: 'column' }}>
 
               {/* Monthly installment hero */}
               <div style={{ textAlign: 'center', padding: '16px 0 18px', borderBottom: `1px solid ${c.divider}`, marginBottom: 14 }}>
@@ -1039,8 +1043,10 @@ const FinancingCalculator = ({
                 </div>
               </>}
 
-              {/* Actions */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Actions — marginTop: auto pins this to the bottom of the card,
+                  absorbing the stretch when the inputs column runs taller
+                  instead of leaving it floating right under the toggle. */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
                 <button
                   onClick={handleDownloadImage}
                   disabled={imgLoading}
