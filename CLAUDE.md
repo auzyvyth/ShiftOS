@@ -23,8 +23,10 @@ which case say so rather than picking a path yourself.
   `android/`, `ios/` are scaffolded — see `TODO.md` MOBILE-2 for what's real
   vs. still provisional (`appId` is a placeholder pending an owner call on
   whether the store listing is branded ShiftOS or XDrive). **Current
-  standing blocker: none technical** — next bricks (MOBILE-4 CORS,
-  MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
+  standing blocker: none technical** — MOBILE-4 CORS is DONE (2026-09-24,
+  `supabase/functions/_shared/cors.ts`). Next bricks (MOBILE-6 absolute /api URLs
+  in the app, MOBILE-7 in-app account deletion for every role — an Apple
+  rejection reason, MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
   Developer + Google Play Console signups, a privacy policy URL, an
   Android signing keystore) can all proceed independently; pick the next
   unclaimed one each session. Update this line as each is resolved so it
@@ -458,6 +460,12 @@ leads. Nothing errors visibly — the caller logs and moves on.
 Plain version: what is running on Supabase is often NOT what is in `supabase/functions/`.
 Some functions were built straight in the Supabase dashboard and never committed; others
 were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
+- **CORS lives in ONE file: `supabase/functions/_shared/cors.ts`.** Every
+  browser-called function imports it; deploy it alongside (`files: [index.ts,
+  ../_shared/cors.ts]` — the MCP deploy bundles the relative import fine). Do not
+  hand-roll a per-function allowlist again; there were five and they disagreed.
+  Test a deploy from SQL: `net.http_post(..., headers => {Origin, Authorization: anon
+  key})`, then read `net._http_response.headers->>'access-control-allow-origin'`.
 - **ALWAYS run `mcp__Supabase__get_edge_function` and diff it against the repo file
   BEFORE you edit or redeploy anything.** Redeploying "the repo version" without
   checking silently deletes whatever only exists in the deployed version.

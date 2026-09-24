@@ -4256,12 +4256,33 @@ native build.
   WATCH: `notify-price-alerts` and `appointment-reminders` carry literal JWTs inline in
   `cron.job.command`. They work, but the token is sitting in plaintext in the job table and
   will break silently whenever it is rotated — move them to `get_cron_edge_key()` too.
-- [ ] **MOBILE-4: edge function CORS allowlist will reject the native origin.** `invites`,
-  `create-salesman`, `send-document` and `import-drive-images` all hard-allowlist
-  `https://xdrive.my` / `*.xdrive.my` / localhost. A native shell's origin
-  (`capacitor://localhost` or similar) gets silently rejected by every one of them. Cheap
-  one-line fix per function — but easy to forget until a store build mysteriously breaks, so
-  it is logged here. Depends on MOBILE-2 for the exact origin string.
+- [x] **MOBILE-4 — DONE 2026-09-24.** One allowlist, `supabase/functions/_shared/cors.ts`,
+  imported by all 10 browser-called functions (ai-proxy, chat-assist, send-telegram,
+  send-push, invites, create-salesman, send-document, delete-account,
+  import-drive-images, send-signup-reminder). Allows `capacitor://localhost` (iOS) and
+  `https://localhost` (Android) — Capacitor 8 defaults, read from node_modules, not
+  memory — plus `*.xdrive.my` and this project's Vercel previews only
+  (`shift-*-shift-os.vercel.app`). Verified live: 36 requests from the DB via
+  `net.http_post`, each function 401s a logged-out caller and echoes the three good
+  origins, falls back to xdrive.my for a foreign one. Change `server.iosScheme` /
+  `androidScheme` / `hostname` in capacitor.config.json and this list must change too.
+  Found while redeploying, fixed: `invites` took `dealer_id` from the request body (a
+  dealer could plant a manager in a competitor's dealership) and its DELETE removed any
+  auth user by id; `send-document` never checked the caller belonged to the dealership.
+  `send-document` repo copy was behind the deployed one (IC blur) — repo now matches.
+- [ ] **MOBILE-6: relative `/api/...` calls break inside the native app.** Seven call
+  sites `fetch('/api/…')` (auth-account-status, booking, call-number, car-specs,
+  enquiry, waitlist, whatsapp-lead). In the app that resolves to `capacitor://localhost/api`
+  — enquiry, booking and WhatsApp lead capture would all fail. Needs one `apiUrl(path)`
+  helper (absolute `https://xdrive.my` when `Capacitor.isNativePlatform()`) and the same
+  origin allowlist on those Vercel functions.
+- [ ] **MOBILE-7: in-app account deletion for every role (App Store blocker).** Apple
+  guideline 5.1.1(v): any app that allows account creation must let the user START
+  deletion inside the app; deactivation alone does not count
+  (developer.apple.com/news/?id=12m75xbj). `delete-account` only accepts a solo salesman
+  (`role='salesman' AND dealer_id IS NULL`) — dealers and buyers (who can sign up) have
+  no path. Soft-delete + 30-day purge is acceptable as long as the purge really runs
+  (it was failing nightly until `20260924e`).
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

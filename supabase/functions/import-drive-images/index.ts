@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
 // import-drive-images
 // -------------------
@@ -26,25 +27,7 @@ const MAX_IMAGES_PER_REQUEST = 300; // total across the batch
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 const DRIVE = "https://www.googleapis.com/drive/v3";
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
-function corsHeaders(origin: string | null) {
-  const allowed =
-    origin && ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(".xdrive.my"))
-      ? origin
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
 function json(data: unknown, status = 200, origin: string | null = null) {
   return new Response(JSON.stringify(data), {
