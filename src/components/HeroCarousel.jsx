@@ -440,6 +440,8 @@ const HC_CSS = `
     width: 100%;
     max-width: 520px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 6;
   }
   .hc-search-form {
     position: relative;
