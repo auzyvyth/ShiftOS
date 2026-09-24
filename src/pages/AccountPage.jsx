@@ -126,8 +126,65 @@ export default function AccountPage() {
     window.location.href = '/';
   };
 
+  // MOBILE-7 follow-up: self-service restore within the 30-day grace window
+  // after deleting via the Danger Zone above. Same restore_my_account() RPC
+  // as SalesmanLite's own gate — it checks the window server-side.
+  const [reactivating, setReactivating] = useState(false);
+  const handleReactivate = async () => {
+    setReactivating(true);
+    const { error } = await supabase.rpc('restore_my_account');
+    if (error) {
+      console.error('reactivate:', error);
+      toast.error(
+        error.message?.includes('restore_window_expired')
+          ? 'The 30-day window to restore this account has passed.'
+          : "Couldn't restore your account. Please try again.",
+      );
+      setReactivating(false);
+      return;
+    }
+    window.location.reload();
+  };
+
   if (checking) {
     return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "system-ui,sans-serif", fontSize: 14 }}>Loading…</div>;
+  }
+
+  if (profile?.account_status === 'deleted') {
+    const deletedAt = profile.deleted_at ? new Date(profile.deleted_at) : null;
+    const daysLeft = deletedAt
+      ? Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000))
+      : 30;
+    return (
+      <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 400, textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+            <Trash2 size={24} color="#dc2626" />
+          </div>
+          <p style={{ margin: '0 0 8px', fontSize: 17, fontWeight: 700, color: '#111827' }}>Account scheduled for deletion</p>
+          <p style={{ margin: '0 0 22px', fontSize: 13.5, color: '#6b7280', lineHeight: 1.6 }}>
+            {daysLeft > 0
+              ? `You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} left to restore this account before it's permanently deleted.`
+              : "This account's restore window has ended."}
+          </p>
+          <button
+            onClick={handleReactivate}
+            disabled={reactivating}
+            style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 24px', fontSize: 13.5, fontWeight: 700, cursor: reactivating ? 'default' : 'pointer', opacity: reactivating ? 0.6 : 1, fontFamily: 'inherit' }}
+          >
+            {reactivating ? 'Restoring…' : 'Restore my account'}
+          </button>
+          <div>
+            <button
+              onClick={signOut}
+              style={{ marginTop: 18, background: 'none', border: 'none', color: '#9ca3af', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const email = session?.user?.email || 'Your account';

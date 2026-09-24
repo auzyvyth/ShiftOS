@@ -9591,6 +9591,7 @@ export default function DashboardPage() {
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [reactivating, setReactivating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(() => {
     const gid = TAB_TO_GROUP[tabParam || "overview"];
@@ -10500,6 +10501,63 @@ export default function DashboardPage() {
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (!profile) return <SciFiLoader />;
+
+  // MOBILE-7 follow-up: self-service restore within the 30-day grace window
+  // after a delete-account soft delete (SettingsTab's Danger Zone). Same
+  // restore_my_account() RPC as SalesmanLite's own gate — it checks the
+  // window server-side, so this is only ever a thin UI around it.
+  const handleReactivate = async () => {
+    setReactivating(true);
+    const { error } = await supabase.rpc('restore_my_account');
+    if (error) {
+      console.error('reactivate:', error);
+      toast.error(
+        error.message?.includes('restore_window_expired')
+          ? 'The 30-day window to restore this account has passed.'
+          : "Couldn't restore your account. Please try again.",
+      );
+      setReactivating(false);
+      return;
+    }
+    window.location.reload();
+  };
+
+  if (profile.account_status === 'deleted') {
+    const deletedAt = profile.deleted_at ? new Date(profile.deleted_at) : null;
+    const daysLeft = deletedAt
+      ? Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000))
+      : 30;
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f6f8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+            <Trash2 size={24} color="#dc2626" />
+          </div>
+          <p className="text-gray-900 text-lg font-bold mb-2">Account scheduled for deletion</p>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            {daysLeft > 0
+              ? `You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} left to restore this account before it's permanently deleted.`
+              : "This account's restore window has ended."}
+          </p>
+          <button
+            onClick={handleReactivate}
+            disabled={reactivating}
+            className="bg-red-600 text-white text-sm font-bold rounded-lg px-6 py-3 disabled:opacity-60"
+          >
+            {reactivating ? 'Restoring…' : 'Restore my account'}
+          </button>
+          <div>
+            <button
+              onClick={() => supabase.auth.signOut().then(() => navigate('/login'))}
+              className="mt-5 text-gray-400 text-xs underline bg-transparent border-none cursor-pointer"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Paid dealer whose payment isn't yet confirmed — gate the whole dashboard
   // behind the pending/payment screen until an admin marks payment received.

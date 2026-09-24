@@ -4311,15 +4311,20 @@ native build.
   — a manager/admin sharing the same Settings tab never sees the option), `src/pages/
   AccountPage.jsx` (buyer, small link at the page bottom). All three: portal modal, body
   scroll lock, type-DELETE-to-confirm, same shape as the existing SalesmanLite one.
-  **Known gap, deliberately not built this session (scope control, see CLAUDE.md prompt
-  discipline)**: only SalesmanLite has an in-app "you're deleted, restore?" gate.
-  DashboardPage/AccountPage have none — `restore_my_account()` RPC already works for
-  any role, so this is a missing FRONTEND gate, not a backend gap. Today this is not a
-  hard lockout (nothing currently blocks a `account_status='deleted'` dealer/buyer from
-  still using the app normally — same pre-existing behavior as an admin-console soft
-  delete), so a mis-tap just means "ask support" or "wait 30 days" rather than "no
-  losses possible" until this is added. Next session: port SalesmanLite's
-  `account_status === 'deleted'` gate + restore button to DashboardPage and AccountPage.
+  **Follow-up gap CLOSED same day (2026-09-24)**: ported SalesmanLite's "you're
+  deleted, restore?" gate to `DashboardPage.jsx` (main component, right after the
+  `!profile` loading gate, before the payment-pending gate — verified no hooks are
+  declared anywhere later in that 12k-line file, so the early return can't violate
+  Rules of Hooks) and `AccountPage.jsx` (right after the `checking` gate). Both call
+  the same `restore_my_account()` RPC as SalesmanLite, show days-left, and sign out
+  as a fallback.
+  **Caught a second dead-feature bug while wiring the buyer gate**:
+  `src/hooks/useBuyerGuard.js`'s profile `select()` never fetched `account_status` /
+  `deleted_at` — every buyer page reads its profile through this hook, so the gate
+  would have been permanently unreachable dead code (same shape as the CDP-1
+  `job_title` bug elsewhere in this file: the column existed, nothing ever selected
+  it). Added both columns to the select. DashboardPage's own fetch already used
+  `select("*")`, so it didn't need the same fix.
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

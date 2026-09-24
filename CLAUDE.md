@@ -24,13 +24,11 @@ which case say so rather than picking a path yourself.
   vs. still provisional (`appId` is a placeholder pending an owner call on
   whether the store listing is branded ShiftOS or XDrive). **Current
   standing blocker: none technical** — MOBILE-4 CORS, MOBILE-6 absolute /api
-  URLs, and MOBILE-7 in-app account deletion are all DONE (2026-09-24 —
+  URLs, and MOBILE-7 in-app account deletion (incl. the restore-gate UI on
+  DashboardPage/AccountPage) are all DONE (2026-09-24 —
   `supabase/functions/_shared/cors.ts`, `src/utils/apiUrl.js` + `lib/cors.js`,
-  `supabase/functions/delete-account`). MOBILE-7 has one known follow-up: only
-  SalesmanLite has a restore-my-account UI gate — DashboardPage/AccountPage
-  can soft-delete but not yet show the "you're deleted, restore?" screen (see
-  `TODO.md` MOBILE-7 for the exact gap). Next bricks (that follow-up,
-  MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
+  `supabase/functions/delete-account`). Next bricks (MOBILE-5
+  subdomain-tenancy decision, store icon/splash assets, Apple
   Developer + Google Play Console signups, a privacy policy URL, an Android
   signing keystore) can all proceed independently; pick the next unclaimed
   one each session. Update this line as each is resolved so it never goes

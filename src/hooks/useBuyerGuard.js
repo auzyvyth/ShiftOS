@@ -27,7 +27,9 @@ export function useBuyerGuard() {
       const { data: prof } = await supabase
         // dealer_id + plan so a standalone salesman who lands here is sent to
         // their own panel directly, not via /salesman and a second redirect.
-        .from('profiles').select('role, dealer_id, plan, full_name, avatar_url, phone')
+        // account_status + deleted_at drive AccountPage's restore-my-account
+        // gate (MOBILE-7) — without them here it can never fire.
+        .from('profiles').select('role, dealer_id, plan, full_name, avatar_url, phone, account_status, deleted_at')
         .eq('id', data.session.user.id).maybeSingle();
       if (!active) return;
       const home = routeForProfile(prof);
