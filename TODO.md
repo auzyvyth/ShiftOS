@@ -4285,13 +4285,41 @@ native build.
   in this session). NOT yet verified against a real Capacitor build (no Android SDK /
   Xcode in this sandbox, per MOBILE-2) — next session with device access should confirm
   a native build can actually reach `/api/enquiry` etc. end-to-end.
-- [ ] **MOBILE-7: in-app account deletion for every role (App Store blocker).** Apple
-  guideline 5.1.1(v): any app that allows account creation must let the user START
-  deletion inside the app; deactivation alone does not count
-  (developer.apple.com/news/?id=12m75xbj). `delete-account` only accepts a solo salesman
-  (`role='salesman' AND dealer_id IS NULL`) — dealers and buyers (who can sign up) have
-  no path. Soft-delete + 30-day purge is acceptable as long as the purge really runs
-  (it was failing nightly until `20260924e`).
+- [x] **MOBILE-7 — DONE 2026-09-24 (with one known gap, read below).** Apple guideline
+  5.1.1(v): any app that allows account creation must let the user START deletion inside
+  the app; deactivation alone does not count (developer.apple.com/news/?id=12m75xbj).
+  `delete-account` (`supabase/functions/delete-account/index.ts`) now accepts a solo
+  salesman (unchanged), a self-owned dealer/owner, or a buyer — dealer-managed staff
+  (manager/admin/accountant/fi_officer, a linked salesman) and superadmin still cannot
+  self-delete here, matching the resolver doctrine (verified with a read-only query
+  against real rows: 22 buyers + 4 dealers + 1 owner now eligible, 0 staff/superadmin
+  rows wrongly included). Deployed live (v6), diffed against the deployed source first
+  per the edge-function drift rule — no drift found.
+  **Found and fixed a real data-loss bug before shipping this**: `chat_threads.buyer_id`
+  and `chat_messages.sender_id` both `ON DELETE CASCADE`d off `auth.users`. Most buyers
+  are anonymous-upgraded guests, so the 30-day purge hard-deleting a buyer would have
+  silently wiped the SELLER's own copy of every conversation with them — exactly the
+  landmine this file's "Deleting an anonymous user deletes the conversation" note
+  warned about. Fixed in migration `20260924j_chat_survives_buyer_delete.sql`: both FKs
+  are now `ON DELETE SET NULL` (columns made nullable first). Confirmed safe: the
+  seller's UI renders `buyer_label`/`sender_role`, never a join through the id column,
+  and `chat_thread_role()` only ever compares `buyer_id = auth.uid()` (NULL never
+  matches). Applied live and verified via `pg_constraint`.
+  UI added: `src/pages/SalesmanPremium.jsx` (Settings → Account → Delete Account — this
+  solo-Premium account was already eligible on the backend, it just had no button),
+  `src/pages/DashboardPage.jsx` (SettingsTab, gated to `role IN ('dealer','owner')` only
+  — a manager/admin sharing the same Settings tab never sees the option), `src/pages/
+  AccountPage.jsx` (buyer, small link at the page bottom). All three: portal modal, body
+  scroll lock, type-DELETE-to-confirm, same shape as the existing SalesmanLite one.
+  **Known gap, deliberately not built this session (scope control, see CLAUDE.md prompt
+  discipline)**: only SalesmanLite has an in-app "you're deleted, restore?" gate.
+  DashboardPage/AccountPage have none — `restore_my_account()` RPC already works for
+  any role, so this is a missing FRONTEND gate, not a backend gap. Today this is not a
+  hard lockout (nothing currently blocks a `account_status='deleted'` dealer/buyer from
+  still using the app normally — same pre-existing behavior as an admin-console soft
+  delete), so a mis-tap just means "ask support" or "wait 30 days" rather than "no
+  losses possible" until this is added. Next session: port SalesmanLite's
+  `account_status === 'deleted'` gate + restore button to DashboardPage and AccountPage.
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

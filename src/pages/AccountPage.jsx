@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { Heart, Bell, BellRing, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
+import { Heart, Bell, BellRing, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import { useBuyerGuard } from '../hooks/useBuyerGuard';
@@ -97,6 +99,32 @@ export default function AccountPage() {
   };
 
   const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
+
+  // Danger Zone — self-service account deletion (MOBILE-7). Soft delete:
+  // hides saved cars/alerts and price-alert emails immediately; nothing is
+  // destroyed for 30 days (restore_my_account() on next login undoes it).
+  // Chat threads survive even the eventual hard purge (migration
+  // 20260924j) — a seller keeps their side of the conversation.
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    document.body.style.overflow = deleteConfirmOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [deleteConfirmOpen]);
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== 'DELETE') return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke('delete-account');
+    if (error || (data && data.error)) {
+      console.error('delete-account:', error || data?.error);
+      toast.error("Couldn't delete your account. Please try again.");
+      setDeleting(false);
+      return;
+    }
+    await supabase.auth.signOut({ scope: 'global' });
+    window.location.href = '/';
+  };
 
   if (checking) {
     return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "system-ui,sans-serif", fontSize: 14 }}>Loading…</div>;
@@ -352,7 +380,58 @@ export default function AccountPage() {
             Start selling free <ArrowRight size={15} />
           </Link>
         </div>
+
+        {/* Danger Zone — last thing on the page, same reasoning as "Become a
+            seller" above it: nobody opens their account to see this first. */}
+        <div style={{ marginTop: 24, textAlign: 'center' }}>
+          <button
+            onClick={() => { setDeleteConfirmText(''); setDeleteConfirmOpen(true); }}
+            style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 12.5, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, padding: 6 }}
+          >
+            <Trash2 size={13} /> Delete my account
+          </button>
+        </div>
       </div>
+
+      {deleteConfirmOpen && createPortal(
+        <div
+          onClick={() => !deleting && setDeleteConfirmOpen(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 400, padding: 24, border: '1px solid #e5e7eb', boxShadow: '0 20px 60px rgba(15,23,42,0.15)' }}>
+            <p style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#111827' }}>Delete your account?</p>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6b7280', lineHeight: 1.6 }}>
+              Your saved cars, alerts and account are hidden immediately. Everything is kept
+              for 30 days — logging back in restores it. After that it's permanent.
+            </p>
+            <label style={{ display: 'block', fontSize: 11, color: '#6b7280', marginBottom: 6 }}>Type DELETE to confirm</label>
+            <input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoFocus
+              style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '10px 13px', fontSize: 14, color: '#111827', outline: 'none', fontFamily: 'inherit', letterSpacing: '0.05em', marginBottom: 16 }}
+            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setDeleteConfirmOpen(false)}
+                disabled={deleting}
+                style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: '11px', borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb', color: '#374151', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting || deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+                style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: '11px', borderRadius: 10, background: '#dc2626', border: 'none', color: '#fff', cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== 'DELETE') ? 'not-allowed' : 'pointer', opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== 'DELETE') ? 0.5 : 1, fontFamily: 'inherit' }}
+              >
+                {deleting ? 'Deleting…' : 'Delete my account'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }

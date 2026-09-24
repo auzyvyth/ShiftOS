@@ -2,15 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
-// Self-service account deletion for a SOLO salesman (Lite / Premium, dealer_id
-// NULL). This is a SOFT delete: it flips the caller's own profile to
-// account_status='deleted' + is_active=false + deleted_at=now(). Their public
-// mini page (get_salesman_by_slug filters is_active) and their marketplace
-// listings (public_car_listings excludes deleted owners) disappear immediately,
-// but nothing is destroyed — logging back in within 30 days restores the account.
-// The purge-deleted-accounts cron hard-deletes the auth user after the grace
-// window. A linked salesman (dealer_id set) is dealer-managed and cannot
-// self-delete here.
+// Self-service account deletion (MOBILE-7 — Apple guideline 5.1.1(v): any app
+// that supports account creation must let the user start deletion in-app).
+// Eligible: a solo salesman (Lite/Premium, dealer_id NULL), a self-owned
+// dealer/owner (dealer_id NULL — they ARE the dealer), or a buyer. Dealer-
+// provisioned staff (manager/admin/accountant/fi_officer, a linked salesman)
+// are managed by their dealer/admin and cannot self-delete here — they didn't
+// create their own account, the dealer invited them. superadmin (platform
+// staff) is never self-deletable through this consumer endpoint.
+//
+// This is a SOFT delete: it flips the caller's own profile to
+// account_status='deleted' + is_active=false + deleted_at=now(). A dealer's
+// listings/leads/staff etc. all key off dealer_id CASCADE and are only
+// actually destroyed by purge-deleted-accounts after the 30-day grace window
+// (logging back in first restores everything). A buyer's chat threads
+// survive that purge too (see migration 20260924j) — the seller keeps their
+// side of the conversation even after the buyer's account is gone.
 
 // Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
@@ -49,7 +56,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // ── Eligibility: solo salesman only ─────────────────────────────────────
+    // ── Eligibility ──────────────────────────────────────────────────────────
     // Operate STRICTLY on user.id — this endpoint never accepts a target id, so
     // it can only ever delete the caller's own account.
     const { data: profile } = await adminClient
@@ -60,8 +67,14 @@ serve(async (req) => {
 
     if (!profile) return json({ error: "not_found" }, 404, origin);
 
-    if (profile.role !== "salesman" || profile.dealer_id) {
-      // Linked salesmen (and any other role) are managed by their dealer / admin.
+    const selfOwned = !profile.dealer_id;
+    const eligible =
+      (profile.role === "salesman" && selfOwned) ||
+      ((profile.role === "dealer" || profile.role === "owner") && selfOwned) ||
+      profile.role === "buyer";
+
+    if (!eligible) {
+      // Dealer-managed staff and platform superadmin cannot self-delete here.
       return json({ error: "not_eligible", message: "dealer_managed" }, 403, origin);
     }
 
