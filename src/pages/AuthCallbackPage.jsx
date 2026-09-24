@@ -171,7 +171,12 @@ export default function AuthCallbackPage() {
       }
 
       if (role === 'dealer') {
-        if (subdomain) {
+        // Cross-subdomain handoff only makes sense on the real domain — a
+        // Vercel preview/localhost has no dealer subdomains to jump to, and
+        // doing it anyway leaves the preview build entirely (lands on real
+        // prod). Mirrors LoginPage.jsx's isProd guard.
+        const isProd = window.location.hostname === 'xdrive.my' || window.location.hostname.endsWith('.xdrive.my');
+        if (subdomain && isProd) {
           window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
         } else {
           navigate('/dashboard');

@@ -179,13 +179,13 @@ const HC_CSS = `
   .hc-eyebrow { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
   .hc-eyebrow-dot {
     width:6px; height:6px; border-radius:50%;
-    background:#C4A265; flex-shrink:0;
-    box-shadow:0 0 8px rgba(196,162,101,0.45);
+    background:#DC2626; flex-shrink:0;
+    box-shadow:0 0 8px rgba(220,38,38,0.45);
   }
   .hc-eyebrow-label {
     font-size:10px; font-weight:600;
     letter-spacing:0.22em; text-transform:uppercase;
-    color:rgba(196,162,101,0.85);
+    color:rgba(248,113,113,0.9);
   }
 
   /* ── Car name ── */
@@ -195,7 +195,7 @@ const HC_CSS = `
     color:white; margin:0 0 18px;
     text-shadow:0 2px 24px rgba(0,0,0,0.4);
   }
-  .hc-year-accent { color:#C4A265; }
+  .hc-year-accent { color:#f87171; }
 
   /* ── Meta pills ── */
   .hc-meta { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
@@ -207,7 +207,7 @@ const HC_CSS = `
     border:1px solid rgba(255,255,255,0.1);
     font-size:11px; font-weight:500; color:rgba(255,255,255,0.8);
   }
-  .hc-meta-item svg { width:11px; height:11px; color:#C4A265; }
+  .hc-meta-item svg { width:11px; height:11px; color:#f87171; }
 
   /* ── Price ── */
   .hc-price-section { margin:0 0 24px; }
@@ -435,11 +435,13 @@ const HC_CSS = `
     .hc-enquire, .hc-view { padding:8px 14px; font-size:10px; }
   }
 
-  /* ── Hero search bar — sits above eyebrow on the left ── */
+  /* ── Hero search bar — sits below the meta/price/CTAs, in normal flow so it
+     can never be covered by the photo card (that was the clipping bug: it
+     used to be pulled out with position:absolute and no z-index). ── */
   .hc-search-bar {
     width: 100%;
     max-width: 520px;
-    margin-bottom: 20px;
+    margin-top: 20px;
   }
   .hc-search-form {
     position: relative;
@@ -520,7 +522,7 @@ const HC_CSS = `
     .hc-price-section { margin-bottom: 28px; }
     .hc-ctas { gap: 14px; }
     .hc-enquire, .hc-view { font-size: 15px; padding: 13px 28px; }
-    .hc-search-bar { max-width: 560px; margin-bottom: 26px; }
+    .hc-search-bar { max-width: 560px; margin-top: 26px; }
     .hc-search-input { font-size: 16px; padding: 16px 58px 16px 50px; }
     .hc-search-icon { width: 18px; height: 18px; left: 18px; }
     .hc-search-btn { width: 44px; height: 44px; right: 8px; }
@@ -538,16 +540,12 @@ const HC_CSS = `
     .hc-search-btn svg { width: 13px; height: 13px; }
   }
 
-  /* Mobile ≤768px — restore absolute bar, dissolve content-row wrapper */
+  /* Mobile ≤768px — dissolve content-row wrapper; search bar stays in normal
+     flow (see base rule) so it renders after the CTAs, never overlapping. */
   @media (max-width:768px) {
     .hc-search-bar {
-      position: absolute;
-      top: 84px;
-      left: 50%;
-      transform: translateX(-50%);
-      padding: 0 20px;
       max-width: 100%;
-      align-self: auto;
+      margin-top: 16px;
     }
     .hc-content-row { display: contents; }
     .hc-search-input {
@@ -830,7 +828,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
         style={{
           width: "100%",
           height: "100vh",
-          background: "#0C0C0E",
+          background: "#F7F6F2",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -841,7 +839,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           style={{
             width: "34px",
             height: "34px",
-            border: "2px solid rgba(255,255,255,0.07)",
+            border: "2px solid rgba(0,0,0,0.08)",
             borderTop: "2px solid rgba(220,38,38,0.6)",
             borderRadius: "50%",
             animation: "spin 0.7s linear infinite",
@@ -855,7 +853,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
       <section
         style={{
           minHeight: "70vh",
-          background: "linear-gradient(160deg,#0C0C0E 0%,#111113 100%)",
+          background: "#F7F6F2",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -879,7 +877,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           }}
         >
           <Sparkles
-            style={{ color: "#f87171", width: "22px", height: "22px" }}
+            style={{ color: "#DC2626", width: "22px", height: "22px" }}
           />
         </div>
         <h1
@@ -887,16 +885,16 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           style={{
             fontSize: "clamp(1.8rem,5vw,3rem)",
             fontWeight: "800",
-            color: "white",
+            color: "#111827",
             margin: "0 0 12px",
             letterSpacing: "-0.02em",
           }}
         >
-          Find Your Perfect <span style={{ color: "#C4A265" }}>Drive</span>
+          Find Your Perfect <span style={{ color: "#DC2626" }}>Drive</span>
         </h1>
         <p
           style={{
-            color: "#52525A",
+            color: "#4b5563",
             fontSize: "clamp(0.875rem,3vw,1rem)",
             maxWidth: "460px",
             lineHeight: 1.7,
@@ -906,16 +904,15 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
           Browse verified vehicles with transparent pricing and no hidden fees.
         </p>
         <Link
-          to="/showroom"
+          to={isSubdomain() ? "/cars" : "/showroom"}
           style={{
-            background: "rgba(220,38,38,0.15)",
-            backdropFilter: "blur(16px)",
-            border: "1px solid rgba(220,38,38,0.4)",
+            background: "#DC2626",
+            border: "1px solid #DC2626",
             color: "white",
             fontWeight: "600",
             fontSize: "14px",
             padding: "12px 26px",
-            borderRadius: "40px",
+            borderRadius: "10px",
             textDecoration: "none",
             display: "inline-flex",
             alignItems: "center",
@@ -1024,6 +1021,20 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
             <div className={`hc-content-row${s.mode === "text" ? " hc-text-only" : ""}`}>
               {/* 1. Title */}
               <div className="hc-text">
+                <div key={`c-${animKey}`} className="hc-anim">
+                  <div className="hc-eyebrow">
+                    <div className="hc-eyebrow-dot" />
+                    <span className="hc-eyebrow-label">
+                      {badge || "Verified Listing"}
+                    </span>
+                  </div>
+                  <h2 className="hc-car-name hc-syne">
+                    {s.year && <span className="hc-year-accent">{s.year} </span>}
+                    {nameClean}
+                  </h2>
+                  {/* Desktop: meta/price/ctas inline */}
+                  <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
+                </div>
                 <div className="hc-search-bar">
                   <form className="hc-search-form" onSubmit={submitHeroSearch} role="search">
                     <Search className="hc-search-icon" />
@@ -1039,20 +1050,6 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
                       <Search size={15} />
                     </button>
                   </form>
-                </div>
-                <div key={`c-${animKey}`} className="hc-anim">
-                  <div className="hc-eyebrow">
-                    <div className="hc-eyebrow-dot" />
-                    <span className="hc-eyebrow-label">
-                      {badge || "Verified Listing"}
-                    </span>
-                  </div>
-                  <h2 className="hc-car-name hc-syne">
-                    {s.year && <span className="hc-year-accent">{s.year} </span>}
-                    {nameClean}
-                  </h2>
-                  {/* Desktop: meta/price/ctas inline */}
-                  <MetaBlock metaItems={metaItems} priceVal={priceVal} waHref={waHref} s={s} tenant={tenant} />
                 </div>
               </div>
 

@@ -6,6 +6,7 @@
 // will both reuse — keep all platform shaping here, not in the UI.
 
 import { calcMonthly } from "./financing";
+import { getStorefrontUrl } from "../hooks/useTenant";
 
 const fmtRM = (n) => `RM ${Number(n).toLocaleString("en-MY")}`;
 const fmtNum = (n) => Number(n).toLocaleString("en-MY");
@@ -19,7 +20,7 @@ export function buildTitle(car) {
 // the dealer's xdrive.my slug page, then the bare marketplace.
 export function buildShareUrl(car, dealer = {}) {
   const path = car.slug ? `/showroom/${car.slug}` : "";
-  if (dealer.subdomain) return `https://${dealer.subdomain}.xdrive.my${path}`;
+  if (dealer.subdomain) return getStorefrontUrl(dealer.subdomain, path);
   if (path) return `https://xdrive.my${path}`;
   if (dealer.slug) return `https://xdrive.my/s/${dealer.slug}`;
   return "https://xdrive.my";

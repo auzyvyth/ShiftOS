@@ -76,17 +76,32 @@ export function isSubdomain() {
   return !!getSubdomain();
 }
 
-// Build the URL to a dealer's storefront. On production this is the real
-// subdomain (<sub>.xdrive.my); on a Vercel preview / localhost — where wildcard
-// subdomains don't resolve — fall back to the ?tenant= override on the current
-// origin, which getSubdomain() honors on dev hosts. Keeps the dashboard
-// "view storefront" links working on preview deploys.
-export function getStorefrontUrl(subdomain) {
-  if (!subdomain) return `https://${MARKETPLACE_DOMAIN}`;
+// Build the URL to a dealer's storefront, optionally with a path appended
+// (e.g. "/cars/abc123", or "/dashboard#_at=...&_rt=..." for the login
+// handoff). On production this is the real subdomain (<sub>.xdrive.my); on a
+// Vercel preview / localhost — where wildcard subdomains don't resolve —
+// falls back to the ?tenant= override on the current origin, which
+// getSubdomain() honors on dev hosts. Keeps every dealer-storefront link
+// (view storefront, share links, the post-login redirect) working on preview
+// deploys instead of jumping to production.
+//
+// `path` may carry its own "?query" and/or "#hash" (session-handoff tokens
+// travel in the hash — see authHandoff.js). On a dev host the tenant is
+// merged into the query string rather than blindly concatenated, so
+// "/cars?ref=x" + tenant becomes "/cars?ref=x&tenant=y", not a second "?".
+export function getStorefrontUrl(subdomain, path = "") {
+  if (!subdomain) return `https://${MARKETPLACE_DOMAIN}${path}`;
   if (typeof window !== "undefined" && isDevHost(window.location.hostname)) {
-    return `${window.location.origin}/?tenant=${encodeURIComponent(subdomain)}`;
+    const hashIdx = path.indexOf("#");
+    const beforeHash = hashIdx === -1 ? path : path.slice(0, hashIdx);
+    const hash = hashIdx === -1 ? "" : path.slice(hashIdx);
+    const qIdx = beforeHash.indexOf("?");
+    const pathname = qIdx === -1 ? beforeHash : beforeHash.slice(0, qIdx);
+    const params = new URLSearchParams(qIdx === -1 ? "" : beforeHash.slice(qIdx + 1));
+    params.set("tenant", subdomain);
+    return `${window.location.origin}${pathname}?${params.toString()}${hash}`;
   }
-  return `https://${subdomain}.${MARKETPLACE_DOMAIN}`;
+  return `https://${subdomain}.${MARKETPLACE_DOMAIN}${path}`;
 }
 
 export default function useTenant() {

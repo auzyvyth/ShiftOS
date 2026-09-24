@@ -1,68 +1,49 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, MessageCircle, Sparkles, Crown, User, ShieldCheck } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Menu, X, MessageCircle, Crown, User, ShieldCheck, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
 import { routeForProfile, isSellerRole } from "../hooks/useRoleRedirect";
+import { useHideOnScroll } from "../hooks/useHideOnScroll";
 
+// Same solid near-black bar as MarketplaceHeader (#0f1115) — that file is the
+// one place this "modern" language was already designed and approved, so this
+// reuses its tokens rather than inventing a second dark bar style. The old
+// version here was a floating glass pill (blur, inset margins, glow shadows),
+// which is the exact pattern MarketplaceHeader's own design notes say was
+// tried and rejected on the marketplace hero for the same reason: a blurred
+// floating panel reads as a dated SaaS-landing-page trend, not chrome.
 const HDR_CSS = `
 
   .hdr-root {
     font-family: 'Outfit', sans-serif;
-    position: relative;
-    transition: background 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease;
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 50;
+    background: #0f1115;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    transition: transform 0.28s ease, box-shadow 0.25s, border-color 0.25s;
+  }
+  .hdr-root.scrolled { box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-bottom-color: rgba(255,255,255,0.14); }
+  .hdr-root.hidden { transform: translateY(-100%); }
+  /* A hidden bar must still return for the keyboard, or tabbing into the nav
+     moves focus somewhere the user cannot see. */
+  .hdr-root:focus-within { transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .hdr-root { transition: box-shadow 0.25s, border-color 0.25s; }
   }
 
-
-  /* ── Glass states — no solid colours anywhere ── */
-  .hdr-glass {
-    background: rgba(9, 9, 14, 0.38);
-    backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
-    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.1);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.05),
-      0 4px 28px rgba(0,0,0,0.28),
-      0 1px 0 rgba(0,0,0,0.15);
-  }
-
-  .hdr-glass-scrolled {
-    background: rgba(9, 9, 14, 0.72);
-    backdrop-filter: blur(52px) saturate(200%) brightness(1.05);
-    -webkit-backdrop-filter: blur(52px) saturate(200%) brightness(1.05);
-    border: 1px solid rgba(255,255,255,0.11);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.09),
-      0 12px 56px rgba(0,0,0,0.55),
-      0 2px 8px rgba(0,0,0,0.35);
-  }
-
-  /* Dashboard: glass too — no more solid background */
-  .hdr-dashboard {
-    background: rgba(9, 9, 14, 0.82);
-    backdrop-filter: blur(52px) saturate(160%);
-    -webkit-backdrop-filter: blur(52px) saturate(160%);
-    border: 1px solid rgba(255,255,255,0.07);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.07),
-      0 8px 36px rgba(0,0,0,0.45);
-  }
-
-  /* ── Inner ── */
   .hdr-inner {
     max-width: 1280px;
     margin: 0 auto;
-    padding: 0 22px;
-    height: 58px;
+    padding: 0 clamp(16px, 3.5vw, 32px);
+    height: 64px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 20px;
-    position: relative;
-    z-index: 1;
   }
 
   /* ── Logo ── */
@@ -74,22 +55,17 @@ const HDR_CSS = `
     width: 32px; height: 32px;
     border-radius: 50%;
     background: #DC2626;
-    box-shadow: 0 0 0 1px rgba(220,38,38,0.35), 0 4px 14px rgba(220,38,38,0.25);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
     font-family: 'Outfit', sans-serif;
     font-weight: 800; font-size: 14px; color: white;
     letter-spacing: -0.01em;
-    transition: box-shadow 0.3s;
-  }
-  .hdr-logo:hover .hdr-mark {
-    box-shadow: 0 0 0 1px rgba(220,38,38,0.55), 0 6px 22px rgba(220,38,38,0.35);
   }
   /* Uploaded dealer logo: show the whole thing (contain), fixed height, width
      capped so a wide wordmark can't blow out the header — scales down on mobile. */
   .hdr-logo-img {
-    height: 30px; width: auto;
-    max-width: 150px; max-height: 30px;
+    height: 28px; width: auto;
+    max-width: 150px; max-height: 28px;
     object-fit: contain; object-position: left center;
     display: block; flex-shrink: 0;
   }
@@ -99,262 +75,198 @@ const HDR_CSS = `
   .hdr-logo-text { display: flex; flex-direction: column; min-width: 0; }
   .hdr-logo-name {
     font-family: 'Outfit', sans-serif;
-    font-size: 16px; font-weight: 700; color: #F0F0F0;
-    letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap;
+    font-size: 15px; font-weight: 700; color: #ffffff;
+    letter-spacing: -0.01em; line-height: 1.15; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
   .hdr-logo-sub {
-    font-size: 8px; font-weight: 500; color: rgba(255,255,255,0.18);
-    letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
-    margin-top: 1px;
+    font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4);
+    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis;
   }
 
-  /* ── Desktop nav ── */
-  .hdr-nav {
-    display: flex; align-items: center; gap: 30px;
-    flex: 1; justify-content: center;
-  }
+  /* ── Desktop nav — pill-on-hover, matches MarketplaceHeader's .mh-nav-link ── */
+  .hdr-nav { display: flex; align-items: center; gap: 2px; }
   .hdr-link {
-    position: relative;
-    font-size: 13px; font-weight: 500;
-    color: rgba(185,185,195,0.92);
+    display: flex; align-items: center;
+    font-size: 14px; font-weight: 600;
+    color: rgba(255,255,255,0.72);
     text-decoration: none; white-space: nowrap;
-    transition: color 0.22s; padding: 5px 0;
-    letter-spacing: 0.01em;
+    padding: 9px 13px; border-radius: 10px;
+    background: none; border: none; cursor: pointer;
+    font-family: inherit;
+    transition: background 0.14s, color 0.14s;
   }
-  .hdr-link::after {
-    content: ''; position: absolute;
-    bottom: 0; left: 50%; right: 50%; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-    transition: left 0.28s ease, right 0.28s ease;
-    border-radius: 1px;
-  }
-  .hdr-link:hover { color: rgba(240,240,240,0.95); }
-  .hdr-link:hover::after { left: 0; right: 0; }
-  .hdr-link.active { color: #F0F0F0; }
-  .hdr-link.active::after { left: 0; right: 0; }
+  .hdr-link:hover { background: rgba(255,255,255,0.08); color: #ffffff; }
+  .hdr-link.active { color: #ffffff; background: rgba(255,255,255,0.06); }
 
-  /* ── Sign In buyer/seller dropdown ── */
-  .hdr-login-menu {
-    position: absolute; top: calc(100% + 14px); left: 50%; transform: translateX(-50%);
-    width: 252px; padding: 6px;
-    background: rgba(15,15,20,0.97);
-    backdrop-filter: blur(40px) saturate(180%);
-    -webkit-backdrop-filter: blur(40px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
-    box-shadow: 0 18px 48px rgba(0,0,0,0.5);
-    display: flex; flex-direction: column; gap: 2px; z-index: 60;
-  }
-  .hdr-login-item { display: flex; align-items: center; gap: 11px; padding: 10px 11px; border-radius: 10px; text-decoration: none; transition: background .14s; }
-  .hdr-login-item:hover { background: rgba(255,255,255,0.06); }
-  .hdr-login-item-t { display: block; font-size: 13px; font-weight: 600; color: rgba(240,240,240,0.92); }
-  .hdr-login-item-s { display: block; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
-
-  /* ── For Dealers pill ── */
+  /* ── For Dealers — the ONE accent pill in the bar; radius on the button
+     scale (10px), not a fully-rounded shape, per the "no pill on text" rule. ── */
   .hdr-dealer {
     display: inline-flex; align-items: center; gap: 5px;
-    font-size: 11px; font-weight: 600; color: #F87171;
-    background: rgba(220,38,38,0.07);
-    border: 1px solid rgba(220,38,38,0.18);
-    border-radius: 50px; padding: 5px 13px;
-    text-decoration: none; white-space: nowrap;
-    transition: all 0.22s ease; letter-spacing: 0.02em;
-    box-shadow: 0 0 14px rgba(220,38,38,0.05);
-  }
-  .hdr-dealer:hover {
+    font-size: 12px; font-weight: 700; color: #fca5a5;
     background: rgba(220,38,38,0.12);
-    border-color: rgba(220,38,38,0.35);
-    box-shadow: 0 0 18px rgba(220,38,38,0.12);
-    transform: translateY(-1px);
+    border: 1px solid rgba(220,38,38,0.3);
+    border-radius: 10px; padding: 8px 13px;
+    text-decoration: none; white-space: nowrap;
+    letter-spacing: 0.01em;
+    transition: background 0.14s, border-color 0.14s;
   }
+  .hdr-dealer:hover { background: rgba(220,38,38,0.2); border-color: rgba(220,38,38,0.5); }
 
   /* ── Desktop right actions ── */
-  .hdr-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .hdr-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .hdr-vsep { width: 1px; height: 24px; background: rgba(255,255,255,0.12); margin: 0 4px; }
 
-  /* ── Lang toggle ── */
+  /* ── Lang toggle — segmented control, 8px radius per the chip/segment scale ── */
   .hdr-lang {
     display: flex; align-items: center;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 50px; padding: 3px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 2px;
   }
   .hdr-lang-btn {
-    padding: 3px 10px; border-radius: 50px;
-    font-size: 10px; font-weight: 600;
-    border: none; cursor: pointer; transition: all 0.18s;
-    background: transparent; color: rgba(255,255,255,0.22);
-    letter-spacing: 0.06em; font-family: 'Outfit', sans-serif;
+    padding: 5px 10px; border-radius: 6px;
+    font-size: 11px; font-weight: 700;
+    border: none; cursor: pointer; transition: all 0.15s;
+    background: transparent; color: rgba(255,255,255,0.4);
+    letter-spacing: 0.04em; font-family: 'Outfit', sans-serif;
   }
-  .hdr-lang-btn.on {
-    background: rgba(220,38,38,0.1);
-    border: 1px solid rgba(220,38,38,0.22);
-    color: #F87171;
-  }
+  .hdr-lang-btn.on { background: rgba(255,255,255,0.12); color: #ffffff; }
 
-  /* ── WhatsApp button ── */
+  /* ── WhatsApp CTA — the bar's one primary action, button-scale radius ── */
   .hdr-wa {
     display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px; font-weight: 600; color: rgba(74,222,128,0.9);
-    background: rgba(37,211,102,0.05);
-    border: 1px solid rgba(37,211,102,0.18);
-    border-radius: 50px; padding: 7px 15px;
+    font-size: 13px; font-weight: 700; color: #ffffff;
+    background: #25D366;
+    border: 1px solid #25D366;
+    border-radius: 10px; padding: 9px 16px;
     text-decoration: none; white-space: nowrap;
-    transition: all 0.22s ease; font-family: 'Outfit', sans-serif;
-    letter-spacing: 0.02em;
+    transition: background 0.15s, transform 0.12s;
   }
-  .hdr-wa:hover {
-    background: rgba(37,211,102,0.1);
-    border-color: rgba(37,211,102,0.38);
-    color: #4ADE80;
-    box-shadow: 0 0 18px rgba(37,211,102,0.1);
-    transform: translateY(-1px);
+  .hdr-wa:hover { background: #1ea952; transform: translateY(-1px); }
+
+  /* ── Sign in / account — plain text link, red underline-on-hover, matches
+     MarketplaceHeader's .mh-signin ── */
+  .hdr-signin {
+    color: #ffffff; font-size: 14px; font-weight: 600;
+    text-decoration: none; padding: 9px 6px; position: relative;
+    font-family: inherit; white-space: nowrap;
   }
+  .hdr-signin::after {
+    content: ''; position: absolute; left: 6px; right: 6px; bottom: 3px;
+    height: 2px; background: #dc2626; border-radius: 2px;
+    transform: scaleX(0); transform-origin: left; transition: transform 0.2s;
+  }
+  .hdr-signin:hover::after { transform: scaleX(1); }
 
   /* ── Logout ── */
   .hdr-logout {
-    font-size: 11.5px; color: rgba(255,255,255,0.22);
+    font-size: 12px; color: rgba(255,255,255,0.4);
     background: none; border: none; cursor: pointer;
-    padding: 5px 10px; border-radius: 50px;
-    transition: color 0.2s; font-family: 'Outfit', sans-serif;
-    letter-spacing: 0.01em;
+    padding: 9px 10px; border-radius: 8px;
+    transition: color 0.15s, background 0.15s; font-family: 'Outfit', sans-serif;
   }
-  .hdr-logout:hover { color: rgba(255,255,255,0.55); }
+  .hdr-logout:hover { color: #ffffff; background: rgba(255,255,255,0.06); }
 
-  /* ── Mobile burger ── */
+  /* ── Mobile burger — icon-only, circle is fine ── */
   .hdr-burger {
-    padding: 8px; border-radius: 50%;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.08);
+    width: 38px; height: 38px;
+    padding: 0; border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #ffffff;
     cursor: pointer; display: flex;
     align-items: center; justify-content: center;
-    transition: background 0.18s;
+    transition: background 0.14s;
   }
-  .hdr-burger:hover { background: rgba(255,255,255,0.08); }
+  .hdr-burger:hover { background: rgba(255,255,255,0.1); }
 
   /* ── Responsive ── */
-  .hdr-desktop { display: flex; align-items: center; gap: 10px; }
+  .hdr-desktop { display: flex; align-items: center; gap: 8px; }
   .hdr-mobile-only { display: none; flex-shrink: 0; }
 
   @media (max-width: 1024px) {
     .hdr-desktop { display: none !important; }
     .hdr-mobile-only { display: flex !important; }
     .hdr-nav { display: none !important; }
-    .hdr-root { overflow: hidden; }
   }
 
-  /* ── Mobile panel — exact same glass as header pill ── */
-  .hdr-mobile-panel {
+  /* ── Mobile sheet — full-width, same solid colour as the bar (not a floating
+     translucent card), drops down directly below it. Matches MarketplaceHeader's
+     .mh-mobile: a solid sheet is the one that can never let the page show
+     through or below it, and body scroll is locked while it's open. ── */
+  .hdr-mobile-sheet {
     position: fixed;
-    top: 82px;
-    left: 16px;
-    right: 16px;
-    /* Above the header (50) and any page content (sticky strips etc. sit at ~40),
-       so an open menu is never painted over by the page — only true modals
-       (portalled at 9999) sit above it. */
-    z-index: 60;
-    border-radius: 18px;
-    background: rgba(9, 9, 14, 0.52);
-    backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
-    -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.06),
-      0 12px 48px rgba(0,0,0,0.45);
-    max-height: calc(100vh - 100px);
+    top: 64px; left: 0; right: 0; bottom: 0;
+    z-index: 49;
+    background: #0f1115;
+    display: flex; flex-direction: column;
+    padding: 8px 16px 24px;
     overflow-y: auto;
-    overflow-x: hidden;
-  }
-  /* Same specular top reflection as the header pill */
-  .hdr-mobile-panel::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 12%; right: 12%;
-    height: 1px;
-    background: linear-gradient(90deg,
-      transparent            0%,
-      rgba(255,255,255,0.18) 18%,
-      rgba(255,255,255,0.58) 38%,
-      rgba(255,255,255,0.82) 50%,
-      rgba(255,255,255,0.58) 62%,
-      rgba(255,255,255,0.18) 82%,
-      transparent            100%
-    );
-    border-radius: 100%;
-    pointer-events: none;
-  }
-  .hdr-mobile-inner {
-    max-width: 1280px; margin: 0 auto;
-    padding: 10px 14px 22px;
-    display: flex; flex-direction: column; gap: 2px;
+    -webkit-overflow-scrolling: touch;
   }
   .hdr-mlink {
-    display: flex; align-items: center; gap: 12px;
-    padding: 12px 14px; border-radius: 12px;
-    font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.3);
-    text-decoration: none; transition: all 0.16s;
-    border: 1px solid transparent; letter-spacing: 0.01em;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 15px 6px; border-radius: 0;
+    font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: none; border-left: none; border-right: none; border-top: none;
+    cursor: pointer; width: 100%; text-align: left; font-family: inherit;
   }
-  .hdr-mlink:hover { background: rgba(255,255,255,0.04); color: rgba(240,240,240,0.85); }
-  .hdr-mlink.active { background: rgba(255,255,255,0.04); color: #F0F0F0; }
-  .hdr-mlink.special {
-    color: #F87171;
-    background: rgba(220,38,38,0.05);
-    border-color: rgba(220,38,38,0.1);
-  }
-  .hdr-mlink.special:hover { background: rgba(220,38,38,0.09); }
+  .hdr-mlink.active { color: #ffffff; }
+  .hdr-mlink.special { color: #fca5a5; }
 
   .hdr-mobile-bottom {
-    margin-top: 12px; padding-top: 14px;
-    border-top: 1px solid rgba(255,255,255,0.05);
-    display: flex; flex-direction: column; gap: 8px;
+    margin-top: 14px; padding-top: 16px;
+    display: flex; flex-direction: column; gap: 10px;
   }
   .hdr-wa-mobile {
     display: flex; align-items: center; justify-content: center; gap: 8px;
-    font-size: 13px; font-weight: 600; color: rgba(74,222,128,0.9);
-    background: rgba(37,211,102,0.05);
-    border: 1px solid rgba(37,211,102,0.18);
-    border-radius: 12px; padding: 13px 20px;
-    text-decoration: none; transition: all 0.18s; font-family: 'Outfit', sans-serif;
-    letter-spacing: 0.02em;
+    font-size: 14px; font-weight: 700; color: #ffffff;
+    background: #25D366;
+    border-radius: 10px; padding: 14px;
+    text-decoration: none;
   }
-  .hdr-wa-mobile:hover { background: rgba(37,211,102,0.1); color: #4ADE80; }
+  .hdr-signin-mobile {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    font-size: 14px; font-weight: 600; color: #ffffff;
+    background: transparent; border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 10px; padding: 13px;
+    text-decoration: none;
+  }
 `;
 
 export default function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [authUser, setAuthUser] = useState(null);
   const [viewerProfile, setViewerProfile] = useState(null);
-  const lastScrollY = useRef(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { siteName, siteInitial, siteLogoUrl, isVerified, waUrl } = useSiteProfile();
 
-  const isDashboard =
-    location.pathname.startsWith("/dashboard") ||
-    location.pathname.startsWith("/salesman");
+  // Same auto-hide pattern as MarketplaceHeader: pinned visible whenever the
+  // mobile sheet (which lives inside this bar) is open, so it can't take its
+  // own close button off-screen.
+  const headerVisible = useHideOnScroll({ offset: 80, locked: mobileOpen });
 
   useEffect(() => {
-    const fn = () => {
-      const current = window.scrollY;
-      const delta = current - lastScrollY.current;
-      setIsScrolled(current > 20);
-      if (current < 20) {
-        setHidden(false);
-      } else if (delta > 6) {
-        setHidden(true);
-        setMobileOpen(false);
-      } else if (delta < -6) {
-        setHidden(false);
-      }
-      lastScrollY.current = current;
-    };
-    window.addEventListener("scroll", fn, { passive: true });
-    return () => window.removeEventListener("scroll", fn);
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Lock body scroll behind the open mobile sheet, or the page scrolls away
+  // underneath it. Keyed on the open boolean, not inline (overlay rule).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [mobileOpen]);
 
   useEffect(() => {
     const fetchRole = async (uid) => {
@@ -434,28 +346,11 @@ export default function Header() {
     }
   };
 
-  const headerClass = isDashboard
-    ? "hdr-dashboard"
-    : isScrolled
-      ? "hdr-glass-scrolled"
-      : "hdr-glass";
-
   return (
     <>
       <style>{HDR_CSS}</style>
 
-      <header
-        className={`hdr-root ${headerClass}`}
-        style={{
-          position: "fixed",
-          top: "12px",
-          left: "16px",
-          right: "16px",
-          zIndex: 50,
-          transform: hidden ? "translateY(calc(-100% - 24px))" : "translateY(0)",
-          transition: "transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s ease, box-shadow 0.4s ease, border-color 0.4s ease",
-        }}
-      >
+      <header className={`hdr-root${scrolled ? " scrolled" : ""}${headerVisible ? "" : " hidden"}`}>
         <div className="hdr-inner">
 
           {/* Logo */}
@@ -467,9 +362,9 @@ export default function Header() {
             )}
             <div className="hdr-logo-text">
               <span className="hdr-logo-name" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                {siteName}<span style={{ color: "#DC2626" }}>.</span>
+                {siteName}
                 {isVerified && (
-                  <ShieldCheck size={15} strokeWidth={2.5} style={{ color: "#60a5fa", flexShrink: 0 }} aria-label="Verified Dealer" />
+                  <ShieldCheck size={14} strokeWidth={2.5} style={{ color: "#60a5fa", flexShrink: 0 }} aria-label="Verified Dealer" />
                 )}
               </span>
               <span className="hdr-logo-sub">{isVerified ? "Verified Dealer" : "Trusted Auto"}</span>
@@ -489,16 +384,14 @@ export default function Header() {
                 </a>
               ) : link.isSpecial ? (
                 <Link key={link.key} to={link.path} className="hdr-dealer">
-                  <Crown style={{ width: "10px", height: "10px", flexShrink: 0 }} />
+                  <Crown size={12} style={{ flexShrink: 0 }} />
                   {link.name}
-                  <Sparkles style={{ width: "9px", height: "9px", flexShrink: 0 }} />
                 </Link>
               ) : link.path.includes("#") ? (
                 <button
                   key={link.key}
                   onClick={() => handleNav(link.path)}
-                  className={`hdr-link`}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit" }}
+                  className="hdr-link"
                 >
                   {link.name}
                 </button>
@@ -522,18 +415,21 @@ export default function Header() {
               <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`} aria-label="Switch to Malay" aria-pressed={!isEn}>BM</button>
             </div>
             {isLoggedIn && (
-              <button
-                className="hdr-logout"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  window.location.href = '/login';
-                }}
-              >
-                Logout
-              </button>
+              <>
+                <span className="hdr-vsep" />
+                <button
+                  className="hdr-logout"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = '/login';
+                  }}
+                >
+                  Logout
+                </button>
+              </>
             )}
             <a href={waHref} target="_blank" rel="noopener noreferrer" className="hdr-wa">
-              <MessageCircle style={{ width: "12px", height: "12px", flexShrink: 0 }} />
+              <MessageCircle size={14} style={{ flexShrink: 0 }} />
               {t("common.whatsappUs")}
             </a>
           </div>
@@ -544,84 +440,63 @@ export default function Header() {
               <button onClick={toggleLang} className={`hdr-lang-btn${isEn ? " on" : ""}`} aria-label="Switch to English" aria-pressed={isEn}>EN</button>
               <button onClick={toggleLang} className={`hdr-lang-btn${!isEn ? " on" : ""}`} aria-label="Switch to Malay" aria-pressed={!isEn}>BM</button>
             </div>
-            <button className="hdr-burger" onClick={() => setMobileOpen((v) => !v)} aria-label="Menu">
-              {mobileOpen
-                ? <X style={{ width: "16px", height: "16px", color: "rgba(255,255,255,0.7)" }} />
-                : <Menu style={{ width: "16px", height: "16px", color: "rgba(255,255,255,0.4)" }} />
-              }
+            <button className="hdr-burger" aria-label="Menu" aria-expanded={mobileOpen} onClick={() => setMobileOpen((v) => !v)}>
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
-      </header>
 
-      {/* Mobile menu */}
-      <AnimatePresence>
+        {/* Mobile sheet */}
         {mobileOpen && (
-          <motion.div
-            className="hdr-mobile-panel"
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="hdr-mobile-inner">
-              {navLinks.map((link, i) => (
-                <motion.div
+          <div className="hdr-mobile-sheet">
+            {navLinks.map((link) =>
+              link.key === "login" ? (
+                /* One door on mobile too — see the desktop control above. */
+                <Link key={link.key} to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}><User size={16} /> Sign In</span>
+                  <ChevronRight size={16} style={{ opacity: 0.4 }} />
+                </Link>
+              ) : link.path.includes("#") ? (
+                <button key={link.key} onClick={() => handleNav(link.path)} className="hdr-mlink">
+                  <span>{link.name}</span>
+                  <ChevronRight size={16} style={{ opacity: 0.4 }} />
+                </button>
+              ) : (
+                <Link
                   key={link.key}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.035, ease: "easeOut" }}
+                  to={link.path}
+                  onClick={() => handleNav(link.path)}
+                  className={`hdr-mlink${link.isSpecial ? " special" : location.pathname === link.path ? " active" : ""}`}
                 >
-                  {link.key === "login" ? (
-                    /* One door on mobile too — see the desktop control above. */
-                    <Link to="/login" onClick={() => setMobileOpen(false)} className="hdr-mlink">
-                      <User style={{ width: "15px", height: "15px", flexShrink: 0 }} />
-                      <span style={{ flex: 1 }}>Sign In</span>
-                    </Link>
-                  ) : link.path.includes("#") ? (
-                    <button
-                      onClick={() => handleNav(link.path)}
-                      className="hdr-mlink"
-                      style={{ background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", fontFamily: "inherit" }}
-                    >
-                      <span style={{ flex: 1 }}>{link.name}</span>
-                    </button>
-                  ) : (
-                    <Link
-                      to={link.path}
-                      onClick={() => handleNav(link.path)}
-                      className={`hdr-mlink${link.isSpecial ? " special" : location.pathname === link.path ? " active" : ""}`}
-                    >
-                      {link.isSpecial && <Crown style={{ width: "12px", height: "12px", flexShrink: 0 }} />}
-                      <span style={{ flex: 1 }}>{link.name}</span>
-                      {link.isSpecial && <Sparkles style={{ width: "10px", height: "10px", flexShrink: 0 }} />}
-                    </Link>
-                  )}
-                </motion.div>
-              ))}
+                  <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {link.isSpecial && <Crown size={15} style={{ flexShrink: 0 }} />}
+                    {link.name}
+                  </span>
+                  <ChevronRight size={16} style={{ opacity: 0.4 }} />
+                </Link>
+              )
+            )}
 
-              <div className="hdr-mobile-bottom">
-                {isLoggedIn && (
-                  <button
-                    className="hdr-logout"
-                    style={{ textAlign: "left", padding: "8px 14px" }}
-                    onClick={async () => {
-                      await supabase.auth.signOut();
-                      window.location.href = "/";
-                    }}
-                  >
-                    Logout
-                  </button>
-                )}
-                <a href={waHref} target="_blank" rel="noopener noreferrer" className="hdr-wa-mobile">
-                  <MessageCircle style={{ width: "14px", height: "14px", flexShrink: 0 }} />
-                  {t("common.whatsappUs")}
-                </a>
-              </div>
+            <div className="hdr-mobile-bottom">
+              <a href={waHref} target="_blank" rel="noopener noreferrer" className="hdr-wa-mobile">
+                <MessageCircle size={16} style={{ flexShrink: 0 }} />
+                {t("common.whatsappUs")}
+              </a>
+              {isLoggedIn && (
+                <button
+                  className="hdr-signin-mobile"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    window.location.href = "/";
+                  }}
+                >
+                  Logout
+                </button>
+              )}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      </header>
     </>
   );
 }

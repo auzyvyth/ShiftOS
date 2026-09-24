@@ -7,6 +7,7 @@ import AmortizationSchedule from './AmortizationSchedule';
 import { supabase } from '../supabaseClient';
 import { estimateRoadTax } from '../utils/roadTax';
 import { getDealerIdFromProfile } from '../hooks/useProfile';
+import { getStorefrontUrl } from '../hooks/useTenant';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
 const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
@@ -643,7 +644,7 @@ const FinancingCalculator = ({
       // CarDetailPage's sellerPageUrl and src/utils/sharePack.js buildShareUrl.
       const resolvedPageUrl = sellerPageUrl || (() => {
         if (resolvedSalesman?.role === 'salesman' && resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
-        if (resolvedDealer?.subdomain) return `https://${resolvedDealer.subdomain}.xdrive.my`;
+        if (resolvedDealer?.subdomain) return getStorefrontUrl(resolvedDealer.subdomain);
         if (resolvedDealer?.slug) return `https://xdrive.my/s/${resolvedDealer.slug}`;
         if (resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
         return null;

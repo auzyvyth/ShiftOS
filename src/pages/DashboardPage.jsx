@@ -6297,7 +6297,7 @@ function ListingDetailDrawer({
                 {/* Share — per-platform tagged links */}
                 <ShareMenu
                   label="Share Listing"
-                  baseUrl={`${dealerSubdomain ? `https://${dealerSubdomain}.xdrive.my` : 'https://xdrive.my'}/cars/${listing.slug}`}
+                  baseUrl={dealerSubdomain ? buildStorefrontUrl(dealerSubdomain, `/cars/${listing.slug}`) : `https://xdrive.my/cars/${listing.slug}`}
                   refSlug={dealerSlug || ''}
                   style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
                   waCaption={(link) => [
@@ -10374,7 +10374,7 @@ export default function DashboardPage() {
   }, [allOnboardingDone]);
 
   const copyStorefrontOnboarding = () => {
-    const url = profile?.subdomain ? `https://${profile.subdomain}.xdrive.my` : 'https://xdrive.my';
+    const url = profile?.subdomain ? buildStorefrontUrl(profile.subdomain) : 'https://xdrive.my';
     navigator.clipboard.writeText(url).catch(() => {});
     setOnboardingCopied(true);
   };
