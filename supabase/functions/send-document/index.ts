@@ -1,24 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
-function corsHeaders(origin: string | null) {
-  const allowed =
-    origin && ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(".xdrive.my"))
-      ? origin
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
 function json(data: unknown, status = 200, origin: string | null = null) {
   return new Response(JSON.stringify(data), {
@@ -49,11 +33,16 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
     ? doc.included_services_snapshot
     : [];
 
+  const icHtml = doc.buyer_ic
+    ? `<input type="checkbox" id="ic-reveal-${doc.id}" class="ic-toggle"/><span class="ic-value">${doc.buyer_ic}</span><label for="ic-reveal-${doc.id}" class="ic-reveal">Tap to reveal</label>`
+    : "—";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no"/>
 <title>${doc.doc_type} — ${doc.doc_ref || ""}</title>
 <style>
   body{font-family:'Helvetica Neue',Arial,sans-serif;background:#f4f4f5;margin:0;padding:24px 0;}
@@ -78,6 +67,12 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
   .check{width:16px;height:16px;border-radius:4px;border:1.5px solid #d1d5db;display:inline-block;flex-shrink:0;}
   .footer{background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;}
   .footer p{font-size:11px;color:#9ca3af;margin:0;}
+  a, a:link, a:visited{color:inherit !important;text-decoration:none !important;cursor:default;pointer-events:none;}
+  .ic-toggle{display:none;}
+  .ic-value{filter:blur(5px);-webkit-filter:blur(5px);user-select:none;display:inline-block;transition:filter .15s ease;}
+  .ic-toggle:checked + .ic-value{filter:none;-webkit-filter:none;}
+  .ic-toggle:checked ~ .ic-reveal{display:none;}
+  .ic-reveal{display:inline-block;margin-left:8px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#dc2626;text-transform:uppercase;cursor:pointer;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -108,7 +103,7 @@ function buildHtml(doc: Record<string, any>, dealership: string): string {
       <p class="section-title">Buyer</p>
       <div class="grid">
         <div class="field"><label>Name</label><p>${doc.buyer_name || "—"}</p></div>
-        <div class="field"><label>IC Number</label><p>${doc.buyer_ic || "—"}</p></div>
+        <div class="field"><label>IC Number</label><p>${icHtml}</p></div>
         <div class="field"><label>Phone</label><p>${doc.buyer_phone || "—"}</p></div>
         <div class="field"><label>Address</label><p>${doc.buyer_address || "—"}</p></div>
       </div>
@@ -212,6 +207,21 @@ serve(async (req) => {
 
   const { doc_id, dealer_id } = body;
   if (!doc_id || !dealer_id) return json({ error: "doc_id and dealer_id required" }, 400, origin);
+
+  // The caller must belong to the dealership they name. This runs with the
+  // service role, so without it any logged-in account (a guest buyer included)
+  // holding a document id could have another dealership's document emailed out.
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("id, role, dealer_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  const callerDealerId = caller && ["dealer", "owner", "superadmin"].includes(caller.role)
+    ? caller.id
+    : caller?.dealer_id;
+  if (!caller || (caller.role !== "superadmin" && callerDealerId !== dealer_id)) {
+    return json({ error: "Forbidden" }, 403, origin);
+  }
 
   // Fetch document
   const { data: doc, error: docErr } = await supabase

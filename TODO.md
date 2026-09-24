@@ -2485,6 +2485,99 @@ until these are done:**
 
 ---
 
+### SESSION 2026-09-23 — Dealer dashboard + storefront sweep, AI agent scope, CSI tab (scoped, nothing built)
+
+Found by querying the live DB, not by reading code — every count below is real.
+
+#### Bugs — FIXED 2026-09-24 (staging), one open decision
+- [ ] **SWEEP-1 follow-up (OWNER DECISION): the 12 won deals whose car is back on
+  sale.** The guard stops NEW cases; these 12 existing rows are untouched because
+  each one needs a call: was the sale real (put the car back to sold) or a test
+  click / fallen-through deal (undo the sale)? List them with
+  `select l.id, c.brand, c.model, c.status from leads l join car_listings c on
+  c.id=l.car_listing_id where l.stage='won' and c.status<>'sold'`.
+- Also seen, not fixed: one car (`67b534ce…`) carries 3 won leads, last touched
+  June, before the sibling-lost fix (H8). Resolve with the 12 above.
+- Shipped: SWEEP-1 guard + Undo sale (`20260924a`, `src/utils/undoSale.js`),
+  SWEEP-2 Overview stages, SWEEP-3 mark-sold asks closer/price/commission,
+  SWEEP-4 No-show buttons + `ask_viewing_outcomes()` cron, SWEEP-5 hero duplicate
+  enquiry removed, SWEEP-6 backfill (`20260924c`). The 18 sold cars already at
+  RM0 commission still need the dealer to enter it (edit car -> commission).
+
+#### Dashboard communication sweep 2026-09-24 — fixed (staging + live DB), 2 open
+- [ ] **OWNER ACTION: every AI feature is down — `ANTHROPIC_API_KEY` edge secret.**
+  `ai-proxy` answered 4 of 4 calls on 2026-09-23 with a 500 and has never written
+  a row to `ai_request_log`. The only 500 path that logs nothing is the missing-key
+  check (`supabase/functions/ai-proxy/index.ts:124`), and it runs before usage is
+  recorded — which matches the empty log. Set the secret in Supabase -> Edge
+  Functions -> Secrets, then try AI Manager once. `sales_manager`/`crm_assist`
+  still pin the deprecated `claude-sonnet-4-20250514` (AGENT work retires it).
+- [ ] 1 deleted account due for purge can go through tonight (02:30 UTC) now that
+  `sync_delete_stock_on_listing_delete` is definer (`20260924e`); check
+  `purge-deleted-accounts` logs tomorrow for "Database error deleting user".
+- Shipped: Team tab sold/commission (`price` column that doesn't exist), salesman
+  handover-overdue alerts (`salesman_notifications.dealer_id` doesn't exist) +
+  one roll-up per person per day (`expiry-reminders` v13), account purge, enquiry
+  bell link (`enquiries` tab gone -> `crm`, + legacy tab aliases), recon jobs for
+  managers (`20260924f`), viewing-outcome bell link (`20260924g`), sale price/date
+  kept through the stock<->listing sync (`20260924d`).
+
+#### AI-AGENT — scope (owner decision 2026-09-23: the AI MAY reply to buyers)
+This REPLACES the "AI drafts, a human sends" rule in CLAUDE.md for the chat
+channel only. Rewrite that CLAUDE.md section in the same PR that ships AGENT-1.
+- **Where it plugs in:** `BuyerChat` / `chat_threads`. Dealer storefronts and the
+  marketplace render the SAME `CarDetailPage` + `BuyerChat`, so one integration
+  covers every dealer site with no per-site work.
+- **AGENT-1 — AI replies in chat.** Server-side (edge function), tools that read the
+  DB: get listing, availability, free viewing slots, book viewing (creates the
+  appointment + lead through the existing trigger), capture name/phone, hand off.
+  Per-dealer toggle: off / after hours / always. Buyer is told it is an assistant.
+  A human reply takes the thread over for good.
+- **AGENT-2 — lead extraction.** After each AI turn, a structured-output call fills
+  the lead: budget stated, cash/loan, trade-in yes/no, timeframe, preferred viewing
+  time, objections. Stored as lead fields + one activity note. This is how chat
+  becomes pipeline data instead of a transcript nobody reads.
+- **AGENT-3 — dealer inbox.** The dealer dashboard has no chat inbox (only
+  `ChatSheet` from a lead). Add one so the dealer can watch what the AI said.
+- **AGENT-4 — weekly insight digest (AI Manager tab + one push).** Nightly batch
+  over extracted lead data + `analytics_events`: demand the dealer does not stock
+  ("5 buyers asked for a Vios under RM50k, you have none" — ties to Market
+  Demand), top objections, reply speed, why deals were lost, CSI themes. Every
+  line quotes a real count and has a minimum sample, like the Performance tab.
+- **AI must NOT:** state any discount, instalment, loan approval, trade-in value,
+  deposit or number it cannot read from the DB; negotiate; answer complaints or
+  CSI detractors (human only); write money fields (P&L, commission, price) — it
+  may suggest, never save; see raw `body` (reads `chat_messages_ai` only) or IC
+  numbers; message a buyer outside a conversation the buyer started.
+- **Model:** decide Haiku 4.5 vs Sonnet 5 after testing on real threads. Also
+  retire `claude-sonnet-4-20250514` (deprecated) in `ai-proxy/index.ts:20-21`
+  and `chat-assist/index.ts:23` — raise their max_tokens (Sonnet 5 counts ~30% more).
+- **WhatsApp** is a later step: needs a Meta-approved business number per dealer;
+  verify Meta's current AI-reply rules before starting.
+
+#### CSI-1 — Customer Satisfaction tab (dealer dashboard, Operations group)
+- **Trigger:** the handover step `handover` ticked done -> a DB trigger creates a
+  `csi_surveys` row (dealer_id, customer_id, lead_id, salesman_id, token, sent_at,
+  answered_at, answers). A 2nd touch at +30 days ("how is the car?") catches
+  post-purchase defects, the main used-car complaint.
+- **Send:** the salesman gets a ready WhatsApp message with the survey link and
+  presses send (buyer-facing, outside a chat the buyer started -> human sends).
+  Email when `customers.email` exists.
+- **Survey page** `/survey/:token`, 5 questions, no login: recommend 0-10, the
+  salesman 1-5, car matched the listing (yes/partly/no), paperwork speed 1-5, free
+  text. Read/write ONLY through a SECURITY DEFINER function taking the token as an
+  argument (share-token rules in CLAUDE.md); never return the token as a column.
+- **"Post as a review?"** opt-in writes a `reviews` row with `verified_purchase =
+  true` — the column exists and nothing can set it honestly today. Real sales
+  become the marketplace's only verified reviews.
+- **Tab:** score trend, per salesman, per question, response rate, comments.
+  Hide averages under 5 answers. A score <= 6 fires a `dealer_notifications` row
+  (= a push) so the owner calls within a day.
+- Volume today: 26 customers, 2 handovers marked done — CSI also depends on
+  handovers actually being ticked, so surface "unticked handovers" in the tab.
+
+---
+
 ### SESSION 2026-09-05 — CarDetailPage competitor audit (Mudah + Carlist), scoped
 
 A competitor teardown of Mudah and Carlist was run against `CarDetailPage.jsx`
@@ -4163,12 +4256,33 @@ native build.
   WATCH: `notify-price-alerts` and `appointment-reminders` carry literal JWTs inline in
   `cron.job.command`. They work, but the token is sitting in plaintext in the job table and
   will break silently whenever it is rotated — move them to `get_cron_edge_key()` too.
-- [ ] **MOBILE-4: edge function CORS allowlist will reject the native origin.** `invites`,
-  `create-salesman`, `send-document` and `import-drive-images` all hard-allowlist
-  `https://xdrive.my` / `*.xdrive.my` / localhost. A native shell's origin
-  (`capacitor://localhost` or similar) gets silently rejected by every one of them. Cheap
-  one-line fix per function — but easy to forget until a store build mysteriously breaks, so
-  it is logged here. Depends on MOBILE-2 for the exact origin string.
+- [x] **MOBILE-4 — DONE 2026-09-24.** One allowlist, `supabase/functions/_shared/cors.ts`,
+  imported by all 10 browser-called functions (ai-proxy, chat-assist, send-telegram,
+  send-push, invites, create-salesman, send-document, delete-account,
+  import-drive-images, send-signup-reminder). Allows `capacitor://localhost` (iOS) and
+  `https://localhost` (Android) — Capacitor 8 defaults, read from node_modules, not
+  memory — plus `*.xdrive.my` and this project's Vercel previews only
+  (`shift-*-shift-os.vercel.app`). Verified live: 36 requests from the DB via
+  `net.http_post`, each function 401s a logged-out caller and echoes the three good
+  origins, falls back to xdrive.my for a foreign one. Change `server.iosScheme` /
+  `androidScheme` / `hostname` in capacitor.config.json and this list must change too.
+  Found while redeploying, fixed: `invites` took `dealer_id` from the request body (a
+  dealer could plant a manager in a competitor's dealership) and its DELETE removed any
+  auth user by id; `send-document` never checked the caller belonged to the dealership.
+  `send-document` repo copy was behind the deployed one (IC blur) — repo now matches.
+- [ ] **MOBILE-6: relative `/api/...` calls break inside the native app.** Seven call
+  sites `fetch('/api/…')` (auth-account-status, booking, call-number, car-specs,
+  enquiry, waitlist, whatsapp-lead). In the app that resolves to `capacitor://localhost/api`
+  — enquiry, booking and WhatsApp lead capture would all fail. Needs one `apiUrl(path)`
+  helper (absolute `https://xdrive.my` when `Capacitor.isNativePlatform()`) and the same
+  origin allowlist on those Vercel functions.
+- [ ] **MOBILE-7: in-app account deletion for every role (App Store blocker).** Apple
+  guideline 5.1.1(v): any app that allows account creation must let the user START
+  deletion inside the app; deactivation alone does not count
+  (developer.apple.com/news/?id=12m75xbj). `delete-account` only accepts a solo salesman
+  (`role='salesman' AND dealer_id IS NULL`) — dealers and buyers (who can sign up) have
+  no path. Soft-delete + 30-day purge is acceptable as long as the purge really runs
+  (it was failing nightly until `20260924e`).
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

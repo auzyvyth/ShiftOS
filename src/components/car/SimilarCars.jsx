@@ -77,10 +77,12 @@ export default function SimilarCars({ car, buckets, ctaContext, variant = 'deskt
         key={t.key}
         onClick={() => setTab(t.key)}
         style={{
-          background: on ? '#dc2626' : 'transparent',
-          border: `1px solid ${on ? '#dc2626' : (th?.border || 'rgba(255,255,255,0.12)')}`,
-          color: on ? '#fff' : (th?.textSec || 'rgba(255,255,255,0.6)'),
-          borderRadius: 999,
+          // Selected tab = ink fill (the page's text colour), not red: red is
+          // the page's primary action and a second red block competes with it.
+          background: on ? (th?.text || '#ffffff') : 'transparent',
+          border: `1px solid ${on ? (th?.text || '#ffffff') : (th?.border || 'rgba(255,255,255,0.12)')}`,
+          color: on ? (th?.card || '#0f1115') : (th?.textSec || 'rgba(255,255,255,0.6)'),
+          borderRadius: 6,
           padding: isMobile ? '5px 12px' : '6px 14px',
           fontSize: isMobile ? 11 : 12,
           fontWeight: 600,

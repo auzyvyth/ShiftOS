@@ -165,7 +165,7 @@ export default function PriceAlertButton({ filters, hasFilters }) {
           <span style={{
             position: 'absolute', top: '-4px', right: '-4px',
             background: '#dc2626', color: '#fff', fontSize: '9px',
-            fontWeight: '800', borderRadius: '20px', padding: '1px 5px',
+            fontWeight: '800', borderRadius: '4px', padding: '1px 5px',
             fontFamily: "'Outfit',sans-serif", lineHeight: 1.4,
           }}>
             {alerts.length}

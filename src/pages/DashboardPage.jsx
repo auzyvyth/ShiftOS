@@ -10,6 +10,8 @@ import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { isWonDealBlock, offerUndoSale, relistCar } from "../utils/undoSale";
+import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -2980,7 +2982,51 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
 }
 
 // ─── MarkSoldModal ────────────────────────────────────────────────────────────
-function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
+// Asks for the three things a sale needs and nothing else did: who sold it,
+// what it actually sold for, and the commission. Without them 18 of 25 sold cars
+// showed RM0 commission and 10 had no salesman, so commission and per-rep gross
+// were wrong everywhere they are read. Each field starts from the car's own
+// values, so a dealer who already filled them in just confirms.
+// One popup for every "mark sold" on the dealer dashboard — the listings grid
+// and the Stock tab both open it, so a sale always records who closed it, the
+// price it went for and the commission. `showDate` + `cost` are the Stock tab's
+// extras (it knows the purchase + recon cost; a margin rule needs it). A stock
+// unit with no public listing has nowhere to store a closer or commission, so
+// those two fields hide.
+function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, showDate = false, cost = null }) {
+  const hasListing = !!listing.id;
+  const [soldDate, setSoldDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [soldBy, setSoldBy] = useState(listing.assigned_to || "");
+  const [soldPrice, setSoldPrice] = useState(listing.selling_price != null ? String(listing.selling_price) : "");
+  const [commission, setCommission] = useState(Number(listing.commission_amount) > 0 ? String(listing.commission_amount) : "");
+  // No commission saved on the car -> fill it from the dealer's rule on the
+  // price it actually sold for, and keep following that price until someone
+  // types their own figure. A figure already on the car is kept as-is.
+  const [commissionConfig, setCommissionConfig] = useState(null);
+  useEffect(() => {
+    if (!listing.dealer_id) return;
+    supabase.from("profiles").select("commission_config").eq("id", listing.dealer_id).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [listing.dealer_id]);
+  const suggestedCommission = hasListing
+    ? suggestCommission(commissionConfig, { sell: soldPrice, cost: cost ?? listing.base_price })
+    : null;
+  const lastAutoCommission = useRef(null);
+  useEffect(() => {
+    if (suggestedCommission == null) return;
+    if (commission !== "" && commission !== lastAutoCommission.current) return;
+    const next = String(suggestedCommission);
+    lastAutoCommission.current = next;
+    setCommission(next);
+  }, [suggestedCommission]); // eslint-disable-line react-hooks/exhaustive-deps
+  const fieldCls = "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-gray-400";
+  const labelCls = "block text-xs font-semibold text-gray-600 mb-1";
+  const submit = () => onConfirm({
+    soldBy: soldBy || null,
+    soldPrice: soldPrice === "" ? null : Number(soldPrice),
+    commission: commission === "" ? null : Number(commission),
+    soldDate: soldDate || null,
+  });
   return (
     <div
       className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
@@ -3004,23 +3050,35 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div
-          className="rounded-xl px-4 py-3 mb-5 flex items-start gap-3"
-          style={{
-            background: "rgba(34,197,94,0.06)",
-            border: "1px solid rgba(34,197,94,0.18)",
-          }}
-        >
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-emerald-700 text-sm font-semibold">
-              Sold count will update automatically
-            </p>
-            <p className="text-emerald-600 text-xs mt-0.5">
-              This listing moves to "Sold" and the sold counter updates in
-              real-time.
-            </p>
+        <div className="flex flex-col gap-3 mb-5">
+          {hasListing && <div>
+            <label className={labelCls}>Sold by</label>
+            <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className={fieldCls}>
+              <option value="">No salesman (sold by the dealership)</option>
+              {salesmen.map((sm) => (
+                <option key={sm.id} value={sm.id}>{sm.full_name || sm.email || "Salesman"}</option>
+              ))}
+            </select>
+          </div>}
+          <div className={hasListing ? "grid grid-cols-2 gap-3" : ""}>
+            <div>
+              <label className={labelCls}>Sold for (RM)</label>
+              <input type="number" inputMode="numeric" min="0" value={soldPrice} onChange={(e) => setSoldPrice(e.target.value)} className={fieldCls} />
+            </div>
+            {hasListing && <div>
+              <label className={labelCls}>Commission (RM)</label>
+              <input type="number" inputMode="numeric" min="0" value={commission} placeholder="Not set" onChange={(e) => setCommission(e.target.value)} className={fieldCls} />
+              {suggestedCommission != null && commission === String(suggestedCommission) && (
+                <p className="text-[11px] text-gray-500 mt-1">From your rule ({describeCommissionRule(commissionConfig)})</p>
+              )}
+            </div>}
           </div>
+          {showDate && (
+            <div>
+              <label className={labelCls}>Sold on</label>
+              <input type="date" value={soldDate} onChange={(e) => setSoldDate(e.target.value)} className={fieldCls} />
+            </div>
+          )}
         </div>
         <div className="flex gap-3">
           <button
@@ -3030,7 +3088,7 @@ function MarkSoldModal({ listing, onClose, onConfirm, loading }) {
             Cancel
           </button>
           <button
-            onClick={onConfirm}
+            onClick={submit}
             disabled={loading}
             className="btn-shimmer flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm text-white font-semibold disabled:opacity-40"
             style={{
@@ -4331,12 +4389,15 @@ function TeamTab({ managerDealership, dealerId, profile }) {
 
   const fetchSoldPerSalesman = async () => {
     if (!dealerId) return;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, price, purchase_price, base_price, recon_cost, included_services_cost")
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, purchase_price, base_price, recon_cost, included_services_cost")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
+    // This select once named a column that does not exist ("price"); PostgREST
+    // rejected the whole query and every salesman showed 0 sold / RM0. Say so.
+    if (error) { console.error("[TeamTab] sold per salesman:", error.message); return; }
     if (!data) return;
     const map = {};
     data.forEach((row) => {
@@ -4353,7 +4414,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       // when some cost exists, so units with zero cost don't show "full sale = profit".
       const cost = Number(row.purchase_price) || Number(row.base_price) || 0;
       if (cost > 0) {
-        const sale = Number(row.sold_price ?? row.selling_price ?? row.price) || 0;
+        const sale = Number(row.sold_price ?? row.selling_price) || 0;
         map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
       }
     });
@@ -6544,7 +6605,7 @@ function StockStatsStrip({ dealerId }) {
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, onPublishComplete, autoTool, onToolHandled }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   const [units, setUnits] = useState([]);
@@ -6553,7 +6614,6 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
   const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);
   const [soldTarget, setSoldTarget] = useState(null);
-  const [soldForm, setSoldForm] = useState({ sold_price: '', sold_date: '' });
   const [soldSaving, setSoldSaving] = useState(false);
   const [stockView, setStockView] = useState('available');
   const [visibleCount, setVisibleCount] = useState(30);
@@ -6834,14 +6894,30 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
     fetchUnits();
   };
 
-  const handleMarkSold = async () => {
+  // Same popup as the listings grid (MarkSoldModal). The stock_units write is
+  // the sale: trg_sync_stock_sold_to_listing flips the car to sold with this
+  // price + date, so no second car_listings status write here. Closer and
+  // commission live on the car, so they are written first.
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, soldDate = null } = {}) => {
     setSoldSaving(true);
-    const soldPrice = parseFloat(soldForm.sold_price);
-    const soldDate = soldForm.sold_date || new Date().toISOString().slice(0, 10);
+    const listingId = soldTarget.listing_id || null;
+    if (listingId) {
+      const carPatch = {};
+      if (soldBy) carPatch.assigned_to = soldBy;
+      if (commission != null) carPatch.commission_amount = commission;
+      if (Object.keys(carPatch).length) {
+        const { error: carErr } = await supabase.from('car_listings').update(carPatch).eq('id', listingId);
+        if (carErr) {
+          toast.error('Could not save the salesman or commission: ' + carErr.message);
+          setSoldSaving(false);
+          return;
+        }
+      }
+    }
     const payload = {
       status: 'sold',
-      sold_date: soldDate,
-      sold_price: isNaN(soldPrice) ? 0 : soldPrice,
+      sold_date: soldDate || new Date().toISOString().slice(0, 10),
+      sold_price: soldPrice ?? 0,
     };
     const { error } = await supabase
       .from('stock_units')
@@ -6849,24 +6925,17 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
       .eq('id', soldTarget.id)
       .eq('dealer_id', userId);
     if (error) {
-      console.error('Mark sold error:', error.message);
       toast.error('Failed to mark as sold: ' + error.message);
       setSoldSaving(false);
       return;
     }
-    // Sync the linked car listing so status is consistent everywhere
-    const listingId = soldTarget.listing_id || soldTarget.car_listings?.id;
-    if (listingId) {
-      await supabase
-        .from('car_listings')
-        .update({ status: 'sold', sold_at: new Date().toISOString(), sold_price: payload.sold_price, sold_date: payload.sold_date })
-        .eq('id', listingId)
-        .neq('status', 'sold');
-    }
     const car = soldTarget.car_listings || {};
     logActivity({ dealerId: userId, actor: profile, tableName: 'stock_units', recordId: soldTarget.id, action: 'marked_sold', summary: `Stock unit sold${car.brand ? ` — ${car.brand} ${car.model} ${car.year}` : ''} · RM ${(payload.sold_price||0).toLocaleString()}` });
+    if (listingId) {
+      onPublishComplete?.({ id: listingId, status: 'sold', sold_price: payload.sold_price, sold_date: payload.sold_date,
+        ...(soldBy ? { assigned_to: soldBy } : {}), ...(commission != null ? { commission_amount: commission } : {}) });
+    }
     // Refetch — server-side triggers recompute days_in_stock/gross_profit/recon_cost etc.
-    // that an optimistic local patch can't reflect.
     await fetchUnits();
     setSoldTarget(null);
     setSoldSaving(false);
@@ -7692,7 +7761,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
                 {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', '#db2777', 'rgba(236,72,153,0.06)', '#fbcfe8', () => openAdSpend(u))}
                 {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
                 {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
-                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => { setSoldTarget(u); setSoldForm({ sold_price: u.asking_price ? String(u.asking_price) : '', sold_date: new Date().toISOString().slice(0, 10) }); })}
+                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => setSoldTarget(u))}
               </div>
               </div>{/* /RIGHT column */}
               </div>{/* /body grid */}
@@ -7800,23 +7869,23 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, onPub
         </div>
       )}
 
-      {/* Mark Sold Modal */}
+      {/* Mark Sold — the shared popup; the unit's own cost drives a margin rule */}
       {soldTarget && createPortal(
-        <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)', zIndex: 10000 }}>
-          <div className="modal-top rounded-t-2xl sm:rounded-2xl w-full max-w-sm" style={undefined}>
-            <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
-              <h3 className="font-semibold text-gray-900">Mark as Sold</h3>
-              <button onClick={() => setSoldTarget(null)} className="text-gray-500 hover:text-gray-900 p-1"><X className="w-5 h-5" /></button>
-            </div>
-            <div className="p-5 space-y-3">
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Price (RM)</label><input type="number" value={soldForm.sold_price} onChange={e => setSoldForm(p => ({ ...p, sold_price: e.target.value }))} placeholder="0" className={iCls} /></div>
-              <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sold Date</label><input type="date" value={soldForm.sold_date} onChange={e => setSoldForm(p => ({ ...p, sold_date: e.target.value }))} className={iCls} /></div>
-            </div>
-            <div className="p-5 border-t border-white/[0.06] flex gap-3">
-              <button onClick={() => setSoldTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl text-sm text-gray-500 hover:text-gray-900 transition-all border border-gray-200">Cancel</button>
-              <button onClick={handleMarkSold} disabled={soldSaving} className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold" style={T.btnRed}>{soldSaving ? 'Saving...' : 'Confirm Sale'}</button>
-            </div>
-          </div>
+        <div style={{ position: 'relative', zIndex: 10000 }}>
+          <MarkSoldModal
+            listing={{
+              ...(soldTarget.car_listings || {}),
+              ...(listings.find(l => l.id === soldTarget.listing_id) || {}),
+              id: soldTarget.listing_id || null,
+              selling_price: soldTarget.asking_price ?? soldTarget.car_listings?.selling_price ?? null,
+            }}
+            salesmen={salesmen}
+            showDate
+            cost={(Number(soldTarget.purchase_price) || 0) + (Number(soldTarget.recon_cost) || 0) || null}
+            onClose={() => setSoldTarget(null)}
+            onConfirm={handleMarkSold}
+            loading={soldSaving}
+          />
         </div>
       , document.body)}
 
@@ -9774,6 +9843,11 @@ export default function DashboardPage() {
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       ai_manager:  { tab: "ai_manager", sub: [] },
+      // Merged into Leads / CRM. Old notifications (link_to) and saved URLs
+      // still carry these; without the alias they open a blank pane.
+      enquiries:   { tab: "crm", sub: [] },
+      bookings:    { tab: "crm", sub: [] },
+      outreach:    { tab: "crm", sub: [] },
     };
     const mapped = ALIAS[tabParam];
     if (mapped) {
@@ -9852,6 +9926,11 @@ export default function DashboardPage() {
       );
     } catch (e) {
       console.error(e);
+      // A car with a won deal cannot leave 'sold' (trg_guard_sold_car). Offer
+      // the one way out instead of failing silently, which is what let 12 won
+      // deals end up pointing at relisted cars.
+      if (isWonDealBlock(e)) offerUndoSale(id, () => setListings(relistCar(id)));
+      else toast.error("Could not update the car's status. Try again.");
     } finally {
       setUpdatingStatus(null);
     }
@@ -9877,13 +9956,23 @@ export default function DashboardPage() {
   // Which Settings section the Verify-ID prompt should land on.
   const [settingsJump, setSettingsJump] = useState(null);
 
-  const handleMarkSold = async () => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null } = {}) => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
+      const update = {
+        status: "sold",
+        sold_at: new Date().toISOString(),
+        sold_price: soldPrice ?? markSoldListing.selling_price ?? null,
+        sold_date: new Date().toISOString().slice(0, 10),
+      };
+      // Only write what the dealer actually gave — a blank never overwrites a
+      // value already on the car.
+      if (soldBy) update.assigned_to = soldBy;
+      if (commission != null && !Number.isNaN(commission)) update.commission_amount = commission;
       const { data, error } = await supabase
         .from("car_listings")
-        .update({ status: "sold", sold_at: new Date().toISOString(), sold_price: markSoldListing.selling_price ?? null, sold_date: new Date().toISOString().slice(0, 10) })
+        .update(update)
         .eq("id", markSoldListing.id)
         .select();
       if (error) throw error;
@@ -9896,6 +9985,7 @@ export default function DashboardPage() {
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
+      toast.error("Could not mark the car as sold. Try again.");
     }
     setMarkSoldLoading(false);
   };
@@ -11475,7 +11565,7 @@ export default function DashboardPage() {
               <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "system-ui, sans-serif" }}>
                 <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
               </button>
-              <StockTab userId={userId} listings={listings} profile={profile}
+              <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen}
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
                 onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
               />
@@ -11822,6 +11912,7 @@ export default function DashboardPage() {
       {markSoldListing && (
         <MarkSoldModal
           listing={markSoldListing}
+          salesmen={salesmen}
           onClose={() => setMarkSoldListing(null)}
           onConfirm={handleMarkSold}
           loading={markSoldLoading}

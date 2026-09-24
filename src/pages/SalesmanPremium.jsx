@@ -5,6 +5,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { routeForRole } from "../hooks/useRoleRedirect";
@@ -2302,7 +2303,20 @@ export default function SalesmanPremium() {
  if (statusErr) {
  console.error("updateListingStatus:", statusErr);
  setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: prevStatus, sold_at: prevSoldAt } : c));
+ if (isWonDealBlock(statusErr)) {
+ // Reversing a sale also removes its customer + handover rows, so every
+ // post-sale surface refetches, same as the won path in handleMarkWon.
+ offerUndoSale(car.id, () => {
+ setMyListings(relistCar(car.id));
+ setLeads(reopenWonLeads(car.id));
+ handover.refresh();
+ refreshCustomers();
+ refreshCommissionData();
+ refreshSales();
+ });
+ } else {
  toast.error("Failed to update status");
+ }
  return;
  }
  refreshCommissionData();

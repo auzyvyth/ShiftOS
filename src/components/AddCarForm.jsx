@@ -6,6 +6,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { estimateRoadTax } from "../utils/roadTax";
+import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { lookupCarSpec } from "../utils/carSpecs";
 import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { decodeChassis, isChassisCode, isMalaysianVin } from "../utils/chassisDecode";
@@ -243,18 +244,26 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
     acfSaveDraft(dealerId, form, step, mode);
   }, [form, step, dealerId, draftBanner, mode]); // eslint-disable-line
 
-  // Pre-fill commission suggestion from dealer commission_config
+  // Commission fills itself from the DEALER's rule (a manager's own profile has
+  // none) and follows the prices until someone types their own figure — any
+  // value that isn't the last one written here counts as theirs, so a restored
+  // draft keeps it. Same helper as CarForm and the Mark Sold popup.
+  const [commissionConfig, setCommissionConfig] = useState(null);
   useEffect(() => {
-    if (!profile?.commission_config || form.commission_amount) return;
-    const cfg = profile.commission_config;
-    const asking = num(form.asking_price);
-    const purchase = num(form.purchase_price);
-    let suggested = 0;
-    if (cfg.type === "flat") suggested = num(cfg.value);
-    else if (cfg.type === "percent_sale") suggested = asking * num(cfg.value) / 100;
-    else suggested = Math.max(0, (asking - purchase)) * num(cfg.value) / 100; // percent_gross
-    if (suggested > 0) setVal("commission_amount", String(Math.round(suggested)));
-  }, [form.asking_price, form.purchase_price]); // eslint-disable-line
+    if (!dealerId) return;
+    supabase.from("profiles").select("commission_config").eq("id", dealerId).maybeSingle()
+      .then(({ data }) => setCommissionConfig(data?.commission_config || null));
+  }, [dealerId]);
+  const suggestedCommission = suggestCommission(commissionConfig, { sell: form.asking_price, cost: form.purchase_price });
+  const lastAutoCommission = useRef(null);
+  useEffect(() => {
+    if (suggestedCommission == null) return;
+    const cur = form.commission_amount;
+    if (cur !== "" && cur !== lastAutoCommission.current) return;
+    const next = String(suggestedCommission);
+    lastAutoCommission.current = next;
+    if (cur !== next) setVal("commission_amount", next);
+  }, [suggestedCommission]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Live cost floor ────────────────────────────────────────────────────────
   const floor = useMemo(() => {
@@ -546,7 +555,11 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
             {form.b5_done && <Field label="B5 date"><FText k="puspakom_b5_date" type="date" /></Field>}
             <Field label="Asking price (RM)" required><FText k="asking_price" ph="55000" type="number" /></Field>
             <Field label="Min acceptable (RM)" hint="Private floor — never shown to buyers"><FText k="min_price" ph="52000" type="number" /></Field>
-            <Field label="Commission (RM)" hint="Pre-filled from your commission config"><FText k="commission_amount" ph="0" type="number" /></Field>
+            <Field label="Commission (RM)" hint={suggestedCommission == null
+              ? "Filled from your commission rule once the prices are in. Editable."
+              : form.commission_amount === String(suggestedCommission)
+                ? `Filled from your rule (${describeCommissionRule(commissionConfig)}). Editable.`
+                : `Your rule gives RM ${suggestedCommission.toLocaleString()} (${describeCommissionRule(commissionConfig)}).`}><FText k="commission_amount" ph="0" type="number" /></Field>
             <Field label="Warranty offered (months)" hint="Triggers warranty reserve if set in settings"><FText k="warranty_months" ph="6" type="number" /></Field>
           </div>
 

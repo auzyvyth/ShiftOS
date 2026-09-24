@@ -330,7 +330,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               </div>
             )}
             {isHot && discountPct && (
-              <div style={{ background: '#dc2626', color: 'white', fontSize: '9px', fontWeight: '800', padding: '2px 7px', borderRadius: '20px' }}>-{discountPct}%</div>
+              <div style={{ background: '#dc2626', color: 'white', fontSize: '9px', fontWeight: '800', padding: '2px 6px', borderRadius: '4px', fontVariantNumeric: 'tabular-nums' }}>-{discountPct}%</div>
             )}
           </div>
         </div>
@@ -341,12 +341,12 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Row 1: condition + year */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: '6px' }}>
           {car.condition && (
-            <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', flexShrink: 0, ...condStyle }}>
+            <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 7px', borderRadius: '4px', flexShrink: 0, ...condStyle }}>
               {{ used: 'Used', recon: 'Recon', new: 'New' }[car.condition] || car.condition}
             </span>
           )}
           {year && (
-            <span style={{ fontSize: '10px', fontWeight: '600', color: c.yearText, padding: '2px 7px', borderRadius: '20px', background: c.yearBg, border: `1px solid ${c.yearBorder}`, flexShrink: 0 }}>{year}</span>
+            <span style={{ fontSize: '10px', fontWeight: '600', color: c.yearText, padding: '2px 7px', borderRadius: '4px', background: c.yearBg, border: `1px solid ${c.yearBorder}`, flexShrink: 0 }}>{year}</span>
           )}
           {isHot && (
             <span style={{ fontSize: '10px', fontWeight: '700', color: '#fb923c', marginLeft: 'auto', flexShrink: 0 }}>
@@ -470,8 +470,8 @@ export function ShowroomCardSkeleton({ dark = false }) {
       <div className="sc-content-col" style={{ flex: 1, padding: '11px 14px 11px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Row 1: condition pill + year pill */}
         <div style={{ display: 'flex', gap: 5, marginBottom: 8 }}>
-          {bar({ height: 20, width: 42, borderRadius: 20 })}
-          {bar({ height: 20, width: 32, borderRadius: 20, animationDelay: '0.05s' })}
+          {bar({ height: 20, width: 42, borderRadius: 4 })}
+          {bar({ height: 20, width: 32, borderRadius: 4, animationDelay: '0.05s' })}
         </div>
         {/* Row 2: name — 2 lines */}
         {bar({ height: 13, width: '82%', borderRadius: 4, marginBottom: 5, animationDelay: '0.05s' })}

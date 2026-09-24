@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 // chat-assist — AI help for a seller inside an in-app buyer conversation.
 //
@@ -13,26 +14,11 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // Trust boundary: output is a DRAFT for the salesman to read and send himself,
 // or an answer addressed to the salesman. Nothing here messages a buyer.
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
 const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 700;
 const MAX_TURNS = 40;
 
-function corsHeaders(origin: string | null) {
-  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info, baggage, sentry-trace",
-    "Access-Control-Max-Age": "86400",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
 function json(body: unknown, status: number, origin: string | null) {
   return new Response(JSON.stringify(body), {
@@ -115,7 +101,10 @@ serve(async (req) => {
     if (!msgs?.length) return json({ error: "no messages yet" }, 400, origin);
 
     const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!apiKey) return json({ error: "AI not configured" }, 500, origin);
+    if (!apiKey) {
+      console.error("chat-assist: ANTHROPIC_API_KEY edge secret is not set");
+      return json({ error: "AI not configured" }, 500, origin);
+    }
 
     // Shared per-dealer daily quota, same pool as every other AI feature.
     const dealerId = resolveDealerId(profile);

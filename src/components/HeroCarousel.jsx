@@ -13,7 +13,7 @@ import {
 import { supabase } from "../supabaseClient";
 import { cdnImg, imgFallback } from "../utils/img";
 import useTenant, { isSubdomain, getSubdomain } from "../hooks/useTenant";
-import { trackEvent, getSlugFromURL, getOrCreateSessionId } from "../utils/analytics";
+import { trackEvent } from "../utils/analytics";
 import ContactGate from "./ContactGate";
 
 const HC_CSS = `
@@ -632,21 +632,9 @@ function MetaBlock({ extraClass = "", metaItems, priceVal, waHref, s, tenant }) 
           carId={s.car_listing_id || null}
           carName={s.car_name || null}
           onConfirmed={() => {
-            (async () => {
-              try {
-                await supabase.from('whatsapp_enquiries').insert({
-                  dealer_id: s.dealer_id || tenant?.id || null,
-                  listing_id: s.car_listing_id || null,
-                  buyer_name: null,
-                  buyer_phone: null,
-                  buyer_message: `Enquiry from hero carousel — ${s.car_name || 'Featured Car'}`,
-                  source: 'hero_carousel',
-                  status: 'new',
-                  ref_slug: getSlugFromURL(),
-                  session_id: getOrCreateSessionId(),
-                });
-              } catch (e) { console.warn(e); }
-            })();
+            // No enquiry insert here: ContactGate has already recorded the real
+            // lead (with the buyer's phone) before onConfirmed runs. A second
+            // phoneless whatsapp_enquiries row only added an empty duplicate.
             (async () => {
               try {
                 await trackEvent(supabase, 'whatsapp_click', {

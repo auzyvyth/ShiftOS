@@ -248,7 +248,7 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
     const on = filter === value;
     return (
       <button onClick={() => setFilter(value)} style={{
-        fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 99, cursor: 'pointer',
+        fontSize: 11.5, fontWeight: 600, padding: '5px 11px', borderRadius: 6, cursor: 'pointer',
         fontFamily: 'system-ui,sans-serif',
         background: on ? 'rgba(220,38,38,0.10)' : 'transparent',
         border: `1px solid ${on ? 'rgba(220,38,38,0.30)' : th.border}`,
@@ -437,7 +437,7 @@ export default function SellerFeedback({ dealerId, listingId, sellerName = 'this
           {!expanded && feed.length > VISIBLE && (
             <button onClick={() => setExpanded(true)} style={{
               alignSelf: 'center', marginTop: 14, background: 'none', cursor: 'pointer',
-              border: `1px solid ${th.border}`, borderRadius: 999, padding: '8px 18px',
+              border: `1px solid ${th.border}`, borderRadius: 8, padding: '8px 18px',
               fontSize: 12.5, fontWeight: 700, color: th.textSec, fontFamily: 'system-ui,sans-serif',
             }}>
               Show all {feed.length}

@@ -705,7 +705,7 @@ const FinancingCalculator = ({
         .calc-pill { cursor:pointer; border-radius:8px; padding:7px 12px; font-size:12px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:system-ui,sans-serif; }
         .calc-pill:hover { border-color:rgba(220,38,38,0.35); color:${light ? '#dc2626' : 'white'}; }
         .calc-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
-        .calc-body-pill { cursor:pointer; border-radius:20px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:system-ui,sans-serif; }
+        .calc-body-pill { cursor:pointer; border-radius:6px; padding:5px 12px; font-size:11px; font-weight:600; transition:all 0.15s; border:1px solid ${c.pillBorder}; background:${c.pillBg}; color:${c.pillColor}; font-family:system-ui,sans-serif; }
         .calc-body-pill:hover { border-color:rgba(220,38,38,0.35); }
         .calc-body-pill.active { background:rgba(220,38,38,0.12); border-color:rgba(220,38,38,0.45); color:${light ? '#dc2626' : '#f87171'}; }
         select.calc-select option { background:${c.selectOption}; color:${light ? '#111827' : 'white'}; }

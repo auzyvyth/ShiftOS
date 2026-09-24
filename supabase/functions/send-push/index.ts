@@ -2,36 +2,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // @ts-ignore — esm.sh resolves web-push for Deno
 import webpush from "https://esm.sh/web-push@3.6.7";
+import { corsHeaders as sharedCors } from "../_shared/cors.ts";
 
 // NOTE: this function existed on Supabase for months without ever being committed
 // here. This file is the deployed v11 source plus the auth hardening described
 // below. Diff against `mcp__Supabase__get_edge_function` before redeploying.
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every
+// function, including the native app. This used to accept ANY *.vercel.app; it
+// now takes only this project's previews. Same blast radius either way: a caller
+// still needs the shared secret or a ShiftOS user's token, and a token caller can
+// only notify themselves. x-push-secret is the one extra header this function reads.
 function corsHeaders(origin: string | null) {
-  // Subdomain storefronts (<dealer>.xdrive.my) are authenticated surfaces too.
-  // Vercel previews are allowed so the staging branch can be tested end to end —
-  // without this the "Send test" button fails CORS on every preview URL. The
-  // blast radius is nil: a page on some other *.vercel.app still has to present
-  // either the shared secret (server-only) or a logged-in ShiftOS user's token,
-  // and a token-authenticated caller can only ever notify themselves.
-  const allowed = origin && (
-    ALLOWED_ORIGINS.includes(origin)
-    || /^https:\/\/[a-z0-9-]+\.xdrive\.my$/.test(origin)
-    || /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
-  )
-    ? origin
-    : ALLOWED_ORIGINS[0];
+  const h = sharedCors(origin);
   return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace, x-push-secret",
-    "Vary": "Origin",
+    ...h,
+    "Access-Control-Allow-Headers": `${h["Access-Control-Allow-Headers"]}, x-push-secret`,
     "Content-Type": "application/json",
   };
 }
