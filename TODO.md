@@ -4270,12 +4270,21 @@ native build.
   dealer could plant a manager in a competitor's dealership) and its DELETE removed any
   auth user by id; `send-document` never checked the caller belonged to the dealership.
   `send-document` repo copy was behind the deployed one (IC blur) — repo now matches.
-- [ ] **MOBILE-6: relative `/api/...` calls break inside the native app.** Seven call
-  sites `fetch('/api/…')` (auth-account-status, booking, call-number, car-specs,
-  enquiry, waitlist, whatsapp-lead). In the app that resolves to `capacitor://localhost/api`
-  — enquiry, booking and WhatsApp lead capture would all fail. Needs one `apiUrl(path)`
-  helper (absolute `https://xdrive.my` when `Capacitor.isNativePlatform()`) and the same
-  origin allowlist on those Vercel functions.
+- [x] **MOBILE-6 — DONE 2026-09-24.** `src/utils/apiUrl.js` — `apiUrl(path)` returns
+  an absolute `https://xdrive.my/...` URL when `Capacitor.isNativePlatform()`, else the
+  same relative path. Wired into all seven call sites: `CarDetailPage.jsx` (call-number,
+  enquiry, booking), `WaitlistPage.jsx`, `ContactGate.jsx` (whatsapp-lead), `CarForm.jsx`
+  (car-specs), `authAccountStatus.js`. An absolute call from the app is cross-origin, so
+  the Vercel functions also needed real CORS: `lib/cors.js` mirrors the
+  `supabase/functions/_shared/cors.ts` allowlist (MOBILE-4) for the Node runtime, added
+  to all seven route handlers (`car-specs.js`'s bare `Access-Control-Allow-Origin: *`
+  tightened to the same allowlist). `middleware.js` exempts `OPTIONS` from the per-IP
+  rate limiter so a native POST's preflight doesn't cost a second hit against the same
+  cap. Verified: `npm run lint` clean on every touched file (via the documented
+  eslint-without-xlsx workaround above — `npm ci` is still blocked on `cdn.sheetjs.com`
+  in this session). NOT yet verified against a real Capacitor build (no Android SDK /
+  Xcode in this sandbox, per MOBILE-2) — next session with device access should confirm
+  a native build can actually reach `/api/enquiry` etc. end-to-end.
 - [ ] **MOBILE-7: in-app account deletion for every role (App Store blocker).** Apple
   guideline 5.1.1(v): any app that allows account creation must let the user START
   deletion inside the app; deactivation alone does not count
