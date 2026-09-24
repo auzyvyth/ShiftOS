@@ -17,7 +17,8 @@ import { ArrowRight, Check } from "lucide-react";
 const LITE = [
   {
     key: "dashboard", tab: "Dashboard",
-    img: null,
+    img: "/for-salesmen/lite-dashboard.png", w: 569, h: 565,
+    alt: "Follow-up needed list of 28 leads, colour-coded by stage from New to Deposit Taken, with a WhatsApp button on each row",
     title: "Open the app. Know who needs you today.",
     pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
     moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
@@ -31,7 +32,8 @@ const LITE = [
   },
   {
     key: "performance", tab: "Performance",
-    img: null,
+    img: "/for-salesmen/lite-performance.png", w: 567, h: 534,
+    alt: "My Performance over 30 days: 216 views, 136 WhatsApp taps, 63% conversion, with a Top Views tag on the leading cars",
     title: "See which car pulls buyers, and which one is stuck.",
     pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
     moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
@@ -45,7 +47,8 @@ const LITE = [
   },
   {
     key: "leads", tab: "Leads",
-    img: null,
+    img: "/for-salesmen/lite-leads.png", w: 413, h: 444,
+    alt: "Lead pipeline of 37 buyers with source breakdown, stage filters and buyer cards showing warm tags and a WhatsApp button",
     title: "Every buyer in a stage, not lost in a chat.",
     pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
     moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
