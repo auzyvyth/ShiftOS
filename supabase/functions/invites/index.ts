@@ -1,25 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders as sharedCors } from "../_shared/cors.ts";
 
-const ALLOWED_ORIGINS = [
-  "https://xdrive.my",
-  "https://www.xdrive.my",
-  "http://localhost:3000",
-  "http://localhost:5173",
-];
-
-function corsHeaders(origin: string | null) {
-  const allowed =
-    origin && ALLOWED_ORIGINS.some((o) => origin === o || origin.endsWith(".xdrive.my"))
-      ? origin
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, baggage, sentry-trace",
-    "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
-    "Vary": "Origin",
-  };
-}
+// Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
+const corsHeaders = (origin: string | null) => sharedCors(origin, "POST, DELETE, OPTIONS");
 
 function json(data: unknown, status = 200, origin: string | null = null) {
   return new Response(JSON.stringify(data), {
@@ -137,7 +121,7 @@ serve(async (req) => {
     // ── Role check ──────────────────────────────────────────────────────────
     const { data: callerProfile } = await adminClient
       .from("profiles")
-      .select("role, id, dealership")
+      .select("role, id, dealership, dealer_id")
       .eq("id", user.id)
       .maybeSingle();
 
@@ -146,11 +130,34 @@ serve(async (req) => {
     }
 
     // ── DELETE /invites/:id ─────────────────────────────────────────────────
+    // The dealership every write below belongs to comes from the CALLER, never
+    // the request body. Taking dealer_id from the body let any dealer create a
+    // "manager" under a competitor's dealership (get_my_dealer_id() would then
+    // hand that account the competitor's leads), and the DELETE branch removed
+    // any auth user by id, including other dealers and the superadmin.
+    const isSuper = callerProfile.role === "superadmin";
+    const callerDealerId = ["dealer", "owner", "superadmin"].includes(callerProfile.role)
+      ? callerProfile.id
+      : callerProfile.dealer_id;
+    if (!isSuper && !callerDealerId) return json({ error: "forbidden" }, 403, origin);
+
     const url = new URL(req.url);
     const pathParts = url.pathname.split("/").filter(Boolean);
     const targetId = pathParts[pathParts.length - 1];
 
     if (req.method === "DELETE" && targetId && targetId !== "invites") {
+      const { data: target } = await adminClient
+        .from("profiles")
+        .select("id, role, dealer_id")
+        .eq("id", targetId)
+        .maybeSingle();
+      // Only a member of the caller's own team, never an owner-level account
+      // and never yourself. A superadmin may remove any team member.
+      const deletable = target
+        && target.id !== user.id
+        && !["dealer", "owner", "superadmin"].includes(target.role)
+        && (isSuper || target.dealer_id === callerDealerId);
+      if (!deletable) return json({ error: "forbidden" }, 403, origin);
       const { error: deleteErr } = await adminClient.auth.admin.deleteUser(targetId);
       if (deleteErr) {
         // Profile-only deletion if auth user not found
@@ -165,7 +172,10 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { email, full_name, phone, dealership, dealer_id, slug, password, role } = body;
+    const { email, full_name, phone, dealership, slug, password, role } = body;
+    // Superadmin may create a team member for a named dealership; everyone else
+    // only ever creates one for their own.
+    const dealer_id = isSuper ? (body.dealer_id ?? null) : callerDealerId;
 
     if (!email || !full_name || !role) {
       return json({ error: "invalid_input" }, 400, origin);
