@@ -58,6 +58,12 @@ export default async function middleware(req) {
 
   if (!PROTECTED.has(pathname)) return;
 
+  // MOBILE-6: the native app calls these cross-origin, so a real POST is now
+  // preceded by a CORS preflight OPTIONS. It carries no body and the route
+  // handler answers it before doing any work — don't spend rate-limit budget
+  // on it too, or every native request costs two hits against the same IP cap.
+  if (req.method === 'OPTIONS') return;
+
   if (!limiters) limiters = buildLimiters();
   if (!limiters) return; // Upstash not configured — pass through
 

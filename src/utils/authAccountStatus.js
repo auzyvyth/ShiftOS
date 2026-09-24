@@ -8,9 +8,11 @@
 // server key) rather than throwing -- both callers already treat a falsy
 // result the same as "couldn't determine", which degrades to the generic
 // "no account found" copy instead of crashing the login flow.
+import { apiUrl } from './apiUrl';
+
 export async function checkAccountStatus(email, captchaToken) {
   try {
-    const res = await fetch('/api/auth-account-status', {
+    const res = await fetch(apiUrl('/api/auth-account-status'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, token: captchaToken }),

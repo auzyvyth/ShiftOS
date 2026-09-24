@@ -3,6 +3,7 @@ import { Helmet } from "react-helmet";
 import { useSearchParams } from "react-router-dom";
 import LegalModal from "../components/LegalModal";
 import { useTranslation } from "react-i18next";
+import { apiUrl } from "../utils/apiUrl";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
 const BASE = "https://xdrive.my";
@@ -54,7 +55,7 @@ export default function WaitlistPage() {
 
     setLoading(true);
     try {
-      const res = await fetch("/api/waitlist", {
+      const res = await fetch(apiUrl("/api/waitlist"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), phone: trimPhone, refCode: refCode || null }),
