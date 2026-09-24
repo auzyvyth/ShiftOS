@@ -48,12 +48,11 @@ import useTenant, { isSubdomain, getSubdomain, getStorefrontUrl } from "../hooks
 // marketplace on dealer subdomains too, since it had no tenant awareness).
 const MarketplacePage = lazy(() => import("./MarketplacePage"));
 
-// Light-surface theme tokens for ReviewsSection on the dealer storefront —
-// matches the DESIGN.md light palette the storefront now uses (see below).
-const LIGHT_REVIEW_TH = {
-  text: "#111827", textSec: "#4b5563", textMuted: "#6b7280",
-  border: "rgba(0,0,0,0.08)", borderSec: "rgba(0,0,0,0.06)",
-  card: "#ffffff", inputBg: "#F7F6F2",
+// Dark-surface theme tokens for ReviewsSection on the dealer storefront.
+const DARK_REVIEW_TH = {
+  text: "#e8edf5", textSec: "rgba(255,255,255,0.62)", textMuted: "rgba(255,255,255,0.42)",
+  border: "rgba(255,255,255,0.08)", borderSec: "rgba(255,255,255,0.05)",
+  card: "rgba(255,255,255,0.03)", inputBg: "rgba(255,255,255,0.05)",
 };
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
@@ -177,9 +176,9 @@ function SkeletonCard() {
   return (
     <div
       style={{
-        background: "#ffffff",
-        border: "1px solid rgba(0,0,0,0.06)",
-        borderRadius: "16px",
+        background: "#111113",
+        border: "1px solid rgba(255,255,255,0.06)",
+        borderRadius: "6px",
         overflow: "hidden",
       }}
     >
@@ -187,7 +186,7 @@ function SkeletonCard() {
         style={{
           height: "200px",
           background:
-            "linear-gradient(90deg,#F0EEE8 25%,#E5E1D8 50%,#F0EEE8 75%)",
+            "linear-gradient(90deg,#141416 25%,#1C1C1E 50%,#141416 75%)",
           backgroundSize: "200% 100%",
           animation: "shimmer 1.5s infinite",
         }}
@@ -199,7 +198,7 @@ function SkeletonCard() {
             style={{
               height: "10px",
               width: `${w}%`,
-              background: "#EDE9E3",
+              background: "#1C1C1E",
               borderRadius: "4px",
               marginBottom: "10px",
               animation: "shimmer 1.5s infinite",
@@ -222,7 +221,7 @@ const primaryBtn = {
   fontWeight: "600",
   fontSize: "14px",
   padding: "13px 28px",
-  borderRadius: "10px",
+  borderRadius: "4px",
   textDecoration: "none",
   fontFamily: "'Outfit', sans-serif",
   letterSpacing: "0.02em",
@@ -235,21 +234,21 @@ const waBtn = {
   alignItems: "center",
   gap: "8px",
   background: "transparent",
-  border: "1px solid rgba(37,211,102,0.35)",
-  color: "#15803d",
+  border: "1px solid rgba(37,211,102,0.3)",
+  color: "#4ade80",
   fontWeight: "600",
   fontSize: "14px",
   padding: "13px 28px",
-  borderRadius: "10px",
+  borderRadius: "4px",
   textDecoration: "none",
   fontFamily: "'Outfit', sans-serif",
   letterSpacing: "0.02em",
   transition: "all 0.25s ease",
 };
 const glassCard = {
-  background: "#ffffff",
-  border: "1px solid rgba(0,0,0,0.06)",
-  borderRadius: "16px",
+  background: "#111113",
+  border: "1px solid rgba(255,255,255,0.07)",
+  borderRadius: "6px",
 };
 
 // ── HomePage ──────────────────────────────────────────────────────────────────
@@ -547,7 +546,7 @@ const HomePage = () => {
     return (
       <div
         style={{
-          background: "#F7F6F2",
+          background: "#0C0C0E",
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
@@ -556,7 +555,7 @@ const HomePage = () => {
           fontFamily: "'Outfit', sans-serif",
         }}
       >
-        <p style={{ color: "#6b7280", fontSize: 15 }}>
+        <p style={{ color: "#52525A", fontSize: 15 }}>
           This dealer page doesn't exist.
         </p>
         <a
@@ -577,12 +576,12 @@ const HomePage = () => {
         : "500+";
 
   const wrap = { maxWidth: "1280px", margin: "0 auto", padding: "0 20px" };
-  const secA = { background: "#F7F6F2" };
-  const secB = { background: "#F2F0EC" };
+  const secA = { background: "#0C0C0E" };
+  const secB = { background: "#0F0F11" };
   const secLight = {
-    background: "#EDEAE3",
-    borderTop: "1px solid rgba(0,0,0,0.06)",
-    borderBottom: "1px solid rgba(0,0,0,0.06)",
+    background: "#0F0F11",
+    borderTop: "1px solid rgba(255,255,255,0.05)",
+    borderBottom: "1px solid rgba(255,255,255,0.05)",
   };
 
   if (tenant === undefined) return <SciFiLoader />;
@@ -592,7 +591,7 @@ const HomePage = () => {
       <style>{`
         *, *::before, *::after { box-sizing: border-box; }
         html, body { overflow-x: hidden; width: 100%; }
-        body { background: #F7F6F2 !important; margin: 0 !important; }
+        body { background: #0C0C0E !important; margin: 0 !important; }
         * { font-family: 'Outfit', sans-serif; }
 
         @keyframes shimmer  { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
@@ -603,26 +602,26 @@ const HomePage = () => {
           background: #B91C1C !important;
           border-color: #B91C1C !important;
           transform: translateY(-1px);
-          box-shadow: 0 8px 24px rgba(220,38,38,0.25) !important;
+          box-shadow: 0 8px 24px rgba(220,38,38,0.3) !important;
         }
         .wa-btn-hp:hover {
           background: rgba(37,211,102,0.08) !important;
-          border-color: rgba(37,211,102,0.55) !important;
+          border-color: rgba(37,211,102,0.5) !important;
         }
         .ghost-outline:hover {
-          background: rgba(0,0,0,0.04) !important;
-          border-color: rgba(0,0,0,0.16) !important;
+          background: rgba(255,255,255,0.06) !important;
+          border-color: rgba(255,255,255,0.18) !important;
         }
         .card-hover {
           transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
         }
         .card-hover:hover {
           transform: translateY(-2px) !important;
-          box-shadow: 0 12px 32px rgba(15,23,42,0.14) !important;
-          border-color: rgba(220,38,38,0.25) !important;
+          box-shadow: 0 12px 32px rgba(0,0,0,0.5) !important;
+          border-color: rgba(196,162,101,0.15) !important;
         }
         .view-all-link {
-          color: #6b7280;
+          color: #3A3A42;
           font-size: 12px;
           font-weight: 600;
           text-decoration: none;
@@ -633,7 +632,7 @@ const HomePage = () => {
           text-transform: uppercase;
           transition: color 0.2s;
         }
-        .view-all-link:hover { color: #DC2626; }
+        .view-all-link:hover { color: #C4A265; }
 
         /* Section label */
         .sec-eyebrow {
@@ -641,7 +640,7 @@ const HomePage = () => {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.18em;
-          color: #DC2626;
+          color: #C4A265;
           margin-bottom: 10px;
           display: flex;
           align-items: center;
@@ -652,7 +651,7 @@ const HomePage = () => {
           display: inline-block;
           width: 20px;
           height: 1px;
-          background: #DC2626;
+          background: #C4A265;
           opacity: 0.6;
           flex-shrink: 0;
         }
@@ -663,21 +662,20 @@ const HomePage = () => {
           background: #DC2626;
         }
         .sec-eyebrow.green {
-          color: #15803d;
+          color: #4ade80;
         }
         .sec-eyebrow.green::before {
-          background: #15803d;
+          background: #4ade80;
         }
 
         .sec-title {
-          font-family: 'Bebas Neue', sans-serif;
-          color: #111827;
-          font-size: clamp(1.6rem, 4vw, 2.6rem);
+          font-family: 'Outfit', sans-serif;
+          color: #F0F0F0;
+          font-size: clamp(1.5rem, 4vw, 2.4rem);
           font-weight: 700;
-          letter-spacing: 0.01em;
-          text-transform: uppercase;
+          letter-spacing: -0.025em;
           margin: 0;
-          line-height: 1.05;
+          line-height: 1.1;
         }
 
         /* How it works — alternating rows, icon on the outer edge, no center line */
@@ -687,20 +685,20 @@ const HomePage = () => {
         .how-step:nth-child(even) { justify-content:flex-end; }
         .how-card {
           display:flex; align-items:center; gap:20px; width:min(560px,100%);
-          background:#ffffff; border:1px solid rgba(0,0,0,0.06);
+          background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
           border-radius:16px; padding:20px 24px;
-          box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05);
-          transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+          transition:border-color .2s ease, background .2s ease;
         }
-        .how-card:hover { border-color:rgba(220,38,38,0.25); box-shadow: 0 12px 32px rgba(15,23,42,0.14); transform: translateY(-2px); }
+        .how-card:hover { border-color:rgba(196,162,101,0.40); background:rgba(255,255,255,0.045); }
         .how-step:nth-child(even) .how-card { flex-direction:row-reverse; text-align:right; }
         .how-ico {
           flex-shrink:0; width:54px; height:54px; border-radius:14px; display:grid; place-items:center;
-          color:#DC2626; background:rgba(220,38,38,0.10); border:1px solid rgba(220,38,38,0.28);
+          color:#C4A265; background:rgba(196,162,101,0.12); border:1px solid rgba(196,162,101,0.35);
+          box-shadow:0 0 22px rgba(196,162,101,0.12);
         }
-        .how-k { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#DC2626; margin:0 0 6px; }
-        .how-t { font-size:18px; font-weight:600; letter-spacing:-.01em; color:#111827; margin:0 0 5px; }
-        .how-d { font-size:15px; line-height:1.6; color:#4b5563; margin:0; }
+        .how-k { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:#C4A265; margin:0 0 6px; }
+        .how-t { font-size:18px; font-weight:600; letter-spacing:-.01em; color:#F0F0F0; margin:0 0 5px; }
+        .how-d { font-size:15px; line-height:1.6; color:rgba(255,255,255,0.62); margin:0; }
         @media(max-width:720px){
           .how-step, .how-step:nth-child(odd), .how-step:nth-child(even) { justify-content:stretch; }
           .how-card, .how-step:nth-child(even) .how-card {
@@ -711,18 +709,17 @@ const HomePage = () => {
         /* Why — readable 2-up cards */
         .why-grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
         .why-card {
-          height:100%; background:#ffffff; border:1px solid rgba(0,0,0,0.06);
+          height:100%; background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.08);
           border-radius:16px; padding:26px 26px 24px;
-          box-shadow: 0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05);
-          transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+          transition:transform .2s ease, border-color .2s ease;
         }
-        .why-card:hover { transform:translateY(-3px); border-color:rgba(220,38,38,0.25); box-shadow: 0 12px 32px rgba(15,23,42,0.14); }
+        .why-card:hover { transform:translateY(-3px); border-color:rgba(220,38,38,0.35); }
         .why-ico {
           width:44px; height:44px; border-radius:11px; display:grid; place-items:center;
           color:#DC2626; background:rgba(220,38,38,0.10); border:1px solid rgba(220,38,38,0.28); margin-bottom:16px;
         }
-        .why-t { font-size:17px; font-weight:600; color:#111827; margin:0 0 7px; }
-        .why-d { font-size:15px; line-height:1.6; color:#4b5563; margin:0; }
+        .why-t { font-size:17px; font-weight:600; color:#F0F0F0; margin:0 0 7px; }
+        .why-d { font-size:15px; line-height:1.6; color:rgba(255,255,255,0.62); margin:0; }
         @media(max-width:640px){ .why-grid2 { grid-template-columns:1fr; } }
 
         /* Car grid */
@@ -758,10 +755,10 @@ const HomePage = () => {
         .dealer-strip { display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-top:-15px; }
         .dealer-strip-stats { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
         .dealer-strip-nums { display:flex; align-items:center; }
-        .dealer-strip-stat { padding:0 22px; border-right:1px solid rgba(0,0,0,0.08); }
+        .dealer-strip-stat { padding:0 22px; border-right:1px solid rgba(255,255,255,0.08); }
         .dealer-strip-stat:first-child { padding-left:0; }
         .dealer-strip-stat:last-child { border-right:none; }
-        .dealer-strip-loc { display:flex; align-items:center; gap:7px; padding-left:22px; border-left:1px solid rgba(0,0,0,0.08); }
+        .dealer-strip-loc { display:flex; align-items:center; gap:7px; padding-left:22px; border-left:1px solid rgba(255,255,255,0.08); }
         .dealer-strip-actions { display:flex; gap:10px; flex-wrap:wrap; }
 
         /* Inventory toolbar (search inside Our Cars) */
@@ -787,7 +784,7 @@ const HomePage = () => {
           .search-btn-hp      { width: 100% !important; justify-content: center !important; }
           .hero-btns-hp       { flex-direction: column !important; }
           .hero-btns-hp a, .hero-btns-hp button { justify-content: center !important; width: 100% !important; }
-          .stats-flex > div   { border-right: none !important; border-bottom: 1px solid rgba(0,0,0,0.06) !important; }
+          .stats-flex > div   { border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.05) !important; }
           .for-dealers-inner  { flex-direction: column !important; align-items: flex-start !important; }
           .sec-pad { padding: 48px 0 !important; }
           .dealer-strip       { flex-direction: column !important; align-items: stretch !important; gap: 18px !important; margin-top: 0 !important; }
@@ -893,42 +890,42 @@ const HomePage = () => {
       <HeroCarousel compact siteName={siteName} />
 
       {/* ══════════ DEALER TRUST + QUICK CONTACT STRIP ══════════ */}
-      <section style={{ background: "#F7F6F2", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+      <section style={{ background: "#0C0C0E", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
         <div style={{ ...wrap, padding: "18px 20px" }}>
           <div className="dealer-strip">
             <div className="dealer-strip-stats">
               <div className="dealer-strip-nums">
                 {tenant?.stat_years > 0 && (
                   <div className="dealer-strip-stat">
-                    <p style={{ color: "#111827", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                    <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
                       {tenant.stat_years}+
                     </p>
-                    <p style={{ color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                    <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
                       Years in Business
                     </p>
                   </div>
                 )}
                 <div className="dealer-strip-stat">
-                  <p style={{ color: "#111827", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                  <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
                     {stock != null ? String(stock) : "—"}
                   </p>
-                  <p style={{ color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                  <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
                     Cars in Stock
                   </p>
                 </div>
                 <div className="dealer-strip-stat">
-                  <p style={{ color: "#111827", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
+                  <p style={{ color: "#F0F0F0", fontSize: 20, fontWeight: 700, lineHeight: 1, margin: "0 0 4px" }}>
                     {soldDisplay}
                   </p>
-                  <p style={{ color: "#6b7280", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
+                  <p style={{ color: "#52525A", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", margin: 0, fontWeight: 600 }}>
                     Cars Sold
                   </p>
                 </div>
               </div>
               {(tenant?.city || tenant?.state) && (
                 <div className="dealer-strip-loc">
-                  <MapPin size={14} style={{ color: "#6b7280", flexShrink: 0 }} />
-                  <span style={{ color: "#4b5563", fontSize: 13, fontWeight: 600 }}>
+                  <MapPin size={14} style={{ color: "#C4A265", flexShrink: 0 }} />
+                  <span style={{ color: "#C0C0C6", fontSize: 13, fontWeight: 600 }}>
                     {[tenant?.city, tenant?.state].filter(Boolean).join(", ")}
                   </span>
                 </div>
@@ -966,7 +963,7 @@ const HomePage = () => {
         getEmbedUrl(tenant.hero_video_url) && (
           <section
             className="sec-pad"
-            style={{ background: "#F2F0EC", paddingTop: 40, paddingBottom: 40 }}
+            style={{ background: "#080C14", paddingTop: 40, paddingBottom: 40 }}
           >
             <div
               style={{
@@ -981,7 +978,7 @@ const HomePage = () => {
                   style={{
                     fontSize: "clamp(20px,4vw,28px)",
                     fontWeight: 700,
-                    color: "#111827",
+                    color: "#f3f4f6",
                     marginBottom: 20,
                     fontFamily: "system-ui,sans-serif",
                   }}
@@ -996,8 +993,8 @@ const HomePage = () => {
                   height: 0,
                   borderRadius: 16,
                   overflow: "hidden",
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  boxShadow: "0 12px 32px rgba(15,23,42,0.14)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
                 }}
               >
                 <iframe
@@ -1028,7 +1025,7 @@ const HomePage = () => {
               </div>
               <p
                 style={{
-                  color: "#4b5563",
+                  color: "#9CA3AF",
                   fontSize: "15px",
                   lineHeight: "1.9",
                   maxWidth: "760px",
@@ -1052,7 +1049,7 @@ const HomePage = () => {
               dealerId={tenant.id}
               sellerName={siteName}
               isXdrive={false}
-              th={LIGHT_REVIEW_TH}
+              th={DARK_REVIEW_TH}
             />
           </div>
         </section>
@@ -1097,6 +1094,19 @@ const HomePage = () => {
         if (statItems.length === 0) return null;
         return (
           <section style={{ ...secLight, position: "relative", overflow: "hidden" }} className="sec-pad">
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%,-50%)",
+                width: "700px",
+                height: "500px",
+                background:
+                  "radial-gradient(ellipse,rgba(220,38,38,0.05) 0%,transparent 65%)",
+                pointerEvents: "none",
+              }}
+            />
             <div style={{ ...wrap, position: "relative", zIndex: 1 }}>
               <FadeIn>
                 <p
@@ -1111,9 +1121,9 @@ const HomePage = () => {
                   display: "grid",
                   gridTemplateColumns: `repeat(${statItems.length}, 1fr)`,
                   gap: "1px",
-                  background: "rgba(0,0,0,0.06)",
-                  border: "1px solid rgba(0,0,0,0.06)",
-                  borderRadius: "12px",
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: "6px",
                   overflow: "hidden",
                 }}
                 className="stats-band-grid"
@@ -1122,7 +1132,7 @@ const HomePage = () => {
                   <FadeIn key={i} delay={i * 0.08}>
                     <div
                       style={{
-                        background: "#ffffff",
+                        background: "#0C0C0E",
                         padding: "36px 20px",
                         height: "100%",
                         display: "flex",
@@ -1150,7 +1160,7 @@ const HomePage = () => {
                         end={s.value}
                         style={{
                           fontFamily: "'Outfit', sans-serif",
-                          color: "#111827",
+                          color: "#F0F0F0",
                           fontSize: "clamp(1.9rem,5vw,3rem)",
                           fontWeight: 800,
                           letterSpacing: "-0.03em",
@@ -1167,7 +1177,7 @@ const HomePage = () => {
                       />
                       <p
                         style={{
-                          color: "#6b7280",
+                          color: "#8A8A94",
                           fontSize: "11px",
                           textTransform: "uppercase",
                           letterSpacing: "0.14em",
@@ -1226,12 +1236,12 @@ const HomePage = () => {
       {/* ══════════ OUR CARS (inventory + search — dealer-scoped) ══════════ */}
       {(() => {
         const chip = (active) => ({
-          flexShrink: 0, padding: "7px 15px", borderRadius: 8, textDecoration: "none",
+          flexShrink: 0, padding: "7px 15px", borderRadius: 50, textDecoration: "none",
           fontSize: 13, fontWeight: 600, fontFamily: "'Outfit',sans-serif",
           whiteSpace: "nowrap", transition: "all 0.15s",
-          border: `1px solid ${active ? "#0f1115" : "rgba(0,0,0,0.12)"}`,
-          background: active ? "#0f1115" : "#ffffff",
-          color: active ? "#ffffff" : "#4b5563",
+          border: `1px solid ${active ? "rgba(220,38,38,0.4)" : "rgba(255,255,255,0.14)"}`,
+          background: active ? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.04)",
+          color: active ? "#f87171" : "rgba(255,255,255,0.78)",
         });
         return (
           <section className="sec-pad" style={secA}>
@@ -1259,6 +1269,7 @@ const HomePage = () => {
               <div className="inv-toolbar">
                 <div className="inv-search">
                   <SearchAutocomplete
+                    dark
                     value={heroQ}
                     onChange={setHeroQ}
                     placeholder="Search our cars by make, model or variant…"
@@ -1278,14 +1289,14 @@ const HomePage = () => {
               </div>
               <div className="sc-grid-hp" style={{ marginBottom: "36px" }}>
                 {loading
-                  ? [...Array(3)].map((_, i) => <ShowroomCardSkeleton key={i} dark={false} />)
+                  ? [...Array(3)].map((_, i) => <ShowroomCardSkeleton key={i} dark />)
                   : featured.map((c, i) => (
                       <ShowroomCard
                         key={c.id}
                         car={c}
                         ctaContext={ctaCtx}
                         priority={i === 0}
-                        dark={false}
+                        dark
                         inCompare={isInCompare(c.id)}
                         compareFull={compareIds.length >= COMPARE_MAX}
                         onCompare={() => (isInCompare(c.id) ? removeFromCompare(c.id) : addToCompare(c.id))}
@@ -1301,12 +1312,12 @@ const HomePage = () => {
                     alignItems: "center",
                     gap: "8px",
                     background: "transparent",
-                    border: "1px solid rgba(0,0,0,0.14)",
-                    color: "#374151",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "#C0C0C6",
                     fontWeight: "600",
                     fontSize: "13px",
                     padding: "12px 28px",
-                    borderRadius: "10px",
+                    borderRadius: "4px",
                     textDecoration: "none",
                     transition: "all 0.2s ease",
                     letterSpacing: "0.02em",
@@ -1396,13 +1407,13 @@ const HomePage = () => {
                       <Star
                         key={j}
                         size={11}
-                        style={{ fill: "#f59e0b", color: "#f59e0b" }}
+                        style={{ fill: "#C4A265", color: "#C4A265" }}
                       />
                     ))}
                   </div>
                   <p
                     style={{
-                      color: "#4b5563",
+                      color: "#9090A0",
                       fontSize: "13px",
                       lineHeight: "1.8",
                       marginBottom: "20px",
@@ -1418,7 +1429,7 @@ const HomePage = () => {
                       alignItems: "center",
                       gap: "12px",
                       paddingTop: "16px",
-                      borderTop: "1px solid rgba(0,0,0,0.06)",
+                      borderTop: "1px solid rgba(255,255,255,0.05)",
                     }}
                   >
                     <div
@@ -1426,8 +1437,8 @@ const HomePage = () => {
                         width: "32px",
                         height: "32px",
                         borderRadius: "50%",
-                        background: "#F0EEE8",
-                        border: "1px solid rgba(0,0,0,0.06)",
+                        background: "rgba(196,162,101,0.08)",
+                        border: "1px solid rgba(196,162,101,0.2)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -1436,7 +1447,7 @@ const HomePage = () => {
                     >
                       <span
                         style={{
-                          color: "#111827",
+                          color: "#C4A265",
                           fontWeight: "700",
                           fontSize: "13px",
                         }}
@@ -1447,7 +1458,7 @@ const HomePage = () => {
                     <div>
                       <p
                         style={{
-                          color: "#111827",
+                          color: "#F0F0F0",
                           fontWeight: "600",
                           fontSize: "13px",
                           margin: "0 0 2px 0",
@@ -1457,7 +1468,7 @@ const HomePage = () => {
                       </p>
                       <p
                         style={{
-                          color: "#9ca3af",
+                          color: "#3A3A42",
                           fontSize: "11px",
                           margin: 0,
                           display: "flex",
@@ -1483,12 +1494,11 @@ const HomePage = () => {
           <FadeIn>
             <div
               style={{
-                borderRadius: "16px",
+                borderRadius: "6px",
                 overflow: "hidden",
                 position: "relative",
-                background: "#ffffff",
-                border: "1px solid rgba(0,0,0,0.06)",
-                boxShadow: "0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)",
+                background: "#111113",
+                border: "1px solid rgba(255,255,255,0.07)",
                 display: "flex",
                 flexWrap: "wrap",
               }}
@@ -1506,7 +1516,7 @@ const HomePage = () => {
                   style={{
                     width: "40px",
                     height: "40px",
-                    borderRadius: "10px",
+                    borderRadius: "3px",
                     background: "rgba(220,38,38,0.08)",
                     border: "1px solid rgba(220,38,38,0.15)",
                     display: "flex",
@@ -1520,7 +1530,7 @@ const HomePage = () => {
                 <h2
                   style={{
                     fontFamily: "'Outfit', sans-serif",
-                    color: "#111827",
+                    color: "#F0F0F0",
                     fontSize: "clamp(1.2rem,4vw,1.8rem)",
                     fontWeight: "700",
                     letterSpacing: "-0.025em",
@@ -1532,7 +1542,7 @@ const HomePage = () => {
                 </h2>
                 <p
                   style={{
-                    color: "#4b5563",
+                    color: "#52525A",
                     fontSize: "13px",
                     lineHeight: "1.7",
                     margin: "0 0 24px 0",
@@ -1564,7 +1574,7 @@ const HomePage = () => {
                     width: "100%",
                     height: "100%",
                     objectFit: "cover",
-                    opacity: 0.35,
+                    opacity: 0.15,
                     minHeight: "180px",
                   }}
                   loading="lazy"
@@ -1574,7 +1584,7 @@ const HomePage = () => {
                     position: "absolute",
                     inset: 0,
                     background:
-                      "linear-gradient(to right,#ffffff 0%,transparent 55%)",
+                      "linear-gradient(to right,#111113 0%,transparent 55%)",
                   }}
                 />
               </div>
@@ -1761,10 +1771,9 @@ const HomePage = () => {
           alignItems: "center",
           gap: "10px",
           padding: "24px 18px",
-          background: "#ffffff",
-          border: "1px solid rgba(0,0,0,0.06)",
-          borderRadius: "16px",
-          boxShadow: "0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.05)",
+          background: "#111113",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: "8px",
           textDecoration: "none",
         };
         return (
@@ -1773,6 +1782,19 @@ const HomePage = () => {
             className="sec-pad"
             style={{ ...secA, position: "relative", overflow: "hidden" }}
           >
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%,-50%)",
+                width: "600px",
+                height: "600px",
+                background:
+                  "radial-gradient(circle,rgba(196,162,101,0.025) 0%,transparent 65%)",
+                pointerEvents: "none",
+              }}
+            />
             <div
               style={{
                 ...wrap,
@@ -1791,13 +1813,12 @@ const HomePage = () => {
                 </p>
                 <h2
                   style={{
-                    fontFamily: "'Bebas Neue', sans-serif",
-                    color: "#111827",
-                    fontSize: "clamp(2.2rem,7vw,4rem)",
-                    fontWeight: "700",
-                    letterSpacing: "0.01em",
-                    textTransform: "uppercase",
-                    lineHeight: 1.0,
+                    fontFamily: "'Outfit', sans-serif",
+                    color: "#F0F0F0",
+                    fontSize: "clamp(2rem,7vw,3.6rem)",
+                    fontWeight: "800",
+                    letterSpacing: "-0.035em",
+                    lineHeight: 1.05,
                     margin: "0 0 16px 0",
                   }}
                 >
@@ -1805,7 +1826,7 @@ const HomePage = () => {
                 </h2>
                 <p
                   style={{
-                    color: "#4b5563",
+                    color: "#52525A",
                     fontSize: "clamp(13px,3.5vw,15px)",
                     lineHeight: "1.8",
                     margin: "0 auto 36px",
@@ -1845,12 +1866,12 @@ const HomePage = () => {
                       alignItems: "center",
                       gap: "8px",
                       background: "transparent",
-                      border: "1px solid rgba(0,0,0,0.14)",
-                      color: "#374151",
+                      border: "1px solid rgba(255,255,255,0.12)",
+                      color: "#C0C0C6",
                       fontWeight: "600",
                       fontSize: "14px",
                       padding: "13px 28px",
-                      borderRadius: "10px",
+                      borderRadius: "4px",
                       textDecoration: "none",
                       transition: "all 0.2s ease",
                       letterSpacing: "0.02em",
@@ -1869,19 +1890,19 @@ const HomePage = () => {
                             style={{
                               width: "38px",
                               height: "38px",
-                              borderRadius: "10px",
+                              borderRadius: "3px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              background: "rgba(220,38,38,0.08)",
-                              border: "1px solid rgba(220,38,38,0.18)",
+                              background: "rgba(196,162,101,0.08)",
+                              border: "1px solid rgba(196,162,101,0.18)",
                             }}
                           >
-                            <c.icon size={16} style={{ color: "#DC2626" }} />
+                            <c.icon size={16} style={{ color: "#C4A265" }} />
                           </div>
                           <p
                             style={{
-                              color: "#9ca3af",
+                              color: "#3A3A42",
                               fontSize: "10px",
                               textTransform: "uppercase",
                               letterSpacing: "0.14em",
@@ -1893,7 +1914,7 @@ const HomePage = () => {
                           </p>
                           <p
                             style={{
-                              color: "#111827",
+                              color: "#F0F0F0",
                               fontSize: "13px",
                               fontWeight: 600,
                               margin: 0,
@@ -1941,12 +1962,12 @@ const HomePage = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          background: "#ffffff",
-                          border: "1px solid rgba(0,0,0,0.08)",
+                          background: "#111113",
+                          border: "1px solid rgba(255,255,255,0.08)",
                         }}
                         aria-label="Social link"
                       >
-                        <s.icon size={16} style={{ color: "#4b5563" }} />
+                        <s.icon size={16} style={{ color: "#C0C0C6" }} />
                       </a>
                     ))}
                   </div>

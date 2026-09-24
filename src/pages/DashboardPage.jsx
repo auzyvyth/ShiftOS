@@ -6455,7 +6455,7 @@ function ListingDetailDrawer({
                 <X style={{ width: 16, height: 16 }} />
               </button>
             </div>
-            <div style={{ overflowY: 'auto', flex: 1 }}>
+            <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px' }}>
               <FinancingCalculator
                 initialPrice={listing.selling_price || listing.price}
                 engineCc={listing.engine_cc}

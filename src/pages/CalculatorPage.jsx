@@ -43,7 +43,13 @@ const CalculatorPage = () => {
 
       {sub ? <Header /> : <MarketplaceHeader />}
 
-      <main style={{ paddingTop: sub ? 82 : 72, background: sub ? '#08090f' : '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
+      {/* MarketplaceHeader is position:sticky (self-clearing, no padding needed);
+          Header (subdomain) is position:fixed and needs the 64px bar + 18px
+          breathing room cleared explicitly. Using 72px for the sticky case too
+          was leftover from before MarketplaceHeader switched to sticky — it
+          double-reserved the header's height and left a dead gap above the
+          calculator (see CarListingPage.jsx's `dark ? '84px' : 0` for the same rule). */}
+      <main style={{ paddingTop: sub ? 82 : 0, background: sub ? '#08090f' : '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '32px 16px 48px' }}>
 
           {/* Page header */}
