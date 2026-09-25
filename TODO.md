@@ -2314,8 +2314,10 @@ source `find_me`.
   `chat_sendable_cars` (post-matching cars first), and `chat_after_message`
   fills a blank `leads.car_listing_id` with the sent car so a Find me win
   flips the car to sold.
-- [ ] Step 3b — label post threads in SellerInbox and BuyerInbox (today they
-  read "Car enquiry", linking to /showroom).
+- [x] Step 3b — inbox labels: DONE 2026-09-25. Seller rows read "Find me:
+  <post>" (`chat_post_subjects`, migration `20260925d_chat_post_labels.sql`);
+  buyer rows read "Your post: <post>" and link to `/find-me/<id>`
+  (`get_my_chat_threads` gained the post columns).
 - Photos in chat (Part B): scoped 2026-09-25, owner said NOT now. Scope was:
   seller-only, private `chat-media` bucket, signed URLs, body text "Sent a
   photo", `compressImageFile` (strips GPS), "List this car" nudge after a

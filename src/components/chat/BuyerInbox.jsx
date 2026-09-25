@@ -6,6 +6,7 @@ import { useBuyerThreads } from '../../hooks/useChat';
 import ChatThread from './ChatThread';
 import PushPromptStrip from './PushPromptStrip';
 import useVisualViewport from '../../hooks/useVisualViewport';
+import { postTitle } from '../../utils/findMe';
 
 // Buyer-side inbox, on /account.
 //
@@ -73,8 +74,15 @@ const fmtEngine = (cc) => {
   return n >= 1000 ? `${(n / 1000).toFixed(1)}L` : `${n}cc`;
 };
 
+// A chat about the buyer's own Find me post has no car of its own: name the
+// post, and link back to it rather than to the showroom.
 const carTitle = (t) =>
-  [t.car_year, t.car_brand, t.car_model].filter(Boolean).join(' ') || 'Car enquiry';
+  t.find_me_post_id
+    ? `Your post: ${postTitle({ brand: t.post_brand, model: t.post_model, min_year: t.post_min_year, max_year: t.post_max_year })}`
+    : [t.car_year, t.car_brand, t.car_model].filter(Boolean).join(' ') || 'Car enquiry';
+
+const threadLink = (t) =>
+  t.find_me_post_id ? `/find-me/${t.find_me_post_id}` : t.car_slug ? `/cars/${t.car_slug}` : '/showroom';
 
 const initials = (name) =>
   String(name || 'S').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
@@ -239,7 +247,7 @@ export default function BuyerInbox() {
         {/* The car, restated above the thread — a buyer talking to three sellers
             needs to know which car this conversation is about. */}
         <div style={{ flexShrink: 0, background: SOFT }}>
-          <Link to={open.car_slug ? `/cars/${open.car_slug}` : '/showroom'}
+          <Link to={threadLink(open)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textDecoration: 'none', maxWidth: THREAD_MAXW, margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
             {open.car_image
               ? <img src={open.car_image} alt="" style={{ width: 46, height: 46, borderRadius: 15, objectFit: 'cover', flexShrink: 0 }} />

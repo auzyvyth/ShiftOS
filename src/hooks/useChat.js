@@ -146,13 +146,25 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
     if (!salesmanId && !dealerId) { setThreads([]); setLoading(false); return; }
     let q = supabase
       .from('chat_threads')
-      .select('id, listing_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images), lead:lead_id(id, stage)')
+      .select('id, listing_id, find_me_post_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images), lead:lead_id(id, stage)')
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(200);
     q = salesmanId ? q.eq('salesman_id', salesmanId) : q.eq('dealer_id', dealerId);
     const { data, error } = await q;
     if (error) { console.error('useChatThreads:', error); setLoading(false); return; }
-    setThreads(data || []);
+    // A Find me thread has no car, so name it by its post. Sellers cannot read
+    // find_me_posts (RLS: own posts only), so an embed would come back null;
+    // chat_post_subjects returns the post only for threads this seller is in.
+    // A failure here just leaves the fallback label — never an empty inbox.
+    const rows = data || [];
+    const postThreadIds = rows.filter(r => r.find_me_post_id).map(r => r.id);
+    if (postThreadIds.length) {
+      const { data: subjects, error: subjErr } = await supabase.rpc('chat_post_subjects', { p_thread_ids: postThreadIds });
+      if (subjErr) console.error('chat_post_subjects:', subjErr);
+      const byThread = new Map((subjects || []).map(s => [s.thread_id, s]));
+      rows.forEach(r => { if (byThread.has(r.id)) r.post = byThread.get(r.id); });
+    }
+    setThreads(rows);
     setLoading(false);
   }, [salesmanId, dealerId]);
 

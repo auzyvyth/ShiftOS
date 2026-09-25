@@ -6,6 +6,7 @@ import ChatThread, { THEMES } from './ChatThread';
 import PushPromptStrip from './PushPromptStrip';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../../lib/leadsHelpers';
+import { postTitle } from '../../utils/findMe';
 
 // Seller-side inbox. `theme` picks the palette so the same component sits on a
 // light dealer dashboard or a dark salesman panel without a second copy.
@@ -117,7 +118,9 @@ export default function SellerInbox({
   const ph = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6';
 
   const open = threads.find(x => x.id === openId) || null;
-  const carOf = (x) => x.listing ? [x.listing.year, x.listing.brand, x.listing.model].filter(Boolean).join(' ') : 'Car enquiry';
+  const carOf = (x) => x.listing ? [x.listing.year, x.listing.brand, x.listing.model].filter(Boolean).join(' ')
+    : x.find_me_post_id ? (x.post ? `Find me: ${postTitle(x.post)}` : 'Find me post')
+    : 'Car enquiry';
 
   if (loading) {
     return <p style={{ fontSize:13, color:t.sub, padding:'32px 0', textAlign:'center' }}>Loading messages…</p>;

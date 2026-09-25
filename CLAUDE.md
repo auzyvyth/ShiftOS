@@ -857,7 +857,9 @@ Buyers post the car they want; approved sellers answer "I have it". Migration
 `20260925b_find_me_posts.sql`. What changed under chat because of it:
 - `chat_threads.listing_id` is now NULLABLE: a thread has a car OR a
   `find_me_post_id` (CHECK `chat_threads_subject`). Any code that reads
-  `thread.listing` must handle null (SellerInbox already shows "Car enquiry").
+  `thread.listing` must handle null. Inboxes name a post thread by its post:
+  sellers via `chat_post_subjects(thread_ids)` (they cannot read
+  `find_me_posts`, so an embed is null), buyers via `get_my_chat_threads`.
 - Post chats are created ONLY by `find_me_reply(post, first_message)`, which
   checks the seller is approved + active, one chat per seller per post, 5
   sellers per post, 10 new post chats per seller per day. Never insert a
