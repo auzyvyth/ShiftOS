@@ -6,10 +6,11 @@ import {
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
 import { normalizePhone } from "../../lib/phone";
-import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import ThisWeek from "../../components/crm/ThisWeek";
+import FollowUpRow from "../../components/crm/FollowUpRow";
 import StarterTasks from "../../components/onboarding/StarterTasks";
 import {
  CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal,
@@ -126,7 +127,6 @@ export default function DashboardTab({
 
  // Pipeline-stage accent hues + labels — colour-code the Follow-up rows so
  // you can see at a glance where each cold lead sits in the funnel.
- const stageHue = (s) => panelStageHue[s] || panelStageHue.fallback;
  const stageLabel = (s) => (s || "new").replace(/_/g, " ");
 
  // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
@@ -517,41 +517,25 @@ export default function DashboardTab({
  <div className="sp-insight-card">
  <div style={CARD_HEADER}>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted, flexShrink: 0 }}>
  <Bell size={12} strokeWidth={2.5} />
  </span>
  <span>Follow-up Needed</span>
- <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: R.pill, background: withAlpha(C.danger, 0.15), color: C.dangerText, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "0 5px" }}>{staleLeads.length}</span>
+ <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: R.pill, background: C.fillStrong, color: C.text, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "0 5px" }}>{staleLeads.length}</span>
  </div>
  </div>
  <div>
- {staleLeads.slice(0, 8).map((lead, i, arr) => {
- const car = lead.car_listings;
- const daysSince = Math.floor((Date.now() - new Date(lead.updated_at)) / 86400000);
- const hue = stageHue(lead.stage);
- return (
- <div
+ {staleLeads.slice(0, 8).map((lead, i, arr) => (
+ <FollowUpRow
  key={lead.id}
- onClick={() => { setActiveTab("leads"); setActiveLeadStage(lead.stage); triggerGlow([lead.id]); }}
- style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 18px", borderBottom: ROW_LINE(i < arr.length - 1), background: withAlpha(hue, 0.07), cursor: "pointer" }}
- >
- <div style={{ width: 34, height: 34, borderRadius: "50%", background: C.fillStrong, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.textSec, flexShrink: 0 }}>
- {(lead.buyer_name || "?")[0].toUpperCase()}
- </div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{lead.buyer_name || "—"}</p>
- <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3, flexWrap: "wrap" }}>
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 7px", borderRadius: R.sm, background: withAlpha(hue, 0.13), border: `1px solid ${withAlpha(hue, 0.33)}`, color: hue, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{stageLabel(lead.stage || "new")}</span>
- <span style={{ fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{car ? `${car.brand} ${car.model}` : "No car"}</span>
- </div>
- </div>
- <span style={{ ...SOFT(C.dangerText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "3px 8px", borderRadius: R.pill, flexShrink: 0 }}>{daysSince}d ago</span>
- {lead.phone && (
- <button onClick={(e) => { e.stopPropagation(); pingWA(lead); }} style={{ ...SOFT(C.success), fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, flexShrink: 0, fontFamily: "inherit" }}>WA</button>
- )}
- </div>
- );
- })}
+ lead={lead}
+ stageText={stageLabel(lead.stage || "new").replace(/^./, (c) => c.toUpperCase())}
+ carText={lead.car_listings ? `${lead.car_listings.brand} ${lead.car_listings.model}` : "No car"}
+ onOpen={() => { setActiveTab("leads"); setActiveLeadStage(lead.stage); triggerGlow([lead.id]); }}
+ onWA={() => pingWA(lead)}
+ last={i === arr.length - 1}
+ />
+ ))}
  {staleLeads.length > 8 && (
  <button
  onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
