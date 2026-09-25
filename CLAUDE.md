@@ -390,7 +390,11 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
 
 ## Multi-tenancy
 All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', dealerId)
-Public car_listings SELECT is open (for XDrive marketplace)
+`car_listings` has NO public SELECT policy (this line used to say it was open,
+and a chat car card shipped trusting it: sellers saw the card, buyers got null).
+The public reads live cars through the `public_car_listings` view. Anything a
+buyer must see about a specific car outside the view goes through a SECURITY
+DEFINER function that checks the caller's right to it (chat: `chat_thread_cards`).
 Never use session.user.id / user.id in queries — always derive via getDealerIdFromProfile(profile):
   - manager or admin role → profile.dealer_id
   - superadmin / dealer / owner role → profile.id

@@ -18,10 +18,16 @@ export function tickState(msg) {
   return 'sent';
 }
 
-// A car sent into a chat renders as a card. These are the columns the card
-// needs; the realtime payload carries only listing_id, so a card that arrives
-// live is filled with one read of the same columns.
-const CARD_COLS = 'id, slug, brand, model, variant, year, selling_price, mileage, images, status';
+// A car sent into a chat renders as a card. Its fields come from
+// chat_thread_cards, NEVER from car_listings: car_listings has no public read
+// policy (the marketplace reads a view), so a buyer reading it directly gets
+// null and sees plain text while the seller, who owns the car, sees the card.
+// The function returns the thread's cars to its two parties only.
+async function loadThreadCards(threadId) {
+  const { data, error } = await supabase.rpc('chat_thread_cards', { p_thread_id: threadId });
+  if (error) { console.error('chat_thread_cards:', error); return new Map(); }
+  return new Map((data || []).map(c => [c.id, c]));
+}
 
 // Live messages for one thread, plus sending and receipts.
 // role is 'buyer' or 'seller' — it decides which bubbles are mine.
@@ -37,12 +43,17 @@ export function useChatThread(threadId, role) {
     setLoading(true);
     const { data, error: err } = await supabase
       .from('chat_messages')
-      .select(`id, thread_id, sender_role, sender_id, body, body_ai, has_sensitive, created_at, delivered_at, read_at, listing_id, listing:listing_id(${CARD_COLS})`)
+      .select('id, thread_id, sender_role, sender_id, body, body_ai, has_sensitive, created_at, delivered_at, read_at, listing_id')
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true })
       .limit(500);
     if (err) { console.error('useChatThread load:', err); setError(err.message); setLoading(false); return; }
-    setMessages(data || []);
+    const rows = data || [];
+    if (rows.some(m => m.listing_id)) {
+      const cards = await loadThreadCards(threadId);
+      rows.forEach(m => { if (m.listing_id) m.listing = cards.get(m.listing_id) || null; });
+    }
+    setMessages(rows);
     setError(null);
     setLoading(false);
   }, [threadId]);
@@ -71,10 +82,10 @@ export function useChatThread(threadId, role) {
             return [...prev, row];
           });
           if (row.listing_id) {
-            supabase.from('car_listings').select(CARD_COLS).eq('id', row.listing_id).maybeSingle()
-              .then(({ data }) => {
-                if (data) setMessages(prev => prev.map(m => (m.id === row.id && !m.listing ? { ...m, listing: data } : m)));
-              }, () => {});
+            loadThreadCards(threadId).then((cards) => {
+              const car = cards.get(row.listing_id);
+              if (car) setMessages(prev => prev.map(m => (m.id === row.id && !m.listing ? { ...m, listing: car } : m)));
+            }, () => {});
           }
           // Their message reached my screen — that is what the second tick means.
           if (row.sender_role !== role) {
