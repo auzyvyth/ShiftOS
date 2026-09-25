@@ -11,6 +11,8 @@ import {
 import { PLAN_CONFIG } from "../utils/planConfig";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
+import HeroShowcase from "../components/shiftos/HeroShowcase";
+import { PAIN_PREVIEWS } from "../components/shiftos/PainPreviews";
 
 // ─── SEO / AEO (GEO) ─────────────────────────────────────────────────────────
 // Keyword-dense meta, schema markup and an FAQ block so ShiftOS surfaces for the
@@ -134,31 +136,32 @@ const FAQ_LD = {
 const STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
 
+  /* Light theme. Text: #0f172a headings, #374151 body, #6b7280 muted.
+     Cards: #fff on a warm off-white page, border #e5e7eb. One accent: red. */
   .sos *{box-sizing:border-box;margin:0;padding:0;}
   .sos{
-    font-family:system-ui,sans-serif;
-    background:#06080F;
+    font-family:var(--xd-font-body);
+    background:#FBF9F8;
     min-height:100vh;
-    color:#fff;
+    color:#0f172a;
     overflow-x:hidden;
     -webkit-font-smoothing:antialiased;
     -moz-osx-font-smoothing:grayscale;
   }
 
-  /* ── Background ── */
+  /* ── Background: faint red smudges behind the whole page ── */
   .sos-bg{
     position:fixed;inset:0;z-index:0;pointer-events:none;
     background:
-      radial-gradient(ellipse 1100px 700px at 10% -10%, rgba(220,38,38,0.16) 0%, transparent 65%),
-      radial-gradient(ellipse 900px 600px at 90% 5%,  rgba(37,99,235,0.10)  0%, transparent 60%),
-      radial-gradient(ellipse 600px 400px at 50% 90%, rgba(220,38,38,0.05)  0%, transparent 55%),
-      #06080F;
+      radial-gradient(ellipse 900px 600px at 0% 35%,   rgba(220,38,38,0.05) 0%, transparent 65%),
+      radial-gradient(ellipse 800px 600px at 100% 70%, rgba(251,113,133,0.06) 0%, transparent 65%),
+      #FBF9F8;
   }
   .sos-grid{
     position:fixed;inset:-1px;z-index:0;pointer-events:none;
     background-image:
-      linear-gradient(rgba(255,255,255,0.024) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.024) 1px, transparent 1px);
+      linear-gradient(rgba(15,23,42,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15,23,42,0.035) 1px, transparent 1px);
     background-size:52px 52px;
     -webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 100%);
     mask-image:radial-gradient(ellipse 80% 60% at 50% 0%, #000 0%, transparent 100%);
@@ -176,34 +179,47 @@ const STYLES = `
     height:100%;width:100%;
     background:linear-gradient(90deg,#dc2626,#fb7185);
     transform-origin:0 50%;transform:scaleX(0);
-    box-shadow:0 0 12px rgba(220,38,38,0.55);
   }
 
   /* ── Nav ── */
   .sos-nav{
     position:sticky;top:0;z-index:100;
-    background:rgba(6,8,15,0.78);
+    background:rgba(251,249,248,0.9);
     backdrop-filter:blur(24px) saturate(1.6);
     -webkit-backdrop-filter:blur(24px) saturate(1.6);
-    border-bottom:1px solid rgba(255,255,255,0.07);
+    border-bottom:1px solid rgba(15,23,42,0.07);
   }
 
+  /* ── Smudged panels (hero + final CTA): white with soft red glows ── */
+  .sos-smudge{position:relative;isolation:isolate;overflow:hidden;}
+  .sos-smudge::before{
+    content:'';position:absolute;inset:-10%;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(ellipse 520px 380px at 4% 8%,   rgba(220,38,38,0.26) 0%, transparent 70%),
+      radial-gradient(ellipse 480px 420px at 98% 22%, rgba(251,113,133,0.30) 0%, transparent 70%),
+      radial-gradient(ellipse 620px 300px at 62% 78%, rgba(239,68,68,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 380px 260px at 18% 70%, rgba(252,165,165,0.22) 0%, transparent 70%);
+    filter:blur(28px);
+  }
+  .sos-hero-light{background:#FBF9F8;}
+
   /* ── Typography ── */
-  .sos-h{font-family:'Bebas Neue',sans-serif;letter-spacing:.01em;line-height:1.02;}
+  .sos-h{font-family:'Bebas Neue',sans-serif;letter-spacing:.01em;line-height:1.02;color:#0f172a;}
   .sos-red{
-    background:linear-gradient(135deg,#fb7185,#dc2626 60%);
+    background:linear-gradient(135deg,#ef4444,#b91c1c 60%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   }
   .sos-kicker{
     display:flex;align-items:center;justify-content:center;gap:14px;
-    font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#64748b;
+    font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#6b7280;
   }
   .sos-kicker::before,.sos-kicker::after{
     content:'';height:1px;width:42px;
-    background:linear-gradient(90deg,transparent,rgba(220,38,38,0.5));
+    background:linear-gradient(90deg,transparent,rgba(220,38,38,0.45));
   }
-  .sos-kicker::after{background:linear-gradient(90deg,rgba(220,38,38,0.5),transparent);}
-  .sos-kicker b{color:#ef4444;font-weight:800;}
+  .sos-kicker::after{background:linear-gradient(90deg,rgba(220,38,38,0.45),transparent);}
+  .sos-kicker b{color:#dc2626;font-weight:800;}
+  .sos-sub{font-size:15px;color:#4b5563;max-width:540px;margin:0 auto;line-height:1.65;}
 
   /* ── Buttons ── */
   .sos-btn-primary{
@@ -211,69 +227,50 @@ const STYLES = `
     color:#fff;border:none;border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:700;font-size:14px;
     cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
-    box-shadow:0 4px 24px rgba(220,38,38,0.38),inset 0 1px 0 rgba(255,255,255,0.14);
+    box-shadow:0 4px 18px rgba(220,38,38,0.28),inset 0 1px 0 rgba(255,255,255,0.14);
     transition:transform .15s,box-shadow .15s;letter-spacing:.01em;
   }
-  .sos-btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 32px rgba(220,38,38,0.52),inset 0 1px 0 rgba(255,255,255,0.14);}
-  .sos-btn-primary:focus-visible{outline:2px solid #fb7185;outline-offset:3px;}
+  .sos-btn-primary:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(220,38,38,0.36),inset 0 1px 0 rgba(255,255,255,0.14);}
+  .sos-btn-primary:focus-visible{outline:2px solid #dc2626;outline-offset:3px;}
   .sos-btn-outline{
-    background:rgba(255,255,255,0.04);color:#e2e8f0;
-    border:1px solid rgba(255,255,255,0.16);border-radius:11px;
+    background:#fff;color:#111827;
+    border:1px solid #e5e7eb;border-radius:11px;
     padding:13px 26px;font-family:inherit;font-weight:600;font-size:14px;
     cursor:pointer;display:inline-flex;align-items:center;gap:9px;text-decoration:none;white-space:nowrap;
-    transition:background .2s,border-color .2s,transform .15s;
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.07);
+    transition:border-color .2s,transform .15s;
+    box-shadow:0 1px 2px rgba(15,23,42,0.06);
   }
-  .sos-btn-outline:hover{background:rgba(255,255,255,0.09);border-color:rgba(255,255,255,0.28);transform:translateY(-1px);}
-  .sos-btn-outline:focus-visible{outline:2px solid rgba(255,255,255,0.5);outline-offset:3px;}
+  .sos-btn-outline:hover{border-color:#d1d5db;transform:translateY(-1px);}
+  .sos-btn-outline:focus-visible{outline:2px solid #dc2626;outline-offset:3px;}
 
-  /* ── Glass card ── */
+  /* ── Card (was a dark glass panel) ── */
   .sos-glass{
-    background:linear-gradient(160deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.03) 100%);
-    border:1px solid rgba(255,255,255,0.1);
+    background:#fff;
+    border:1px solid #e5e7eb;
     border-radius:20px;
-    backdrop-filter:blur(12px);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 8px 40px rgba(0,0,0,0.38);
+    box-shadow:0 1px 2px rgba(15,23,42,0.04),0 12px 32px -16px rgba(15,23,42,0.12);
     position:relative;isolation:isolate;
-  }
-  .sos-glass::before{
-    content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-    background:linear-gradient(160deg,rgba(255,255,255,0.055) 0%,transparent 45%);
   }
 
   /* ── Icon box ── */
   .sos-icon{
     width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(135deg,rgba(220,38,38,0.18),rgba(220,38,38,0.06));
-    border:1px solid rgba(220,38,38,0.28);flex-shrink:0;
+    background:rgba(220,38,38,0.07);
+    border:1px solid rgba(220,38,38,0.18);flex-shrink:0;
   }
 
   /* ── Eyebrow tag ── */
   .sos-eyebrow{
     display:inline-flex;align-items:center;gap:8px;padding:5px 16px;border-radius:99px;
     font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-    background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);color:#fca5a5;
+    background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.22);color:#b91c1c;
   }
 
-  /* ── Hero chart (self-drawing SVG) ── */
-  .sos-hero-chart{display:block;width:100%;max-width:760px;margin:0 auto;}
-  .sos-hero-chart .line{
-    stroke-dasharray:1200;stroke-dashoffset:1200;
-    animation:sos-draw 2.2s cubic-bezier(.5,0,.2,1) .5s forwards;
-  }
-  .sos-hero-chart .area{opacity:0;animation:sos-fadein 1.2s ease 1.6s forwards;}
-  .sos-hero-chart .tip{opacity:0;animation:sos-fadein .5s ease 2.5s forwards;}
-  .sos-hero-chart .tip-pulse{
-    transform-origin:center;transform-box:fill-box;
-    animation:sos-pulse 2.2s ease-out 2.7s infinite;
-  }
+  /* ── Hero showcase (coded dashboard frames) ── */
+  .hs-in{opacity:0;transform:translateY(18px);animation:sos-rise .8s cubic-bezier(.2,.7,.2,1) forwards;}
+  .hs-line{stroke-dasharray:520;stroke-dashoffset:520;animation:sos-draw 1.8s cubic-bezier(.5,0,.2,1) .9s forwards;}
+  @keyframes sos-rise{to{opacity:1;transform:none;}}
   @keyframes sos-draw{to{stroke-dashoffset:0;}}
-  @keyframes sos-fadein{to{opacity:1;}}
-  @keyframes sos-pulse{
-    0%{transform:scale(0.5);opacity:.8;}
-    70%{transform:scale(2.4);opacity:0;}
-    100%{transform:scale(2.4);opacity:0;}
-  }
 
   /* ── Flow connector (walks the eye between sections) ── */
   .sos-flow{display:flex;flex-direction:column;align-items:center;padding:8px 0 40px;}
@@ -287,34 +284,42 @@ const STYLES = `
   .sos-reveal.in .sos-flow .rider,.sos-flow.in .rider{opacity:1;}
   .sos-flow-label{
     margin-top:14px;display:inline-flex;align-items:center;gap:8px;
-    font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#64748b;
+    font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6b7280;
   }
   .sos-flow-label.hot{
-    color:#fca5a5;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);
+    color:#b91c1c;background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.22);
     padding:7px 18px;border-radius:99px;
-    box-shadow:0 0 24px rgba(220,38,38,0.18);
   }
 
-  /* ── Pain / Solution split ── */
-  .sos-ps{display:grid;grid-template-columns:1fr 1.4fr;overflow:hidden;}
-  .sos-ps-l{
-    padding:32px 30px;
-    background:rgba(239,68,68,0.04);
-    border-right:1px solid rgba(255,255,255,0.08);
+  /* ── Pain -> solution rows: copy beside a coded preview, alternating sides ── */
+  .sos-ps{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:56px;align-items:center;}
+  .sos-ps.rev .sos-ps-copy{order:2;}
+  .sos-ps-quote{
+    font-size:14px;color:#6b7280;line-height:1.65;font-style:italic;
+    padding:12px 16px;border-radius:12px;background:rgba(15,23,42,0.03);margin-bottom:22px;
   }
-  .sos-ps-r{padding:32px 30px;}
+  .pp-frame{
+    background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;
+    box-shadow:0 1px 2px rgba(15,23,42,0.04),0 24px 56px -24px rgba(15,23,42,0.22);
+  }
+  .sos-ps-stage{position:relative;padding:28px;border-radius:24px;isolation:isolate;}
+  .sos-ps-stage::before{
+    content:'';position:absolute;inset:0;z-index:-1;border-radius:inherit;
+    background:
+      radial-gradient(ellipse 70% 70% at 20% 10%, rgba(220,38,38,0.10) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 60% at 90% 90%, rgba(251,113,133,0.12) 0%, transparent 70%),
+      rgba(15,23,42,0.025);
+  }
+  /* Phones: drop the secondary columns and let the rest take the room. */
+  @media(max-width:420px){
+    .pp-sm-hide{display:none!important;}
+    .pp-stock{grid-template-columns:minmax(0,1fr) auto auto!important;}
+  }
 
   /* ── Features grid ── */
   .sos-feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-  .sos-feat{
-    transition:border-color .25s,background .25s,transform .2s;
-    cursor:default;
-  }
-  .sos-feat:hover{
-    border-color:rgba(220,38,38,0.38)!important;
-    background:linear-gradient(160deg,rgba(255,255,255,0.09) 0%,rgba(255,255,255,0.04) 100%)!important;
-    transform:translateY(-3px);
-  }
+  .sos-feat{transition:border-color .25s,transform .2s;cursor:default;}
+  .sos-feat:hover{border-color:rgba(220,38,38,0.35)!important;transform:translateY(-3px);}
 
   /* ── Scroll reveal ── */
   .sos-reveal{opacity:0;transform:translateY(22px);transition:opacity .65s ease,transform .65s ease;}
@@ -324,36 +329,23 @@ const STYLES = `
   .sos-path-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:760px;margin:0 auto 44px;}
   .sos-path{
     position:relative;text-align:left;cursor:pointer;border-radius:18px;padding:26px 26px 24px;
-    background:linear-gradient(160deg,rgba(255,255,255,0.05) 0%,rgba(255,255,255,0.02) 100%);
-    border:1px solid rgba(255,255,255,0.1);
-    font-family:inherit;color:#fff;width:100%;
-    transition:border-color .25s,background .25s,transform .2s,box-shadow .25s;
+    background:#fff;border:1px solid #e5e7eb;
+    font-family:inherit;color:#0f172a;width:100%;
+    transition:border-color .25s,transform .2s,box-shadow .25s;
   }
   .sos-path:hover{transform:translateY(-3px);border-color:rgba(220,38,38,0.4);}
-  .sos-path:focus-visible{outline:2px solid #fb7185;outline-offset:3px;}
+  .sos-path:focus-visible{outline:2px solid #dc2626;outline-offset:3px;}
   .sos-path.on{
-    border-color:rgba(220,38,38,0.65);
-    background:linear-gradient(160deg,rgba(220,38,38,0.13) 0%,rgba(255,255,255,0.03) 100%);
-    box-shadow:0 12px 44px rgba(220,38,38,0.22),inset 0 1px 0 rgba(255,255,255,0.1);
+    border-color:#dc2626;
+    background:linear-gradient(160deg,rgba(220,38,38,0.05) 0%,#fff 100%);
+    box-shadow:0 12px 36px -12px rgba(220,38,38,0.28);
   }
   .sos-path .tick{
     position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;
-    border:1.5px solid rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;
+    border:1.5px solid #d1d5db;display:flex;align-items:center;justify-content:center;
     transition:all .2s;color:transparent;
   }
   .sos-path.on .tick{background:#dc2626;border-color:#dc2626;color:#fff;}
-
-  /* ── Segment control (kept for a11y fallback in pricing nav) ── */
-  .sos-seg{
-    display:inline-flex;padding:5px;border-radius:14px;gap:4px;
-    background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
-  }
-  .sos-seg button{
-    border:none;background:transparent;color:#6b7280;font-family:inherit;font-weight:700;
-    font-size:13px;padding:10px 24px;border-radius:10px;cursor:pointer;transition:all .22s;
-    letter-spacing:.01em;
-  }
-  .sos-seg button.on{background:#dc2626;color:#fff;box-shadow:0 2px 14px rgba(220,38,38,0.45);}
 
   /* ── Pricing carousel (mobile) ── */
   .sos-price-track{
@@ -383,20 +375,15 @@ const STYLES = `
   .sos-price-dots{display:none;justify-content:center;gap:7px;margin-top:18px;}
   .sos-dot{
     width:7px;height:7px;border-radius:50%;
-    background:rgba(255,255,255,0.2);border:none;cursor:pointer;padding:0;
+    background:rgba(15,23,42,0.15);border:none;cursor:pointer;padding:0;
     transition:background .2s,transform .2s;
   }
   .sos-dot.on{background:#dc2626;transform:scale(1.3);}
 
   /* ── Pricing card ── */
   .sos-pc{
-    padding:32px;display:flex;flex-direction:column;border-radius:20px;
+    padding:32px;display:flex;flex-direction:column;border-radius:20px;height:100%;
     transition:transform .22s,box-shadow .22s;position:relative;overflow:hidden;
-  }
-  .sos-pc::before{
-    content:'';position:absolute;inset:0;border-radius:inherit;
-    background:linear-gradient(160deg,rgba(255,255,255,0.07) 0%,transparent 50%);
-    pointer-events:none;
   }
   .sos-pc:hover{transform:translateY(-4px);}
 
@@ -408,9 +395,8 @@ const STYLES = `
 
   @media(prefers-reduced-motion:reduce){
     .sos-reveal{opacity:1;transform:none;}
-    .sos-hero-chart .line{animation:none;stroke-dashoffset:0;}
-    .sos-hero-chart .area,.sos-hero-chart .tip{animation:none;opacity:1;}
-    .sos-hero-chart .tip-pulse{animation:none;opacity:0;}
+    .hs-in{animation:none;opacity:1;transform:none;}
+    .hs-line{animation:none;stroke-dashoffset:0;}
     .sos-flow .stem{transition:none;stroke-dashoffset:0;}
     .sos-flow .rider{transition:none;opacity:1;}
     .sos-flow .rider animate,.sos-flow animate{display:none;}
@@ -423,8 +409,9 @@ const STYLES = `
     .sos-nav .sos-btn-primary{padding:8px 13px!important;font-size:12px!important;gap:6px!important;}
     .sos-hero-h1{font-size:44px!important;line-height:1.04!important;}
     .sos-hero-sub{font-size:16px!important;}
-    .sos-ps{grid-template-columns:1fr;}
-    .sos-ps-l{border-right:none;border-bottom:1px solid rgba(255,255,255,0.08);}
+    .sos-ps{grid-template-columns:minmax(0,1fr);gap:24px;}
+    .sos-ps.rev .sos-ps-copy{order:0;}
+    .sos-ps-stage{padding:14px;border-radius:18px;}
     .sos-feat-grid{grid-template-columns:1fr;}
     .sos-stats-grid{grid-template-columns:1fr 1fr;}
     .sos-roles{grid-template-columns:1fr 1fr;}
@@ -517,50 +504,6 @@ function Reveal({ children, delay = 0, style }) {
   return <div ref={ref} className="sos-reveal" style={style}>{children}</div>;
 }
 
-// ─── Hero chart — a gross-profit curve that draws itself on load ─────────────
-function HeroChart() {
-  return (
-    <svg className="sos-hero-chart" viewBox="0 0 760 150" fill="none" aria-hidden="true" style={{ marginTop: 8 }}>
-      <defs>
-        <linearGradient id="sos-area-g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="sos-line-g" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(248,113,113,0.25)" />
-          <stop offset="55%" stopColor="#ef4444" />
-          <stop offset="100%" stopColor="#fb7185" />
-        </linearGradient>
-        <filter id="sos-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="5" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      {/* baseline grid hints */}
-      {[36, 75, 114].map((y) => (
-        <line key={y} x1="0" y1={y} x2="760" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-      ))}
-      <path
-        className="area"
-        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19 L724,150 L0,150 Z"
-        fill="url(#sos-area-g)"
-      />
-      <path
-        className="line"
-        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19"
-        stroke="url(#sos-line-g)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        filter="url(#sos-glow)"
-      />
-      <g className="tip">
-        <circle className="tip-pulse" cx="724" cy="19" r="6" fill="rgba(251,113,133,0.5)" />
-        <circle cx="724" cy="19" r="4" fill="#fb7185" stroke="#06080F" strokeWidth="1.5" />
-      </g>
-    </svg>
-  );
-}
-
 // ─── Flow connector — animated SVG line that walks the eye to the next stop ──
 function FlowConnector({ label, hot = false }) {
   return (
@@ -605,9 +548,9 @@ function Logo({ size = 34 }) {
       <div>
         {/* The lockup replaces the gradient-filled wordmark. Height tracks the
             size prop so the nav (34) and the footer (28) stay proportional. */}
-        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59"
+        <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59"
              style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
-        <span style={{ display: "block", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
+        <span style={{ display: "block", fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
       </div>
     </Link>
   );
@@ -625,19 +568,19 @@ function PriceCard({ planKey }) {
   const isGold    = meta.variant === "gold";
   const isSoon    = meta.soon;
 
-  const borderCol = isPopular ? "rgba(220,38,38,0.55)"
-                  : isGold    ? "rgba(212,168,75,0.4)"
-                  : "rgba(255,255,255,0.1)";
+  const borderCol = isPopular ? "#dc2626"
+                  : isGold    ? "rgba(217,119,6,0.45)"
+                  : "#e5e7eb";
   const bgGrad = isPopular
-    ? "linear-gradient(160deg,rgba(220,38,38,0.14) 0%,rgba(255,255,255,0.04) 100%)"
+    ? "linear-gradient(160deg,rgba(220,38,38,0.05) 0%,#fff 55%)"
     : isGold
-      ? "linear-gradient(160deg,rgba(212,168,75,0.12) 0%,rgba(255,255,255,0.04) 100%)"
-      : "linear-gradient(160deg,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.03) 100%)";
-  const shadow = isPopular ? "inset 0 1px 0 rgba(255,255,255,0.12),0 12px 48px rgba(220,38,38,0.24)"
-               : isGold    ? "inset 0 1px 0 rgba(255,255,255,0.12),0 12px 48px rgba(212,168,75,0.14)"
-               : "inset 0 1px 0 rgba(255,255,255,0.08),0 8px 32px rgba(0,0,0,0.32)";
-  const priceCol = isGold ? "#f59e0b" : "#fff";
-  const checkCol = isPopular ? "#f87171" : isGold ? "#f59e0b" : "#4b5563";
+      ? "linear-gradient(160deg,rgba(217,119,6,0.06) 0%,#fff 55%)"
+      : "#fff";
+  const shadow = isPopular ? "0 18px 44px -16px rgba(220,38,38,0.32)"
+               : isGold    ? "0 18px 44px -18px rgba(217,119,6,0.28)"
+               : "0 1px 2px rgba(15,23,42,0.04),0 12px 32px -16px rgba(15,23,42,0.12)";
+  const priceCol = isGold ? "#b45309" : "#0f172a";
+  const checkCol = isPopular ? "#dc2626" : isGold ? "#d97706" : "#9ca3af";
 
   return (
     <div className="sos-pc" style={{ background: bgGrad, border: `1px solid ${borderCol}`, boxShadow: shadow }}>
@@ -647,7 +590,7 @@ function PriceCard({ planKey }) {
         </div>
       )}
       <div style={{ marginBottom: 6, marginTop: isPopular ? 18 : 0 }}>
-        <p style={{ fontSize: 12, color: "#9ca3af", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{cfg.label}</p>
+        <p style={{ fontSize: 12, color: "#6b7280", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{cfg.label}</p>
       </div>
       <div style={{ marginBottom: 6 }}>
         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 58, lineHeight: 1, color: priceCol, letterSpacing: 0 }}>
@@ -660,14 +603,14 @@ function PriceCard({ planKey }) {
       </p>
       <ul style={{ listStyle: "none", flex: 1, marginBottom: 28 }}>
         {featList.map((f) => (
-          <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "#cbd5e1", marginBottom: 12, lineHeight: 1.5 }}>
+          <li key={f} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "#374151", marginBottom: 12, lineHeight: 1.5 }}>
             <Check size={15} color={checkCol} style={{ flexShrink: 0, marginTop: 2 }} />
             {f}
           </li>
         ))}
       </ul>
       {isSoon ? (
-        <span aria-disabled="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#6b7280", fontWeight: 700, fontSize: 14, cursor: "not-allowed", letterSpacing: "0.04em" }}>{t("shiftos.pricing.comingSoon", "Coming soon")}</span>
+        <span aria-disabled="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "13px 26px", borderRadius: 11, background: "#f3f4f6", border: "1px solid #e5e7eb", color: "#6b7280", fontWeight: 700, fontSize: 14, cursor: "not-allowed", letterSpacing: "0.04em" }}>{t("shiftos.pricing.comingSoon", "Coming soon")}</span>
       ) : (
         <>
           {meta.variant === "primary" && (
@@ -746,11 +689,11 @@ function PathChooser({ track, setTrack }) {
         return (
           <button key={id} role="radio" aria-checked={on} className={`sos-path${on ? " on" : ""}`} onClick={() => setTrack(id)}>
             <span className="tick"><Check size={13} /></span>
-            <div className="sos-icon" style={{ marginBottom: 16, ...(on ? {} : { background: "rgba(255,255,255,0.05)", borderColor: "rgba(255,255,255,0.12)" }) }}>
-              <Icon size={20} color={on ? "#ef4444" : "#94a3b8"} />
+            <div className="sos-icon" style={{ marginBottom: 16, ...(on ? {} : { background: "#f9fafb", borderColor: "#e5e7eb" }) }}>
+              <Icon size={20} color={on ? "#dc2626" : "#6b7280"} />
             </div>
-            <p style={{ fontSize: 17, fontWeight: 700, color: on ? "#fff" : "#e2e8f0", marginBottom: 7 }}>{title}</p>
-            <p style={{ fontSize: 13, color: on ? "#cbd5e1" : "#6b7280", lineHeight: 1.6 }}>{desc}</p>
+            <p style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", marginBottom: 7 }}>{title}</p>
+            <p style={{ fontSize: 13, color: on ? "#374151" : "#6b7280", lineHeight: 1.6 }}>{desc}</p>
           </button>
         );
       })}
@@ -838,20 +781,20 @@ export default function ShiftOSPage() {
             <div className="sos-nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
               {[{ label: t("shiftos.nav.features"), ref: featRef }, { label: t("shiftos.nav.pricing"), ref: pricingRef }].map(({ label, ref }) => (
                 <button key={label} onClick={() => scrollTo(ref)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", letterSpacing: ".01em", transition: "color .15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                   onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{label}</button>
               ))}
               <a href="https://xdrive.my" target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.marketplace")}</a>
               <Link to="/login" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.login")}</Link>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 50, padding: 3 }}>
-                <button onClick={toggleLang} aria-label="Switch to English" aria-pressed={isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: isEn ? "rgba(220,38,38,0.14)" : "transparent", color: isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>EN</button>
-                <button onClick={toggleLang} aria-label="Tukar ke Bahasa Malaysia" aria-pressed={!isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: !isEn ? "rgba(220,38,38,0.14)" : "transparent", color: !isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>BM</button>
+              <div style={{ display: "flex", background: "rgba(15,23,42,0.03)", border: "1px solid rgba(15,23,42,0.08)", borderRadius: 50, padding: 3 }}>
+                <button onClick={toggleLang} aria-label="Switch to English" aria-pressed={isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: isEn ? "rgba(220,38,38,0.08)" : "transparent", color: isEn ? "#dc2626" : "rgba(15,23,42,0.4)" }}>EN</button>
+                <button onClick={toggleLang} aria-label="Tukar ke Bahasa Malaysia" aria-pressed={!isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: !isEn ? "rgba(220,38,38,0.08)" : "transparent", color: !isEn ? "#dc2626" : "rgba(15,23,42,0.4)" }}>BM</button>
               </div>
               <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                 {t("shiftos.nav.startFree")} <ArrowRight size={15} />
@@ -861,7 +804,8 @@ export default function ShiftOSPage() {
         </nav>
 
         {/* ── Hero ── */}
-        <section className="sos-wrap" style={{ padding: "92px 24px 12px", textAlign: "center" }}>
+        <div className="sos-hero-light sos-smudge">
+        <section className="sos-wrap" style={{ padding: "92px 24px 72px", textAlign: "center" }}>
           <Reveal>
             <div className="sos-eyebrow" style={{ marginBottom: 28 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 8px #ef4444" }} />
@@ -869,12 +813,12 @@ export default function ShiftOSPage() {
             </div>
           </Reveal>
           <Reveal delay={80}>
-            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 78, color: "#fff", margin: "0 auto 22px", maxWidth: 980, lineHeight: 1.02 }}>
+            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 78, color: "#0f172a", margin: "0 auto 22px", maxWidth: 980, lineHeight: 1.02 }}>
               {t("shiftos.hero.title1")}<br />{t("shiftos.hero.title2lead")} <span className="sos-red">{t("shiftos.hero.title2accent")}</span>
             </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", maxWidth: 620, margin: "0 auto 38px", lineHeight: 1.65 }}>
+            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#475569", maxWidth: 620, margin: "0 auto 38px", lineHeight: 1.65 }}>
               {t("shiftos.hero.subtitle")}
             </p>
           </Reveal>
@@ -887,13 +831,14 @@ export default function ShiftOSPage() {
                 <MessageCircle size={16} /> {t("shiftos.hero.talkToUs")}
               </a>
             </div>
-            <p style={{ fontSize: 12, color: "#374151", letterSpacing: ".04em" }}>
+            <p style={{ fontSize: 12, color: "#6b7280", letterSpacing: ".04em" }}>
               {t("shiftos.hero.trust")}
             </p>
           </Reveal>
-          {/* Gross-profit curve drawing itself upward — the promise of the product */}
-          <HeroChart />
+          {/* What is actually inside the DMS: dashboard + the screens that answer the pains below */}
+          <div style={{ marginTop: 56 }}><HeroShowcase /></div>
         </section>
+        </div>
 
         {/* ── Stats strip ── */}
         <section className="sos-wrap" style={{ paddingBottom: 16 }}>
@@ -905,7 +850,7 @@ export default function ShiftOSPage() {
                 { num: "RM0",     label: t("shiftos.stats.s3") },
                 { num: "< 30m",   label: t("shiftos.stats.s4") },
               ].map(({ num, label }, i, arr) => (
-                <div key={label} style={{ padding: "34px 20px", textAlign: "center", borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.07)" : "none" }}>
+                <div key={label} style={{ padding: "34px 20px", textAlign: "center", borderRight: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
                   <p className="sos-h sos-red" style={{ fontSize: 42, marginBottom: 8 }}>{num}</p>
                   <p style={{ fontSize: 12, color: "#6b7280", letterSpacing: ".05em", lineHeight: 1.4, textTransform: "uppercase" }}>{label}</p>
                 </div>
@@ -921,31 +866,35 @@ export default function ShiftOSPage() {
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
               <p className="sos-kicker" style={{ marginBottom: 18 }}><b>01</b> {t("shiftos.pain.eyebrow")}</p>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pain.title")}</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
+              <h2 className="sos-h" style={{ fontSize: 50, marginBottom: 12 }}>{t("shiftos.pain.title")}</h2>
+              <p className="sos-sub">
                 {t("shiftos.pain.subtitle")}
               </p>
             </div>
           </Reveal>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {PAIN_SOLUTIONS.map(({ Icon, key }, i) => (
-              <Reveal key={key} delay={i * 40}>
-                <div className="sos-glass sos-ps">
-                  <div className="sos-ps-l">
-                    <span style={{ fontSize: 10, fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: ".12em" }}>{t("shiftos.pain.label")}</span>
-                    <p style={{ marginTop: 14, fontSize: 15, color: "#cbd5e1", lineHeight: 1.7, fontStyle: "italic" }}>“{t(`shiftos.pain.items.${key}.quote`)}”</p>
-                  </div>
-                  <div className="sos-ps-r">
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                      <div className="sos-icon"><Icon size={20} color="#ef4444" /></div>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#fca5a5", textTransform: "uppercase", letterSpacing: ".1em" }}>{t(`shiftos.pain.items.${key}.tag`)}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 88 }}>
+            {PAIN_SOLUTIONS.map(({ Icon, key }, i) => {
+              const Preview = PAIN_PREVIEWS[key];
+              return (
+                <Reveal key={key}>
+                  <div className={`sos-ps${i % 2 ? " rev" : ""}`}>
+                    <div className="sos-ps-copy">
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                        <div className="sos-icon" style={{ width: 40, height: 40, borderRadius: 11 }}><Icon size={18} color="#dc2626" /></div>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "#b91c1c", textTransform: "uppercase", letterSpacing: ".1em" }}>{t(`shiftos.pain.items.${key}.tag`)}</span>
+                      </div>
+                      <p style={{ fontSize: 24, fontWeight: 700, color: "#0f172a", marginBottom: 12, lineHeight: 1.3, letterSpacing: "-.01em" }}>{t(`shiftos.pain.items.${key}.title`)}</p>
+                      <p style={{ fontSize: 14.5, color: "#4b5563", lineHeight: 1.7, marginBottom: 20 }}>{t(`shiftos.pain.items.${key}.desc`)}</p>
+                      <p className="sos-ps-quote">
+                        <span style={{ display: "block", fontStyle: "normal", fontSize: 10, fontWeight: 800, color: "#9ca3af", textTransform: "uppercase", letterSpacing: ".12em", marginBottom: 6 }}>{t("shiftos.pain.label")}</span>
+                        “{t(`shiftos.pain.items.${key}.quote`)}”
+                      </p>
                     </div>
-                    <p style={{ fontSize: 17, fontWeight: 600, color: "#f1f5f9", marginBottom: 10, lineHeight: 1.38 }}>{t(`shiftos.pain.items.${key}.title`)}</p>
-                    <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{t(`shiftos.pain.items.${key}.desc`)}</p>
+                    <div className="sos-ps-stage"><Preview /></div>
                   </div>
-                </div>
-              </Reveal>
-            ))}
+                </Reveal>
+              );
+            })}
           </div>
         </section>
 
@@ -956,8 +905,8 @@ export default function ShiftOSPage() {
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 52 }}>
               <p className="sos-kicker" style={{ marginBottom: 18 }}><b>02</b> {t("shiftos.features.eyebrow")}</p>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.features.title")}</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
+              <h2 className="sos-h" style={{ fontSize: 50, marginBottom: 12 }}>{t("shiftos.features.title")}</h2>
+              <p className="sos-sub">
                 {t("shiftos.features.subtitle")}
               </p>
             </div>
@@ -966,9 +915,9 @@ export default function ShiftOSPage() {
             {FEATURES.map(({ Icon, key }, i) => (
               <Reveal key={key} delay={i * 30}>
                 <div id={`feat-${key}`} className="sos-glass sos-feat" style={{ padding: 26, height: "100%", scrollMarginTop: 90 }}>
-                  <div className="sos-icon" style={{ marginBottom: 18 }}><Icon size={20} color="#ef4444" /></div>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: "#f1f5f9", marginBottom: 9 }}>{t(`shiftos.features.items.${key}.title`)}</p>
-                  <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.65 }}>{t(`shiftos.features.items.${key}.desc`)}</p>
+                  <div className="sos-icon" style={{ marginBottom: 18 }}><Icon size={20} color="#dc2626" /></div>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#111827", marginBottom: 9 }}>{t(`shiftos.features.items.${key}.title`)}</p>
+                  <p style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.65 }}>{t(`shiftos.features.items.${key}.desc`)}</p>
                 </div>
               </Reveal>
             ))}
@@ -982,18 +931,18 @@ export default function ShiftOSPage() {
           <Reveal>
             <div className="sos-glass" style={{ padding: "52px 40px", textAlign: "center" }}>
               <p className="sos-kicker" style={{ marginBottom: 18 }}><b>03</b> {t("shiftos.team.title")}</p>
-              <h2 className="sos-h" style={{ fontSize: 46, color: "#fff", marginBottom: 12 }}>{t("shiftos.team.title")}</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 580, margin: "0 auto 40px", lineHeight: 1.65 }}>
+              <h2 className="sos-h" style={{ fontSize: 46, marginBottom: 12 }}>{t("shiftos.team.title")}</h2>
+              <p className="sos-sub" style={{ maxWidth: 580, marginBottom: 40 }}>
                 {t("shiftos.team.subtitle")}
               </p>
               <div className="sos-roles">
                 {TEAM_ROLES.map(({ Icon, key }) => (
-                  <div key={key} style={{ padding: "22px 18px", borderRadius: 14, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-                      <Icon size={18} color="#ef4444" />
+                  <div key={key} style={{ padding: "22px 18px", borderRadius: 14, background: "#f9fafb", border: "1px solid #f3f4f6", textAlign: "center" }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 11, background: "rgba(220,38,38,0.07)", border: "1px solid rgba(220,38,38,0.18)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                      <Icon size={18} color="#dc2626" />
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 6 }}>{t(`shiftos.team.roles.${key}.role`)}</p>
-                    <p style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.55 }}>{t(`shiftos.team.roles.${key}.desc`)}</p>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 6 }}>{t(`shiftos.team.roles.${key}.role`)}</p>
+                    <p style={{ fontSize: 12, color: "#4b5563", lineHeight: 1.55 }}>{t(`shiftos.team.roles.${key}.desc`)}</p>
                   </div>
                 ))}
               </div>
@@ -1008,11 +957,11 @@ export default function ShiftOSPage() {
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 36 }}>
               <p className="sos-kicker" style={{ marginBottom: 18 }}><b>04</b> {t("shiftos.pricing.eyebrow")}</p>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>{t("shiftos.pricing.title")}</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 480, margin: "0 auto 10px", lineHeight: 1.65 }}>
+              <h2 className="sos-h" style={{ fontSize: 50, marginBottom: 12 }}>{t("shiftos.pricing.title")}</h2>
+              <p className="sos-sub" style={{ maxWidth: 480, marginBottom: 10 }}>
                 {t("shiftos.pricing.subtitle")}
               </p>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#94a3b8", letterSpacing: ".02em", marginTop: 22 }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#374151", letterSpacing: ".02em", marginTop: 22 }}>
                 {t("shiftos.pricing.choosePath")}
               </p>
             </div>
@@ -1026,10 +975,10 @@ export default function ShiftOSPage() {
             <PricingSection track={track} />
           </div>
 
-          <p style={{ textAlign: "center", color: "#374151", fontSize: 13, marginTop: 32 }}>
+          <p style={{ textAlign: "center", color: "#4b5563", fontSize: 13, marginTop: 32 }}>
             {t("shiftos.pricing.needMore")}{" "}
-            <a href={WA} target="_blank" rel="noopener noreferrer" style={{ color: "#ef4444", textDecoration: "none", fontWeight: 600 }}>
-              {t("shiftos.pricing.talkToTeam")} <ChevronRight size={13} style={{ verticalAlign: "middle" }} />
+            <a href={WA} target="_blank" rel="noopener noreferrer" style={{ color: "#dc2626", textDecoration: "none", fontWeight: 600 }}>
+              {t("shiftos.pricing.talkToTeam")} <ChevronRight size={13} style={{ verticalAlign: "middle", display: "inline-block" }} />
             </a>
           </p>
         </section>
@@ -1037,8 +986,9 @@ export default function ShiftOSPage() {
         {/* ── Testimonial ── */}
         <section className="sos-wrap" style={{ maxWidth: 820, paddingBottom: 96 }}>
           <Reveal>
-            <div style={{ borderLeft: "3px solid #dc2626", paddingLeft: 30 }}>
-              <p style={{ fontSize: 19, fontStyle: "italic", color: "#cbd5e1", lineHeight: 1.75, marginBottom: 16 }}>
+            <div style={{ textAlign: "center" }}>
+              <p className="sos-h" aria-hidden="true" style={{ fontSize: 64, color: "#dc2626", lineHeight: 0.6, marginBottom: 14 }}>“</p>
+              <p style={{ fontSize: 19, fontStyle: "italic", color: "#1f2937", lineHeight: 1.75, marginBottom: 16 }}>
                 “{t("shiftos.testimonial.quote")}”
               </p>
               <p style={{ fontSize: 13, color: "#6b7280" }}>{t("shiftos.testimonial.author")}</p>
@@ -1049,9 +999,9 @@ export default function ShiftOSPage() {
         {/* ── Final CTA ── */}
         <section className="sos-wrap" style={{ paddingBottom: 96 }}>
           <Reveal>
-            <div className="sos-glass" style={{ padding: "68px 40px", textAlign: "center", background: "radial-gradient(ellipse 800px 400px at 50% -10%, rgba(220,38,38,0.2) 0%, rgba(255,255,255,0.04) 100%)" }}>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 14 }}>{t("shiftos.finalCta.title")}</h2>
-              <p style={{ fontSize: 16, color: "#94a3b8", maxWidth: 520, margin: "0 auto 38px", lineHeight: 1.65 }}>
+            <div className="sos-glass sos-smudge" style={{ padding: "68px 40px", textAlign: "center" }}>
+              <h2 className="sos-h" style={{ fontSize: 50, marginBottom: 14 }}>{t("shiftos.finalCta.title")}</h2>
+              <p style={{ fontSize: 16, color: "#4b5563", maxWidth: 520, margin: "0 auto 38px", lineHeight: 1.65 }}>
                 {t("shiftos.finalCta.subtitle")}
               </p>
               <div className="sos-cta-btns" style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
@@ -1072,8 +1022,8 @@ export default function ShiftOSPage() {
           <Reveal>
             <div style={{ textAlign: "center", marginBottom: 36 }}>
               <p className="sos-kicker" style={{ marginBottom: 18 }}><b>05</b> FAQ</p>
-              <h2 className="sos-h" style={{ fontSize: 50, color: "#fff", marginBottom: 12 }}>Soalan Lazim</h2>
-              <p style={{ fontSize: 15, color: "#6b7280", maxWidth: 540, margin: "0 auto", lineHeight: 1.65 }}>
+              <h2 className="sos-h" style={{ fontSize: 50, marginBottom: 12 }}>Soalan Lazim</h2>
+              <p className="sos-sub">
                 Soalan biasa tentang ShiftOS — software dealer kereta Malaysia dan sistem urus stok kereta terpakai untuk dealer &amp; salesman.
               </p>
             </div>
@@ -1081,12 +1031,12 @@ export default function ShiftOSPage() {
           <Reveal delay={60}>
             <div style={{ maxWidth: 760, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 }}>
               {FAQS.map((f, i) => (
-                <details key={i} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "0 20px" }}>
-                  <summary style={{ cursor: "pointer", listStyle: "none", padding: "18px 0", fontSize: 15, fontWeight: 700, color: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
+                <details key={i} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "0 20px" }}>
+                  <summary style={{ cursor: "pointer", listStyle: "none", padding: "18px 0", fontSize: 15, fontWeight: 700, color: "#111827", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14 }}>
                     <span>{f.q}</span>
-                    <ChevronDown className="sos-faq-chev" size={16} style={{ flexShrink: 0, color: "#94a3b8", transition: "transform .2s" }} />
+                    <ChevronDown className="sos-faq-chev" size={16} style={{ flexShrink: 0, color: "#6b7280", transition: "transform .2s" }} />
                   </summary>
-                  <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, padding: "0 0 20px", margin: 0 }}>{f.a}</p>
+                  <p style={{ fontSize: 14, color: "#4b5563", lineHeight: 1.7, padding: "0 0 20px", margin: 0 }}>{f.a}</p>
                 </details>
               ))}
             </div>
@@ -1094,32 +1044,32 @@ export default function ShiftOSPage() {
         </section>
 
         {/* ── Footer ── */}
-        <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "48px 24px" }}>
+        <footer style={{ borderTop: "1px solid #e5e7eb", background: "#fff", padding: "48px 24px" }}>
           <div className="sos-wrap sos-footer-inner" style={{ padding: 0, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 24, marginBottom: 32 }}>
             <div>
               <Logo size={28} />
-              <p style={{ fontSize: 12, color: "#374151", marginTop: 12, maxWidth: 280, lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: "#6b7280", marginTop: 12, maxWidth: 280, lineHeight: 1.6 }}>
                 {t("shiftos.footer.tagline")}
               </p>
             </div>
             <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
               <button onClick={() => scrollTo(featRef)} style={{ fontSize: 13, color: "#4b5563", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.features")}</button>
               <button onClick={() => scrollTo(pricingRef)} style={{ fontSize: 13, color: "#4b5563", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.pricing")}</button>
               <Link to="/login" style={{ fontSize: 13, color: "#4b5563", textDecoration: "none" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.login")}</Link>
               <Link to="/" style={{ fontSize: 13, color: "#4b5563", textDecoration: "none" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>xdrive.my</Link>
             </div>
           </div>
-          <div className="sos-wrap" style={{ padding: 0, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 22, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-            <p style={{ fontSize: 12, color: "#1f2937" }}>© {new Date().getFullYear()} {t("shiftos.footer.copyright")}</p>
-            <p style={{ fontSize: 12, color: "#1f2937" }}>{t("shiftos.footer.poweredBy")} <span style={{ color: "#dc2626" }}>XDrive</span></p>
+          <div className="sos-wrap" style={{ padding: 0, borderTop: "1px solid #f3f4f6", paddingTop: 22, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>© {new Date().getFullYear()} {t("shiftos.footer.copyright")}</p>
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>{t("shiftos.footer.poweredBy")} <span style={{ color: "#dc2626" }}>XDrive</span></p>
           </div>
         </footer>
 
