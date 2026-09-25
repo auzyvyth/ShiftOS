@@ -411,6 +411,15 @@ local (main) → staging branch → production (main on GitHub)
 - NEVER deploy to production without explicit user instruction ("push to prod" / "go live")
 - Every feature or fix must go to staging first and be confirmed before production
 
+## Push budget — ONE push per change (owner's rule, repeated 2026-09-25)
+Every push to any branch starts its own Vercel build. Pushing the same commit to
+the feature branch + staging + a temp PR branch cost three builds per change.
+- One push: the session's feature branch. Its Vercel preview is the review link.
+- Prod = open the PR FROM that feature branch into main. No temp branch.
+- A second push (to `staging`) only when the owner asks, or the change is risky
+  enough to need a staging click-through. Never push "just to be safe".
+- Batch commits locally and push once, not after every commit.
+
 ## Git workflow (web session — proxy restriction)
 This session's git proxy blocks direct push to origin/main. Use this workflow every time:
 1. Commit to local main
