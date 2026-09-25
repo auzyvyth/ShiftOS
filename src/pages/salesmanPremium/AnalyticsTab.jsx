@@ -1,10 +1,9 @@
 import React, { useState } from "react";
 import {
-  BarChart2, Plus, TrendingUp, ChevronDown, ChevronUp, Clock, Target,
-  AlertTriangle, Award, Lightbulb, Zap,
+  BarChart2, Plus, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Target,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R } from "../../theme/tokens";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import { CARD, CARD_HEADER, EYEBROW, STAT, SOFT, SubTabs } from "./shared";
 import useStageHistory from "../../hooks/useStageHistory";
@@ -27,9 +26,11 @@ import { buildSalesPerformance, formatDuration, sourceLabel } from "../../utils/
 // call — "This week" on the dashboard owns that, and a second call list here
 // would just be the same names in a worse place.
 //
-// Colour rule (unchanged from the rebuild): colour is a verdict, never a
-// category. Traffic metrics share one hue; the only coloured things in Selling
-// are the weakest funnel step, close-rate quality, and insight severity.
+// Colour rule: grey by default, red ONLY for the one thing to fix (weakest
+// funnel step, a low tap-through). Green/red appear on a signed trend and
+// nowhere else. Every number used to carry a green/amber/red verdict plus blue
+// bars, so nothing stood out. Order is "what to fix" first, then the numbers
+// behind it, with the supporting detail folded under "More detail".
 export default function AnalyticsTab({
  carStatsMap, enquiries, thisMonthSales, commission, soldCount, myListings,
  channelMap, commissionDetails, isMobile, onAddListing, leads = [], onOpenTab,
@@ -42,6 +43,7 @@ export default function AnalyticsTab({
   // shown apart as well as together rather than silently summed into one bar.
   const [trafficView, setTrafficView] = useState("all");
   const [openInsights, setOpenInsights] = useState(() => new Set());
+  const [showDetail, setShowDetail] = useState(false);
   const toggleInsight = (key) => setOpenInsights((prev) => {
     const next = new Set(prev);
     next.has(key) ? next.delete(key) : next.add(key);
@@ -106,14 +108,13 @@ export default function AnalyticsTab({
 
   // The one place a traffic number is allowed a colour: it's a verdict, not a
   // category. Below 5% of viewers tapping through is a listing problem.
-  const cvrHue = cvrNum >= 10 ? C.success : cvrNum >= 5 ? C.warn : C.danger;
-  const cvrLabel = cvrNum >= 10 ? "Strong" : cvrNum >= 5 ? "Fair" : "Low";
+  // Only a LOW rate is flagged: it is the one reading that asks for action.
+  const cvrLow = totalViews >= 20 && cvrNum < 5;
 
   const money = (n) => `RM ${Number(n || 0).toLocaleString("en-MY")}`;
 
-  // Traffic metrics share ONE hue because they are one family. Distinguishing
-  // them by colour would be decoration — the label already does that job.
-  const TRAFFIC_HUE = C.info;
+  // Sparklines are grey: they show a shape, not a verdict.
+  const TRAFFIC_HUE = C.textMuted;
 
   const Metric = ({ label, value, sub: subLabel, data, hue, badge, id }) => (
     <div style={{ ...CARD, padding: "14px 16px 12px" }}>
@@ -121,7 +122,7 @@ export default function AnalyticsTab({
         <span style={EYEBROW}>{label}</span>
         {badge}
       </div>
-      <p style={{ ...STAT, margin: "6px 0 0", fontSize: T.size.statLg }}>{value}</p>
+      <p style={{ ...STAT, margin: "6px 0 0", fontSize: isMobile ? T.size.stat : T.size.statLg, fontVariantNumeric: "tabular-nums" }}>{value}</p>
       {subLabel && <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{subLabel}</p>}
       {data && <Spark data={data} hue={hue || TRAFFIC_HUE} id={id} />}
     </div>
@@ -158,11 +159,32 @@ export default function AnalyticsTab({
     </p>
   );
 
-  const TONE = {
-    warn: { hue: C.danger, text: C.dangerText, icon: AlertTriangle },
-    tip: { hue: C.info, text: C.infoText, icon: Lightbulb },
-    good: { hue: C.success, text: C.successText, icon: Award },
-  };
+  // Tabular figures on every number that changes, so a column of them does
+  // not wobble (DASHBOARD_DESIGN.md §3).
+  const NUM = { fontVariantNumeric: "tabular-nums" };
+
+  // One row shape for every list on this tab: name + a muted detail line on
+  // the left, one number on the right. It replaces the fixed-width column
+  // grids that pushed four numbers across a 375px phone.
+  const Row = ({ label, detail, value, valueColor, last }) => (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 18px", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: T.size.base, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</p>
+        {detail && <p style={{ ...NUM, margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{detail}</p>}
+      </div>
+      <span style={{ ...NUM, flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: valueColor || C.text }}>{value}</span>
+    </div>
+  );
+
+  const Bar = ({ pct, hue }) => (
+    <div style={{ height: 6, borderRadius: R.pill, background: C.fill, overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", background: hue, borderRadius: R.pill }} />
+    </div>
+  );
+
+  // Neutral bar colour. Red is kept for the one thing the rep should fix, so
+  // it only means something if nothing else on the page is coloured.
+  const BAR = C.textMuted;
 
   const renderSelling = () => {
     const { funnel, speed, loss, sources, closeRate, insights } = perf;
@@ -181,60 +203,71 @@ export default function AnalyticsTab({
       );
     }
 
-    const rateHue = closeRate.rate === null ? C.textDim
-      : closeRate.rate >= 40 ? C.successText
-      : closeRate.rate >= 20 ? C.warnText : C.dangerText;
-
+    const [focus, ...rest] = insights;
+    const others = rest.slice(0, 2);
     const funnelTop = funnel.rows[0]?.reached || 1;
 
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
-        {/* ── Coaching insights — ranked, most costly first, collapsed so they
-            never push the numbers below the fold. Capped at three: a wall of
-            advice is advice nobody reads. ── */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {insights.slice(0, 3).map((ins) => {
-            const tone = TONE[ins.tone] || TONE.tip;
-            const Icon = tone.icon;
-            const open = openInsights.has(ins.key);
-            return (
-              <div
-                key={ins.key}
-                style={{ background: withAlpha(tone.hue, 0.07), border: `1px solid ${withAlpha(tone.hue, 0.18)}`, borderRadius: R.md, overflow: "hidden" }}
+        {/* ── 1. The one thing to fix. Insights are already ranked most costly
+            first (buildInsights), so the top one is shown open with its action
+            and the next two sit underneath, collapsed. ── */}
+        <div style={CARD}>
+          <div style={{ padding: isMobile ? "16px" : "18px 20px" }}>
+            <p style={{ ...EYEBROW, margin: 0 }}>{focus.tone === "good" ? "Where you stand" : "Fix this first"}</p>
+            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
+              {focus.title}
+            </p>
+            <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{focus.body}</p>
+            {focus.cta && onOpenTab && (
+              <button
+                onClick={() => onOpenTab(focus.ctaTab)}
+                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
               >
-                <button
-                  onClick={() => toggleInsight(ins.key)}
-                  aria-expanded={open}
-                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "12px 14px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
-                >
-                  <Icon size={14} style={{ color: tone.hue, flexShrink: 0 }} />
-                  <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: tone.text, flex: 1, minWidth: 0 }}>
-                    {ins.title}
-                  </span>
-                  {open
-                    ? <ChevronUp size={15} style={{ color: tone.hue, flexShrink: 0 }} />
-                    : <ChevronDown size={15} style={{ color: tone.hue, flexShrink: 0 }} />}
-                </button>
-                {open && (
-                  <div style={{ padding: "0 14px 13px 37px" }}>
-                    <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{ins.body}</p>
-                    {ins.cta && onOpenTab && (
-                      <button
-                        onClick={() => onOpenTab(ins.ctaTab)}
-                        style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}
-                      >
-                        {ins.cta} →
-                      </button>
+                {focus.cta} <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
+          {others.length > 0 && (
+            <div style={{ borderTop: `1px solid ${C.line}` }}>
+              <p style={{ ...EYEBROW, margin: 0, padding: "12px 18px 4px" }}>Also worth a look</p>
+              {others.map((ins, i) => {
+                const open = openInsights.has(ins.key);
+                return (
+                  <div key={ins.key} style={{ borderBottom: i < others.length - 1 ? `1px solid ${C.line}` : "none" }}>
+                    <button
+                      onClick={() => toggleInsight(ins.key)}
+                      aria-expanded={open}
+                      style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
+                    >
+                      <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{ins.title}</span>
+                      {open
+                        ? <ChevronUp size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
+                        : <ChevronDown size={15} style={{ color: C.textMuted, flexShrink: 0 }} />}
+                    </button>
+                    {open && (
+                      <div style={{ padding: "0 18px 13px" }}>
+                        <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{ins.body}</p>
+                        {ins.cta && onOpenTab && (
+                          <button
+                            onClick={() => onOpenTab(ins.ctaTab)}
+                            style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            {ins.cta}
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* ── Close rate ── */}
+        {/* ── 2. Close rate: one number, its trend, and the counts behind it
+            on one line. It used to be four equal tiles, each in its own colour. ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>Close rate</span>
@@ -242,38 +275,25 @@ export default function AnalyticsTab({
               All time
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
-            {[
-              { label: "Leads", value: closeRate.total, note: "Ever created" },
-              { label: "Won", value: closeRate.won, note: "Deals closed", color: C.successText },
-              { label: "Lost", value: closeRate.lost, note: "Did not convert", color: C.dangerText },
-              { label: "Close rate", value: closeRate.rate !== null ? `${closeRate.rate}%` : "—", note: "Won of settled", color: rateHue },
-            ].map(({ label, value, note, color }, i) => (
-              <div
-                key={label}
-                style={{
-                  padding: "16px 18px",
-                  borderRight: !isMobile && i < 3 ? `1px solid ${C.line}` : isMobile && i % 2 === 0 ? `1px solid ${C.line}` : "none",
-                  borderTop: isMobile && i > 1 ? `1px solid ${C.line}` : "none",
-                }}
-              >
-                <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
-                <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.stat, color: color || C.text }}>{value}</p>
-                <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{note}</p>
-              </div>
-            ))}
-          </div>
-          {closeRate.trend !== null && (
-            <div style={{ padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.base, color: C.textSec }}>
-              <span style={{ color: closeRate.trend >= 0 ? C.successText : C.dangerText, fontWeight: T.weight.bold }}>
-                {closeRate.trend >= 0 ? "↑" : "↓"} {Math.abs(closeRate.trend)} points
-              </span>{" "}
-              last 30 days ({closeRate.current}%) vs the 30 before ({closeRate.previous}%)
+          <div style={{ padding: "16px 18px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ ...STAT, ...NUM, fontSize: T.size.statLg }}>
+                {closeRate.rate !== null ? `${closeRate.rate}%` : "—"}
+              </span>
+              {closeRate.trend !== null && (
+                <span style={{ ...NUM, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: closeRate.trend >= 0 ? C.successText : C.dangerText }}>
+                  {closeRate.trend >= 0 ? "+" : "−"}{Math.abs(closeRate.trend)} pts
+                  <span style={{ fontWeight: T.weight.normal, color: C.textMuted }}> last 30 days ({closeRate.current}% vs {closeRate.previous}%)</span>
+                </span>
+              )}
             </div>
-          )}
+            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
+              {closeRate.won} won · {closeRate.lost} lost · {closeRate.total} leads in total. Only won and lost deals count, so open leads do not drag it down.
+            </p>
+          </div>
         </div>
 
-        {/* ── Funnel ── */}
+        {/* ── 3. Funnel. Grey bars; the weakest step is the only red thing. ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>Where deals stop</span>
@@ -290,27 +310,24 @@ export default function AnalyticsTab({
               {funnel.rows.map((row) => {
                 const isWeak = funnel.weakest?.stage === row.stage;
                 const pct = Math.round((row.reached / funnelTop) * 100);
-                const barHue = row.stage === "won" ? C.success : isWeak ? C.danger : C.info;
                 return (
-                  <div key={row.stage} style={{ padding: "9px 0" }}>
+                  <div key={row.stage} style={{ padding: "8px 0" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-                      <span style={{ fontSize: T.size.base, color: C.text, fontWeight: isWeak ? T.weight.semibold : T.weight.normal }}>
+                      <span style={{ fontSize: T.size.base, color: C.text, fontWeight: isWeak ? T.weight.semibold : T.weight.normal, minWidth: 0 }}>
                         {row.label}
                         {isWeak && (
-                          <span style={{ ...SOFT(C.danger), marginLeft: 7, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "1px 6px", borderRadius: R.pill }}>
-                            Weakest step
+                          <span style={{ marginLeft: 8, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.dangerText, textTransform: "uppercase", letterSpacing: T.track.label }}>
+                            Weakest
                           </span>
                         )}
                       </span>
-                      <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
+                      <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
                         {row.reached}
                       </span>
                     </div>
-                    <div style={{ height: 6, borderRadius: R.pill, background: C.fill, overflow: "hidden" }}>
-                      <div style={{ width: `${pct}%`, height: "100%", background: barHue, borderRadius: R.pill }} />
-                    </div>
+                    <Bar pct={pct} hue={isWeak ? C.danger : BAR} />
                     {row.dropOffPct !== null && row.lostHere > 0 && (
-                      <p style={{ margin: "5px 0 0", fontSize: T.size.sm, color: isWeak ? C.dangerText : C.textMuted }}>
+                      <p style={{ ...NUM, margin: "5px 0 0", fontSize: T.size.sm, color: isWeak ? C.dangerText : C.textMuted }}>
                         {row.lostHere} stopped here ({row.dropOffPct}%)
                       </p>
                     )}
@@ -326,119 +343,96 @@ export default function AnalyticsTab({
           )}
         </div>
 
-        {/* ── Reply speed ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <Zap size={13} /> Reply speed
-            </span>
-          </div>
-          {speed.tracked === 0 ? (
-            <NotYet>
-              No first-reply times recorded yet. Messaging a buyer from inside the app — the WhatsApp button on a lead, or a logged call — stamps when you first got back to them, and this card then shows what replying faster is worth.
-            </NotYet>
-          ) : (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)" }}>
-                <div style={{ padding: "16px 18px", borderRight: !isMobile ? `1px solid ${C.line}` : "none", borderBottom: isMobile ? `1px solid ${C.line}` : "none" }}>
-                  <p style={{ ...EYEBROW, margin: 0 }}>Typical first reply</p>
-                  <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.stat }}>{formatDuration(speed.medianMins)}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>Median across {speed.tracked} leads</p>
-                </div>
-                <div style={{ padding: "16px 18px", borderRight: !isMobile ? `1px solid ${C.line}` : "none", borderBottom: isMobile ? `1px solid ${C.line}` : "none" }}>
-                  <p style={{ ...EYEBROW, margin: 0 }}>Answered within 1h</p>
-                  <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.stat, color: speed.fast.closeRate === null ? C.textDim : C.successText }}>
-                    {speed.fast.closeRate !== null ? `${speed.fast.closeRate}%` : "—"}
-                  </p>
-                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
-                    {speed.fast.settled ? `Closed ${speed.fast.won} of ${speed.fast.settled}` : "None settled yet"}
-                  </p>
-                </div>
-                <div style={{ padding: "16px 18px" }}>
-                  <p style={{ ...EYEBROW, margin: 0 }}>Answered later</p>
-                  <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.stat, color: speed.slow.closeRate === null ? C.textDim : C.text }}>
-                    {speed.slow.closeRate !== null ? `${speed.slow.closeRate}%` : "—"}
-                  </p>
-                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
-                    {speed.slow.settled ? `Closed ${speed.slow.won} of ${speed.slow.settled}` : "None settled yet"}
-                  </p>
-                </div>
-              </div>
-              {speed.coverage < 100 && (
-                <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.sm, color: C.textDim }}>
-                  Based on the {speed.coverage}% of your leads that have a first reply recorded.
-                </p>
+        {/* ── 4. Supporting detail, folded away. Reply speed, loss reasons and
+            lead sources explain the number above; they are not what the rep
+            opened the tab for, so they no longer compete with it. ── */}
+        <button
+          onClick={() => setShowDetail((v) => !v)}
+          aria-expanded={showDetail}
+          style={{ ...CARD, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "13px 18px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+        >
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>More detail</span>
+            <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted }}>Reply speed, why deals are lost, lead sources</span>
+          </span>
+          {showDetail ? <ChevronUp size={16} color={C.textMuted} /> : <ChevronDown size={16} color={C.textMuted} />}
+        </button>
+
+        {showDetail && (
+          <>
+            <div style={CARD}>
+              <div style={CARD_HEADER}><span>Reply speed</span></div>
+              {speed.tracked === 0 ? (
+                <NotYet>
+                  No first-reply times recorded yet. Messaging a buyer from inside the app — the WhatsApp button on a lead, or a logged call — stamps when you first got back to them, and this card then shows what replying faster is worth.
+                </NotYet>
+              ) : (
+                <>
+                  <Row label="Typical first reply" detail={`Median across ${speed.tracked} leads`} value={formatDuration(speed.medianMins)} />
+                  <Row
+                    label="Answered within 1 hour"
+                    detail={speed.fast.settled ? `Closed ${speed.fast.won} of ${speed.fast.settled}` : "None settled yet"}
+                    value={speed.fast.closeRate !== null ? `${speed.fast.closeRate}%` : "—"}
+                  />
+                  <Row
+                    label="Answered later"
+                    detail={speed.slow.settled ? `Closed ${speed.slow.won} of ${speed.slow.settled}` : "None settled yet"}
+                    value={speed.slow.closeRate !== null ? `${speed.slow.closeRate}%` : "—"}
+                    last={speed.coverage >= 100}
+                  />
+                  {speed.coverage < 100 && (
+                    <p style={{ margin: 0, padding: "10px 18px", fontSize: T.size.sm, color: C.textDim }}>
+                      Based on the {speed.coverage}% of your leads that have a first reply recorded.
+                    </p>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </div>
-
-        {/* ── Loss reasons ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <Clock size={13} /> Why deals are lost
-            </span>
-          </div>
-          {loss.lostTotal === 0 ? (
-            <NotYet>Nothing marked lost yet. Closing dead leads as lost — with a reason — is what fills this in.</NotYet>
-          ) : (
-            <div style={{ padding: "6px 18px 14px" }}>
-              {loss.rows.map((row) => (
-                <div key={row.reason} style={{ padding: "8px 0" }}>
-                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-                    <span style={{ fontSize: T.size.base, color: row.recorded ? C.text : C.textDim }}>{row.reason}</span>
-                    <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
-                      {row.count} <span style={{ fontSize: T.size.sm, fontWeight: T.weight.normal, color: C.textMuted }}>({row.pct}%)</span>
-                    </span>
-                  </div>
-                  <div style={{ height: 6, borderRadius: R.pill, background: C.fill, overflow: "hidden" }}>
-                    <div style={{ width: `${row.pct}%`, height: "100%", background: row.recorded ? C.danger : C.textDim, borderRadius: R.pill }} />
-                  </div>
-                </div>
-              ))}
             </div>
-          )}
-        </div>
 
-        {/* ── Source quality ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>Which leads are worth your time</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 46px 52px" : "1fr 70px 80px 110px", padding: "8px 18px", borderBottom: `1px solid ${C.line}`, gap: 8 }}>
-            {(isMobile ? ["Source", "Leads", "Close"] : ["Source", "Leads", "Close rate", "Value won"]).map((h) => (
-              <p key={h} style={{ ...EYEBROW, margin: 0, textAlign: h === "Source" ? "left" : "right" }}>{h}</p>
-            ))}
-          </div>
-          {sources.rows.map((row, idx) => {
-            const hue = row.closeRate === null ? C.textDim
-              : row.closeRate >= 40 ? C.successText
-              : row.closeRate >= 20 ? C.warnText : C.dangerText;
-            return (
-              <div
-                key={row.source}
-                style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 46px 52px" : "1fr 70px 80px 110px", gap: 8, padding: "10px 18px", alignItems: "center", borderBottom: idx < sources.rows.length - 1 ? `1px solid ${C.line}` : "none" }}
-              >
-                <p style={{ margin: 0, fontSize: T.size.base, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {sourceLabel(row.source)}
-                </p>
-                <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, textAlign: "right" }}>{row.total}</p>
-                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: hue, textAlign: "right" }}>
-                  {row.closeRate !== null ? `${row.closeRate}%` : "—"}
-                </p>
-                {!isMobile && (
-                  <p style={{ margin: 0, fontSize: T.size.base, color: row.valueWon ? C.text : C.textDim, textAlign: "right" }}>
-                    {row.valueWon ? money(row.valueWon) : "—"}
-                  </p>
-                )}
+            <div style={CARD}>
+              <div style={CARD_HEADER}><span>Why deals are lost</span></div>
+              {loss.lostTotal === 0 ? (
+                <NotYet>Nothing marked lost yet. Closing dead leads as lost — with a reason — is what fills this in.</NotYet>
+              ) : (
+                <div style={{ padding: "6px 18px 14px" }}>
+                  {loss.rows.map((row) => (
+                    <div key={row.reason} style={{ padding: "8px 0" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
+                        <span style={{ fontSize: T.size.base, color: row.recorded ? C.text : C.textDim, minWidth: 0 }}>{row.reason}</span>
+                        <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
+                          {row.count} <span style={{ fontSize: T.size.sm, fontWeight: T.weight.normal, color: C.textMuted }}>({row.pct}%)</span>
+                        </span>
+                      </div>
+                      <Bar pct={row.pct} hue={row.recorded ? BAR : C.textDim} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={CARD}>
+              <div style={CARD_HEADER}>
+                <span>Lead sources</span>
+                <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
+                  Close rate
+                </span>
               </div>
-            );
-          })}
-          <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
-            Close rate counts settled deals only, so a source with leads still open is not punished for them.
-          </p>
-        </div>
+              {sources.rows.map((row, idx) => (
+                <Row
+                  key={row.source}
+                  label={sourceLabel(row.source)}
+                  detail={`${row.total} lead${row.total === 1 ? "" : "s"}${row.valueWon ? ` · ${money(row.valueWon)} won` : ""}`}
+                  value={row.closeRate !== null ? `${row.closeRate}%` : "—"}
+                  valueColor={row.closeRate === null ? C.textDim : undefined}
+                  last={idx === sources.rows.length - 1}
+                />
+              ))}
+              <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
+                Close rate counts settled deals only, so a source with leads still open is not punished for them.
+              </p>
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -457,9 +451,9 @@ export default function AnalyticsTab({
           label="Tap-through"
           value={cvr !== null ? `${cvr}%` : "—"}
           sub="Taps per view"
-          badge={cvr !== null && (
-            <span style={{ ...SOFT(cvrHue), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "2px 7px", borderRadius: R.pill }}>
-              {cvrLabel}
+          badge={cvrLow && (
+            <span style={{ ...SOFT(C.danger), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "2px 7px", borderRadius: R.pill }}>
+              Low
             </span>
           )}
         />
@@ -480,7 +474,7 @@ export default function AnalyticsTab({
           {onAddListing && (
             <button
               onClick={onAddListing}
-              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "system-ui,sans-serif" }}
+              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
             >
               <Plus size={14} /> Add a listing
             </button>
@@ -492,7 +486,7 @@ export default function AnalyticsTab({
         <div style={{ ...CARD, marginBottom: 12 }}>
           <div style={CARD_HEADER}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <BarChart2 size={13} /> Listing performance
+              <BarChart2 size={13} /> Tap-through by car
             </span>
             {/* Same rolling window as the tiles above — this table reads the
                 same carStatsMap, so it was mislabelled for the same reason. */}
@@ -500,33 +494,27 @@ export default function AnalyticsTab({
               Last 30 days
             </span>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 54px 54px 62px", padding: "8px 18px", borderBottom: `1px solid ${C.line}` }}>
-            {["Car", "Views", "Taps", "Rate"].map((h) => (
-              <p key={h} style={{ ...EYEBROW, margin: 0, textAlign: h === "Car" ? "left" : "center" }}>{h}</p>
-            ))}
-          </div>
-          {myListings.map((car, idx) => {
-            const s = carStatsMap[car.id] ?? {};
-            const v = s.views || 0;
-            const w = s.enquiries || 0;
-            const rate = v > 0 ? (w / v) * 100 : null;
-            const rateHue = rate === null ? C.textDim : rate >= 10 ? C.successText : rate >= 5 ? C.warnText : C.dangerText;
-            return (
-              <div
-                key={car.id}
-                style={{ display: "grid", gridTemplateColumns: "1fr 54px 54px 62px", padding: "10px 18px", alignItems: "center", borderBottom: idx < myListings.length - 1 ? `1px solid ${C.line}` : "none" }}
-              >
-                <p style={{ margin: 0, fontSize: T.size.base, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-                </p>
-                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, textAlign: "center" }}>{v}</p>
-                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, textAlign: "center" }}>{w}</p>
-                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: rateHue, textAlign: "center" }}>
-                  {rate !== null ? `${rate.toFixed(1)}%` : "—"}
-                </p>
-              </div>
-            );
-          })}
+          {/* Most-viewed first. Rows, not a 4-column grid, so a phone never
+              squeezes three number columns beside a car name. */}
+          {[...myListings]
+            .sort((a, b) => (carStatsMap[b.id]?.views || 0) - (carStatsMap[a.id]?.views || 0))
+            .map((car, idx, arr) => {
+              const s = carStatsMap[car.id] ?? {};
+              const v = s.views || 0;
+              const w = s.enquiries || 0;
+              const rate = v > 0 ? (w / v) * 100 : null;
+              const low = v >= 20 && rate !== null && rate < 5;
+              return (
+                <Row
+                  key={car.id}
+                  label={[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+                  detail={`${v} view${v === 1 ? "" : "s"} · ${w} WhatsApp tap${w === 1 ? "" : "s"}`}
+                  value={rate !== null ? `${rate.toFixed(1)}%` : "—"}
+                  valueColor={low ? C.dangerText : rate === null ? C.textDim : undefined}
+                  last={idx === arr.length - 1}
+                />
+              );
+            })}
         </div>
       )}
 
@@ -550,9 +538,9 @@ export default function AnalyticsTab({
                     style={{
                       fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "4px 10px",
                       borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit",
-                      background: on ? withAlpha(C.info, 0.15) : C.fill,
-                      border: `1px solid ${on ? withAlpha(C.info, 0.3) : C.border}`,
-                      color: on ? C.infoText : C.textMuted,
+                      background: on ? C.fillStrong : "transparent",
+                      border: `1px solid ${on ? C.borderStrong : C.border}`,
+                      color: on ? C.text : C.textMuted,
                     }}
                   >
                     {label}
@@ -590,7 +578,7 @@ export default function AnalyticsTab({
               <span style={{ fontSize: T.size.base, color: C.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {[c.year, c.brand, c.model].filter(Boolean).join(" ")}
               </span>
-              <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.successText }}>
+              <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, fontVariantNumeric: "tabular-nums" }}>
                 +{money(c.commission_amount)}
               </span>
             </div>
@@ -612,31 +600,46 @@ export default function AnalyticsTab({
       </div>
 
       {/* Sales first — it is the number the rep actually came for, and it is
-          true of both halves, so it sits above the switcher. One card, so the
-          three figures read as one story instead of three competing tiles. */}
-      <div style={{ ...CARD, padding: isMobile ? "16px" : "18px 20px", marginBottom: 12 }}>
-        <div style={{ display: "flex", gap: isMobile ? 20 : 40, flexWrap: "wrap" }}>
-          <div>
-            <p style={{ ...EYEBROW, margin: 0 }}>This month</p>
-            <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
-              {thisMonthSales}
-              <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>sold</span>
-            </p>
-          </div>
-          <div>
-            <p style={{ ...EYEBROW, margin: 0 }}>Commission earned</p>
-            <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero, color: commission ? C.successText : C.text }}>
+          true of both halves, so it sits above the switcher. */}
+      {/* On a phone the three figures wrapped into a ragged 2+1 grid of equal
+          weight. Commission is the headline; the two counts ride on one line.
+          Commission is ALL TIME (every sold car, SalesmanPremium.jsx
+          refreshSales), so it is labelled that way. */}
+      <div style={{ ...CARD, padding: isMobile ? "16px" : "18px 20px", marginBottom: 12, fontVariantNumeric: "tabular-nums" }}>
+        {isMobile ? (
+          <>
+            <p style={{ ...EYEBROW, margin: 0 }}>Commission, all time</p>
+            <p style={{ ...STAT, margin: "6px 0 0", fontSize: T.size.hero }}>
               {commission !== null ? money(commission) : "—"}
             </p>
-          </div>
-          <div>
-            <p style={{ ...EYEBROW, margin: 0 }}>All time</p>
-            <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
-              {soldCount}
-              <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>cars</span>
+            <p style={{ margin: "8px 0 0", fontSize: T.size.base, color: C.textSec }}>
+              <b style={{ color: C.text }}>{thisMonthSales}</b> sold this month · <b style={{ color: C.text }}>{soldCount}</b> all time
             </p>
+          </>
+        ) : (
+          <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>
+            <div>
+              <p style={{ ...EYEBROW, margin: 0 }}>Commission, all time</p>
+              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
+                {commission !== null ? money(commission) : "—"}
+              </p>
+            </div>
+            <div>
+              <p style={{ ...EYEBROW, margin: 0 }}>This month</p>
+              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
+                {thisMonthSales}
+                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>sold</span>
+              </p>
+            </div>
+            <div>
+              <p style={{ ...EYEBROW, margin: 0 }}>All time</p>
+              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
+                {soldCount}
+                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>cars</span>
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <SubTabs
