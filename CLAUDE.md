@@ -857,7 +857,9 @@ Buyers post the car they want; approved sellers answer "I have it". Migration
 `20260925b_find_me_posts.sql`. What changed under chat because of it:
 - `chat_threads.listing_id` is now NULLABLE: a thread has a car OR a
   `find_me_post_id` (CHECK `chat_threads_subject`). Any code that reads
-  `thread.listing` must handle null (SellerInbox already shows "Car enquiry").
+  `thread.listing` must handle null. Inboxes name a post thread by its post:
+  sellers via `chat_post_subjects(thread_ids)` (they cannot read
+  `find_me_posts`, so an embed is null), buyers via `get_my_chat_threads`.
 - Post chats are created ONLY by `find_me_reply(post, first_message)`, which
   checks the seller is approved + active, one chat per seller per post, 5
   sellers per post, 10 new post chats per seller per day. Never insert a
@@ -869,8 +871,14 @@ Buyers post the car they want; approved sellers answer "I have it". Migration
 - The board is read through `list_find_me_posts` / `get_find_me_post` (no
   `buyer_id` ever leaves the DB). Posting is `create_find_me_post` (signed-in
   non-anonymous `role='buyer'` only); "Found it" is `close_find_me_post`.
-- `chat_messages.listing_id` = a car sent as a card; the insert policy only
-  lets a SELLER attach a live car they can sell.
+- `chat_messages.listing_id` = a car sent as a card. Which car a seller may
+  send is ONE function, `chat_can_send_car(thread, listing)`: the insert
+  policy and the picker RPC `chat_sendable_cars` both call it, so do not
+  re-filter cars client-side. It enforces the exclusivity lock and the
+  thread's dealer. The card's `body` is the car's name, so previews, push,
+  email and lead notes need no card-specific code. A sent car fills a BLANK
+  `leads.car_listing_id` (`chat_after_message`) — that is what lets a Find me
+  win mark the car sold; it never overwrites a car the lead already has.
 - Supabase grants new functions to `anon` DIRECTLY, so `revoke ... from
   public` is not enough for a write function: also revoke from anon.
 - UI: `src/pages/FindMePage.jsx` (`/find-me`, `/find-me/:id`). Error text for

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock } from 'lucide-react';
+import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock, Car } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
 import PushPromptStrip from './PushPromptStrip';
 import BuyerEmailPrompt from './BuyerEmailPrompt';
+import CarPickerSheet, { carTitle, fmtRM } from './CarPickerSheet';
 import { supabase } from '../../supabaseClient';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
@@ -58,7 +59,32 @@ function RedactedBody({ text, onReveal, t }) {
   );
 }
 
-function Bubble({ msg, mine, t }) {
+// A car the seller sent. Neutral surface on both sides: a photo inside a solid
+// red "mine" bubble reads as an error state, not a listing. The seller opens
+// it in a new tab so their panel stays where it was; the buyer just goes.
+function CarCard({ car, t, newTab }) {
+  const sold = car.status === 'sold';
+  const img = Array.isArray(car.images) ? car.images[0] : null;
+  const meta = [fmtRM(car.selling_price), Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString('en-MY')} km` : null]
+    .filter(Boolean).join(' · ');
+  return (
+    <a href={`/showroom/${car.slug || car.id}`} {...(newTab ? { target:'_blank', rel:'noopener noreferrer' } : null)}
+      style={{ display:'block', width:240, maxWidth:'100%', borderRadius:12, overflow:'hidden', border:`1px solid ${t.border}`, background:t.panel, color:t.text, textDecoration:'none', boxShadow:t.shadow }}>
+      {img
+        ? <img src={img} alt="" style={{ display:'block', width:'100%', aspectRatio:'16 / 10', objectFit:'cover', opacity: sold ? 0.5 : 1 }} />
+        : <span style={{ display:'flex', alignItems:'center', justifyContent:'center', width:'100%', aspectRatio:'16 / 10', background:t.theirs, color:t.sub }}><Car size={28} /></span>}
+      <span style={{ display:'block', padding:'9px 11px 10px' }}>
+        <span style={{ display:'block', fontSize:13.5, fontWeight:700, lineHeight:1.35 }}>{carTitle(car)}</span>
+        {meta && <span style={{ display:'block', fontSize:12, color:t.sub, marginTop:2 }}>{meta}</span>}
+        <span style={{ display:'block', fontSize:12, fontWeight:600, marginTop:6, color: sold ? t.sub : '#dc2626' }}>
+          {sold ? 'Sold' : car.status === 'reserved' ? 'Reserved · View car' : 'View car'}
+        </span>
+      </span>
+    </a>
+  );
+}
+
+function Bubble({ msg, mine, t, role }) {
   const [revealed, setRevealed] = useState(false);
   const state = tickState(msg);
   const hidden = msg.has_sensitive && !revealed;
@@ -79,6 +105,11 @@ function Bubble({ msg, mine, t }) {
   return (
     <div style={{ display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom:8 }}>
       <div style={{ maxWidth:'78%', minWidth:0 }}>
+        {msg.listing ? (
+          <div style={{ display:'flex', justifyContent: mine ? 'flex-end' : 'flex-start', opacity: msg.pending ? 0.65 : 1 }}>
+            <CarCard car={msg.listing} t={t} newTab={role === 'seller'} />
+          </div>
+        ) : (
         <div style={{
           background: mine ? t.mine : t.theirs,
           color: mine ? t.mineText : t.theirsText,
@@ -93,6 +124,7 @@ function Bubble({ msg, mine, t }) {
             ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
             : msg.body}
         </div>
+        )}
         <div style={{ display:'flex', alignItems:'center', gap:5, justifyContent: mine ? 'flex-end' : 'flex-start', marginTop:3, padding:'0 3px' }}>
           <span style={{ fontSize:10.5, color:t.sub }}>{fmtTime(msg.created_at)}</span>
           {msg.failed && (
@@ -161,6 +193,7 @@ export default function ChatThread({
   // then push once we already have an address. Two prompts stacked in the same
   // strip is the nag nobody reads.
   const [buyerHasEmail, setBuyerHasEmail] = useState(null);
+  const [pickingCar, setPickingCar] = useState(false);
 
   // Keyboard handling, the way every real chat app does it: the composer sits
   // ON TOP of the keyboard and nothing else moves.
@@ -314,6 +347,21 @@ export default function ChatThread({
     }
   };
 
+  // The card's text is the car's name, so the inbox preview, the buyer's push,
+  // the unread email and the lead note all read "2019 Toyota Vios" with no
+  // change to any of them. The picker closes first (overlay rule 3).
+  const sendCar = async (car) => {
+    setPickingCar(false);
+    const listing = { ...car, images: car.image ? [car.image] : [] };
+    const res = await send(carTitle(car) || 'A car', { listing });
+    if (!res.ok) {
+      setNotice(res.rateLimited
+        ? 'Slow down a moment — too many messages at once.'
+        : 'Car not sent. Check your connection and try again.');
+      setTimeout(() => setNotice(null), 4000);
+    }
+  };
+
   return (
     // `bare` drops this component's own border + radius so it can sit flush
     // inside a container that already draws them (the buyer inbox card).
@@ -352,7 +400,7 @@ export default function ChatThread({
             No messages yet.<br />Say hello and ask anything about the car.
           </p>
         ) : messages.map(m => (
-          <Bubble key={m.id} msg={m} mine={m.sender_role === role} t={t} />
+          <Bubble key={m.id} msg={m} mine={m.sender_role === role} t={t} role={role} />
         ))}
         </div>
       </div>
@@ -457,7 +505,14 @@ export default function ChatThread({
             zIndex:60,
           } : null),
         }}>
-        <div style={{ display:'flex', alignItems:'flex-end', gap:6, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:22, padding:'6px 6px 6px 16px', boxShadow:t.shadow, ...centre }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap:6, background:t.inputBg, border:`1px solid ${t.border}`, borderRadius:22, padding: role === 'seller' ? '6px 6px 6px 6px' : '6px 6px 6px 16px', boxShadow:t.shadow, ...centre }}>
+        {/* Sellers only: the database refuses a card from a buyer anyway. */}
+        {role === 'seller' && (
+          <button type="button" onClick={() => setPickingCar(true)} aria-label="Send a car" title="Send a car"
+            style={{ flexShrink:0, width:38, height:38, marginBottom:2, borderRadius:16, border:'none', background:'transparent', color:t.sub, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Car size={18} />
+          </button>
+        )}
         <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
           rows={1} maxLength={4000} aria-label="Message"
@@ -472,6 +527,9 @@ export default function ChatThread({
         </button>
         </div>
       </form>}
+      {pickingCar && (
+        <CarPickerSheet threadId={threadId} t={t} onPick={sendCar} onClose={() => setPickingCar(false)} />
+      )}
     </div>
   );
 }

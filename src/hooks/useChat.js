@@ -18,6 +18,11 @@ export function tickState(msg) {
   return 'sent';
 }
 
+// A car sent into a chat renders as a card. These are the columns the card
+// needs; the realtime payload carries only listing_id, so a card that arrives
+// live is filled with one read of the same columns.
+const CARD_COLS = 'id, slug, brand, model, variant, year, selling_price, mileage, images, status';
+
 // Live messages for one thread, plus sending and receipts.
 // role is 'buyer' or 'seller' — it decides which bubbles are mine.
 export function useChatThread(threadId, role) {
@@ -32,7 +37,7 @@ export function useChatThread(threadId, role) {
     setLoading(true);
     const { data, error: err } = await supabase
       .from('chat_messages')
-      .select('id, thread_id, sender_role, sender_id, body, body_ai, has_sensitive, created_at, delivered_at, read_at')
+      .select(`id, thread_id, sender_role, sender_id, body, body_ai, has_sensitive, created_at, delivered_at, read_at, listing_id, listing:listing_id(${CARD_COLS})`)
       .eq('thread_id', threadId)
       .order('created_at', { ascending: true })
       .limit(500);
@@ -58,12 +63,19 @@ export function useChatThread(threadId, role) {
             const optimistic = prev.findIndex(m => m.pending && m.body === row.body);
             if (optimistic !== -1) {
               const next = [...prev];
-              next[optimistic] = row;
+              // Keep the card the optimistic copy already drew.
+              next[optimistic] = { ...row, listing: prev[optimistic].listing ?? null };
               return next;
             }
             if (prev.some(m => m.id === row.id)) return prev;
             return [...prev, row];
           });
+          if (row.listing_id) {
+            supabase.from('car_listings').select(CARD_COLS).eq('id', row.listing_id).maybeSingle()
+              .then(({ data }) => {
+                if (data) setMessages(prev => prev.map(m => (m.id === row.id && !m.listing ? { ...m, listing: data } : m)));
+              }, () => {});
+          }
           // Their message reached my screen — that is what the second tick means.
           if (row.sender_role !== role) {
             supabase.rpc('mark_chat_delivered', { p_thread_id: threadId }).then(null, () => {});
@@ -77,7 +89,9 @@ export function useChatThread(threadId, role) {
     return () => { supabase.removeChannel(ch); channelRef.current = null; };
   }, [threadId, role]);
 
-  const send = useCallback(async (text) => {
+  // `listing` (optional) sends a car as a card: a row from chat_sendable_cars.
+  // The database decides whether this seller may send it (chat_can_send_car).
+  const send = useCallback(async (text, { listing = null } = {}) => {
     const body = (text || '').trim();
     if (!body || !threadId || sending) return { ok: false };
     const { data: { user } } = await supabase.auth.getUser();
@@ -90,12 +104,14 @@ export function useChatThread(threadId, role) {
       id: `temp-${Date.now()}`, thread_id: threadId, sender_role: role,
       sender_id: user.id, body, body_ai: body, has_sensitive: false,
       created_at: new Date().toISOString(), delivered_at: null, read_at: null,
+      listing_id: listing?.id ?? null, listing,
       pending: true,
     };
     setMessages(prev => [...prev, temp]);
 
     const { error: err } = await supabase.from('chat_messages').insert({
       thread_id: threadId, sender_role: role, sender_id: user.id, body,
+      ...(listing ? { listing_id: listing.id } : null),
     });
     setSending(false);
     if (err) {
@@ -130,13 +146,25 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
     if (!salesmanId && !dealerId) { setThreads([]); setLoading(false); return; }
     let q = supabase
       .from('chat_threads')
-      .select('id, listing_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images), lead:lead_id(id, stage)')
+      .select('id, listing_id, find_me_post_id, buyer_label, buyer_is_anon, buyer_id, status, created_at, last_message_at, last_sender_role, seller_unread, lead_id, listing:listing_id(brand, model, year, selling_price, images), lead:lead_id(id, stage)')
       .order('last_message_at', { ascending: false, nullsFirst: false })
       .limit(200);
     q = salesmanId ? q.eq('salesman_id', salesmanId) : q.eq('dealer_id', dealerId);
     const { data, error } = await q;
     if (error) { console.error('useChatThreads:', error); setLoading(false); return; }
-    setThreads(data || []);
+    // A Find me thread has no car, so name it by its post. Sellers cannot read
+    // find_me_posts (RLS: own posts only), so an embed would come back null;
+    // chat_post_subjects returns the post only for threads this seller is in.
+    // A failure here just leaves the fallback label — never an empty inbox.
+    const rows = data || [];
+    const postThreadIds = rows.filter(r => r.find_me_post_id).map(r => r.id);
+    if (postThreadIds.length) {
+      const { data: subjects, error: subjErr } = await supabase.rpc('chat_post_subjects', { p_thread_ids: postThreadIds });
+      if (subjErr) console.error('chat_post_subjects:', subjErr);
+      const byThread = new Map((subjects || []).map(s => [s.thread_id, s]));
+      rows.forEach(r => { if (byThread.has(r.id)) r.post = byThread.get(r.id); });
+    }
+    setThreads(rows);
     setLoading(false);
   }, [salesmanId, dealerId]);
 
