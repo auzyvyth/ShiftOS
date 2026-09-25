@@ -11,6 +11,7 @@ import {
 import { PLAN_CONFIG } from "../utils/planConfig";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
+import HeroShowcase from "../components/shiftos/HeroShowcase";
 
 // ─── SEO / AEO (GEO) ─────────────────────────────────────────────────────────
 // Keyword-dense meta, schema markup and an FAQ block so ShiftOS surfaces for the
@@ -284,25 +285,11 @@ const STYLES = `
     background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.25);color:#fca5a5;
   }
 
-  /* ── Hero chart (self-drawing SVG) ── */
-  .sos-hero-chart{display:block;width:100%;max-width:760px;margin:0 auto;}
-  .sos-hero-chart .line{
-    stroke-dasharray:1200;stroke-dashoffset:1200;
-    animation:sos-draw 2.2s cubic-bezier(.5,0,.2,1) .5s forwards;
-  }
-  .sos-hero-chart .area{opacity:0;animation:sos-fadein 1.2s ease 1.6s forwards;}
-  .sos-hero-chart .tip{opacity:0;animation:sos-fadein .5s ease 2.5s forwards;}
-  .sos-hero-chart .tip-pulse{
-    transform-origin:center;transform-box:fill-box;
-    animation:sos-pulse 2.2s ease-out 2.7s infinite;
-  }
+  /* ── Hero showcase (coded dashboard frames) ── */
+  .hs-in{opacity:0;transform:translateY(18px);animation:sos-rise .8s cubic-bezier(.2,.7,.2,1) forwards;}
+  .hs-line{stroke-dasharray:520;stroke-dashoffset:520;animation:sos-draw 1.8s cubic-bezier(.5,0,.2,1) .9s forwards;}
+  @keyframes sos-rise{to{opacity:1;transform:none;}}
   @keyframes sos-draw{to{stroke-dashoffset:0;}}
-  @keyframes sos-fadein{to{opacity:1;}}
-  @keyframes sos-pulse{
-    0%{transform:scale(0.5);opacity:.8;}
-    70%{transform:scale(2.4);opacity:0;}
-    100%{transform:scale(2.4);opacity:0;}
-  }
 
   /* ── Flow connector (walks the eye between sections) ── */
   .sos-flow{display:flex;flex-direction:column;align-items:center;padding:8px 0 40px;}
@@ -437,9 +424,8 @@ const STYLES = `
 
   @media(prefers-reduced-motion:reduce){
     .sos-reveal{opacity:1;transform:none;}
-    .sos-hero-chart .line{animation:none;stroke-dashoffset:0;}
-    .sos-hero-chart .area,.sos-hero-chart .tip{animation:none;opacity:1;}
-    .sos-hero-chart .tip-pulse{animation:none;opacity:0;}
+    .hs-in{animation:none;opacity:1;transform:none;}
+    .hs-line{animation:none;stroke-dashoffset:0;}
     .sos-flow .stem{transition:none;stroke-dashoffset:0;}
     .sos-flow .rider{transition:none;opacity:1;}
     .sos-flow .rider animate,.sos-flow animate{display:none;}
@@ -544,50 +530,6 @@ function Reveal({ children, delay = 0, style }) {
     return () => io.disconnect();
   }, [delay]);
   return <div ref={ref} className="sos-reveal" style={style}>{children}</div>;
-}
-
-// ─── Hero chart — a gross-profit curve that draws itself on load ─────────────
-function HeroChart() {
-  return (
-    <svg className="sos-hero-chart" viewBox="0 0 760 150" fill="none" aria-hidden="true" style={{ marginTop: 8 }}>
-      <defs>
-        <linearGradient id="sos-area-g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.16" />
-          <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id="sos-line-g" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="rgba(248,113,113,0.25)" />
-          <stop offset="55%" stopColor="#ef4444" />
-          <stop offset="100%" stopColor="#fb7185" />
-        </linearGradient>
-        <filter id="sos-glow" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="5" result="b" />
-          <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-      {/* baseline grid hints */}
-      {[36, 75, 114].map((y) => (
-        <line key={y} x1="0" y1={y} x2="760" y2={y} stroke="rgba(15,23,42,0.06)" strokeWidth="1" />
-      ))}
-      <path
-        className="area"
-        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19 L724,150 L0,150 Z"
-        fill="url(#sos-area-g)"
-      />
-      <path
-        className="line"
-        d="M0,128 C70,122 110,116 170,108 C230,100 260,88 330,82 C400,76 430,64 500,52 C570,40 620,34 700,22 L724,19"
-        stroke="url(#sos-line-g)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        filter="url(#sos-glow)"
-      />
-      <g className="tip">
-        <circle className="tip-pulse" cx="724" cy="19" r="6" fill="rgba(251,113,133,0.5)" />
-        <circle cx="724" cy="19" r="4" fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
-      </g>
-    </svg>
-  );
 }
 
 // ─── Flow connector — animated SVG line that walks the eye to the next stop ──
@@ -921,8 +863,8 @@ export default function ShiftOSPage() {
               {t("shiftos.hero.trust")}
             </p>
           </Reveal>
-          {/* Gross-profit curve drawing itself upward — the promise of the product */}
-          <HeroChart />
+          {/* What is actually inside the DMS: dashboard + the screens that answer the pains below */}
+          <div style={{ marginTop: 56 }}><HeroShowcase /></div>
         </section>
         </div>
 
