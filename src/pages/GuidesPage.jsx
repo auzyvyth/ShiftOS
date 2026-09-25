@@ -41,7 +41,7 @@ function HowItWorksPage() {
             How to Buy a Car on XDrive
           </h1>
           <p style={{ color: '#9ca3af', fontSize: 16, maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.6 }}>
-            Six steps from browsing to driving — with verified dealers, transparent pricing, and no hidden fees.
+            {GUIDE_META.how.intro}
           </p>
           <Link to="/showroom" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
