@@ -2306,9 +2306,20 @@ source `find_me`.
   password sign-in and /buyer-signup too (before: OAuth callback only).
   Basic seller "I have it" also shipped so it is testable: message sheet ->
   `find_me_reply` -> `ChatSheet`; non-sellers get a join sheet.
-- [ ] Step 3 — seller UI: "Send a car" picker (chat_messages.listing_id) + car
-  card rendering in ChatThread; label post threads in SellerInbox and
-  BuyerInbox (today they read "Car enquiry", linking to /showroom).
+- [x] Step 3a — "Send a car": DONE 2026-09-25 (branch, not yet in prod).
+  Car button in the composer (sellers only) -> `CarPickerSheet.jsx` -> card
+  bubble in `ChatThread`. Works in every chat, not just Find me. Migration
+  `20260925c_chat_send_car.sql`: `chat_can_send_car` (one rule for policy +
+  picker, now honours the exclusivity lock and the thread's dealer),
+  `chat_sendable_cars` (post-matching cars first), and `chat_after_message`
+  fills a blank `leads.car_listing_id` with the sent car so a Find me win
+  flips the car to sold.
+- [ ] Step 3b — label post threads in SellerInbox and BuyerInbox (today they
+  read "Car enquiry", linking to /showroom).
+- Photos in chat (Part B): scoped 2026-09-25, owner said NOT now. Scope was:
+  seller-only, private `chat-media` bucket, signed URLs, body text "Sent a
+  photo", `compressImageFile` (strips GPS), "List this car" nudge after a
+  photo in a Find me chat. Do not build until the owner asks.
 - Guest sign-in: the in-place upgrade (`updateUser`) was REMOVED from
   BuyerEmailPrompt (buyers were not receiving Supabase auth mail), so a guest
   who signs in to post starts a new account and their guest chats stay behind.
