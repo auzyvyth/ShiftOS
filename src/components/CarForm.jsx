@@ -379,6 +379,11 @@ export function buildListingFacts(l) {
 // Common features buyers actually search for — rendered as tap-to-add chips in
 // step 6 so dealers populate the SEO-critical features field without typing.
 // Whatever they enter flows into the car-page prerender's alt text + schema.
+// "About this car" line starters (step 6). The things a buyer asks on the
+// phone and no spec field holds. Seller finishes each line; nothing is claimed
+// on their behalf.
+const ABOUT_PROMPTS = ["Service record", "Owners", "Accident history", "Recently replaced", "Condition", "Why it's for sale"];
+
 const COMMON_FEATURES = [
   "Sunroof", "Panoramic roof", "Bucket seats", "Leather seats", "Ventilated seats",
   "Power seats", "360 camera", "Reverse camera", "Apple CarPlay", "Android Auto",
@@ -3456,6 +3461,31 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 placeholder={"e.g.\nFull service record\nOne owner, accident-free\nInterior 9/10, tyres 80%"}
                 rows={7}
               />
+              {/* Prompts for what only the seller knows. This text is the one
+                  part of a car page not built from spec fields, so it is what
+                  Google and buyers read to tell two Alphards apart (api/og.js
+                  sellerText). Each chip adds a line STARTER the seller finishes
+                  — never a pre-filled claim about the car. */}
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                {ABOUT_PROMPTS.filter((p) => !String(form.specs || "").split("\n").some((l) => l.trim().toLowerCase().startsWith(`${p.toLowerCase()}:`))).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      const cur = String(form.specs || "").replace(/\s+$/, "");
+                      set("specs", `${cur ? `${cur}\n` : ""}${p}: `);
+                    }}
+                    className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-300 text-gray-700 bg-white hover:border-gray-500"
+                  >
+                    + {p}
+                  </button>
+                ))}
+              </div>
+              {String(form.specs || "").trim().split(/\s+/).filter(Boolean).length < 15 && (
+                <p className="text-xs text-gray-500 mt-2">
+                  A few lines in your own words help this car show up on Google and get more enquiries.
+                </p>
+              )}
             </Field>
             <Field
               label="Features & options"

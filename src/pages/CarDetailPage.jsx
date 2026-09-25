@@ -270,6 +270,10 @@ function daysAgo(dateStr) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
+// Sellers paste WhatsApp-style **bold** into "About this car"; shown raw, the
+// asterisks were printed on the page. Same stripping as api/og.js sellerText.
+const stripMd = (t) => String(t || "").replace(/\*\*|__/g, "").trim();
+
 function parseTags(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.filter(Boolean);
@@ -2488,7 +2492,7 @@ export default function CarDetailPage() {
         <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
           <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
           <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28, whiteSpace:'pre-wrap' }}>
-            {car.specs || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
+            {stripMd(car.specs) || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
           {/* Tabs */}
           {(() => {
@@ -3336,7 +3340,7 @@ export default function CarDetailPage() {
                 whiteSpace: "pre-wrap",
               }}
             >
-              {car.specs ||
+              {stripMd(car.specs) ||
                 `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
             </p>
 

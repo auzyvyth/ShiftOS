@@ -231,7 +231,9 @@ function buildHubHtml(hubs, brand, model, cars) {
 function htmlShell({ lang = "en", title, description, canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
   const ld = jsonLd
     .filter(Boolean)
-    .map((o) => `<script type="application/ld+json">${JSON.stringify(o)}</script>`)
+    // "<" escaped as \u003c: JSON-LD carries seller-typed text, and a literal
+    // "</script>" in it would end the tag and run whatever follows.
+    .map((o) => `<script type="application/ld+json">${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`)
     .join("\n  ");
   return `<!DOCTYPE html>
 <html lang="${lang}">
@@ -288,6 +290,16 @@ function carFeatures(car) {
     .slice(0, 12);
 }
 
+// The seller's own write-up ("About this car" in CarForm, stored in `specs`).
+// The most specific text a car page has, and the only part not assembled from
+// structured fields, so it is what separates one Alphard page from the next.
+// Sellers paste WhatsApp-style markdown (**bold**, bullets); strip the markers.
+function sellerText(car) {
+  return String(car.specs || "")
+    .replace(/\*\*|__/g, "")
+    .split(/\n+/).map((l) => l.replace(/^\s*[•*\-]\s*/, "").trim()).filter(Boolean);
+}
+
 // ── Car detail ────────────────────────────────────────────────────────────────
 function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
   const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
@@ -297,7 +309,12 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
     "@context": "https://schema.org",
     "@type": "Car",
     name,
-    description: `${name}${car.colour ? ` in ${car.colour}` : ""} for sale in Malaysia${feats.length ? `. Features: ${feats.join(", ")}` : ""}.`,
+    description: (() => {
+      const own = sellerText(car).join(" ");
+      return own.length >= 40
+        ? own.slice(0, 500)
+        : `${name}${car.colour ? ` in ${car.colour}` : ""} for sale in Malaysia${feats.length ? `. Features: ${feats.join(", ")}` : ""}.`;
+    })(),
     brand: { "@type": "Brand", name: car.brand },
     model: car.model,
     vehicleModelDate: String(car.year ?? ""),
@@ -380,6 +397,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null) {
     <ul>
       ${rows}
     </ul>
+    ${(() => { const t = sellerText(car); return t.length ? `<h2>About this car</h2>\n    ${t.map((l) => `<p>${esc(l)}</p>`).join("\n    ")}` : ""; })()}
     ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
     ${dealer?.dealership ? `<p>Sold by ${dealer.url ? `<a href="${esc(dealer.url)}">${esc(dealer.dealership)}</a>` : esc(dealer.dealership)}${dealer.kind === "agent" ? " (car agent)" : ""}.</p>` : ""}
     ${modelHub ? `<p><a href="${SITE_URL}${modelHub.path}">More used ${esc(car.brand)} ${esc(modelHub.name)} for sale</a></p>` : ""}
