@@ -16,6 +16,7 @@ import {
 } from "../src/utils/modelHubs.js";
 import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
+import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 
 export const config = { runtime: "edge" };
 
@@ -791,6 +792,9 @@ const STATIC_PAGES = {
   </main>`,
     });
   },
+  // The board's own posts are buyer-typed and expire in 30 days, so crawlers
+  // get the explainer only; single posts (/find-me/<id>) are noindex below.
+  "/find-me": () => htmlShell({ title: FIND_ME_COPY.title, description: FIND_ME_COPY.description, canonical: `${SITE_URL}/find-me`, body: `  <main><h1>${esc(FIND_ME_COPY.h1)}</h1><p>${esc(FIND_ME_COPY.intro(5))}</p><p><a href="${SITE_URL}/showroom">Browse cars on XDrive</a></p></main>` }),
   "/saved": () => htmlShell({ title: "Saved Cars | XDrive", description: "Your saved used car listings on XDrive.", canonical: `${SITE_URL}/saved`, robots: "noindex, follow", body: "  <main><h1>Saved cars</h1></main>" }),
   "/account": () => htmlShell({ title: "My Account | XDrive", description: "Your XDrive account.", canonical: `${SITE_URL}/account`, robots: "noindex, follow", body: "  <main><h1>My account</h1></main>" }),
 };
@@ -827,6 +831,11 @@ export default async function handler(req) {
     );
     const crumbs = hubBrand ? hubCrumbs(hubBrand, hubModel) : null;
     return html(buildCarHtml(car, dealer, `${baseUrl}${pathname}`, baseUrl, carBase, crumbs));
+  }
+
+  // A single Find me post: buyer-typed and short-lived, never indexed.
+  if (pathname.startsWith("/find-me/")) {
+    return html(htmlShell({ title: "Wanted car | XDrive", description: FIND_ME_COPY.description, canonical: `${SITE_URL}${pathname}`, robots: "noindex, follow", body: "  <main><h1>Wanted car</h1></main>" }));
   }
 
   // 2. Article pages

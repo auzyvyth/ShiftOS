@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { handoffSuffix } from "../lib/authHandoff";
-import { markBuyerIntent } from "../lib/buyerAuth";
+import { markBuyerIntent, consumePostAuthReturn } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
@@ -275,9 +275,10 @@ export default function LoginPage() {
     const subdomain = profile?.subdomain;
     const role = profile?.role;
 
-    // Buyers live on /account, never a seller dashboard.
+    // Buyers live on /account, never a seller dashboard — unless a page sent
+    // them here to sign in (Find me post form, price alert), then back there.
     if (role === "buyer") {
-      go(`${base}/account`);
+      go(`${base}${consumePostAuthReturn()}`);
       return;
     }
 

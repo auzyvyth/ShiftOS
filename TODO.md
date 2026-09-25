@@ -2295,12 +2295,24 @@ source `find_me`.
 - [x] Step 1 — DB: DONE 2026-09-25, live (migration `find_me_posts`, file
   `supabase/migrations/20260925b_find_me_posts.sql`). Tested as anon, buyer,
   approved salesman and pending dealer in a rolled-back run (10/10 checks).
-- [ ] Step 2 — buyer UI: `/find-me` board, post form, details, "Found it"
-- [ ] Step 3 — seller UI: "I have it" (sign up / under review / chat), "Send a
-  car" picker; SellerInbox/BuyerInbox must handle a thread with no listing
-- Gotcha for step 2: a guest who signs in must be UPGRADED in place
-  (`updateUser`), not `signInWithOtp` (`BuyerAuthPage.jsx:86`), or their open
-  chats are stranded on the old anonymous account.
+- [x] Step 2 — buyer UI: DONE 2026-09-25 (staging). `src/pages/FindMePage.jsx`
+  (board + `/find-me/:id`, post form, sign-in sheet, Found it / Close post,
+  "Your posts" incl. found/expired), `src/utils/findMe.js` (titles + DB error
+  text), `src/config/findMeCopy.js` (shared with `api/og.js`: `/find-me`
+  indexable explainer, `/find-me/<id>` noindex). Header Browse menu has
+  "Find Me a Car" ALWAYS (not gated: the page holds the form, so it is never
+  an empty dead end). Sign-in return: `setPostAuthReturn` /
+  `consumePostAuthReturn` in `src/lib/buyerAuth.js`, now honoured by /login
+  password sign-in and /buyer-signup too (before: OAuth callback only).
+  Basic seller "I have it" also shipped so it is testable: message sheet ->
+  `find_me_reply` -> `ChatSheet`; non-sellers get a join sheet.
+- [ ] Step 3 — seller UI: "Send a car" picker (chat_messages.listing_id) + car
+  card rendering in ChatThread; label post threads in SellerInbox and
+  BuyerInbox (today they read "Car enquiry", linking to /showroom).
+- Guest sign-in: the in-place upgrade (`updateUser`) was REMOVED from
+  BuyerEmailPrompt (buyers were not receiving Supabase auth mail), so a guest
+  who signs in to post starts a new account and their guest chats stay behind.
+  The sign-in sheet says so. Revisit only if auth mail is fixed.
 - Later: fold the showroom price-alert bell (`CarListingPage.jsx:804`) into the
   post form as "also email me when one is listed".
 

@@ -873,6 +873,11 @@ Buyers post the car they want; approved sellers answer "I have it". Migration
   lets a SELLER attach a live car they can sell.
 - Supabase grants new functions to `anon` DIRECTLY, so `revoke ... from
   public` is not enough for a write function: also revoke from anon.
+- UI: `src/pages/FindMePage.jsx` (`/find-me`, `/find-me/:id`). Error text for
+  every `find_me_*` exception lives in `src/utils/findMe.js findMeError` — a
+  new exception code needs a line there or the user reads "Something went
+  wrong". A page that sends a buyer to sign in calls `setPostAuthReturn()`
+  (`src/lib/buyerAuth.js`); all three sign-in paths honour it.
 
 ### Buyer email capture + unread-reply email (CHAT-EMAIL, 2026-08-31)
 Most buyers here are guests (anonymous sign-in), so a seller's reply reached
