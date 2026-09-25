@@ -4,62 +4,33 @@ import { Link, useParams } from 'react-router-dom';
 import { Search, Shield, Car, MessageCircle, FileCheck, CheckCircle, ChevronRight, Calculator, Star, AlertCircle, HelpCircle } from 'lucide-react';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
+import { GUIDE_META, GUIDE_STEPS, GUIDE_FAQS, GUIDE_TIPS, GUIDE_FAQ_LD } from '../config/guidesCopy';
+
+// Copy lives in src/config/guidesCopy.js (shared with api/og.js); icons stay here.
+const HOW_IT_WORKS_STEPS = GUIDE_STEPS.map((st, i) => ({ ...st, icon: [Search, Shield, Calculator, MessageCircle, Car, FileCheck][i] }));
+const FAQS = GUIDE_FAQS;
+const BUYING_TIPS = GUIDE_TIPS.map((t, i) => ({ ...t, icon: [Calculator, Car, FileCheck, Shield][i] }));
+
+// One Helmet per guide screen, from the shared meta (+ FAQ schema on /guides/faq).
+function GuideHead({ page, jsonLd }) {
+  const m = GUIDE_META[page];
+  return (
+    <Helmet>
+      <title>{m.title}</title>
+      <meta name="description" content={m.description} />
+      <link rel="canonical" href={`https://xdrive.my${m.path}`} />
+      {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
+    </Helmet>
+  );
+}
 
 // ── How It Works page ─────────────────────────────────────────────────────────
 
-const HOW_IT_WORKS_STEPS = [
-  {
-    step: '01',
-    icon: Search,
-    title: 'Browse Verified Listings',
-    body: "Search by brand, budget, location, or body type. Every car on XDrive is listed by a certified dealer — no private sellers, no phantom listings. What you see is what's actually on the lot.",
-    tips: ['Use the brand filter to narrow by make', 'Filter by state to find cars near you', 'Toggle "Recon" to see imported units'],
-  },
-  {
-    step: '02',
-    icon: Shield,
-    title: 'Check the Full Details',
-    body: 'Each listing shows the full spec sheet: year, mileage, engine size, transmission, colour, and condition. Scroll down to see the "What\'s Included" section — warranty, tinting, insurance, and any dealer add-ons are all listed upfront.',
-    tips: ['Look for the Verified badge on listings', 'Check "What\'s Included" for value-add items', 'View all photos in the gallery before deciding'],
-  },
-  {
-    step: '03',
-    icon: Calculator,
-    title: 'Run the Finance Calculator',
-    body: 'Before you call anyone, use our Finance Calculator to estimate your monthly installment, road tax, and insurance cost. Adjust the down payment, tenure, and interest rate until it fits your budget. You can even download a PDF quotation.',
-    tips: ['Aim for monthly repayment ≤ 15% of take-home', 'Most banks offer 2.4–3.5% flat rate for new cars', 'Budget for road tax + insurance on top of installment'],
-    cta: { label: 'Open Calculator', to: '/calculator' },
-  },
-  {
-    step: '04',
-    icon: MessageCircle,
-    title: 'Contact the Dealer Directly',
-    body: 'Hit the WhatsApp button on any listing to connect directly with the dealer\'s salesperson. No middlemen, no lead-selling — your number goes to one person. Discuss availability, negotiate, and book a test drive.',
-    tips: ['Ask for the latest OTR price', 'Confirm the unit is still available before visiting', 'Request a physical inspection report if buying recon'],
-  },
-  {
-    step: '05',
-    icon: Car,
-    title: 'Test Drive & Inspect',
-    body: 'Visit the dealership for a test drive. For used and recon cars, request an independent inspection or ask the dealer for the Carfax / JPJ record. Check for accident history, service records, and ownership history.',
-    tips: ['Bring a friend or mechanic if buying used', 'Test all electrical features (A/C, windows, infotainment)', 'Verify the chassis and engine numbers match the grant'],
-  },
-  {
-    step: '06',
-    icon: FileCheck,
-    title: 'Sign & Drive',
-    body: "Once you've agreed on a price, the dealer handles the loan application, JPJ transfer, insurance, and road tax. XDrive dealers use a digital document system — no lost paperwork. You'll receive all documents in one package.",
-    tips: ['Keep a copy of the sale & purchase agreement', 'Confirm the loan approval letter before paying deposit', 'Ensure road tax and insurance are valid before driving off'],
-  },
-];
 
 function HowItWorksPage() {
   return (
     <>
-      <Helmet>
-        <title>How It Works — XDrive Malaysia</title>
-        <meta name="description" content="Learn how to buy a car on XDrive Malaysia. Browse verified listings, use the finance calculator, contact dealers directly, and drive away with confidence." />
-      </Helmet>
+      <GuideHead page="how" />
       <MarketplaceHeader />
       <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
 
@@ -164,53 +135,12 @@ function HowItWorksPage() {
 
 // ── FAQ page ──────────────────────────────────────────────────────────────────
 
-const FAQS = [
-  {
-    q: 'Are all listings on XDrive from certified dealers?',
-    a: 'Yes. XDrive only allows verified, registered car dealers to list inventory. Private sellers are not permitted. Every dealer goes through a manual verification process before going live.',
-  },
-  {
-    q: 'What does "Recon" mean?',
-    a: '"Recon" (reconditioned) refers to vehicles originally manufactured for export markets (Japan, UK, etc.) that have been imported, converted to Malaysian road specifications, and registered locally. They typically offer more features at lower prices but may have higher road tax. Always confirm the conversion spec with the dealer.',
-  },
-  {
-    q: 'Is the listed price the final price?',
-    a: 'Listed prices are the asking prices set by the dealer. In Malaysia, car prices are generally negotiable within 2–5%. Use our Finance Calculator to plan your budget, then negotiate the OTR (on-the-road) price directly with the dealer.',
-  },
-  {
-    q: 'What is OTR price?',
-    a: 'OTR (On-The-Road) price is the total cost including road tax, insurance, and registration fees — the amount you actually pay before driving off. Our Finance Calculator estimates OTR including road tax and insurance.',
-  },
-  {
-    q: 'How do I contact a dealer?',
-    a: 'Each listing has a "WhatsApp Dealer" button that connects you directly to the dealer\'s salesperson. No middlemen or lead brokers — your contact goes straight to the person who can close the deal.',
-  },
-  {
-    q: 'Can I compare multiple cars?',
-    a: 'Yes. Click the compare icon on any listing to add it to your compare bar, then head to the Compare page to view specs side by side.',
-  },
-  {
-    q: 'How accurate is the Finance Calculator?',
-    a: 'The calculator uses current JPJ road tax tables and standard insurance tariff formulas. Financing figures are estimates based on flat interest rate inputs — actual bank rates vary by lender and credit profile. Use it for budgeting, then get a formal letter of offer from your bank.',
-  },
-  {
-    q: 'What documents do I need to buy a car?',
-    a: 'For new loans: IC copy, 3 months payslips, 3 months bank statements, EPF statement (optional). For civil servants: EA form or letter of employment. Self-employed: 6 months bank statements + business registration. The dealer will guide you through the paperwork.',
-  },
-  {
-    q: 'Does XDrive charge buyers any fees?',
-    a: 'No. XDrive is completely free for buyers. Dealers pay a subscription fee to list inventory — you pay nothing to browse, contact, or compare cars.',
-  },
-];
 
 function FAQPage() {
   const [open, setOpen] = React.useState(null);
   return (
     <>
-      <Helmet>
-        <title>FAQ — XDrive Malaysia</title>
-        <meta name="description" content="Frequently asked questions about buying a car on XDrive Malaysia. Answers on pricing, dealers, financing, and more." />
-      </Helmet>
+      <GuideHead page="faq" jsonLd={GUIDE_FAQ_LD} />
       <MarketplaceHeader />
       <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>
@@ -268,56 +198,11 @@ function FAQPage() {
 
 // ── Buyer's Guide page ────────────────────────────────────────────────────────
 
-const BUYING_TIPS = [
-  {
-    category: 'Budget',
-    icon: Calculator,
-    items: [
-      'Cap your monthly repayment at 15% of take-home pay.',
-      'Add RM 3,000–6,000 for road tax + insurance on a typical RM 80k–120k car.',
-      'Keep RM 2,000–3,000 in reserve for minor repairs in the first year.',
-      'Down payment of 10% is standard; 20%+ reduces total interest significantly.',
-    ],
-  },
-  {
-    category: 'New vs Used vs Recon',
-    icon: Car,
-    items: [
-      'New: manufacturer warranty, zero mileage, but highest depreciation in year 1–2.',
-      'Used (local): lower price, known maintenance history if buying from a dealer.',
-      'Recon: imported, usually more features per ringgit — check JPJ compliance and conversion spec.',
-      'Always ask for the grant (vehicle ownership card) and verify engine/chassis numbers match.',
-    ],
-  },
-  {
-    category: 'Financing',
-    icon: FileCheck,
-    items: [
-      'Get pre-approved from 2–3 banks before visiting a dealer — use the best offer.',
-      'Flat rate 2.4–3.5% = ~4.5–6.5% effective interest rate (EIR). Compare EIR, not flat rate.',
-      'Avoid extending tenure beyond 7 years — total interest balloons.',
-      'Islamic hire-purchase (HP) vs conventional: functionally similar, choose based on your bank\'s rate.',
-    ],
-  },
-  {
-    category: 'What to Check Before Signing',
-    icon: Shield,
-    items: [
-      'Confirm the car is not under a finance lien (check JPJ portal).',
-      'Verify the accident history — ask for a PDRM report or inspection record.',
-      'Read the sale & purchase agreement carefully before signing.',
-      'Confirm all included accessories/services are written into the agreement.',
-    ],
-  },
-];
 
 function BuyersGuidePage() {
   return (
     <>
-      <Helmet>
-        <title>Buyer's Guide — XDrive Malaysia</title>
-        <meta name="description" content="Expert tips for buying a car in Malaysia. Budget planning, new vs recon comparison, financing advice, and what to check before signing." />
-      </Helmet>
+      <GuideHead page="buying" />
       <MarketplaceHeader />
       <main style={{ paddingTop: 72, background: '#F7F6F2', minHeight: '100vh', fontFamily: "system-ui,sans-serif" }}>
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>

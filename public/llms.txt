@@ -20,6 +20,12 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 ## For dealers — ShiftOS software
 - [ShiftOS for dealers](https://xdrive.my/shiftos): Used-car dealer software (DMS) for Malaysia — inventory management, leads CRM, sales records, salesman commission tracking, per-unit profit (P&L), F&I and the full Malaysian handover checklist. 14-day free trial, no card required.
 - What it replaces: Excel stock sheets, WhatsApp lead chats, manual JPJ/Puspakom tracking, printed paperwork and scattered Telegram posts — in one platform.
+- [Inventory & Stock](https://xdrive.my/features/smart-inventory): ShiftOS Smart Inventory — used car stock management for Malaysian dealers. Track purchase cost, recon, days-in-stock, holding cost and true per-unit profit.
+- [Leads & CRM](https://xdrive.my/features/leads-crm): ShiftOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the XDrive marketplace in one visual sales pipeline built for Malaysian dealers.
+- [Revenue & Profit](https://xdrive.my/features/revenue-analytics): ShiftOS Revenue Analytics — see true gross profit per unit, per salesman and month-over-month, with automatic commission and F&I back-end revenue.
+- [F&I & Documents](https://xdrive.my/features/fi-documents): ShiftOS F&I & Documents — sell and track F&I add-ons, manage HP financing, and generate sales agreements and receipts for Malaysian used-car deals.
+- [Post-Sale Handover](https://xdrive.my/features/post-sale-handover): ShiftOS Post-Sale Handover — automate the Malaysian car ownership transfer: loan settlement, Puspakom B5/B7, JPJ pindah milik, road tax and geran, as a per-sale checklist.
+- [Plans & pricing](https://xdrive.my/plans): Every salesman and dealer plan side by side, with listing caps and seats.
 - Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
 
 ## For salesmen
@@ -27,6 +33,8 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 
 ## Guides & articles
 - [Guides](https://xdrive.my/guides): Practical guides for Malaysian used-car buyers and dealers.
+- [Buyer FAQ](https://xdrive.my/guides/faq): Answers on recon cars, OTR price, negotiating, loan documents and fees.
+- [Buyer's guide](https://xdrive.my/guides/buying): Budgeting, new vs used vs recon, financing and what to check before signing.
 - [All articles](https://xdrive.my/articles): Index of dealer and buyer guides.
 - [app-terbaik-dealer-kereta-terpakai-malaysia](https://xdrive.my/articles/app-terbaik-dealer-kereta-terpakai-malaysia): App terbaik untuk dealer kereta terpakai Malaysia — how ShiftOS compares to Excel and manual record-keeping.
 - [apa-itu-dms-dealer-kereta](https://xdrive.my/articles/apa-itu-dms-dealer-kereta): What a dealer DMS (Dealer Management System) is and why used car dealers need one.

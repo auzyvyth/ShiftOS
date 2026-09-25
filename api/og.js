@@ -7,6 +7,10 @@
 
 import { getChassisCode } from "../src/utils/chassisCodes.js";
 import * as SL from "../src/config/salesmanLandingCopy.js";
+import { GUIDE_META, GUIDE_STEPS, GUIDE_FAQS, GUIDE_TIPS, GUIDE_FAQ_LD } from "../src/config/guidesCopy.js";
+import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle } from "../src/config/featurePagesCopy.js";
+import { SALESMAN_PLANS, DEALER_PLANS } from "../src/utils/plans.js";
+import { TERMS, PRIVACY, DPA, LEGAL_META } from "../src/legal/legalDocs.js";
 
 export const config = { runtime: "edge" };
 
@@ -82,20 +86,36 @@ async function getSalesmanData(slug) {
 // 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs,seller_role,salesman_slug&limit=1`,
   );
   return car ?? null;
 }
 
 async function getDealerData(dealerId) {
   if (!dealerId) return null;
-  const [dealer] = await sbFetch(
-    // whatsapp_number deliberately not selected — nothing in the prerendered
-    // dealer output uses it now that the telephone field is gone, and the
-    // prerenderer should not hold a number it cannot need.
-    `profiles?id=eq.${dealerId}&select=dealership,subdomain,city,state&limit=1`,
-  );
-  return dealer ?? null;
+  // Anon has no SELECT on profiles, so a direct profiles read here always came
+  // back empty: no car page ever named its seller to Google. The SECURITY
+  // DEFINER RPC is the anon-safe path (active dealer/owner rows only). Only the
+  // fields the prerender uses are kept — no phone numbers leave this function.
+  const [d] = await sbRpc("get_dealer_profile_by_id", { p_dealer_id: dealerId });
+  return d ? { dealership: d.site_name || d.dealership, subdomain: d.subdomain, city: d.city, state: d.state } : null;
+}
+
+// Who is selling this car, for the page text and the schema. A salesman's car
+// credits the agent and links their /s/ page; everything else is the dealer.
+async function getSellerData(car) {
+  if (car.seller_role === "salesman" && car.salesman_slug) {
+    const s = await getSalesmanData(car.salesman_slug);
+    if (s) {
+      return {
+        kind: "agent",
+        dealership: s.full_name || s.site_name || s.dealership || s.slug,
+        url: `${SITE_URL}/s/${encodeURIComponent(s.slug)}`,
+        city: s.city, state: s.state,
+      };
+    }
+  }
+  return getDealerData(car.dealer_id);
 }
 
 async function getDealerBySubdomain(subdomain) {
@@ -111,6 +131,26 @@ async function getRecentListings(dealerId, limit = 48) {
   return sbFetch(
     `public_car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
+}
+
+// A salesman's cars, collected the SAME way the mini page (SalesmanProfilePage)
+// does: cars they own + cars assigned to them + dealer cars they feature via
+// salesman_listings. Owned-only missed the last two, so a salesman under a
+// dealer showed Google "New listings coming soon" over a page full of cars.
+const SALESMAN_CAR_COLS = "id,slug,brand,model,variant,year,selling_price,mileage,state,images,status";
+async function getSalesmanCars(id) {
+  const live = "status=in.(available,reserved)";
+  const [owned, assigned, featured, stats] = await Promise.all([
+    sbFetch(`public_car_listings?dealer_id=eq.${id}&${live}&select=${SALESMAN_CAR_COLS}&order=created_at.desc&limit=48`),
+    sbFetch(`public_car_listings?assigned_to=eq.${id}&${live}&select=${SALESMAN_CAR_COLS}&order=created_at.desc&limit=48`),
+    sbRpc("get_salesman_featured_listings", { p_salesman_id: id }),
+    sbFetch(`seller_public_stats?seller_id=eq.${id}&select=sold_count&limit=1`),
+  ]);
+  const seen = new Set();
+  const cars = [...owned, ...assigned, ...featured.filter((c) => ["available", "reserved"].includes(c.status))]
+    .filter((c) => c?.slug && !seen.has(c.id) && seen.add(c.id))
+    .slice(0, 48);
+  return { cars, soldCount: Number(stats[0]?.sold_count) || 0 };
 }
 
 // ── HTML shell ────────────────────────────────────────────────────────────────
@@ -204,9 +244,9 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
       itemCondition: car.is_recon ? "https://schema.org/RefurbishedCondition" : "https://schema.org/UsedCondition",
       seller: dealer
         ? {
-            "@type": "AutoDealer",
+            "@type": dealer.kind === "agent" ? "Person" : "AutoDealer",
             name: dealer.dealership ?? "xdrive.my",
-            url: dealerUrl,
+            url: dealer.url || dealerUrl,
             // NO telephone here. This block is served to crawlers (see the
             // user-agent rewrite in vercel.json), which includes googlebot,
             // bingbot and the AI scrapers (GPTBot, ClaudeBot, PerplexityBot,
@@ -265,7 +305,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
       ${rows}
     </ul>
     ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
-    ${dealer?.dealership ? `<p>Sold by ${esc(dealer.dealership)}.</p>` : ""}
+    ${dealer?.dealership ? `<p>Sold by ${dealer.url ? `<a href="${esc(dealer.url)}">${esc(dealer.dealership)}</a>` : esc(dealer.dealership)}${dealer.kind === "agent" ? " (car agent)" : ""}.</p>` : ""}
     <p><a href="${baseUrl}${carBase}">Browse more used cars on xdrive.my</a></p>
   </main>`;
   return htmlShell({
@@ -348,14 +388,13 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
 // The salesman's public storefront. The OG image is their own cover banner
 // (falling back to avatar, then the site default) so a shared link previews the
 // agent's page — not the generic XDrive/ShiftOS banner it fell through to before.
-function buildSalesmanHtml(s, cars, canonical, baseUrl) {
+function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   const name = s.full_name || s.dealership || s.slug;
   const location = [s.city, s.state].filter(Boolean).join(", ");
   const image = s.cover_url || s.avatar_url || `${SITE_URL}/og-default.jpg`;
   const title = `${name} — Car Agent${location ? ` in ${location}` : ""} | XDrive`;
   const description =
-    s.about_text ||
-    s.bio ||
+    (s.about_text || s.bio || "").slice(0, 300) ||
     `Browse ${cars.length ? `${cars.length} ` : ""}cars for sale from ${name}${location ? ` in ${location}` : ""} on XDrive.${s.whatsapp_number ? " Contact directly on WhatsApp." : ""}`;
   const items = cars
     .map((c) => {
@@ -387,13 +426,31 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl) {
     ${s.dealership ? `<p>${esc(s.dealership)}</p>` : ""}
     ${location ? `<p>${esc(location)}</p>` : ""}
     ${s.about_text || s.bio ? `<p>${esc(s.about_text || s.bio)}</p>` : ""}
-    <h2>Cars for sale</h2>
+    ${s.specializations?.length ? `<p>Specialises in: ${esc(s.specializations.join(", "))}.</p>` : ""}
+    ${soldCount ? `<p>${soldCount} car${soldCount === 1 ? "" : "s"} sold on XDrive.</p>` : ""}
+    <h2>Cars for sale from ${esc(name)}</h2>
     <ul>
       ${items || "<li>New listings coming soon.</li>"}
     </ul>
     <p><a href="${SITE_URL}/showroom">Browse all used cars on xdrive.my</a></p>
   </main>`;
-  return htmlShell({ title, description, canonical, image, jsonLd: [personLd], body });
+  // The agent's stock as an ItemList, so the page reads as "this person's cars"
+  // and each car URL is discoverable from structured data too.
+  const listLd = cars.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: `Cars for sale from ${name}`,
+        numberOfItems: cars.length,
+        itemListElement: cars.map((c, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: `${baseUrl}/showroom/${c.slug}`,
+          name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
+        })),
+      }
+    : null;
+  return htmlShell({ title, description, canonical, image, jsonLd: [personLd, listLd], body });
 }
 
 // ── Static content pages (mirror SPA Helmet) ──────────────────────────────────
@@ -544,6 +601,62 @@ function buildArticleHtml(slug, canonical) {
   return htmlShell({ lang: a.lang || "ms", title: `${a.title} · XDrive`, description: a.description, canonical, jsonLd, body });
 }
 
+// ── Shared-copy pages (guides, plans, features, legal) ───────────────────────
+// Every one of these reads the SAME config file its SPA page renders from, so
+// the crawler copy cannot drift from what a visitor sees.
+const faqHtml = (faqs) => faqs.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ");
+const liHtml = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
+const GUIDE_LINKS = `<p><a href="${SITE_URL}/guides">How it works</a> · <a href="${SITE_URL}/guides/buying">Buyer's guide</a> · <a href="${SITE_URL}/guides/faq">FAQ</a> · <a href="${SITE_URL}/showroom">Browse used cars</a> · <a href="${SITE_URL}/calculator">Loan calculator</a></p>`;
+
+function guidePage(key, inner, jsonLd = []) {
+  const m = GUIDE_META[key];
+  return htmlShell({
+    title: m.title, description: m.description, canonical: `${SITE_URL}${m.path}`, jsonLd,
+    body: `  <main>
+    <h1>${esc(m.h1)}</h1>
+    ${m.intro ? `<p>${esc(m.intro)}</p>` : ""}
+    ${inner}
+    ${GUIDE_LINKS}
+  </main>`,
+  });
+}
+
+function planHtml(p) {
+  return `<h3>${esc(p.label)} — ${esc(p.price)} ${esc(p.priceSub)}</h3><ul>${liHtml([...p.caps, ...p.features, ...(p.trial ? [p.trial] : [])])}</ul>`;
+}
+
+function buildFeatureHtml(slug) {
+  const f = FEATURE_PAGES[slug];
+  const others = FEATURE_ORDER.filter((s) => s !== slug)
+    .map((s) => `<li><a href="${SITE_URL}/features/${s}">${esc(FEATURE_PAGES[s].kicker)}</a></li>`).join("");
+  const steps = f.steps
+    ? `<h2>${esc(f.steps.title)}</h2>${f.steps.sub ? `<p>${esc(f.steps.sub)}</p>` : ""}<ol>${f.steps.items.map((st) => `<li><strong>${esc(st.title)}</strong> — ${esc(st.desc)}</li>`).join("")}</ol>`
+    : "";
+  return htmlShell({
+    title: `${featureTitle(f)} | ShiftOS`,
+    description: f.seo,
+    canonical: `${SITE_URL}/features/${slug}`,
+    jsonLd: [SOFTWARE_LD],
+    body: `  <main>
+    <p>${esc(f.kicker)}</p>
+    <h1>${esc(featureTitle(f))}</h1>
+    <p>${esc(f.sub)}</p>
+    <h2>${esc(f.painTitle)}</h2><ul>${liHtml(f.pains)}</ul>
+    <h2>${esc(f.solutionTitle)}</h2><ul>${liHtml(f.solutions)}</ul>
+    <h2>What it does</h2>
+    ${f.capabilities.map((c) => `<h3>${esc(c.title)}</h3><p>${esc(c.desc)}</p>`).join("\n    ")}
+    ${steps}
+    <h2>More ShiftOS features</h2><ul>${others}</ul>
+    <p><a href="${SITE_URL}/shiftos">ShiftOS for dealers</a> · <a href="${SITE_URL}/plans">Plans &amp; pricing</a></p>
+  </main>`,
+  });
+}
+
+function legalHtml(doc) {
+  return `<p>${esc(doc.intro)}</p>
+    ${doc.sections.map((sec) => `<h2>${esc(sec.h)}</h2>${sec.p.map((x) => `<p>${esc(x)}</p>`).join("")}`).join("\n    ")}`;
+}
+
 // Static non-listing, non-article pages.
 const STATIC_PAGES = {
   "/shiftos": () => {
@@ -593,6 +706,51 @@ const STATIC_PAGES = {
       body,
     });
   },
+  "/guides": () => guidePage("how", `<ol>${GUIDE_STEPS.map((st) => `<li><h2>${esc(st.title)}</h2><p>${esc(st.body)}</p><ul>${liHtml(st.tips)}</ul></li>`).join("")}</ol>`),
+  "/guides/faq": () => guidePage("faq", faqHtml(GUIDE_FAQS), [GUIDE_FAQ_LD]),
+  "/guides/buying": () => guidePage("buying", GUIDE_TIPS.map((t) => `<h2>${esc(t.category)}</h2><ul>${liHtml(t.items)}</ul>`).join("\n    ")),
+  "/plans": () => htmlShell({
+    title: "Plans & Pricing | XDrive",
+    description: "Sell cars on XDrive. Free for individual salesmen, RM35/month for Premium, dealer plans from RM299/month with a 14-day free trial.",
+    canonical: `${SITE_URL}/plans`,
+    jsonLd: [SOFTWARE_LD],
+    body: `  <main>
+    <h1>Start selling on XDrive</h1>
+    <p>Pick how you sell. You can change plan later without losing your listings.</p>
+    <h2>For individual salesmen and agents</h2>
+    <p>You sell cars yourself, under your own name. Your listings go live on the marketplace and enquiries come straight to you.</p>
+    ${SALESMAN_PLANS.map(planHtml).join("\n    ")}
+    <h2>For dealerships</h2>
+    <p>You run a lot and a team. Adds the dealer dashboard, a shared lead pipeline, stock and profit tracking, and seats for your salesmen.</p>
+    ${DEALER_PLANS.map(planHtml).join("\n    ")}
+    <p>Browsing, saving and messaging sellers are free for buyers and need no plan.</p>
+    <p><a href="${SITE_URL}/for-salesmen">Salesman Lite (free)</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
+  </main>`,
+  }),
+  "/terms": () => htmlShell({
+    title: "Terms of Service | XDrive",
+    description: `Terms of Service for the ShiftOS platform and the xdrive.my marketplace. Effective ${LEGAL_META.effectiveDate}.`,
+    canonical: `${SITE_URL}/terms`,
+    body: `  <main>
+    <h1>Terms of Service</h1>
+    ${legalHtml(TERMS)}
+  </main>`,
+  }),
+  "/privacy": () => htmlShell({
+    title: "Privacy Policy | XDrive",
+    description: `How ShiftOS and xdrive.my collect, use and protect personal data under Malaysia's PDPA 2010. Effective ${LEGAL_META.effectiveDate}.`,
+    canonical: `${SITE_URL}/privacy`,
+    body: `  <main>
+    <h1>Privacy Policy</h1>
+    ${legalHtml(PRIVACY)}
+    <h2>Data Processing Agreement</h2>
+    ${legalHtml(DPA)}
+  </main>`,
+  }),
+  // Placeholder pages with no content yet — kept out of the index until they
+  // are real, or Google files them as thin/soft-404.
+  "/vehicle-services": () => htmlShell({ title: "Vehicle Services | XDrive", description: "Coming soon to XDrive.", canonical: `${SITE_URL}/vehicle-services`, robots: "noindex, follow", body: "  <main><h1>Vehicle Services</h1><p>Coming soon.</p></main>" }),
+  "/automotive-products": () => htmlShell({ title: "Automotive Products | XDrive", description: "Coming soon to XDrive.", canonical: `${SITE_URL}/automotive-products`, robots: "noindex, follow", body: "  <main><h1>Automotive Products</h1><p>Coming soon.</p></main>" }),
   "/compare": () => htmlShell({
     title: "Compare Cars Side by Side | XDrive",
     description: "Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs and an overall value score on XDrive.",
@@ -656,7 +814,7 @@ export default async function handler(req) {
   if (carMatch) {
     const car = await getListingData(decodeURIComponent(carMatch[1]));
     if (!car) return new Response("Not found", { status: 404 });
-    const dealer = await getDealerData(car.dealer_id);
+    const dealer = await getSellerData(car);
     return html(buildCarHtml(car, dealer, `${baseUrl}${pathname}`, baseUrl, carBase));
   }
 
@@ -670,6 +828,16 @@ export default async function handler(req) {
   if (STATIC_PAGES[pathname]) {
     return html(STATIC_PAGES[pathname]());
   }
+
+  // 3b. ShiftOS feature pages. Unknown slugs redirect in the SPA, so 404 here.
+  const featureMatch = pathname.match(/^\/features\/([^/]+)$/);
+  if (featureMatch) {
+    if (!FEATURE_PAGES[featureMatch[1]]) return new Response("Not found", { status: 404 });
+    return html(buildFeatureHtml(featureMatch[1]));
+  }
+  // Only /guides, /guides/faq and /guides/buying exist; anything else under
+  // /guides would be a duplicate of /guides, so crawlers get a 404.
+  if (pathname.startsWith("/guides/")) return new Response("Not found", { status: 404 });
 
   // 4. Listing index pages (root home/marketplace/showroom/cars, or tenant home/cars)
   const rootListing = !subdomain && (pathname === "/" || pathname === "/marketplace" || pathname === "/showroom" || pathname === "/cars");
@@ -712,8 +880,8 @@ export default async function handler(req) {
     // Returning 200 for a non-existent /s/<slug> makes Google flag it "Soft 404".
     // Same hard-404 contract as the car-detail branch above.
     if (!s) return new Response("Not found", { status: 404 });
-    const cars = await getRecentListings(s.id, 48);
-    return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl));
+    const { cars, soldCount } = await getSalesmanCars(s.id);
+    return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl, soldCount));
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.

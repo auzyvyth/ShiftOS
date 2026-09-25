@@ -1,4 +1,5 @@
 // api/sitemap.js — Vercel Edge Function, dynamic sitemap per tenant
+import { ORDER as FEATURE_ORDER } from "../src/config/featurePagesCopy.js";
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
@@ -182,6 +183,10 @@ export default async function handler(req) {
         { path: "/for-salesmen", changefreq: "weekly",  priority: "0.8" },
         { path: "/compare",      changefreq: "weekly",  priority: "0.6" },
         { path: "/guides",       changefreq: "weekly",  priority: "0.6" },
+        { path: "/guides/faq",   changefreq: "monthly", priority: "0.5" },
+        { path: "/guides/buying", changefreq: "monthly", priority: "0.5" },
+        { path: "/plans",        changefreq: "weekly",  priority: "0.7" },
+        ...FEATURE_ORDER.map((slug) => ({ path: `/features/${slug}`, changefreq: "monthly", priority: "0.6" })),
         { path: "/articles",     changefreq: "weekly",  priority: "0.7" },
         { path: "/articles/apa-itu-dms-dealer-kereta",                      changefreq: "monthly", priority: "0.7" },
         { path: "/articles/cara-urus-stok-kereta-terpakai-sistem-digital", changefreq: "monthly", priority: "0.7" },
