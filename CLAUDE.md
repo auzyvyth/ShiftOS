@@ -357,6 +357,32 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   embed is null for every logged-out buyer; a filter on it silently matches
   everything. Rule: role 'salesman' = "Agent", everything else = "Dealer" —
   same rule in the query, the chip and ShowroomCard's badge.
+- **"Find a car by model" = the hub pages, `/used-cars/:brand/:model`.** One
+  module, `src/utils/modelHubs.js`, owns the URL, the grouping and every
+  sentence, and is shared by the SPA page (`UsedCarsHubPage.jsx`), the crawler
+  render (`api/og.js`) and the sitemap. Grouping goes through `canonicalModel`
+  (modelKey.js); the DB trigger `trg_normalize_car_model` (on `car_listings`)
+  keeps `model` to the plain catalogue name and moves engine size / trim into
+  `variant`, so do not re-add a model free-text path that bypasses it. A hub
+  exists only while its model has a live car (else 404, never an empty page),
+  and its copy may only quote numbers from the rows (asking prices, counts).
+  Brand-only `/showroom/<brand>` is impossible: it collides with car slugs.
+- **Every public page needs a crawler entry in `api/og.js`.** Bots never run
+  the SPA; a route missing there gets the generic "Quality used cars" page.
+  Share the copy through a `src/config/*Copy.js` file (see
+  `salesmanLandingCopy.js`, `guidesCopy.js`, `featurePagesCopy.js`) — never
+  retype it into og.js.
+- **Articles are the exception: the crawler text is GENERATED from the article
+  component.** `tools/generate-article-pages.mjs` renders each
+  `src/pages/articles/*.jsx` to plain HTML into
+  `src/config/articlePages.generated.js`, which og.js and the sitemap read
+  (full body, FAQ, JSON-LD, dates). After editing an article, run
+  `npm run articles:build` and bump its `dateModified`; `npm test` fails on a
+  stale file (`articles:check`) and the build regenerates it anyway. A new
+  article is a new file in that folder plus its route in App.jsx, nothing
+  else. Article copy is buyer-facing: never promise something about XDrive
+  listings the platform does not check (three CTAs claimed every car was
+  Puspakom-inspected / fully documented; nothing verifies that).
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.
@@ -826,6 +852,33 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   modal, and the real `wa.me` deep link still fires synchronously inside
   `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
 
+### "Find me" posts (FINDME-1) — a chat can hang off a POST, not a car
+Buyers post the car they want; approved sellers answer "I have it". Migration
+`20260925b_find_me_posts.sql`. What changed under chat because of it:
+- `chat_threads.listing_id` is now NULLABLE: a thread has a car OR a
+  `find_me_post_id` (CHECK `chat_threads_subject`). Any code that reads
+  `thread.listing` must handle null (SellerInbox already shows "Car enquiry").
+- Post chats are created ONLY by `find_me_reply(post, first_message)`, which
+  checks the seller is approved + active, one chat per seller per post, 5
+  sellers per post, 10 new post chats per seller per day. Never insert a
+  post thread from the client.
+- The seller sees "Buyer in <state>" (`buyer_revealed=false`) until the buyer
+  replies; `chat_after_message` then swaps in the real name BEFORE creating
+  the lead (`lead_source='find_me'`). PDPA s.8: the buyer's identity reaches a
+  seller only by the buyer's own reply. Do not show buyer name/contact earlier.
+- The board is read through `list_find_me_posts` / `get_find_me_post` (no
+  `buyer_id` ever leaves the DB). Posting is `create_find_me_post` (signed-in
+  non-anonymous `role='buyer'` only); "Found it" is `close_find_me_post`.
+- `chat_messages.listing_id` = a car sent as a card; the insert policy only
+  lets a SELLER attach a live car they can sell.
+- Supabase grants new functions to `anon` DIRECTLY, so `revoke ... from
+  public` is not enough for a write function: also revoke from anon.
+- UI: `src/pages/FindMePage.jsx` (`/find-me`, `/find-me/:id`). Error text for
+  every `find_me_*` exception lives in `src/utils/findMe.js findMeError` — a
+  new exception code needs a line there or the user reads "Something went
+  wrong". A page that sends a buyer to sign in calls `setPostAuthReturn()`
+  (`src/lib/buyerAuth.js`); all three sign-in paths honour it.
+
 ### Buyer email capture + unread-reply email (CHAT-EMAIL, 2026-08-31)
 Most buyers here are guests (anonymous sign-in), so a seller's reply reached
 nobody once the tab closed — push needs a granted permission on a live device.
@@ -963,7 +1016,7 @@ Both displayed in separate labelled sections in the P&L modal.
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
 - For any policy that needs to reference `profiles` (especially policies ON profiles), use a SECURITY DEFINER helper that bypasses RLS: `get_my_dealer_id()`, `is_superadmin()`, `is_linked_salesman()`, `is_active_salesman()`
 - Dealer profile rows have `dealer_id = NULL` (they own themselves) — to grant a salesman read access to their dealer, match `id = get_my_dealer_id()`, NOT `dealer_id = get_my_dealer_id()`
-- leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual — any other value rejects the whole insert
+- leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual, chat, find_me — any other value rejects the whole insert
 - After adding any policy, test it with a real row read before shipping
 
 ### A share token is a PASSWORD — check it, don't pattern-match it (bit twice, same day)

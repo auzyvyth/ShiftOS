@@ -14,6 +14,7 @@
 
 import fs from "fs";
 import path from "path";
+import { FEATURES, ORDER } from "../src/config/featurePagesCopy.js";
 
 const SITE = "https://xdrive.my";
 
@@ -45,12 +46,15 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 ## For car buyers
 - [Marketplace](${SITE}/): Browse verified used cars for sale in Malaysia from trusted dealers.
 - [Showroom / all listings](${SITE}/showroom): Full searchable inventory with filters for price, mileage, year, transmission, condition and location.
+- [Used cars by brand and model](${SITE}/used-cars): Every brand and model currently for sale on XDrive, each with its own page (e.g. /used-cars/toyota/alphard) listing live cars, the asking-price range, model years and locations.
 - [Compare cars](${SITE}/compare): Compare up to 4 used cars side by side on price, monthly instalment, mileage, running costs and an overall value score.
 - [Loan calculator](${SITE}/calculator): Estimate monthly hire-purchase instalments for a used car (interest, tenure, down payment).
 
 ## For dealers — ShiftOS software
 - [ShiftOS for dealers](${SITE}/shiftos): Used-car dealer software (DMS) for Malaysia — inventory management, leads CRM, sales records, salesman commission tracking, per-unit profit (P&L), F&I and the full Malaysian handover checklist. 14-day free trial, no card required.
 - What it replaces: Excel stock sheets, WhatsApp lead chats, manual JPJ/Puspakom tracking, printed paperwork and scattered Telegram posts — in one platform.
+${ORDER.map((slug) => `- [${FEATURES[slug].kicker}](${SITE}/features/${slug}): ${FEATURES[slug].seo}`).join("\n")}
+- [Plans & pricing](${SITE}/plans): Every salesman and dealer plan side by side, with listing caps and seats.
 - Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
 
 ## For salesmen
@@ -58,6 +62,8 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 
 ## Guides & articles
 - [Guides](${SITE}/guides): Practical guides for Malaysian used-car buyers and dealers.
+- [Buyer FAQ](${SITE}/guides/faq): Answers on recon cars, OTR price, negotiating, loan documents and fees.
+- [Buyer's guide](${SITE}/guides/buying): Budgeting, new vs used vs recon, financing and what to check before signing.
 - [All articles](${SITE}/articles): Index of dealer and buyer guides.
 ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${desc}`).join("\n")}
 

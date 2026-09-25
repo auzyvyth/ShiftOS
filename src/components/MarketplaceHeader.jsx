@@ -70,6 +70,9 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     { to: '/showroom?condition=used',   Icon: Car,        label: 'Used Cars',      desc: 'Inspected pre-owned' },
     { to: '/showroom?condition=new',    Icon: Sparkles,   label: 'New Cars',       desc: 'Brand-new from showrooms' },
     { to: '/showroom?condition=recon',  Icon: RefreshCw,  label: 'Recon / Import', desc: 'Graded, verified imports' },
+    // Not a filtered view (it holds the post form), so it is never a dead end
+    // and needs no has-rows gate.
+    { to: '/find-me',                   Icon: Search,     label: 'Find Me a Car',  desc: 'Post what you want, sellers come to you' },
   ];
   const DEALERS = [
     { to: '/shiftos#features', Icon: PlusCircle,      label: 'List Your Inventory', desc: 'Put your stock in front of buyers' },

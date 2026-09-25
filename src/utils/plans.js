@@ -1,4 +1,4 @@
-import { PLAN_CONFIG } from './planConfig';
+import { PLAN_CONFIG } from './planConfig.js';
 
 /*
  * The seller plan catalogue, in ONE place.

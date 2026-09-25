@@ -29,6 +29,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 // pulled the listing-form + drag-drop library onto the public landing page and
 // jammed first paint. Sibling CarDetailPage is already lazy for the same reason.
 const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
+const UsedCarsHubPage = lazy(() => import("./pages/UsedCarsHubPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
@@ -71,6 +72,7 @@ const ComingSoonPage     = lazy(() => import("./pages/ComingSoonPage"));
 const AccountPage        = lazy(() => import("./pages/AccountPage"));
 const AccountMessagesPage = lazy(() => import("./pages/AccountMessagesPage"));
 const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
+const FindMePage         = lazy(() => import("./pages/FindMePage"));
 const LoanSharePage      = lazy(() => import("./pages/LoanSharePage"));
 const FeaturePage        = lazy(() => import("./pages/FeaturePage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
@@ -148,6 +150,10 @@ function App() {
           <Route path="/marketplace" element={<MarketplaceRedirect />} />
           <Route path="/showroom" element={<CarListingPage />} />
           <Route path="/showroom/:slug" element={<CarDetailPage />} />
+          {/* Brand/model landing pages — the indexable way to find a car by model */}
+          <Route path="/used-cars" element={<UsedCarsHubPage />} />
+          <Route path="/used-cars/:brand" element={<UsedCarsHubPage />} />
+          <Route path="/used-cars/:brand/:model" element={<UsedCarsHubPage />} />
           <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
@@ -156,6 +162,8 @@ function App() {
           <Route path="/vehicle-services" element={<ComingSoonPage title="Vehicle Services" description="Servicing, inspections and maintenance booked straight from XDrive. We're building it — check back soon." />} />
           <Route path="/automotive-products" element={<ComingSoonPage title="Automotive Products" description="Parts, accessories and add-ons from trusted sellers. We're building it — check back soon." />} />
           <Route path="/saved" element={<SavedCarsPage />} />
+          <Route path="/find-me" element={<FindMePage />} />
+          <Route path="/find-me/:id" element={<FindMePage />} />
           {/* Buyer-facing loan document checklist, opened from a link the
               salesman sends. Public + token-gated (get_loan_share). */}
           <Route path="/loan/:token" element={<LoanSharePage />} />

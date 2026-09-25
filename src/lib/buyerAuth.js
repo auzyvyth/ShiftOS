@@ -119,3 +119,25 @@ export async function ensureBuyerProfile(user, { consent = false } = {}) {
 
   return existing.role || null;
 }
+
+// Where a buyer goes after signing in, when they were sent to sign in FROM
+// somewhere (the Find me post form, a price alert, a review). Before this only
+// the OAuth callback honoured it, so an email + password sign-in on /login
+// always landed on /account and the buyer had to find their way back.
+// Read-and-clear, and same-origin only so a poisoned value cannot become an
+// open redirect.
+const RETURN_KEY = 'post_auth_return';
+
+export function setPostAuthReturn(url = window.location.href) {
+  try { sessionStorage.setItem(RETURN_KEY, url); } catch { /* ignore */ }
+}
+
+export function consumePostAuthReturn(fallback = '/account') {
+  try {
+    const raw = sessionStorage.getItem(RETURN_KEY);
+    sessionStorage.removeItem(RETURN_KEY);
+    if (!raw) return fallback;
+    const u = new URL(raw, window.location.origin);
+    return u.origin === window.location.origin ? u.pathname + u.search + u.hash : fallback;
+  } catch { return fallback; }
+}

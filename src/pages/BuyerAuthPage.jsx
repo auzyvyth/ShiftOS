@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile } from "../lib/buyerAuth";
+import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from "../lib/buyerAuth";
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
@@ -71,7 +71,10 @@ export default function BuyerAuthPage() {
     setMounted(true);
     // Already signed in? Route them on.
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user) redirectByRole(data.session.user);
+      // A guest (anonymous chat session) is not signed in as far as this page
+      // is concerned: bouncing them to /account made signup unreachable for
+      // exactly the buyers most likely to need it.
+      if (data.session?.user && !data.session.user.is_anonymous) redirectByRole(data.session.user);
     });
   }, []);
 
@@ -83,7 +86,8 @@ export default function BuyerAuthPage() {
     // fallback for a role this page does not expect, so a mis-typed role can
     // never send a shopper into a seller panel. dealer_id/plan are selected
     // because a standalone salesman's home is Lite or Premium, not /salesman.
-    window.location.href = `${base}${routeForProfile(profile)}`;
+    const home = routeForProfile(profile);
+    window.location.href = `${base}${home === "/account" ? consumePostAuthReturn() : home}`;
   };
 
   // Tick the visible lockout down. Same shape as LoginPage's.
@@ -226,7 +230,7 @@ export default function BuyerAuthPage() {
     }
     if (data.session) {
       await ensureBuyerProfile(data.user, { consent: true });
-      window.location.href = `${base}/account`;
+      window.location.href = `${base}${consumePostAuthReturn()}`;
       return;
     }
     // No session means email confirmation is on; the profile is created at

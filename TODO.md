@@ -2261,6 +2261,61 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
 
+- **IDEA-9: Buyer-side features as the traffic engine (2026-09-25)** — owner:
+  roughly 10 buyers per seller, the product serves sellers well and buyers
+  thinly; what can XDrive give buyers that Carlist/Mudah do not? Shortlist,
+  all proven outside SEA:
+  1. MOVED to FINDME-1 below (owner said go, 2026-09-25).
+  2. Per-listing deal context (CarGurus): asking price vs
+     `market_avg_price` (on 33/36 live cars, but only ~7 comparables each,
+     so it needs a minimum-sample rule), days listed, price-drop history
+     (`previous_price` is 0/36; would need a price-change log from now on).
+     Open question: sellers pay, and a "high price" label upsets them.
+  3. Reviews only from buyers who actually bought (`customers`, created by
+     the won-trigger), which Carlist/Mudah cannot know.
+  4. Real running cost per car (Edmunds/KBB cost to own): road tax by engine
+     size + fuel. Road tax rates must be checked against JPJ first; no
+     insurance or loan-rate estimates (no-invented-numbers rule).
+  Already built for buyers: AFFORD-1, price alerts, saved cars, chat,
+  compare, loan calculator. Constraint: 36 live cars, so buyer traffic
+  lands on thin stock; idea 1 is the one that works while stock is thin.
+
+## FINDME-1 — "Find me" posts: buyers post what they want, sellers answer (decided 2026-09-25)
+Owner's design: a signed-in buyer (no guests) opens `/find-me`, fills a short
+form (brand, model, years, budget, state, short note) and posts. Each card has
+"See details" and "I have it". A non-seller who taps "I have it" is asked to
+become a seller; an approved seller gets a chat with the buyer and can send one
+of their cars into it as a card. Replaces the "wanted requests" sketch in IDEA-9.
+Guardrails (owner agreed): max 5 sellers per post, one chat per seller per post,
+10 new post chats per seller per day, only approved + active sellers can reply,
+buyer shown as "Buyer in <state>" until THEY reply (PDPA s.8), post pages noindex,
+buyer can mark "Found it", posts expire after 30 days, board link hidden until it
+has posts. Lead is created on the buyer's first reply (`chat_after_message`),
+source `find_me`.
+- [x] Step 1 — DB: DONE 2026-09-25, live (migration `find_me_posts`, file
+  `supabase/migrations/20260925b_find_me_posts.sql`). Tested as anon, buyer,
+  approved salesman and pending dealer in a rolled-back run (10/10 checks).
+- [x] Step 2 — buyer UI: DONE 2026-09-25 (staging). `src/pages/FindMePage.jsx`
+  (board + `/find-me/:id`, post form, sign-in sheet, Found it / Close post,
+  "Your posts" incl. found/expired), `src/utils/findMe.js` (titles + DB error
+  text), `src/config/findMeCopy.js` (shared with `api/og.js`: `/find-me`
+  indexable explainer, `/find-me/<id>` noindex). Header Browse menu has
+  "Find Me a Car" ALWAYS (not gated: the page holds the form, so it is never
+  an empty dead end). Sign-in return: `setPostAuthReturn` /
+  `consumePostAuthReturn` in `src/lib/buyerAuth.js`, now honoured by /login
+  password sign-in and /buyer-signup too (before: OAuth callback only).
+  Basic seller "I have it" also shipped so it is testable: message sheet ->
+  `find_me_reply` -> `ChatSheet`; non-sellers get a join sheet.
+- [ ] Step 3 — seller UI: "Send a car" picker (chat_messages.listing_id) + car
+  card rendering in ChatThread; label post threads in SellerInbox and
+  BuyerInbox (today they read "Car enquiry", linking to /showroom).
+- Guest sign-in: the in-place upgrade (`updateUser`) was REMOVED from
+  BuyerEmailPrompt (buyers were not receiving Supabase auth mail), so a guest
+  who signs in to post starts a new account and their guest chats stay behind.
+  The sign-in sheet says so. Revisit only if auth mail is fixed.
+- Later: fold the showroom price-alert bell (`CarListingPage.jsx:804`) into the
+  post form as "also email me when one is listed".
+
 ## AFFORD-1 — "Can I afford this?" — BUILT 2026-09-13
 
 Was IDEA-8. Button next to the price on CarDetailPage (both the mobile M2

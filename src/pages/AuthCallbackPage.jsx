@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
-import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile } from '../lib/buyerAuth';
+import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -32,23 +32,9 @@ export default function AuthCallbackPage() {
       // flows, so it is the only place the consent can be recorded.
       const buyerConsent = consumeBuyerConsent();
 
-      // A marketplace engagement button (save alert / write review / ask a
-      // question) stashes the page the buyer was on in post_auth_return so we can
-      // return them there after sign-in instead of dumping them on /account and
-      // losing their pending action. Read-and-clear; only honor a same-origin URL
-      // so a poisoned value can't become an open redirect. Falls back to /account.
-      const buyerDest = () => {
-        let dest = '/account';
-        try {
-          const raw = sessionStorage.getItem('post_auth_return');
-          sessionStorage.removeItem('post_auth_return');
-          if (raw) {
-            const u = new URL(raw, window.location.origin);
-            if (u.origin === window.location.origin) dest = u.pathname + u.search + u.hash;
-          }
-        } catch { /* ignore */ }
-        return dest;
-      };
+      // A marketplace button (save alert / write review / Find me post) stashes
+      // the page the buyer was on so they land back there, not on /account.
+      const buyerDest = () => consumePostAuthReturn();
 
       // No profile at all → brand new user. A buyer goes straight to their account;
       // everyone else falls through to seller onboarding.

@@ -1,4 +1,7 @@
 // api/sitemap.js — Vercel Edge Function, dynamic sitemap per tenant
+import { ORDER as FEATURE_ORDER } from "../src/config/featurePagesCopy.js";
+import { ARTICLE_PAGES } from "../src/config/articlePages.generated.js";
+import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelHubs.js";
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
@@ -36,10 +39,10 @@ function buildSitemap(baseUrl, staticRoutes, cars, isSubdomain, agents = []) {
 
   const staticUrls = staticRoutes
     .map(
-      ({ path, changefreq, priority }) => `
+      ({ path, changefreq, priority, lastmod }) => `
   <url>
     <loc>${xmlEscape(baseUrl + path)}</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastmod || today}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`,
@@ -182,17 +185,32 @@ export default async function handler(req) {
         { path: "/for-salesmen", changefreq: "weekly",  priority: "0.8" },
         { path: "/compare",      changefreq: "weekly",  priority: "0.6" },
         { path: "/guides",       changefreq: "weekly",  priority: "0.6" },
+        { path: "/guides/faq",   changefreq: "monthly", priority: "0.5" },
+        { path: "/guides/buying", changefreq: "monthly", priority: "0.5" },
+        { path: "/plans",        changefreq: "weekly",  priority: "0.7" },
+        ...FEATURE_ORDER.map((slug) => ({ path: `/features/${slug}`, changefreq: "monthly", priority: "0.6" })),
         { path: "/articles",     changefreq: "weekly",  priority: "0.7" },
-        { path: "/articles/apa-itu-dms-dealer-kereta",                      changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-urus-stok-kereta-terpakai-sistem-digital", changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/app-terbaik-dealer-kereta-terpakai-malaysia",   changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-kira-komisen-salesman-kereta",             changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-buat-sales-agreement-kereta-terpakai",     changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/apa-itu-puspakom-b5-b7",                        changefreq: "monthly", priority: "0.6" },
-        { path: "/articles/cara-pindah-milik-kereta-mysikap",             changefreq: "monthly", priority: "0.6" },
-        { path: "/articles/beza-kereta-recon-dan-terpakai",               changefreq: "monthly", priority: "0.6" },
+        // Every article component, with the date it was last edited (not
+        // today's date, which tells Google nothing).
+        ...Object.values(ARTICLE_PAGES).map((a) => ({ path: `/articles/${a.slug}`, changefreq: "monthly", priority: "0.7", lastmod: a.dateModified })),
         { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
       ];
+
+  // Brand/model hubs (root only). buildHubs drops any brand/model with no live
+  // car, so the sitemap never lists a page that would 404.
+  if (!subdomain) {
+    try {
+      const hubRows = await fetchJson(
+        `${SUPABASE_URL}/rest/v1/public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&select=${HUB_ROW_COLS}&limit=5000`,
+      );
+      const hubs = buildHubs(Array.isArray(hubRows) ? hubRows : []);
+      if (hubs.length) staticRoutes.push({ path: HUB_BASE, changefreq: "daily", priority: "0.8" });
+      for (const b of hubs) {
+        staticRoutes.push({ path: b.path, changefreq: "daily", priority: "0.8" });
+        for (const m of b.models) staticRoutes.push({ path: m.path, changefreq: "daily", priority: "0.8" });
+      }
+    } catch (_) {}
+  }
 
   let cars = [];
 
