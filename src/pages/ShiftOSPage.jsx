@@ -182,11 +182,40 @@ const STYLES = `
   /* ── Nav ── */
   .sos-nav{
     position:sticky;top:0;z-index:100;
-    background:rgba(6,8,15,0.78);
+    background:rgba(251,249,248,0.96);
     backdrop-filter:blur(24px) saturate(1.6);
     -webkit-backdrop-filter:blur(24px) saturate(1.6);
-    border-bottom:1px solid rgba(255,255,255,0.07);
+    border-bottom:1px solid rgba(15,23,42,0.07);
   }
+
+  /* ── Light hero (white surface, soft red smudges) ──
+     Only the hero is light for now. Its bottom edge fades into the page's
+     dark base so the still-dark sections below don't meet it at a hard line. */
+  .sos-hero-light{
+    position:relative;isolation:isolate;overflow:hidden;
+    background:#FBF9F8;color:#0f172a;
+  }
+  .sos-hero-light::before{
+    content:'';position:absolute;inset:-10% -10% 0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(ellipse 520px 380px at 4% 8%,   rgba(220,38,38,0.26) 0%, transparent 70%),
+      radial-gradient(ellipse 480px 420px at 98% 22%, rgba(251,113,133,0.30) 0%, transparent 70%),
+      radial-gradient(ellipse 620px 300px at 62% 78%, rgba(239,68,68,0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 380px 260px at 18% 70%, rgba(252,165,165,0.22) 0%, transparent 70%);
+    filter:blur(28px);
+  }
+  .sos-hero-light::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:120px;z-index:-1;pointer-events:none;
+    background:linear-gradient(180deg,rgba(6,8,15,0) 0%,#06080F 100%);
+  }
+  .sos-hero-light .sos-eyebrow{background:rgba(220,38,38,0.07);border-color:rgba(220,38,38,0.22);color:#b91c1c;}
+  .sos-hero-light .sos-btn-outline{
+    background:#fff;color:#111827;border-color:#e5e7eb;
+    box-shadow:0 1px 2px rgba(15,23,42,0.06);
+  }
+  .sos-hero-light .sos-btn-outline:hover{background:#fff;border-color:#d1d5db;}
+  .sos-hero-light .sos-btn-outline:focus-visible{outline-color:#dc2626;}
+  .sos-hero-light .sos-red{background:linear-gradient(135deg,#ef4444,#b91c1c 60%);-webkit-background-clip:text;background-clip:text;}
 
   /* ── Typography ── */
   .sos-h{font-family:'Bebas Neue',sans-serif;letter-spacing:.01em;line-height:1.02;}
@@ -523,7 +552,7 @@ function HeroChart() {
     <svg className="sos-hero-chart" viewBox="0 0 760 150" fill="none" aria-hidden="true" style={{ marginTop: 8 }}>
       <defs>
         <linearGradient id="sos-area-g" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.22" />
+          <stop offset="0%" stopColor="#dc2626" stopOpacity="0.16" />
           <stop offset="100%" stopColor="#dc2626" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="sos-line-g" x1="0" y1="0" x2="1" y2="0">
@@ -538,7 +567,7 @@ function HeroChart() {
       </defs>
       {/* baseline grid hints */}
       {[36, 75, 114].map((y) => (
-        <line key={y} x1="0" y1={y} x2="760" y2={y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+        <line key={y} x1="0" y1={y} x2="760" y2={y} stroke="rgba(15,23,42,0.06)" strokeWidth="1" />
       ))}
       <path
         className="area"
@@ -555,7 +584,7 @@ function HeroChart() {
       />
       <g className="tip">
         <circle className="tip-pulse" cx="724" cy="19" r="6" fill="rgba(251,113,133,0.5)" />
-        <circle cx="724" cy="19" r="4" fill="#fb7185" stroke="#06080F" strokeWidth="1.5" />
+        <circle cx="724" cy="19" r="4" fill="#ef4444" stroke="#fff" strokeWidth="1.5" />
       </g>
     </svg>
   );
@@ -594,7 +623,7 @@ function FlowConnector({ label, hot = false }) {
 }
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
-function Logo({ size = 34 }) {
+function Logo({ size = 34, onLight = false }) {
   const fs = Math.round(size * 0.52);
   return (
     <Link to="/shiftos" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
@@ -605,7 +634,7 @@ function Logo({ size = 34 }) {
       <div>
         {/* The lockup replaces the gradient-filled wordmark. Height tracks the
             size prop so the nav (34) and the footer (28) stay proportional. */}
-        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59"
+        <img src={onLight ? "/logo-shiftos-dark.png" : "/logo-shiftos.png"} alt="ShiftOS" width="354" height="59"
              style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
         <span style={{ display: "block", fontSize: 10, color: "#4b5563", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
       </div>
@@ -834,24 +863,24 @@ export default function ShiftOSPage() {
         {/* ── Nav ── */}
         <nav className="sos-nav">
           <div className="sos-wrap" style={{ height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <Logo />
+            <Logo onLight />
             <div className="sos-nav-links" style={{ display: "flex", alignItems: "center", gap: 32 }}>
               {[{ label: t("shiftos.nav.features"), ref: featRef }, { label: t("shiftos.nav.pricing"), ref: pricingRef }].map(({ label, ref }) => (
                 <button key={label} onClick={() => scrollTo(ref)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", letterSpacing: ".01em", transition: "color .15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                   onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{label}</button>
               ))}
               <a href="https://xdrive.my" target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.marketplace")}</a>
               <Link to="/login" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = "#fff")}
+                onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.login")}</Link>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 50, padding: 3 }}>
-                <button onClick={toggleLang} aria-label="Switch to English" aria-pressed={isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: isEn ? "rgba(220,38,38,0.14)" : "transparent", color: isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>EN</button>
-                <button onClick={toggleLang} aria-label="Tukar ke Bahasa Malaysia" aria-pressed={!isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: !isEn ? "rgba(220,38,38,0.14)" : "transparent", color: !isEn ? "#f87171" : "rgba(255,255,255,0.35)" }}>BM</button>
+              <div style={{ display: "flex", background: "rgba(15,23,42,0.03)", border: "1px solid rgba(15,23,42,0.08)", borderRadius: 50, padding: 3 }}>
+                <button onClick={toggleLang} aria-label="Switch to English" aria-pressed={isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: isEn ? "rgba(220,38,38,0.08)" : "transparent", color: isEn ? "#dc2626" : "rgba(15,23,42,0.4)" }}>EN</button>
+                <button onClick={toggleLang} aria-label="Tukar ke Bahasa Malaysia" aria-pressed={!isEn} style={{ padding: "3px 10px", borderRadius: 50, fontSize: 10, fontWeight: 700, border: "none", cursor: "pointer", letterSpacing: ".06em", fontFamily: "inherit", background: !isEn ? "rgba(220,38,38,0.08)" : "transparent", color: !isEn ? "#dc2626" : "rgba(15,23,42,0.4)" }}>BM</button>
               </div>
               <button onClick={() => scrollTo(pricingRef)} className="sos-btn-primary" style={{ fontSize: 13, padding: "9px 18px", border: "none", cursor: "pointer", fontFamily: "inherit" }}>
                 {t("shiftos.nav.startFree")} <ArrowRight size={15} />
@@ -861,7 +890,8 @@ export default function ShiftOSPage() {
         </nav>
 
         {/* ── Hero ── */}
-        <section className="sos-wrap" style={{ padding: "92px 24px 12px", textAlign: "center" }}>
+        <div className="sos-hero-light">
+        <section className="sos-wrap" style={{ padding: "92px 24px 132px", textAlign: "center" }}>
           <Reveal>
             <div className="sos-eyebrow" style={{ marginBottom: 28 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", boxShadow: "0 0 8px #ef4444" }} />
@@ -869,12 +899,12 @@ export default function ShiftOSPage() {
             </div>
           </Reveal>
           <Reveal delay={80}>
-            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 78, color: "#fff", margin: "0 auto 22px", maxWidth: 980, lineHeight: 1.02 }}>
+            <h1 className="sos-h sos-hero-h1" style={{ fontSize: 78, color: "#0f172a", margin: "0 auto 22px", maxWidth: 980, lineHeight: 1.02 }}>
               {t("shiftos.hero.title1")}<br />{t("shiftos.hero.title2lead")} <span className="sos-red">{t("shiftos.hero.title2accent")}</span>
             </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#94a3b8", maxWidth: 620, margin: "0 auto 38px", lineHeight: 1.65 }}>
+            <p className="sos-hero-sub" style={{ fontSize: 18, fontWeight: 400, color: "#475569", maxWidth: 620, margin: "0 auto 38px", lineHeight: 1.65 }}>
               {t("shiftos.hero.subtitle")}
             </p>
           </Reveal>
@@ -887,13 +917,14 @@ export default function ShiftOSPage() {
                 <MessageCircle size={16} /> {t("shiftos.hero.talkToUs")}
               </a>
             </div>
-            <p style={{ fontSize: 12, color: "#374151", letterSpacing: ".04em" }}>
+            <p style={{ fontSize: 12, color: "#6b7280", letterSpacing: ".04em" }}>
               {t("shiftos.hero.trust")}
             </p>
           </Reveal>
           {/* Gross-profit curve drawing itself upward — the promise of the product */}
           <HeroChart />
         </section>
+        </div>
 
         {/* ── Stats strip ── */}
         <section className="sos-wrap" style={{ paddingBottom: 16 }}>
