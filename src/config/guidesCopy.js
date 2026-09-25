@@ -6,9 +6,9 @@ export const GUIDE_META = {
   how: {
     path: "/guides",
     title: "How It Works — XDrive Malaysia",
-    description: "Learn how to buy a car on XDrive Malaysia. Browse verified listings, use the finance calculator, contact dealers directly, and drive away with confidence.",
+    description: "Learn how to buy a car on XDrive Malaysia. Browse listings from approved sellers, use the finance calculator, contact sellers directly, and drive away with confidence.",
     h1: "How to Buy a Car on XDrive",
-    intro: "Six steps from browsing to driving — with verified dealers, transparent pricing, and no hidden fees.",
+    intro: "Six steps from browsing to driving — with approved sellers, transparent pricing, and no fees for buyers.",
   },
   faq: {
     path: "/guides/faq",
@@ -28,7 +28,7 @@ export const GUIDE_STEPS = [
   {
     step: '01',
     title: 'Browse Verified Listings',
-    body: "Search by brand, budget, location, or body type. Every car on XDrive is listed by a certified dealer — no private sellers, no phantom listings. What you see is what's actually on the lot.",
+    body: "Search by brand, budget, location, or body type. Cars on XDrive are listed by approved sellers — registered dealerships and individual car agents — and every listing shows which one you're dealing with.",
     tips: ['Use the brand filter to narrow by make', 'Filter by state to find cars near you', 'Toggle "Recon" to see imported units'],
   },
   {
@@ -47,13 +47,13 @@ export const GUIDE_STEPS = [
   {
     step: '04',
     title: 'Contact the Dealer Directly',
-    body: 'Hit the WhatsApp button on any listing to connect directly with the dealer\'s salesperson. No middlemen, no lead-selling — your number goes to one person. Discuss availability, negotiate, and book a test drive.',
+    body: 'Tap Contact on any listing to reach the seller directly — WhatsApp, chat on XDrive, or a call. No middlemen, no lead-selling — your number goes to one person. Discuss availability, negotiate, and book a test drive.',
     tips: ['Ask for the latest OTR price', 'Confirm the unit is still available before visiting', 'Request a physical inspection report if buying recon'],
   },
   {
     step: '05',
     title: 'Test Drive & Inspect',
-    body: 'Visit the dealership for a test drive. For used and recon cars, request an independent inspection or ask the dealer for the Carfax / JPJ record. Check for accident history, service records, and ownership history.',
+    body: 'Visit the dealership for a test drive. For used and recon cars, request an independent inspection and ask the seller for service records. Check the ownership details against JPJ (MySikap) and ask about Puspakom inspection results and any accident history.',
     tips: ['Bring a friend or mechanic if buying used', 'Test all electrical features (A/C, windows, infotainment)', 'Verify the chassis and engine numbers match the grant'],
   },
   {
@@ -66,8 +66,8 @@ export const GUIDE_STEPS = [
 
 export const GUIDE_FAQS = [
   {
-    q: 'Are all listings on XDrive from certified dealers?',
-    a: 'Yes. XDrive only allows verified, registered car dealers to list inventory. Private sellers are not permitted. Every dealer goes through a manual verification process before going live.',
+    q: 'Who sells cars on XDrive?',
+    a: 'Two kinds of seller: registered dealerships, and individual car agents (salesmen) selling under their own name. Every seller account is reviewed by the XDrive team before it can publish cars, and listings can be held for review or removed. Each listing is labelled Dealer or Agent so you know who you are dealing with.',
   },
   {
     q: 'What does "Recon" mean?',
@@ -83,7 +83,7 @@ export const GUIDE_FAQS = [
   },
   {
     q: 'How do I contact a dealer?',
-    a: 'Each listing has a "WhatsApp Dealer" button that connects you directly to the dealer\'s salesperson. No middlemen or lead brokers — your contact goes straight to the person who can close the deal.',
+    a: 'Each listing has a Contact button that reaches the seller directly — by WhatsApp, chat on XDrive, or a phone call. No middlemen or lead brokers — your contact goes straight to the person who can close the deal.',
   },
   {
     q: 'Can I compare multiple cars?',
@@ -99,7 +99,7 @@ export const GUIDE_FAQS = [
   },
   {
     q: 'Does XDrive charge buyers any fees?',
-    a: 'No. XDrive is completely free for buyers. Dealers pay a subscription fee to list inventory — you pay nothing to browse, contact, or compare cars.',
+    a: 'No. XDrive is completely free for buyers. Sellers pay for their plan (Salesman Lite is free) — you pay nothing to browse, contact, or compare cars.',
   },
 ];
 
