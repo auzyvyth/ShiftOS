@@ -6,6 +6,7 @@
 // etc.) with route-specific meta + schema mirroring the SPA's Helmet.
 
 import { getChassisCode } from "../src/utils/chassisCodes.js";
+import * as SL from "../src/config/salesmanLandingCopy.js";
 
 export const config = { runtime: "edge" };
 
@@ -400,7 +401,7 @@ const SHIFTOS_DESC = "ShiftOS ialah software dealer kereta Malaysia & used car D
 
 const SHIFTOS_FAQS = [
   { q: "Apa itu ShiftOS?", a: "ShiftOS ialah sistem urus stok kereta terpakai (used car DMS Malaysia) yang direka khas untuk dealer kereta di Malaysia. Ia satu app urus stok kereta dan app untuk dealer kereta terpakai yang menggabungkan CRM lead, rekod jualan, komisen salesman dan analitik keuntungan." },
-  { q: "Berapa harga ShiftOS?", a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM50/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual." },
+  { q: "Berapa harga ShiftOS?", a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM35/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual." },
   { q: "Adakah ShiftOS sesuai untuk dealer kecil?", a: "Ya. ShiftOS sesuai untuk dealer kereta terpakai kecil dan besar. Dealer kecil boleh mula dengan Dealer Starter RM299/bulan, manakala salesman individu boleh guna Salesman Lite percuma — app salesman kereta Malaysia untuk urus listing, lead dan komisen sendiri." },
   { q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?", a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront XDrive sendiri." },
   { q: "What is the best app for Malaysian used car dealers?", a: "ShiftOS is a purpose-built used car dealer software Malaysia — combining car inventory management Malaysia, a car dealer CRM Malaysia, salesman commission tracking, F&I and revenue analytics, designed for local workflows." },
@@ -418,7 +419,7 @@ const SOFTWARE_LD = {
   inLanguage: ["ms-MY", "en-MY"],
   offers: [
     { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR" },
-    { "@type": "Offer", name: "Salesman Premium", price: "50", priceCurrency: "MYR" },
+    { "@type": "Offer", name: "Salesman Premium", price: "35", priceCurrency: "MYR" },
     { "@type": "Offer", name: "Dealer Starter", price: "299", priceCurrency: "MYR" },
     { "@type": "Offer", name: "Dealer Growth", price: "599", priceCurrency: "MYR" },
     { "@type": "Offer", name: "Dealer Pro", price: "1199", priceCurrency: "MYR" },
@@ -560,6 +561,35 @@ const STATIC_PAGES = {
       description: SHIFTOS_DESC,
       canonical: `${SITE_URL}/shiftos`,
       jsonLd: [SOFTWARE_LD, faqLd],
+      body,
+    });
+  },
+  // Salesman Lite landing. Same copy as the SPA (shared config) — without this
+  // entry crawlers got the generic buyer fallback ("Quality used cars").
+  "/for-salesmen": () => {
+    const li = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
+    const body = `  <main>
+    <h1>${esc(SL.HERO_H1)}</h1>
+    <p>${esc(SL.HERO_INTRO)}</p>
+    <p><a href="${SITE_URL}/salesman-onboarding/lite">Sign up free</a></p>
+    <h2>Salesman Lite vs Mudah / Carlist</h2>
+    <ul>${SL.COMPARE_ROWS.map((r) => `<li><strong>${esc(r.label)}:</strong> Mudah / Carlist — ${esc(r.old)}. Salesman Lite — ${esc(r.lite)}.</li>`).join("")}</ul>
+    <h2>What you get</h2>
+    ${SL.FEATURE_COPY.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
+    <h2>How it works</h2>
+    <ol>${SL.STEPS.map((st) => `<li><strong>${esc(st.title)}</strong> — ${esc(st.body)}</li>`).join("")}</ol>
+    <h2>Pricing</h2>
+    <h3>Salesman Lite — RM0, free forever</h3><ul>${li(SL.LITE_BULLETS)}</ul>
+    <h3>Salesman Premium — RM35/month</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
+    <h2>FAQ</h2>
+    ${SL.FAQS.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    <p><a href="${SITE_URL}/showroom">Browse cars on XDrive</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
+  </main>`;
+    return htmlShell({
+      title: SL.SEO_TITLE,
+      description: SL.SEO_DESC,
+      canonical: SL.CANON,
+      jsonLd: [SL.SOFTWARE_LD, SL.FAQ_LD],
       body,
     });
   },
