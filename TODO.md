@@ -2261,6 +2261,28 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
 
+- **IDEA-9: Buyer-side features as the traffic engine (2026-09-25)** — owner:
+  roughly 10 buyers per seller, the product serves sellers well and buyers
+  thinly; what can XDrive give buyers that Carlist/Mudah do not? Shortlist,
+  all proven outside SEA:
+  1. "Wanted" requests, sellers answer (Carwow UK model): buyer posts
+     model / years / budget, matching sellers get it as a lead and reply in
+     the existing in-app chat. Turns a no-match search into demand a recon
+     dealer can source. Reuses price alerts, chat, `resolve_lead_salesman`.
+  2. Per-listing deal context (CarGurus): asking price vs
+     `market_avg_price` (on 33/36 live cars, but only ~7 comparables each,
+     so it needs a minimum-sample rule), days listed, price-drop history
+     (`previous_price` is 0/36; would need a price-change log from now on).
+     Open question: sellers pay, and a "high price" label upsets them.
+  3. Reviews only from buyers who actually bought (`customers`, created by
+     the won-trigger), which Carlist/Mudah cannot know.
+  4. Real running cost per car (Edmunds/KBB cost to own): road tax by engine
+     size + fuel. Road tax rates must be checked against JPJ first; no
+     insurance or loan-rate estimates (no-invented-numbers rule).
+  Already built for buyers: AFFORD-1, price alerts, saved cars, chat,
+  compare, loan calculator. Constraint: 36 live cars, so buyer traffic
+  lands on thin stock; idea 1 is the one that works while stock is thin.
+
 ## AFFORD-1 — "Can I afford this?" — BUILT 2026-09-13
 
 Was IDEA-8. Button next to the price on CarDetailPage (both the mobile M2
