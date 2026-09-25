@@ -2265,10 +2265,7 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   roughly 10 buyers per seller, the product serves sellers well and buyers
   thinly; what can XDrive give buyers that Carlist/Mudah do not? Shortlist,
   all proven outside SEA:
-  1. "Wanted" requests, sellers answer (Carwow UK model): buyer posts
-     model / years / budget, matching sellers get it as a lead and reply in
-     the existing in-app chat. Turns a no-match search into demand a recon
-     dealer can source. Reuses price alerts, chat, `resolve_lead_salesman`.
+  1. MOVED to FINDME-1 below (owner said go, 2026-09-25).
   2. Per-listing deal context (CarGurus): asking price vs
      `market_avg_price` (on 33/36 live cars, but only ~7 comparables each,
      so it needs a minimum-sample rule), days listed, price-drop history
@@ -2282,6 +2279,30 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   Already built for buyers: AFFORD-1, price alerts, saved cars, chat,
   compare, loan calculator. Constraint: 36 live cars, so buyer traffic
   lands on thin stock; idea 1 is the one that works while stock is thin.
+
+## FINDME-1 — "Find me" posts: buyers post what they want, sellers answer (decided 2026-09-25)
+Owner's design: a signed-in buyer (no guests) opens `/find-me`, fills a short
+form (brand, model, years, budget, state, short note) and posts. Each card has
+"See details" and "I have it". A non-seller who taps "I have it" is asked to
+become a seller; an approved seller gets a chat with the buyer and can send one
+of their cars into it as a card. Replaces the "wanted requests" sketch in IDEA-9.
+Guardrails (owner agreed): max 5 sellers per post, one chat per seller per post,
+10 new post chats per seller per day, only approved + active sellers can reply,
+buyer shown as "Buyer in <state>" until THEY reply (PDPA s.8), post pages noindex,
+buyer can mark "Found it", posts expire after 30 days, board link hidden until it
+has posts. Lead is created on the buyer's first reply (`chat_after_message`),
+source `find_me`.
+- [x] Step 1 — DB: DONE 2026-09-25, live (migration `find_me_posts`, file
+  `supabase/migrations/20260925b_find_me_posts.sql`). Tested as anon, buyer,
+  approved salesman and pending dealer in a rolled-back run (10/10 checks).
+- [ ] Step 2 — buyer UI: `/find-me` board, post form, details, "Found it"
+- [ ] Step 3 — seller UI: "I have it" (sign up / under review / chat), "Send a
+  car" picker; SellerInbox/BuyerInbox must handle a thread with no listing
+- Gotcha for step 2: a guest who signs in must be UPGRADED in place
+  (`updateUser`), not `signInWithOtp` (`BuyerAuthPage.jsx:86`), or their open
+  chats are stranded on the old anonymous account.
+- Later: fold the showroom price-alert bell (`CarListingPage.jsx:804`) into the
+  post form as "also email me when one is listed".
 
 ## AFFORD-1 — "Can I afford this?" — BUILT 2026-09-13
 

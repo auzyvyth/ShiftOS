@@ -852,6 +852,28 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   modal, and the real `wa.me` deep link still fires synchronously inside
   `handleEnquirySubmit`, so nothing here is exposed to a popup blocker.
 
+### "Find me" posts (FINDME-1) — a chat can hang off a POST, not a car
+Buyers post the car they want; approved sellers answer "I have it". Migration
+`20260925b_find_me_posts.sql`. What changed under chat because of it:
+- `chat_threads.listing_id` is now NULLABLE: a thread has a car OR a
+  `find_me_post_id` (CHECK `chat_threads_subject`). Any code that reads
+  `thread.listing` must handle null (SellerInbox already shows "Car enquiry").
+- Post chats are created ONLY by `find_me_reply(post, first_message)`, which
+  checks the seller is approved + active, one chat per seller per post, 5
+  sellers per post, 10 new post chats per seller per day. Never insert a
+  post thread from the client.
+- The seller sees "Buyer in <state>" (`buyer_revealed=false`) until the buyer
+  replies; `chat_after_message` then swaps in the real name BEFORE creating
+  the lead (`lead_source='find_me'`). PDPA s.8: the buyer's identity reaches a
+  seller only by the buyer's own reply. Do not show buyer name/contact earlier.
+- The board is read through `list_find_me_posts` / `get_find_me_post` (no
+  `buyer_id` ever leaves the DB). Posting is `create_find_me_post` (signed-in
+  non-anonymous `role='buyer'` only); "Found it" is `close_find_me_post`.
+- `chat_messages.listing_id` = a car sent as a card; the insert policy only
+  lets a SELLER attach a live car they can sell.
+- Supabase grants new functions to `anon` DIRECTLY, so `revoke ... from
+  public` is not enough for a write function: also revoke from anon.
+
 ### Buyer email capture + unread-reply email (CHAT-EMAIL, 2026-08-31)
 Most buyers here are guests (anonymous sign-in), so a seller's reply reached
 nobody once the tab closed — push needs a granted permission on a live device.
@@ -989,7 +1011,7 @@ Both displayed in separate labelled sections in the P&L modal.
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
 - For any policy that needs to reference `profiles` (especially policies ON profiles), use a SECURITY DEFINER helper that bypasses RLS: `get_my_dealer_id()`, `is_superadmin()`, `is_linked_salesman()`, `is_active_salesman()`
 - Dealer profile rows have `dealer_id = NULL` (they own themselves) — to grant a salesman read access to their dealer, match `id = get_my_dealer_id()`, NOT `dealer_id = get_my_dealer_id()`
-- leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual — any other value rejects the whole insert
+- leads.lead_source CHECK only allows: walk_in, whatsapp, referral, drevo_enquiry, enquiry, manual, chat, find_me — any other value rejects the whole insert
 - After adding any policy, test it with a real row read before shipping
 
 ### A share token is a PASSWORD — check it, don't pattern-match it (bit twice, same day)
