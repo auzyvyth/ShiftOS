@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Apa beza kereta recon dan kereta terpakai di Malaysia? Panduan lengkap tentang kelebihan, kelemahan, kos tersembunyi, dan mana yang lebih berbaloi untuk pembeli Malaysia 2026.',
   datePublished: '2026-06-13',
-  dateModified: '2026-06-13',
+  dateModified: '2026-09-25',
   readMins: 8,
 };
 
@@ -325,7 +325,7 @@ export default function ReconArticle() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari Recon & Terpakai Terpercaya</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Semua listing di XDrive disertakan rekod kenderaan. Filter ikut kondisi — recon atau terpakai — dan bandingkan dengan mudah.
+                Filter ikut kondisi — recon atau terpakai — dan bandingkan harga dengan mudah. Minta laporan lelong (auction report) untuk kereta recon sebelum membeli.
               </p>
               <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat Kereta Tersedia

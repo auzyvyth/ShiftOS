@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Panduan langkah demi langkah cara buat pindah milik kereta secara online menggunakan sistem MySikap JPJ 2026. Dokumen diperlukan, kos, tempoh masa, dan tips mengelak kesilapan biasa.',
   datePublished: '2026-06-13',
-  dateModified: '2026-06-13',
+  dateModified: '2026-09-25',
   readMins: 7,
 };
 
@@ -290,7 +290,7 @@ export default function MySikapArticle() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari Kereta Terpakai Terpercaya</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Semua listing di XDrive disertakan dokumen lengkap. Dealer kami membantu proses pindah milik dari A hingga Z.
+                Setiap penjual di XDrive disemak oleh pasukan kami sebelum boleh menyiarkan kereta. Tanya penjual sama ada mereka uruskan pindah milik untuk anda.
               </p>
               <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat Kereta Tersedia

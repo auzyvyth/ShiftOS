@@ -1,5 +1,6 @@
 // api/sitemap.js — Vercel Edge Function, dynamic sitemap per tenant
 import { ORDER as FEATURE_ORDER } from "../src/config/featurePagesCopy.js";
+import { ARTICLE_PAGES } from "../src/config/articlePages.generated.js";
 import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelHubs.js";
 export const config = { runtime: "edge" };
 
@@ -38,10 +39,10 @@ function buildSitemap(baseUrl, staticRoutes, cars, isSubdomain, agents = []) {
 
   const staticUrls = staticRoutes
     .map(
-      ({ path, changefreq, priority }) => `
+      ({ path, changefreq, priority, lastmod }) => `
   <url>
     <loc>${xmlEscape(baseUrl + path)}</loc>
-    <lastmod>${today}</lastmod>
+    <lastmod>${lastmod || today}</lastmod>
     <changefreq>${changefreq}</changefreq>
     <priority>${priority}</priority>
   </url>`,
@@ -189,14 +190,9 @@ export default async function handler(req) {
         { path: "/plans",        changefreq: "weekly",  priority: "0.7" },
         ...FEATURE_ORDER.map((slug) => ({ path: `/features/${slug}`, changefreq: "monthly", priority: "0.6" })),
         { path: "/articles",     changefreq: "weekly",  priority: "0.7" },
-        { path: "/articles/apa-itu-dms-dealer-kereta",                      changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-urus-stok-kereta-terpakai-sistem-digital", changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/app-terbaik-dealer-kereta-terpakai-malaysia",   changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-kira-komisen-salesman-kereta",             changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/cara-buat-sales-agreement-kereta-terpakai",     changefreq: "monthly", priority: "0.7" },
-        { path: "/articles/apa-itu-puspakom-b5-b7",                        changefreq: "monthly", priority: "0.6" },
-        { path: "/articles/cara-pindah-milik-kereta-mysikap",             changefreq: "monthly", priority: "0.6" },
-        { path: "/articles/beza-kereta-recon-dan-terpakai",               changefreq: "monthly", priority: "0.6" },
+        // Every article component, with the date it was last edited (not
+        // today's date, which tells Google nothing).
+        ...Object.values(ARTICLE_PAGES).map((a) => ({ path: `/articles/${a.slug}`, changefreq: "monthly", priority: "0.7", lastmod: a.dateModified })),
         { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
       ];
 

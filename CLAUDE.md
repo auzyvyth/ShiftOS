@@ -372,6 +372,17 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   Share the copy through a `src/config/*Copy.js` file (see
   `salesmanLandingCopy.js`, `guidesCopy.js`, `featurePagesCopy.js`) — never
   retype it into og.js.
+- **Articles are the exception: the crawler text is GENERATED from the article
+  component.** `tools/generate-article-pages.mjs` renders each
+  `src/pages/articles/*.jsx` to plain HTML into
+  `src/config/articlePages.generated.js`, which og.js and the sitemap read
+  (full body, FAQ, JSON-LD, dates). After editing an article, run
+  `npm run articles:build` and bump its `dateModified`; `npm test` fails on a
+  stale file (`articles:check`) and the build regenerates it anyway. A new
+  article is a new file in that folder plus its route in App.jsx, nothing
+  else. Article copy is buyer-facing: never promise something about XDrive
+  listings the platform does not check (three CTAs claimed every car was
+  Puspakom-inspected / fully documented; nothing verifies that).
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.

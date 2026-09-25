@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Fahami perbezaan pemeriksaan Puspakom B5 dan B7, berapa kos sebenar, bila wajib dibuat, dan apa yang berlaku jika gagal. Panduan lengkap untuk pembeli dan penjual kereta terpakai Malaysia.',
   datePublished: '2026-06-13',
-  dateModified: '2026-06-13',
+  dateModified: '2026-09-25',
   readMins: 6,
 };
 
@@ -289,7 +289,7 @@ export default function PuspakomB5B7Article() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari Kereta Terpakai Terpercaya</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Semua listing di XDrive melalui pemeriksaan Puspakom sebelum dijual. Semak koleksi kami sekarang.
+                Setiap penjual di XDrive disemak oleh pasukan kami sebelum boleh menyiarkan kereta. Minta laporan Puspakom B5 daripada penjual sebelum anda bayar deposit.
               </p>
               <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat Kereta Tersedia
