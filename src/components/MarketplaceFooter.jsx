@@ -42,6 +42,7 @@ export default function MarketplaceFooter() {
       heading: 'For Buyers',
       links: [
         { label: 'Browse All Cars',    to: '/showroom' },
+        { label: 'Cars by Brand & Model', to: '/used-cars' },
         // "Search by Brand" pointed at /showroom#brands. There is no #brands
         // element anywhere — the brand strip it was written for was removed —
         // so it dropped the buyer at the top of /showroom and did nothing.
@@ -78,7 +79,7 @@ export default function MarketplaceFooter() {
     {
       heading: 'Help & Legal',
       links: [
-        { label: 'How It Works',     to: '/guides/how-it-works' },
+        { label: 'How It Works',     to: '/guides' },
         { label: 'FAQ',              to: '/guides/faq' },
         { label: 'Terms of Service', to: '/terms' },
         { label: 'Privacy Policy',   to: '/privacy' },

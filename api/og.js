@@ -11,6 +11,10 @@ import { GUIDE_META, GUIDE_STEPS, GUIDE_FAQS, GUIDE_TIPS, GUIDE_FAQ_LD } from ".
 import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle } from "../src/config/featurePagesCopy.js";
 import { SALESMAN_PLANS, DEALER_PLANS } from "../src/utils/plans.js";
 import { TERMS, PRIVACY, DPA, LEGAL_META } from "../src/legal/legalDocs.js";
+import {
+  HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs, hubSlug as hubSlugOf, findHub, hubCopy, hubCrumbs, hubCarFilter, faqLd, breadcrumbLd,
+} from "../src/utils/modelHubs.js";
+import { canonicalModel } from "../src/utils/modelKey.js";
 
 export const config = { runtime: "edge" };
 
@@ -153,6 +157,75 @@ async function getSalesmanCars(id) {
   return { cars, soldCount: Number(stats[0]?.sold_count) || 0 };
 }
 
+// ── Brand/model hubs (/used-cars/...) ────────────────────────────────────────
+// All grouping + copy lives in src/utils/modelHubs.js (shared with the SPA page
+// and the sitemap). Here: fetch the rows, render crawler HTML.
+async function getHubs() {
+  const rows = await sbFetch(`public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&select=${HUB_ROW_COLS}&limit=5000`);
+  return buildHubs(rows);
+}
+
+async function getHubCars(brand, model) {
+  const or = encodeURIComponent(`(${hubCarFilter(brand, model)})`);
+  return sbFetch(
+    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
+  );
+}
+
+const crumbHtml = (crumbs) =>
+  `<nav aria-label="Breadcrumb">${crumbs.map((c) => `<a href="${SITE_URL}${c.path === "/" ? "" : c.path}">${esc(c.name)}</a>`).join(" › ")}</nav>`;
+
+function buildHubHtml(hubs, brand, model, cars) {
+  const copy = hubCopy(brand, model);
+  const crumbs = hubCrumbs(brand, model);
+  const canonical = `${SITE_URL}${model ? model.path : brand ? brand.path : HUB_BASE}`;
+  const carItems = cars.map((c) => {
+    const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+    const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
+    const km = c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : "";
+    return `<li><a href="${SITE_URL}/showroom/${esc(c.slug)}">${esc(name)}</a> — ${esc(price)}${esc(km)}${c.state ? ` · ${esc(c.state)}` : ""}</li>`;
+  }).join("\n      ");
+  const hubLink = (h, label) => `<li><a href="${SITE_URL}${h.path}">${esc(label)}</a> (${h.count})</li>`;
+  let nav = "";
+  if (!brand) {
+    nav = hubs.map((b) => `<h2><a href="${SITE_URL}${b.path}">Used ${esc(b.brand)}</a> (${b.count})</h2><ul>${b.models.map((m) => hubLink(m, `${b.brand} ${m.model}`)).join("")}</ul>`).join("\n    ");
+  } else if (!model) {
+    nav = `<h2>${esc(brand.brand)} models for sale</h2><ul>${brand.models.map((m) => hubLink(m, `${brand.brand} ${m.model}`)).join("")}</ul>`;
+  } else {
+    const others = brand.models.filter((m) => m.slug !== model.slug);
+    nav = others.length ? `<h2>Other ${esc(brand.brand)} models</h2><ul>${others.map((m) => hubLink(m, `${brand.brand} ${m.model}`)).join("")}</ul>` : "";
+  }
+  const listLd = cars.length
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        name: copy.h1,
+        numberOfItems: cars.length,
+        itemListElement: cars.map((c, i) => ({
+          "@type": "ListItem", position: i + 1, url: `${SITE_URL}/showroom/${c.slug}`,
+          name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
+        })),
+      }
+    : null;
+  const body = `  <main>
+    ${crumbHtml(crumbs)}
+    <h1>${esc(copy.h1)}</h1>
+    <p>${esc(copy.intro)}</p>
+    ${brand ? `<h2>${esc(copy.h1.replace(/^Used /, "").replace(/ for sale$/, ""))} listings</h2>\n    <ul>\n      ${carItems}\n    </ul>` : ""}
+    ${nav}
+    ${copy.faqs.length ? `<h2>FAQ</h2>\n    ${faqHtml(copy.faqs)}` : ""}
+    <p><a href="${SITE_URL}/showroom">Browse all used cars</a> · <a href="${SITE_URL}/calculator">Car loan calculator</a> · <a href="${SITE_URL}/guides/buying">Buyer's guide</a></p>
+  </main>`;
+  return htmlShell({
+    title: copy.title,
+    description: copy.description,
+    canonical,
+    image: cars[0]?.images?.[0] || undefined,
+    jsonLd: [breadcrumbLd(crumbs, SITE_URL), listLd, faqLd(copy.faqs)],
+    body,
+  });
+}
+
 // ── HTML shell ────────────────────────────────────────────────────────────────
 function htmlShell({ lang = "en", title, description, canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body }) {
   const ld = jsonLd
@@ -261,7 +334,7 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
   }));
 }
 
-function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
+function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null) {
   const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
   // Chassis/generation code (e.g. "G82") — enthusiasts search "m4 g82"; surfacing
   // it in the title/H1/description is what lets Google match those queries to us.
@@ -296,7 +369,9 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
     ["Condition", car.is_recon ? `Recon${car.auction_grade ? ` (grade ${car.auction_grade})` : ""}` : "Used"],
     ["Location", location],
   ].filter(([, v]) => v).map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join("\n      ");
+  const modelHub = crumbs && crumbs.length > 3 ? crumbs[crumbs.length - 1] : null;
   const body = `  <main>
+    ${crumbs ? crumbHtml(crumbs) : ""}
     <h1>${esc(name)}</h1>
     <p><strong>${esc(priceFormatted)}</strong></p>
     ${imgs}
@@ -306,13 +381,17 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase) {
     </ul>
     ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
     ${dealer?.dealership ? `<p>Sold by ${dealer.url ? `<a href="${esc(dealer.url)}">${esc(dealer.dealership)}</a>` : esc(dealer.dealership)}${dealer.kind === "agent" ? " (car agent)" : ""}.</p>` : ""}
+    ${modelHub ? `<p><a href="${SITE_URL}${modelHub.path}">More used ${esc(car.brand)} ${esc(modelHub.name)} for sale</a></p>` : ""}
     <p><a href="${baseUrl}${carBase}">Browse more used cars on xdrive.my</a></p>
   </main>`;
   return htmlShell({
     title: `${name} — ${priceFormatted} | xdrive.my`,
     description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on xdrive.my.`,
     canonical, image,
-    jsonLd: [buildCarSchema(car, dealer, canonical, feats, chassis)],
+    jsonLd: [
+      buildCarSchema(car, dealer, canonical, feats, chassis),
+      crumbs ? breadcrumbLd([...crumbs, { name, path: null }], SITE_URL) : null,
+    ],
     body,
   });
 }
@@ -356,7 +435,7 @@ const BRAND_LD = [
   },
 ];
 
-function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase, extraLd = [] }) {
+function buildListingHtml({ title, description, h1, intro, cars, canonical, baseUrl, carBase, extraLd = [], hubs = [] }) {
   const items = cars.map((c) => {
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
@@ -380,6 +459,9 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     <ul>
       ${items || "<li>New listings coming soon.</li>"}
     </ul>
+    ${hubs.length ? `<h2>Browse used cars by brand and model</h2>
+    <ul>${hubs.map((b) => `<li><a href="${SITE_URL}${b.path}">${esc(b.brand)}</a> (${b.count}): ${b.models.map((m) => `<a href="${SITE_URL}${m.path}">${esc(m.model)}</a>`).join(", ")}</li>`).join("")}</ul>
+    <p><a href="${SITE_URL}${HUB_BASE}">All brands and models</a></p>` : ""}
   </main>`;
   return htmlShell({ title, description, canonical, jsonLd: [...extraLd, itemList], body });
 }
@@ -814,8 +896,17 @@ export default async function handler(req) {
   if (carMatch) {
     const car = await getListingData(decodeURIComponent(carMatch[1]));
     if (!car) return new Response("Not found", { status: 404 });
-    const dealer = await getSellerData(car);
-    return html(buildCarHtml(car, dealer, `${baseUrl}${pathname}`, baseUrl, carBase));
+    const [dealer, hubs] = await Promise.all([getSellerData(car), subdomain ? [] : getHubs()]);
+    // Link the car up to its brand/model hub when that hub exists (it only
+    // exists while the model has a live car, so a sold unit may get brand only).
+    const cm = canonicalModel(car.brand, car.model);
+    const { brand: hubBrand, model: hubModel } = findHub(
+      hubs,
+      hubSlugOf(cm.brand || car.brand),
+      hubSlugOf(cm.matched ? cm.model : car.model),
+    );
+    const crumbs = hubBrand ? hubCrumbs(hubBrand, hubModel) : null;
+    return html(buildCarHtml(car, dealer, `${baseUrl}${pathname}`, baseUrl, carBase, crumbs));
   }
 
   // 2. Article pages
@@ -837,6 +928,9 @@ export default async function handler(req) {
   }
   // Only /guides, /guides/faq and /guides/buying exist; anything else under
   // /guides would be a duplicate of /guides, so crawlers get a 404.
+  // /guides/how-it-works was the footer's URL for /guides (same page): send
+  // crawlers to the one canonical address instead of a 404.
+  if (pathname === "/guides/how-it-works") return new Response(null, { status: 301, headers: { Location: `${SITE_URL}/guides` } });
   if (pathname.startsWith("/guides/")) return new Response("Not found", { status: 404 });
 
   // 4. Listing index pages (root home/marketplace/showroom/cars, or tenant home/cars)
@@ -867,7 +961,22 @@ export default async function handler(req) {
     // Root homepage carries the Organization + WebSite/SearchAction brand schema;
     // the other index pages (marketplace/showroom/cars) stay ItemList-only.
     const extraLd = pathname === "/" ? BRAND_LD : [];
-    return html(buildListingHtml({ title: m.title, description: m.desc, h1: m.h1, intro: m.desc, cars, canonical, baseUrl, carBase, extraLd }));
+    const hubs = await getHubs();
+    return html(buildListingHtml({ title: m.title, description: m.desc, h1: m.h1, intro: m.desc, cars, canonical, baseUrl, carBase, extraLd, hubs }));
+  }
+
+  // 4b. Brand/model hubs — marketplace only (tenant sites have no hubs).
+  const hubMatch = pathname.match(/^\/used-cars(?:\/([^/]+))?(?:\/([^/]+))?$/);
+  if (hubMatch) {
+    if (subdomain) return new Response("Not found", { status: 404 });
+    const hubs = await getHubs();
+    const [, bSlug, mSlug] = hubMatch;
+    const { brand, model } = findHub(hubs, bSlug && decodeURIComponent(bSlug), mSlug && decodeURIComponent(mSlug));
+    // Unknown brand/model, or one with no live car: a real 404, never an empty
+    // page (soft 404) and never the generic fallback.
+    if ((bSlug && !brand) || (mSlug && !model)) return new Response("Not found", { status: 404 });
+    const cars = brand ? await getHubCars(brand, model) : [];
+    return html(buildHubHtml(hubs, brand, model, cars));
   }
 
   // 4c. Salesman mini page (/s/:slug) — the agent's public storefront. Uses the

@@ -357,6 +357,21 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   embed is null for every logged-out buyer; a filter on it silently matches
   everything. Rule: role 'salesman' = "Agent", everything else = "Dealer" —
   same rule in the query, the chip and ShowroomCard's badge.
+- **"Find a car by model" = the hub pages, `/used-cars/:brand/:model`.** One
+  module, `src/utils/modelHubs.js`, owns the URL, the grouping and every
+  sentence, and is shared by the SPA page (`UsedCarsHubPage.jsx`), the crawler
+  render (`api/og.js`) and the sitemap. Grouping goes through `canonicalModel`
+  (modelKey.js); the DB trigger `trg_normalize_car_model` (on `car_listings`)
+  keeps `model` to the plain catalogue name and moves engine size / trim into
+  `variant`, so do not re-add a model free-text path that bypasses it. A hub
+  exists only while its model has a live car (else 404, never an empty page),
+  and its copy may only quote numbers from the rows (asking prices, counts).
+  Brand-only `/showroom/<brand>` is impossible: it collides with car slugs.
+- **Every public page needs a crawler entry in `api/og.js`.** Bots never run
+  the SPA; a route missing there gets the generic "Quality used cars" page.
+  Share the copy through a `src/config/*Copy.js` file (see
+  `salesmanLandingCopy.js`, `guidesCopy.js`, `featurePagesCopy.js`) — never
+  retype it into og.js.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.

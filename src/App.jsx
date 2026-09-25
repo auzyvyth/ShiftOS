@@ -29,6 +29,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 // pulled the listing-form + drag-drop library onto the public landing page and
 // jammed first paint. Sibling CarDetailPage is already lazy for the same reason.
 const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
+const UsedCarsHubPage = lazy(() => import("./pages/UsedCarsHubPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
@@ -148,6 +149,10 @@ function App() {
           <Route path="/marketplace" element={<MarketplaceRedirect />} />
           <Route path="/showroom" element={<CarListingPage />} />
           <Route path="/showroom/:slug" element={<CarDetailPage />} />
+          {/* Brand/model landing pages — the indexable way to find a car by model */}
+          <Route path="/used-cars" element={<UsedCarsHubPage />} />
+          <Route path="/used-cars/:brand" element={<UsedCarsHubPage />} />
+          <Route path="/used-cars/:brand/:model" element={<UsedCarsHubPage />} />
           <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />

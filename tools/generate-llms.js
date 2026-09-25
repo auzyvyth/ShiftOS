@@ -46,6 +46,7 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 ## For car buyers
 - [Marketplace](${SITE}/): Browse verified used cars for sale in Malaysia from trusted dealers.
 - [Showroom / all listings](${SITE}/showroom): Full searchable inventory with filters for price, mileage, year, transmission, condition and location.
+- [Used cars by brand and model](${SITE}/used-cars): Every brand and model currently for sale on XDrive, each with its own page (e.g. /used-cars/toyota/alphard) listing live cars, the asking-price range, model years and locations.
 - [Compare cars](${SITE}/compare): Compare up to 4 used cars side by side on price, monthly instalment, mileage, running costs and an overall value score.
 - [Loan calculator](${SITE}/calculator): Estimate monthly hire-purchase instalments for a used car (interest, tenure, down payment).
 
