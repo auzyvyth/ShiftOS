@@ -29,6 +29,7 @@ const TABLE = {
     "X6": [{ from: 2008, to: 2014, code: "E71" }, { from: 2015, to: 2019, code: "F16" }, { from: 2020, to: null, code: "G06" }],
     "X7": [{ from: 2019, to: null, code: "G07" }],
     "Z4": [{ from: 2002, to: 2008, code: "E85/E86" }, { from: 2009, to: 2016, code: "E89" }, { from: 2019, to: null, code: "G29" }],
+    "6 SERIES": [{ from: 2004, to: 2010, code: "E63/E64" }, { from: 2011, to: 2018, code: "F06/F12/F13" }],
   },
   MERCEDES: {
     "A-CLASS": [{ from: 2012, to: 2018, code: "W176" }, { from: 2018, to: null, code: "W177" }],
@@ -44,6 +45,7 @@ const TABLE = {
     "GLB": [{ from: 2020, to: null, code: "X247" }],
     "GLS": [{ from: 2016, to: 2019, code: "X166" }, { from: 2020, to: null, code: "X167" }],
     "SLK": [{ from: 1996, to: 2003, code: "R170" }, { from: 2004, to: 2010, code: "R171" }, { from: 2011, to: 2016, code: "R172" }],
+    "SL": [{ from: 1989, to: 2001, code: "R129" }, { from: 2002, to: 2011, code: "R230" }, { from: 2012, to: 2020, code: "R231" }],
   },
   AUDI: {
     "A3": [{ from: 2003, to: 2012, code: "8P" }, { from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
@@ -101,6 +103,9 @@ const TABLE = {
   },
   PEUGEOT: {
     "2008": [{ from: 2013, to: 2019, code: "A94" }, { from: 2020, to: null, code: "P24" }],
+  },
+  RENAULT: {
+    "FLUENCE": [{ from: 2012, to: 2017, code: "L38" }],
   },
   MINI: {
     "CLUBMAN": [{ from: 2008, to: 2014, code: "R55" }, { from: 2016, to: 2023, code: "F54" }],

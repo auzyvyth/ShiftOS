@@ -61,6 +61,7 @@ import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
 import { isSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
+import { apiUrl } from "../utils/apiUrl";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
@@ -1548,7 +1549,7 @@ export default function CarDetailPage() {
       metadata: { source: "car_detail" },
     });
     try {
-      const res = await fetch("/api/call-number", {
+      const res = await fetch(apiUrl("/api/call-number"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ carId: car.id }),
@@ -1606,7 +1607,7 @@ export default function CarDetailPage() {
     // the enquiry_to_lead trigger on whatsapp_enquiries) behind the Turnstile
     // gate. Do NOT also call create_lead_from_whatsapp directly here — that
     // produced a duplicate lead per enquiry.
-    fetch("/api/enquiry", {
+    fetch(apiUrl("/api/enquiry"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1648,7 +1649,7 @@ export default function CarDetailPage() {
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
     try {
-      const res = await fetch("/api/booking", {
+      const res = await fetch(apiUrl("/api/booking"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

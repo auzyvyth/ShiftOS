@@ -37,6 +37,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { lookupFullSpec } from "../utils/carSpecs";
+import { apiUrl } from "../utils/apiUrl";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { getListingGaps } from "../utils/listingCompleteness";
@@ -1233,7 +1234,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     (async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`/api/car-specs?make=${encodeURIComponent(form.brand)}&model=${encodeURIComponent(form.model)}&year=${y}`, {
+        const res = await fetch(apiUrl(`/api/car-specs?make=${encodeURIComponent(form.brand)}&model=${encodeURIComponent(form.model)}&year=${y}`), {
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         });
         if (!res.ok) return;

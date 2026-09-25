@@ -4,11 +4,13 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
+import { applyCors } from '../lib/cors.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }

@@ -5,6 +5,7 @@ import { getRef } from '../utils/refTracking';
 import { loadBuyerDetails, saveBuyerDetails } from '../utils/consent';
 import { supabase } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
+import { apiUrl } from '../utils/apiUrl';
 import Turnstile from './Turnstile';
 
 // Lazy for the same reason as in ConsentBanner: this component is reachable from
@@ -75,7 +76,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     // Remember on this device for next time (no-ops without preferences consent).
     saveBuyerDetails({ name: nm, phone: phone.trim(), state });
     if (dealerId) {
-      fetch('/api/whatsapp-lead', {
+      fetch(apiUrl('/api/whatsapp-lead'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

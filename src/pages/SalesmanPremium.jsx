@@ -223,6 +223,7 @@ const SETTINGS_GROUPS = [
  // (PREM-I18N-2).
  { key: "language", icon: Globe, label: "Language", desc: "Panel display language" },
  { key: "help", icon: Sparkles, label: "Product Tour", desc: "Replay the walkthrough" },
+ { key: "danger", icon: Trash2, label: "Delete Account", desc: "Close your account" },
  ]},
 ];
 
@@ -478,6 +479,9 @@ export default function SalesmanPremium() {
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+ const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+ const [deleteConfirmText, setDeleteConfirmText] = useState("");
+ const [deleting, setDeleting] = useState(false);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  const [linkCarQuery, setLinkCarQuery] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
@@ -695,7 +699,8 @@ export default function SalesmanPremium() {
  showAddLead || waModalLead || bookingDetailId || notifOpen ||
  testDriveConfirm || broadcastCar || aiCaptionCar ||
  confirmBookingApt || sellerBookingLead || mobileNavOpen ||
- drawerLeadId || linkCarLeadId || logoutConfirmOpen || followUpModalLead
+ drawerLeadId || linkCarLeadId || logoutConfirmOpen || followUpModalLead ||
+ deleteConfirmOpen
  );
  useEffect(() => {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
@@ -1487,6 +1492,31 @@ export default function SalesmanPremium() {
  // Signing out must not leave this rep's buyer list cached on the device.
  clearPanelDataCache();
  window.location.href = "https://xdrive.my/login";
+ };
+
+ // Danger Zone — self-service account deletion (MOBILE-7), same edge function
+ // and soft-delete/30-day-grace shape as SalesmanLite's. This solo Premium
+ // account was already eligible on the backend (role='salesman', dealer_id
+ // NULL) — it just had no in-app button to reach it.
+ const handleDeleteAccount = async () => {
+ if (deleteConfirmText.trim().toUpperCase() !== "DELETE") return;
+ setDeleting(true);
+ try {
+ const { data, error } = await supabase.functions.invoke("delete-account");
+ if (error || (data && data.error)) {
+ console.error("delete-account:", error || data?.error);
+ toast.error("Couldn't delete your account. Please try again.");
+ setDeleting(false);
+ return;
+ }
+ await supabase.auth.signOut({ scope: "global" });
+ clearPanelDataCache();
+ window.location.href = "https://xdrive.my/login";
+ } catch (e) {
+ console.error("delete-account:", e);
+ toast.error("Couldn't delete your account. Please try again.");
+ setDeleting(false);
+ }
  };
 
  const updateLeadStage = async (leadId, stage) => {
@@ -5283,6 +5313,24 @@ export default function SalesmanPremium() {
  </div>
  </>
  )}
+ {nav === "danger" && (
+ <div style={{ padding: "16px", background: "rgba(248,113,113,0.03)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 12 }}>
+ <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+ Danger Zone
+ </p>
+ <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, maxWidth: 460 }}>
+ Deleting your account hides your public page and listings immediately. Nothing
+ is destroyed for 30 days — logging back in within that window restores everything.
+ After that it's permanent.
+ </p>
+ <button
+ onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
+ style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Delete my account
+ </button>
+ </div>
+ )}
  </div>
  );
 
@@ -6917,6 +6965,48 @@ export default function SalesmanPremium() {
  style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}
  >
  Log out
+ </button>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ── Delete account confirm (Danger Zone) ── */}
+ {deleteConfirmOpen && (
+ <div
+ onClick={() => !deleting && setDeleteConfirmOpen(false)}
+ style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ >
+ <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 400, padding: 22, border: "1px solid rgba(255,255,255,0.08)" }}>
+ <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Delete your account?</p>
+ <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+ Your public page and listings disappear immediately. Everything is kept for 30
+ days — logging back in restores it. After that it's permanent and cannot be undone.
+ </p>
+ <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+ Type DELETE to confirm
+ </label>
+ <input
+ value={deleteConfirmText}
+ onChange={(e) => setDeleteConfirmText(e.target.value)}
+ placeholder="DELETE"
+ autoFocus
+ style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", letterSpacing: "0.05em", marginBottom: 16 }}
+ />
+ <div style={{ display: "flex", gap: 8 }}>
+ <button
+ onClick={() => setDeleteConfirmOpen(false)}
+ disabled={deleting}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ Cancel
+ </button>
+ <button
+ onClick={handleDeleteAccount}
+ disabled={deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
+ >
+ {deleting ? "Deleting…" : "Delete my account"}
  </button>
  </div>
  </div>

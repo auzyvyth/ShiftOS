@@ -2,6 +2,7 @@
 // Keeps the API key server-side and normalises the response shape
 
 import { createClient } from '@supabase/supabase-js';
+import { applyCors } from '../lib/cors.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -61,8 +62,7 @@ function normalise(raw) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  if (req.method === "OPTIONS") return res.status(200).end();
+  if (applyCors(req, res, 'GET, OPTIONS')) return;
 
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;

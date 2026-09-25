@@ -23,14 +23,16 @@ which case say so rather than picking a path yourself.
   `android/`, `ios/` are scaffolded — see `TODO.md` MOBILE-2 for what's real
   vs. still provisional (`appId` is a placeholder pending an owner call on
   whether the store listing is branded ShiftOS or XDrive). **Current
-  standing blocker: none technical** — MOBILE-4 CORS is DONE (2026-09-24,
-  `supabase/functions/_shared/cors.ts`). Next bricks (MOBILE-6 absolute /api URLs
-  in the app, MOBILE-7 in-app account deletion for every role — an Apple
-  rejection reason, MOBILE-5 subdomain-tenancy decision, store icon/splash assets, Apple
-  Developer + Google Play Console signups, a privacy policy URL, an
-  Android signing keystore) can all proceed independently; pick the next
-  unclaimed one each session. Update this line as each is resolved so it
-  never goes stale.
+  standing blocker: none technical** — MOBILE-4 CORS, MOBILE-6 absolute /api
+  URLs, and MOBILE-7 in-app account deletion (incl. the restore-gate UI on
+  DashboardPage/AccountPage) are all DONE (2026-09-24 —
+  `supabase/functions/_shared/cors.ts`, `src/utils/apiUrl.js` + `lib/cors.js`,
+  `supabase/functions/delete-account`). Next bricks (MOBILE-5
+  subdomain-tenancy decision, store icon/splash assets, Apple
+  Developer + Google Play Console signups, a privacy policy URL, an Android
+  signing keystore) can all proceed independently; pick the next unclaimed
+  one each session. Update this line as each is resolved so it never goes
+  stale.
 
 ## Capturing ideas — do this any time, unprompted
 Whenever the user floats a product/feature idea mid-conversation (not a direct

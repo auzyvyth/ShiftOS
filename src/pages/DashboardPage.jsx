@@ -1534,6 +1534,32 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
     window.location.href = "/login";
   };
 
+  // ── MOBILE-7: self-service account deletion (dealer/owner only — see the
+  // 'danger' nav item's gate above). Soft delete: flips this profile to
+  // account_status='deleted', which hides the storefront/listings immediately;
+  // nothing is actually destroyed until the 30-day purge cron runs, and
+  // logging back in before then restores everything (restore_my_account()).
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  useEffect(() => {
+    document.body.style.overflow = deleteConfirmOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [deleteConfirmOpen]);
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText.trim().toUpperCase() !== "DELETE") return;
+    setDeleting(true);
+    const { data, error } = await supabase.functions.invoke("delete-account");
+    if (error || (data && data.error)) {
+      console.error("delete-account:", error || data?.error);
+      toast.error("Couldn't delete your account. Please try again.");
+      setDeleting(false);
+      return;
+    }
+    await supabase.auth.signOut({ scope: "global" });
+    window.location.href = "/login";
+  };
+
   const removeMfaFactor = async (factorId) => {
     if (!window.confirm("Disable two-factor authentication for this account?")) return;
     setMfaBusy(true);
@@ -1612,6 +1638,14 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
       { key: 'security', icon: KeyRound, label: 'Security', desc: 'Password & 2-factor auth' },
       { key: 'team', icon: Lock, label: 'Team', desc: 'Staff access & roles' },
       { key: 'plan', icon: CreditCard, label: 'Plan & Billing', desc: 'Current plan & usage' },
+      // Self-service deletion is for the account that OWNS the dealership — a
+      // linked manager/admin/accountant/fi_officer sharing this same Settings
+      // tab is dealer-managed and cannot self-delete (delete-account 403s
+      // them regardless), so the option itself is hidden rather than shown
+      // and rejected.
+      ...(profile?.role === 'dealer' || profile?.role === 'owner'
+        ? [{ key: 'danger', icon: Trash2, label: 'Delete Account', desc: 'Close your dealer account' }]
+        : []),
     ]},
   ];
 
@@ -2365,6 +2399,29 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           </button>
         </div>
       </SettingsSection>}
+      {effectiveNav === 'danger' && <SettingsSection
+        title="Danger Zone"
+        subtitle="Permanently close your dealer account"
+        icon={Trash2}
+        iconColor="text-red-500"
+        iconBg="rgba(220,38,38,0.08)"
+        iconBorder="rgba(220,38,38,0.2)"
+      >
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <p className="text-gray-700 text-xs leading-relaxed mb-3">
+            Deleting your account hides your storefront and listings immediately.
+            Nothing is destroyed for 30 days — logging back in within that window
+            restores everything, including your staff and pipeline. After that,
+            it's permanent and cannot be undone.
+          </p>
+          <button
+            onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
+            className="text-red-600 text-xs font-semibold border border-red-300 rounded-lg px-3.5 py-2 bg-white hover:bg-red-50"
+          >
+            Delete my account
+          </button>
+        </div>
+      </SettingsSection>}
       {effectiveNav === 'team' && <SettingsSection
         title="Team Permissions"
         subtitle="Control what each staff role can see and do"
@@ -2697,6 +2754,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
   );
 
   return (
+    <>
     <div style={{ background: '#f5f6f8', borderRadius: 12, border: '1px solid #e5e7eb' }}>
       {/* ── MOBILE ── */}
       <div className="md:hidden">
@@ -2793,6 +2851,46 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
         </div>
       </div>
     </div>
+    {deleteConfirmOpen && createPortal(
+      <div
+        onClick={() => !deleting && setDeleteConfirmOpen(false)}
+        style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      >
+        <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-[400px] p-6 border border-gray-200 shadow-2xl">
+          <p className="text-gray-900 text-base font-bold mb-1.5">Delete your dealer account?</p>
+          <p className="text-gray-500 text-xs leading-relaxed mb-4">
+            Your storefront and listings disappear immediately. Everything is kept for 30
+            days — logging back in restores it. After that it's permanent and cannot be undone.
+          </p>
+          <label className="block text-gray-500 text-[11px] mb-1.5">Type DELETE to confirm</label>
+          <input
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            placeholder="DELETE"
+            autoFocus
+            className="w-full border border-gray-300 rounded-lg text-gray-900 text-sm px-3 py-2.5 mb-4 outline-none tracking-wider"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleteConfirmOpen(false)}
+              disabled={deleting}
+              className="flex-1 text-gray-700 text-sm font-semibold border border-gray-200 rounded-lg py-2.5 bg-gray-50 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || deleteConfirmText.trim().toUpperCase() !== 'DELETE'}
+              className="flex-1 text-white text-sm font-bold rounded-lg py-2.5 bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deleting ? 'Deleting…' : 'Delete my account'}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    )}
+    </>
   );
 }
 
@@ -9493,6 +9591,7 @@ export default function DashboardPage() {
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [reactivating, setReactivating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState(() => {
     const gid = TAB_TO_GROUP[tabParam || "overview"];
@@ -10402,6 +10501,63 @@ export default function DashboardPage() {
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
   if (!profile) return <SciFiLoader />;
+
+  // MOBILE-7 follow-up: self-service restore within the 30-day grace window
+  // after a delete-account soft delete (SettingsTab's Danger Zone). Same
+  // restore_my_account() RPC as SalesmanLite's own gate — it checks the
+  // window server-side, so this is only ever a thin UI around it.
+  const handleReactivate = async () => {
+    setReactivating(true);
+    const { error } = await supabase.rpc('restore_my_account');
+    if (error) {
+      console.error('reactivate:', error);
+      toast.error(
+        error.message?.includes('restore_window_expired')
+          ? 'The 30-day window to restore this account has passed.'
+          : "Couldn't restore your account. Please try again.",
+      );
+      setReactivating(false);
+      return;
+    }
+    window.location.reload();
+  };
+
+  if (profile.account_status === 'deleted') {
+    const deletedAt = profile.deleted_at ? new Date(profile.deleted_at) : null;
+    const daysLeft = deletedAt
+      ? Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / 86400000))
+      : 30;
+    return (
+      <div style={{ minHeight: '100vh', background: '#f5f6f8', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <div style={{ maxWidth: 420, textAlign: 'center', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+            <Trash2 size={24} color="#dc2626" />
+          </div>
+          <p className="text-gray-900 text-lg font-bold mb-2">Account scheduled for deletion</p>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            {daysLeft > 0
+              ? `You have ${daysLeft} day${daysLeft === 1 ? '' : 's'} left to restore this account before it's permanently deleted.`
+              : "This account's restore window has ended."}
+          </p>
+          <button
+            onClick={handleReactivate}
+            disabled={reactivating}
+            className="bg-red-600 text-white text-sm font-bold rounded-lg px-6 py-3 disabled:opacity-60"
+          >
+            {reactivating ? 'Restoring…' : 'Restore my account'}
+          </button>
+          <div>
+            <button
+              onClick={() => supabase.auth.signOut().then(() => navigate('/login'))}
+              className="mt-5 text-gray-400 text-xs underline bg-transparent border-none cursor-pointer"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Paid dealer whose payment isn't yet confirmed — gate the whole dashboard
   // behind the pending/payment screen until an admin marks payment received.
