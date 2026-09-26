@@ -70,6 +70,56 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## HP-EIR: loan calculators still use the abolished flat rate — logged 2026-09-26
+
+**Law (verified by search, not memory):** Hire-Purchase (Amendment) Act 2026,
+in force 1 June 2026. The flat rate and Rule of 78 are abolished for NEW
+agreements. Interest is charged on the reducing balance and the lender must
+quote the EIR (effective interest rate: the true yearly cost of the loan).
+Banks have until 31 March 2027 to switch their systems; 14 of 20 had switched
+by 18 Sep 2026. Caps for fixed-rate loans: 17% EIR up to 5 years, 16% over 5
+years; variable-rate: 17% at any tenure. Agreements signed before 1 June 2026
+stay on the old rules. Sources: BNM consumer guide (HP_Consumer_Guide_EN_2026),
+Malay Mail 2026-09-19, Lexology on the Terms Charges Regulations 2026.
+
+**The trap (do not repeat it):** the pasted analysis that prompted this said a
+buyer "saves RM 31,857" by moving to EIR. That is wrong. It kept the same 3.5%
+and only swapped the formula. 3.5% flat over 7 years is about 6.44% a year charged monthly, 6.64% once compounded (the
+owner's own quote sheet said 6.64%). A bank switching to reducing balance
+quotes ~6.6% EIR, so the instalment barely moves. If we swap the formula and
+keep 3.5%, every car page UNDERSTATES the instalment by ~9% (RM 3,689 vs
+RM 4,068 on a RM 274,500 loan). That is a buyer-facing number that is wrong in
+the buyer's favour, which is a consumer-protection problem, not a win.
+
+**Five separate formulas today, two different rates (the drift, again):**
+- `src/utils/financing.js:10` `calcMonthly` — 3.5% flat, 90% loan, 7y. Used by
+  ShowroomCard, CarCard, CarDetailPopup, CarDetailPage, ComparePage,
+  AffordabilityCheck, TikTokStudioV3.
+- `src/lib/leadsHelpers.js:160` `calcInstalment` — same maths, own copy.
+  Used by LeadDrawer (`:1203`, `:1715` label "flat rate est.").
+- `src/utils/dealSheet.js:7` `computeFinancing` — **2.45% flat**. Used by
+  Salesmanpanel deal sheet; rendered as "% p.a. flat" at `DealPage.jsx:277`.
+- `src/components/FinancingCalculator.jsx:546` — flat interest, then converts
+  flat -> EIR for display (`calcEIR`, `:81`). Closest to right already.
+- `src/components/AmortizationSchedule.jsx:12` — flat schedule (equal
+  interest every month). Under the new law this table is simply wrong.
+
+- [ ] **HP-EIR-1: one formula in `src/utils/financing.js`**, reducing balance:
+  `EMI = P * r * (1+r)^n / ((1+r)^n - 1)`, r = EIR/12. Every site above
+  imports it; delete the other copies. Unit test it (3.5% EIR, 274,500, 84
+  months -> RM 3,689.24).
+- [ ] **HP-EIR-2 (owner decision): the default rate.** Must be an EIR, e.g.
+  ~6.5% for recon/used, not 3.5%. Pick one default and say "estimate" beside it.
+- [ ] **HP-EIR-3: AmortizationSchedule** -> reducing balance rows (interest
+  falls, principal rises each month).
+- [ ] **HP-EIR-4: copy.** Every "flat" label (LeadDrawer, DealPage,
+  FinancingCalculator, `src/i18n/locales/{en,ms}.json`, `guidesCopy.js`) says
+  EIR. Old saved deal sheets store `interest_rate` as a flat number — label
+  those by date, never re-compute them silently.
+- [ ] **HP-EIR-5: until 31 Mar 2027 some banks still quote flat.** Decide
+  whether FinancingCalculator keeps a flat -> EIR converter for a salesman
+  holding an old-style bank quote. Buyer-facing surfaces show EIR only.
+
 ## PERF-LOAD: 15-second panel loads — diagnosed 2026-09-26, client half shipped
 
 Owner waited ~15s opening the app. Edge logs (last 24h) show the two worst
