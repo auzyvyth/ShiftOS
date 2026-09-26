@@ -116,6 +116,7 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import {
   Car,
   PlusCircle,
@@ -6110,7 +6111,7 @@ function ListingDetailDrawer({
   const sp = listing.selling_price || listing.price || 0;
   const op = listing.original_price || listing.previous_price || null;
   const saving = op && op > sp ? op - sp : 0;
-  const monthly = sp > 0 ? Math.round((sp * 0.9 * (1 + 3.5 / 100 * 7)) / (7 * 12)) : null;
+  const monthly = calcMonthly(sp);
   const pct = op && op > sp ? Math.round(((op - sp) / op) * 100) : 0;
   const gradeMeta = DRAWER_GRADE_COLORS[listing.auction_grade] || null;
   const intColor = { A:'#34d399', B:'#fbbf24', C:'#fb923c', D:'#93c5fd' }[listing.interior_grade] || '#9ca3af';
@@ -6258,7 +6259,7 @@ function ListingDetailDrawer({
                     <span style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: 4, padding: '1px 6px' }}>SAVE RM {saving.toLocaleString()}</span>
                   </div>
                 )}
-                {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>}
+                {monthly && <p style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · {DEFAULT_EIR}% EIR</p>}
               </div>
 
               {/* Specs strip */}
@@ -8663,7 +8664,8 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const calcLoanPayment = (amount, rate, months) => {
     const a = parseFloat(amount), r = parseFloat(rate), m = parseInt(months);
     if (!a || !r || !m) return '';
-    return ((a + a * (r / 100) * (m / 12)) / m).toFixed(2);
+    // Reducing balance on an EIR (HP (Amendment) Act 2026) — was flat.
+    return monthlyPayment(a, r, m).toFixed(2);
   };
 
   const gf = (field, value) => {
@@ -8802,6 +8804,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         monthly_payment: genForm.include_financing && genForm.monthly_payment ? Number(genForm.monthly_payment) : null,
         financing_bank: genForm.include_financing ? genForm.financing_bank : null,
         metadata: {
+          // New documents state their rate as EIR; older ones have no key and
+          // keep printing "flat", which is what they were computed with.
+          rate_basis:          genForm.include_financing ? RATE_BASIS : null,
           car_label:           car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : '',
           car_variant:         genForm.variant,
           car_engine_number:   genForm.engine_number,
@@ -8994,7 +8999,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         ${hasFinancing ? sect('Hire Purchase / Financing', `<table style="width:100%;border-collapse:collapse;">
           ${row('Financing Bank', doc.financing_bank)}
           ${row('Loan Amount', `RM ${Number(doc.loan_amount).toLocaleString()}`)}
-          ${row('Flat Interest Rate', `${doc.interest_rate}% p.a.`)}
+          ${row(rateLabel(doc.metadata?.rate_basis) === 'EIR' ? 'Interest Rate (EIR)' : 'Flat Interest Rate', `${doc.interest_rate}% p.a.`)}
           ${row('Tenure', `${doc.loan_tenure_months} months`)}
           ${doc.monthly_payment ? row('Est. Monthly Instalment', `RM ${Number(doc.monthly_payment).toLocaleString()}`) : ''}
         </table>`) : ''}
@@ -9446,7 +9451,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                       <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Financing Bank</label><input value={genForm.financing_bank} onChange={e => gf('financing_bank', e.target.value)} placeholder="e.g. Maybank, CIMB" className={iCls} /></div>
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Loan Amount (RM)</label><input type="number" value={genForm.loan_amount} onChange={e => gf('loan_amount', e.target.value)} placeholder="0" className={iCls} /></div>
-                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Interest Rate (% p.a.)</label><input type="number" step="0.01" value={genForm.interest_rate} onChange={e => gf('interest_rate', e.target.value)} placeholder="3.5" className={iCls} /></div>
+                        <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Interest Rate (% EIR)</label><input type="number" step="0.01" value={genForm.interest_rate} onChange={e => gf('interest_rate', e.target.value)} placeholder={String(DEFAULT_EIR)} className={iCls} /></div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Tenure (months)</label><input type="number" value={genForm.loan_tenure_months} onChange={e => gf('loan_tenure_months', e.target.value)} placeholder="84" className={iCls} /></div>

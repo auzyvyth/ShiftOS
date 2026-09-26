@@ -91,34 +91,25 @@ keep 3.5%, every car page UNDERSTATES the instalment by ~9% (RM 3,689 vs
 RM 4,068 on a RM 274,500 loan). That is a buyer-facing number that is wrong in
 the buyer's favour, which is a consumer-protection problem, not a win.
 
-**Five separate formulas today, two different rates (the drift, again):**
-- `src/utils/financing.js:10` `calcMonthly` — 3.5% flat, 90% loan, 7y. Used by
-  ShowroomCard, CarCard, CarDetailPopup, CarDetailPage, ComparePage,
-  AffordabilityCheck, TikTokStudioV3.
-- `src/lib/leadsHelpers.js:160` `calcInstalment` — same maths, own copy.
-  Used by LeadDrawer (`:1203`, `:1715` label "flat rate est.").
-- `src/utils/dealSheet.js:7` `computeFinancing` — **2.45% flat**. Used by
-  Salesmanpanel deal sheet; rendered as "% p.a. flat" at `DealPage.jsx:277`.
-- `src/components/FinancingCalculator.jsx:546` — flat interest, then converts
-  flat -> EIR for display (`calcEIR`, `:81`). Closest to right already.
-- `src/components/AmortizationSchedule.jsx:12` — flat schedule (equal
-  interest every month). Under the new law this table is simply wrong.
+**BUILT 2026-09-26.** 15 places computed loan maths, with three bank
+rate tables and defaults of 3.5% and 2.45% flat; all now use `src/utils/financing.js` (reducing balance,
+`DEFAULT_EIR` 6.5, one `BANK_RATES` table, `flatToEir`), tested by
+`tests/financing.test.mjs`. Saved records keep their old meaning:
+deal sheets / loan attempts / documents carry `rate_basis: 'eir'` (absent =
+flat), `deal_financials.loan_rate_basis` (44 existing deals backfilled `flat`,
+migration 20260926e), and `get_loan_share` passes `rate_basis` through
+(20260926d). Both migrations applied live at 23:30 MYT.
 
-- [ ] **HP-EIR-1: one formula in `src/utils/financing.js`**, reducing balance:
-  `EMI = P * r * (1+r)^n / ((1+r)^n - 1)`, r = EIR/12. Every site above
-  imports it; delete the other copies. Unit test it (3.5% EIR, 274,500, 84
-  months -> RM 3,689.24).
-- [ ] **HP-EIR-2 (owner decision): the default rate.** Must be an EIR, e.g.
-  ~6.5% for recon/used, not 3.5%. Pick one default and say "estimate" beside it.
-- [ ] **HP-EIR-3: AmortizationSchedule** -> reducing balance rows (interest
-  falls, principal rises each month).
-- [ ] **HP-EIR-4: copy.** Every "flat" label (LeadDrawer, DealPage,
-  FinancingCalculator, `src/i18n/locales/{en,ms}.json`, `guidesCopy.js`) says
-  EIR. Old saved deal sheets store `interest_rate` as a flat number — label
-  those by date, never re-compute them silently.
-- [ ] **HP-EIR-5: until 31 Mar 2027 some banks still quote flat.** Decide
-  whether FinancingCalculator keeps a flat -> EIR converter for a salesman
-  holding an old-style bank quote. Buyer-facing surfaces show EIR only.
+- [ ] **HP-EIR-2 (owner decision): confirm the 6.5% EIR default.** Chosen as
+  the EIR of the old 3.5% flat over 7 years, so estimates did not move. It is
+  one constant: `DEFAULT_EIR` in `src/utils/financing.js`.
+- [ ] **HP-EIR-5 (owner decision): a "bank quoted me flat" converter on the
+  public calculator?** Banks may quote flat until 31 Mar 2027. `flatToEir()`
+  exists; no UI uses it yet (the Loan Desk note tells salesmen to ask for the
+  EIR instead). Adding it is one input; skipping it avoids clutter.
+- [ ] **HP-EIR-6: `AccountantPanel.jsx` keeps its own bank promo table**
+  (`MY_BANK_FLAT_PROMOS`, 13 banks, new-car rates) converted to EIR on load.
+  Fold it into `BANK_RATES` once someone confirms current rates per bank.
 
 ## PERF-LOAD: 15-second panel loads — diagnosed 2026-09-26, client half shipped
 

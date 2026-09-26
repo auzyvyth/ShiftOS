@@ -11,6 +11,7 @@ import LeadSourceBadge from './LeadSourceBadge';
 import PostSaleChecklist from '../postsale/PostSaleChecklist';
 import ChatSheet from '../chat/ChatSheet';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
+import { DEFAULT_EIR, loanTotals, RATE_BASIS } from '../../utils/financing';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
   STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, DEFAULT_WA_TEMPLATES, renderWaTemplate,
@@ -205,7 +206,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [generatingLink, setGeneratingLink] = useState(false);
   const [dealLinkCopied, setDealLinkCopied] = useState(false);
   const [minsLeft, setMinsLeft]             = useState(null);
-  const [calcState, setCalcState]           = useState({ dpPct: 10, loanTerm: 7, intRate: 3.5, engineCc: '', vehicleType: 'Saloon', insNcd: 55 });
+  const [calcState, setCalcState]           = useState({ dpPct: 10, loanTerm: 7, intRate: DEFAULT_EIR, engineCc: '', vehicleType: 'Saloon', insNcd: 55 });
 
   // HP / Financing state
   const [hpRows, setHpRows]     = useState([]);
@@ -532,9 +533,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       const carPrice   = Number(fullCar?.selling_price || car.selling_price || 0);
       const ccToUse    = calcState.engineCc || (fullCar?.engine_cc ? String(fullCar.engine_cc) : '');
       const loanAmt    = Math.max(0, carPrice - carPrice * calcState.dpPct / 100);
-      const monthly    = calcState.loanTerm > 0
-        ? (loanAmt + loanAmt * (calcState.intRate / 100) * calcState.loanTerm) / (calcState.loanTerm * 12) : 0;
-      const eir        = +(calcState.intRate * 1.85).toFixed(2);
+      // intRate IS the EIR now (reducing balance). The old line here guessed
+      // an "EIR" as flat x 1.85 and put that guess on the buyer's deal sheet.
+      const loan       = loanTotals(loanAmt, calcState.intRate, calcState.loanTerm * 12);
+      const monthly    = loan.monthly;
+      const eir        = calcState.intRate;
       const roadTax    = calcRoadTaxEst(ccToUse);
       const insCalc    = calcInsuranceEst(carPrice, calcState.insNcd, calcState.vehicleType, ccToUse);
       const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
@@ -579,10 +582,11 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           loan_amount:    Math.round(loanAmt),
           tenure_years:   calcState.loanTerm,
           interest_rate:  calcState.intRate,
+          rate_basis:     RATE_BASIS,
           monthly_install: Math.round(monthly),
           eir,
-          total_interest:  Math.round(loanAmt * (calcState.intRate / 100) * calcState.loanTerm),
-          total_repayment: Math.round(loanAmt + loanAmt * (calcState.intRate / 100) * calcState.loanTerm),
+          total_interest:  Math.round(loan.totalInterest),
+          total_repayment: Math.round(loan.totalRepayment),
         },
         fees: {
           road_tax:  roadTax || 0,
@@ -657,9 +661,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // ── Inline deal calculator ────────────────────────────────────────────────────
   const carPriceNum    = car?.selling_price ? Number(car.selling_price) : 0;
   const dealLoanAmt    = Math.max(0, carPriceNum - carPriceNum * calcState.dpPct / 100);
-  const dealMonthly    = calcState.loanTerm > 0
-    ? (dealLoanAmt + dealLoanAmt * (calcState.intRate / 100) * calcState.loanTerm) / (calcState.loanTerm * 12)
-    : 0;
+  const dealMonthly    = loanTotals(dealLoanAmt, calcState.intRate, calcState.loanTerm * 12).monthly;
   const dealRoadTax    = calcRoadTaxEst(calcState.engineCc);
   const dealInsCalc    = carPriceNum > 0 ? calcInsuranceEst(carPriceNum, calcState.insNcd, calcState.vehicleType, calcState.engineCc) : null;
   const dealAddonsAmt  = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
@@ -1200,7 +1202,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#111827', margin: '0 0 2px' }}>{carLabel}</p>
                     {car.selling_price && <p style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', margin: 0 }}>RM {Number(car.selling_price).toLocaleString()}</p>}
-                    {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo (flat rate)</p>}
+                    {instalment && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>Est. RM {instalment.toLocaleString()}/mo (est.)</p>}
                     {(lead.stage === 'deposit_taken') && (
                       <p style={{ display: 'inline-block', fontSize: 10, fontWeight: 700, color: '#0d9488', background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '2px 7px', margin: '5px 0 0' }}>
                         Reserved{(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name) ? ` by ${(lead.salesman_profile?.full_name || lead.assigned_profile?.full_name).split(' ')[0]}` : ''}
@@ -1677,7 +1679,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                           </select>
                         </div>
                         <div>
-                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Interest % p.a.</p>
+                          <p style={{ fontSize: 10, color: '#9ca3af', marginBottom: 3 }}>Interest % EIR</p>
                           <input type="number" step="0.1" value={calcState.intRate}
                             onChange={e => setCalcState(s => ({ ...s, intRate: Number(e.target.value) }))}
                             style={{ ...w.inp, padding: '7px 10px', fontSize: 12 }} className="ld-inp" />
@@ -1712,7 +1714,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       {/* Results */}
                       <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: '10px 12px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid #f1f3f5' }}>
-                          <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment (flat rate est.)</span>
+                          <span style={{ fontSize: 12, color: '#6b7280' }}>Monthly Instalment (est., EIR)</span>
                           <span style={{ fontSize: 15, fontWeight: 800, color: '#6366f1' }}>RM {Math.round(dealMonthly).toLocaleString()}/mo</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

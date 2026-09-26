@@ -94,7 +94,7 @@ const CONTENT = {
       body: 'A deal sheet is a clean, branded one-page summary you send to a buyer — car, pricing, instalment estimate, fees, and your contact. It is generated from inside the lead drawer and lives on a shareable link valid for 24 hours.',
       items: [
         { label: 'Where to find it', desc: 'Open any lead with a car linked, then in the drawer tap "Customise & Generate" under Deal Sheet. If no car is linked the button reads "Link a car first" — link one to continue.' },
-        { label: 'Customise: HP financing', desc: 'Set the down payment %, the loan tenure (3, 5, 7 or 9 years), and the flat interest rate. The sheet calculates the estimated monthly instalment, total interest and total repayment for the buyer.' },
+        { label: 'Customise: HP financing', desc: 'Set the down payment %, the loan tenure (3, 5, 7 or 9 years), and the interest rate (EIR, charged on the reducing balance). The sheet calculates the estimated monthly instalment, total interest and total repayment for the buyer.' },
         { label: 'Customise: fees & registration', desc: 'Optionally add road tax, insurance and Puspakom amounts. Anything you enter is added into the on-road total shown on the sheet. Leave blank to omit.' },
         { label: 'Note to buyer', desc: 'Add a short personal note — e.g. "Offer valid this weekend only" or "Free first service included". It renders as a highlighted block on the sheet the buyer sees.' },
         { label: 'Branding', desc: 'The sheet automatically carries your dealer\'s name, logo, brand colour and disclaimer, with your name and WhatsApp as the contact. It looks identical in quality to a dealer-generated sheet.' },

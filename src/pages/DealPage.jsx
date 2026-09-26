@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { rateLabel } from '../utils/financing';
 
 function formatRM(n) {
   return 'RM ' + Number(n || 0).toLocaleString('en-MY');
@@ -274,7 +275,7 @@ export default function DealPage() {
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ fontSize: 12, color: '#6b7280' }}>Loan: <strong style={{ color: '#374151' }}>{formatRM(financing_calc.loan_amount)}</strong></p>
                     <p style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>Tenure: <strong style={{ color: '#374151' }}>{financing_calc.tenure_years} years</strong></p>
-                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>Rate: <strong style={{ color: '#374151' }}>{financing_calc.interest_rate}% p.a. flat</strong></p>
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 3 }}>Rate: <strong style={{ color: '#374151' }}>{financing_calc.interest_rate}% p.a. {rateLabel(financing_calc.rate_basis)}</strong></p>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>

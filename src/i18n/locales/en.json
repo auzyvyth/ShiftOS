@@ -164,7 +164,7 @@
       "findCarsBtn": "Find Cars in This Price Range"
     },
     "schedule": {
-      "title": "Amortization Schedule (Flat Rate)",
+      "title": "Amortization Schedule",
       "month": "Month",
       "payment": "Payment",
       "principal": "Principal",
@@ -179,7 +179,7 @@
       "tip1L2": "Interest Rate: The percentage a bank charges for lending you money. Lower is better.",
       "tip1L3": "Loan Term: How long you take to pay back the loan. Longer terms mean lower monthly payments but more total interest paid over time.",
       "tip2Title": "Typical interest rates in Malaysia",
-      "tip2Content1": "In Malaysia, car loan interest rates (hire purchase) typically operate on a flat rate basis and range from 2.5% to 4.5% for new cars, and 3.0% to 8.0% for used cars, depending on:",
+      "tip2Content1": "Since 1 June 2026, Malaysian hire-purchase loans charge interest only on the balance you still owe (the reducing balance), and banks must quote the EIR (effective interest rate). Compare EIR between banks. The rate you are offered depends on:",
       "tip2L1": "The car's age and condition",
       "tip2L2": "The borrowing bank's current campaigns",
       "tip2L3": "Your personal credit score (CTOS/CCRIS)",

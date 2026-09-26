@@ -5,6 +5,7 @@ import {
   MapPin, Palette, PlayCircle, Settings, X, ZoomIn,
 } from "lucide-react";
 import { DOC_TYPES } from "../utils/docTypes";
+import { DEFAULT_EIR } from "../utils/financing";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { calcMonthly } from "../utils/financing";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../theme/tokens";
@@ -216,7 +217,7 @@ export default function CarDetailPopup({
                   </div>
                 )}
                 {monthly > 0 && (
-                  <p style={{ fontSize: T.size.sm, color: C.textMuted, marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · 3.5% p.a.</p>
+                  <p style={{ fontSize: T.size.sm, color: C.textMuted, marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr · {DEFAULT_EIR}% EIR</p>
                 )}
               </div>
 

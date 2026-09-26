@@ -1079,6 +1079,19 @@ network before showing anything. Two layers, both purged on logout:
 - DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
 - A failed read keeps the cached value; never overwrite a good cache with [] on error.
 
+## Loan maths — ONE formula, EIR on the reducing balance (HP-EIR, 2026-09-26)
+Hire-Purchase (Amendment) Act 2026 (in force 1 June 2026) abolished the flat rate
+and the Rule of 78 for new agreements. Every instalment / total interest / schedule
+comes from `src/utils/financing.js` (`monthlyPayment`, `loanTotals`, `amortize`,
+`calcMonthly`, `BANK_RATES`, `DEFAULT_EIR`). There were 15 copies; do not add one.
+- **A flat number is not an EIR.** 3.5% flat over 7 years = 6.44% EIR. Feeding a
+  flat rate into the EIR formula understates the instalment ~9%, in the buyer's
+  favour — a consumer-protection problem. Convert with `flatToEir()`.
+- **Anything SAVED with a rate records its basis** (`rate_basis: RATE_BASIS` on deal
+  sheets, loan attempts, document metadata; `deal_financials.loan_rate_basis`).
+  Absent = saved before the switch = flat. Label with `rateLabel()`; never re-read
+  an old flat record as EIR or recompute it.
+
 ## RLS policy safety
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
 - For any policy that needs to reference `profiles` (especially policies ON profiles), use a SECURITY DEFINER helper that bypasses RLS: `get_my_dealer_id()`, `is_superadmin()`, `is_linked_salesman()`, `is_active_salesman()`

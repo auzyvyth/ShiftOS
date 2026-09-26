@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
+import { BANK_RATES, MAX_TENURE_YEARS, RATE_BASIS, rateLabel, monthlyPayment, monthsForPayment, principalForPayment } from "../../utils/financing";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 
 /*
@@ -29,19 +30,10 @@ import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../t
  * predicts a decision, and the copy says so out loud.
  */
 
-// Indicative promo rates. Flat p.a., which is how Malaysian hire purchase is
-// quoted. They move, so the rate stays editable per attempt rather than being
-// treated as a quote.
-export const BANKS = [
-  { name: "Public Bank",      rate: 3.20, islamic: false },
-  { name: "CIMB Bank",        rate: 3.25, islamic: false },
-  { name: "Maybank",          rate: 3.30, islamic: false },
-  { name: "RHB Bank",         rate: 3.50, islamic: false },
-  { name: "Hong Leong Bank",  rate: 3.50, islamic: false },
-  { name: "Affin Bank",       rate: 3.50, islamic: false },
-  { name: "Bank Muamalat",    rate: 3.60, islamic: true  },
-  { name: "Bank Islam",       rate: 3.60, islamic: true  },
-];
+// Indicative bank rates, as EIR — one table for the whole app
+// (src/utils/financing.js). They move, so the rate stays editable per attempt
+// rather than being treated as a quote.
+export const BANKS = BANK_RATES;
 
 // How the buyer earns decides which documents the bank asks for. Getting this
 // wrong is why a buyer gets sent home and comes back a week later.
@@ -85,30 +77,23 @@ const docSetFor = (employment) => DOC_SETS[employment] || DOC_SETS.Salaried;
 
 /* ── The arithmetic ──────────────────────────────────────────────────────── */
 
-// Malaysian hire purchase is quoted FLAT: interest = principal x rate x years,
-// spread evenly over every instalment. Not a reducing-balance amortisation.
-export const flatMonthly = (principal, ratePct, years) => {
-  if (!(principal > 0) || !(years > 0)) return 0;
-  return (principal + principal * (ratePct / 100) * years) / (years * 12);
-};
+// Hire purchase is charged on the REDUCING BALANCE at an EIR since the
+// Hire-Purchase (Amendment) Act 2026 — this desk used to quote flat. All three
+// helpers are the shared maths in src/utils/financing.js, in years.
+export const loanMonthly = (principal, ratePct, years) =>
+  years > 0 ? monthlyPayment(principal, ratePct, years * 12) : 0;
 
-// Years needed to bring `principal` down to a target instalment, same flat
-// formula rearranged. Returns null when no tenure can reach it (the interest
-// alone already exceeds the target).
+// Years needed to bring `principal` down to a target instalment. null when no
+// tenure can reach it (the first month's interest alone exceeds the target).
 const tenureForMonthly = (principal, ratePct, monthly) => {
-  const r = ratePct / 100;
-  const denom = 12 * monthly - principal * r;
-  if (denom <= 0) return null;
-  return principal / denom;
+  const months = monthsForPayment(principal, ratePct, monthly);
+  return months == null ? null : months / 12;
 };
 
 // Principal that lands exactly on a target instalment at a given tenure — the
 // difference against the current loan is the extra down payment needed.
-const principalForMonthly = (monthly, ratePct, years) => {
-  const r = ratePct / 100;
-  if (!(years > 0)) return 0;
-  return (monthly * 12 * years) / (1 + r * years);
-};
+const principalForMonthly = (monthly, ratePct, years) =>
+  years > 0 ? principalForPayment(monthly, ratePct, years * 12) : 0;
 
 // Debt service ratio: the share of net monthly income already committed to
 // debt once this car is added. Banks each set their own ceiling and lower
@@ -116,7 +101,7 @@ const principalForMonthly = (monthly, ratePct, years) => {
 // as a guide only.
 const dsrCeiling = (income) => (income < 3000 ? 60 : income <= 5000 ? 65 : 70);
 
-const MAX_TENURE = 9; // Hire Purchase Act caps consumer vehicle loans at 9 years
+const MAX_TENURE = MAX_TENURE_YEARS;
 
 const rm = (n) => "RM " + Math.round(Number(n) || 0).toLocaleString("en-MY");
 const rm2 = (n) => "RM " + Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -248,7 +233,7 @@ function DsrMeter({ income, commitments, monthly, loan, rate, tenure, onApplySug
   const toneText = dsr <= ceiling - 10 ? C.successText : over ? C.dangerText : C.warnText;
   const verdict = dsr <= ceiling - 10 ? "Comfortable" : over ? "Over the usual ceiling" : "Tight but within the usual ceiling";
 
-  // What it would take to get under the ceiling. Both are the same flat formula
+  // What it would take to get under the ceiling. Both are the same loan formula
   // rearranged, on figures the salesman entered — no estimate, no prediction.
   const headroom = income * (ceiling / 100) - commitments;
   const needTenure = over && headroom > 0 ? tenureForMonthly(loan, rate, headroom) : null;
@@ -301,7 +286,7 @@ function DsrMeter({ income, commitments, monthly, loan, rate, tenure, onApplySug
                   style={{ ...suggestionSx, cursor: "pointer" }}
                 >
                   <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    Stretch to <strong style={{ color: C.text }}>{tenureFix} years</strong> — instalment drops to about {rm(flatMonthly(loan, rate, tenureFix))}
+                    Stretch to <strong style={{ color: C.text }}>{tenureFix} years</strong> — instalment drops to about {rm(loanMonthly(loan, rate, tenureFix))}
                   </span>
                   <ChevronRight size={13} style={{ flexShrink: 0, color: C.textDim }} />
                 </button>
@@ -436,7 +421,7 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
   const dpPct   = price > 0 ? (dp / price) * 100 : 0;
 
   const rows = useMemo(
-    () => BANKS.map((b) => ({ ...b, monthly: flatMonthly(loan, b.rate, tenure) }))
+    () => BANKS.map((b) => ({ ...b, monthly: loanMonthly(loan, b.rate, tenure) }))
                .sort((a, b) => a.monthly - b.monthly),
     [loan, tenure],
   );
@@ -480,8 +465,8 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
     const attempts = picked.map((name) => {
       const b = BANKS.find((x) => x.name === name);
       return {
-        name, rate: b?.rate ?? null, tenure, loan_amount: loan,
-        monthly: Number(flatMonthly(loan, b?.rate ?? 0, tenure).toFixed(2)),
+        name, rate: b?.rate ?? null, rate_basis: RATE_BASIS, tenure, loan_amount: loan,
+        monthly: Number(loanMonthly(loan, b?.rate ?? 0, tenure).toFixed(2)),
         status: "Submitted", reason: null, decided_at: null,
       };
     });
@@ -742,7 +727,7 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
                       )}
                     </span>
                     <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 2 }}>
-                      {b.rate.toFixed(2)}% flat · total interest {rm(b.monthly * tenure * 12 - loan)}
+                      {b.rate.toFixed(2)}% EIR · total interest {rm(b.monthly * tenure * 12 - loan)}
                     </span>
                   </span>
                   <span style={{ textAlign: "right", flexShrink: 0 }}>
@@ -753,8 +738,9 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
               );
             })}
             <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.6 }}>
-              Indicative promo rates, quoted flat. Confirm the rate with the banker before you
-              tell a buyer anything — they move, and the buyer&apos;s profile changes them.
+              Indicative rates, as EIR on the reducing balance (the law since June 2026). Confirm
+              the rate with the banker before you tell a buyer anything — they move, and the
+              buyer&apos;s profile changes them. A bank still quoting flat: ask for the EIR.
             </p>
           </div>
         )}
@@ -834,8 +820,8 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
     const tenure = app.loan_tenure || 7;
     const loan = Number(app.loan_amount) || 0;
     const next = [...attempts, {
-      name, rate: b?.rate ?? null, tenure, loan_amount: loan,
-      monthly: Number(flatMonthly(loan, b?.rate ?? 0, tenure).toFixed(2)),
+      name, rate: b?.rate ?? null, rate_basis: RATE_BASIS, tenure, loan_amount: loan,
+      monthly: Number(loanMonthly(loan, b?.rate ?? 0, tenure).toFixed(2)),
       status: "Submitted", reason: null, decided_at: null,
     }];
     await patch({ banks: next, status: rollUp(next) });
@@ -910,7 +896,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                   <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{a.name}</span>
                   <StatusPill status={a.status} small />
                   <span style={{ marginLeft: "auto", fontSize: T.size.sm, color: C.textMuted, whiteSpace: "nowrap" }}>
-                    {a.rate != null ? `${Number(a.rate).toFixed(2)}%` : "—"}{a.monthly ? ` · ${rm2(a.monthly)}/mo` : ""}
+                    {a.rate != null ? `${Number(a.rate).toFixed(2)}% ${rateLabel(a.rate_basis)}` : "—"}{a.monthly ? ` · ${rm2(a.monthly)}/mo` : ""}
                   </span>
                 </div>
                 {a.reason && <p style={{ margin: "6px 0 0", fontSize: T.size.sm, color: C.textSec, lineHeight: 1.5 }}>{a.reason}</p>}
@@ -970,7 +956,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                 }}>
                   <span style={{ flex: 1, minWidth: 0, fontSize: T.size.base, color: C.text }}>{b.name}</span>
                   <span style={{ fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>
-                    {b.rate.toFixed(2)}% · {rm(flatMonthly(Number(app.loan_amount) || 0, b.rate, app.loan_tenure || 7))}/mo
+                    {b.rate.toFixed(2)}% · {rm(loanMonthly(Number(app.loan_amount) || 0, b.rate, app.loan_tenure || 7))}/mo
                   </span>
                 </button>
               ))}

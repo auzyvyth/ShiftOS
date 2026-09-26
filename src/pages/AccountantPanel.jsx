@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { flatToEir, loanTotals } from "../utils/financing";
 
 const ACCENT = "#22c55e";
 
@@ -66,7 +67,9 @@ const ADVISOR_PRESETS = [
   "What are our top expense categories?",
 ];
 
-const MY_BANK_RATES = {
+// Promo rates as banks quoted them before June 2026 (FLAT). Only used to
+// pre-fill an EIR deal, converted below; a flat deal keeps what was typed.
+const MY_BANK_FLAT_PROMOS = {
   "Maybank":            2.42,
   "CIMB":               2.42,
   "Public Bank":        2.28,
@@ -82,6 +85,10 @@ const MY_BANK_RATES = {
   "BSN":                2.25,
   "Other":              2.50,
 };
+// Same promos as EIR (reducing balance, 7 years) — HP (Amendment) Act 2026.
+const MY_BANK_RATES = Object.fromEntries(
+  Object.entries(MY_BANK_FLAT_PROMOS).map(([bank, flat]) => [bank, +flatToEir(flat, 84).toFixed(2)]),
+);
 
 async function streamAnthropic(messages, systemPrompt, onChunk) {
   const AI_PROXY = import.meta.env.VITE_API_URL
@@ -538,8 +545,13 @@ export default function AccountantPanel() {
 
   const saveDeal = useCallback(
     async (row) => {
-      const draft = dealDrafts[row.id] || {};
+      let draft = dealDrafts[row.id] || {};
       if (!Object.keys(draft).length) return;
+      // A rate saved without an explicit basis is an EIR (the default shown);
+      // store it, so the row never falls back to being read another way.
+      if ("loan_interest_rate" in draft && !draft.loan_rate_basis && !row.loan_rate_basis) {
+        draft = { ...draft, loan_rate_basis: "eir" };
+      }
       setDealSaving((p) => ({ ...p, [row.id]: true }));
       await supabase.from("deal_financials").update(draft).eq("id", row.id);
       setDealsRows((prev) =>
@@ -2641,7 +2653,8 @@ export default function AccountantPanel() {
                                             if (e.target.value !== "Other") {
                                               setDealField(row.id, "loan_bank", e.target.value);
                                               const rate = MY_BANK_RATES[e.target.value];
-                                              if (rate) setDealField(row.id, "loan_interest_rate", rate);
+                                              // Presets are EIR; never pour one into a flat deal.
+                                              if (rate && (val("loan_rate_basis") || "eir") === "eir") setDealField(row.id, "loan_interest_rate", rate);
                                             } else {
                                               setDealField(row.id, "loan_bank", "");
                                             }
@@ -2677,8 +2690,19 @@ export default function AccountantPanel() {
                                   })()}
                                   {/* Interest rate */}
                                   <div>
-                                    <p style={label11}>
+                                    <p style={{ ...label11, display: "flex", alignItems: "center", gap: 6 }}>
                                       Interest Rate (% p.a.)
+                                      {/* Deals signed before June 2026 were flat; new ones are EIR.
+                                          The instalment below is computed the way this deal was signed. */}
+                                      <select
+                                        value={val("loan_rate_basis") || "eir"}
+                                        onChange={(e) => setDealField(row.id, "loan_rate_basis", e.target.value)}
+                                        style={{ ...inp, width: "auto", padding: "1px 4px", fontSize: 10 }}
+                                        aria-label="Rate type"
+                                      >
+                                        <option value="eir">EIR</option>
+                                        <option value="flat">Flat</option>
+                                      </select>
                                     </p>
                                     <input
                                       type="number"
@@ -2719,13 +2743,13 @@ export default function AccountantPanel() {
                                       0;
                                     const tenure =
                                       parseInt(val("loan_tenure_months")) || 0;
+                                    // Flat for deals signed the old way, reducing balance for EIR.
+                                    const basis = val("loan_rate_basis") || "eir";
                                     const monthly =
                                       tenure > 0
-                                        ? (amt +
-                                            amt *
-                                              (rate / 100) *
-                                              (tenure / 12)) /
-                                          tenure
+                                        ? basis === "flat"
+                                          ? (amt + amt * (rate / 100) * (tenure / 12)) / tenure
+                                          : loanTotals(amt, rate, tenure).monthly
                                         : 0;
                                     return (
                                       <div>

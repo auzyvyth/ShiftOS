@@ -1,5 +1,6 @@
 // ─── Stage config ─────────────────────────────────────────────────────────────
 import { Sparkles, Phone, Calendar, MessageSquare, DollarSign, Trophy, XCircle, Car } from 'lucide-react';
+import { calcMonthly } from '../utils/financing';
 
 export const STAGE_ORDER = [
   'new', 'contacted', 'viewing_booked', 'test_drive', 'negotiating', 'deposit_taken', 'won', 'lost',
@@ -154,14 +155,12 @@ export function formatWhatsAppURL(phone) {
 }
 
 /**
- * Calculate estimated monthly instalment.
- * Formula: (principal + principal × 3.5% × 7 years) / 84 months
+ * Estimated monthly instalment. Delegates to the ONE loan formula
+ * (src/utils/financing.js, reducing balance / EIR) — this used to be its own
+ * flat-rate copy. 0 when there is no honest estimate, as before.
  */
 export function calcInstalment(price) {
-  if (!price) return 0;
-  const principal = price * 0.9;
-  const total = principal + principal * 0.035 * 7;
-  return Math.round(total / 84);
+  return calcMonthly(price) ?? 0;
 }
 
 /** Days since a timestamp */
