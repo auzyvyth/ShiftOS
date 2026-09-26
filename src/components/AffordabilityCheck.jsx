@@ -63,8 +63,8 @@ export default function AffordabilityCheck({
   const closeAndRun = (fn) => () => { setOpen(false); if (fn) fn(); };
 
   const c = isLight
-    ? { bg: '#ffffff', border: '#e5e7eb', text: '#111827', sub: '#6b7280', inputBg: '#ffffff', inputBorder: '#DDE3EC', card: '#f9fafb', triggerBg: 'rgba(220,38,38,0.06)', triggerBorder: 'rgba(220,38,38,0.2)' }
-    : { bg: '#0f1420', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6', sub: 'rgba(255,255,255,0.55)', inputBg: 'rgba(255,255,255,0.04)', inputBorder: 'rgba(255,255,255,0.12)', card: 'rgba(255,255,255,0.04)', triggerBg: 'rgba(220,38,38,0.1)', triggerBorder: 'rgba(220,38,38,0.3)' };
+    ? { bg: '#ffffff', border: '#e5e7eb', text: '#111827', sub: '#6b7280', inputBg: '#ffffff', inputBorder: '#DDE3EC', card: '#f9fafb' }
+    : { bg: '#0f1420', border: 'rgba(255,255,255,0.10)', text: '#f3f4f6', sub: 'rgba(255,255,255,0.55)', inputBg: 'rgba(255,255,255,0.04)', inputBorder: 'rgba(255,255,255,0.12)', card: 'rgba(255,255,255,0.04)' };
 
   const fieldStyles = {
     sub: c.sub,
@@ -147,9 +147,9 @@ export default function AffordabilityCheck({
     <>
       <button
         onClick={() => setOpen(true)}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: c.triggerBg, border: `1px solid ${c.triggerBorder}`, borderRadius: 6, color: '#dc2626', fontSize: 11.5, fontWeight: 700, padding: '5px 10px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap' }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', borderBottom: `1px dotted ${c.sub}`, borderRadius: 0, color: c.text, fontSize: 12.5, fontWeight: 600, padding: '0 0 1px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap' }}
       >
-        <Wallet size={12} /> Can I afford this?
+        <Wallet size={13} style={{ color: c.sub }} /> Can I afford this?
       </button>
       {open && createPortal(sheet, document.body)}
     </>

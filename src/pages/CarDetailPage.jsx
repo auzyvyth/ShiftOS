@@ -39,6 +39,7 @@ import {
   MapPin,
   Clock,
   Building2,
+  Images,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
 import ReportListingButton from "../components/ReportListingButton";
@@ -68,6 +69,7 @@ import { estimateRoadTax } from "../utils/roadTax";
 import SellerFeedback from "../components/feedback/SellerFeedback";
 import BuyerChat from "../components/chat/BuyerChat";
 import MarketplaceFooter from "../components/MarketplaceFooter";
+import MarketplaceHeader from "../components/MarketplaceHeader";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 import { shouldSkipTracking } from "../utils/internalTraffic";
@@ -219,14 +221,15 @@ const SpecHighlights = ({ car, th }) => {
    line to a highlighted strip directly under the price. Real data only. */
 const WarrantyBanner = ({ car, isXdrive, style }) => {
   if (!(car.warranty_months > 0)) return null;
-  const head = isXdrive ? '#16a34a' : '#4ade80';
+  // #16a34a on the green tint was 2.9:1. #166534 / #15803d clear AA on it.
+  const head = isXdrive ? '#166534' : '#4ade80';
   const sub = isXdrive ? '#15803d' : 'rgba(74,222,128,0.75)';
   // "Drive with peace of mind" told the buyer nothing. The only warranty facts on
   // record are the month count and whether a certificate was uploaded, so say that
   // and point at the question worth asking instead of inventing reassurance.
   const hasCert = (car.document_types || []).includes('warranty');
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10, ...style }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, padding: '11px 14px', background: isXdrive ? '#f0faf3' : 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.28)', borderRadius: 10, ...style }}>
       <ShieldCheck size={18} style={{ color: head, flexShrink: 0 }} />
       <div style={{ minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: head }}>{car.warranty_months}-month warranty included</p>
@@ -925,7 +928,9 @@ export default function CarDetailPage() {
     card2:     '#EEF1F5',
     text:      '#0F172A',
     textSec:   '#475569',
-    textMuted: '#64748b',
+    // #64748b was 4.44:1 on the page ground — under AA for the small text it
+    // carries. #5b6676 is 5.43:1 there and stays a step lighter than textSec.
+    textMuted: '#5b6676',
     border:    'rgba(15,23,42,0.08)',
     borderSec: 'rgba(15,23,42,0.05)',
     inputBg:   '#ffffff',
@@ -1870,6 +1875,15 @@ export default function CarDetailPage() {
   const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
   const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
+  // The facts a buyer checks right after the price, said once on one line
+  // under it (the year is already in the title). Were below the fold on desktop.
+  const CONDITION_LABEL = { recon: 'Recon', used: 'Used', new: 'New' };
+  const keyFacts = [
+    car.mileage ? `${fmt(car.mileage)} km` : null,
+    CONDITION_LABEL[car.condition] || (car.is_recon ? 'Recon' : null),
+    car.transmission || null,
+    car.state || car.city || null,
+  ].filter(Boolean);
   // The commitment gate (real slot + both consent boxes) is enforced by
   // validateBooking on submit, NOT by disabling the button — a disabled button
   // cannot tell the buyer which box it is waiting on.
@@ -2175,6 +2189,10 @@ export default function CarDetailPage() {
         .cdp-stat-cell:hover { background: rgba(220,38,38,0.035) !important; }
         .cdp-row { border-bottom-color: rgba(15,23,42,0.06) !important; }
         .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
+        /* The floating header's dark scrim assumed a photo under it; on the
+           desktop layout the photo is boxed lower down, so it greyed the title
+           and left white icons on a light page. The site header replaces it. */
+        @media (min-width: 901px) { .cdp-header-xd { display: none !important; } }
         .cdp-sidebar { background: #ffffff !important; border-color: rgba(15,23,42,0.08) !important; box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 8px 32px rgba(15,23,42,0.06) !important; }
         .cdp-mobile-bar { background: rgba(246,247,249,0.9) !important; border-top-color: rgba(15,23,42,0.07) !important; }
       `}</style>}
@@ -2184,8 +2202,18 @@ export default function CarDetailPage() {
           Same landmark to a screen reader, and it gives the header's skip link
           a target on the highest-traffic buyer page. */}
       <div className="cdp-root" id="main-content" role="main" tabIndex={-1}>
+        {/* Desktop on xdrive.my gets the real site header (logo, showroom,
+            search). It used to have only a floating back arrow, so a buyer
+            landing from Google had one way out: back to Google. Phones keep the
+            photo-first floating header. display:contents keeps .mh-root sticky
+            against the page, not against this wrapper. */}
+        {isXdrive && (
+          <div className="cdp-desktop-only" style={{ display: 'contents' }}>
+            <MarketplaceHeader />
+          </div>
+        )}
         {/* ── header ── */}
-        <header className={`cdp-header${showTitle ? " cdp-header-scrolled" : ""}`} style={{ '--cdp-progress': headerProgress }}>
+        <header className={`cdp-header${isXdrive ? " cdp-header-xd" : ""}${showTitle ? " cdp-header-scrolled" : ""}`} style={{ '--cdp-progress': headerProgress }}>
           <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">
             <ArrowLeft size={22} />
           </button>
@@ -2319,7 +2347,7 @@ export default function CarDetailPage() {
                 onClick={() => setCalcOpen(true)}
                 aria-label="Open financing calculator"
                 title="Financing calculator"
-                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.25)', color:'#dc2626', cursor:'pointer' }}
+                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, cursor:'pointer' }}
               >
                 <Calculator size={18} />
               </button>
@@ -2332,8 +2360,8 @@ export default function CarDetailPage() {
           )}
           {/* Mini details (body · transmission · fuel) — sits directly under the
               title, per layout */}
-          <p style={{ fontSize:12, color: th.textMuted, letterSpacing:'0.06em', textTransform:'uppercase', fontWeight:600, margin:'0 0 12px' }}>
-            {[car.body_type, car.transmission, car.fuel_type].filter(Boolean).join('  ·  ')}
+          <p style={{ fontSize:13, color: th.textSec, fontWeight:500, margin:'0 0 12px' }}>
+            {keyFacts.join('  ·  ')}
           </p>
           {/* Price section — directly under the title / mini details */}
           <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
@@ -2341,8 +2369,8 @@ export default function CarDetailPage() {
               {fmtPrice(car.selling_price)}
             </p>
             {calcMonthly(car.selling_price) ? (
-              <span style={{ fontSize:12, color: th.textSec }}>
-                ~<span style={{ color: th.textMuted }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+              <span style={{ fontSize:13, color: th.textSec }}>
+                ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
               </span>
             ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
               <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
@@ -2356,10 +2384,6 @@ export default function CarDetailPage() {
                 talkToSellerLabel={enquiryLabel}
               />
             )}
-            {/* Report sits at the end of the price row, pushed right. */}
-            <span style={{ marginLeft:'auto', alignSelf:'center' }}>
-              <ReportListingButton listingId={car?.id} th={th} variant="icon" />
-            </span>
           </div>
           <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
           {isHot && (
@@ -2374,9 +2398,9 @@ export default function CarDetailPage() {
             <a
               href={getStorefrontUrl(dealer.subdomain)}
               target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:'1px solid rgba(220,38,38,0.4)', paddingBottom:1, width:'fit-content' }}
+              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:`1px solid ${th.inputBorder}`, paddingBottom:1, width:'fit-content' }}
             >
-              Sold by {dealer.site_name || dealer.dealership} <ExternalLink size={12} style={{ color:'#dc2626' }} />
+              Sold by {dealer.site_name || dealer.dealership} <ExternalLink size={12} />
             </a>
           )}
           {/* Status badges — the plain "Recon" chip is dropped here; the icon'd
@@ -2406,7 +2430,7 @@ export default function CarDetailPage() {
               ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
             ].filter(({ value }) => value && value !== '—').map(({ label, value }) => (
               <div key={label} style={{ padding:'14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
-                <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color: th.textMuted, fontWeight:700, marginBottom:5 }}>{label}</p>
+                <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.1em', color: th.textSec, fontWeight:700, marginBottom:5 }}>{label}</p>
                 <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
               </div>
             ))}
@@ -2418,38 +2442,23 @@ export default function CarDetailPage() {
             <ReconTrust car={car} isXdrive={isXdrive} />
             <SpecHighlights car={car} th={th} />
           </div>
-          <div style={{ height:1, margin:'20px 0', background:'linear-gradient(to right,rgba(220,38,38,0.3),rgba(255,255,255,0.04),transparent)' }} />
+          <div style={{ height:1, margin:'20px 0', background: th.border }} />
         </div>
 
-        {/* M4 — CTA card */}
+        {/* M4 — price terms + seller card. Book / Contact are NOT repeated
+            here: the sticky bottom bar is always on screen on phones, so the
+            card was a second copy of both buttons, below the fold. */}
         <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
           <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
-            {!isOwnListing && (
-            <button
-              onClick={handleBookingClick}
-              style={{ width:'100%', background:'#dc2626', color:'white', border:'none', borderTop:'2px solid #b91c1c', borderRadius:10, padding:'14px', fontWeight:700, fontSize:14, cursor:'pointer', fontFamily:"var(--xd-font-body)", boxShadow:'0 4px 20px rgba(220,38,38,0.25)', marginBottom:8, letterSpacing:'0.02em' }}>
-              Book a Viewing
-            </button>
-            )}
-            {/* RAPTOR-6 — one Contact button, not a row of them. Every way to
-                reach the seller (WhatsApp, in-app chat, call) lives inside the
-                sheet BuyerChat already owns. */}
-            <div style={{ marginTop: 8 }}>
-              <BuyerChat listingId={car.id} isLight={isXdrive}
-                carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
-                sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
-                onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
-                onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
-            </div>
-            <div style={{ marginTop:10 }}>
+            <div>
               <PriceIncludes car={car} seller={seller} th={th} />
               <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
             </div>
             {/* Tertiary actions — quiet text links, not more buttons */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
               <button onClick={() => setCalcOpen(true)}
-                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"var(--xd-font-body)", borderBottom:'1px solid rgba(220,38,38,0.35)' }}>
-                <Calculator size={13} style={{ color:'#dc2626' }} /> Financing calculator
+                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"var(--xd-font-body)", borderBottom:`1px solid ${th.inputBorder}` }}>
+                <Calculator size={13} /> Financing calculator
               </button>
               {sellerPageUrl && !isSubdomain() && (
                 <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
@@ -2480,8 +2489,8 @@ export default function CarDetailPage() {
                     </p>
                   </div>
                   <div style={{ textAlign:'right' }}>
-                    {listedDays !== null && <p style={{ fontSize:10, color: th.textMuted }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize:10, color: th.textMuted, display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
+                    {listedDays !== null && <p style={{ fontSize:11, color: th.textMuted }}>{listedDays}d ago</p>}
+                    {viewCount > 0 && <p style={{ fontSize:11, color: th.textMuted, display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
                   </div>
                 </div>
               );
@@ -2847,6 +2856,11 @@ export default function CarDetailPage() {
           {/* Reviews + Q&A, one section (mobile) */}
           <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-m" onSummary={handleReviewSummary} />
 
+          {/* Report lives down here, not beside the price — rare action. */}
+          <div style={{ marginTop:24 }}>
+            <ReportListingButton listingId={car?.id} th={th} variant="link" />
+          </div>
+
         </div>
 
 
@@ -2919,19 +2933,46 @@ export default function CarDetailPage() {
                 oversized/shouty at that size, and a quieter caption above
                 the photo is closer to how a listing title reads elsewhere
                 (marketplace cards) — brand + nameplate, said once, plainly. */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: sellerHeadline ? 4 : 14 }}>
             <h1
               style={{
                 fontFamily: "'Bebas Neue',sans-serif",
                 fontSize: "clamp(1.6rem,2.4vw,2.1rem)",
                 lineHeight: 1.05,
                 letterSpacing: "0.015em",
-                marginBottom: sellerHeadline ? 4 : 14,
+                margin: 0,
+                minWidth: 0,
               }}
             >
               {/* Masthead, theme-aware via `th` (was hardcoded #374151) — brand and
                   model/variant/year share one strong colour. */}
               <span style={{ color: th.text }}>{car.brand} {nameplate}</span>
             </h1>
+            {/* Save / compare / share lived in the floating header, which the
+                site header replaces on desktop xdrive — so they sit here. */}
+            {isXdrive && (() => {
+              const inCmp = car?.id && isInCompare(car.id);
+              const iconBtn = { display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 38, borderRadius: 10, background: th.card, border: `1px solid ${th.border}`, color: th.textSec, cursor: "pointer", padding: 0 };
+              return (
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <span style={{ ...iconBtn, cursor: "default" }}>
+                    <HeartButton listingId={car?.id} size={18} idleColor={th.textSec} style={{ padding: 0 }} />
+                  </span>
+                  <button
+                    onClick={() => { if (!car?.id) return; inCmp ? removeFromCompare(car.id) : addToCompare(car.id); }}
+                    aria-label={inCmp ? "Remove from compare" : "Add to compare"}
+                    title={inCmp ? "Remove from compare" : "Add to compare"}
+                    style={{ ...iconBtn, color: inCmp ? "#dc2626" : th.textSec, borderColor: inCmp ? "rgba(220,38,38,0.4)" : th.border }}
+                  >
+                    <ArrowLeftRight size={17} />
+                  </button>
+                  <button onClick={handleShare} aria-label={shareCopied ? "Link copied" : "Share"} title="Share" style={{ ...iconBtn, color: shareCopied ? "#16a34a" : th.textSec }}>
+                    {shareCopied ? <Check size={17} /> : <Share2 size={17} />}
+                  </button>
+                </div>
+              );
+            })()}
+            </div>
             {sellerHeadline && (
               <p style={{ fontSize: 13, lineHeight: 1.45, color: th.textSec, fontFamily: "var(--xd-font-body)", margin: "0 0 14px" }}>
                 {sellerHeadline}
@@ -2996,14 +3037,22 @@ export default function CarDetailPage() {
                       >
                         {activeIdx + 1} / {imgCount}
                       </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setLbOpen(true); }}
+                        style={{ position: "absolute", bottom: 14, left: 14, zIndex: 4, display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(6,8,15,0.78)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 8, padding: "8px 12px", color: "#fff", fontSize: 13, fontWeight: 600, fontFamily: "var(--xd-font-body)", cursor: "pointer" }}
+                      >
+                        <Images size={15} /> View all {imgCount} photos
+                      </button>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Thumbnail strip (desktop) — jump straight to any photo */}
+              {/* Thumbnail strip (desktop) — jump straight to any photo. The
+                  right edge fades when there are more than fit, so it reads as
+                  scrollable instead of simply cut off. */}
               {imgCount > 1 && (
-                <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2 }}>
+                <div className="cdp-desktop-only" style={{ display: 'flex', gap: 8, marginTop: 10, overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: 2, ...(imgCount > 8 ? { maskImage: 'linear-gradient(to right, #000 85%, transparent)', WebkitMaskImage: 'linear-gradient(to right, #000 85%, transparent)' } : {}) }}>
                   {images.map((src, i) => (
                     <button
                       key={i}
@@ -3915,6 +3964,11 @@ export default function CarDetailPage() {
             {/* ── REVIEWS + Q&A, one section (desktop) ── */}
             <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-d" onSummary={handleReviewSummary} />
 
+            {/* Report lives down here, not beside the price — rare action. */}
+            <div style={{ marginTop: 24 }}>
+              <ReportListingButton listingId={car?.id} th={th} variant="link" />
+            </div>
+
             {/* BOOKING ANCHOR */}
             <div ref={bookingRef} id="booking-form" style={{ marginTop: 56 }} />
 
@@ -3940,57 +3994,31 @@ export default function CarDetailPage() {
           </div>{/* end left column */}
 
           {/* ── RIGHT SIDEBAR ── */}
-          <div className="cdp-sidebar" style={{ width: 360, flexShrink: 0, position: 'sticky', top: 76, maxHeight: 'calc(100vh - 92px)', overflowY: 'auto', scrollbarWidth: 'none', background: isXdrive ? '#ffffff' : 'linear-gradient(160deg, #09111f 0%, #0a1220 100%)', border: `1px solid ${isXdrive ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16, padding: '28px 24px' }}>
+          <div className="cdp-sidebar" style={{ width: 360, flexShrink: 0, position: 'sticky', top: isXdrive ? 'calc(var(--mh-h, 0px) + 16px)' : 76, maxHeight: isXdrive ? 'calc(100vh - var(--mh-h, 0px) - 32px)' : 'calc(100vh - 92px)', overflowY: 'auto', scrollbarWidth: 'none', background: isXdrive ? '#ffffff' : 'linear-gradient(160deg, #09111f 0%, #0a1220 100%)', border: `1px solid ${isXdrive ? 'rgba(0,0,0,0.09)' : 'rgba(255,255,255,0.07)'}`, borderRadius: 16, padding: '28px 24px' }}>
 
-            {/* DEALER TOPBAR */}
-            {(() => {
-              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
-              return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20, paddingBottom: 16, borderBottom: `1px solid ${th.borderSec}` }}>
-                  {avatarSrc
-                    ? <img src={avatarSrc} alt={displayName} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                    : <div style={{ width: 32, height: 32, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', border: `1px solid ${th.border}` }}>
-                        {displayName[0]?.toUpperCase()}
-                      </div>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13, color: th.text, fontWeight: 600, marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
-                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
-                    <p style={{ fontSize: 11, color: th.textSec }}>
-                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
-                    </p>
-                  </div>
-                  {listedDays !== null && (
-                    <p style={{ fontSize: 10, color: th.textMuted, textAlign: 'right' }}>{listedDays}d ago</p>
-                  )}
-                </div>
-              );
-            })()}
+            {/* Order is the order a buyer reads it: price, what it costs a
+                month, the facts that decide it, then the one red action. The
+                seller row moved to the bottom and says the seller once (it was
+                named twice at the top), and the red underlines / pill / divider
+                went — one accent per card (DESIGN.md), and that is the button. */}
 
             {/* PRICE BLOCK */}
-            <div style={{ marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <p style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.18em', color: th.textMuted, fontWeight: 700, margin: 0 }}>Asking Price</p>
-                {sellerPageUrl && !isSubdomain() && (
-                  <a
-                    href={sellerPageUrl}
-                    target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 11, color: th.textSec, fontWeight: 600, textDecoration: 'none', letterSpacing: '0.02em', borderBottom: '1px solid rgba(220,38,38,0.4)', paddingBottom: 1 }}
-                  >
-                    {dealer?.site_name || dealer?.dealership || salesmanProfile?.full_name || 'Seller'} ↗
-                  </a>
-                )}
-              </div>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1 }}>{fmtPrice(car.selling_price)}</p>
-              {/* Monthly estimate and the report control share one row, so
-                  the flag sits beside the figure rather than on the photo. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <div>
+              <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textSec, fontWeight: 700, margin: '0 0 6px' }}>Asking price</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1, margin: 0 }}>{fmtPrice(car.selling_price)}</p>
+              {isHot && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
+                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#b91c1c' : '#f87171', fontSize: '11px', padding: '2px 7px', borderRadius: '4px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
                 {calcMonthly(car.selling_price) ? (
-                  <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>~RM {fmt(calcMonthly(car.selling_price))}/mo</p>
+                  <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>
+                    ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+                  </p>
                 ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
-                  <p style={{ fontSize: 12, color: th.textMuted, margin: 0 }}>Financing available on request</p>
+                  <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>Financing available on request</p>
                 ) : null}
                 {!isOwnListing && (
                   <AffordabilityCheck
@@ -4001,59 +4029,84 @@ export default function CarDetailPage() {
                     talkToSellerLabel={enquiryLabel}
                   />
                 )}
-                <span style={{ marginLeft: 'auto' }}>
-                  <ReportListingButton listingId={car?.id} th={th} variant="icon" />
-                </span>
               </div>
-              {isHot && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                  <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
-                  <span style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize: '11px', padding: '2px 7px', borderRadius: '4px', fontWeight: 600, letterSpacing: '0.04em' }}>SAVE {fmtPrice(saving)}</span>
-                </div>
-              )}
             </div>
-            <div style={{ marginTop: 16 }}>
+            {keyFacts.length > 0 && (
+              <p style={{ margin: '14px 0 0', fontSize: 13, color: th.text, fontWeight: 500, lineHeight: 1.5 }}>
+                {keyFacts.join('  ·  ')}
+              </p>
+            )}
+            <div style={{ marginTop: 10 }}>
               <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
             </div>
-            <div style={{ height: 1, background: 'linear-gradient(to right, rgba(220,38,38,0.35), transparent)', margin: '14px 0 16px' }} />
-            {/* Warranty moved up next to the Docs on File chip, beside the
-                photo — this whole sidebar used to run past a glance on a
-                fully-filled listing, so nothing rides here that doesn't earn
-                its place in a fast scan: price, deposit, book, contact. */}
-            <PriceIncludes car={car} seller={seller} th={th} />
-            <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
+            <div style={{ height: 1, background: th.border, margin: '16px 0' }} />
 
-            {/* CTA BUTTONS */}
+            {/* CTA BUTTONS — one red primary; Contact is the outlined second. */}
             {!isOwnListing && (
             <button
               onClick={handleBookingClick}
-              style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderTop: '2px solid #b91c1c', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 4px 24px rgba(220,38,38,0.25)', transition: 'transform .15s, box-shadow .2s' }}>
+              style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 1px 2px rgba(15,23,42,0.08)', transition: 'background .15s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#b91c1c'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#dc2626'; }}>
               Book a Viewing
             </button>
             )}
-
-            {/* Financing calculator — the only tertiary link left; Visit
-                Seller's Page and the agent card below were dropped (the
-                Asking Price link above is the one seller-page link this
-                sidebar keeps). Sits above Contact so Contact stays the last
-                thing in the sidebar. */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 14 }}>
-              <button onClick={() => setCalcOpen(true)}
-                style={{ background: 'none', border: 'none', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: '1px solid rgba(220,38,38,0.35)', paddingBottom: 2 }}>
-                <Calculator size={13} style={{ color: '#dc2626' }} /> Financing calculator
-              </button>
-            </div>
-
-            {/* RAPTOR-6 — same single Contact button as the mobile card above.
-                Both blocks must stay in step or the two layouts drift. Last
-                thing in the sidebar, on purpose. */}
+            {/* RAPTOR-6 — same single Contact button as the mobile bar. Both
+                must stay in step or the two layouts drift. */}
             <div style={{ marginTop: 10 }}>
-              <BuyerChat listingId={car.id} isLight={isXdrive}
+              <BuyerChat listingId={car.id} isLight={isXdrive} variant="outline"
                 carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
                 sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
                 onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
                 onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
             </div>
+
+            <div style={{ marginTop: 16 }}>
+              <PriceIncludes car={car} seller={seller} th={th} />
+              <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
+              <button onClick={() => setCalcOpen(true)}
+                style={{ background: 'none', border: 'none', padding: '0 0 2px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: `1px solid ${th.inputBorder}` }}>
+                <Calculator size={13} /> Financing calculator
+              </button>
+            </div>
+
+            <div style={{ height: 1, background: th.border, margin: '16px 0' }} />
+            {/* SELLER — said once, at the bottom */}
+            {(() => {
+              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
+              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {avatarSrc
+                    ? <img src={avatarSrc} alt={displayName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                    : <div style={{ width: 36, height: 36, borderRadius: '50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', border: `1px solid ${th.border}` }}>
+                        {displayName[0]?.toUpperCase()}
+                      </div>
+                  }
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 13.5, color: th.text, fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
+                    <p style={{ fontSize: 12, color: th.textSec, margin: 0 }}>
+                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
+                    </p>
+                    {listedDays !== null && <p style={{ fontSize: 11.5, color: th.textMuted, margin: '1px 0 0' }}>Listed {listedDays}d ago</p>}
+                  </div>
+                  {sellerPageUrl && !isSubdomain() && (
+                    <a
+                      href={sellerPageUrl}
+                      target="_blank" rel="noopener noreferrer"
+                      aria-label={`${displayName} showroom`}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: th.text, fontWeight: 600, textDecoration: 'none', flexShrink: 0, padding: '7px 10px', borderRadius: 8, border: `1px solid ${th.inputBorder}` }}
+                    >
+                      Showroom <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
           </div>{/* end sidebar */}
         </div>{/* end body wrap */}
 

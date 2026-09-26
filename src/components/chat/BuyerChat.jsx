@@ -53,6 +53,9 @@ export default function BuyerChat({
   onCall,
   callLoading = false,
   showCall = false,
+  // 'outline' = secondary weight, for a surface that already has a red
+  // primary button beside it (the desktop price panel).
+  variant = 'solid',
 }) {
   // Size to the area the keyboard leaves behind, not to `vh` — see
   // useVisualViewport. Without this the composer sits under the keyboard and
@@ -290,9 +293,13 @@ export default function BuyerChat({
   // neutral clears 3:1 against it — a translucent white fill is the same
   // barely-there problem the light page had. So the border carries the shape:
   // #64748B is 3.94:1 against the card, and the #334155 fill holds text at 9.5:1.
-  const btn = isLight
-    ? { bg: '#0F172A', border: '#0F172A', fg: '#FFFFFF' }
-    : { bg: '#334155', border: '#64748B', fg: '#F1F5F9' };
+  const btn = variant === 'outline'
+    ? (isLight
+      ? { bg: '#FFFFFF', border: '#64748B', fg: '#0F172A' }
+      : { bg: 'transparent', border: '#64748B', fg: '#F1F5F9' })
+    : isLight
+      ? { bg: '#0F172A', border: '#0F172A', fg: '#FFFFFF' }
+      : { bg: '#334155', border: '#64748B', fg: '#F1F5F9' };
 
   return (
     <>
