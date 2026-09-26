@@ -119,15 +119,6 @@ import AvailabilityEditor from "../components/AvailabilityEditor";
 
 // Cache namespace for this panel (keys look like `slite_leads_<uid>`).
 const PANEL_CACHE_KEY = "slite";
-// A sole-trader salesman typically opens this panel once, then leaves the tab
-// open across the day (or overnight) rather than re-visiting — panelCache's
-// shared 30-min default TTL was expiring long before that, so a tab reopened
-// after a break always fell back to the full cold-start path (session ->
-// profile -> listings/leads/enquiries/appts) instead of painting instantly
-// from cache. 24h only extends how long the FIRST FRAME can be seeded from
-// cache; the live fetch below still always runs and overwrites it, so this
-// doesn't change data freshness, only how long the instant-paint is available.
-const PANEL_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // The pipeline card renders lead.car_listings, so every path that puts a lead
 // into state has to carry this join — not just the bootstrap fetch.
@@ -795,7 +786,7 @@ export default function SalesmanLite() {
   // instead of after getSession() -> profiles.select() -> the data queries (three
   // serial round trips to ap-southeast-2 before a single pixel). The live
   // bootstrap below overwrites all of it, and clears it if the real uid differs.
-  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY, PANEL_CACHE_TTL));
+  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
 
   const [profile, setProfile] = useState(seed.profile);
   const [userId, setUserId] = useState(seed.uid);
@@ -1587,13 +1578,13 @@ export default function SalesmanLite() {
       // different account signed in on the same device, where the frame-1 seed
       // was for the wrong uid and got blanked above.
       if (seed.uid !== uid) {
-        const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`, PANEL_CACHE_TTL);
+        const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`);
         if (cachedListings) setMyListings(cachedListings);
-        const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`, PANEL_CACHE_TTL);
+        const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`);
         if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
-        const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`, PANEL_CACHE_TTL);
+        const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`);
         if (cachedEnquiries) setEnquiries(cachedEnquiries);
-        const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`, PANEL_CACHE_TTL);
+        const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`);
         if (cachedAppts) setAppointments(cachedAppts);
       }
 

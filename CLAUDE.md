@@ -455,6 +455,9 @@ instruction — run the intake yourself, do not ask first. Full runbook:
 
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
+- **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
+  reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Batch DDL into one
+  migration instead of several, and avoid applying them in Malaysian business hours.
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 

@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useCachedFetch } from '../hooks/useCachedFetch';
 import { supabase } from '../supabaseClient';
 import { usePresence } from '../hooks/usePresence';
 import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../lib/leadsHelpers';
@@ -122,147 +123,160 @@ function SectionHeader({ title, sub, live }) {
   );
 }
 
+// ─── Data ─────────────────────────────────────────────────────────────────────
+// Plain async functions so useCachedFetch can paint the last result instantly
+// and revalidate behind it. This tab is the first thing an owner sees; it used
+// to show a skeleton until all five queries returned, which on a slow database
+// moment was the whole 15+ second wait.
+async function fetchPnl(dealerId) {
+  const { data, error } = await supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId });
+  if (error) throw error;
+  return data;
+}
+
+async function fetchOverview(dealerId) {
+  const now = Date.now();
+  const [l, cl, apt, sm, acts] = await Promise.all([
+    supabase.from('leads')
+      .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
+      .eq('dealer_id', dealerId)
+      .order('updated_at', { ascending: false })
+      .limit(300),
+    supabase.from('car_listings')
+      .select('id, status, created_at')
+      .eq('dealer_id', dealerId),
+    supabase.from('appointments')
+      .select('id, appointment_date')
+      .eq('dealer_id', dealerId)
+      .gte('appointment_date', new Date().toISOString().slice(0, 10)),
+    supabase.from('profiles')
+      .select('id, full_name, slug, role')
+      .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)
+      .in('role', ['salesman', 'manager', 'admin', 'accountant', 'fi_officer', 'owner', 'dealer', 'superadmin']),
+    supabase.from('lead_activities')
+      .select('id, activity_type, note, created_at, lead_id, created_by, to_stage, creator:created_by(full_name)')
+      .eq('dealer_id', dealerId)
+      .order('created_at', { ascending: false })
+      .limit(50),
+  ]);
+  // A failed leads read must not overwrite a good cached overview with zeros —
+  // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
+  if (l.error) throw l.error;
+  const allLeads    = l.data    || [];
+  const allListings = cl.data   || [];
+  const aptsToday   = apt.data  || [];
+  const staff       = sm.data   || [];
+  const activities  = acts.data || [];
+
+  const leadsById = Object.fromEntries(allLeads.map(l => [l.id, l]));
+
+  const lastActivityByUser = {};
+  for (const a of activities) {
+    if (!a.created_by) continue;
+    const cur = lastActivityByUser[a.created_by];
+    if (!cur || new Date(a.created_at) > new Date(cur))
+      lastActivityByUser[a.created_by] = a.created_at;
+  }
+
+  // Exclude every terminal stage variant; 'sold' was never a lead stage
+  const TERMINAL_STAGES = ['won','closed_won','lost','closed_lost'];
+  const activeLeads = allLeads.filter(l => !TERMINAL_STAGES.includes(l.stage));
+  const leadsPerSm  = {};
+  const lastLeadTouchSm = {};
+  for (const l of allLeads) {
+    if (!l.salesman_id) continue;
+    if (activeLeads.includes(l)) leadsPerSm[l.salesman_id] = (leadsPerSm[l.salesman_id] || 0) + 1;
+    const cur = lastLeadTouchSm[l.salesman_id];
+    if (!cur || new Date(l.updated_at) > new Date(cur)) lastLeadTouchSm[l.salesman_id] = l.updated_at;
+  }
+
+  const stageCounts = {};
+  for (const l of allLeads) { const k = canonicalStage(l.stage); stageCounts[k] = (stageCounts[k] || 0) + 1; }
+
+  const sourceCounts = {};
+  for (const l of activeLeads) {
+    const src = l.lead_source || 'unknown';
+    sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+  }
+
+  const available = allListings.filter(c => c.status === 'available');
+  const avgDays   = available.length
+    ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length)
+    : 0;
+  const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
+
+  // Cold leads = active pipeline with no touch in 5+ days. The single most
+  // actionable morning signal: real buyers going quiet.
+  const COLD_DAYS = 5;
+  const coldLeads = activeLeads
+    .filter(l => (now - new Date(l.updated_at)) / 86400000 >= COLD_DAYS)
+    .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+  const coldLeadsCount = coldLeads.length;
+  const coldOldestDays = coldLeadsCount
+    ? Math.floor((now - new Date(coldLeads[0].updated_at)) / 86400000)
+    : 0;
+
+  const teamRows = staff.map((s, idx) => {
+    const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
+    return {
+      id: s.id,
+      name: s.full_name || s.slug || 'Team',
+      role: ROLE_LABELS[s.role] || null,
+      active: leadsPerSm[s.id] || 0,
+      isActive: isActiveToday(lastAct),
+      lastActivity: lastAct,
+      avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
+    };
+  }).sort((a, b) => {
+    if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
+    return b.active - a.active;
+  });
+
+  const recentActivities = activities.slice(0, 12).map(a => ({
+    ...a,
+    lead: leadsById[a.lead_id] || null,
+  }));
+
+  return {
+    activeLeads: activeLeads.length,
+    activeListings: available.length,
+    stageCounts, sourceCounts, teamRows, avgDays, stale,
+    coldLeadsCount, coldOldestDays,
+    aptsToday: aptsToday.length, recentActivities,
+  };
+}
+
+const EMPTY_SNAPSHOT = {
+  activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
+  teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0,
+  aptsToday: 0, recentActivities: [],
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function OverviewTab({ dealerId, onNavigate }) {
-  const [pnl, setPnl]           = useState(null);
-  const [snapshot, setSnapshot] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [tick, setTick]         = useState(0);
+  // Keys end in the dealer id (per-account, and purged on logout via the
+  // `cf:v1:` prefix in panelCache). ttlMs 0 = always refetch behind the paint.
+  const { data: pnl } = useCachedFetch(
+    dealerId ? `overview_pnl:${dealerId}` : null,
+    () => fetchPnl(dealerId),
+    { enabled: !!dealerId, ttlMs: 0 },
+  );
+  const { data: cachedSnapshot, loading, refresh } = useCachedFetch(
+    dealerId ? `overview:${dealerId}` : null,
+    () => fetchOverview(dealerId),
+    { enabled: !!dealerId, ttlMs: 0 },
+  );
+  // No cache and the first read failed: show the empty state, never hang.
+  const snapshot = cachedSnapshot || EMPTY_SNAPSHOT;
   const subRef = useRef(null);
   const onlineIds = usePresence(dealerId);
-
-  // ── PnL RPC — independent, non-blocking ──────────────────────────────────
-  useEffect(() => {
-    if (!dealerId) return;
-    supabase.rpc('gm_pnl_snapshot', { p_dealer_id: dealerId })
-      .then(({ data }) => setPnl(data))
-      .catch(() => {});
-  }, [dealerId]);
-
-  // ── Live data ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!dealerId) return;
-    const now = Date.now();
-
-    Promise.all([
-      supabase.from('leads')
-        .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
-        .eq('dealer_id', dealerId)
-        .order('updated_at', { ascending: false })
-        .limit(300),
-      supabase.from('car_listings')
-        .select('id, status, created_at')
-        .eq('dealer_id', dealerId),
-      supabase.from('appointments')
-        .select('id, appointment_date')
-        .eq('dealer_id', dealerId)
-        .gte('appointment_date', new Date().toISOString().slice(0, 10)),
-      supabase.from('profiles')
-        .select('id, full_name, slug, role')
-        .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)
-        .in('role', ['salesman', 'manager', 'admin', 'accountant', 'fi_officer', 'owner', 'dealer', 'superadmin']),
-      supabase.from('lead_activities')
-        .select('id, activity_type, note, created_at, lead_id, created_by, to_stage, creator:created_by(full_name)')
-        .eq('dealer_id', dealerId)
-        .order('created_at', { ascending: false })
-        .limit(50),
-    ]).then(([l, cl, apt, sm, acts]) => {
-      const allLeads    = l.data    || [];
-      const allListings = cl.data   || [];
-      const aptsToday   = apt.data  || [];
-      const staff       = sm.data   || [];
-      const activities  = acts.data || [];
-
-      const leadsById = Object.fromEntries(allLeads.map(l => [l.id, l]));
-
-      const lastActivityByUser = {};
-      for (const a of activities) {
-        if (!a.created_by) continue;
-        const cur = lastActivityByUser[a.created_by];
-        if (!cur || new Date(a.created_at) > new Date(cur))
-          lastActivityByUser[a.created_by] = a.created_at;
-      }
-
-      // Exclude every terminal stage variant; 'sold' was never a lead stage
-      const TERMINAL_STAGES = ['won','closed_won','lost','closed_lost'];
-      const activeLeads = allLeads.filter(l => !TERMINAL_STAGES.includes(l.stage));
-      const leadsPerSm  = {};
-      const lastLeadTouchSm = {};
-      for (const l of allLeads) {
-        if (!l.salesman_id) continue;
-        if (activeLeads.includes(l)) leadsPerSm[l.salesman_id] = (leadsPerSm[l.salesman_id] || 0) + 1;
-        const cur = lastLeadTouchSm[l.salesman_id];
-        if (!cur || new Date(l.updated_at) > new Date(cur)) lastLeadTouchSm[l.salesman_id] = l.updated_at;
-      }
-
-      const stageCounts = {};
-      for (const l of allLeads) { const k = canonicalStage(l.stage); stageCounts[k] = (stageCounts[k] || 0) + 1; }
-
-      const sourceCounts = {};
-      for (const l of activeLeads) {
-        const src = l.lead_source || 'unknown';
-        sourceCounts[src] = (sourceCounts[src] || 0) + 1;
-      }
-
-      const available = allListings.filter(c => c.status === 'available');
-      const avgDays   = available.length
-        ? Math.round(available.reduce((s, c) => s + (now - new Date(c.created_at)) / 86400000, 0) / available.length)
-        : 0;
-      const stale = available.filter(c => (now - new Date(c.created_at)) / 86400000 > 30).length;
-
-      // Cold leads = active pipeline with no touch in 5+ days. The single most
-      // actionable morning signal: real buyers going quiet.
-      const COLD_DAYS = 5;
-      const coldLeads = activeLeads
-        .filter(l => (now - new Date(l.updated_at)) / 86400000 >= COLD_DAYS)
-        .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
-      const coldLeadsCount = coldLeads.length;
-      const coldOldestDays = coldLeadsCount
-        ? Math.floor((now - new Date(coldLeads[0].updated_at)) / 86400000)
-        : 0;
-
-      const teamRows = staff.map((s, idx) => {
-        const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
-        return {
-          id: s.id,
-          name: s.full_name || s.slug || 'Team',
-          role: ROLE_LABELS[s.role] || null,
-          active: leadsPerSm[s.id] || 0,
-          isActive: isActiveToday(lastAct),
-          lastActivity: lastAct,
-          avatarColor: AVATAR_COLORS[idx % AVATAR_COLORS.length],
-        };
-      }).sort((a, b) => {
-        if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-        return b.active - a.active;
-      });
-
-      const recentActivities = activities.slice(0, 12).map(a => ({
-        ...a,
-        lead: leadsById[a.lead_id] || null,
-      }));
-
-      setSnapshot({
-        activeLeads: activeLeads.length,
-        activeListings: available.length,
-        stageCounts, sourceCounts, teamRows, avgDays, stale,
-        coldLeadsCount, coldOldestDays,
-        aptsToday: aptsToday.length, recentActivities,
-      });
-    }).catch(() => {
-      // Show empty state rather than hanging forever
-      setSnapshot({
-        activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
-        teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0,
-        aptsToday: 0, recentActivities: [],
-      });
-    }).finally(() => setLoading(false));
-  }, [dealerId, tick]);
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
 
   // ── Realtime ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!dealerId) return;
-    const bump = () => setTick(t => t + 1);
+    const bump = () => refreshRef.current();
     subRef.current = supabase
       .channel(`overview-${dealerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads',          filter: `dealer_id=eq.${dealerId}` }, bump)

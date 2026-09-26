@@ -70,6 +70,37 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PERF-LOAD: 15-second panel loads — diagnosed 2026-09-26, client half shipped
+
+Owner waited ~15s opening the app. Edge logs (last 24h) show the two worst
+opens were a Salesman Lite account (00:42 UTC, one request 28s) and the dealer
+account (07:21 UTC, 22s). No single query is slow — tables are tiny (144 leads).
+At those moments EVERY request stalls at once, trivial ones included.
+- **Root cause (server):** every migration applied to the live DB makes
+  PostgREST (the Supabase API layer) reload its schema. On this instance that
+  reload took **45 seconds** ("Schema cache queried in 45476.6 ms", 07:22 UTC)
+  and requests queue behind it. It happened ~12 times in 24h, once per dev
+  migration. Baseline is also slow: API p50 325ms, p90 1.2s, p99 9.9s, on the
+  smallest compute tier (shared_buffers 224MB, 10-connection API pool) in
+  Sydney (`ap-southeast-2`) while every user is in Malaysia.
+- **Shipped (client):** panels paint from the device cache for 7 days instead
+  of 30 min (dealer, linked salesman) / 24h (Lite, Premium) —
+  `PANEL_SEED_TTL` in `src/utils/panelCache.js`. Dealer Overview (the first
+  screen) now paints its last numbers instantly and refreshes behind them
+  (`src/components/OverviewTab.jsx`, `useCachedFetch`). It had no cache at all.
+- [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
+  from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
+  source. Caching cannot help a first open on a new device or any save.
+- [ ] **PERF-LOAD-3 (owner decision): stop applying migrations to prod during
+  business hours**, or batch them. Each one freezes the API for everyone.
+- [ ] **PERF-LOAD-4: cache the remaining tabs.** Only the landing screens
+  paint from cache. Other dashboard tabs (RevOps, Stock, Leads board, Team)
+  and Lite/Premium secondary tabs still show a spinner on each open. Move
+  them onto `useCachedFetch` one tab at a time, same pattern as OverviewTab.
+- [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
+  (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
+  trip saved. Not worth it before PERF-LOAD-2.
+
 ## IC verify popup regression — FIXED 2026-09-13
 
 The "Verify your IC to list cars" modal was popping up for sellers who had
