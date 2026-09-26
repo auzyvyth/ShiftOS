@@ -2580,6 +2580,52 @@ until these are done:**
 
 ---
 
+### SESSION 2026-09-26 — WhatsApp into the CRM + owner prospecting CRM (scoped, nothing built)
+
+Framing correction: Premium + dealer dash already HAVE a CRM (pipeline, This
+Week, nudges, OutreachHub, Customers, Handover). The gap is that WhatsApp —
+where the deal actually happens — is invisible to it: a `wa.me` tap leaves the
+app and nothing comes back. Fix that, don't build a second CRM.
+
+- [ ] **WA-0 — Tap tracking (no Meta needed, ship first).** Every `wa.me` tap
+  from a lead surface stamps `leads.last_contacted_at` + a `lead_activities` row;
+  on return to the tab, one-tap "Did they reply? Yes / Not yet". Feeds This Week
+  and the Performance tab reply-speed metric, which is garbage today (see the
+  69,275-min "reply" note above). Search every `wa.me` in Premium/Lite/
+  Salesmanpanel/LeadDrawer and route through ONE helper.
+- [ ] **WA-1 — Owner action: become a Meta Tech Provider.** Meta Business
+  verification for the ShiftOS company, a Meta app with WhatsApp product, app
+  review for `whatsapp_business_messaging` + `whatsapp_business_management`.
+  Weeks, not code. Blocks WA-2.
+- [ ] **WA-2 — WhatsApp Coexistence inbox.** Seller connects their existing
+  WhatsApp BUSINESS app number via Embedded Signup (Malaysia supported, ~15 min,
+  keeps using the phone app; history syncs). Webhook -> edge function ->
+  `wa_messages` (body + `body_ai` redacted, same rule as chat) matched to a lead
+  by `normalize_my_phone`; new number = new lead via `resolve_lead_salesman`.
+  Shows in the existing SellerInbox, not a new screen. Replies from ShiftOS only
+  inside the 24h window; AI drafts, human sends (Meta also bans general-purpose
+  AI bots). Personal-WhatsApp users must move to the free Business app first.
+  Cost: inbound + 24h replies free (from 2026-10-01 free up to 1,000/number/mo);
+  marketing templates ~RM0.35 each — we never need to send those. Supersedes the
+  "never worth it for a solo agent" verdict in RAPTOR notes (pre-coexistence).
+- [ ] **WA-3 — Reply-based scoring** (IDEA-2 item 2) once WA-2 has data.
+
+- [ ] **OPS-CRM-1 — Owner prospecting CRM (platform console, People section).**
+  One new tab "Prospects", not a separate app. Table `platform_prospects`
+  (name, phone normalized, business, kind dealer|salesman, source, stage
+  found->contacted->replied->demo->signed_up->paid|lost, next_follow_up_at,
+  last_contacted_at, notes, do_not_contact, converted_profile_id), superadmin-only
+  RLS via `is_superadmin()`. Waitlist rows import as `source='waitlist'`; a signup
+  whose normalized phone matches auto-links + moves to signed_up (trigger, not
+  client). Message = `wa.me` with an editable opener, human sends from the
+  owner's own phone, stamps `last_contacted_at`. LEGAL: cold direct marketing to
+  individuals needs care under PDPA (s.43 stop-notice, consent-first position,
+  2024 amendment raised fines) — no bulk scraping, no blasts, one-to-one only,
+  and `do_not_contact` is enforced (hides the Message button) the moment anyone
+  says stop. Never via the Cloud API: Meta requires prior opt-in.
+
+---
+
 ### SESSION 2026-09-23 — Dealer dashboard + storefront sweep, AI agent scope, CSI tab (scoped, nothing built)
 
 Found by querying the live DB, not by reading code — every count below is real.
