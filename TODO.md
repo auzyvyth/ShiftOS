@@ -2435,6 +2435,16 @@ until these are done:**
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
+- [ ] **ACT-META-VERIFY — start Meta Business verification (owner, added 2026-09-26).**
+  Blocks the WhatsApp inbox (WA-2). Full checklist under WA-1 in Dev tasks. Short
+  version: (1) tell the agent whether the business is Sdn Bhd or an enterprise;
+  (2) SSM doc with the legal name typed into Meta EXACTLY as printed; (3) utility
+  bill or business bank statement in that name, under 3 months old; (4) an
+  @xdrive.my email + verify the domain in Meta Business Settings; (5) 2FA on
+  the Meta account. Agent side before App Review: update `/privacy` to name the
+  company and cover WhatsApp messages, and build a thin WA-2 prototype for the
+  screencast.
+
 > **ACT-VERIFY-PUSH DONE — owner confirmed on a real phone, 2026-09-07.**
 > Notifications arrive immediately. `send-push` v18 (urgency `high`, TTL capped
 > at 24h) is what fixed it; the server side was never slow (measured 193ms).
