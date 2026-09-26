@@ -83,6 +83,16 @@ const COPY = {
     ios: 'To get platform alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so platform alerts cannot reach this device.',
   },
+  // Dealer dashboard. Only the dealer's own account gets these (every
+  // dealer_notifications row pushes to dealer_id alone), and on 2026-09-26 both
+  // dealer accounts had ZERO registered devices — every enquiry, booking and
+  // overdue alert was reaching nobody off the dashboard.
+  dealer_home: {
+    ask: 'Turn on notifications so new enquiries, bookings and buyer messages reach this device. Leads are lost when nobody hears them.',
+    done: 'Done. New enquiries, bookings and messages will reach this device.',
+    ios: 'To get alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    denied: 'Notifications are blocked for this site in your browser settings, so nothing can reach this device. Allow them in the site settings.',
+  },
   seller_home: {
     ask: 'Turn on notifications so a new enquiry, booking or message reaches your phone.',
     done: 'Done. New enquiries, bookings and messages will reach this device.',
@@ -106,6 +116,11 @@ export default function PushPromptStrip({
   // knows who it is, it passes userId too and the lookup below is skipped.
   client = supabase,
   userId: userIdProp = null,
+  // REQUIRED = no "Not now" on the ask. The strip stays until push is on.
+  // The iOS and denied states keep their close button: nothing on this page
+  // can fix either, and a banner you can neither act on nor close is just a
+  // broken page.
+  required = false,
 }) {
   const [userId, setUserId] = useState(userIdProp);
   const [dismissed, setDismissed] = useState(false);
@@ -193,13 +208,13 @@ export default function PushPromptStrip({
     <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>
       {note || copy.ask}
     </p>
-    {!note && (
+    {(!note || required) && (
       <button type="button" onClick={handleEnable} disabled={busy}
         style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'system-ui,sans-serif' }}>
-        {busy ? 'Turning on…' : 'Turn on'}
+        {busy ? 'Turning on…' : note ? 'Try again' : 'Turn on'}
       </button>
     )}
-    <DismissBtn t={t} onClick={() => setDismissed(true)} />
+    {!required && <DismissBtn t={t} onClick={() => setDismissed(true)} />}
   </>);
 }
 
