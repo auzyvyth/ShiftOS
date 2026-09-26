@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, INITIAL_URL } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
+import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 async function redirectByRole(session, navigate) {
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role, subdomain, dealer_id, onboarding_complete, plan')
     .eq('id', session.user.id)
     .maybeSingle();
+  if (profileError) throw profileError;
 
   if (!profile) {
     navigate('/onboarding');
@@ -149,7 +151,12 @@ export default function ResetPasswordPage() {
       } else {
         // No recovery signal and nothing in the URL: someone already signed in
         // navigated here by hand. Send them where they were going.
-        redirectByRole(session, navigate);
+        redirectByRole(session, navigate).catch((err) => {
+          console.error('[ResetPasswordPage] redirect failed:', err);
+          reportAuthFailure('reset_redirect', err);
+          setError(authErrorMessage(err));
+          setPhase('code');
+        });
       }
     };
 
@@ -162,6 +169,7 @@ export default function ResetPasswordPage() {
     // race against the exchange. It IS a race against the event above, which is
     // why fromEmailLink has to stand on its own.
     supabase.auth.getSession().then(({ data, error: err }) => {
+      if (err) console.error('[ResetPasswordPage] getSession failed:', err.message);
       settle(err ? null : data.session, false);
     });
 
@@ -184,10 +192,18 @@ export default function ResetPasswordPage() {
     });
     setCodeLoading(false);
     if (err || !data?.session) {
+      // Supabase answers a mistyped code and an expired one with the SAME
+      // error ("Token has expired or is invalid", otp_expired), so the old
+      // /expired/ test told every typo "your code has expired" and sent people
+      // to request new codes — which runs into the 3-per-15-min send cap.
+      if (err) {
+        console.error('[ResetPasswordPage] verifyOtp failed:', err.code, err.message);
+        reportAuthFailure('reset_verify_code', err);
+      }
       setError(
-        /expired/i.test(err?.message || '')
-          ? 'That code has expired. Request a new one from the sign-in page.'
-          : 'That code is not right. Check the digits, or request a new one.',
+        !err || err.code === 'otp_expired'
+          ? 'That code is wrong or has expired. Check the digits against the newest email, or request a new code.'
+          : authErrorMessage(err),
       );
       return;
     }
@@ -208,7 +224,9 @@ export default function ResetPasswordPage() {
     setLoading(true);
     const { error: err } = await supabase.auth.updateUser({ password });
     if (err) {
-      setError(err.message);
+      console.error('[ResetPasswordPage] updateUser failed:', err.code, err.message);
+      reportAuthFailure('reset_set_password', err);
+      setError(authErrorMessage(err));
       setLoading(false);
       return;
     }

@@ -71,21 +71,27 @@ function consentPatch(consent) {
   return consent ? { pdpa_consent: true, pdpa_consent_at: new Date().toISOString() } : {};
 }
 
+// THROWS when the read or a write fails. It used to ignore every error and
+// report 'buyer' anyway, so a rejected insert sent someone to /account with no
+// buyer profile (or with the trigger's dealer stub still in place) and nothing
+// on screen said why. Every caller catches and shows it.
 export async function ensureBuyerProfile(user, { consent = false } = {}) {
   if (!user?.id) return null;
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from('profiles')
     .select('id, role, subdomain, onboarding_complete, full_name, avatar_url, pdpa_consent')
     .eq('id', user.id)
     .maybeSingle();
+  if (readError) throw readError;
 
   const identity = identityFromMeta(user);
 
   if (!existing) {
-    await supabase.from('profiles').insert({
+    const { error } = await supabase.from('profiles').insert({
       id: user.id, email: user.email, role: 'buyer', is_active: true,
       ...identity, ...consentPatch(consent),
     });
+    if (error) throw error;
     return 'buyer';
   }
 
@@ -101,7 +107,8 @@ export async function ensureBuyerProfile(user, { consent = false } = {}) {
     const patch = { role: 'buyer', is_active: true, ...consentPatch(consent) };
     if (identity.full_name && !existing.full_name) patch.full_name = identity.full_name;
     if (identity.avatar_url && !existing.avatar_url) patch.avatar_url = identity.avatar_url;
-    await supabase.from('profiles').update(patch).eq('id', user.id);
+    const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);
+    if (error) throw error;
     return 'buyer';
   }
 
@@ -114,7 +121,11 @@ export async function ensureBuyerProfile(user, { consent = false } = {}) {
     // Record consent for a buyer who signed up before we captured it, the first time
     // they come back through a surface that asks. Never overwrite an existing yes.
     if (consent && !existing.pdpa_consent) Object.assign(patch, consentPatch(true));
-    if (Object.keys(patch).length) await supabase.from('profiles').update(patch).eq('id', user.id);
+    // Name/avatar backfill is cosmetic — log a failure, never block sign-in on it.
+    if (Object.keys(patch).length) {
+      const { error } = await supabase.from('profiles').update(patch).eq('id', user.id);
+      if (error) console.error('[ensureBuyerProfile] backfill failed:', error.message);
+    }
   }
 
   return existing.role || null;

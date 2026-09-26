@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { reportAuthFailure } from '../utils/authErrors';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile, markBuyerIntent } from '../lib/buyerAuth';
 import { isSubdomain } from '../hooks/useTenant';
@@ -137,7 +138,15 @@ export default function GoogleOneTap() {
           // page they were browsing and reaches their dashboard from the header
           // whenever they want (the old forced redirect to /account yanked them
           // off the listing they were on — the opposite of the intended UX).
-          await ensureBuyerProfile(data.user);
+          try {
+            await ensureBuyerProfile(data.user);
+          } catch (err) {
+            console.error('[GoogleOneTap] buyer profile setup failed:', err);
+            reportAuthFailure('onetap_profile_setup', err);
+            toast.error("You're signed in, but we couldn't finish setting up your account.", {
+              description: 'Open My Account from the top-right menu to try again.',
+            });
+          }
           // The header resolved the role on SIGNED_IN, which fired before the
           // line above rewrote the trigger's default 'dealer' stub to 'buyer' —
           // so it briefly showed a "Dashboard" link to /dashboard (which then

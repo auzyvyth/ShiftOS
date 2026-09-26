@@ -1062,6 +1062,19 @@ different concerns and the house rule is one per session.
   unilaterally — it changes what every Premium follow-up count, the KPI and the
   stage glow report, and that is a product call.
 
+### AUTH-10: one post-login router (audit 2026-09-26, NOT built)
+- [ ] **Four hand-copied `redirectByRole`s disagree** (LoginPage,
+  AuthCallbackPage, AuthConfirmPage, ResetPasswordPage). Staff roles land on
+  `/salesman` first, mid-onboarding dealers lose their place via `/onboarding`
+  -> `/plans`, a Google/magic-link salesman on staging is sent to PROD
+  (`AuthCallbackPage.jsx:176`), Premium reps land on Lite, a buyer on
+  `/auth/confirm` goes to `/dashboard`. Full list R1-R6 in `AUDIT_AUTH_FLOW.md`.
+  Fix: one `resolvePostAuthRoute` built on `routeForProfile`; staging
+  click-through per role before prod. Error-reporting half (E1-E8) shipped.
+- [ ] Confirm `RESEND_FROM_EMAIL` is set on the edge functions — without it
+  invites/setup/reminder emails fall back to Resend's sandbox sender, which
+  only delivers to the Resend account owner.
+
 ### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
 the reset link after ONE wrong password (make it three); put Turnstile on every

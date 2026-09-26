@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 
 export default function AuthConfirmPage() {
   const navigate = useNavigate();
@@ -18,10 +19,11 @@ export default function AuthConfirmPage() {
       return;
     }
 
-    supabase.auth.verifyOtp({ token_hash, type }).then(async ({ data, error }) => {
+    supabase.auth.verifyOtp({ token_hash, type }).catch((err) => ({ data: null, error: err })).then(async ({ data, error }) => {
       if (error) {
-        console.error('[AuthConfirmPage] verifyOtp error:', error.message);
-        setErrorMsg(error.message);
+        console.error('[AuthConfirmPage] verifyOtp error:', error.code, error.message);
+        reportAuthFailure('confirm_verify', error);
+        setErrorMsg(authErrorMessage(error));
         setStatus('error');
         return;
       }
@@ -33,11 +35,19 @@ export default function AuthConfirmPage() {
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role, onboarding_complete, dealer_id')
         .eq('id', session.user.id)
         .maybeSingle();
+      // A failed read is not "brand new account" — never route it into signup.
+      if (profileError) {
+        console.error('[AuthConfirmPage] profile read failed:', profileError.message);
+        reportAuthFailure('confirm_profile', profileError);
+        setErrorMsg("Your email is confirmed, but we couldn't load your account. Sign in to continue.");
+        setStatus('error');
+        return;
+      }
 
       if (!profile) {
         // Brand new account — resume whichever onboarding flow it started in.

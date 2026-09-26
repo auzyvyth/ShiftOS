@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { handoffSuffix } from '../lib/authHandoff';
+import { reportAuthFailure } from '../utils/authErrors';
 import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
@@ -18,11 +19,14 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, role, subdomain, dealer_id, onboarding_complete, plan, full_name, ic_number, dealership')
         .eq('id', session.user.id)
         .maybeSingle();
+      // A failed read is NOT "no profile": treating it as one sends an existing
+      // dealer into the signup wizard. Stop and say so instead.
+      if (profileError) throw profileError;
 
       // Did this auth flow start as a buyer? (marketplace buyer login/One Tap, or
       // a buyer signup whose user metadata carries account_type=buyer.)
@@ -186,10 +190,25 @@ export default function AuthCallbackPage() {
     };
 
     // Bail out immediately if Supabase already signalled an error in the URL
+    // Every failure below lands on /login with a short reason, and LoginPage
+    // shows it (utils/authErrors callbackFailureMessage). It used to send a
+    // bare ?error=auth_failed that nothing read, so a dead magic link or a
+    // cancelled Google sign-in dropped people on a plain form with no hint.
+    const fail = (reason) => {
+      window.location.href = `/login?error=auth_failed&reason=${encodeURIComponent(reason)}`;
+    };
     const urlParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.slice(1));
     if (urlParams.get('error') || hashParams.get('error')) {
-      window.location.href = '/login?error=auth_failed';
+      const code = urlParams.get('error_code') || hashParams.get('error_code') || urlParams.get('error') || hashParams.get('error');
+      const description = urlParams.get('error_description') || hashParams.get('error_description') || '';
+      console.error('[AuthCallbackPage] provider error:', code, description);
+      // A cancelled Google prompt or a dead/used link is the person's doing;
+      // anything else (bad OAuth config, server_error) is ours to hear about.
+      if (!['access_denied', 'otp_expired'].includes(code)) {
+        reportAuthFailure('callback_provider', { message: description || code, code });
+      }
+      fail(code);
       return;
     }
 
@@ -204,8 +223,10 @@ export default function AuthCallbackPage() {
       clearTimeout(fallbackTimer);
       try {
         await routeSession(session);
-      } catch {
-        window.location.href = '/login?error=auth_failed';
+      } catch (err) {
+        console.error('[AuthCallbackPage] routing failed:', err);
+        reportAuthFailure('callback_profile', err);
+        fail('profile');
       }
     };
 
@@ -230,7 +251,11 @@ export default function AuthCallbackPage() {
     fallbackTimer = setTimeout(() => {
       if (handled) return;
       subscription?.unsubscribe();
-      window.location.href = '/login?error=auth_failed';
+      // Usually a link opened in a different browser than the one that asked
+      // for it. Reported so a spike (or a broken exchange) is visible to us.
+      console.error('[AuthCallbackPage] no session after 10s');
+      reportAuthFailure('callback_timeout', { message: 'No session within 10s on /auth/callback' });
+      fail('timeout');
     }, 10000);
 
     return () => {

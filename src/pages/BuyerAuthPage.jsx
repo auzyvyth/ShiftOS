@@ -8,6 +8,7 @@ import LegalModal from "../components/LegalModal";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
+import { authErrorMessage, isWrongCredentials, reportAuthFailure } from "../utils/authErrors";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -80,8 +81,9 @@ export default function BuyerAuthPage() {
 
   const redirectByRole = async (user) => {
     if (!user?.id) return;
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles").select("role, dealer_id, plan").eq("id", user.id).maybeSingle();
+    if (profileError) throw profileError;
     // One shared resolver. A buyer resolves to /account, which is also the
     // fallback for a role this page does not expect, so a mis-typed role can
     // never send a shopper into a seller panel. dealer_id/plan are selected
@@ -101,7 +103,9 @@ export default function BuyerAuthPage() {
 
   const sendMagicLink = async () => {
     if (isSignup && !consent) { setError(CONSENT_ERR); return; }
+    if (!email.trim()) { setError("Enter your email address first."); return; }
     if (isSignup) markBuyerConsent();
+    setError("");
     setMagicLoading(true);
     // AUTH-5: 3 sends per address per 15 min, checked before we send.
     const gate = await emailActionGate(email, EMAIL_ACTIONS.MAGIC);
@@ -109,10 +113,20 @@ export default function BuyerAuthPage() {
     const captchaToken = await getToken();
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { captchaToken, emailRedirectTo: `${base}/auth/callback` },
+      options: {
+        captchaToken,
+        emailRedirectTo: `${base}/auth/callback`,
+        // Only offered to an EXISTING password-less account (see handleSignIn),
+        // so never mint a new one here — that would skip the PDPA consent tick.
+        shouldCreateUser: false,
+      },
     });
     setMagicLoading(false);
-    if (error) setError(error.message); else setMagicSent(true);
+    if (error) {
+      console.error("[BuyerAuthPage] magic link send failed:", error.code, error.message);
+      reportAuthFailure("buyer_magic_link_send", error);
+      setError(authErrorMessage(error));
+    } else setMagicSent(true);
   };
 
   const handleGoogle = async () => {
@@ -125,7 +139,10 @@ export default function BuyerAuthPage() {
       provider: "google",
       options: { redirectTo: `${base}/auth/callback` },
     });
-    if (error) setError(error.message);
+    if (error) {
+      reportAuthFailure("buyer_google_start", error);
+      setError(authErrorMessage(error));
+    }
   };
 
   const handleSignIn = async () => {
@@ -159,12 +176,15 @@ export default function BuyerAuthPage() {
       // Only a rejected credential counts against the lock — an unconfirmed
       // email or a 5xx is not a guess, and it must not spend an attempt or get
       // answered with "wrong password".
-      const isInvalidCreds =
-        error.status === 400 || /invalid|credential/i.test(error.message || "");
+      // Classified on error.code: status 400 is also what an unconfirmed email
+      // returns, which the old test counted as a wrong password.
+      const isInvalidCreds = isWrongCredentials(error);
       if (!isInvalidCreds) {
+        console.error("[BuyerAuthPage] sign-in failed:", error.code, error.message);
+        reportAuthFailure("buyer_password_signin", error);
         setShowMagic(false);
         setShowForgot(false);
-        setError(error.message);
+        setError(authErrorMessage(error));
         setLoading(false);
         return;
       }
@@ -206,8 +226,16 @@ export default function BuyerAuthPage() {
       return;
     }
     throttleClear(cleanEmail);
-    await ensureBuyerProfile(data.user);
-    await redirectByRole(data.user);
+    try {
+      await ensureBuyerProfile(data.user);
+      await redirectByRole(data.user);
+    } catch (err) {
+      // Used to be unguarded: a failed profile write left the button spinning forever.
+      console.error("[BuyerAuthPage] post-login setup failed:", err);
+      reportAuthFailure("buyer_profile_setup", err);
+      setError(authErrorMessage(err, "You're signed in, but we couldn't load your account. Please try again."));
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async () => {
@@ -221,7 +249,13 @@ export default function BuyerAuthPage() {
       password,
       options: { captchaToken, emailRedirectTo: `${base}/auth/callback`, data: { account_type: "buyer" } },
     });
-    if (error) { setError(error.message); setLoading(false); return; }
+    if (error) {
+      console.error("[BuyerAuthPage] sign-up failed:", error.code, error.message);
+      reportAuthFailure("buyer_signup", error);
+      setError(authErrorMessage(error));
+      setLoading(false);
+      return;
+    }
     // Empty identities array (no error) = email already registered.
     if (data?.user && (data.user.identities?.length ?? 0) === 0) {
       setError("An account with this email already exists. Please log in instead.");
@@ -229,7 +263,15 @@ export default function BuyerAuthPage() {
       return;
     }
     if (data.session) {
-      await ensureBuyerProfile(data.user, { consent: true });
+      try {
+        await ensureBuyerProfile(data.user, { consent: true });
+      } catch (err) {
+        console.error("[BuyerAuthPage] buyer profile setup failed:", err);
+        reportAuthFailure("buyer_profile_setup", err);
+        setError(authErrorMessage(err, "Your account was created, but we couldn't finish setting it up. Please sign in again."));
+        setLoading(false);
+        return;
+      }
       window.location.href = `${base}${consumePostAuthReturn()}`;
       return;
     }
@@ -241,7 +283,8 @@ export default function BuyerAuthPage() {
   };
 
   const handleForgot = async () => {
-    if (!email) { setError("Enter your email above first."); return; }
+    if (!email.trim()) { setError("Enter your email above first."); return; }
+    setError("");
     setResetLoading(true);
     // AUTH-5, own bucket — see LoginPage. Same gate, same numbers.
     const gate = await emailActionGate(email, EMAIL_ACTIONS.RESET);
@@ -249,7 +292,11 @@ export default function BuyerAuthPage() {
     const captchaToken = await getToken();
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { captchaToken, redirectTo: `${base}/reset-password` });
     setResetLoading(false);
-    if (error) setError(error.message); else setResetSent(true);
+    if (error) {
+      console.error("[BuyerAuthPage] reset code send failed:", error.code, error.message);
+      reportAuthFailure("buyer_reset_send", error);
+      setError(authErrorMessage(error));
+    } else setResetSent(true);
   };
 
   // Supabase password policy: 8+ chars and at least one of each character class.
