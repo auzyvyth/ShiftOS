@@ -47,6 +47,13 @@ export function routeForRole(role) {
  * panel, and only because that one guard exists. This is the same rule as
  * Salesmanpanel's, stated once, before the navigation instead of after it.
  */
+// The columns routeForProfile needs. SELECT THESE, not a hand-picked subset:
+// isPremiumSalesman reads is_active / plan_expires_at / payment_status, and
+// every caller used to select only 'role, dealer_id, plan' — so it answered
+// "not Premium" for every Premium rep, their Dashboard link went to
+// /salesman-lite, and Lite forwarded them to /salesman-premium a second later.
+export const ROUTE_PROFILE_COLUMNS = 'role, dealer_id, plan, is_active, plan_expires_at, payment_status';
+
 export function routeForProfile(profile) {
   if (!profile?.role) return FALLBACK_ROUTE;
   if (profile.role === 'salesman' && !profile.dealer_id) {

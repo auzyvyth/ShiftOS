@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, INITIAL_URL } from '../supabaseClient';
-import { handoffSuffix } from '../lib/authHandoff';
+import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
+// Someone already signed in who opened this page by hand: send them home via
+// the one shared router (utils/postAuthRoute.js). This page's copy sent a
+// buyer to /salesman and a dealer mid-signup to /onboarding (= /plans).
 async function redirectByRole(session, navigate) {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, subdomain, dealer_id, onboarding_complete, plan')
+    .select(POST_AUTH_COLUMNS)
     .eq('id', session.user.id)
     .maybeSingle();
   if (profileError) throw profileError;
@@ -18,51 +21,7 @@ async function redirectByRole(session, navigate) {
     navigate('/onboarding');
     return;
   }
-
-  const { role, subdomain, dealer_id } = profile;
-
-  // Platform superadmin has its own console (/platform) — never a dealer
-  // dashboard or a subdomain. Mirror LoginPage so every path agrees.
-  if (role === 'superadmin') {
-    navigate('/platform');
-    return;
-  }
-
-  if (role === 'dealer' && profile.onboarding_complete === false && !subdomain) {
-    navigate('/onboarding');
-    return;
-  }
-
-  if (role === 'dealer') {
-    // Cross-subdomain handoff only makes sense on the real domain — a Vercel
-    // preview/localhost has no dealer subdomains to jump to, and doing it
-    // anyway leaves the preview build entirely (lands on real prod). Mirrors
-    // LoginPage.jsx's isProd guard.
-    const isProd = window.location.hostname === 'xdrive.my' || window.location.hostname.endsWith('.xdrive.my');
-    if (subdomain && isProd) {
-      // Carry the session across to the subdomain via the hash-fragment handoff
-      // (same mechanism useTenant consumes). Query-string tokens were never read
-      // by the subdomain (so the dealer landed logged out) and leak via referer.
-      window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
-    } else {
-      navigate('/dashboard');
-    }
-  } else if (role === 'salesman') {
-    // Mirror LoginPage: a linked salesman -> /salesman; a solo salesman routes by
-    // plan (Premium -> /salesman-premium, otherwise Lite). Without the plan check
-    // a Premium salesman was dropped onto the Lite panel after a reset.
-    navigate(dealer_id ? '/salesman' : profile.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite');
-  } else if (role === 'manager') {
-    navigate('/manager');
-  } else if (role === 'accountant') {
-    navigate('/accountant');
-  } else if (role === 'fi_officer') {
-    navigate('/fi');
-  } else if (role === 'admin') {
-    navigate('/admin');
-  } else {
-    navigate('/salesman');
-  }
+  goPostAuth(resolvePostAuthRoute(profile, { session }), navigate);
 }
 
 export default function ResetPasswordPage() {

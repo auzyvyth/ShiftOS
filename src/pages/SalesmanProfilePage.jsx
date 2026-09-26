@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Clock, LayoutDashboard, MapPin, ChevronRight, User, X } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
-import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
+import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
 
@@ -95,7 +95,7 @@ export default function SalesmanProfilePage() {
       if (!uid || cancelled) return;
       setViewerId(uid);
       const { data: viewer } = await supabase
-        .from('profiles').select('role, dealer_id, plan').eq('id', uid).maybeSingle();
+        .from('profiles').select(ROUTE_PROFILE_COLUMNS).eq('id', uid).maybeSingle();
       if (cancelled || !viewer?.role) return;
       setViewerHome({
         to: routeForProfile(viewer),

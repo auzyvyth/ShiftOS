@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { supabase } from "../supabaseClient";
 import { isSubdomain } from "../hooks/useTenant";
-import { routeForProfile, isSellerRole } from "../hooks/useRoleRedirect";
+import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 
 // Same solid near-black bar as MarketplaceHeader (#0f1115) — that file is the
@@ -274,7 +274,7 @@ export default function Header() {
         .from("profiles")
         // dealer_id + plan: a standalone salesman's home is /salesman-lite or
         // /salesman-premium, and the role on its own cannot tell you which.
-        .select("role, dealer_id, plan")
+        .select(ROUTE_PROFILE_COLUMNS)
         .eq("id", uid)
         .maybeSingle();
       setViewerProfile(data || null);

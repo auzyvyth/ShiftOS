@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
+import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 
 export default function AuthConfirmPage() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function AuthConfirmPage() {
 
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('role, onboarding_complete, dealer_id')
+        .select(POST_AUTH_COLUMNS)
         .eq('id', session.user.id)
         .maybeSingle();
       // A failed read is not "brand new account" — never route it into signup.
@@ -68,30 +69,18 @@ export default function AuthConfirmPage() {
         } else if (savedPlan === 'starter' || savedPlan === 'growth' || savedPlan === 'pro') {
           navigate(`/dealer-onboarding/${savedPlan}`, { replace: true });
         } else {
-          // Unknown context → default to salesman-lite, never the dealer flow.
+          // Unknown context: /onboarding redirects to /plans, which asks.
           navigate('/onboarding', { replace: true });
         }
-      } else if (profile.role === 'superadmin') {
-        // Platform superadmin has its own console — never a dealer dashboard.
-        navigate('/platform', { replace: true });
-      } else if (profile.role === 'dealer' && profile.onboarding_complete === false) {
-        navigate('/onboarding', { replace: true });
-      } else if (profile.role === 'salesman') {
-        if (profile.onboarding_complete === false) {
-          navigate('/salesman-onboarding', { replace: true });
-        } else {
-          navigate(profile.dealer_id ? '/salesman' : '/salesman-lite', { replace: true });
-        }
-      } else if (profile.role === 'manager') {
-        navigate('/manager', { replace: true });
-      } else if (profile.role === 'accountant') {
-        navigate('/accountant', { replace: true });
-      } else if (profile.role === 'fi_officer') {
-        navigate('/fi', { replace: true });
-      } else if (profile.role === 'admin') {
-        navigate('/admin', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        // The one shared router (utils/postAuthRoute.js). This page's copy sent
+        // a buyer to /dashboard, a Premium rep to Lite, and a Premium rep still
+        // in signup into the LITE wizard — exactly the people the
+        // send-signup-reminder email (which links here) is written for.
+        goPostAuth(resolvePostAuthRoute(profile, {
+          session,
+          premiumHint: session.user?.user_metadata?.tier === 'premium',
+        }), navigate);
       }
     });
   }, []);

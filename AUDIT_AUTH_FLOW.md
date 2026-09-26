@@ -35,7 +35,7 @@ auth emails in edge functions. Checked against live Supabase auth logs and
 | E7 | All send/sign-in sites | Raw Supabase strings, and rate-limit/captcha/network errors shown inconsistently. | One reader, `src/utils/authErrors.js` `authErrorMessage`. |
 | E8 | Everywhere above | Nothing told the team when auth broke. | `reportAuthFailure` writes system-side failures to `error_logs` -> `trg_notify_error_log` -> `notify_ops` (Telegram + superadmin push, 15-min throttle per code, codes `auth:<step>`). User mistakes (wrong password, bad code, rate limits), dropped connections and preview-URL captcha failures are NOT reported. No email address, query string or hash is sent. |
 
-## NOT fixed — login routing drift (needs a staging click-through)
+## FIXED in the follow-up — login routing drift (needs a staging click-through before prod)
 Root cause: there are **four hand-written `redirectByRole` copies** (LoginPage,
 AuthCallbackPage, AuthConfirmPage, ResetPasswordPage) and one canonical
 resolver nobody uses here (`routeForProfile`, `src/hooks/useRoleRedirect.js`).
@@ -60,8 +60,17 @@ They disagree:
 - **R6** `Salesmanpanel.jsx:616,641` — a failed session/profile read sends the
   rep to `/login` with no message (same pattern as E5, outside the auth pages).
 
-Recommended fix: one `resolvePostAuthRoute(profile, session)` module used by all
-four pages, built on `routeForProfile` plus the onboarding/handoff rules. Ship to
-staging and click through password, Google, magic link, reset code and a
-signup-reminder link for dealer, Lite, Premium, linked salesman, manager and
-buyer before prod — MOBILE-1 is the precedent for auth changes going wrong.
+- **R7** (found in the follow-up, the cause of "Premium opens Lite, then jumps
+  to Premium"): the header "Dashboard" links selected only `role, dealer_id,
+  plan`; `isPremiumSalesman` needs `is_active, plan_expires_at,
+  payment_status`, so it said "not Premium" for every Premium rep.
+- **R8** SalesmanLite forwarded on `plan === 'salesman_full'` alone while
+  SalesmanPremium sends anyone not entitled back to Lite: an unpaid or expired
+  Premium account looped between the two forever.
+
+Fix shipped: `src/utils/postAuthRoute.js` (`resolvePostAuthRoute`) used by all
+four pages, `ROUTE_PROFILE_COLUMNS` for every routeForProfile caller, Lite's
+guard on `isPremiumSalesman`, panels say why when they send you to /login,
+`push_home_path` on the same Premium rule (migration 20260926a, applied live).
+Tests: `tests/postAuthRoute.test.mjs`. Still to do: the staging click-through
+per role, and the Premium free-month entitlement decision (TODO AUTH-10).

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from "../lib/buyerAuth";
-import { routeForProfile } from "../hooks/useRoleRedirect";
+import { routeForProfile, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
@@ -82,7 +82,7 @@ export default function BuyerAuthPage() {
   const redirectByRole = async (user) => {
     if (!user?.id) return;
     const { data: profile, error: profileError } = await supabase
-      .from("profiles").select("role, dealer_id, plan").eq("id", user.id).maybeSingle();
+      .from("profiles").select(ROUTE_PROFILE_COLUMNS).eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
     // One shared resolver. A buyer resolves to /account, which is also the
     // fallback for a role this page does not expect, so a mis-typed role can

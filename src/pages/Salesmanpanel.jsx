@@ -638,7 +638,8 @@ export default function SalesmanPanel() {
 
  if (profileError ||!profileData) {
  setLoading(false);
- navigate("/login");
+ // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
+ navigate(profileError ? "/login?error=auth_failed&reason=profile" : "/login");
  return;
  }
  if (redirectByRole(profileData.role)) {

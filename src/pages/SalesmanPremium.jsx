@@ -945,15 +945,17 @@ export default function SalesmanPremium() {
  }
  rememberPanelUid(PANEL_CACHE_KEY, uid);
 
- const { data: profileData } = await supabase
+ const { data: profileData, error: profileErr } = await supabase
  .from("profiles")
  .select("*")
  .eq("id", uid)
  .maybeSingle();
 
  if (!profileData) {
+ if (profileErr) console.error("fetchProfile:", profileErr);
  setLoading(false);
- navigate("/login");
+ // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
+ navigate(profileErr ? "/login?error=auth_failed&reason=profile" : "/login");
  return;
  }
 

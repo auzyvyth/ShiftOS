@@ -4,7 +4,7 @@ import { readLogoutNotice, clearLogoutNotice, daysSince } from "../utils/authNot
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { handoffSuffix } from "../lib/authHandoff";
+import { resolvePostAuthRoute, POST_AUTH_COLUMNS } from "../utils/postAuthRoute";
 import { markBuyerIntent, consumePostAuthReturn } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
@@ -282,7 +282,7 @@ export default function LoginPage() {
     const go = (url) => window.location.replace(url);
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("subdomain, role, dealer_id, onboarding_complete, plan")
+      .select(POST_AUTH_COLUMNS)
       .eq("id", user.id)
       .maybeSingle();
     // A failed read is not "no profile". Falling through would send an
@@ -304,65 +304,23 @@ export default function LoginPage() {
       return;
     }
 
-    const subdomain = profile?.subdomain;
-    const role = profile?.role;
-
-    // Buyers live on /account, never a seller dashboard — unless a page sent
-    // them here to sign in (Find me post form, price alert), then back there.
-    if (role === "buyer") {
-      go(`${base}${consumePostAuthReturn()}`);
-      return;
-    }
-
-    const getActiveSession = async () => {
-      if (session) return session;
+    // Every account-to-destination rule lives in utils/postAuthRoute.js, shared
+    // with Google / magic link / email confirm / reset. This page's copy sent
+    // manager, admin, accountant and F&I to /salesman first, and a dealer
+    // mid-signup to /onboarding (= /plans), losing their place.
+    let activeSession = session;
+    if (!activeSession) {
       const { data: { session: s } } = await supabase.auth.getSession();
-      return s;
-    };
-
-    // Platform superadmin has its own console (/platform) — never a dealer
-    // dashboard. Keeping it separate stops the admin account from landing on an
-    // empty, onboarding-less dealer dashboard.
-    if (role === "superadmin") {
-      go(`${base}/platform`);
-      return;
+      activeSession = s;
     }
-
-    if (role === "dealer" || role === "owner") {
-      if (profile?.onboarding_complete === false && !subdomain) {
-        go(`${base}/onboarding`);
-        return;
-      }
-      if (subdomain && isProd) {
-        const activeSession = await getActiveSession();
-        go(`https://${subdomain}.xdrive.my/dashboard${handoffSuffix(activeSession)}`);
-      } else {
-        go(`${base}/dashboard`);
-      }
-    } else if (role === "salesman") {
-      // A salesman who hasn't finished onboarding (no name/IC/phone/profile yet)
-      // must go back to the wizard, never straight to the dashboard. Without this
-      // an authenticated-but-half-signed-up salesman who lands on /login for any
-      // reason (auth-callback fallback race, bookmark, back button, session
-      // restore) drops into an empty dashboard. Mirror the dealer branch above.
-      if (profile?.onboarding_complete === false) {
-        const tier = profile?.plan === "salesman_full" ? "premium" : "lite";
-        go(`${base}/salesman-onboarding/${tier}`);
-        return;
-      }
-      const activeSession = await getActiveSession();
-      const target = profile?.dealer_id
-        ? "salesman"
-        : profile?.plan === "salesman_full"
-        ? "salesman-premium"
-        : "salesman-lite";
-      const suffix = isProd ? handoffSuffix(activeSession) : "";
-      go(`${base}/${target}${suffix}`);
-    } else {
-      const activeSession = await getActiveSession();
-      const suffix = isProd ? handoffSuffix(activeSession) : "";
-      go(`${base}/salesman${suffix}`);
-    }
+    const { url } = resolvePostAuthRoute(profile, {
+      session: activeSession,
+      // Buyers go back to the page that sent them here to sign in, if any.
+      buyerHome: profile.role === "buyer" ? consumePostAuthReturn() : "/account",
+    });
+    // Relative targets stay pinned to the apex on prod, as before: sign-in on
+    // www.xdrive.my must not strand the new session on the www origin.
+    go(url.startsWith("/") ? `${base}${url}` : url);
   };
 
   const handleLogin = async () => {
