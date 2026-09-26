@@ -8685,14 +8685,14 @@ export default function SalesmanLite() {
               Settings — the one screen a rep never opens. A signup therefore
               got no enquiry, booking or message alerts and no sign that was
               even a setting. Mounted OUTSIDE the tab switch on purpose: it
-              stays put as they move around the panel (so one dismissal holds
-              for the visit), and it stops rendering for good the moment push
+              stays put as they move around the panel (REQUIRED: no dismiss
+              button), and it stops rendering for good the moment push
               is actually on. */}
           {/* Not on the chat tab — SellerInbox mounts its own copy above the
               thread list, and two identical asks on one screen is worse than
               none. */}
           {activeTab !== "chat" && (
-            <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+            <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed required />
           )}
 
           {activeTab === "dashboard" && renderDashboard()}

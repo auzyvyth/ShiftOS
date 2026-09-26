@@ -91,6 +91,7 @@ import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
 import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
+import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import {
   readCache,
@@ -8238,6 +8239,12 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  paddingBottom: isMobile? 80 : 24,
  }}
  >
+ {/* Push is REQUIRED for every seller (no "Not now"): a lead pushed to
+     a rep with no registered device reaches nobody until they happen to
+     open the panel. Settings already has the PushToggle card. */}
+ {activeTab !== "settings" && (
+ <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed required userId={profile?.id} />
+ )}
  {activeTab === "dashboard" && renderDashboard()}
  {activeTab === "listings" && renderListings()}
  {activeTab === "incoming" && renderIncoming()}

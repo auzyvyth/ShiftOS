@@ -6729,12 +6729,12 @@ export default function SalesmanPremium() {
  {/* Push had no proactive ask outside a chat thread, so the only route to
      turning it on was PushToggle in Settings — the screen a rep never opens.
      Inside the content wrapper (not beside the sidebar, which is a flex ROW
-     on desktop) and outside the tab switch, so one dismissal holds while
+     on desktop) and outside the tab switch, so it stays (REQUIRED, no dismiss) while
      they move around the panel and it disappears for good once push is on. */}
  {/* Not on the chat tab — SellerInbox mounts its own copy above the thread
      list, and two identical asks on one screen is worse than none. */}
  {activeTab !== "chat" && (
- <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+ <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed required />
  )}
 
  {activeTab === "dashboard" && (

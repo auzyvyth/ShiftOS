@@ -185,7 +185,7 @@ export default function SellerInbox({
           shut heard nothing when a buyer messaged, and had no way to find out
           that was even a setting. Here it sits on the screen the messages
           arrive on, and it stays until push is actually on. */}
-      <PushPromptStrip t={t} audience="seller" />
+      <PushPromptStrip t={t} audience="seller" required />
     </div>
   );
 
