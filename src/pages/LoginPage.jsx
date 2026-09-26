@@ -4,11 +4,12 @@ import { readLogoutNotice, clearLogoutNotice, daysSince } from "../utils/authNot
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { handoffSuffix } from "../lib/authHandoff";
+import { resolvePostAuthRoute, POST_AUTH_COLUMNS } from "../utils/postAuthRoute";
 import { markBuyerIntent, consumePostAuthReturn } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
+import { authErrorMessage, callbackFailureMessage, isWrongCredentials, isEmailNotConfirmed, reportAuthFailure } from "../utils/authErrors";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -87,7 +88,11 @@ export default function LoginPage() {
   useEffect(() => { if (logoutNotice) clearLogoutNotice(); }, [logoutNotice]);
   const [focused, setFocused] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [error, setError] = useState("");
+  // /auth/callback sends failures here as ?error=auth_failed&reason=... — show
+  // them, or a dead magic link looks exactly like a fresh visit.
+  const [error, setError] = useState(() =>
+    searchParams.get("error") === "auth_failed" ? callbackFailureMessage(searchParams.get("reason")) : "",
+  );
   const [loading, setLoading] = useState(false);
   // Server-enforced brute-force throttle (login_throttle_* RPCs): 3 failed
   // password attempts in 15 min -> 60s lock, keyed on the email. Enforced in the
@@ -97,6 +102,9 @@ export default function LoginPage() {
   const [lockSeconds, setLockSeconds] = useState(0);
 
   const [email, setEmail] = useState("");
+  // Set when a password sign-in comes back "email not confirmed", so the
+  // confirm screen's resend button knows the address without a URL param.
+  const [unconfirmedAddr, setUnconfirmedAddr] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -168,18 +176,29 @@ export default function LoginPage() {
     setError("");
     setMfaLoading(true);
     const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: mfaFactorId });
-    if (chErr) { setError(chErr.message); setMfaLoading(false); return; }
+    if (chErr) { setError(authErrorMessage(chErr)); setMfaLoading(false); return; }
     const { error: vErr } = await supabase.auth.mfa.verify({
       factorId: mfaFactorId, challengeId: ch.id, code,
     });
-    if (vErr) { setError("Invalid code. Please try again."); setMfaLoading(false); return; }
+    if (vErr) {
+      setError(vErr.code === "mfa_verification_failed" || !vErr.code ? "Invalid code. Please try again." : authErrorMessage(vErr));
+      setMfaLoading(false);
+      return;
+    }
     const { data: { session } } = await supabase.auth.getSession();
     setMfaLoading(false);
-    await redirectByRole(pendingUser || session?.user, session);
+    try {
+      await redirectByRole(pendingUser || session?.user, session);
+    } catch (err) {
+      console.error("[LoginPage] post-2FA redirect failed:", err);
+      reportAuthFailure("login_redirect", err);
+      setError(authErrorMessage(err, "You're signed in, but we couldn't load your account. Please try again."));
+    }
   };
 
   const handleMagicLink = async () => {
-    if (!magicEmail) return;
+    if (!magicEmail.trim()) { setError("Enter your email address first."); return; }
+    setError("");
     setMagicLoading(true);
     // AUTH-5: cap how many of these we will send to one address (3 / 15 min).
     // Checked BEFORE the send, so a refusal costs nobody an email.
@@ -198,8 +217,11 @@ export default function LoginPage() {
       },
     });
     setMagicLoading(false);
-    if (error) setError(error.message);
-    else setMagicSent(true);
+    if (error) {
+      console.error("[LoginPage] magic link send failed:", error.code, error.message);
+      reportAuthFailure("magic_link_send", error);
+      setError(authErrorMessage(error));
+    } else setMagicSent(true);
   };
 
   // Always-available "email me a sign-in link" entry (not just the passwordless
@@ -213,10 +235,11 @@ export default function LoginPage() {
   };
 
   const handlePasswordReset = async () => {
-    if (!email) {
+    if (!email.trim()) {
       setError("Enter your email above first.");
       return;
     }
+    setError("");
     setResetLoading(true);
     // AUTH-5. Its own bucket, separate from the magic link: filling one must
     // not block the other, since either might be this person's only way in.
@@ -228,8 +251,11 @@ export default function LoginPage() {
       redirectTo: `${base}/reset-password`,
     });
     setResetLoading(false);
-    if (error) setError(error.message);
-    else setResetSent(true);
+    if (error) {
+      console.error("[LoginPage] reset code send failed:", error.code, error.message);
+      reportAuthFailure("reset_send", error);
+      setError(authErrorMessage(error));
+    } else setResetSent(true);
   };
 
   const handleGoogleSignIn = async () => {
@@ -242,7 +268,10 @@ export default function LoginPage() {
         redirectTo: `${base}/auth/callback`,
       },
     });
-    if (error) setError(error.message);
+    if (error) {
+      reportAuthFailure("google_start", error);
+      setError(authErrorMessage(error));
+    }
   };
 
   const redirectByRole = async (user, session = null) => {
@@ -251,11 +280,14 @@ export default function LoginPage() {
     // browser history. Without this, pressing Back from the app's first screen
     // (e.g. the Salesman Lite dashboard) re-shows the sign-in page.
     const go = (url) => window.location.replace(url);
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("subdomain, role, dealer_id, onboarding_complete, plan")
+      .select(POST_AUTH_COLUMNS)
       .eq("id", user.id)
       .maybeSingle();
+    // A failed read is not "no profile". Falling through would send an
+    // existing, fully set-up account into the signup wizard below.
+    if (profileError) throw profileError;
 
     // No profiles row — auth account exists but sign-up was never completed.
     // Send them back to onboarding instead of falling through to the salesman
@@ -272,65 +304,23 @@ export default function LoginPage() {
       return;
     }
 
-    const subdomain = profile?.subdomain;
-    const role = profile?.role;
-
-    // Buyers live on /account, never a seller dashboard — unless a page sent
-    // them here to sign in (Find me post form, price alert), then back there.
-    if (role === "buyer") {
-      go(`${base}${consumePostAuthReturn()}`);
-      return;
-    }
-
-    const getActiveSession = async () => {
-      if (session) return session;
+    // Every account-to-destination rule lives in utils/postAuthRoute.js, shared
+    // with Google / magic link / email confirm / reset. This page's copy sent
+    // manager, admin, accountant and F&I to /salesman first, and a dealer
+    // mid-signup to /onboarding (= /plans), losing their place.
+    let activeSession = session;
+    if (!activeSession) {
       const { data: { session: s } } = await supabase.auth.getSession();
-      return s;
-    };
-
-    // Platform superadmin has its own console (/platform) — never a dealer
-    // dashboard. Keeping it separate stops the admin account from landing on an
-    // empty, onboarding-less dealer dashboard.
-    if (role === "superadmin") {
-      go(`${base}/platform`);
-      return;
+      activeSession = s;
     }
-
-    if (role === "dealer" || role === "owner") {
-      if (profile?.onboarding_complete === false && !subdomain) {
-        go(`${base}/onboarding`);
-        return;
-      }
-      if (subdomain && isProd) {
-        const activeSession = await getActiveSession();
-        go(`https://${subdomain}.xdrive.my/dashboard${handoffSuffix(activeSession)}`);
-      } else {
-        go(`${base}/dashboard`);
-      }
-    } else if (role === "salesman") {
-      // A salesman who hasn't finished onboarding (no name/IC/phone/profile yet)
-      // must go back to the wizard, never straight to the dashboard. Without this
-      // an authenticated-but-half-signed-up salesman who lands on /login for any
-      // reason (auth-callback fallback race, bookmark, back button, session
-      // restore) drops into an empty dashboard. Mirror the dealer branch above.
-      if (profile?.onboarding_complete === false) {
-        const tier = profile?.plan === "salesman_full" ? "premium" : "lite";
-        go(`${base}/salesman-onboarding/${tier}`);
-        return;
-      }
-      const activeSession = await getActiveSession();
-      const target = profile?.dealer_id
-        ? "salesman"
-        : profile?.plan === "salesman_full"
-        ? "salesman-premium"
-        : "salesman-lite";
-      const suffix = isProd ? handoffSuffix(activeSession) : "";
-      go(`${base}/${target}${suffix}`);
-    } else {
-      const activeSession = await getActiveSession();
-      const suffix = isProd ? handoffSuffix(activeSession) : "";
-      go(`${base}/salesman${suffix}`);
-    }
+    const { url } = resolvePostAuthRoute(profile, {
+      session: activeSession,
+      // Buyers go back to the page that sent them here to sign in, if any.
+      buyerHome: profile.role === "buyer" ? consumePostAuthReturn() : "/account",
+    });
+    // Relative targets stay pinned to the apex on prod, as before: sign-in on
+    // www.xdrive.my must not strand the new session on the www origin.
+    go(url.startsWith("/") ? `${base}${url}` : url);
   };
 
   const handleLogin = async () => {
@@ -371,10 +361,16 @@ export default function LoginPage() {
         setLoading(false);
         return;
       }
-      const isInvalidCreds =
-        signInError.message.toLowerCase().includes("invalid") ||
-        signInError.message.toLowerCase().includes("credentials") ||
-        signInError.status === 400;
+      // Unconfirmed email is also a 400, so the old status-based test called
+      // it a wrong password and spent a throttle attempt on it. Send the
+      // person to the confirm screen, where they can resend the email.
+      if (isEmailNotConfirmed(signInError)) {
+        setUnconfirmedAddr(cleanEmail);
+        setUnconfirmed(true);
+        setLoading(false);
+        return;
+      }
+      const isInvalidCreds = isWrongCredentials(signInError);
 
       // Record the failed attempt server-side; the DB locks after the 3rd and
       // hands back the running count, which is what gates the reset link below.
@@ -434,9 +430,12 @@ export default function LoginPage() {
           setShowForgotPassword(false);
         }
       } else {
-        // Other errors (e.g. email not confirmed) — just show the message.
+        // Anything that is not a wrong password (a 5xx, a banned account, a
+        // rate limit): say what it was, and report it if it is ours.
         // A lock still takes priority: it is the reason the next try will fail.
-        setError(lockedNow ? `Too many attempts. Try again in ${lockSecs}s.` : signInError.message);
+        console.error("[LoginPage] sign-in failed:", signInError.code, signInError.message);
+        reportAuthFailure("password_signin", signInError);
+        setError(lockedNow ? `Too many attempts. Try again in ${lockSecs}s.` : authErrorMessage(signInError));
         setShowMagicLink(false);
         setShowForgotPassword(false);
       }
@@ -449,8 +448,10 @@ export default function LoginPage() {
       const proceed = await checkMfaAndProceed(data.user);
       if (proceed) await redirectByRole(data.user, data.session);
       else return; // 2FA challenge UI now shown
-    } catch {
-      setError("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("[LoginPage] post-login redirect failed:", err);
+      reportAuthFailure("login_redirect", err);
+      setError(authErrorMessage(err, "You're signed in, but we couldn't load your account. Please try again."));
     }
     setLoading(false);
   };
@@ -500,7 +501,7 @@ export default function LoginPage() {
   }
 
   if (unconfirmed) {
-    const unconfirmedEmail = searchParams.get("email") || "";
+    const unconfirmedEmail = searchParams.get("email") || unconfirmedAddr;
     return (
       <div
         style={{
@@ -629,13 +630,19 @@ export default function LoginPage() {
                   return;
                 }
                 const captchaToken = await getToken();
-                await supabase.auth.resend({
+                // This result used to be thrown away, so the page said
+                // "resent!" even when nothing was sent.
+                const { error: resendErr } = await supabase.auth.resend({
                   type: "signup",
                   email: unconfirmedEmail,
-                  options: { captchaToken },
+                  options: { captchaToken, emailRedirectTo: `${base}/auth/callback` },
                 });
                 setResendLoading(false);
-                setResendSent(true);
+                if (resendErr) {
+                  console.error("[LoginPage] resend confirmation failed:", resendErr.code, resendErr.message);
+                  reportAuthFailure("confirm_resend", resendErr);
+                  setResendError(authErrorMessage(resendErr));
+                } else setResendSent(true);
               }}
               disabled={resendLoading}
               style={{

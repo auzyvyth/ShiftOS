@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { routeForProfile } from './useRoleRedirect';
+import { routeForProfile, ROUTE_PROFILE_COLUMNS } from './useRoleRedirect';
 
 // Auth guard shared by every /account* page. Not logged in -> /login (the one
 // sign-in door; it routes by role afterwards, so a buyer still lands back here).
@@ -29,7 +29,7 @@ export function useBuyerGuard() {
         // their own panel directly, not via /salesman and a second redirect.
         // account_status + deleted_at drive AccountPage's restore-my-account
         // gate (MOBILE-7) — without them here it can never fire.
-        .from('profiles').select('role, dealer_id, plan, full_name, avatar_url, phone, account_status, deleted_at')
+        .from('profiles').select(`${ROUTE_PROFILE_COLUMNS}, full_name, avatar_url, phone, account_status, deleted_at`)
         .eq('id', data.session.user.id).maybeSingle();
       if (!active) return;
       const home = routeForProfile(prof);

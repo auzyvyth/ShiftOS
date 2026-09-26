@@ -38,8 +38,8 @@ export default function UnsubscribePage() {
           <>
             <p style={{ margin:'0 0 8px', fontSize:17, fontWeight:700, color:'#f3f4f6' }}>Done</p>
             <p style={{ margin:'0 0 20px', fontSize:13.5, lineHeight:1.6, color:'rgba(255,255,255,0.60)' }}>
-              We will not email you about unread replies again. You will still see
-              messages when you open a chat.
+              We will not email you about unread messages or waiting leads again.
+              You will still see everything when you open the app.
             </p>
           </>
         )}

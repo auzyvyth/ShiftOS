@@ -1,66 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, INITIAL_URL } from '../supabaseClient';
-import { handoffSuffix } from '../lib/authHandoff';
+import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
+import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
+// Someone already signed in who opened this page by hand: send them home via
+// the one shared router (utils/postAuthRoute.js). This page's copy sent a
+// buyer to /salesman and a dealer mid-signup to /onboarding (= /plans).
 async function redirectByRole(session, navigate) {
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, subdomain, dealer_id, onboarding_complete, plan')
+    .select(POST_AUTH_COLUMNS)
     .eq('id', session.user.id)
     .maybeSingle();
+  if (profileError) throw profileError;
 
   if (!profile) {
     navigate('/onboarding');
     return;
   }
-
-  const { role, subdomain, dealer_id } = profile;
-
-  // Platform superadmin has its own console (/platform) — never a dealer
-  // dashboard or a subdomain. Mirror LoginPage so every path agrees.
-  if (role === 'superadmin') {
-    navigate('/platform');
-    return;
-  }
-
-  if (role === 'dealer' && profile.onboarding_complete === false && !subdomain) {
-    navigate('/onboarding');
-    return;
-  }
-
-  if (role === 'dealer') {
-    // Cross-subdomain handoff only makes sense on the real domain — a Vercel
-    // preview/localhost has no dealer subdomains to jump to, and doing it
-    // anyway leaves the preview build entirely (lands on real prod). Mirrors
-    // LoginPage.jsx's isProd guard.
-    const isProd = window.location.hostname === 'xdrive.my' || window.location.hostname.endsWith('.xdrive.my');
-    if (subdomain && isProd) {
-      // Carry the session across to the subdomain via the hash-fragment handoff
-      // (same mechanism useTenant consumes). Query-string tokens were never read
-      // by the subdomain (so the dealer landed logged out) and leak via referer.
-      window.location.href = `https://${subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`;
-    } else {
-      navigate('/dashboard');
-    }
-  } else if (role === 'salesman') {
-    // Mirror LoginPage: a linked salesman -> /salesman; a solo salesman routes by
-    // plan (Premium -> /salesman-premium, otherwise Lite). Without the plan check
-    // a Premium salesman was dropped onto the Lite panel after a reset.
-    navigate(dealer_id ? '/salesman' : profile.plan === 'salesman_full' ? '/salesman-premium' : '/salesman-lite');
-  } else if (role === 'manager') {
-    navigate('/manager');
-  } else if (role === 'accountant') {
-    navigate('/accountant');
-  } else if (role === 'fi_officer') {
-    navigate('/fi');
-  } else if (role === 'admin') {
-    navigate('/admin');
-  } else {
-    navigate('/salesman');
-  }
+  goPostAuth(resolvePostAuthRoute(profile, { session }), navigate);
 }
 
 export default function ResetPasswordPage() {
@@ -149,7 +110,12 @@ export default function ResetPasswordPage() {
       } else {
         // No recovery signal and nothing in the URL: someone already signed in
         // navigated here by hand. Send them where they were going.
-        redirectByRole(session, navigate);
+        redirectByRole(session, navigate).catch((err) => {
+          console.error('[ResetPasswordPage] redirect failed:', err);
+          reportAuthFailure('reset_redirect', err);
+          setError(authErrorMessage(err));
+          setPhase('code');
+        });
       }
     };
 
@@ -162,6 +128,7 @@ export default function ResetPasswordPage() {
     // race against the exchange. It IS a race against the event above, which is
     // why fromEmailLink has to stand on its own.
     supabase.auth.getSession().then(({ data, error: err }) => {
+      if (err) console.error('[ResetPasswordPage] getSession failed:', err.message);
       settle(err ? null : data.session, false);
     });
 
@@ -184,10 +151,18 @@ export default function ResetPasswordPage() {
     });
     setCodeLoading(false);
     if (err || !data?.session) {
+      // Supabase answers a mistyped code and an expired one with the SAME
+      // error ("Token has expired or is invalid", otp_expired), so the old
+      // /expired/ test told every typo "your code has expired" and sent people
+      // to request new codes — which runs into the 3-per-15-min send cap.
+      if (err) {
+        console.error('[ResetPasswordPage] verifyOtp failed:', err.code, err.message);
+        reportAuthFailure('reset_verify_code', err);
+      }
       setError(
-        /expired/i.test(err?.message || '')
-          ? 'That code has expired. Request a new one from the sign-in page.'
-          : 'That code is not right. Check the digits, or request a new one.',
+        !err || err.code === 'otp_expired'
+          ? 'That code is wrong or has expired. Check the digits against the newest email, or request a new code.'
+          : authErrorMessage(err),
       );
       return;
     }
@@ -208,7 +183,9 @@ export default function ResetPasswordPage() {
     setLoading(true);
     const { error: err } = await supabase.auth.updateUser({ password });
     if (err) {
-      setError(err.message);
+      console.error('[ResetPasswordPage] updateUser failed:', err.code, err.message);
+      reportAuthFailure('reset_set_password', err);
+      setError(authErrorMessage(err));
       setLoading(false);
       return;
     }

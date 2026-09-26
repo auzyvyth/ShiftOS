@@ -1062,6 +1062,33 @@ different concerns and the house rule is one per session.
   unilaterally — it changes what every Premium follow-up count, the KPI and the
   stage glow report, and that is a product call.
 
+### AUTH-10: one post-login router — CODE DONE 2026-09-26, needs staging click-through
+- [~] **Built: `src/utils/postAuthRoute.js` `resolvePostAuthRoute`**, used by
+  LoginPage, AuthCallbackPage, AuthConfirmPage and ResetPasswordPage (guarded by
+  `npm run test:postauth`). Also: every "Dashboard" link (Header,
+  MarketplaceHeader, SalesmanProfilePage, useBuyerGuard, BuyerAuthPage) now
+  selects `ROUTE_PROFILE_COLUMNS` — they selected only role/dealer_id/plan, so
+  `isPremiumSalesman` said "no" for every Premium rep and they went via
+  /salesman-lite. SalesmanLite's guard now uses `isPremiumSalesman` (it used
+  plan alone while Premium also needs payment: an unpaid or expired Premium
+  account looped Lite <-> Premium forever). `push_home_path` fixed live
+  (migration `20260926a`). Before prod: click through password, Google, magic
+  link, reset code and a signup-reminder link for dealer, Lite, Premium, linked
+  salesman, manager and buyer on staging.
+- [ ] **OWNER DECISION: the Premium free month does not unlock Premium.** A new
+  solo Premium signup gets `subscription_status='trial'` + `trial_ends_at` (+30
+  days) from `prevent_profile_privilege_escalation`, and the Premium panel has
+  a "first month free" branch — but `is_salesman_premium()` /
+  `isPremiumSalesman` only accept `dealer_id`, `plan_expires_at > now()` or
+  `payment_status='received'`. So a trial rep is treated as Lite everywhere
+  (routing now agrees and no longer loops). Either count an unexpired trial as
+  Premium in BOTH functions (trial_ends_at cannot be extended by the user, the
+  trigger pins it), or drop the free-month copy. Zero live accounts affected
+  today.
+- [ ] Confirm `RESEND_FROM_EMAIL` is set on the edge functions — without it
+  invites/setup/reminder emails fall back to Resend's sandbox sender, which
+  only delivers to the Resend account owner.
+
 ### Auth hardening — asked for 2026-09-07, investigated, NOT yet built
 Owner's ask: rate-limit sign-in, password reset and magic link; stop offering
 the reset link after ONE wrong password (make it three); put Turnstile on every

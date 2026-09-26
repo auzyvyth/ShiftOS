@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { readLogoutNotice } from '../utils/authNotice';
 
 /*
  * Mounted once, app-wide (src/App.jsx). Repairs this device's push subscription
@@ -54,7 +55,19 @@ export function usePushHeal() {
         // Only a real sign-out. onAuthStateChange also reports a null session
         // for INITIAL_SESSION on every logged-out marketplace page load, and
         // dropping a device row there would be nonsense.
-        if (event === 'SIGNED_OUT') {
+        //
+        // NOT after the 30-day idle sign-out (useIdleLogout parks reason
+        // 'idle' just before it signs out). That is the owner's own phone, and
+        // unregistering it meant a rep who went quiet for a month stopped
+        // hearing about new leads at all — the pushes had nowhere to go. A tap
+        // on one lands on the sign-in page and then the lead. A DELIBERATE
+        // sign-out still unregisters (shared or resold phone), and the next
+        // account to sign in on this phone claims it (push_register_device).
+        // Fresh only: a leftover notice must not make a later DELIBERATE
+        // sign-out keep the phone registered.
+        const notice = readLogoutNotice();
+        const idle = notice?.reason === 'idle' && Date.now() - (notice.at || 0) < 15000;
+        if (event === 'SIGNED_OUT' && !idle) {
           import('./usePushNotifications')
             .then(({ forgetPushDevice }) => forgetPushDevice())
             .catch(() => { /* never blocks sign-out */ });

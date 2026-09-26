@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { routeForRole } from "../hooks/useRoleRedirect";
+import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { normalizePhone } from "../lib/phone";
 import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
@@ -1489,14 +1490,15 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
         .eq("id", uid)
         .maybeSingle();
 
       if (profileErr) console.error("fetchProfile:", profileErr);
       if (!profileData) {
         setLoading(false);
-        navigate("/login");
+        // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
+        navigate(profileErr ? "/login?error=auth_failed&reason=profile" : "/login");
         return;
       }
 
@@ -1531,8 +1533,13 @@ export default function SalesmanLite() {
         return;
       }
 
-      // Premium standalone accounts go to their own page
-      if (profileData.plan === "salesman_full") {
+      // Premium standalone accounts go to their own page — by the SAME rule the
+      // Premium panel checks on arrival (isPremiumSalesman, which mirrors the
+      // DB's is_salesman_premium()). This used to test plan === "salesman_full"
+      // alone while Premium also requires payment/expiry, so an account with the
+      // plan but not the entitlement (a fresh signup awaiting payment, or an
+      // expired one) bounced Lite -> Premium -> Lite forever.
+      if (isPremiumSalesman(profileData)) {
         navigate("/salesman-premium", { replace: true });
         return;
       }
@@ -8678,14 +8685,14 @@ export default function SalesmanLite() {
               Settings — the one screen a rep never opens. A signup therefore
               got no enquiry, booking or message alerts and no sign that was
               even a setting. Mounted OUTSIDE the tab switch on purpose: it
-              stays put as they move around the panel (so one dismissal holds
-              for the visit), and it stops rendering for good the moment push
+              stays put as they move around the panel (REQUIRED: no dismiss
+              button), and it stops rendering for good the moment push
               is actually on. */}
           {/* Not on the chat tab — SellerInbox mounts its own copy above the
               thread list, and two identical asks on one screen is worse than
               none. */}
           {activeTab !== "chat" && (
-            <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed />
+            <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed required />
           )}
 
           {activeTab === "dashboard" && renderDashboard()}

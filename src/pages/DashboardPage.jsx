@@ -108,6 +108,7 @@ import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
+import PushPromptStrip from "../components/chat/PushPromptStrip";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
 import { getEmbedUrl } from "../utils/videoEmbed";
@@ -10988,6 +10989,22 @@ export default function DashboardPage() {
             </p>
             <div className="mt-3 h-px" style={{ background: '#EAECF0' }} />
           </div>
+
+          {/* Push is REQUIRED on the dealer account: no "Not now", and it sits
+              above every tab until this device is subscribed. Both dealers had
+              zero devices, so leads only reached them if the dashboard happened
+              to be open. Dealer/owner only — dealer_notifications push to
+              dealer_id alone, so a manager turning it on would receive nothing.
+              Not on Settings, which already has the PushToggle card. */}
+          {(profile?.role === "dealer" || profile?.role === "owner") && activeTab !== "settings" && (
+            <PushPromptStrip
+              t={{ panel: "#fff", border: "#e5e7eb", sub: "#374151" }}
+              audience="dealer_home"
+              boxed
+              required
+              userId={profile?.id}
+            />
+          )}
 
           {/* ── Overview Tab ── */}
           {activeTab === "overview" && userId && (

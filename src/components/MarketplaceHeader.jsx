@@ -11,7 +11,7 @@ import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
-import { routeForProfile, isSellerRole } from '../hooks/useRoleRedirect';
+import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { useHideOnScroll } from '../hooks/useHideOnScroll';
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
@@ -155,7 +155,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       const { data: profile } = await supabase
         // dealer_id + plan: a standalone salesman's home is /salesman-lite or
         // /salesman-premium, and the role on its own cannot tell you which.
-        .from('profiles').select('role, dealer_id, plan').eq('id', session.user.id).maybeSingle();
+        .from('profiles').select(ROUTE_PROFILE_COLUMNS).eq('id', session.user.id).maybeSingle();
       if (!active) return;
       // One shared resolver decides the destination; only the WORDING differs
       // here. A buyer's home is /account and reads "My Account"; every business
