@@ -2593,10 +2593,19 @@ app and nothing comes back. Fix that, don't build a second CRM.
   and the Performance tab reply-speed metric, which is garbage today (see the
   69,275-min "reply" note above). Search every `wa.me` in Premium/Lite/
   Salesmanpanel/LeadDrawer and route through ONE helper.
-- [ ] **WA-1 — Owner action: become a Meta Tech Provider.** Meta Business
-  verification for the ShiftOS company, a Meta app with WhatsApp product, app
-  review for `whatsapp_business_messaging` + `whatsapp_business_management`.
-  Weeks, not code. Blocks WA-2.
+- [ ] **WA-1 — Owner action: become a Meta Tech Provider.** Weeks, not code. Blocks WA-2.
+  Owner needs: (1) SSM doc whose legal name matches EXACTLY what is typed into
+  Meta (Sdn Bhd: e-cert/Notice of Registration + SSM company profile for the
+  address; enterprise: Form D/E, not expired); (2) proof of address/phone in
+  the business name <3 months old (utility bill or business bank statement);
+  (3) a business email on the xdrive.my domain + domain verified in Business
+  Settings (fastest path); (4) 2FA on the Meta account; (5) Meta app with the
+  WhatsApp product; (6) App Review for `whatsapp_business_messaging` +
+  `whatsapp_business_management` with a screencast of a working prototype, so
+  a thin WA-2 prototype must exist first; (7) privacy policy URL — `/privacy`
+  exists (`src/pages/PrivacyPage.jsx`) but names no company and says nothing
+  about WhatsApp messages: update before submitting (same URL serves the store
+  listings). New builds must use Embedded Signup v4.
 - [ ] **WA-2 — WhatsApp Coexistence inbox.** Seller connects their existing
   WhatsApp BUSINESS app number via Embedded Signup (Malaysia supported, ~15 min,
   keeps using the phone app; history syncs). Webhook -> edge function ->
@@ -2610,19 +2619,13 @@ app and nothing comes back. Fix that, don't build a second CRM.
   "never worth it for a solo agent" verdict in RAPTOR notes (pre-coexistence).
 - [ ] **WA-3 — Reply-based scoring** (IDEA-2 item 2) once WA-2 has data.
 
-- [ ] **OPS-CRM-1 — Owner prospecting CRM (platform console, People section).**
-  One new tab "Prospects", not a separate app. Table `platform_prospects`
-  (name, phone normalized, business, kind dealer|salesman, source, stage
-  found->contacted->replied->demo->signed_up->paid|lost, next_follow_up_at,
-  last_contacted_at, notes, do_not_contact, converted_profile_id), superadmin-only
-  RLS via `is_superadmin()`. Waitlist rows import as `source='waitlist'`; a signup
-  whose normalized phone matches auto-links + moves to signed_up (trigger, not
-  client). Message = `wa.me` with an editable opener, human sends from the
-  owner's own phone, stamps `last_contacted_at`. LEGAL: cold direct marketing to
-  individuals needs care under PDPA (s.43 stop-notice, consent-first position,
-  2024 amendment raised fines) — no bulk scraping, no blasts, one-to-one only,
-  and `do_not_contact` is enforced (hides the Message button) the moment anyone
-  says stop. Never via the Cloud API: Meta requires prior opt-in.
+- [x] **OPS-CRM-1 DONE 2026-09-26 (branch, not yet on staging/prod).** Platform
+  console > People > Prospects (`src/components/platform/ProspectsTab.jsx`),
+  tables `platform_prospects` + `platform_prospect_activity` (migration
+  `20260926c`, applied live). DB triggers own: phone normalize + unique, waitlist
+  -> prospect, signup with matching phone -> linked + `signed_up`, contact on a
+  do-not-contact prospect refused. Probed as anon / salesman / superadmin.
+  Follow-up: a "Follow up today" count on console Home.
 
 ---
 

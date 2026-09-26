@@ -676,7 +676,7 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
 `AdminPage.jsx` `NAV` array. Five sections in the left rail, each with its own tab
 strip; `activeSection` picks the section, `activeTab` the tab (ids are unique
 across all sections, one state each).
-  work → home, review · people → accounts, waitlist
+  work → home, review · people → accounts, waitlist, prospects
   marketplace → marketplace(Settings), funnel, engagement, buyers, broadcast, platform(Volume)
   money → billing · safety → activity, sessions, posture, errors, alerts
 - It landed on Dealers, a directory; it lands on **Home** now — the queues are the
@@ -714,6 +714,12 @@ across all sections, one state each).
   (now rendered by SalesmanLite and SalesmanPremium too — they showed nothing
   before, so a suspended standalone seller lost the marketplace with a working
   dashboard and no explanation).
+- **Prospects (the owner's own sales CRM)** is `ProspectsTab.jsx` on
+  `platform_prospects` (superadmin-only RLS). Linking to an account, waitlist
+  import, contact stamping and the do-not-contact refusal are DB triggers
+  (migration `20260926c`) — never re-do them client-side. Messaging is a human
+  `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
+  s.43 makes a "stop" final).
 - Global search lives in the console header and searches accounts, pending
   listings and waitlist out of already-loaded state — no queries. Per-tab search
   boxes are for filtering within a tab, not for finding someone.
