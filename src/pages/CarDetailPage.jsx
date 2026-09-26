@@ -70,6 +70,7 @@ import BuyerChat from "../components/chat/BuyerChat";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
+import { shouldSkipTracking } from "../utils/internalTraffic";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -1245,7 +1246,7 @@ export default function CarDetailPage() {
 
       // Fire analytics immediately — no need to block page load on it
       const refSlug = getRef();
-      if (refSlug && carData.dealer_id) {
+      if (refSlug && carData.dealer_id && !shouldSkipTracking()) {
         supabase
           .from("analytics_events")
           .insert({

@@ -64,6 +64,7 @@ import {
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
+import { shouldSkipTracking } from "../utils/internalTraffic";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type";
@@ -310,7 +311,7 @@ const HomePage = () => {
   useEffect(() => {
     if (!tenant?.id) return;
     const slug = getRef();
-    if (slug) {
+    if (slug && !shouldSkipTracking()) {
       supabase
         .from("analytics_events")
         .insert({

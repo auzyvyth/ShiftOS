@@ -1,5 +1,6 @@
 import { getShareChannel } from "./refTracking";
 import { hasConsent } from "./consent";
+import { shouldSkipTracking } from "./internalTraffic";
 
 const SESSION_KEY = "xdrive_session_id";
 
@@ -24,6 +25,8 @@ export async function trackEvent(supabase, eventType, payload = {}) {
   // Analytics tier of the cookie consent banner. No-op when the visitor has not
   // granted analytics (necessary/security telemetry doesn't route through here).
   if (!hasConsent("analytics")) return;
+  // The owner's own devices and preview deploys (see internalTraffic.js).
+  if (shouldSkipTracking()) return;
   try {
     const row = {
       event_type: eventType,

@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 // used once, to adopt an existing superadmin session handed off from the public
 // /login redirect (see checkAuth).
 import { platformClient as supabase } from "../lib/platformClient";
+import { markInternalDevice } from "../utils/internalTraffic";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
@@ -401,6 +402,8 @@ export default function AdminPage() {
       setAuthState("login");
       return;
     }
+    // Keep the console owner's own browsing out of analytics (internalTraffic.js).
+    markInternalDevice();
     setMeId(userId);
     setAuthState("authed");
     setLoginBusy(false);
