@@ -644,6 +644,12 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   otherwise silenced the single prompt whose whole job is to arrive at the
   moment it matters, and the person then sat in a chat that could never reach
   them. The strip stops rendering for good only when `subscribed` is true.
+  **On every SELLER surface it is now `required` (2026-09-26): no dismiss at
+  all.** Dealer dashboard (dealer/owner only; `dealer_notifications` push to
+  `dealer_id` alone), Salesmanpanel, Lite, Premium and `SellerInbox`. Both
+  dealers had zero devices. The iOS-not-installed and browser-denied states
+  keep their close button: nothing on the page can fix either. Buyers stay
+  dismissible.
 - **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
   every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
   sellers did not, so a lead whose push had no device to land on was simply
