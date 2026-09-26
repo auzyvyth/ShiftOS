@@ -3,18 +3,23 @@ import ServicePackages from "./ServicePackages";
 import { useServicePackages } from "../../hooks/useServicePackages";
 import { AlertTriangle, Phone, Search, X } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import { usePersistentState } from "../../hooks/usePersistentState";
+
+// IC numbers never go to disk; the edit form reads the live row.
+const redactCustomers = (rows) => (rows || []).map(({ ic_number, ...rest }) => rest);
 
 // Shared Customers tab — the SAME customers/post_sale_tasks/service_packages
 // tables the dealer dashboard reads, so a salesman's edits (expiry dates, notes,
 // service plans) are immediately visible to owner/manager and vice-versa.
 // salesmanId (optional): scope to customers from leads this salesman closed.
 export default function CustomersTab({ dealerId, salesmanId = null }) {
-  const [customers, setCustomers] = useState([]);
+  const cacheKey = dealerId ? `customers:${salesmanId || 'all'}:${dealerId}` : null;
+  const [customers, setCustomers, cached] = usePersistentState(cacheKey, [], { redact: redactCustomers });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [handoverMap, setHandoverMap] = useState({});   // lead_id → progress %
+  const [handoverMap, setHandoverMap] = usePersistentState(cacheKey && `${cacheKey}:handover`, {}); // lead_id → progress %
   const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded
   const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt' — show only due/expired
   // Packages + visits live in useServicePackages, shared with the Salesman
@@ -80,7 +85,8 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
   };
 
   const handleSave = async () => {
-    if (!editing) return;
+    // A cached row has no ic_number (redacted); saving one would blank the IC.
+    if (!editing || !('ic_number' in editing)) return;
     setSaving(true);
     const { id } = editing;
     await supabase.from("customers").update({
@@ -114,7 +120,7 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
   const rtExpired = customers.filter(c => isExpired(c.road_tax_expiry)).length;
   const insExpired = customers.filter(c => isExpired(c.insurance_expiry)).length;
 
-  if (loading) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
+  if (loading && !cached) return <div className="p-8 text-gray-600 text-sm">Loading…</div>;
 
   return (
     <div>
@@ -217,7 +223,7 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setEditing({ ...c })} className="text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
+                        <button disabled={loading} title={loading ? "Loading latest details" : undefined} onClick={() => setEditing({ ...c })} className="disabled:opacity-50 text-xs px-3 py-1 rounded-lg bg-gray-50 border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300 transition-colors whitespace-nowrap">Edit</button>
                         <button onClick={() => setExpandedPkg(isExpanded ? null : c.id)} className="text-xs px-3 py-1 rounded-lg bg-violet-50 border border-violet-200 text-violet-700 hover:bg-violet-100 transition-colors whitespace-nowrap">Service plans{pkgs.length ? ` (${pkgs.length})` : ''}</button>
                       </div>
                     </td>

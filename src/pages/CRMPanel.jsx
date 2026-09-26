@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { usePersistentState } from "../hooks/usePersistentState";
 import LeadsPage from "./LeadsPage";
 import OutreachHub from "../components/crm/OutreachHub";
 
@@ -48,7 +49,7 @@ function relativeTime(dateStr) {
 const DEFAULT_ENQUIRY_TEMPLATE = `Hi {{buyer_name}}, thank you for your enquiry about the {{car_name}}! 😊\n\nWe'd love to help you with more details or arrange a viewing. When would be a good time for you?\n\nBest regards,\n{{dealer_name}} — {{dealership}}`;
 
 function EnquiriesTab({ userId, onOpenDoc }) {
-  const [enquiries, setEnquiries] = useState([]);
+  const [enquiries, setEnquiries, enqCached] = usePersistentState(userId ? `crm_enquiries:${userId}` : null, []);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [notes, setNotes] = useState("");
@@ -367,7 +368,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
           </span>
         </div>
 
-        {loading ? (
+        {loading && !enqCached ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
         ) : enquiries.length === 0 ? (
           <p className="text-gray-600 text-sm p-6">
@@ -1274,7 +1275,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
 const DEFAULT_BOOKING_TEMPLATE = `Hi {{buyer_name}}, your {{booking_type}} for the {{car_name}} is confirmed for {{booking_date}} at {{booking_time}}. 🎉\n\nPlease arrive on time. See you at {{dealership}}!\n\nReply to reschedule.`;
 
 function BookingsTab({ userId, listings, salesmen }) {
-  const [bookings, setBookings] = useState([]);
+  const [bookings, setBookings, bkCached] = usePersistentState(userId ? `crm_bookings:${userId}` : null, []);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list");
   const [showAdd, setShowAdd] = useState(false);
@@ -1770,7 +1771,7 @@ function BookingsTab({ userId, listings, salesmen }) {
           </div>
         </div>
 
-        {loading ? (
+        {loading && !bkCached ? (
           <p className="text-gray-500 text-sm p-6">Loading...</p>
         ) : bookings.length === 0 ? (
           <p style={{ padding: "32px", textAlign: "center", color: "#4b5563", fontSize: 13 }}>No bookings yet.</p>
@@ -2224,7 +2225,7 @@ export default function CRMPanel({ userId, listings = [], salesmen = [] }) {
           Outreach
         </button>
       </div>
-      {crmTab === 'leads'    && <LeadsPage />}
+      {crmTab === 'leads'    && <LeadsPage dealerId={userId} />}
       {crmTab === 'bookings' && <BookingsTab userId={userId} listings={listings} salesmen={salesmen} />}
       {crmTab === 'outreach' && <OutreachHub dealerId={userId} />}
     </div>

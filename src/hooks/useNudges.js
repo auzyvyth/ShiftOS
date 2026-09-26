@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from './usePersistentState';
 
 // RAPTOR-1 / RAPTOR-4 — timed follow-up nudges.
 //
@@ -27,7 +28,7 @@ export const NUDGE_PRESETS = [
 ];
 
 export function useNudges(salesmanId, dealerId) {
-  const [nudges, setNudges]   = useState([]);
+  const [nudges, setNudges]   = usePersistentState(salesmanId ? `nudges:${salesmanId}` : null, []);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {

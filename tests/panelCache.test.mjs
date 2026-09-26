@@ -105,6 +105,8 @@ for (const p of ['slite', 'sp', 'spanel', 'dash']) {
   writeCache(`${p}_listings_u1`, [{ id: 'c1' }]);
 }
 writeCache('cf:v1:snapshot:u1', { totalSold: 3 });
+// usePersistentState tab caches (customers, leads board, handover, team...)
+writeCache('cf:v1:ps:customers:all:u1', [{ id: 'k1', name: 'A' }]);
 localStorage.setItem('slite_goal_u1', '{"target":5}');
 localStorage.setItem('sp_tour_seen_u1', '1');
 clearPanelDataCache();
@@ -113,6 +115,7 @@ is('logout clears premium', seedPanelCache('sp').profile, null);
 is('logout clears the linked panel', seedPanelCache('spanel').profile, null);
 is('logout clears the dealer dashboard', seedPanelCache('dash').profile, null);
 is('logout clears the snapshot', localStorage.getItem('cf:v1:snapshot:u1'), null);
+is('logout clears persisted tab data', localStorage.getItem('cf:v1:ps:customers:all:u1'), null);
 is('logout keeps the goal preference', localStorage.getItem('slite_goal_u1'), '{"target":5}');
 is('logout keeps tour-seen', localStorage.getItem('sp_tour_seen_u1'), '1');
 

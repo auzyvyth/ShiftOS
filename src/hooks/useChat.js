@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from './usePersistentState';
 import useAuthCaptcha from './useAuthCaptcha';
 
 // In-app buyer <-> seller chat.
@@ -146,8 +147,13 @@ export function useChatThread(threadId, role) {
 // Seller inbox: every thread for this salesman (or the whole dealership when
 // no salesmanId is given), newest activity first.
 export function useChatThreads({ salesmanId = null, dealerId = null }) {
-  const [threads, setThreads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Persisted so the inbox and its nav badge paint instantly. Rows carry the
+  // buyer's display label and last-message time, never a message body.
+  const [threads, setThreads, threadsCached] = usePersistentState(
+    salesmanId || dealerId ? `chat_threads:${salesmanId ? 's' : 'd'}:${salesmanId || dealerId}` : null, [],
+  );
+  const [fetching, setLoading] = useState(true);
+  const loading = fetching && !threadsCached;
   // The inbox hook gets mounted more than once (the nav badge and the inbox
   // itself). Two realtime channels sharing a topic name collide, so give each
   // instance its own.

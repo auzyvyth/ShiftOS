@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { usePersistentState } from '../hooks/usePersistentState';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const fmtRM = (n) =>
@@ -234,20 +235,26 @@ function ResponseTimeDot({ minutes }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLeads }) {
   // ── Revenue data ────────────────────────────────────────────────────────────
-  const [revData, setRevData] = useState(null);
-  const [revLoading, setRevLoading] = useState(true);
+  // Every section persists its last result, so the tab paints the numbers it
+  // showed last time; "loading" only means "nothing to show yet" (usePersistentState).
+  const ck = (name) => (userId ? `revops_${name}:${userId}` : null);
+  const [revData, setRevData] = usePersistentState(ck('rev'), null);
+  const [revFetching, setRevLoading] = useState(true);
+  const revLoading = revFetching && !revData;
 
   // ── Lead performance data ────────────────────────────────────────────────
-  const [leadData, setLeadData] = useState(null);
-  const [leadLoading, setLeadLoading] = useState(true);
-  const [salesmanScores, setSalesmanScores] = useState([]);
+  const [leadData, setLeadData] = usePersistentState(ck('lead'), null);
+  const [leadFetching, setLeadLoading] = useState(true);
+  const leadLoading = leadFetching && !leadData;
+  const [salesmanScores, setSalesmanScores] = usePersistentState(ck('scores'), []);
 
   // ── Add-on revenue ───────────────────────────────────────────────────────
-  const [addonData, setAddonData] = useState(null);
-  const [addonLoading, setAddonLoading] = useState(true);
+  const [addonData, setAddonData] = usePersistentState(ck('addon'), null);
+  const [addonFetching, setAddonLoading] = useState(true);
+  const addonLoading = addonFetching && !addonData;
 
   // ── Alerts ───────────────────────────────────────────────────────────────
-  const [alerts, setAlerts] = useState([]);
+  const [alerts, setAlerts] = usePersistentState(ck('alerts'), []);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
 
   // ── Section 1: Revenue Overview ──────────────────────────────────────────
@@ -261,22 +268,24 @@ export default function RevOpsPage({ userId, onNavigateToStock, onNavigateToLead
       // second, independently-computed query against car_listings — the two
       // tables are synced via triggers but can drift, which previously made
       // RevOps and Overview disagree on the same month's numbers.
-      const { data: pnl, error: pnlErr } = await supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId });
+      // Three independent reads, run together (they were serial: three round
+      // trips to Sydney back to back before the first tile could fill).
+      const [{ data: pnl, error: pnlErr }, { count: activeCount }, { count: activeLeads }] = await Promise.all([
+        supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId }),
+        // Active listings for stock turn
+        supabase
+          .from("car_listings")
+          .select("id", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .neq("status", "sold"),
+        // Active leads (pipeline value proxy) — exclude every terminal stage variant
+        supabase
+          .from("leads")
+          .select("id", { count: "exact", head: true })
+          .eq("dealer_id", userId)
+          .not("stage", "in", "(won,closed_won,lost,closed_lost)"),
+      ]);
       if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
-
-      // Active listings for stock turn
-      const { count: activeCount } = await supabase
-        .from("car_listings")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", userId)
-        .neq("status", "sold");
-
-      // Active leads (pipeline value proxy) — exclude every terminal stage variant
-      const { count: activeLeads } = await supabase
-        .from("leads")
-        .select("id", { count: "exact", head: true })
-        .eq("dealer_id", userId)
-        .not("stage", "in", "(won,closed_won,lost,closed_lost)");
 
       setRevData({
         revMTD: Number(pnl?.mtd?.revenue) || 0,

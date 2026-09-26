@@ -1062,6 +1062,23 @@ fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
 - Total gross = front + back
 Both displayed in separate labelled sections in the P&L modal.
 
+## Dashboard caching — every tab paints from the device first (PERF-LOAD, 2026-09-26)
+The database stalls (see DB migrations), so no dashboard screen may wait on the
+network before showing anything. Two layers, both purged on logout:
+- Panel bootstrap data (profile, listings, leads, enquiries, appts): `seedPanelCache`,
+  window `PANEL_SEED_TTL` (7 days) in `src/utils/panelCache.js`.
+- Every tab's own data: `usePersistentState(key, initial, { redact })`
+  (`src/hooks/usePersistentState.js`) in place of the `useState` the fetch fills.
+  Pattern: `const [rows, setRows, cached] = usePersistentState(...)`, then
+  `loading = fetching && !cached` so the spinner shows only when there is nothing.
+- **A new tab that fetches data uses this hook.** Key must END in the dealer/user id.
+- **Redact IC numbers, buyer_address, hp_docs** (it is plaintext on disk).
+- **A redacted row must never be the source of a write.** CustomersTab disables Edit
+  while loading and refuses to save a row missing `ic_number`, or saving would blank
+  the IC. Check the same thing on any tab whose edit form spreads the row back.
+- DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
+- A failed read keeps the cached value; never overwrite a good cache with [] on error.
+
 ## RLS policy safety
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)
 - For any policy that needs to reference `profiles` (especially policies ON profiles), use a SECURITY DEFINER helper that bypasses RLS: `get_my_dealer_id()`, `is_superadmin()`, `is_linked_salesman()`, `is_active_salesman()`

@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from '../hooks/usePersistentState';
+
+// hp_docs holds the buyer's loan documents (IC, payslips) — never to disk.
+const redactHp = (rows) => (rows || []).map(({ hp_docs, ...rest }) => rest);
 
 const HP_STATUS = {
   pending:   { label: 'Pending',   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  border: 'rgba(245,158,11,0.2)' },
@@ -145,7 +149,7 @@ function RejectModal({ onConfirm, onCancel }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function HPBoard({ dealerId }) {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows, cached] = usePersistentState(dealerId ? `hp:${dealerId}` : null, [], { redact: redactHp });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [rejectTarget, setRejectTarget] = useState(null); // row id pending rejection
@@ -196,7 +200,7 @@ export default function HPBoard({ dealerId }) {
     disbursed: rows.filter(r => r.status === 'disbursed').reduce((s, r) => s + Number(r.loan_amount), 0),
   }), [rows]);
 
-  if (loading) return <p style={{ color: '#4b5563', fontSize: 13, padding: 16 }}>Loading HP board…</p>;
+  if (loading && !cached) return <p style={{ color: '#4b5563', fontSize: 13, padding: 16 }}>Loading HP board…</p>;
 
   return (
     <div>

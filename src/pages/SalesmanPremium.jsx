@@ -138,6 +138,7 @@ import {
   rememberPanelUid,
   seedPanelCache,
 } from "../utils/panelCache";
+import { usePersistentState } from "../hooks/usePersistentState";
 import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
@@ -730,8 +731,14 @@ export default function SalesmanPremium() {
 
  // premium — loans
  const [loanApplications, setLoanApplications] = useState([]);
- const [customers, setCustomers] = useState([]);
- const [customersLoading, setCustomersLoading] = useState(true);
+ // Persisted (IC stripped) so Customers paints instantly; refreshCustomers
+ // and the bootstrap fetch still replace it. Loading = nothing to show yet.
+ const [customers, setCustomers, customersCached] = usePersistentState(
+ userId ? `sp_customers:${userId}` : null, [],
+ { redact: (rows) => (rows || []).map(({ ic_number, ...rest }) => rest) },
+ );
+ const [customersFetching, setCustomersLoading] = useState(true);
+ const customersLoading = customersFetching && !customersCached;
  const [customerSearch, setCustomerSearch] = useState("");
  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
  // Prepaid service packages + their visits. Owned by useServicePackages so the

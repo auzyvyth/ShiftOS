@@ -115,6 +115,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
+import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Car,
   PlusCircle,
@@ -4448,8 +4449,13 @@ function lastActiveText(ts) {
 }
 
 function TeamTab({ managerDealership, dealerId, profile }) {
-  const [salespeople, setSalespeople] = useState([]);
-  const [loadingTeam, setLoadingTeam] = useState(true);
+  // Persisted (IC material stripped) so the roster paints instantly; the
+  // fetch below still replaces it. "loadingTeam" = nothing to show yet.
+  const [salespeople, setSalespeople, teamCached] = usePersistentState(
+    dealerId ? `team:${dealerId}` : null, [], { redact: (rows) => (rows || []).map(redactProfileForCache) },
+  );
+  const [teamFetching, setLoadingTeam] = useState(true);
+  const loadingTeam = teamFetching && !teamCached;
   const [teamError, setTeamError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
@@ -4694,7 +4700,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       .order("created_at", { ascending: false });
     if (error) {
       setTeamError(error.message || "Failed to load team.");
-      setSalespeople([]);
+      // Keep the cached roster on screen; the error line explains it is stale.
     } else setSalespeople(data || []);
     setLoadingTeam(false);
   };
@@ -6727,8 +6733,11 @@ function StockStatsStrip({ dealerId }) {
 const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
-  const [units, setUnits] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Persisted so the stock table paints last-known units instantly (no IC or
+  // buyer data on stock_units). "loading" = nothing to show yet.
+  const [units, setUnits, unitsCached] = usePersistentState(userId ? `stock:${userId}` : null, []);
+  const [unitsFetching, setLoading] = useState(true);
+  const loading = unitsFetching && !unitsCached;
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);

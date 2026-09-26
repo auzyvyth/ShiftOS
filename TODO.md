@@ -138,15 +138,12 @@ At those moments EVERY request stalls at once, trivial ones included.
   `PANEL_SEED_TTL` in `src/utils/panelCache.js`. Dealer Overview (the first
   screen) now paints its last numbers instantly and refreshes behind them
   (`src/components/OverviewTab.jsx`, `useCachedFetch`). It had no cache at all.
+- **Shipped 2026-09-26 (later):** every other dashboard tab paints from cache
+  via `usePersistentState` (rules in CLAUDE.md "Dashboard caching"), and the
+  no-DDL-in-business-hours rule is in CLAUDE.md "DB migrations".
 - [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
   from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
   source. Caching cannot help a first open on a new device or any save.
-- [x] **PERF-LOAD-3 DONE 2026-09-26: no DDL 09:00-22:00 MYT**, one migration
-  per change. Written as a hard rule in CLAUDE.md "DB migrations".
-- [ ] **PERF-LOAD-4: cache the remaining tabs.** Only the landing screens
-  paint from cache. Other dashboard tabs (RevOps, Stock, Leads board, Team)
-  and Lite/Premium secondary tabs still show a spinner on each open. Move
-  them onto `useCachedFetch` one tab at a time, same pattern as OverviewTab.
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
