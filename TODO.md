@@ -141,8 +141,8 @@ At those moments EVERY request stalls at once, trivial ones included.
 - [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
   from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
   source. Caching cannot help a first open on a new device or any save.
-- [ ] **PERF-LOAD-3 (owner decision): stop applying migrations to prod during
-  business hours**, or batch them. Each one freezes the API for everyone.
+- [x] **PERF-LOAD-3 DONE 2026-09-26: no DDL 09:00-22:00 MYT**, one migration
+  per change. Written as a hard rule in CLAUDE.md "DB migrations".
 - [ ] **PERF-LOAD-4: cache the remaining tabs.** Only the landing screens
   paint from cache. Other dashboard tabs (RevOps, Stock, Leads board, Team)
   and Lite/Premium secondary tabs still show a spinner on each open. Move

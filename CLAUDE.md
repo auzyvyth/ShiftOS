@@ -456,8 +456,15 @@ instruction — run the intake yourself, do not ask first. Full runbook:
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
-  reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Batch DDL into one
-  migration instead of several, and avoid applying them in Malaysian business hours.
+  reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
+  - **No DDL between 09:00 and 22:00 Malaysia time (01:00-14:00 UTC).** Run `date -u`
+    before every `apply_migration`. Inside the window, do NOT apply it: write the
+    migration file, commit it, and tell the owner it is queued for tonight. Only an
+    explicit "apply it now" from the owner overrides this, per migration.
+  - **One migration per change, not one per statement.** Each call is one freeze;
+    five small migrations froze the API five times on 2026-09-26.
+  - Read-only `execute_sql` (SELECT) does not trigger a reload and is fine any time.
+    Anything that creates/alters/drops/grants DOES, even through `execute_sql`.
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
