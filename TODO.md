@@ -2435,6 +2435,16 @@ until these are done:**
 
 ## ⚠️ USER ACTION REQUIRED — remind every session until done
 
+- [ ] **ACT-META-VERIFY — start Meta Business verification (owner, added 2026-09-26).**
+  Blocks the WhatsApp inbox (WA-2). Full checklist under WA-1 in Dev tasks. Short
+  version: (1) tell the agent whether the business is Sdn Bhd or an enterprise;
+  (2) SSM doc with the legal name typed into Meta EXACTLY as printed; (3) utility
+  bill or business bank statement in that name, under 3 months old; (4) an
+  @xdrive.my email + verify the domain in Meta Business Settings; (5) 2FA on
+  the Meta account. Agent side before App Review: update `/privacy` to name the
+  company and cover WhatsApp messages, and build a thin WA-2 prototype for the
+  screencast.
+
 > **ACT-VERIFY-PUSH DONE — owner confirmed on a real phone, 2026-09-07.**
 > Notifications arrive immediately. `send-push` v18 (urgency `high`, TTL capped
 > at 24h) is what fixed it; the server side was never slow (measured 193ms).
@@ -2577,6 +2587,55 @@ until these are done:**
 > Reminder protocol: while ACT-2, ACT-9 or ACT-10 remain here, surface them at session start and whenever security/auth/import/dependency work is touched. (ACT-3, ACT-5 and NEW-8 completed 2026-08-05. **ACT-8 was found ALREADY COMPLETE and removed 2026-08-15** — `package.json` AND `package-lock.json` both resolve `xlsx` to `https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, and `vercel.json` CSP already whitelists `cdn.sheetjs.com` in connect-src; it had been sitting in this list as a blocked user-action for weeks after the fact. **ACT-12 verified RESOLVED 2026-08-24** — see entry above; drop from this nag list. ACT-1 and ACT-6 are deferred until revenue/Supabase Pro — do not nag until then; owner reconfirmed both 2026-09-07. **ACT-4 and ACT-VERIFY-PUSH confirmed DONE 2026-09-07** — both dropped from this list; ACT-4 leaves BUY-D live, which is now real work rather than a warning.) LESSON: verify an ACT item against the code before re-surfacing it — a stale nag costs a session's attention every time.
 
 ## Dev tasks
+
+---
+
+### SESSION 2026-09-26 — WhatsApp into the CRM + owner prospecting CRM (scoped, nothing built)
+
+Framing correction: Premium + dealer dash already HAVE a CRM (pipeline, This
+Week, nudges, OutreachHub, Customers, Handover). The gap is that WhatsApp —
+where the deal actually happens — is invisible to it: a `wa.me` tap leaves the
+app and nothing comes back. Fix that, don't build a second CRM.
+
+- [ ] **WA-0 — Tap tracking (no Meta needed, ship first).** Every `wa.me` tap
+  from a lead surface stamps `leads.last_contacted_at` + a `lead_activities` row;
+  on return to the tab, one-tap "Did they reply? Yes / Not yet". Feeds This Week
+  and the Performance tab reply-speed metric, which is garbage today (see the
+  69,275-min "reply" note above). Search every `wa.me` in Premium/Lite/
+  Salesmanpanel/LeadDrawer and route through ONE helper.
+- [ ] **WA-1 — Owner action: become a Meta Tech Provider.** Weeks, not code. Blocks WA-2.
+  Owner needs: (1) SSM doc whose legal name matches EXACTLY what is typed into
+  Meta (Sdn Bhd: e-cert/Notice of Registration + SSM company profile for the
+  address; enterprise: Form D/E, not expired); (2) proof of address/phone in
+  the business name <3 months old (utility bill or business bank statement);
+  (3) a business email on the xdrive.my domain + domain verified in Business
+  Settings (fastest path); (4) 2FA on the Meta account; (5) Meta app with the
+  WhatsApp product; (6) App Review for `whatsapp_business_messaging` +
+  `whatsapp_business_management` with a screencast of a working prototype, so
+  a thin WA-2 prototype must exist first; (7) privacy policy URL — `/privacy`
+  exists (`src/pages/PrivacyPage.jsx`) but names no company and says nothing
+  about WhatsApp messages: update before submitting (same URL serves the store
+  listings). New builds must use Embedded Signup v4.
+- [ ] **WA-2 — WhatsApp Coexistence inbox.** Seller connects their existing
+  WhatsApp BUSINESS app number via Embedded Signup (Malaysia supported, ~15 min,
+  keeps using the phone app; history syncs). Webhook -> edge function ->
+  `wa_messages` (body + `body_ai` redacted, same rule as chat) matched to a lead
+  by `normalize_my_phone`; new number = new lead via `resolve_lead_salesman`.
+  Shows in the existing SellerInbox, not a new screen. Replies from ShiftOS only
+  inside the 24h window; AI drafts, human sends (Meta also bans general-purpose
+  AI bots). Personal-WhatsApp users must move to the free Business app first.
+  Cost: inbound + 24h replies free (from 2026-10-01 free up to 1,000/number/mo);
+  marketing templates ~RM0.35 each — we never need to send those. Supersedes the
+  "never worth it for a solo agent" verdict in RAPTOR notes (pre-coexistence).
+- [ ] **WA-3 — Reply-based scoring** (IDEA-2 item 2) once WA-2 has data.
+
+- [x] **OPS-CRM-1 DONE 2026-09-26 (branch, not yet on staging/prod).** Platform
+  console > People > Prospects (`src/components/platform/ProspectsTab.jsx`),
+  tables `platform_prospects` + `platform_prospect_activity` (migration
+  `20260926c`, applied live). DB triggers own: phone normalize + unique, waitlist
+  -> prospect, signup with matching phone -> linked + `signed_up`, contact on a
+  do-not-contact prospect refused. Probed as anon / salesman / superadmin.
+  Follow-up: a "Follow up today" count on console Home.
 
 ---
 

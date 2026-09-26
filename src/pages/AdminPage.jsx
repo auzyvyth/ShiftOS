@@ -23,6 +23,7 @@ import SessionsTab from "../components/platform/SessionsTab";
 import PostureTab from "../components/platform/PostureTab";
 import AlertsTab from "../components/platform/AlertsTab";
 import ReportsTab from "../components/platform/ReportsTab";
+import ProspectsTab from "../components/platform/ProspectsTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 
 function MktSection({ label, hint, children }) {
@@ -754,13 +755,16 @@ export default function AdminPage() {
       // report is a claim about a LIVE listing, not an item awaiting approval.
       { id: "reports", label: "Reports", badge: openReportCount },
     ] },
-    { id: "people", label: "People", sub: "Accounts · waitlist", tabs: [
+    { id: "people", label: "People", sub: "Accounts · waitlist · prospects", tabs: [
       { id: "accounts", label: `Accounts (${accounts.length})` },
       // Waitlist stays its own destination on purpose: a waitlist row is an
       // email that never signed up. It has no profile, no plan and no actions
       // in common with an account, so folding it into the accounts table would
       // put two different objects in one list.
       { id: "waitlist", label: `Waitlist (${waitlist.length})` },
+      // People the owner is signing up (OPS-CRM-1). Waitlist rows flow in, a
+      // matching signup links to its account -- see ProspectsTab.jsx.
+      { id: "prospects", label: "Prospects" },
     ] },
     { id: "marketplace", label: "Marketplace", sub: "XDrive settings · analytics", tabs: [
       { id: "marketplace", label: "Settings" },
@@ -1663,6 +1667,8 @@ export default function AdminPage() {
               focusId={focusAccount}
               onFocusHandled={() => setFocusAccount(null)}
             />
+          ) : activeTab === "prospects" ? (
+            <ProspectsTab onOpenAccount={(id) => { setActiveTab("accounts"); setFocusAccount(id); }} />
 
 
           ) : activeTab === "marketplace" ? (
