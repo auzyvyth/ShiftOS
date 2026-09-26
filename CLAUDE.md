@@ -590,6 +590,11 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
     the credential, and only that browser holds it. Guard the `INITIAL_SESSION`
     event — it also reports a null session, on every logged-out marketplace page
     load.
+  - **EXCEPT the 30-day idle sign-out** (`useIdleLogout` parks reason `idle`
+    just BEFORE signOut; `usePushHeal` skips the forget when that notice is
+    seconds old). That is the owner's own phone; unregistering it is how a rep
+    who went quiet stopped hearing about new leads at all. A deliberate
+    sign-out still forgets the device.
   - `push_subscriptions(user_id)` has its own index. The old composite unique
     was doubling as the index for send-push's `.in("user_id", ...)`, the one
     query this table exists for; dropping it without a replacement turns every
@@ -639,6 +644,17 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   otherwise silenced the single prompt whose whole job is to arrive at the
   moment it matters, and the person then sat in a chat that could never reach
   them. The strip stops rendering for good only when `subscribed` is true.
+- **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
+  every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
+  sellers did not, so a lead whose push had no device to land on was simply
+  lost. It emails a lead row (`new_enquiry`, `chat_message`, `new_booking`,
+  `booking_unconfirmed`) that is 15 min - 48 h old, unread, not yet emailed
+  (`emailed_at` on both notification tables) and UNSEEN: a chat whose thread
+  still has `seller_unread > 0`, or anything else when the recipient has NO
+  `push_subscriptions` row. `is_read` alone is not "seen" — it is only set
+  from the bell menu. One email per person per hour, TITLE only (never the
+  body), `profiles.email` only, same unsubscribe token as the buyer email.
+  Failures call `notify_ops` (key `err:seller_email`). `?dry=1` sends nothing.
 - **`salesman_notifications` has NO `dealer_id` column** (dealer_notifications
   does). `expiry-reminders` filtered + inserted on it for months: every salesman
   handover alert was a 400 and nothing noticed, because pg_cron reports the HTTP

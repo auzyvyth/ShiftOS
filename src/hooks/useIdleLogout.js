@@ -90,14 +90,19 @@ export function useIdleLogout() {
 
       if (now() - last > IDLE_MS) {
         try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+        // Park the reason BEFORE signing out, not after: usePushHeal reads it
+        // on the SIGNED_OUT event to tell this automatic sign-out from a
+        // deliberate one, and keeps this phone registered for push. The idle
+        // window is the owner's own phone going quiet — dropping their push
+        // there is exactly how a rep stops hearing about new leads.
+        setLogoutNotice('idle', { idleSince: last });
         await supabase.auth.signOut({ scope: 'local' });
-        // Park the reason for the login page, then STAY PUT. This used to be a
+        // Then STAY PUT. This used to be a
         // hard `window.location.href = '/login?timeout=1'` from whatever page
         // the user was on, so someone returning after a few days and tapping a
         // shared /compare link was thrown off that public page onto a login
         // screen that explained nothing — the link they clicked was lost. A
         // public page renders fine signed out; there is nothing to redirect.
-        setLogoutNotice('idle', { idleSince: last });
         // The one exception: a page that cannot render without a session. Its
         // own guard already sends people to login on mount, so reloading is
         // enough — and it is necessary, because otherwise a tab left open past
