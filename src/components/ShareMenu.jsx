@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, MessageCircle, Facebook, Instagram, Music2, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState(null);
   const btnRef = useRef(null);
+  const menuRef = useRef(null);
 
   const buildUrl = (channel) => {
     let u;
@@ -33,10 +34,28 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
     const r = btnRef.current?.getBoundingClientRect();
     if (r) {
       const width = 232;
-      setPos({ top: r.bottom + 6, left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)), width });
+      // anchorTop/anchorBottom let the layout effect below flip the menu
+      // upward once its real height is known.
+      setPos({ top: r.bottom + 6, anchorTop: r.top, anchorBottom: r.bottom, left: Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)), width });
     }
     setOpen((o) => !o);
   };
+
+  // Always opening DOWNWARD pushed the menu off-screen whenever the button sat
+  // near the bottom of the viewport (the Lite win card is a bottom sheet, so
+  // every channel below WhatsApp was cut off). Measure the menu before paint
+  // and open upward when there is not room below.
+  useLayoutEffect(() => {
+    if (!open || !pos || !menuRef.current) return;
+    const h = menuRef.current.offsetHeight;
+    const vh = window.innerHeight;
+    let top = pos.anchorBottom + 6;
+    if (top + h > vh - 8) {
+      const above = pos.anchorTop - 6 - h;
+      top = above >= 8 ? above : Math.max(8, vh - 8 - h);
+    }
+    if (top !== pos.top) setPos((p) => (p ? { ...p, top } : p));
+  }, [open, pos]);
 
   useEffect(() => {
     if (!open) return;
@@ -95,6 +114,7 @@ export default function ShareMenu({ baseUrl, refSlug, waCaption, dark = false, l
         <>
           <div onClick={(e) => { e.stopPropagation(); setOpen(false); }} style={{ position: 'fixed', inset: 0, zIndex: 4000 }} />
           <div
+            ref={menuRef}
             onClick={(e) => e.stopPropagation()}
             style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, zIndex: 4001, background: menuTheme.bg, border: menuTheme.border, borderRadius: 12, boxShadow: menuTheme.shadow, padding: 6, fontFamily: "'Outfit', sans-serif" }}
           >

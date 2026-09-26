@@ -14,6 +14,7 @@ import OfflineBanner from "./components/OfflineBanner";
 import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import { usePushHeal } from "./hooks/usePushHeal";
+import { useInternalDeviceMark } from "./hooks/useInternalDeviceMark";
 import "./i18n/config";
 
 // Eager — only true above-the-fold entry points. The public marketplace
@@ -125,6 +126,7 @@ function RootRoute() {
 function App() {
   useIdleLogout(); // sign out after 24h of inactivity
   usePushHeal();   // silently re-register a push subscription the browser dropped
+  useInternalDeviceMark(); // a seller/staff login keeps this device out of analytics
   return (
     <Router>
       <ScrollToTop />

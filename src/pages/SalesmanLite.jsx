@@ -470,8 +470,8 @@ function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct
 }
 
 // "Give them something worth keeping" — a lightweight celebration sheet that
-// fires right after a deal closes (handleMarkWon) or a monthly goal is hit
-// (see the goal-smashed effect near saveGoal), offering to share the
+// fires right after a deal closes (handleMarkWon) — as "Goal smashed" when that
+// win is the one that crosses the monthly target — offering to share the
 // mini-storefront link via the existing ShareMenu channels. Deliberately never
 // shows the commission figure — that stays private, only the win + a link to
 // the salesman's other listings goes out. Portal + body-scroll lock per the
@@ -520,9 +520,9 @@ function WinShareCard({ prompt, onClose, slug }) {
               waCaption={(url) => `${isGoal ? t("salesmanLite.win.shareGoalCaption") : t("salesmanLite.win.shareDealCaption")}:\n${url}`}
               dark
               label={t("salesmanLite.win.shareCta")}
-              style={{ width: "100%", justifyContent: "center", padding: "13px 16px", fontSize: 14, fontWeight: 700 }}
+              style={{ width: "100%", justifyContent: "center", padding: "13px 16px", fontSize: 14, fontWeight: 700, background: "#dc2626", border: "1px solid #dc2626", color: "#fff", borderRadius: 12 }}
             />
-            <button onClick={onClose} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
+            <button onClick={onClose} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#9ca3af", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
               {t("salesmanLite.win.notNow")}
             </button>
           </div>
@@ -1077,26 +1077,10 @@ export default function SalesmanLite() {
     });
   };
 
-  // "Give them something worth keeping" — fires the WinShareCard once per
-  // calendar month per user, the moment commission earned this month first
-  // reaches the goal target. localStorage flag prevents re-opening on every
-  // reload/render once it's already been shown for this month.
-  useEffect(() => {
-    if (!userId || !goal.target || goal.target <= 0) return;
-    const now = new Date();
-    const soldThisMonth = myListings
-      .filter((c) => c.status === "sold" && c.sold_at)
-      .filter((c) => {
-        const d = new Date(c.sold_at);
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      })
-      .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
-    if (soldThisMonth < goal.target) return;
-    const flagKey = `slite_goal_shared_${userId}_${now.getFullYear()}-${now.getMonth()}`;
-    if (localStorage.getItem(flagKey)) return;
-    localStorage.setItem(flagKey, "1");
-    setShareWinPrompt({ kind: "goal" });
-  }, [myListings, goal.target, userId]);
+  // The "Goal smashed" card is NOT fired from an effect on page load any more.
+  // It used to open on its own the moment the page loaded over target, and
+  // people closed it by reflex thinking it was something else. It now fires
+  // only in handleMarkWon, on the win that actually crosses the target.
 
   // settings
   const [settingsForm, setSettingsForm] = useState({
@@ -2526,7 +2510,29 @@ export default function SalesmanLite() {
     const car = lead.car_listings;
     const carLabel = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
     toast.success(carLabel ? t("salesmanLite.toast.wonWithCar", { car: carLabel }) : t("salesmanLite.toast.wonNoCar"));
-    setShareWinPrompt({ kind: "deal", carLabel });
+    // One card per win: "Goal smashed" when THIS win carries the month over
+    // the target (once per month per device), otherwise "Deal closed".
+    const nowD = new Date();
+    const monthCommission = (rows) => rows
+      .filter((c) => c.status === "sold" && c.sold_at)
+      .filter((c) => {
+        const d = new Date(c.sold_at);
+        return d.getFullYear() === nowD.getFullYear() && d.getMonth() === nowD.getMonth();
+      })
+      .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
+    const afterWin = myListings.map((c) => (c.id === lead.car_listing_id ? { ...c, status: "sold", sold_at: now } : c));
+    const goalFlag = `slite_goal_shared_${userId}_${nowD.getFullYear()}-${nowD.getMonth()}`;
+    let goalAlreadyShown = false;
+    try { goalAlreadyShown = !!localStorage.getItem(goalFlag); } catch { /* storage blocked */ }
+    const crossedGoal = goal.target > 0
+      && monthCommission(myListings) < goal.target
+      && monthCommission(afterWin) >= goal.target;
+    if (crossedGoal && !goalAlreadyShown) {
+      try { localStorage.setItem(goalFlag, "1"); } catch { /* storage blocked */ }
+      setShareWinPrompt({ kind: "goal" });
+    } else {
+      setShareWinPrompt({ kind: "deal", carLabel });
+    }
   };
 
   // ── notifications ──────────────────────────────────────────────────────────

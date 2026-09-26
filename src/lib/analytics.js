@@ -1,5 +1,6 @@
 import { supabase } from '../supabaseClient';
 import { hasConsent } from '../utils/consent';
+import { shouldSkipTracking } from '../utils/internalTraffic';
 
 const SESSION_KEY = 'shiftos_session';
 const REF_KEY     = 'shiftos_ref';
@@ -30,6 +31,7 @@ export function getRef() {
  */
 export async function trackEvent(eventType, { carId = null, carName = null, dealerId = null } = {}) {
   if (!hasConsent('analytics')) return;
+  if (shouldSkipTracking()) return;
   const slug = getRef();
   if (!slug) return;
 
