@@ -689,6 +689,17 @@ const FieldError = ({ id, msg, th }) =>
 /* Hero photo sizing. A single fixed width made a 390px phone download a
    1280-1600px image; the srcset lets the browser pick. The primary cell is
    ~62% of the viewport on desktop and full-bleed below 900px. */
+// The agent a WhatsApp enquiry goes to on a Salesman Lite/Premium listing.
+function repTargetFor(profile) {
+  const digits = (profile?.whatsapp_number || '').replace(/\D/g, '');
+  if (!digits) return null;
+  return {
+    phone: digits.startsWith('6') ? digits : '6' + digits,
+    slug: profile.slug,
+    name: (profile.full_name || '').trim().split(' ')[0] || 'Agent',
+  };
+}
+
 const HERO_WIDTHS = [480, 640, 828, 1080, 1280, 1600];
 const HERO_SIZES  = '(max-width: 900px) 100vw, 62vw';
 
@@ -1213,8 +1224,14 @@ export default function CarDetailPage() {
 
   /* ── fetch ── */
   useEffect(() => {
+    let alive = true;
     async function load() {
       setLoading(true);
+      // The car paints before the seller lookups land (see below), so a
+      // previous car's seller must never sit beside this one.
+      setDealer(null);
+      setSalesmanProfile(null);
+      setSellerCars([]);
       // seller_role (from the public_car_listings view) is the authoritative signal
       // for agent-vs-dealer below — without it in the select, carData.seller_role is
       // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
@@ -1234,6 +1251,7 @@ export default function CarDetailPage() {
         carData = res.data;
         error = res.error;
       }
+      if (!alive) return;
       if (error || !carData) {
         setNotFound(true);
         setLoading(false);
@@ -1264,6 +1282,16 @@ export default function CarDetailPage() {
       }
 
       const simFields = SIM_FIELDS;
+
+      // Paint the car NOW. It used to wait for the four seller lookups below,
+      // which is a second full round trip to the database (Sydney) before the
+      // buyer saw anything. They only feed the seller row, "more from this
+      // seller" and the services strip, and fill in a moment later. Included
+      // services stay hidden until they are checked against the active
+      // catalogue, so a withdrawn service never flashes up.
+      const servicesNeedCheck = !!carData.dealer_id && (carData.included_services || []).length > 0;
+      setCar({ ...carData, included_services: servicesNeedCheck ? [] : (carData.included_services || []) });
+      setLoading(false);
 
       const [visibleServices, dealerData, salesmanData, sellerCarsData] =
         await Promise.all([
@@ -1326,11 +1354,11 @@ export default function CarDetailPage() {
             : Promise.resolve([]),
         ]);
 
-      setCar({ ...carData, included_services: visibleServices });
+      if (!alive) return;
+      setCar((prev) => (prev && prev.id === carData.id ? { ...prev, included_services: visibleServices } : prev));
       setDealer(dealerData);
       setSalesmanProfile(salesmanData);
       setSellerCars(sellerCarsData);
-      setLoading(false);
 
       // Fire the mileage-aware market avg in the background.
       // The view already provides a rough bucket avg; this overwrites it
@@ -1340,8 +1368,8 @@ export default function CarDetailPage() {
           .rpc('compute_market_avg', { p_car_id: carData.id })
           .then(({ data }) => {
             const r = data?.[0];
-            if (r?.avg_price) {
-              setCar((prev) => prev ? {
+            if (alive && r?.avg_price) {
+              setCar((prev) => prev && prev.id === carData.id ? {
                 ...prev,
                 market_avg_price: r.avg_price,
                 market_sample_count: r.sample_count,
@@ -1359,6 +1387,7 @@ export default function CarDetailPage() {
       }
     }
     load();
+    return () => { alive = false; };
   }, [slug]);
 
   useCarSchema(car, dealer);
@@ -1584,12 +1613,15 @@ export default function CarDetailPage() {
   }
 
   function handleEnquirySubmit() {
+    // The page paints before the seller lookup lands, so an early tap on an
+    // agent's car opened the form with no target; route it to the agent now.
+    const target = enquiryTarget || repTargetFor(salesmanProfile);
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
     // A targeted enquiry ("Chat with <agent>") must reach THAT agent, not the
     // dealer's main line that buildWaUrl would otherwise prefer.
-    const targetPhone = enquiryTarget?.phone?.replace(/\D/g, "") || null;
+    const targetPhone = target?.phone?.replace(/\D/g, "") || null;
     const waUrl = targetPhone
       ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`
       : buildWaUrl(ctaCtx, contactPhone, message);
@@ -1610,7 +1642,7 @@ export default function CarDetailPage() {
       car_id: car.id,
       car_name: `${car.brand} ${car.model} ${car.year}`,
       dealer_id: car.dealer_id,
-      salesman_slug: enquiryTarget?.slug || getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
+      salesman_slug: target?.slug || getSlugFromURL() || car.salesman_slug || salesmanProfile?.slug || null,
       metadata: { source: "storefront", price: car.selling_price },
     });
     // /api/enquiry records the enquiry + creates the pipeline lead DB-side (via
@@ -1628,7 +1660,7 @@ export default function CarDetailPage() {
         // The targeted agent wins over the ?ref= that brought the buyer here —
         // they tapped that rep's own button. The slug is stored on the enquiry
         // row and resolved DB-side by enquiry_to_lead -> resolve_lead_salesman.
-        refSlug: enquiryTarget?.slug || getRef() || car.salesman_slug || null,
+        refSlug: target?.slug || getRef() || car.salesman_slug || null,
         token: enquiryToken,
       }),
     }).catch((err) => console.error("[handleEnquirySubmit] fetch error:", err));
@@ -1863,15 +1895,7 @@ export default function CarDetailPage() {
   // a single stranger's opinion wearing the clothes of a statistic.
   const REVIEW_FLOOR = 3;
   const repFirstName = (salesmanProfile?.full_name || '').trim().split(' ')[0] || null;
-  const repEnquiryTarget = (() => {
-    const digits = (salesmanProfile?.whatsapp_number || '').replace(/\D/g, '');
-    if (!digits) return null;
-    return {
-      phone: digits.startsWith('6') ? digits : '6' + digits,
-      slug: salesmanProfile.slug,
-      name: repFirstName || 'Agent',
-    };
-  })();
+  const repEnquiryTarget = repTargetFor(salesmanProfile);
   const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
   const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
@@ -4020,6 +4044,19 @@ export default function CarDetailPage() {
                 ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
                   <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>Financing available on request</p>
                 ) : null}
+                {/* The calculator sits ON the monthly figure it explains. It was
+                    a grey text link under the Contact button, below the fold on
+                    most laptops, and buyers did not find it. Tinted red rather
+                    than solid so Book a Viewing stays the one solid red action. */}
+                <button
+                  onClick={() => setCalcOpen(true)}
+                  aria-label="Open financing calculator"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 8, color: isXdrive ? '#dc2626' : '#f87171', fontSize: 12.5, fontWeight: 700, padding: '5px 10px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap', transition: 'background .15s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.18)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.10)'; }}
+                >
+                  <Calculator size={14} /> Calculate
+                </button>
                 {!isOwnListing && (
                   <AffordabilityCheck
                     carPrice={car.selling_price}
@@ -4064,12 +4101,6 @@ export default function CarDetailPage() {
             <div style={{ marginTop: 16 }}>
               <PriceIncludes car={car} seller={seller} th={th} />
               <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12 }}>
-              <button onClick={() => setCalcOpen(true)}
-                style={{ background: 'none', border: 'none', padding: '0 0 2px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: th.textSec, cursor: 'pointer', fontFamily: "var(--xd-font-body)", borderBottom: `1px solid ${th.inputBorder}` }}>
-                <Calculator size={13} /> Financing calculator
-              </button>
             </div>
 
             <div style={{ height: 1, background: th.border, margin: '16px 0' }} />
