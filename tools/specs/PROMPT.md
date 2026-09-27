@@ -1,134 +1,118 @@
-# Car spec collection — run prompt
+# Car spec collection — run prompt (schema 3.0: every trim)
 
-Paste everything below the line into a fresh Claude/Cowork chat. Replace the
-`<targets>` block with the output of `npm run specs:next`.
-
-Then: save the JSON it returns to `tools/specs/data/<date>-batch-NN.json`, run
-`npm run specs:build`, read the diff, commit.
+Run `npm run specs:next`, paste its `<targets>` block over the one at the
+bottom, then paste everything below the line into a fresh Claude/Cowork chat
+**with web search on**. Paste the JSON it returns straight into a ShiftOS
+session; the intake runs itself (`README.md` → "Automated batch intake").
 
 ---
 
-You are collecting reference car specifications for ShiftOS, a Malaysian used-car
-platform. The output prefills the technical fields of a listing form, so a seller
-does not type engine size, power, doors, seats and fuel economy by hand.
+You are building the trim catalogue for XDrive, a Malaysian used-car
+marketplace. Every trim you return becomes a fixed category a seller PICKS
+("BMW M4 Competition M xDrive G82", "Toyota Alphard 2.5 Z AH40"), and every
+spec field of their listing fills from it. Sellers do not type specs. So a
+wrong figure goes onto every listing of that trim — accuracy beats coverage.
 
-Return **one JSON document in one code block, and nothing else**. No preamble, no
-commentary after it, no explanation of what you did. The file is machine-read.
+Return **one JSON document in one code block, and nothing else.**
 
-## What a row is
+## Shape
 
-**One object per GENERATION, not per model and not per trim.** A nameplate sold
-across three generations is three objects. A generation sold as 2.0 and 3.5 is
-ONE object — the flat fields describe the highest-volume Malaysian variant, and
-the rest go in `variants[]`.
-
-## The envelope
+One object per GENERATION. Inside it, one object per TRIM in `variants[]`.
+Every trim is complete on its own — never "same as above". The figures in
+this example illustrate the shape; look every real figure up.
 
 ```json
 {
-  "schema_version": "2.0",
+  "schema_version": "3.0",
   "generated_at": "YYYY-MM-DD",
-  "batch": { "requested": 8, "returned": 7, "skipped": 1 },
-  "specs": [ ...row objects... ],
-  "skipped": [ { "make": "X", "model": "Y", "reason": "why" } ]
+  "batch": { "requested": 4, "returned": 4, "skipped": 0 },
+  "specs": [{
+    "make": "Toyota", "model": "Alphard", "generation": "AH40",
+    "year_from": 2023, "year_to": null, "market": "JDM",
+    "chassis_codes": ["AGH40", "AAHH40"],
+    "body_type": "MPV", "doors": 5, "seats": 7,
+    "primary_variant": "2.5 Z",
+    "source_note": "Shape example only - do not copy its figures.",
+    "variants": [{
+      "name": "2.5 Z", "year_from": null, "year_to": null,
+      "body_type": null, "doors": null, "seats": null,
+      "engine_cc": 2487, "cylinders": 4, "aspiration": "NA",
+      "horsepower": 182, "torque_nm": 235,
+      "transmission": "Auto", "gearbox": "CVT", "drivetrain": "FWD",
+      "fuel_type": "Petrol", "fuel_consumption": null,
+      "tyre_front": "225/60 R18", "tyre_rear": "225/60 R18",
+      "confidence": "medium", "source": null, "notes": null
+    }]
+  }],
+  "skipped": [{ "make": "X", "model": "Y", "reason": "why", "whole_model": false }]
 }
 ```
 
-`skipped` is not optional. A model you leave out silently looks identical to one
-nobody has reached yet, and the backlog then never finishes.
+## What counts as a trim
 
-## The row
+- A trim = one line on the Malaysian price list (or one JDM grade for a grey
+  import). If power, engine, drivetrain, seats or tyres differ, it is a
+  separate trim. Paint, a sunroof or a body kit alone is not.
+- `name` is the trim ONLY, no make, no model: `"2.5 Z"`, `"350S"`,
+  `"Competition M xDrive"`, `"RX350 F Sport"`, `"Type R"`. Use the Malaysian
+  distributor's name when it was sold here new, the JDM grade name otherwise.
+  Same car, same spelling, every time — buyers filter on this string.
+- Cover **every generation** of each target sold in Malaysia (new or recond),
+  and every trim of each. A trim sold only part of the generation gets its own
+  `year_from`/`year_to`; otherwise leave them `null`.
+- `body_type`/`doors`/`seats` on a trim override the generation's; `null` means
+  "same as the generation".
+- `primary_variant` = the highest-volume trim in Malaysia.
 
-```json
-{
-  "make": "Lexus", "model": "RX", "generation": "AL20",
-  "year_from": 2015, "year_to": 2022, "market": "CBU",
-  "chassis_codes": ["AGL20", "AGL25", "GYL20"],
-  "body_type": "SUV", "doors": 5, "seats": 5,
-  "primary_variant": "RX300",
-  "engine_cc": 1998, "cylinders": 4, "horsepower": 238, "torque_nm": 350,
-  "transmission": "Auto", "drivetrain": "AWD", "fuel_type": "Petrol",
-  "fuel_consumption": null,
-  "confidence": "medium",
-  "source_note": "AGL20/AGL25 are the RX300 2.0 turbo. RX350L is a separate 7-seat body.",
-  "variants": [
-    { "name": "RX300", "horsepower": 238, "torque_nm": 350, "transmission": "Auto",
-      "drivetrain": "AWD", "fuel_type": "Petrol", "seats": 5, "notes": "8AR-FTS 1998cc turbo" },
-    { "name": "RX450h", "horsepower": 313, "torque_nm": null, "transmission": "Auto",
-      "drivetrain": "AWD", "fuel_type": "Hybrid", "seats": 5, "notes": "V6 hybrid, combined output" }
-  ]
-}
-```
-
-Required on every row: `make`, `model`, `year_from`, `body_type`, `confidence`.
-
-## Closed enums — any other value is rejected outright
+## Closed values — anything else rejects the batch
 
 ```
-transmission   "Auto" | "Manual"
-fuel_type      "Petrol" | "Diesel" | "Hybrid" | "Electric"
-body_type      "Sedan" | "SUV" | "MPV" | "Hatchback" | "Coupe" | "Pickup"
-drivetrain     "FWD" | "RWD" | "AWD" | "4WD"
-market         "JDM" | "CBU" | "CKD"
-confidence     "high" | "medium" | "low"
+transmission  "Auto" | "Manual"          (a CVT/DCT/AMT/EV is "Auto")
+gearbox       free text: "CVT", "8-speed torque converter", "7-speed DCT", "6-speed manual"
+aspiration    "NA" | "Turbo" | "Supercharged" | "Twincharged" | null (Electric only)
+fuel_type     "Petrol" | "Diesel" | "Hybrid" | "Electric"   (plug-in = "Hybrid")
+body_type     "Sedan" | "SUV" | "MPV" | "Hatchback" | "Coupe" | "Pickup"
+drivetrain    "FWD" | "RWD" | "AWD" | "4WD"
+market        "JDM" | "CBU" | "CKD"
+confidence    "high" | "medium" | "low"
 ```
+Vans are `"MPV"`, wagons `"Hatchback"`, convertibles `"Coupe"`.
 
-The awkward mappings, because the form has no other option:
+## Units
 
-- **A CVT is `"Auto"`.** So is a DCT, an AMT, a torque converter, a single-speed
-  EV reduction gear. Put the real gearbox in `variants[].notes`.
-- **A plug-in hybrid is `"Hybrid"`.** `"Electric"` means no engine at all.
-- **A van, a kei van and a people-carrier are all `"MPV"`.** A Hiace is `"MPV"`.
-  There is no Van or Wagon option. `"Pickup"` means an open bed.
-- **A 3-door hatch is `"Hatchback"` with `doors: 3`.** A wagon is usually
-  `"Hatchback"` too unless it is clearly a sedan shape.
+`engine_cc` cc (1998, not 2.0) · `horsepower` PS as quoted in Malaysia, never kW
+(hybrids: combined system output) · `torque_nm` Nm · `fuel_consumption` km/L,
+not L/100km, `null` if unsure · tyres exactly `"225/45 R18"` or `"255/35 ZR19"`,
+factory-standard size, no load index; `tyre_rear` equals `tyre_front` unless
+staggered · `doors` 2-5 · `seats` 2-9.
 
-## Units, pinned
+## Confidence and source — this decides what gets LOCKED
 
-- `engine_cc` — cubic centimetres. 1998, never 2.0.
-- `horsepower` — **PS/hp as quoted in Malaysia.** Never kW. If you are about to
-  write a number near 200 for a big turbo engine, check you have not written kW.
-- `torque_nm` — Newton-metres. Multiply kgm by 9.807.
-- `fuel_consumption` — **km/L, not L/100km.** Divide 100 by the L/100km figure.
-  Anything under 4 or over 40 is the wrong unit. **If you are not confident,
-  write `null`** — this field is nulled on most rows and that is fine.
-- `year_to` — `null` means still on sale. Never write a future year.
+- `"high"` = you checked it against a page you actually opened in this session
+  (manufacturer/distributor spec sheet or brochure) and every figure agrees.
+  `source` names that page or document. A high trim must have no null engine,
+  cylinders, power or front tyre. **High trims are locked on listings.**
+- `"medium"` = right car, one or two figures from memory. `source` may be null.
+  Prefilled, seller can edit.
+- `"low"` = reconstructed. Prefilled, flagged as a draft.
+- Never cite a page you did not open. Writing from memory → `source: null` and
+  the trim cannot be high. Below low → leave the trim out and say so in `skipped`.
 
-## Rules that will reject the whole batch
+## Rules that reject the batch
 
-1. **Generations of one model must not overlap.** If a facelift ran to 2022, the
-   next generation starts at **2023**, not 2022. The lookup resolves an
-   overlapping year by array position, so it silently returns whichever row
-   happens to come first. Check every model you return for this.
-2. **`primary_variant` must appear by name in `variants[]`.** The flat block IS
-   that variant. If they disagree nobody can tell which car the numbers describe.
-3. **`chassis_codes` are UPPERCASE with no serial suffix.** `AGH30`, never
-   `AGH30W-0123456`. **If you do not know a model's codes, use `[]`.** Do not
-   invent them — most non-Japanese models genuinely have none, and a wrong code
-   makes the decoder fill the wrong car.
-4. **An `Electric` row has `engine_cc: null` and `cylinders: null`.**
-5. **No money, anywhere.** No price, RM figure, valuation, deposit, instalment,
-   depreciation or "holds its value" — not in `source_note`, not in `notes`. The
-   platform never states a price it has not been given, and any figure here would
-   be invented.
-6. **`null`, never a guess.** An unknown figure is `null` and `confidence` drops.
-   A plausible-looking wrong number is worse than a blank: the blank is visibly
-   blank and gets filled by the seller, the wrong number gets published.
-
-## Confidence, honestly
-
-- `high` — you know this car well and would defend every figure.
-- `medium` — the shape is right; one or two numbers are from memory of a spec
-  sheet. **This is the normal answer.**
-- `low` — you are reconstructing it. Expect the seller to correct it.
-- Below `low` — put it in `skipped` with a reason instead.
-
-Malaysian-market figures where markets differ. A JDM Alphard 2.5 and a US Sienna
-are not the same car; `market` says which one the row describes.
+1. Every trim has every key shown above. Unknown = `null`, never a guess.
+2. Generations of one model must not overlap: if one ends 2022, the next starts 2023.
+3. `primary_variant` matches a trim `name` exactly; trim names are unique per generation.
+4. `chassis_codes`: real codes only, UPPERCASE, no serial (`AGH30`, never
+   `AGH30W-0123456`). Unsure → `[]`.
+5. Electric → `engine_cc`, `cylinders`, `aspiration` all `null`.
+6. No money anywhere: no price, RM, valuation, deposit, instalment, depreciation.
+7. `skipped` lists every target or trim left out, with a reason. Set
+   `"whole_model": true` only when the entire model was skipped.
 
 ## Targets
 
-Do every model in this block. Each is 1-3 generations, so expect 15-25 rows.
+Do every model below, every generation, every trim.
 
 <targets>
 PASTE THE OUTPUT OF `npm run specs:next` HERE

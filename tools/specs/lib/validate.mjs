@@ -105,6 +105,151 @@ function checkRow(row, path, errors, warnings) {
   if (row.confidence === 'low') warn('low confidence - treat as a draft');
 }
 
+// ── Schema 3.0: every trim is a complete, standalone category ──────────────
+// In 2.0 a row was a generation with ONE spec block (its best-selling trim) and
+// a loose variants[] list nobody read. In 3.0 the trim IS the unit: an
+// "M4 Competition G82" and an "M4 CS G82" are two categories a seller picks
+// from, and every field of the listing fills from the one picked. So each
+// variant carries the full spec on its own, and the generation keeps only what
+// all its trims share (years, chassis codes, market).
+export const V3 = '3.0';
+export const isV3 = (row) => String(row?._schema ?? row?.schema_version ?? '') === V3;
+
+export const V3_ENUMS = {
+  aspiration: ['NA', 'Turbo', 'Supercharged', 'Twincharged'],
+};
+
+// Every one of these keys must be PRESENT on a variant. null is allowed and
+// means "not known" - but a missing key means the collector never considered
+// the field, which is how tyre size went uncollected for 500 rows.
+export const V3_VARIANT_KEYS = [
+  'name', 'engine_cc', 'cylinders', 'aspiration', 'horsepower', 'torque_nm',
+  'transmission', 'gearbox', 'drivetrain', 'fuel_type', 'fuel_consumption',
+  'tyre_front', 'tyre_rear', 'confidence', 'source',
+];
+const V3_REQUIRED = ['name', 'transmission', 'drivetrain', 'fuel_type', 'confidence'];
+
+// "225/45 R18", "255/35 ZR19", "265/65 R17". Load index / speed rating are
+// deliberately not part of it - they vary by tyre brand, not by car.
+export const TYRE = /^\d{3}\/\d{2} Z?R\d{2}$/;
+
+function checkV3Row(row, path, errors, warnings) {
+  const at = (m) => errors.push(`${path}: ${m}`);
+  const warn = (m) => warnings.push(`${path}: ${m}`);
+
+  for (const k of ['make', 'model', 'year_from', 'body_type', 'market', 'primary_variant']) {
+    if (row[k] === undefined || row[k] === null || row[k] === '') at(`missing required field "${k}"`);
+  }
+  for (const k of ['body_type', 'market']) {
+    if (row[k] != null && !ENUMS[k].includes(row[k])) at(`${k} "${row[k]}" is not one of ${ENUMS[k].join(', ')}`);
+  }
+  for (const k of ['year_from', 'doors', 'seats']) {
+    const v = row[k];
+    if (v == null) continue;
+    const [lo, hi] = RANGES[k];
+    if (!isNum(v)) at(`${k} must be a number or null`);
+    else if (v < lo || v > hi) at(`${k} ${v} is outside ${lo}-${hi} - check the units`);
+  }
+  if (row.year_to != null) {
+    if (!isNum(row.year_to)) at('year_to must be a number or null');
+    else if (row.year_to < row.year_from) at(`year_to ${row.year_to} is before year_from ${row.year_from}`);
+    else if (row.year_to > RANGES.year_from[1]) at(`year_to ${row.year_to} is in the future`);
+  }
+  for (const c of row.chassis_codes || []) {
+    if (typeof c !== 'string') { at('chassis_codes contains a non-string'); continue; }
+    if (c !== c.toUpperCase()) at(`chassis code "${c}" must be uppercase`);
+    if (/[-_ ]/.test(c)) at(`chassis code "${c}" still carries a serial suffix - strip it`);
+  }
+  if (row.source_note && MONEY.test(row.source_note)) {
+    at('source_note mentions money - no price, valuation or depreciation anywhere');
+  }
+
+  const variants = Array.isArray(row.variants) ? row.variants : [];
+  if (!variants.length) { at('variants[] is empty - in 3.0 every trim is a variant'); return; }
+
+  const seen = new Set();
+  variants.forEach((v, i) => {
+    const vp = `variant[${i}] "${v?.name ?? '?'}"`;
+    if (!v || typeof v !== 'object') { at(`${vp} is not an object`); return; }
+
+    for (const k of V3_VARIANT_KEYS) if (!(k in v)) at(`${vp} has no "${k}" key - write null if unknown`);
+    for (const k of V3_REQUIRED) if (v[k] == null || v[k] === '') at(`${vp} missing required "${k}"`);
+
+    const nameKey = String(v.name || '').trim().toLowerCase();
+    if (seen.has(nameKey)) at(`${vp} appears twice - a trim name must be unique within its generation`);
+    seen.add(nameKey);
+    if (row.model && nameKey.startsWith(String(row.model).toLowerCase() + ' ')) {
+      warn(`${vp} repeats the model name - the name is the trim only`);
+    }
+
+    for (const [field, allowed] of Object.entries({ ...ENUMS, ...V3_ENUMS })) {
+      if (v[field] != null && !allowed.includes(v[field])) at(`${vp} ${field} "${v[field]}" is not one of ${allowed.join(', ')}`);
+    }
+    for (const [field, [lo, hi]] of Object.entries(RANGES)) {
+      if (field === 'year_from' || v[field] == null) continue;
+      if (!isNum(v[field])) { at(`${vp} ${field} must be a number or null`); continue; }
+      if (v[field] < lo || v[field] > hi) at(`${vp} ${field} ${v[field]} is outside ${lo}-${hi} - check the units`);
+    }
+    for (const k of ['tyre_front', 'tyre_rear']) {
+      if (v[k] != null && !TYRE.test(v[k])) at(`${vp} ${k} "${v[k]}" must look like "225/45 R18"`);
+    }
+
+    // A trim can arrive with a facelift and leave before the generation ends,
+    // but never outside it.
+    const gFrom = row.year_from, gTo = row.year_to ?? Infinity;
+    if (v.year_from != null && (v.year_from < gFrom || v.year_from > gTo)) at(`${vp} year_from ${v.year_from} is outside the generation`);
+    if (v.year_to != null && (v.year_to > gTo || v.year_to < (v.year_from ?? gFrom))) at(`${vp} year_to ${v.year_to} is outside the generation`);
+
+    if (v.fuel_type === 'Electric') {
+      if (isNum(v.engine_cc) && v.engine_cc > 0) at(`${vp} is Electric with an engine_cc`);
+      if (isNum(v.cylinders) && v.cylinders > 0) at(`${vp} is Electric with cylinders`);
+      if (v.aspiration != null) at(`${vp} is Electric with an aspiration`);
+    }
+
+    for (const k of ['notes', 'source', 'name']) {
+      if (typeof v[k] === 'string' && MONEY.test(v[k])) at(`${vp} ${k} mentions money`);
+    }
+
+    // "high" is what the listing form will LOCK a seller to. It has to be
+    // traceable and complete, or a locked wrong number goes on every listing
+    // of that trim as XDrive's own claim.
+    if (v.confidence === 'high') {
+      if (!v.source || !String(v.source).trim()) at(`${vp} is "high" with no source - name the page or brochure it came from, or drop to medium`);
+      const needed = v.fuel_type === 'Electric'
+        ? ['horsepower', 'tyre_front']
+        : ['engine_cc', 'cylinders', 'horsepower', 'tyre_front'];
+      for (const k of needed) if (v[k] == null) at(`${vp} is "high" but ${k} is null - a locked trim cannot have blanks`);
+    }
+    if (v.confidence === 'low') warn(`${vp} low confidence - treat as a draft`);
+  });
+
+  if (row.primary_variant && !variants.some((v) => v?.name === row.primary_variant)) {
+    at(`primary_variant "${row.primary_variant}" is not in variants[] (${variants.map((v) => v?.name).join(', ')})`);
+  }
+}
+
+// The 3.0 row flattened to the 2.0 shape, using its primary trim, so the
+// legacy carSpecs.js prefill keeps working until the listing form reads the
+// catalogue itself. body/doors/seats fall back to the generation's.
+export function flattenV3(row) {
+  const v = (row.variants || []).find((x) => x?.name === row.primary_variant) || (row.variants || [])[0] || {};
+  return {
+    ...row,
+    engine_cc: v.engine_cc ?? null,
+    cylinders: v.cylinders ?? null,
+    horsepower: v.horsepower ?? null,
+    torque_nm: v.torque_nm ?? null,
+    transmission: v.transmission ?? null,
+    drivetrain: v.drivetrain ?? null,
+    fuel_type: v.fuel_type ?? null,
+    fuel_consumption: v.fuel_consumption ?? null,
+    body_type: v.body_type ?? row.body_type ?? null,
+    doors: v.doors ?? row.doors ?? null,
+    seats: v.seats ?? row.seats ?? null,
+    confidence: v.confidence ?? null,
+  };
+}
+
 // Two rows for the same model whose year ranges overlap make lookupFullSpec
 // arbitrary: rows.find() returns whichever happens to sit first in the array.
 // That is the failure this whole check exists for - it is invisible at runtime.
@@ -155,7 +300,7 @@ function checkOverlaps(rows, errors) {
 // Curated rows are only ever checked against COLLECTED ones, never against each
 // other: several already overlap (Perodua Myvi 2005-2011 and 2011-2017 both
 // cover 2011) and failing the build on a pre-existing condition helps nobody.
-function checkHandOverlaps(rows, hand, errors) {
+function checkHandOverlaps(rows, hand, errors, warnings = []) {
   if (!hand || !hand.length) return;
 
   const byModel = new Map();
@@ -188,6 +333,20 @@ function checkHandOverlaps(rows, hand, errors) {
     });
     if (!hits.length) return;
 
+    // A 3.0 row's home is the trim catalogue, not carSpecs.js. Re-collecting a
+    // curated model WITH its trims is the point of 3.0, so this must not fail
+    // the run: the row stays out of the legacy prefill (where it would be dead
+    // anyway) and the curated row keeps serving the form until the form reads
+    // the catalogue.
+    if (isV3(r)) {
+      r._legacySkip = true;
+      warnings.push(
+        `${r._file || 'input'}[${r._index ?? i}] ${r.make} ${r.model} ${from}: overlaps a curated ` +
+        `carSpecs.js row - kept for the trim catalogue, left out of the legacy prefill`,
+      );
+      return;
+    }
+
     errors.push(
       `${r._file || 'input'}[${r._index ?? i}] ${r.make} ${r.model} ${from}-${r.year_to ?? 'current'}: ` +
       `overlaps hand-curated carSpecs.js row(s) ` +
@@ -207,10 +366,11 @@ export function validateRows(rows, hand = []) {
   const warnings = [];
   rows.forEach((row, i) => {
     const path = `${row._file || 'input'}[${row._index ?? i}] ${row.make || '?'} ${row.model || '?'} ${row.year_from || '?'}`;
-    checkRow(row, path, errors, warnings);
+    if (isV3(row)) checkV3Row(row, path, errors, warnings);
+    else checkRow(row, path, errors, warnings);
   });
   checkOverlaps(rows, errors);
-  checkHandOverlaps(rows, hand, errors);
+  checkHandOverlaps(rows, hand, errors, warnings);
   return { errors, warnings, ok: errors.length === 0 };
 }
 
@@ -220,7 +380,8 @@ export function validateRows(rows, hand = []) {
 // which silently drops the row out of the year match.
 export const OPEN_ENDED = 2099;
 
-export function toCarSpecsRow(row) {
+export function toCarSpecsRow(input) {
+  const row = isV3(input) ? flattenV3(input) : input;
   return {
     make: row.make,
     model: row.model,

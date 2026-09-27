@@ -1,5 +1,20 @@
 # Car spec sheet — the JSON contract
 
+> **Schema 3.0 (2026-09-27) is current: every TRIM is a complete category.**
+> The owner's model is Carlist's: "M4 Competition G82" and "M4 CS G82" are two
+> categories a seller picks, and the listing's specs (incl. tyre size) fill
+> from the one picked. The contract is `PROMPT.md`; the rules are
+> `checkV3Row` in `lib/validate.mjs`. What 3.0 changes against the 2.0 text below:
+> - the flat spec block is gone from the generation; each `variants[]` entry
+>   carries the full spec (+ `aspiration`, `gearbox`, `tyre_front`,
+>   `tyre_rear`, its own `confidence` and `source`), every key present;
+> - `confidence: "high"` requires a `source` and no blank engine/power/tyre —
+>   high trims are the ones the form will LOCK;
+> - a model re-collected in 3.0 supersedes all its 2.0 rows (generate.mjs);
+> - until the form reads the catalogue, carSpecs.js is still generated from
+>   each generation's `primary_variant`.
+> The 2.0 description below still governs the older batch files.
+
 One shape, used by both sides: what Cowork emits, and what we ingest. If a field
 is not in this document it does not get written, and if a value is not in one of
 the enums below the row is rejected rather than guessed at.
