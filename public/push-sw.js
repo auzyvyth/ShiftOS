@@ -30,15 +30,22 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'ShiftOS';
+  const url = payload.url || '/';
+  // Seller pushes (dealer dashboard, Salesman Lite / Premium, salesman under a
+  // dealer) carry the ShiftOS mark; buyer pushes keep the XDrive logo. The URL
+  // is set per role by push_home_path(), so it tells us whose device this is.
+  const seller = /^\/(dashboard|salesman|manager|accountant|fi)(\/|-|\?|$)/.test(url);
   const options = {
     body: payload.body || '',
-    icon: '/pwa-192x192.png',
-    badge: '/pwa-192x192.png',
+    icon: seller ? '/shiftos-notif-icon.png' : '/pwa-192x192.png',
+    // The badge is the small status-bar glyph; Android draws only its alpha
+    // channel, so it must be a shape on transparency, not a square logo.
+    badge: seller ? '/shiftos-notif-badge.png' : '/pwa-192x192.png',
     // `tag` collapses repeats: a second push with the same tag replaces the
     // first rather than stacking. Senders use ids like `appt-<uuid>`.
     tag: payload.tag || 'shiftos',
     renotify: Boolean(payload.tag),
-    data: { url: payload.url || '/' },
+    data: { url },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

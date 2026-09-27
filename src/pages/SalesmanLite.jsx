@@ -2087,7 +2087,7 @@ export default function SalesmanLite() {
       localStorage.setItem('slite_last_followup_notif', String(Date.now()));
       const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
       const title = `${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`;
-      const options = { body: names, tag: 'slite-followup' };
+      const options = { body: names, tag: 'slite-followup', icon: '/shiftos-notif-icon.png', badge: '/shiftos-notif-badge.png' };
       try {
         // Pages controlled by a service worker (PWA) can't use `new Notification` —
         // it throws "Illegal constructor"; must go through the SW registration instead.
