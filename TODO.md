@@ -4264,6 +4264,21 @@ native build.
   brand asset is your call, not a silent refactor. Options: (a) leave it, (b) re-cut
   the icon on the #080C14 background, (c) set `background_color` to white so the
   splash matches the icon.
+- [ ] **PUSH-ICON: ShiftOS mark on seller push notifications — parked 2026-09-27.**
+  The owner asked for the SHIFTOS wordmark (`public/shiftos-notif-icon.png` on #080C14,
+  `public/shiftos-notif-badge.png` transparent) as the seller push icon. Shipped in
+  #422, then pushes stopped appearing on the owner's Samsung (installed ShiftOS
+  WebAPK, Chrome). Reverted to `/pwa-192x192.png` in #424; pushes appear again.
+  Not proven the icon was the cause: a test via the OLD icon path also failed
+  while on #422, the phone switched Lite -> Premium mid-test (endpoint moved to
+  the other account), and desktop Chromium shows the ShiftOS icon fine via
+  `ServiceWorker.deliverPushMessage`. Owner's guess: the transparent PNG.
+  `public/push-sw.js` now reports `diag-*` pushes and any `showNotification`
+  failure to `error_logs` (context `push-sw`) — but the 12:14 diag push that DID
+  appear wrote no receipt, so check why (phone on the old SW? push config cache
+  missing on the WebAPK?) before trusting the receipt. Next try: re-cut the icon
+  as an opaque square PNG (no alpha), keep the badge monochrome, ship behind the
+  same URL test, and send a `diag-` push to confirm on the owner's phone.
 - [ ] **AUTH-1 (ACTION NEEDED FROM YOU — 2 minutes in the Supabase dashboard):
   paste the new reset-password email template.** `email-templates/reset-password.html`
   is written and matches `confirm-signup.html`. It is NOT live until someone
