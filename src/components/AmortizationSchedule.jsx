@@ -2,6 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { amortize } from '../utils/financing';
 
 const AmortizationSchedule = ({ loanAmount, interestRate, years }) => {
   const { t } = useTranslation();
@@ -9,31 +10,10 @@ const AmortizationSchedule = ({ loanAmount, interestRate, years }) => {
   
   if (months <= 0 || loanAmount <= 0) return null;
 
-  // Using Malaysian Flat Rate Calculation
-  const totalInterest = loanAmount * (interestRate / 100) * years;
-  const monthlyInterest = totalInterest / months;
-  const monthlyPrincipal = loanAmount / months;
-  const monthlyPayment = monthlyPrincipal + monthlyInterest;
-
-  const generateRows = () => {
-    const rows = [];
-    let balance = loanAmount + totalInterest;
-
-    for (let i = 1; i <= months; i++) {
-      balance -= monthlyPayment;
-      // Prevent negative very small decimals
-      if (balance < 0.01) balance = 0;
-
-      rows.push({
-        month: i,
-        payment: monthlyPayment,
-        principal: monthlyPrincipal,
-        interest: monthlyInterest,
-        balance: balance
-      });
-    }
-    return rows;
-  };
+  // Reducing balance (HP (Amendment) Act 2026): interest is charged on what is
+  // still owed, so it falls each month while the principal share rises. This
+  // was a flat schedule with the same interest every month.
+  const generateRows = () => amortize(loanAmount, interestRate, months);
 
   const allRows = generateRows();
   

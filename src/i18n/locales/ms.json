@@ -164,7 +164,7 @@
       "findCarsBtn": "Cari Kereta dalam Julat Harga Ini"
     },
     "schedule": {
-      "title": "Jadual Amortisasi (Kadar Rata)",
+      "title": "Jadual Amortisasi",
       "month": "Bulan",
       "payment": "Bayaran",
       "principal": "Pokok",
@@ -179,7 +179,7 @@
       "tip1L2": "Kadar Faedah: Peratusan yang dikenakan bank untuk meminjamkan wang. Lebih rendah lebih baik.",
       "tip1L3": "Tempoh Pinjaman: Berapa lama anda membayar balik. Tempoh lebih panjang bermaksud bayaran bulanan lebih rendah tetapi lebih banyak faedah dibayar.",
       "tip2Title": "Kadar faedah tipikal di Malaysia",
-      "tip2Content1": "Di Malaysia, kadar faedah pinjaman kereta (sewa beli) biasanya beroperasi atas asas kadar rata dan berkisar antara 2.5% hingga 4.5% untuk kereta baru, dan 3.0% hingga 8.0% untuk kereta terpakai, bergantung kepada:",
+      "tip2Content1": "Sejak 1 Jun 2026, pinjaman sewa beli di Malaysia mengenakan faedah hanya ke atas baki yang masih terhutang (baki berkurangan), dan bank wajib menyatakan EIR (kadar faedah efektif). Bandingkan EIR antara bank. Kadar yang ditawarkan kepada anda bergantung kepada:",
       "tip2L1": "Usia dan keadaan kereta",
       "tip2L2": "Kempen semasa bank",
       "tip2L3": "Skor kredit peribadi anda (CTOS/CCRIS)",

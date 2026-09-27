@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from '../hooks/usePersistentState';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Activity,
   Target, Clock, Award, Eye, ChevronRight, RefreshCw,
@@ -156,8 +157,8 @@ function ExceptionAlerts({ alerts, onNavigate, onFocusAnomalies }) {
 
 // ─── Audit Trail ──────────────────────────────────────────────────────────────
 function AuditTrail({ dealerId, initialFilter = 'all' }) {
-  const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState(initialFilter); // all | anomaly | car_listings | leads | deal_financing | stock_units
+  const [logs, setLogs, cached] = usePersistentState(dealerId ? `audit:${filter}:${dealerId}` : null, []);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -210,7 +211,7 @@ function AuditTrail({ dealerId, initialFilter = 'all' }) {
           </button>
         ))}
       </div>
-      {loading ? (
+      {loading && !(cached && logs.length) ? (
         <p style={{ fontSize: 13, color: '#9ca3af', padding: '20px 0' }}>Loading…</p>
       ) : logs.length === 0 ? (
         <p style={{ fontSize: 13, color: '#9ca3af', padding: '20px 0' }}>No activity for this filter.</p>
@@ -448,14 +449,13 @@ const PERIODS = [
 ];
 
 function RevenueBreakdown({ dealerId }) {
-  const [rows, setRows] = useState(null);
+  const [rows, setRows] = usePersistentState(dealerId ? `oversight_rev:${dealerId}` : null, null);
   const [period, setPeriod] = useState('mtd');
   const [expanded, setExpanded] = useState(null);
 
   useEffect(() => {
     if (!dealerId) return;
     let cancelled = false;
-    setRows(null);
     (async () => {
       const [sold, stock, leads, ads, addons, tasks, cfg, team] = await Promise.all([
         supabase.from('car_listings').select('id, brand, model, year, sold_date, sold_at, sold_price, selling_price, assigned_to, commission_amount, included_services_cost, purchase_price, recon_cost, created_at').eq('dealer_id', dealerId).eq('status', 'sold'),
@@ -686,9 +686,8 @@ function RevenueBreakdown({ dealerId }) {
 }
 
 export default function OversightTab({ dealerId, onNavigate }) {
-  const [pnl, setPnl] = useState(null);
-  const [alerts, setAlerts] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [pnl, setPnl] = usePersistentState(dealerId ? `oversight_pnl:${dealerId}` : null, null);
+  const [alerts, setAlerts] = usePersistentState(dealerId ? `oversight_alerts:${dealerId}` : null, null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [anomalyFilter, setAnomalyFilter] = useState(false);
   const activityRef = useRef(null);
@@ -696,7 +695,6 @@ export default function OversightTab({ dealerId, onNavigate }) {
   useEffect(() => {
     if (!dealerId) return;
     let cancelled = false;
-    setLoading(true);
 
     // Fire each RPC independently so one slow/failing query can't block the
     // whole tab (previously a single Promise.all with no .catch() = infinite
@@ -706,21 +704,21 @@ export default function OversightTab({ dealerId, onNavigate }) {
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) console.error('[Oversight] gm_pnl_snapshot:', error.message);
-        setPnl(data || null);
-        setLoading(false);
+        // A failed read keeps the cached snapshot rather than blanking the tab.
+        if (!error) setPnl(data || null);
       });
 
     supabase.rpc('gm_exception_alerts', { p_dealer_id: dealerId })
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error) console.error('[Oversight] gm_exception_alerts:', error.message);
-        setAlerts(data || null);
+        if (!error) setAlerts(data || null);
       });
 
     return () => { cancelled = true; };
   }, [dealerId, refreshKey]);
 
-  if (loading || !pnl) {
+  if (!pnl) {
     return (
       <div style={{ background: '#fafafa', minHeight: '100vh', margin: '-24px', padding: 40 }}>
         <p style={{ color: '#9ca3af', fontSize: 14 }}>Loading oversight…</p>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from './usePersistentState';
 import { computeProgress, nextBlocker } from '../utils/postSaleSteps';
 
 export const WON_STAGES = ['won', 'closed_won'];
@@ -16,8 +17,11 @@ export const WON_STAGES = ['won', 'closed_won'];
 // a win (or a ticked checklist step) updates all of them in the same tick.
 // dealerId scopes to a dealership; salesmanId narrows to one rep's own deals.
 export default function useHandover(dealerId, salesmanId = null) {
-  const [deals, setDeals] = useState([]);
-  const [tasksByLead, setTasksByLead] = useState({});
+  // Persisted so Pipeline/Handover/Customers paint last-known deals instantly;
+  // refresh() still runs on mount and replaces them. No IC/address in here.
+  const cacheKey = dealerId ? `handover:${salesmanId || 'all'}:${dealerId}` : null;
+  const [deals, setDeals] = usePersistentState(cacheKey, []);
+  const [tasksByLead, setTasksByLead] = usePersistentState(cacheKey && `${cacheKey}:tasks`, {});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // Guards against an older refresh landing after a newer one (tab switches and

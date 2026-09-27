@@ -24,6 +24,7 @@ import ShareMenu from "../components/ShareMenu";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import { toast } from "sonner";
 import { generateDealSheet } from "../utils/dealSheet";
+import { BANK_RATES, DEFAULT_EIR, loanTotals, RATE_BASIS, calcMonthly, rateLabel } from "../utils/financing";
 import { maskIC } from "../utils/maskIC";
 import { mergePendingTag } from "../utils/pendingTag";
 import {
@@ -447,7 +448,7 @@ export default function SalesmanPanel() {
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
  const [dealSheetConfigLead, setDealSheetConfigLead] = useState(null);
- const [dsConfig, setDsConfig] = useState({ dpPct: 10, tenureYears: 7, flatRate: 2.45, roadTax: '', insurance: '', puspakom: '', note: '' });
+ const [dsConfig, setDsConfig] = useState({ dpPct: 10, tenureYears: 7, eir: DEFAULT_EIR, roadTax: '', insurance: '', puspakom: '', note: '' });
  const [deletingLeadId, setDeletingLeadId] = useState(null);
  const [lostSavingId, setLostSavingId] = useState(null);
  const [stageSavingId, setStageSavingId] = useState(null);
@@ -1933,7 +1934,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
   const { url } = await generateDealSheet({
    lead, car, dealer: dealerProfile, salesman: profile,
    addons: (dp || []).map(d => ({ name: d.dealer_products?.name, category: d.dealer_products?.category, price: d.sold_price })),
-   financing: { dpPct: cfg.dpPct, tenureYears: cfg.tenureYears, flatRate: cfg.flatRate },
+   financing: { dpPct: cfg.dpPct, tenureYears: cfg.tenureYears, eir: cfg.eir },
    fees,
    note: cfg.note || null,
   });
@@ -3152,8 +3153,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const sp = car.selling_price || 0;
  const op = car.original_price || null;
  const saving = op && op > sp? op - sp : 0;
- const monthly =
- sp > 0? Math.round((sp * 0.9 * (1 + (3.5 / 100) * 7)) / (7 * 12)) : null;
+ const monthly = calcMonthly(sp);
  const stats = carStatsMap[car.id]?? {};
  const views = stats.views || 0;
  const enqs = stats.enquiries || 0;
@@ -3542,7 +3542,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  )}
  {monthly > 0 && (
  <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>Est. RM {monthly.toLocaleString()}/mo · 90% loan · 7yr ·
- 3.5% p.a.
+ {DEFAULT_EIR}% EIR
  </p>
  )}
  </div>
@@ -4900,8 +4900,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
              </select>
            </div>
            <div>
-             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Rate (% flat)</p>
-             <input type="number" step="0.05" min="0" max="10" value={dsConfig.flatRate} onChange={e => setDsConfig(p => ({ ...p, flatRate: Number(e.target.value) }))} style={INP} />
+             <p style={{ margin: "0 0 4px", fontSize: 11, color: "#6b7280" }}>Rate (% EIR)</p>
+             <input type="number" step="0.05" min="0" max="17" value={dsConfig.eir} onChange={e => setDsConfig(p => ({ ...p, eir: Number(e.target.value) }))} style={INP} />
            </div>
          </div>
 
@@ -5895,7 +5895,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12 }}>
  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deal Sheet</p>
  {!dealSheetLink || dealSheetBusyId === pl.id ? (
- <button onClick={() => { if (plCar) { setDsConfig({ dpPct: 10, tenureYears: 7, flatRate: 2.45, roadTax: '', insurance: '', puspakom: '', note: '' }); setDealSheetConfigLead(pl); } }} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
+ <button onClick={() => { if (plCar) { setDsConfig({ dpPct: 10, tenureYears: 7, eir: DEFAULT_EIR, roadTax: '', insurance: '', puspakom: '', note: '' }); setDealSheetConfigLead(pl); } }} disabled={dealSheetBusyId === pl.id || !plCar} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12, fontWeight: 600, padding: "9px 14px", borderRadius: 8, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", cursor: plCar ? "pointer" : "not-allowed", opacity: (dealSheetBusyId === pl.id || !plCar) ? 0.55 : 1, fontFamily: "inherit" }}>
  <FileText size={13} />
  {dealSheetBusyId === pl.id ? "Generating…" : plCar ? "Customise & Generate" : "Link a car first"}
  </button>
@@ -6668,16 +6668,8 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  };
 
  // Loans 
- const BANKS = [
- { name: "Public Bank", rate: 3.20, islamic: false },
- { name: "CIMB Bank", rate: 3.25, islamic: false },
- { name: "Maybank", rate: 3.30, islamic: false },
- { name: "RHB Bank", rate: 3.50, islamic: false },
- { name: "Hong Leong Bank", rate: 3.50, islamic: false },
- { name: "Affin Bank", rate: 3.50, islamic: false },
- { name: "Bank Muamalat", rate: 3.60, islamic: true },
- { name: "Bank Islam", rate: 3.60, islamic: true },
- ];
+ // One bank table for the whole app, as EIR (src/utils/financing.js).
+ const BANKS = BANK_RATES;
 
  const fmtRM = (n) =>
  "RM " + Number(n).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -6687,9 +6679,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const dp = parseFloat(loanCalc.downPayment) || 0;
  const tenure = parseInt(loanCalc.tenure) || 1;
  const loan = Math.max(0, price - dp);
- const interest = loan * (bank.rate / 100) * tenure;
- const monthly = loan > 0? (loan + interest) / (tenure * 12) : 0;
- return { loan, interest, total: loan + interest, monthly };
+ // Reducing balance on the bank's EIR (HP (Amendment) Act 2026).
+ const t = loanTotals(loan, bank.rate, tenure * 12);
+ return { loan, interest: t.totalInterest, total: t.totalRepayment, monthly: t.monthly };
  };
 
  const loanInputSx = {
@@ -6728,6 +6720,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const banksPayload = loanForm.bank_name? [{
  name: loanForm.bank_name,
  rate: parseFloat(loanForm.interest_rate) || 0,
+ rate_basis: RATE_BASIS,
  monthly_payment: parseFloat(loanForm.monthly_payment) || 0,
  loan_amount: parseFloat(loanForm.loan_amount) || 0,
  }] : [];
@@ -6800,8 +6793,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const loan = parseFloat(next.loan_amount) || 0;
  const rate = parseFloat(next.interest_rate) || 0;
  const tenure = parseInt(next.loan_tenure) || 1;
- const interest = loan * (rate / 100) * tenure;
- const monthly = loan > 0? ((loan + interest) / (tenure * 12)).toFixed(2) : "";
+ const monthly = loan > 0? loanTotals(loan, rate, tenure * 12).monthly.toFixed(2) : "";
  setLoanForm({ ...next, monthly_payment: monthly });
  };
 
@@ -6873,7 +6865,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
  <thead>
  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
- {["Bank", "Rate (flat)", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
+ {["Bank", "Rate (EIR)", "Monthly Payment", "Total Interest", "Total Payable", ""].map((h) => (
  <th key={h} style={{ padding: "8px 10px", textAlign: "left", color: "#6b7280", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>{h}</th>
  ))}
  </tr>
@@ -7029,7 +7021,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  onChange={(e) => recalcLoanForm({ ...loanForm, loan_amount: e.target.value })} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (% flat)</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Interest Rate (% EIR)</label>
  <input type="number" step="0.01" placeholder="e.g. 3.25" style={loanInputSx}
  value={loanForm.interest_rate}
  onChange={(e) => recalcLoanForm({ ...loanForm, interest_rate: e.target.value })} />
@@ -7106,7 +7098,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <td style={{ padding: "10px 10px", color: "#9ca3af" }}>{app.car_model || "—"}</td>
  <td style={{ padding: "10px 10px", color: "#9ca3af", whiteSpace: "nowrap" }}>
  {bankEntry?.name || "—"}
- {bankEntry?.rate? <span style={{ color: "#4b5563" }}> {bankEntry.rate}%</span> : null}
+ {bankEntry?.rate? <span style={{ color: "#4b5563" }}> {bankEntry.rate}% {rateLabel(bankEntry.rate_basis)}</span> : null}
  </td>
  <td style={{ padding: "10px 10px", color: "#fff", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{app.loan_amount? fmtRM(app.loan_amount) : "—"}</td>
  <td style={{ padding: "10px 10px", color: "#4ade80", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14 }}>{monthlyDisplay? fmtRM(monthlyDisplay) : "—"}</td>

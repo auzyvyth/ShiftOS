@@ -5,6 +5,7 @@ import {
   CreditCard, DollarSign, Clock, CheckCircle2, XCircle, Banknote,
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { DEFAULT_EIR, monthlyPayment } from '../utils/financing';
 import FinancingCalculator from '../components/FinancingCalculator';
 import { toast } from 'sonner';
 
@@ -28,11 +29,6 @@ const STAGE_LABEL = {
 };
 
 // EIR (reducing balance) instalment — HPAA 2026 compliant
-function calcEIR(principal, annualRatePct, months) {
-  const r = (annualRatePct / 100) / 12;
-  if (!r || !months || !principal) return 0;
-  return (principal * r) / (1 - Math.pow(1 + r, -months));
-}
 function fmtRM(n) {
   return 'RM ' + Number(n || 0).toLocaleString('en-MY', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
@@ -132,11 +128,13 @@ function AddHPForm({ leadId, listingId, dealerId, carPrice, onAdd, onClose }) {
   const [bank, setBank] = useState('');
   const [amount, setAmount] = useState(carPrice ? String(Math.round(carPrice * 0.9)) : '');
   const [tenure, setTenure] = useState(84);
-  const [rate, setRate] = useState(3.5);
+  // EIR on the reducing balance. The maths here was already reducing balance,
+  // but defaulted to 3.5 — a FLAT figure — which understated the instalment.
+  const [rate, setRate] = useState(DEFAULT_EIR);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const instalment = useMemo(() => calcEIR(Number(amount), rate, tenure), [amount, rate, tenure]);
+  const instalment = useMemo(() => monthlyPayment(Number(amount), rate, tenure), [amount, rate, tenure]);
   const margin = carPrice && amount ? ((Number(amount) / carPrice) * 100).toFixed(1) : null;
 
   const handleSubmit = async () => {
@@ -168,7 +166,7 @@ function AddHPForm({ leadId, listingId, dealerId, carPrice, onAdd, onClose }) {
           {TENURES.map(t => <option key={t} value={t}>{t} months ({(t/12).toFixed(0)}yr)</option>)}
         </select>
         <div style={{ position: 'relative' }}>
-          <input value={rate} onChange={e => setRate(Number(e.target.value))} placeholder="Rate % p.a." type="number" step="0.1" style={{ ...inp, paddingRight: 32 }} />
+          <input value={rate} onChange={e => setRate(Number(e.target.value))} placeholder="EIR % p.a." type="number" step="0.1" style={{ ...inp, paddingRight: 32 }} />
           <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 11, color: '#4b5563' }}>%</span>
         </div>
       </div>

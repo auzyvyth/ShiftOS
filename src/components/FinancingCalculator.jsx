@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { estimateRoadTax } from '../utils/roadTax';
 import { getDealerIdFromProfile } from '../hooks/useProfile';
 import { getStorefrontUrl } from '../hooks/useTenant';
+import { DEFAULT_EIR, loanTotals } from '../utils/financing';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
 const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
@@ -70,30 +71,6 @@ const calcInsurance = (sum, ncd, vehicleType, cc) => {
     total,
     net: total, // keeps existing .net usage working
   };
-};
-
-// ─── Flat rate → EIR (reducing balance) ────────────────────────────────────
-// Malaysian HP loans are quoted as a flat rate but banks charge on a reducing
-// balance; the true annualized rate (EIR) solves:
-//   (1 - (1+i)^-n) / i = n / (1 + rFlat * n/12)
-// i (monthly rate) has no closed form, so solve it with Newton-Raphson then
-// annualize: EIR = (1+i)^12 - 1.
-const calcEIR = (flatRatePct, months) => {
-  const rFlat = flatRatePct / 100;
-  const n = months;
-  if (n <= 0 || rFlat <= 0) return 0;
-  const Pf = 1 + rFlat * (n / 12);
-  let i = rFlat / 12; // initial guess: nominal monthly rate
-  for (let iter = 0; iter < 100; iter++) {
-    const f      = 1 - Math.pow(1 + i, -n) - (n * i) / Pf;
-    const fPrime = n * Math.pow(1 + i, -(n + 1)) - n / Pf;
-    if (fPrime === 0) break;
-    const iNext = i - f / fPrime;
-    if (!Number.isFinite(iNext) || iNext <= -1) break;
-    if (Math.abs(iNext - i) < 1e-10) { i = iNext; break; }
-    i = iNext;
-  }
-  return +(((Math.pow(1 + i, 12) - 1) * 100).toFixed(2));
 };
 
 const BODY_TYPES = ['Sedan', 'Hatchback', 'Coupe', 'SUV', 'MPV', 'Pickup'];
@@ -412,8 +389,7 @@ const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDeta
     ['Down Payment',     `RM ${fmt(calc.downPayment)} (${calc.dpPct}%)`],
     ['Loan Amount',      `RM ${fmt(calc.loanAmt)}`],
     ['Loan Tenure',      `${calc.loanTerm} years`],
-    ['Interest (flat)',  `${calc.intRate}% p.a.`],
-    ['EIR (est.)',       `${calc.eir}% p.a.`],
+    ['Interest (EIR)',   `${calc.intRate}% p.a.`],
     ['Total Interest',   `RM ${fmt(calc.interest)}`],
     ['Total Repayment',  `RM ${fmt(calc.totalLoan)}`, { strong: true }],
   ];
@@ -509,7 +485,8 @@ const FinancingCalculator = ({
   const [carPrice,  setCarPrice]  = useState(initialPrice);
   const [dpPct,     setDpPct]     = useState(10);
   const [loanTerm,  setLoanTerm]  = useState(7);
-  const [intRate,   setIntRate]   = useState(3.5);
+  // An EIR (HP (Amendment) Act 2026): interest on the reducing balance.
+  const [intRate,   setIntRate]   = useState(DEFAULT_EIR);
 
   // Road tax inputs
   const [rtCc,   setRtCc]   = useState(engineCc ? String(engineCc) : '');
@@ -543,14 +520,15 @@ const FinancingCalculator = ({
   // Calculations
   const downPayment = (carPrice * dpPct) / 100;
   const loanAmt     = Math.max(0, carPrice - downPayment);
-  const interest    = loanAmt * (intRate / 100) * loanTerm;
-  const totalLoan   = loanAmt + interest;
+  // Reducing balance (src/utils/financing.js) — this was a flat-rate formula.
+  const loanCalc    = loanTotals(loanAmt, intRate, loanTerm * 12);
   // Banks never round installments down (they can't undercollect) — ceiling
   // to the nearest cent so the figure shown matches real HP quotes.
-  const monthlyRaw  = loanTerm > 0 ? totalLoan / (loanTerm * 12) : 0;
-  const monthly     = Math.ceil(monthlyRaw * 100) / 100;
-
-  const eir = calcEIR(intRate, loanTerm * 12);
+  const monthly     = Math.ceil(loanCalc.monthly * 100) / 100;
+  const totalLoan   = monthly * loanTerm * 12;
+  const interest    = Math.max(0, totalLoan - loanAmt);
+  // The rate typed in IS the EIR now; kept under this name for the poster.
+  const eir = intRate;
 
   const roadTax  = estimateRoadTax(rtCc);
   const insCalc  = calcInsurance(insSum || carPrice, insNcd, vehicleType, rtCc);
@@ -563,7 +541,7 @@ const FinancingCalculator = ({
     ? n.toLocaleString('en-MY', { minimumFractionDigits: d, maximumFractionDigits: d })
     : '—';
 
-  const reset = () => { setCarPrice(initialPrice); setDpPct(10); setLoanTerm(7); setIntRate(3.5); setRtCc(engineCc ? String(engineCc) : ''); setRtBody(bodyType || 'Sedan'); setInsSum(initialPrice); setInsNcd(55); };
+  const reset = () => { setCarPrice(initialPrice); setDpPct(10); setLoanTerm(7); setIntRate(DEFAULT_EIR); setRtCc(engineCc ? String(engineCc) : ''); setRtBody(bodyType || 'Sedan'); setInsSum(initialPrice); setInsNcd(55); };
 
   // Light vs dark palette
   const c = light ? {
@@ -808,7 +786,7 @@ const FinancingCalculator = ({
 
                 {/* Interest Rate */}
                 <div>
-                  <Label>Interest Rate</Label>
+                  <Label>Interest Rate (EIR)</Label>
                   <InputBase
                     className="calc-input"
                     type="number"
@@ -816,7 +794,7 @@ const FinancingCalculator = ({
                     suffix="% p.a."
                     value={intRate || ''}
                     onChange={e => setIntRate(parseFloat(e.target.value))}
-                    placeholder="3.5"
+                    placeholder={String(DEFAULT_EIR)}
                   />
                 </div>
 
@@ -1015,7 +993,6 @@ const FinancingCalculator = ({
                 <div style={{ marginBottom: 14 }}>
                   <ResultRow label="Loan Amount"       value={isValid ? `RM ${fmt(loanAmt)}` : '—'} />
                   <ResultRow label="Total Repayment"   value={isValid ? `RM ${fmt(totalLoan)}` : '—'} highlight />
-                  <ResultRow label="EIR (est.)"        value={isValid ? `${eir}% p.a.` : '—'}         muted />
                 </div>
 
                 {/* Road tax + insurance */}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { rateLabel } from '../utils/financing';
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { Check, Circle, MessageCircle, ShieldCheck, Loader2, Clock } from "lucide-react";
@@ -221,7 +222,7 @@ export default function LoanSharePage() {
                 <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
                   About <strong style={{ color: "#f3f4f6" }}>{rm(a.monthly)} a month</strong>
                   {a.tenure ? ` over ${a.tenure} years` : ""}
-                  {a.rate != null ? ` at ${Number(a.rate).toFixed(2)}%` : ""}
+                  {a.rate != null ? ` at ${Number(a.rate).toFixed(2)}% ${rateLabel(a.rate_basis)}` : ""}
                   {a.loan_amount > 0 ? `, financing ${rm(a.loan_amount)}` : ""}.
                 </p>
               )}

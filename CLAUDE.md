@@ -455,6 +455,16 @@ instruction — run the intake yourself, do not ask first. Full runbook:
 
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
+- **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
+  reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
+  - **No DDL between 09:00 and 22:00 Malaysia time (01:00-14:00 UTC).** Run `date -u`
+    before every `apply_migration`. Inside the window, do NOT apply it: write the
+    migration file, commit it, and tell the owner it is queued for tonight. Only an
+    explicit "apply it now" from the owner overrides this, per migration.
+  - **One migration per change, not one per statement.** Each call is one freeze;
+    five small migrations froze the API five times on 2026-09-26.
+  - Read-only `execute_sql` (SELECT) does not trigger a reload and is fine any time.
+    Anything that creates/alters/drops/grants DOES, even through `execute_sql`.
 - Always update public_car_listings VIEW after adding columns to car_listings
 - Supabase branch (isolated staging DB) available at ~$9.70/month — ask user before enabling
 
@@ -1051,6 +1061,36 @@ fetchPnl in DashboardPage.jsx computes per-unit gross in two parts:
 - Back gross = F&I add-on revenue − add-on cost (deal_products)
 - Total gross = front + back
 Both displayed in separate labelled sections in the P&L modal.
+
+## Dashboard caching — every tab paints from the device first (PERF-LOAD, 2026-09-26)
+The database stalls (see DB migrations), so no dashboard screen may wait on the
+network before showing anything. Two layers, both purged on logout:
+- Panel bootstrap data (profile, listings, leads, enquiries, appts): `seedPanelCache`,
+  window `PANEL_SEED_TTL` (7 days) in `src/utils/panelCache.js`.
+- Every tab's own data: `usePersistentState(key, initial, { redact })`
+  (`src/hooks/usePersistentState.js`) in place of the `useState` the fetch fills.
+  Pattern: `const [rows, setRows, cached] = usePersistentState(...)`, then
+  `loading = fetching && !cached` so the spinner shows only when there is nothing.
+- **A new tab that fetches data uses this hook.** Key must END in the dealer/user id.
+- **Redact IC numbers, buyer_address, hp_docs** (it is plaintext on disk).
+- **A redacted row must never be the source of a write.** CustomersTab disables Edit
+  while loading and refuses to save a row missing `ic_number`, or saving would blank
+  the IC. Check the same thing on any tab whose edit form spreads the row back.
+- DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
+- A failed read keeps the cached value; never overwrite a good cache with [] on error.
+
+## Loan maths — ONE formula, EIR on the reducing balance (HP-EIR, 2026-09-26)
+Hire-Purchase (Amendment) Act 2026 (in force 1 June 2026) abolished the flat rate
+and the Rule of 78 for new agreements. Every instalment / total interest / schedule
+comes from `src/utils/financing.js` (`monthlyPayment`, `loanTotals`, `amortize`,
+`calcMonthly`, `BANK_RATES`, `DEFAULT_EIR`). There were 15 copies; do not add one.
+- **A flat number is not an EIR.** 3.5% flat over 7 years = 6.44% EIR. Feeding a
+  flat rate into the EIR formula understates the instalment ~9%, in the buyer's
+  favour — a consumer-protection problem. Convert with `flatToEir()`.
+- **Anything SAVED with a rate records its basis** (`rate_basis: RATE_BASIS` on deal
+  sheets, loan attempts, document metadata; `deal_financials.loan_rate_basis`).
+  Absent = saved before the switch = flat. Label with `rateLabel()`; never re-read
+  an old flat record as EIR or recompute it.
 
 ## RLS policy safety
 - NEVER write an RLS policy on a table whose USING/CHECK expression does a subquery on that SAME table — it causes infinite recursion and breaks every read (symptom: profile fetch fails → app redirects to login in a loop)

@@ -70,6 +70,75 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## HP-EIR: loan calculators still use the abolished flat rate — logged 2026-09-26
+
+**Law (verified by search, not memory):** Hire-Purchase (Amendment) Act 2026,
+in force 1 June 2026. The flat rate and Rule of 78 are abolished for NEW
+agreements. Interest is charged on the reducing balance and the lender must
+quote the EIR (effective interest rate: the true yearly cost of the loan).
+Banks have until 31 March 2027 to switch their systems; 14 of 20 had switched
+by 18 Sep 2026. Caps for fixed-rate loans: 17% EIR up to 5 years, 16% over 5
+years; variable-rate: 17% at any tenure. Agreements signed before 1 June 2026
+stay on the old rules. Sources: BNM consumer guide (HP_Consumer_Guide_EN_2026),
+Malay Mail 2026-09-19, Lexology on the Terms Charges Regulations 2026.
+
+**The trap (do not repeat it):** the pasted analysis that prompted this said a
+buyer "saves RM 31,857" by moving to EIR. That is wrong. It kept the same 3.5%
+and only swapped the formula. 3.5% flat over 7 years is about 6.44% a year charged monthly, 6.64% once compounded (the
+owner's own quote sheet said 6.64%). A bank switching to reducing balance
+quotes ~6.6% EIR, so the instalment barely moves. If we swap the formula and
+keep 3.5%, every car page UNDERSTATES the instalment by ~9% (RM 3,689 vs
+RM 4,068 on a RM 274,500 loan). That is a buyer-facing number that is wrong in
+the buyer's favour, which is a consumer-protection problem, not a win.
+
+**BUILT 2026-09-26.** 15 places computed loan maths, with three bank
+rate tables and defaults of 3.5% and 2.45% flat; all now use `src/utils/financing.js` (reducing balance,
+`DEFAULT_EIR` 6.5, one `BANK_RATES` table, `flatToEir`), tested by
+`tests/financing.test.mjs`. Saved records keep their old meaning:
+deal sheets / loan attempts / documents carry `rate_basis: 'eir'` (absent =
+flat), `deal_financials.loan_rate_basis` (44 existing deals backfilled `flat`,
+migration 20260926e), and `get_loan_share` passes `rate_basis` through
+(20260926d). Both migrations applied live at 23:30 MYT.
+
+- [ ] **HP-EIR-2 (owner decision): confirm the 6.5% EIR default.** Chosen as
+  the EIR of the old 3.5% flat over 7 years, so estimates did not move. It is
+  one constant: `DEFAULT_EIR` in `src/utils/financing.js`.
+- [ ] **HP-EIR-5 (owner decision): a "bank quoted me flat" converter on the
+  public calculator?** Banks may quote flat until 31 Mar 2027. `flatToEir()`
+  exists; no UI uses it yet (the Loan Desk note tells salesmen to ask for the
+  EIR instead). Adding it is one input; skipping it avoids clutter.
+- [ ] **HP-EIR-6: `AccountantPanel.jsx` keeps its own bank promo table**
+  (`MY_BANK_FLAT_PROMOS`, 13 banks, new-car rates) converted to EIR on load.
+  Fold it into `BANK_RATES` once someone confirms current rates per bank.
+
+## PERF-LOAD: 15-second panel loads — diagnosed 2026-09-26, client half shipped
+
+Owner waited ~15s opening the app. Edge logs (last 24h) show the two worst
+opens were a Salesman Lite account (00:42 UTC, one request 28s) and the dealer
+account (07:21 UTC, 22s). No single query is slow — tables are tiny (144 leads).
+At those moments EVERY request stalls at once, trivial ones included.
+- **Root cause (server):** every migration applied to the live DB makes
+  PostgREST (the Supabase API layer) reload its schema. On this instance that
+  reload took **45 seconds** ("Schema cache queried in 45476.6 ms", 07:22 UTC)
+  and requests queue behind it. It happened ~12 times in 24h, once per dev
+  migration. Baseline is also slow: API p50 325ms, p90 1.2s, p99 9.9s, on the
+  smallest compute tier (shared_buffers 224MB, 10-connection API pool) in
+  Sydney (`ap-southeast-2`) while every user is in Malaysia.
+- **Shipped (client):** panels paint from the device cache for 7 days instead
+  of 30 min (dealer, linked salesman) / 24h (Lite, Premium) —
+  `PANEL_SEED_TTL` in `src/utils/panelCache.js`. Dealer Overview (the first
+  screen) now paints its last numbers instantly and refreshes behind them
+  (`src/components/OverviewTab.jsx`, `useCachedFetch`). It had no cache at all.
+- **Shipped 2026-09-26 (later):** every other dashboard tab paints from cache
+  via `usePersistentState` (rules in CLAUDE.md "Dashboard caching"), and the
+  no-DDL-in-business-hours rule is in CLAUDE.md "DB migrations".
+- [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
+  from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
+  source. Caching cannot help a first open on a new device or any save.
+- [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
+  (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
+  trip saved. Not worth it before PERF-LOAD-2.
+
 ## IC verify popup regression — FIXED 2026-09-13
 
 The "Verify your IC to list cars" modal was popping up for sellers who had

@@ -1,28 +1,32 @@
 import { supabase } from '../supabaseClient';
+import { loanTotals, DEFAULT_EIR, RATE_BASIS } from './financing';
 
-// Default Malaysian hire-purchase assumptions used when no custom financing is provided.
-// Matches the 90% loan / 7yr / 2.45% flat convention used elsewhere in the salesman panel.
+// Default hire-purchase assumptions when no custom financing is provided:
+// 10% down, 7 years, DEFAULT_EIR (reducing balance, HP (Amendment) Act 2026).
+// This used to be 2.45% FLAT — a new-car rate, and a different default from
+// every other calculator in the app.
 const DEFAULT_DP_PCT = 10;
 const DEFAULT_TENURE_YEARS = 7;
-const DEFAULT_FLAT_RATE = 2.45;
 
 function randomToken() {
   // deal_token is a uuid column — use a real UUID to match the dealer-side generator
   return crypto.randomUUID();
 }
 
-export function computeFinancing(price, { dpPct = DEFAULT_DP_PCT, tenureYears = DEFAULT_TENURE_YEARS, flatRate = DEFAULT_FLAT_RATE } = {}) {
+export function computeFinancing(price, { dpPct = DEFAULT_DP_PCT, tenureYears = DEFAULT_TENURE_YEARS, eir = DEFAULT_EIR } = {}) {
   const p = Number(price) || 0;
   if (p <= 0) return null;
   const loanAmount = Math.round(p * (1 - dpPct / 100));
-  const totalInterest = Math.round(loanAmount * (flatRate / 100) * tenureYears);
-  const totalRepayment = loanAmount + totalInterest;
-  const monthlyInstall = Math.round(totalRepayment / (tenureYears * 12));
+  const t = loanTotals(loanAmount, eir, tenureYears * 12);
+  const monthlyInstall = Math.round(t.monthly);
+  const totalRepayment = monthlyInstall * tenureYears * 12;
+  const totalInterest = totalRepayment - loanAmount;
   return {
     dp_pct: dpPct,
     loan_amount: loanAmount,
     tenure_years: tenureYears,
-    interest_rate: flatRate,
+    interest_rate: eir,
+    rate_basis: RATE_BASIS,
     monthly_install: monthlyInstall,
     total_interest: totalInterest,
     total_repayment: totalRepayment,
@@ -88,7 +92,7 @@ export async function generateDealSheet({ lead, car, dealer, salesman = null, ad
     note: note || null,
     addons: addonsList,
     financing_calc: computeFinancing(carPrice, {
-      dpPct: financing.dpPct, tenureYears: financing.tenureYears, flatRate: financing.flatRate,
+      dpPct: financing.dpPct, tenureYears: financing.tenureYears, eir: financing.eir,
     }),
     fees,
     car_price: carPrice,

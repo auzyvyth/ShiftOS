@@ -8,7 +8,7 @@
 // writing buyer IC numbers to disk.
 //
 // 1. Redact before writing. localStorage is plaintext, readable by any script
-//    on the origin, and has no expiry of its own (the 30-minute TTL is only
+//    on the origin, and has no expiry of its own (the TTL is only
 //    checked on READ — the row stays on disk until something overwrites it).
 //    Identity documents and home addresses do not go there.
 // 2. Purge on logout. Signing out must not leave the previous user's buyer list
@@ -18,7 +18,16 @@
 //    the whole point of it — so it is the only thing standing between a
 //    signed-out visitor and a painted panel full of the last user's leads.
 
-const DEFAULT_TTL = 30 * 60 * 1000; // 30 min
+// How long a cached panel may seed the FIRST FRAME. It is not a freshness
+// window: every panel still runs its live fetch behind the seed and overwrites
+// it. This was 30 minutes here (dealer + linked-salesman panels) and a 24h
+// local copy in Lite/Premium, so an owner opening the app in the morning — the
+// normal case — found the cache "expired" and sat through the full cold start,
+// which during a slow patch on the database was 15-28 seconds of spinner
+// (edge logs, 2026-09-26). Logout still purges everything (rule 2), and the
+// idle sign-out is 30 days, so 7 days only ever serves the same signed-in user.
+export const PANEL_SEED_TTL = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_TTL = PANEL_SEED_TTL;
 
 // ── TTL envelope ───────────────────────────────────────────────────────────
 // Same shape the panels used to declare locally, one copy.

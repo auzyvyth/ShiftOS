@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { usePersistentState } from '../hooks/usePersistentState';
 import { canonicalModel } from '../utils/modelKey';
 import { TrendingUp, TrendingDown, Search, AlertCircle, RefreshCw, Package, ChevronRight } from 'lucide-react';
 
@@ -142,9 +143,17 @@ const SORTS = {
 };
 
 export default function MarketDemandTab({ dealerId }) {
-  const [summary, setSummary] = useState(null);
-  const [makers, setMakers] = useState([]);
-  const [rows, setRows] = useState([]);
+  // JPJ data moves weekly and these are the slowest RPCs on the database
+  // (~1.5-1.9s each), so they paint from the last result and refresh behind it.
+  const [view, setView] = useState('market');     // market | stock
+  const [maker, setMaker] = useState('');
+  const [body, setBody] = useState('');
+  const ck = (name) => (dealerId ? `market_${name}:${dealerId}` : null);
+  const [summary, setSummary] = usePersistentState(ck('summary'), null);
+  const [makers, setMakers] = usePersistentState(ck('makers'), []);
+  // Only the unfiltered/filtered market table is cached; "my stock" depends on
+  // a key list that changes with the lot, so it stays live-only.
+  const [rows, setRows] = usePersistentState(view === 'market' ? ck(`rows:${maker}:${body}`) : null, []);
   const [stock, setStock] = useState(new Map());
   const [detail, setDetail] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -152,10 +161,7 @@ export default function MarketDemandTab({ dealerId }) {
   const [detailLoading, setDetailLoading] = useState(false);
   const [rowsLoading, setRowsLoading] = useState(true);
   const [err, setErr] = useState('');
-  const [view, setView] = useState('market');     // market | stock
   const detailRef = useRef(null);
-  const [maker, setMaker] = useState('');
-  const [body, setBody] = useState('');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('vol12');
 
@@ -363,19 +369,19 @@ export default function MarketDemandTab({ dealerId }) {
       }}>
         <Tile
           label={`Registrations · ${monthLabel(summary?.last_month)}`}
-          value={loading ? '···' : fmtInt(summary?.n_last)}
+          value={loading && !summary ? '···' : fmtInt(summary?.n_last)}
           delta={summary ? chg(Number(summary.n_last), Number(summary.n_prev)) : undefined}
           sub="vs prev month"
         />
         <Tile
           label="Same month last year"
-          value={loading ? '···' : fmtInt(summary?.n_year_ago)}
+          value={loading && !summary ? '···' : fmtInt(summary?.n_year_ago)}
           delta={summary ? chg(Number(summary.n_last), Number(summary.n_year_ago)) : undefined}
           sub="year on year"
         />
         <Tile
           label="EV share of market"
-          value={loading ? '···' : `${Number(summary?.ev_last_pct ?? 0).toFixed(1)}%`}
+          value={loading && !summary ? '···' : `${Number(summary?.ev_last_pct ?? 0).toFixed(1)}%`}
           delta={summary
             ? Number(summary.ev_last_pct) - Number(summary.ev_year_ago_pct)
             : undefined}
@@ -384,7 +390,7 @@ export default function MarketDemandTab({ dealerId }) {
         />
         <Tile
           label="Models tracked"
-          value={loading ? '···' : fmtInt(summary?.models_tracked)}
+          value={loading && !summary ? '···' : fmtInt(summary?.models_tracked)}
           sub={covered ? `you stock ${covered}` : 'last 12 months'}
         />
       </div>

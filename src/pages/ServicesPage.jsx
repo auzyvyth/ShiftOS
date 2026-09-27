@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
+import { usePersistentState } from "../hooks/usePersistentState";
 import { SERVICE_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -129,20 +130,27 @@ function CatBadge({ category }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function ServicesPage({ userId }) {
   // ── Product catalogue state ────────────────────────────────────────────────
-  const [products, setProducts] = useState([]);
-  const [prodLoading, setProdLoading] = useState(true);
+  // Each list persists its last result (usePersistentState), so "loading"
+  // below only means there is nothing to show yet.
+  const ck = (name) => (userId ? `services_${name}:${userId}` : null);
+  const [products, setProducts, prodCached] = usePersistentState(ck('products'), []);
+  const [prodFetching, setProdLoading] = useState(true);
+  const prodLoading = prodFetching && !prodCached;
   const [panelOpen, setPanelOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   // ── Revenue summary state ──────────────────────────────────────────────────
-  const [summary, setSummary] = useState(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [recentRows, setRecentRows] = useState([]);
-  const [recentLoading, setRecentLoading] = useState(true);
-  const [soldUnits, setSoldUnits] = useState([]);
-  const [soldUnitsLoading, setSoldUnitsLoading] = useState(true);
+  const [summary, setSummary] = usePersistentState(ck('summary'), null);
+  const [summaryFetching, setSummaryLoading] = useState(true);
+  const summaryLoading = summaryFetching && !summary;
+  const [recentRows, setRecentRows, recentCached] = usePersistentState(ck('recent'), []);
+  const [recentFetching, setRecentLoading] = useState(true);
+  const recentLoading = recentFetching && !recentCached;
+  const [soldUnits, setSoldUnits, soldCached] = usePersistentState(ck('sold'), []);
+  const [soldUnitsFetching, setSoldUnitsLoading] = useState(true);
+  const soldUnitsLoading = soldUnitsFetching && !soldCached;
 
   // ── Fetch products ─────────────────────────────────────────────────────────
   const fetchProducts = async () => {

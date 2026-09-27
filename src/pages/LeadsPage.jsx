@@ -170,8 +170,8 @@ function StageModal({ stage, leads, onOpen, onClose }) {
 }
 
 // ─── Main component ────────────────────────────────────────────────────────────
-export default function LeadsPage() {
-  const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads();
+export default function LeadsPage({ dealerId = null }) {
+  const { leads, loading, addLead, updateLeadStage, updateLead, deleteLead, optimisticStageChange, revertStageChange } = useLeads(dealerId);
 
   const [openLead, setOpenLead]             = useState(null);
   const [openStage, setOpenStage]           = useState(null);

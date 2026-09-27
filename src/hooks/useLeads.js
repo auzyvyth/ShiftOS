@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { getDealerIdFromProfile } from './useProfile';
+import { usePersistentState } from './usePersistentState';
+import { redactLeadsForCache } from '../utils/panelCache';
 
 const SELECT_QUERY = `
   *,
@@ -9,9 +11,16 @@ const SELECT_QUERY = `
   salesman_profile:salesman_id ( id, full_name )
 `;
 
-export function useLeads() {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+// dealerIdHint (optional): the caller's already-known dealer id. It keys the
+// on-device cache so the board paints last-known leads instantly; the fetch
+// still resolves the id itself, so a wrong hint can only mean a cold cache.
+export function useLeads(dealerIdHint = null) {
+  const [leads, setLeads, cached] = usePersistentState(
+    dealerIdHint ? `leads_board:${dealerIdHint}` : null, [], { redact: redactLeadsForCache },
+  );
+  const [fetching, setLoading] = useState(true);
+  // "loading" = nothing to show yet; a cached board stays on screen meanwhile.
+  const loading = fetching && !cached;
   const [error, setError] = useState(null);
   const dealerIdRef = useRef(null);
 
@@ -20,7 +29,10 @@ export function useLeads() {
   // (profile.id). Raw user.id orphans manager/admin-created rows.
   const resolveDealerId = useCallback(async () => {
     if (dealerIdRef.current) return dealerIdRef.current;
-    const { data: { user } } = await supabase.auth.getUser();
+    // getSession reads the local session; getUser was a round trip to the auth
+    // server on every board open just to learn our own id (RLS still decides).
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
     if (!user) return null;
     const { data: profile } = await supabase
       .from('profiles')

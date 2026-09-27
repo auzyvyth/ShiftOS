@@ -41,7 +41,7 @@ export const GUIDE_STEPS = [
     step: '03',
     title: 'Run the Finance Calculator',
     body: 'Before you call anyone, use our Finance Calculator to estimate your monthly installment, road tax, and insurance cost. Adjust the down payment, tenure, and interest rate until it fits your budget. You can even download a PDF quotation.',
-    tips: ['Aim for monthly repayment ≤ 15% of take-home', 'Most banks offer 2.4–3.5% flat rate for new cars', 'Budget for road tax + insurance on top of installment'],
+    tips: ['Aim for monthly repayment ≤ 15% of take-home', 'Since June 2026 banks quote an EIR: compare that, not a flat rate', 'Budget for road tax + insurance on top of installment'],
     cta: { label: 'Open Calculator', to: '/calculator' },
   },
   {
@@ -91,7 +91,7 @@ export const GUIDE_FAQS = [
   },
   {
     q: 'How accurate is the Finance Calculator?',
-    a: 'The calculator uses current JPJ road tax tables and standard insurance tariff formulas. Financing figures are estimates based on flat interest rate inputs — actual bank rates vary by lender and credit profile. Use it for budgeting, then get a formal letter of offer from your bank.',
+    a: 'The calculator uses current JPJ road tax tables and standard insurance tariff formulas. Financing figures are estimates on the reducing balance at the EIR you enter, the method Malaysian hire purchase has used since 1 June 2026. Actual bank rates vary by lender and credit profile. Use it for budgeting, then get a formal letter of offer from your bank.',
   },
   {
     q: 'What documents do I need to buy a car?',
@@ -126,7 +126,7 @@ export const GUIDE_TIPS = [
     category: 'Financing',
     items: [
       'Get pre-approved from 2–3 banks before visiting a dealer — use the best offer.',
-      'Flat rate 2.4–3.5% = ~4.5–6.5% effective interest rate (EIR). Compare EIR, not flat rate.',
+      'Since 1 June 2026, hire purchase charges interest only on what you still owe, and banks must quote the EIR (effective interest rate). An old-style flat 2.4–3.5% is roughly 4.5–6.5% EIR. Compare EIR, never flat.',
       'Avoid extending tenure beyond 7 years — total interest balloons.',
       'Islamic hire-purchase (HP) vs conventional: functionally similar, choose based on your bank\'s rate.',
     ],

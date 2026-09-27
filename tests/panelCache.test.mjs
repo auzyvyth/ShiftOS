@@ -76,8 +76,12 @@ is('live trial still seeds', seedPanelCache('sp').profile?.id, 'u1');
 // ── TTL ─────────────────────────────────────────────────────────────────────
 reset(); signedIn();
 rememberPanelUid('slite', 'u1');
-localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 60 * 60 * 1000, data: okProfile }));
-is('an hour-old profile is past the 30-min TTL', seedPanelCache('slite').profile, null);
+// The seed window is 7 days (PANEL_SEED_TTL): an owner opening the app the
+// next morning must still paint from cache, not sit through a cold start.
+localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 20 * 60 * 60 * 1000, data: okProfile }));
+is('an overnight profile still seeds', seedPanelCache('slite').profile?.id, 'u1');
+localStorage.setItem('slite_profile_u1', JSON.stringify({ ts: Date.now() - 8 * 24 * 60 * 60 * 1000, data: okProfile }));
+is('an 8-day-old profile is past the seed window', seedPanelCache('slite').profile, null);
 
 // ── redaction: identity material never reaches disk ─────────────────────────
 const lead = { id: 'l1', buyer_name: 'A', buyer_ic: '900101-10-1234', buyer_address: '1 Jalan X', phone: '60123456789' };
@@ -87,7 +91,8 @@ is('lead address stripped', 'buyer_address' in redacted, false);
 is('lead phone kept (the card renders it)', redacted.phone, '60123456789');
 
 const rp = redactProfileForCache({ ...okProfile, ic_hash: 'h', ic_last4: '1234' });
-is('profile ic_hash stripped', 'ic_hash' in rp, false);
+// ic_hash is kept as a plain boolean (the IC gate branches on it), never the hash.
+is('profile ic_hash reduced to a boolean', rp.ic_hash, true);
 is('profile ic_last4 stripped', 'ic_last4' in rp, false);
 is('profile role kept (gates read it)', rp.role, 'salesman');
 
@@ -100,6 +105,8 @@ for (const p of ['slite', 'sp', 'spanel', 'dash']) {
   writeCache(`${p}_listings_u1`, [{ id: 'c1' }]);
 }
 writeCache('cf:v1:snapshot:u1', { totalSold: 3 });
+// usePersistentState tab caches (customers, leads board, handover, team...)
+writeCache('cf:v1:ps:customers:all:u1', [{ id: 'k1', name: 'A' }]);
 localStorage.setItem('slite_goal_u1', '{"target":5}');
 localStorage.setItem('sp_tour_seen_u1', '1');
 clearPanelDataCache();
@@ -108,6 +115,7 @@ is('logout clears premium', seedPanelCache('sp').profile, null);
 is('logout clears the linked panel', seedPanelCache('spanel').profile, null);
 is('logout clears the dealer dashboard', seedPanelCache('dash').profile, null);
 is('logout clears the snapshot', localStorage.getItem('cf:v1:snapshot:u1'), null);
+is('logout clears persisted tab data', localStorage.getItem('cf:v1:ps:customers:all:u1'), null);
 is('logout keeps the goal preference', localStorage.getItem('slite_goal_u1'), '{"target":5}');
 is('logout keeps tour-seen', localStorage.getItem('sp_tour_seen_u1'), '1');
 

@@ -138,6 +138,7 @@ import {
   rememberPanelUid,
   seedPanelCache,
 } from "../utils/panelCache";
+import { usePersistentState } from "../hooks/usePersistentState";
 import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
@@ -151,15 +152,6 @@ import {
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
 const PANEL_CACHE_KEY = "sp";
-// A sole-trader salesman typically opens this panel once, then leaves the tab
-// open across the day (or overnight) rather than re-visiting — panelCache's
-// shared 30-min default TTL was expiring long before that, so a tab reopened
-// after a break always fell back to the full cold-start path (session ->
-// profile -> listings/leads/enquiries/appts) instead of painting instantly
-// from cache. 24h only extends how long the FIRST FRAME can be seeded from
-// cache; the live fetch below still always runs and overwrites it, so this
-// doesn't change data freshness, only how long the instant-paint is available.
-const PANEL_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 // Shared fallback for every lazy-loaded tab/section below — keeps the loading
 // state visually consistent instead of each Suspense boundary inventing its own.
@@ -258,7 +250,7 @@ export default function SalesmanPremium() {
  // instead of after getSession() -> profiles.select() -> the data queries (three
  // serial round trips to ap-southeast-2 before a single pixel). The live
  // bootstrap below overwrites all of it, and clears it if the real uid differs.
- const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY, PANEL_CACHE_TTL));
+ const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
 
  const [profile, setProfile] = useState(seed.profile);
  const [userId, setUserId] = useState(seed.uid);
@@ -739,8 +731,14 @@ export default function SalesmanPremium() {
 
  // premium — loans
  const [loanApplications, setLoanApplications] = useState([]);
- const [customers, setCustomers] = useState([]);
- const [customersLoading, setCustomersLoading] = useState(true);
+ // Persisted (IC stripped) so Customers paints instantly; refreshCustomers
+ // and the bootstrap fetch still replace it. Loading = nothing to show yet.
+ const [customers, setCustomers, customersCached] = usePersistentState(
+ userId ? `sp_customers:${userId}` : null, [],
+ { redact: (rows) => (rows || []).map(({ ic_number, ...rest }) => rest) },
+ );
+ const [customersFetching, setCustomersLoading] = useState(true);
+ const customersLoading = customersFetching && !customersCached;
  const [customerSearch, setCustomerSearch] = useState("");
  const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
  // Prepaid service packages + their visits. Owned by useServicePackages so the
@@ -1024,13 +1022,13 @@ export default function SalesmanPremium() {
  // account signed in on the same device, where the frame-1 seed was for the
  // wrong uid and got blanked above.
  if (seed.uid !== uid) {
- const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`, PANEL_CACHE_TTL);
+ const cachedListings = readCache(`${PANEL_CACHE_KEY}_listings_${uid}`);
  if (cachedListings) setMyListings(cachedListings);
- const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`, PANEL_CACHE_TTL);
+ const cachedLeads = readCache(`${PANEL_CACHE_KEY}_leads_${uid}`);
  if (cachedLeads) { setLeads(cachedLeads); setLeadsLoading(false); }
- const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`, PANEL_CACHE_TTL);
+ const cachedEnquiries = readCache(`${PANEL_CACHE_KEY}_enquiries_${uid}`);
  if (cachedEnquiries) setEnquiries(cachedEnquiries);
- const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`, PANEL_CACHE_TTL);
+ const cachedAppts = readCache(`${PANEL_CACHE_KEY}_appts_${uid}`);
  if (cachedAppts) setAppointments(cachedAppts);
  }
 
@@ -1625,7 +1623,7 @@ export default function SalesmanPremium() {
  localStorage.setItem('sp_last_followup_notif', String(Date.now()));
  const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
  const title = `${staleLeads.length} lead${staleLeads.length!== 1? 's' : ''} need follow-up`;
- const options = { body: names, tag: 'sp-followup' };
+ const options = { body: names, tag: 'sp-followup', icon: '/shiftos-notif-icon.png', badge: '/shiftos-notif-badge.png' };
  try {
  // Pages controlled by a service worker (PWA) can't use `new Notification` —
  // it throws "Illegal constructor"; must go through the SW registration.
