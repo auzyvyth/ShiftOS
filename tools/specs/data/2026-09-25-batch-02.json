@@ -1,0 +1,758 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-25",
+  "batch": {
+    "requested": 18,
+    "returned": 13,
+    "skipped": 5
+  },
+  "specs": [
+    {
+      "make": "Toyota",
+      "model": "Auris",
+      "generation": "E150",
+      "year_from": 2006,
+      "year_to": 2011,
+      "market": "JDM",
+      "chassis_codes": [
+        "NZE151",
+        "ZRE152",
+        "NZE154"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "150X",
+      "engine_cc": 1496,
+      "cylinders": 4,
+      "horsepower": 110,
+      "torque_nm": 138,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Japanese-market Corolla hatchback (Auris); 150X 1NZ-FE volume grade with Super CVT-i, common grey import.",
+      "variants": [
+        {
+          "name": "150X",
+          "horsepower": 110,
+          "torque_nm": 138,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1NZ-FE 1496cc, Super CVT-i"
+        },
+        {
+          "name": "180G",
+          "horsepower": 136,
+          "torque_nm": 173,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "2ZR-FE 1797cc"
+        },
+        {
+          "name": "RS",
+          "horsepower": 136,
+          "torque_nm": 173,
+          "transmission": "Manual",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "2ZR-FE 1.8 sport grade, 6MT"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Auris",
+      "generation": "E180",
+      "year_from": 2012,
+      "year_to": 2018,
+      "market": "JDM",
+      "chassis_codes": [
+        "NZE181",
+        "ZRE186",
+        "NRE185",
+        "ZWE186"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "150X",
+      "engine_cc": 1496,
+      "cylinders": 4,
+      "horsepower": 109,
+      "torque_nm": 136,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen Auris; 150X 1NZ-FE base grade (JDM). Range also included 1.8 Valvematic, 1.8 hybrid and 1.2 turbo.",
+      "variants": [
+        {
+          "name": "150X",
+          "horsepower": 109,
+          "torque_nm": 136,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1NZ-FE 1496cc, CVT"
+        },
+        {
+          "name": "180G",
+          "horsepower": 144,
+          "torque_nm": 173,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "2ZR-FAE 1797cc Valvematic"
+        },
+        {
+          "name": "Hybrid",
+          "horsepower": 136,
+          "torque_nm": null,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Hybrid",
+          "seats": 5,
+          "notes": "2ZR-FXE 1.8 hybrid, net system ~136ps; ZWE186; e-CVT"
+        },
+        {
+          "name": "120T",
+          "horsepower": 116,
+          "torque_nm": 185,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "8NR-FTS 1197cc turbo; NRE185 (2015+)"
+        }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "GLK",
+      "generation": "X204",
+      "year_from": 2008,
+      "year_to": 2015,
+      "market": "CBU",
+      "chassis_codes": [
+        "X204"
+      ],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "GLK300",
+      "engine_cc": 2996,
+      "cylinders": 6,
+      "horsepower": 231,
+      "torque_nm": 300,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Reconditioned compact SUV; GLK300 M272 3.0 V6 with 4MATIC and 7G-Tronic; petrol V6 common in recon stock. Predecessor to the GLC.",
+      "variants": [
+        {
+          "name": "GLK300",
+          "horsepower": 231,
+          "torque_nm": 300,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M272 2996cc V6, 4MATIC, 7G-Tronic"
+        },
+        {
+          "name": "GLK350",
+          "horsepower": 272,
+          "torque_nm": 350,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M272 3498cc V6, 4MATIC"
+        },
+        {
+          "name": "GLK250 4MATIC",
+          "horsepower": 211,
+          "torque_nm": 350,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "facelift M274 1991cc turbo (2012+)"
+        },
+        {
+          "name": "GLK220 CDI",
+          "horsepower": 170,
+          "torque_nm": 400,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Diesel",
+          "seats": 5,
+          "notes": "OM651 2143cc turbodiesel"
+        }
+      ]
+    },
+    {
+      "make": "Hyundai",
+      "model": "i40",
+      "generation": "VF",
+      "year_from": 2011,
+      "year_to": 2019,
+      "market": "CKD",
+      "chassis_codes": [
+        "VF"
+      ],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "2.0 GDI",
+      "engine_cc": 1999,
+      "cylinders": 4,
+      "horsepower": 177,
+      "torque_nm": 213,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "D-segment sedan (also Tourer wagon body); 2.0 Nu GDI with 6-speed automatic, locally assembled.",
+      "variants": [
+        {
+          "name": "2.0 GDI",
+          "horsepower": 177,
+          "torque_nm": 213,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Nu 1999cc GDI, 6AT"
+        },
+        {
+          "name": "1.6 GDI",
+          "horsepower": 135,
+          "torque_nm": 164,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Gamma 1591cc GDI"
+        },
+        {
+          "name": "Tourer 2.0 GDI",
+          "horsepower": 177,
+          "torque_nm": 213,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "estate/wagon body, same drivetrain"
+        }
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "N-Box",
+      "generation": "JF1/JF2",
+      "year_from": 2011,
+      "year_to": 2016,
+      "market": "JDM",
+      "chassis_codes": [
+        "JF1",
+        "JF2"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 4,
+      "primary_variant": "G",
+      "engine_cc": 658,
+      "cylinders": 3,
+      "horsepower": 58,
+      "torque_nm": 65,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Grey-import kei tall-wagon; S07A 660cc 3-cyl with CVT. JF1 FWD, JF2 4WD. NA 58ps / turbo 64ps.",
+      "variants": [
+        {
+          "name": "G",
+          "horsepower": 58,
+          "torque_nm": 65,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "S07A 658cc NA, CVT"
+        },
+        {
+          "name": "Custom G Turbo",
+          "horsepower": 64,
+          "torque_nm": 104,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "S07A turbo"
+        },
+        {
+          "name": "G 4WD",
+          "horsepower": 58,
+          "torque_nm": 65,
+          "transmission": "Auto",
+          "drivetrain": "4WD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "JF2 4WD"
+        }
+      ]
+    },
+    {
+      "make": "Honda",
+      "model": "N-Box",
+      "generation": "JF3/JF4",
+      "year_from": 2017,
+      "year_to": 2023,
+      "market": "JDM",
+      "chassis_codes": [
+        "JF3",
+        "JF4"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 4,
+      "primary_variant": "G",
+      "engine_cc": 658,
+      "cylinders": 3,
+      "horsepower": 58,
+      "torque_nm": 65,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "2nd-gen kei tall-wagon; S07B 660cc 3-cyl, CVT, Honda Sensing. JF3 FWD / JF4 4WD.",
+      "variants": [
+        {
+          "name": "G",
+          "horsepower": 58,
+          "torque_nm": 65,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "S07B 658cc NA, CVT"
+        },
+        {
+          "name": "Custom Turbo",
+          "horsepower": 64,
+          "torque_nm": 104,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "S07B turbo"
+        },
+        {
+          "name": "G 4WD",
+          "horsepower": 58,
+          "torque_nm": 65,
+          "transmission": "Auto",
+          "drivetrain": "4WD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "JF4 4WD"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Urvan",
+      "generation": "E25",
+      "year_from": 2001,
+      "year_to": 2011,
+      "market": "CBU",
+      "chassis_codes": [
+        "E25"
+      ],
+      "body_type": "MPV",
+      "doors": 4,
+      "seats": null,
+      "primary_variant": "3.0 DI Diesel",
+      "engine_cc": 2953,
+      "cylinders": 4,
+      "horsepower": 130,
+      "torque_nm": 314,
+      "transmission": "Manual",
+      "drivetrain": "RWD",
+      "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Urvan panel/window van (Caravan in Japan); ZD30DDTi 3.0 turbodiesel with 5MT, rear-drive. Seat count varies by body configuration. Seats left blank: 13-seat window van exceeds the 2-9 range the listing form accepts.",
+      "variants": [
+        {
+          "name": "3.0 DI Diesel",
+          "horsepower": 130,
+          "torque_nm": 314,
+          "transmission": "Manual",
+          "drivetrain": "RWD",
+          "fuel_type": "Diesel",
+          "seats": null,
+          "notes": "ZD30DDTi 2953cc turbodiesel"
+        },
+        {
+          "name": "2.0 Petrol",
+          "horsepower": 130,
+          "torque_nm": 178,
+          "transmission": "Manual",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": null,
+          "notes": "QR20DE 1998cc"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Urvan",
+      "generation": "NV350 (E26)",
+      "year_from": 2012,
+      "year_to": null,
+      "market": "CBU",
+      "chassis_codes": [
+        "E26"
+      ],
+      "body_type": "MPV",
+      "doors": 4,
+      "seats": null,
+      "primary_variant": "2.5 Diesel",
+      "engine_cc": 2488,
+      "cylinders": 4,
+      "horsepower": 129,
+      "torque_nm": 356,
+      "transmission": "Manual",
+      "drivetrain": "RWD",
+      "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "NV350 Urvan; YD25DDTi 2.5 turbodiesel, 5MT, rear-drive. 13/16-seat window van and panel-van bodies. Seats left blank: 13-seat window van exceeds the 2-9 range the listing form accepts.",
+      "variants": [
+        {
+          "name": "2.5 Diesel",
+          "horsepower": 129,
+          "torque_nm": 356,
+          "transmission": "Manual",
+          "drivetrain": "RWD",
+          "fuel_type": "Diesel",
+          "seats": null,
+          "notes": "YD25DDTi 2488cc turbodiesel"
+        },
+        {
+          "name": "2.5 Petrol",
+          "horsepower": 147,
+          "torque_nm": 213,
+          "transmission": "Manual",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": null,
+          "notes": "QR25DE 2488cc"
+        }
+      ]
+    },
+    {
+      "make": "Mitsubishi",
+      "model": "FTO",
+      "generation": "DE",
+      "year_from": 1994,
+      "year_to": 2000,
+      "market": "JDM",
+      "chassis_codes": [
+        "DE2A",
+        "DE3A"
+      ],
+      "body_type": "Coupe",
+      "doors": 2,
+      "seats": 4,
+      "primary_variant": "GPX",
+      "engine_cc": 1998,
+      "cylinders": 6,
+      "horsepower": 200,
+      "torque_nm": 200,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import JDM sports coupe; GPX 6A12 2.0 V6 MIVEC ~200ps with INVECS-II tiptronic auto. Lower grades use the 1.8 4G93.",
+      "variants": [
+        {
+          "name": "GPX",
+          "horsepower": 200,
+          "torque_nm": 200,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "6A12 1998cc V6 MIVEC, INVECS-II auto"
+        },
+        {
+          "name": "GR",
+          "horsepower": 170,
+          "torque_nm": 191,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "6A12 2.0 V6 non-MIVEC"
+        },
+        {
+          "name": "GS",
+          "horsepower": 125,
+          "torque_nm": 161,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 4,
+          "notes": "4G93 1834cc inline-4"
+        }
+      ]
+    },
+    {
+      "make": "Hyundai",
+      "model": "Genesis",
+      "generation": "BH",
+      "year_from": 2008,
+      "year_to": 2013,
+      "market": "CBU",
+      "chassis_codes": [
+        "BH"
+      ],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "3.8 V6",
+      "engine_cc": 3778,
+      "cylinders": 6,
+      "horsepower": 290,
+      "torque_nm": 361,
+      "transmission": "Auto",
+      "drivetrain": "RWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Recon rear-drive luxury sedan; Lambda 3.8 V6 with 6-speed auto. Also offered with 3.3 V6 and 4.6 Tau V8.",
+      "variants": [
+        {
+          "name": "3.8 V6",
+          "horsepower": 290,
+          "torque_nm": 361,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Lambda 3778cc V6"
+        },
+        {
+          "name": "3.3 V6",
+          "horsepower": 262,
+          "torque_nm": 314,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Lambda 3342cc V6"
+        },
+        {
+          "name": "4.6 V8",
+          "horsepower": 366,
+          "torque_nm": 449,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Tau 4627cc V8"
+        }
+      ]
+    },
+    {
+      "make": "Hyundai",
+      "model": "Genesis",
+      "generation": "DH",
+      "year_from": 2014,
+      "year_to": 2016,
+      "market": "CBU",
+      "chassis_codes": [
+        "DH"
+      ],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "3.8 V6",
+      "engine_cc": 3778,
+      "cylinders": 6,
+      "horsepower": 315,
+      "torque_nm": 397,
+      "transmission": "Auto",
+      "drivetrain": "RWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "2nd-gen rear-drive luxury sedan (before Genesis split off as a standalone marque as the G80); Lambda II 3.8 GDI V6, 8-speed auto, HTRAC AWD optional.",
+      "variants": [
+        {
+          "name": "3.8 V6",
+          "horsepower": 315,
+          "torque_nm": 397,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "Lambda II 3778cc GDI, 8AT"
+        },
+        {
+          "name": "3.8 AWD",
+          "horsepower": 315,
+          "torque_nm": 397,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "HTRAC all-wheel drive"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Sienna",
+      "generation": "XL20",
+      "year_from": 2003,
+      "year_to": 2009,
+      "market": "CBU",
+      "chassis_codes": [
+        "GSL25",
+        "MCL25"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 8,
+      "primary_variant": "3.3 V6",
+      "engine_cc": 3311,
+      "cylinders": 6,
+      "horsepower": 230,
+      "torque_nm": 328,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import North American 7/8-seat MPV; 3.3 3MZ-FE V6 (early), later 3.5 2GR-FE. FWD or AWD.",
+      "variants": [
+        {
+          "name": "3.3 V6",
+          "horsepower": 230,
+          "torque_nm": 328,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 8,
+          "notes": "3MZ-FE 3311cc (2004-2006)"
+        },
+        {
+          "name": "3.5 V6",
+          "horsepower": 266,
+          "torque_nm": 336,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 8,
+          "notes": "2GR-FE 3456cc (2007-2010)"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Sienna",
+      "generation": "XL30",
+      "year_from": 2010,
+      "year_to": 2020,
+      "market": "CBU",
+      "chassis_codes": [
+        "GSL30"
+      ],
+      "body_type": "MPV",
+      "doors": 5,
+      "seats": 8,
+      "primary_variant": "3.5 V6",
+      "engine_cc": 3456,
+      "cylinders": 6,
+      "horsepower": 266,
+      "torque_nm": 336,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import North American MPV; 2GR-FE 3.5 V6, 6-speed auto, FWD or AWD, 7/8-seat.",
+      "variants": [
+        {
+          "name": "3.5 V6",
+          "horsepower": 266,
+          "torque_nm": 336,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 8,
+          "notes": "2GR-FE 3456cc, 6AT; later 296hp with 2GR-FKS/8AT from 2017 facelift"
+        },
+        {
+          "name": "3.5 V6 AWD",
+          "horsepower": 266,
+          "torque_nm": 336,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 7,
+          "notes": "all-wheel drive"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "make": "Honda",
+      "model": "N-Box",
+      "reason": "JF5/JF6 3rd gen (2023+) too new for meaningful Malaysian recon volume; defer"
+    },
+    {
+      "make": "Toyota",
+      "model": "Auris",
+      "reason": "E210 was renamed Corolla Hatchback/Sport in Japan; outside Auris nameplate scope"
+    },
+    {
+      "make": "Nissan",
+      "model": "Urvan",
+      "reason": "E24 (pre-2001) too old; Malaysian spec and volume uncertain"
+    },
+    {
+      "make": "Hyundai",
+      "model": "Genesis Coupe",
+      "reason": "distinct RWD 2-door sports nameplate; defer to a future batch"
+    },
+    {
+      "make": "Toyota",
+      "model": "Sienna",
+      "reason": "XL40 (2020+) hybrid-only; minimal Malaysian used-market volume; defer"
+    }
+  ]
+}

@@ -1,0 +1,672 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-09-27",
+  "batch": {
+    "requested": 8,
+    "returned": 8,
+    "skipped": 8
+  },
+  "specs": [
+    {
+      "make": "Mercedes-Benz",
+      "model": "M-Class",
+      "generation": "W163",
+      "year_from": 1998,
+      "year_to": 2004,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "ML320",
+      "engine_cc": 3199,
+      "cylinders": 6,
+      "horsepower": 218,
+      "torque_nm": 315,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "First-gen ML, mostly CBU/recon in Malaysia. Figures from memory; older platform so confidence low.",
+      "variants": [
+        {
+          "name": "ML320",
+          "horsepower": 218,
+          "torque_nm": 315,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M112 3.2 V6, 5G-Tronic, permanent 4Matic"
+        },
+        {
+          "name": "ML350",
+          "horsepower": 235,
+          "torque_nm": 345,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "post-2002 facelift, M112 3.7 V6"
+        },
+        {
+          "name": "ML500",
+          "horsepower": 292,
+          "torque_nm": 440,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M113 5.0 V8"
+        }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "M-Class",
+      "generation": "W164",
+      "year_from": 2005,
+      "year_to": 2011,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "ML350",
+      "engine_cc": 3498,
+      "cylinders": 6,
+      "horsepower": 272,
+      "torque_nm": 350,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen ML. ML350 the common Malaysian variant; diesel ML300 CDI also seen. Figures from memory.",
+      "variants": [
+        {
+          "name": "ML350",
+          "horsepower": 272,
+          "torque_nm": 350,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M272 3.5 V6, 7G-Tronic, 4Matic"
+        },
+        {
+          "name": "ML300 CDI",
+          "horsepower": 204,
+          "torque_nm": 500,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Diesel",
+          "seats": 5,
+          "notes": "OM642 3.0 V6 turbodiesel"
+        }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "M-Class",
+      "generation": "W166",
+      "year_from": 2012,
+      "year_to": 2015,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "ML250 BlueTEC",
+      "engine_cc": 2143,
+      "cylinders": 4,
+      "horsepower": 204,
+      "torque_nm": 500,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Third-gen ML, CKD in Malaysia. ML250 BlueTEC diesel was the volume seller; renamed GLE from 2015 (year_to reflects nameplate end).",
+      "variants": [
+        {
+          "name": "ML250 BlueTEC",
+          "horsepower": 204,
+          "torque_nm": 500,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Diesel",
+          "seats": 5,
+          "notes": "OM651 2.1 4-cyl turbodiesel, 7G-Tronic Plus"
+        },
+        {
+          "name": "ML350 4Matic",
+          "horsepower": 306,
+          "torque_nm": 370,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "M276 3.5 V6"
+        }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "GL",
+      "generation": "X164",
+      "year_from": 2007,
+      "year_to": 2012,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 7,
+      "primary_variant": "GL350 CDI",
+      "engine_cc": 2987,
+      "cylinders": 6,
+      "horsepower": 224,
+      "torque_nm": 540,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Full-size 7-seat SUV, CBU/recon in Malaysia. GL350 CDI diesel the practical pick; GL450 V8 petrol also imported. Figures from memory.",
+      "variants": [
+        {
+          "name": "GL350 CDI",
+          "horsepower": 224,
+          "torque_nm": 540,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Diesel",
+          "seats": 7,
+          "notes": "OM642 3.0 V6 turbodiesel, permanent 4Matic"
+        },
+        {
+          "name": "GL450",
+          "horsepower": 340,
+          "torque_nm": 460,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 7,
+          "notes": "4.7 V8"
+        }
+      ]
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "GL",
+      "generation": "X166",
+      "year_from": 2013,
+      "year_to": 2016,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 7,
+      "primary_variant": "GL350 BlueTEC",
+      "engine_cc": 2987,
+      "cylinders": 6,
+      "horsepower": 258,
+      "torque_nm": 620,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Diesel",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Second-gen GL, renamed GLS from 2016 (year_to reflects nameplate end). GL350 BlueTEC diesel the common recon variant. Figures from memory.",
+      "variants": [
+        {
+          "name": "GL350 BlueTEC",
+          "horsepower": 258,
+          "torque_nm": 620,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Diesel",
+          "seats": 7,
+          "notes": "OM642 3.0 V6 turbodiesel, 7G-Tronic Plus"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Caldina",
+      "generation": "T190",
+      "year_from": 1992,
+      "year_to": 1996,
+      "market": "JDM",
+      "chassis_codes": [
+        "ST190",
+        "ST195",
+        "CT190"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "2.0 GT",
+      "engine_cc": 1998,
+      "cylinders": 4,
+      "horsepower": 128,
+      "torque_nm": 186,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import JDM wagon (classified Hatchback). First-gen; AWD and diesel variants existed. Old platform, low confidence on exact figures.",
+      "variants": [
+        {
+          "name": "2.0 GT",
+          "horsepower": 128,
+          "torque_nm": 186,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3S-FE 2.0; AWD version also sold"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Caldina",
+      "generation": "T210",
+      "year_from": 1997,
+      "year_to": 2002,
+      "market": "JDM",
+      "chassis_codes": [
+        "ST210",
+        "AT211",
+        "ST215"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "2.0",
+      "engine_cc": 1998,
+      "cylinders": 4,
+      "horsepower": 128,
+      "torque_nm": 186,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import JDM wagon. Hot GT-T used the 3S-GTE turbo with AWD; base is 3S-FE 2.0 FWD. Figures from memory.",
+      "variants": [
+        {
+          "name": "2.0",
+          "horsepower": 128,
+          "torque_nm": 186,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3S-FE 2.0"
+        },
+        {
+          "name": "GT-T",
+          "horsepower": 260,
+          "torque_nm": 324,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3S-GTE 2.0 turbo, full-time AWD"
+        }
+      ]
+    },
+    {
+      "make": "Toyota",
+      "model": "Caldina",
+      "generation": "T240",
+      "year_from": 2003,
+      "year_to": 2007,
+      "market": "JDM",
+      "chassis_codes": [
+        "ZZT241",
+        "AZT241",
+        "ST246"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "2.0 Z",
+      "engine_cc": 1998,
+      "cylinders": 4,
+      "horsepower": 152,
+      "torque_nm": 192,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "Grey-import JDM wagon, the most common Caldina in Malaysia. Base 2.0 D4 FWD; GT-Four uses the 3S-GTE turbo with AWD. year_from set to 2003: T240 launched Sep 2002, so a 2002 plate resolves to the T210 row instead of overlapping.",
+      "variants": [
+        {
+          "name": "2.0 Z",
+          "horsepower": 152,
+          "torque_nm": 192,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1AZ-FSE 2.0 direct-injection"
+        },
+        {
+          "name": "1.8 X",
+          "horsepower": 132,
+          "torque_nm": 170,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1ZZ-FE 1.8"
+        },
+        {
+          "name": "GT-Four",
+          "horsepower": 260,
+          "torque_nm": 324,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "3S-GTE 2.0 turbo, full-time AWD"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Stagea",
+      "generation": "WC34",
+      "year_from": 1996,
+      "year_to": 2001,
+      "market": "JDM",
+      "chassis_codes": [
+        "WGC34",
+        "WGNC34"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "25t RS Four",
+      "engine_cc": 2498,
+      "cylinders": 6,
+      "horsepower": 235,
+      "torque_nm": 309,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import JDM wagon (Skyline-based, classified Hatchback). RB25DET turbo the sought-after variant; NA RB20/RB25 also sold. Enthusiast import, low confidence.",
+      "variants": [
+        {
+          "name": "25t RS Four",
+          "horsepower": 235,
+          "torque_nm": 309,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "RB25DET 2.5 turbo, ATTESA AWD"
+        },
+        {
+          "name": "25X",
+          "horsepower": 190,
+          "torque_nm": 255,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "RB25DE 2.5 NA"
+        }
+      ]
+    },
+    {
+      "make": "Nissan",
+      "model": "Stagea",
+      "generation": "M35",
+      "year_from": 2002,
+      "year_to": 2007,
+      "market": "JDM",
+      "chassis_codes": [
+        "NM35",
+        "PM35",
+        "PNM35"
+      ],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "250t RX",
+      "engine_cc": 2495,
+      "cylinders": 6,
+      "horsepower": 215,
+      "torque_nm": 270,
+      "transmission": "Auto",
+      "drivetrain": "RWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "Grey-import JDM wagon. VQ-series V6; RWD and AWD offered, 350RX uses VQ35. Figures from memory.",
+      "variants": [
+        {
+          "name": "250t RX",
+          "horsepower": 215,
+          "torque_nm": 270,
+          "transmission": "Auto",
+          "drivetrain": "RWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "VQ25DD 2.5 V6"
+        },
+        {
+          "name": "350RX",
+          "horsepower": 272,
+          "torque_nm": 348,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "VQ35DE 3.5 V6"
+        }
+      ]
+    },
+    {
+      "make": "Renault",
+      "model": "Captur",
+      "generation": "J87",
+      "year_from": 2016,
+      "year_to": 2020,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.2 TCe",
+      "engine_cc": 1197,
+      "cylinders": 4,
+      "horsepower": 118,
+      "torque_nm": 190,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Captur, CKD in Malaysia. Single 1.2 turbo petrol variant. year_to reflects Malaysian sales end.",
+      "variants": [
+        {
+          "name": "1.2 TCe",
+          "horsepower": 118,
+          "torque_nm": 190,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "H5Ft 1.2 turbo, 6-speed EDC dual-clutch"
+        }
+      ]
+    },
+    {
+      "make": "Chevrolet",
+      "model": "Sonic",
+      "generation": "T300",
+      "year_from": 2012,
+      "year_to": 2015,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Sedan",
+      "doors": 4,
+      "seats": 5,
+      "primary_variant": "1.4 LT",
+      "engine_cc": 1398,
+      "cylinders": 4,
+      "horsepower": 100,
+      "torque_nm": 130,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "CKD Chevrolet in Malaysia, offered as sedan and 5-door hatch. 1.4 Ecotec the volume engine. year_to reflects Malaysian sales end. Figures from memory.",
+      "variants": [
+        {
+          "name": "1.4 LT",
+          "horsepower": 100,
+          "torque_nm": 130,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1.4 Ecotec, 6-speed auto; sedan body"
+        },
+        {
+          "name": "1.4 Hatchback",
+          "horsepower": 100,
+          "torque_nm": 130,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "5-door hatch body variant"
+        }
+      ]
+    },
+    {
+      "make": "Audi",
+      "model": "e-tron",
+      "generation": "GE",
+      "year_from": 2020,
+      "year_to": 2023,
+      "market": "CBU",
+      "chassis_codes": [],
+      "body_type": "SUV",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "55 quattro",
+      "engine_cc": null,
+      "cylinders": null,
+      "horsepower": 408,
+      "torque_nm": 664,
+      "transmission": "Auto",
+      "drivetrain": "AWD",
+      "fuel_type": "Electric",
+      "fuel_consumption": null,
+      "confidence": "medium",
+      "source_note": "First-gen Audi e-tron BEV, CBU in Malaysia in SUV and Sportback bodies. Renamed Q8 e-tron from 2023 (year_to reflects nameplate end). Boost-mode output quoted.",
+      "variants": [
+        {
+          "name": "55 quattro",
+          "horsepower": 408,
+          "torque_nm": 664,
+          "transmission": "Auto",
+          "drivetrain": "AWD",
+          "fuel_type": "Electric",
+          "seats": 5,
+          "notes": "dual-motor ~95kWh battery, single-speed reduction gearbox per axle; figure is boost-mode output"
+        }
+      ]
+    },
+    {
+      "make": "Ford",
+      "model": "Fusion",
+      "generation": "Mk1",
+      "year_from": 2005,
+      "year_to": 2010,
+      "market": "CKD",
+      "chassis_codes": [],
+      "body_type": "Hatchback",
+      "doors": 5,
+      "seats": 5,
+      "primary_variant": "1.6",
+      "engine_cc": 1596,
+      "cylinders": 4,
+      "horsepower": 100,
+      "torque_nm": 146,
+      "transmission": "Auto",
+      "drivetrain": "FWD",
+      "fuel_type": "Petrol",
+      "fuel_consumption": null,
+      "confidence": "low",
+      "source_note": "European Fiesta-based tall hatch, CKD in Malaysia (distinct from the North American mid-size Fusion sedan). 1.6 Duratec the common engine. Figures from memory.",
+      "variants": [
+        {
+          "name": "1.6",
+          "horsepower": 100,
+          "torque_nm": 146,
+          "transmission": "Auto",
+          "drivetrain": "FWD",
+          "fuel_type": "Petrol",
+          "seats": 5,
+          "notes": "1.6 Duratec, 4-speed auto"
+        }
+      ]
+    }
+  ],
+  "skipped": [
+    {
+      "make": "Mercedes-Benz",
+      "model": "ML63 AMG",
+      "reason": "High-performance AMG variant (W164/W166), low used volume and figures uncertain — folded out of the ML gen rows"
+    },
+    {
+      "make": "Mercedes-Benz",
+      "model": "GL500 / GL63 AMG",
+      "reason": "V8 petrol / AMG variants, low used volume — folded out of the GL gen rows"
+    },
+    {
+      "make": "Toyota",
+      "model": "Caldina Van",
+      "reason": "Commercial van twin of the Caldina wagon, distinct body/spec — still open"
+    },
+    {
+      "make": "Nissan",
+      "model": "Stagea 260RS Autech",
+      "reason": "RB26DETT GT-R-engined WC34 special, very rare grey import, spec uncertain"
+    },
+    {
+      "make": "Renault",
+      "model": "Captur (2nd gen HJB)",
+      "reason": "2019+ second generation not sold new in Malaysia — still open"
+    },
+    {
+      "make": "Chevrolet",
+      "model": "Sonic RS",
+      "reason": "1.4 turbo hot variant, Malaysian availability uncertain — still open"
+    },
+    {
+      "make": "Audi",
+      "model": "e-tron GT",
+      "reason": "Distinct performance sedan nameplate (not the e-tron SUV) — still open for its own row"
+    },
+    {
+      "make": "Ford",
+      "model": "Fusion (North American CD3 sedan)",
+      "reason": "Different mid-size sedan sharing the name, not sold new in Malaysia — distinct from the Euro Fusion collected here"
+    }
+  ]
+}

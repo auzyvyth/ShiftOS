@@ -30,6 +30,7 @@ const TABLE = {
     "X7": [{ from: 2019, to: null, code: "G07" }],
     "Z4": [{ from: 2002, to: 2008, code: "E85/E86" }, { from: 2009, to: 2016, code: "E89" }, { from: 2019, to: null, code: "G29" }],
     "6 SERIES": [{ from: 2004, to: 2010, code: "E63/E64" }, { from: 2011, to: 2018, code: "F06/F12/F13" }],
+    "8 SERIES": [{ from: 1990, to: 1999, code: "E31" }, { from: 2018, to: null, code: "G14/G15/G16" }],
   },
   MERCEDES: {
     "A-CLASS": [{ from: 2012, to: 2018, code: "W176" }, { from: 2018, to: null, code: "W177" }],
@@ -46,6 +47,8 @@ const TABLE = {
     "GLS": [{ from: 2016, to: 2019, code: "X166" }, { from: 2020, to: null, code: "X167" }],
     "SLK": [{ from: 1996, to: 2003, code: "R170" }, { from: 2004, to: 2010, code: "R171" }, { from: 2011, to: 2016, code: "R172" }],
     "SL": [{ from: 1989, to: 2001, code: "R129" }, { from: 2002, to: 2011, code: "R230" }, { from: 2012, to: 2020, code: "R231" }],
+    "CLK": [{ from: 1997, to: 2002, code: "C208" }, { from: 2003, to: 2010, code: "C209" }],
+    "GLK": [{ from: 2008, to: 2015, code: "X204" }],
   },
   AUDI: {
     "A3": [{ from: 2003, to: 2012, code: "8P" }, { from: 2013, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
@@ -55,6 +58,7 @@ const TABLE = {
     "RS3": [{ from: 2015, to: 2020, code: "8V" }, { from: 2021, to: null, code: "8Y" }],
     "Q3": [{ from: 2011, to: 2018, code: "8U" }, { from: 2019, to: null, code: "F3" }],
     "Q7": [{ from: 2006, to: 2015, code: "4L" }, { from: 2016, to: null, code: "4M" }],
+    "A1": [{ from: 2010, to: 2018, code: "8X" }, { from: 2019, to: null, code: "GB" }],
   },
   VOLKSWAGEN: {
     "GOLF": [{ from: 2009, to: 2013, code: "MK6" }, { from: 2013, to: 2020, code: "MK7" }, { from: 2020, to: null, code: "MK8" }],
@@ -83,6 +87,7 @@ const TABLE = {
     "370Z": [{ from: 2009, to: 2020, code: "Z34" }],
     "FAIRLADY Z": [{ from: 2002, to: 2009, code: "Z33" }, { from: 2009, to: 2020, code: "Z34" }, { from: 2022, to: null, code: "RZ34" }],
     "CEFIRO": [{ from: 1988, to: 1993, code: "A31" }, { from: 1994, to: 1998, code: "A32" }, { from: 1999, to: 2003, code: "A33" }],
+    "QASHQAI": [{ from: 2007, to: 2013, code: "J10" }, { from: 2014, to: 2021, code: "J11" }],
   },
   MAZDA: {
     "MX-5": [{ from: 1989, to: 1997, code: "NA" }, { from: 1998, to: 2005, code: "NB" }, { from: 2005, to: 2015, code: "NC" }, { from: 2015, to: null, code: "ND" }],
@@ -92,6 +97,7 @@ const TABLE = {
     // matched a listing's "Mazda 3", so those pages carried no BK/BL/BM code.
     "MAZDA 3": [{ from: 2003, to: 2009, code: "BK" }, { from: 2009, to: 2013, code: "BL" }, { from: 2013, to: 2019, code: "BM/BN" }, { from: 2019, to: null, code: "BP" }],
     "5": [{ from: 2005, to: 2010, code: "CR" }, { from: 2011, to: 2018, code: "CW" }],
+    "626": [{ from: 1997, to: 2002, code: "GF/GW" }],
   },
   KIA: {
     "OPTIMA": [{ from: 2011, to: 2015, code: "TF" }, { from: 2016, to: 2020, code: "JF" }],
@@ -100,12 +106,19 @@ const TABLE = {
   },
   HYUNDAI: {
     "PALISADE": [{ from: 2020, to: null, code: "LX2" }],
+    "GRANDEUR": [{ from: 2005, to: 2011, code: "TG" }, { from: 2012, to: 2016, code: "HG" }, { from: 2017, to: 2022, code: "IG" }],
+    "GENESIS": [{ from: 2008, to: 2013, code: "BH" }, { from: 2014, to: 2016, code: "DH" }],
+    "I40": [{ from: 2011, to: 2019, code: "VF" }],
+    "CRETA": [{ from: 2020, to: 2024, code: "SU2" }],
   },
   PEUGEOT: {
     "2008": [{ from: 2013, to: 2019, code: "A94" }, { from: 2020, to: null, code: "P24" }],
   },
   RENAULT: {
     "FLUENCE": [{ from: 2012, to: 2017, code: "L38" }],
+  },
+  SUZUKI: {
+    "SPLASH": [{ from: 2008, to: 2014, code: "A5B" }],
   },
   MINI: {
     "CLUBMAN": [{ from: 2008, to: 2014, code: "R55" }, { from: 2016, to: 2023, code: "F54" }],
