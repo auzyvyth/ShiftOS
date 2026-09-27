@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateRows, toCarSpecsRow } from './lib/validate.mjs';
+import { validateRows, toCarSpecsRow, isV3 } from './lib/validate.mjs';
 import { decodeChassis } from '../../src/utils/chassisDecode.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -44,7 +44,8 @@ function loadBatches() {
       console.error(`${f}: expected an array, or an object with a "specs" array`);
       process.exit(1);
     }
-    specs.forEach((r, i) => rows.push({ ...r, _file: basename(f), _index: i }));
+    const schema = Array.isArray(doc) ? null : String(doc.schema_version ?? '');
+    specs.forEach((r, i) => rows.push({ ...r, _file: basename(f), _index: i, _schema: schema }));
   }
   return rows;
 }
@@ -101,7 +102,17 @@ function chassisGaps(rows) {
   return gaps;
 }
 
-const rows = loadBatches();
+const loaded = loadBatches();
+
+// A model re-collected in 3.0 (every trim) supersedes its 2.0 rows (one trim
+// per generation). Keeping both would fail the overlap check on every model we
+// revisit, and the 2.0 row carries less. Whole model at a time: a 3.0 batch is
+// expected to cover every generation of what it collects.
+const modelOf = (r) => `${norm(r.make)}|${norm(r.model)}`;
+const v3Models = new Set(loaded.filter(isV3).map(modelOf));
+const superseded = loaded.filter((r) => !isV3(r) && v3Models.has(modelOf(r)));
+const rows = loaded.filter((r) => isV3(r) || !v3Models.has(modelOf(r)));
+
 if (!rows.length) {
   console.log('No batches in tools/specs/data - nothing to generate.');
   process.exit(0);
@@ -128,6 +139,7 @@ const seen = new Set();
 for (const r of rows) {
   const out = toCarSpecsRow(r);
   const k = key(out.make, out.model, out.yearFrom);
+  if (r._legacySkip) { skipped.push(`${out.make} ${out.model} ${out.yearFrom} - 3.0 trims kept for the catalogue, curated row still serves the form`); continue; }
   if (hand.has(k)) { skipped.push(`${out.make} ${out.model} ${out.yearFrom} - already curated by hand`); continue; }
   if (seen.has(k)) { skipped.push(`${out.make} ${out.model} ${out.yearFrom} - duplicate across batches`); continue; }
   seen.add(k);
@@ -155,6 +167,16 @@ const gaps = chassisGaps(rows);
 console.log(`\n${rows.length} collected row(s) across ${new Set(rows.map((r) => r._file)).size} batch file(s)`);
 console.log(`${kept.length} written to carSpecs.js, ${skipped.length} skipped`);
 for (const s of skipped) console.log(`  skip  ${s}`);
+if (superseded.length) {
+  console.log(`${superseded.length} 2.0 row(s) superseded by 3.0 re-collections (a 3.0 batch must cover every generation):`);
+  for (const r of superseded) console.log(`  gone  ${r.make} ${r.model} ${r.year_from} (${r._file})`);
+}
+const v3Rows = rows.filter(isV3);
+if (v3Rows.length) {
+  const trims = v3Rows.reduce((n, r) => n + (r.variants || []).length, 0);
+  const locked = v3Rows.reduce((n, r) => n + (r.variants || []).filter((v) => v.confidence === 'high').length, 0);
+  console.log(`Trim catalogue (3.0): ${v3Rows.length} generation(s), ${trims} trim(s), ${locked} lockable (high + sourced)`);
+}
 
 if (gaps.length) {
   console.log(`\nChassis codes the decoder does not know (add to src/utils/chassisDecode.js by hand):`);

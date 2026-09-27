@@ -1,3 +1,5 @@
+> **Superseded.** This is the schema 1.0 prompt. Use `PROMPT.md` (schema 3.0, every trim).
+
 # The Cowork prompt
 
 Paste everything between the two rules below into a fresh Cowork session. Fill in

@@ -3,7 +3,7 @@
 // a published listing - a person pasting JSON is moving text, not checking
 // torque figures. Each case here is a mistake that has actually got through
 // somewhere, or one whose shape makes it likely.
-import { validateRows, toCarSpecsRow, OPEN_ENDED } from '../tools/specs/lib/validate.mjs';
+import { validateRows, toCarSpecsRow, OPEN_ENDED, flattenV3 } from '../tools/specs/lib/validate.mjs';
 
 let pass = 0;
 const fails = [];
@@ -166,6 +166,57 @@ ok('an ordinary source_note passes', validateRows([row({ source_note: 'Double-ca
   const r = validateRows([row({ engine_cc: null })]);
   ok('a missing engine_cc warns but passes', r.ok && r.warnings.length > 0);
 }
+
+// ── schema 3.0: every trim is its own complete category ─────────────────────
+const trim = (over) => ({
+  name: 'Competition M xDrive', engine_cc: 2993, cylinders: 6, aspiration: 'Turbo',
+  horsepower: 510, torque_nm: 650, transmission: 'Auto', gearbox: '8-speed torque converter',
+  drivetrain: 'AWD', fuel_type: 'Petrol', fuel_consumption: null,
+  tyre_front: '275/35 R19', tyre_rear: '285/30 R20', confidence: 'medium', source: null, notes: null,
+  ...over,
+});
+const gen3 = (over) => ({
+  _schema: '3.0', make: 'BMW', model: 'M4', generation: 'G82', year_from: 2021, year_to: null,
+  market: 'CBU', chassis_codes: ['G82'], body_type: 'Coupe', doors: 2, seats: 4,
+  primary_variant: 'Competition M xDrive',
+  variants: [trim(), trim({ name: 'CS', horsepower: 550, confidence: 'medium' })],
+  ...over,
+});
+const v3errs = (over) => validateRows([gen3(over)]).errors;
+const v3rejects = (over) => v3errs(over).length > 0;
+
+ok('3.0: a well-formed generation passes', validateRows([gen3()]).ok);
+ok('3.0: no variants is rejected', v3rejects({ variants: [] }));
+ok('3.0: a variant missing the tyre_front KEY is rejected', v3rejects({ variants: [(({ tyre_front, ...r }) => r)(trim())] }));
+ok('3.0: tyre_front null is allowed', validateRows([gen3({ variants: [trim({ tyre_front: null })] })]).ok);
+ok('3.0: a malformed tyre size is rejected', v3rejects({ variants: [trim({ tyre_front: '275-35-19' })] }));
+ok('3.0: a ZR tyre size passes', validateRows([gen3({ variants: [trim({ tyre_front: '255/35 ZR19' })] })]).ok);
+ok('3.0: duplicate trim names are rejected', v3rejects({ variants: [trim(), trim()] }));
+ok('3.0: kW in a trim horsepower is rejected', v3rejects({ variants: [trim({ horsepower: 8 })] }));
+ok('3.0: an unknown aspiration is rejected', v3rejects({ variants: [trim({ aspiration: 'Biturbo' })] }));
+ok('3.0: an electric trim with an aspiration is rejected',
+  v3rejects({ variants: [trim({ fuel_type: 'Electric', engine_cc: null, cylinders: null })] }));
+ok('3.0: "high" with no source is rejected', v3rejects({ variants: [trim({ confidence: 'high' })] }));
+ok('3.0: "high" with a blank spec is rejected',
+  v3rejects({ variants: [trim({ confidence: 'high', source: 'BMW Malaysia brochure 2024', engine_cc: null })] }));
+ok('3.0: "high" with a source and a full spec passes',
+  validateRows([gen3({ variants: [trim({ confidence: 'high', source: 'BMW Malaysia brochure 2024' })] })]).ok);
+ok('3.0: a trim starting before its generation is rejected', v3rejects({ variants: [trim({ year_from: 2019 })] }));
+ok('3.0: money in a trim note is rejected', v3rejects({ variants: [trim({ notes: 'Priced at RM 900k' })] }));
+ok('3.0: primary_variant must name a trim', v3rejects({ primary_variant: 'M4' }));
+ok('3.0: a generation missing market is rejected', v3rejects({ market: undefined }));
+eq('3.0: the legacy prefill takes the primary trim', toCarSpecsRow(gen3()).horsepower, 510);
+eq('3.0: body falls back to the generation', flattenV3(gen3()).body_type, 'Coupe');
+eq('3.0: a trim body overrides the generation', flattenV3(gen3({ variants: [trim({ body_type: 'Sedan' })] })).body_type, 'Sedan');
+ok('3.0: overlapping a curated row warns instead of failing',
+  (() => {
+    const r = validateRows([gen3({ make: 'Toyota', model: 'Harrier', year_from: 2019 })],
+      [{ make: 'Toyota', model: 'Harrier', yearFrom: 2020, yearTo: 2099 }]);
+    return r.ok && r.warnings.some((w) => /curated/.test(w));
+  })());
+ok('3.0: overlapping generations are still rejected', validateRows([
+  gen3({ year_from: 2014, year_to: 2021 }), gen3({ year_from: 2021 }),
+]).errors.length > 0);
 
 console.log('');
 if (fails.length) {

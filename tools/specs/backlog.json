@@ -2,6 +2,49 @@
   "schema_version": "2.0",
   "generated_at": "2026-09-05",
   "note": "Every brand+model in src/data/carData.js with NO row in src/utils/carSpecs.js. regs_4y is Malaysian new registrations 2023-Jul 2026 from reg_car_month (JPJ open data), matched on a normalised brand+model key. 0 means the nameplate has no Malaysian registrations in that window - discontinued, grey import only, or never sold here - and those sort last. There is no search-term data on this platform, so registrations are the demand proxy.",
+  "priority_note": "Collected before the registration-ranked models: what dealers on the platform actually list (live car_listings, 2026-09-27) plus the owner's reference examples. Schema 3.0 re-collects these with every trim even where carSpecs.js already has a curated row.",
+  "priority": [
+    {
+      "make": "Toyota",
+      "model": "Alphard"
+    },
+    {
+      "make": "Toyota",
+      "model": "Vellfire"
+    },
+    {
+      "make": "Toyota",
+      "model": "Harrier"
+    },
+    {
+      "make": "Lexus",
+      "model": "RX"
+    },
+    {
+      "make": "Lexus",
+      "model": "NX"
+    },
+    {
+      "make": "Lexus",
+      "model": "IS"
+    },
+    {
+      "make": "Toyota",
+      "model": "Crown"
+    },
+    {
+      "make": "Daihatsu",
+      "model": "Move Canbus"
+    },
+    {
+      "make": "Honda",
+      "model": "Civic"
+    },
+    {
+      "make": "BMW",
+      "model": "M4"
+    }
+  ],
   "total": 288,
   "with_registrations": 227,
   "without": 61,

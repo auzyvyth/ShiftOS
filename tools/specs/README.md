@@ -58,6 +58,12 @@ that paste IS the request. Do this without being asked:
 1. Save it to `tools/specs/data/<today>-batch-NN.json` (NN = next number for
    today; check what's already there).
 2. Run `npm run specs:build`. Read the written/skipped list and any warnings.
+   For a `"schema_version": "3.0"` batch also read the "Trim catalogue" line
+   (trims / lockable) and every `gone` line: a 3.0 model replaces ALL its 2.0
+   rows, so a generation the batch forgot disappears from the prefill — report
+   it. Fix a rejected 3.0 batch in the file only where the error is mechanical
+   (tyre spacing, a stray key); anything touching a figure goes back to the
+   owner, never a guessed value.
 3. For every line under "Chassis codes the decoder does not know": open that
    row's `source_note` in the pasted batch — it names the engine/variant each
    code is. Add each code to `src/utils/chassisDecode.js` (Japanese/JDM codes)

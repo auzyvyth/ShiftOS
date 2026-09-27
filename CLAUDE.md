@@ -452,6 +452,13 @@ If the user pastes a raw JSON document shaped like `tools/specs/PROMPT.md`'s
 envelope (`schema_version`/`generated_at`/`batch`/`specs`/`skipped`), that IS the
 instruction — run the intake yourself, do not ask first. Full runbook:
 `tools/specs/README.md` → "Automated batch intake (paste JSON → done)".
+- **Schema 3.0 = trim catalogue (owner's call, 2026-09-27).** Each trim is a fixed
+  category the seller picks (Carlist model), and every spec incl. tyre size fills
+  from it — sellers never invent trim names. Only `high` + sourced trims get
+  locked; medium/low prefill and stay editable. Roadmap: (1) batch format +
+  prompt DONE, (2) `car_variants` table + `car_listings.variant_id`, (3) CarForm
+  Brand > Model > Year > Trim picker with a "not listed" request to Review,
+  (4) map existing listings, (5) buyer trim filter + per-trim pages.
 
 ## DB migrations
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
