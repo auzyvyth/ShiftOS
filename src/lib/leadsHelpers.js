@@ -1,6 +1,6 @@
 // ─── Stage config ─────────────────────────────────────────────────────────────
 import { Sparkles, Phone, Calendar, MessageSquare, DollarSign, Trophy, XCircle, Car } from 'lucide-react';
-import { calcMonthly } from '../utils/financing';
+import { calcMonthly } from '../utils/financing.js';
 
 export const STAGE_ORDER = [
   'new', 'contacted', 'viewing_booked', 'test_drive', 'negotiating', 'deposit_taken', 'won', 'lost',
