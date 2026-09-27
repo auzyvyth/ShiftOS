@@ -30,26 +30,64 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'ShiftOS';
-  const url = payload.url || '/';
-  // Seller pushes (dealer dashboard, Salesman Lite / Premium, salesman under a
-  // dealer) carry the ShiftOS mark; buyer pushes keep the XDrive logo. The URL
-  // is set per role by push_home_path(), so it tells us whose device this is.
-  const seller = /^\/(dashboard|salesman|manager|accountant|fi)(\/|-|\?|$)/.test(url);
+  const tag = payload.tag || 'shiftos';
   const options = {
     body: payload.body || '',
-    icon: seller ? '/shiftos-notif-icon.png' : '/pwa-192x192.png',
-    // The badge is the small status-bar glyph; Android draws only its alpha
-    // channel, so it must be a shape on transparency, not a square logo.
-    badge: seller ? '/shiftos-notif-badge.png' : '/pwa-192x192.png',
+    icon: '/pwa-192x192.png',
+    badge: '/pwa-192x192.png',
     // `tag` collapses repeats: a second push with the same tag replaces the
     // first rather than stacking. Senders use ids like `appt-<uuid>`.
-    tag: payload.tag || 'shiftos',
+    tag,
     renotify: Boolean(payload.tag),
-    data: { url },
+    data: { url: payload.url || '/' },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  // If the browser refuses the notification, retry with the bare minimum so a
+  // lead never arrives silently, and record why. Tests sent with a `diag-` tag
+  // also report that they reached the phone at all: the server only learns
+  // that the push service accepted the message, never that the device got it.
+  event.waitUntil((async () => {
+    let failure = null;
+    try {
+      await self.registration.showNotification(title, options);
+    } catch (err) {
+      failure = String(err && err.message ? err.message : err);
+      try {
+        await self.registration.showNotification(title, { body: options.body, tag, data: options.data });
+      } catch (err2) {
+        failure += ' | retry: ' + String(err2 && err2.message ? err2.message : err2);
+      }
+    }
+    if (failure || tag.startsWith('diag-')) await reportPush(tag, failure);
+  })());
 });
+
+// One row in error_logs (anon insert is allowed there, rate-limited). Never
+// throws: a report must not be the reason a notification fails.
+async function reportPush(tag, failure) {
+  try {
+    const cfg = await readPushConfig();
+    if (!cfg || !cfg.supabaseUrl || !cfg.anonKey) return;
+    const shown = (await self.registration.getNotifications({ tag })).length > 0;
+    await fetch(`${cfg.supabaseUrl}/rest/v1/error_logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: cfg.anonKey,
+        Authorization: `Bearer ${cfg.anonKey}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        error_code: failure ? 'push_show_failed' : 'push_diag_received',
+        error_message: failure || `push received, shown=${shown}`,
+        context: 'push-sw',
+        metadata: { tag, shown, permission: self.Notification ? self.Notification.permission : null, ua: self.navigator.userAgent },
+      }),
+    });
+  } catch {
+    // ignore
+  }
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
