@@ -53,6 +53,15 @@ When the user says "FFT", produce a handoff summary for the next agent. No quest
 4. **Rule set** — condensed restatement of the non-negotiables below (multi-tenancy/security, deployment flow, design/mobile, prompt discipline) plus current tier pricing.
 Keep it scannable (headings + bullets), no emojis. Verify deploy/git state with real commands before writing — do not assume.
 
+## New feature, page or product — ASK FIRST, build second (owner's rule, 2026-09-27)
+When I ask for something NEW (a feature, a page, a site, a client build), do NOT
+write code in that turn. First: research (how pros in that industry do it, the
+relevant ShiftOS code/design to reuse), then ask me in detail — scope, audience,
+tabs/sections, theme/colours, data/storage, who logs in, pricing, what "done" is.
+Build only after I answer. Caught 2026-09-27: a tint-shop site + CRM was built
+straight from a one-line ask and came out generic ("vibe coded"). Fixes and
+small edits to existing things are exempt — this is for new things.
+
 ## Challenge my decisions — don't just execute
 I want a design/engineering counterweight, not a yes-man. Before building what I
 ask for, judge whether the request is actually the right move. If it adds clutter,
