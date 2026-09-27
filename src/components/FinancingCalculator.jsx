@@ -9,6 +9,7 @@ import { estimateRoadTax } from '../utils/roadTax';
 import { getDealerIdFromProfile } from '../hooks/useProfile';
 import { getStorefrontUrl } from '../hooks/useTenant';
 import { DEFAULT_EIR, loanTotals } from '../utils/financing';
+import { cdnImg } from '../utils/img';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
 const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
@@ -143,18 +144,32 @@ const ResultRow = ({ label, value, highlight, muted, borderTop }) => (
 // webp). Every step is wrapped so a failed or blocked image never breaks the
 // poster — that element simply doesn't render and the layout falls back.
 
-const fetchDataUrl = (url) => new Promise((resolve) => {
-  if (!url) return resolve(null);
-  fetch(url, { mode: 'cors' })
-    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('bad status'))))
-    .then((blob) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
-      fr.onerror = () => resolve(null);
-      fr.readAsDataURL(blob);
-    })
-    .catch(() => resolve(null));
-});
+//
+// Never fetch the raw storage URL first: the service worker caches car photos
+// CacheFirst (vite.config.js `car-images-v1`) and keeps OPAQUE copies from
+// plain <img> loads. A cors fetch of that URL gets the opaque copy back
+// (status 0, unreadable), so any car already viewed on this device printed
+// "No photo". The resizer URL is on another host the worker never caches,
+// and also shrinks a multi-MB photo to what the poster draws. The raw URL,
+// cache-busted so it misses the worker's cache, is the fallback.
+const readDataUrl = (url) => fetch(url, { mode: 'cors' })
+  .then((r) => (r.ok ? r.blob() : Promise.reject(new Error('bad status'))))
+  .then((blob) => new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(blob);
+  }));
+
+const fetchDataUrl = async (url) => {
+  if (!url) return null;
+  const sized = cdnImg(url, 1200, 85);
+  const bust = `${url}${url.includes('?') ? '&' : '?'}poster=1`;
+  for (const candidate of [...new Set([sized, bust])]) {
+    try { return await readDataUrl(candidate); } catch { /* try the next */ }
+  }
+  return null;
+};
 
 const loadImg = (dataUrl) => new Promise((resolve) => {
   if (!dataUrl) return resolve(null);
