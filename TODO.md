@@ -135,6 +135,15 @@ At those moments EVERY request stalls at once, trivial ones included.
 - [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
   from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
   source. Caching cannot help a first open on a new device or any save.
+  - **2026-10-02: two full outages in 12h, marketplace showed no cars.** Org
+    plan is `free` (not Micro — the smallest box). DB froze 22:10-02:15 UTC
+    (requests up to 6 min, cron jobs stopped), recovered, then froze again at
+    07:37 UTC and was still unreachable at 10:15 (`select now()` timed out,
+    postgres logs silent, auth 522s, storage 429/544). No migration near
+    either freeze (schema reloads that day took 2-5s), no slow query to
+    blame — trivial requests (`cron_key_matches`, `profiles`) stalled too.
+    That is the instance running out of headroom, not our code. Restart
+    from the dashboard brings it back; only a paid plan stops the repeat.
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
