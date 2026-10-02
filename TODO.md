@@ -2171,6 +2171,17 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-10: A CarEdge for Malaysia (owner's own buyer-side brand, 2026-10-02)**
+  — buyer's advocate: free price guide + calculators + content, paid "deal
+  check" / negotiation help, takes no dealer money. Gaps vs the US: new-car
+  prices are near-fixed, so the money is in used/recon; no VIN/invoice data
+  feed exists, so a price guide needs its own data. Blockers: (1) conflict of
+  interest — the same owner runs XDrive/ShiftOS, which dealers pay; CarEdge's
+  whole pitch is "no dealer money", so keep it a separate brand + entity and
+  disclose; (2) insurance comparison/recommendation needs a BNM Approved
+  Financial Adviser licence (FSA 2013) — stay out of it or partner; (3) never
+  copy CarEdge's warranty upsell without checking it isn't insurance.
+
 - **IDEA-1: Regional bump (paid visibility, by state/region)** — instead of a
   flat "bump my listing" button, let a salesman/dealer see (from their own
   dashboard analytics) which state/region is sending them the most views,
