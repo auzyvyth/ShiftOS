@@ -142,8 +142,14 @@ At those moments EVERY request stalls at once, trivial ones included.
     postgres logs silent, auth 522s, storage 429/544). No migration near
     either freeze (schema reloads that day took 2-5s), no slow query to
     blame — trivial requests (`cron_key_matches`, `profiles`) stalled too.
-    That is the instance running out of headroom, not our code. Restart
-    from the dashboard brings it back; only a paid plan stops the repeat.
+    **Correction, same day:** the dashboard showed "Grace period is over —
+    projects will not serve requests when you use up your quota", with CPU
+    25% / memory 44% / disk IO 77% over 24h. So the likelier cause is
+    free-plan QUOTA enforcement, not compute starvation. DB is 56 MB and
+    storage 287 MB (both under limit), so suspect egress: car-images
+    (avg 362 KB, 798 files) pulled in full by AhrefsBot and the wsrv.nl
+    ImageFetcher proxy. Restart at 10:32 UTC brought it back; check
+    Billing > Usage for which quota tripped.
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
