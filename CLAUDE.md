@@ -383,6 +383,14 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   else. Article copy is buyer-facing: never promise something about XDrive
   listings the platform does not check (three CTAs claimed every car was
   Puspakom-inspected / fully documented; nothing verifies that).
+- **The public grids survive a database outage (2026-10-02).** The free DB
+  froze twice in a day and the marketplace went blank. Every public listing
+  query goes through `withTimeout` (a stalled DB HANGS requests, it does not
+  fail them), and on failure the unfiltered views fall back to the device's
+  saved copy, `LIVE_CARS_CACHE_KEY` (`readLiveCarsFallback`, 7 days, in
+  `src/config/marketplaceConfig.js`), with `StaleListingsNotice` above the
+  grid. Users: MarketplacePage grid + hero rows, CarListingPage `/showroom`.
+  Never show that copy under an active filter or on a dealer storefront.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.

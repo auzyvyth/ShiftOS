@@ -1,4 +1,5 @@
 import { MY_STATES } from '../utils/locations';
+import { readCache } from '../utils/localCache';
 // Canonical brand whitelist used for filtering. Must cover every brand the
 // brand strips link to AND every brand value that can exist in the DB (from
 // CarForm CAR_DATA), otherwise sanitizeBrand() drops the param and the page
@@ -48,6 +49,32 @@ export const COLOURS    = ['White','Black','Silver','Grey','Red','Blue','Brown',
 
 export const CAR_FIELDS  = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,engine_cc,condition,previous_owners,auction_grade,interior_grade,is_recon,financing_type,images,status,created_at,seller_role,seller_type,dealer_is_verified,seller_sold_count,payment_type';
 export const DEALER_JOIN = 'dealer:profiles!dealer_id(dealership,site_name,subdomain,whatsapp_number,site_logo_url,brand_color,role)';
+
+/* Last good UNFILTERED list of live cars (newest first), kept on the device so
+   the public grids survive a database outage. Written by the marketplace
+   default grid and the unfiltered /showroom page 1; both select CAR_FIELDS, so
+   either copy serves either page and the hero rows. Shape: { cars, totalCount }.
+   Fresh copies (MarketplacePage CACHE_TTL) paint instantly; an older one is
+   used ONLY when the live fetch fails, with a notice saying so. Never show it
+   under an active filter -- unfiltered cars under "Toyota" would be a lie. */
+export const LIVE_CARS_CACHE_KEY = 'mp_default_grid_v1';
+export const LIVE_CARS_FALLBACK_TTL = 7 * 24 * 60 * 60 * 1000;
+
+export function readLiveCarsFallback() {
+  const hit = readCache(LIVE_CARS_CACHE_KEY, LIVE_CARS_FALLBACK_TTL);
+  return hit?.cars?.length ? hit : null;
+}
+
+// A stalled database does not fail a request, it hangs it (60-90s on
+// 2026-10-02). Race every public listing query against a timeout so the page
+// settles into data, the device copy, or the retry state.
+export const LISTING_QUERY_TIMEOUT = 15000;
+export function withTimeout(query, ms = LISTING_QUERY_TIMEOUT) {
+  return Promise.race([
+    query,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+}
 
 export function dedupe(arr) {
   const seen = new Set();

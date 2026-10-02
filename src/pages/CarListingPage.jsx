@@ -23,7 +23,10 @@ import {
   sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
   sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
+  LIVE_CARS_CACHE_KEY, readLiveCarsFallback, withTimeout,
 } from '../config/marketplaceConfig';
+import { writeCache } from '../utils/localCache';
+import StaleListingsNotice from '../components/StaleListingsNotice';
 import { CAR_DATA } from '../data/carData';
 import { modelFilter } from '../utils/modelKey';
 import SearchAutocomplete from '../components/SearchAutocomplete';
@@ -407,6 +410,9 @@ export default function CarListingPage() {
   const [loading, setLoading]           = useState(true);
   const [fetching, setFetching]         = useState(false);
   const [error, setError]               = useState(null);
+  // Showing the device's saved copy because the live fetch failed (marketplace,
+  // unfiltered page 1 only) -- drives StaleListingsNotice.
+  const [showingSaved, setShowingSaved] = useState(false);
   const [drawerOpen, setDrawerOpen]     = useState(false);
   const initialLoad = useRef(true);
 
@@ -488,6 +494,12 @@ export default function CarListingPage() {
   const fetchCars = useCallback(async () => {
     if (!isMarketplace && tenantLoading) return;
     const myReq = ++reqSeq.current;
+    // Same sanitised values the query below filters on, so "unfiltered" here
+    // means exactly the rows the query returns.
+    const isDefaultShowroom = isMarketplace && page === 1 && sort === 'newest' && !q
+      && !brand && !model && !variant && !bodyType && !state && !minPrice && !maxPrice
+      && !financing && !yearFrom && !yearTo && !mileageMax && !hotDeals && !condition
+      && !transmission && !fuelType && !colour && !sellerType;
     if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
     setError(null);
     try {
@@ -579,17 +591,27 @@ export default function CarListingPage() {
       else                           query = query.order('created_at', { ascending:false });
 
       query = query.range(from, to);
-      // Hard timeout: on a flaky mobile / in-app-webview connection a request can
-      // neither resolve nor reject, leaving the spinner up forever. Race the query
-      // against a timeout so it always settles into either data or the retry state.
-      const { data, error:err, count } = await Promise.race([
-        query,
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
-      ]);
+      // Hard timeout: on a flaky mobile / in-app-webview connection, or a
+      // stalled database, a request can neither resolve nor reject, leaving the
+      // spinner up forever. withTimeout settles it into data or the fallback.
+      const { data, error:err, count } = await withTimeout(query);
       if (err) throw err;
       if (myReq !== reqSeq.current) return; // a newer fetch superseded this one
-      setCars(data||[]); setTotal(count||0);
-    } catch { if (myReq === reqSeq.current) setError('Failed to load listings. Please try again.'); }
+      setCars(data||[]); setTotal(count||0); setShowingSaved(false);
+      // Keep the device's copy of the live grid fresh from here too, so a buyer
+      // who only ever lands on /showroom still has something during an outage.
+      if (isDefaultShowroom) writeCache(LIVE_CARS_CACHE_KEY, { cars: data || [], totalCount: count || 0 });
+    } catch {
+      if (myReq !== reqSeq.current) return;
+      // Unfiltered marketplace page 1 only: unfiltered cars under an active
+      // filter (or on a dealer's own storefront) would be wrong, not just stale.
+      const saved = isDefaultShowroom ? readLiveCarsFallback() : null;
+      if (saved) {
+        setCars(saved.cars); setTotal(saved.cars.length); setShowingSaved(true);
+      } else {
+        setError('Failed to load listings. Please try again.');
+      }
+    }
     finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
@@ -873,6 +895,7 @@ export default function CarListingPage() {
 
             {/* Car grid */}
             <div style={{ flex:1, minWidth:0 }}>
+              {showingSaved && !error && <StaleListingsNotice onRetry={fetchCars} />}
               {error && (
                 <div style={{ textAlign:'center', padding:'60px 20px' }}>
                   <p style={{ color:'#dc2626', fontSize:'15px', marginBottom:'16px' }}>{error}</p>
@@ -916,7 +939,7 @@ export default function CarListingPage() {
                   </div>
                 </div>
               )}
-              {!loading && !error && totalPages > 1 && (
+              {!loading && !error && !showingSaved && totalPages > 1 && (
                 <div style={{ padding:'40px 0 20px' }}>
                   <Pagination page={page} totalPages={totalPages} onPage={setPage}/>
                   <p style={{ textAlign:'center', color:'#6b7280', fontSize:'13px', marginTop:'12px', fontFamily:"'Outfit',sans-serif" }}>

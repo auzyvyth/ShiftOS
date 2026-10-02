@@ -155,8 +155,8 @@ At those moments EVERY request stalls at once, trivial ones included.
     restart read 397 blocks. No cause found on our side — the free Nano
     instance (shared, 0.5 GB RAM, shared_buffers 224 MB) just stopped
     answering twice. Free plan gives no support to ask why. Real fix is
-    Pro + dedicated compute; the code-side mitigation is making the public
-    marketplace survive a DB outage (serve last-known listings from cache).
+    Pro + dedicated compute. Code-side mitigation BUILT same day: public
+    grids fall back to the device's saved copy (CLAUDE.md "Marketplace").
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
