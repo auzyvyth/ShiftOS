@@ -31,3 +31,21 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   },
 });
 
+
+// Session-less client for PUBLIC reads that must never wait on a login.
+// Every request on `supabase` first runs auth.getSession(), which waits for the
+// auth lock; a stale saved session being refreshed (or a refresh hanging while
+// the database is down) holds that lock, and the request does not even leave
+// the browser. That is how vyth.xdrive.my showed "This dealer page doesn't
+// exist" on 2026-10-02 with the dealer row present and the lookup never sent.
+// No persisted session, no refresh, no URL parsing: only the anon key, so it
+// can only read what anon can read. Own storageKey so it never touches the
+// main client's saved session.
+export const publicClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
+    storageKey: "sb-public-anon",
+  },
+});

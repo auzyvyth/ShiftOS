@@ -408,6 +408,15 @@ Never use session.user.id / user.id in queries — always derive via getDealerId
   - superadmin / dealer / owner role → profile.id
 Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
   Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
+**A failed storefront lookup is NOT "this dealer doesn't exist" (2026-10-02).**
+vyth.xdrive.my said it did not exist while the dealer row was live: a stale saved
+login held the auth lock, every `supabase` request waits on that lock, so the
+lookup never left the browser, and a 6s timer settled `null`. Now `useTenant`
+looks up via `publicClient` (`src/supabaseClient.js` — anon, no session, no lock),
+caps each attempt with `withTimeout`, and a failure returns `error`, which
+HomePage/CarListingPage render as "Couldn't load, try again". Only a clean empty
+RPC answer is a miss. Use `publicClient` for any public read that must not wait
+on a login.
 
 ## Deployment pipeline — 3 stages
 ```
