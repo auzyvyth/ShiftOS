@@ -148,8 +148,15 @@ At those moments EVERY request stalls at once, trivial ones included.
     free-plan QUOTA enforcement, not compute starvation. DB is 56 MB and
     storage 287 MB (both under limit), so suspect egress: car-images
     (avg 362 KB, 798 files) pulled in full by AhrefsBot and the wsrv.nl
-    ImageFetcher proxy. Restart at 10:32 UTC brought it back; check
-    Billing > Usage for which quota tripped.
+    ImageFetcher proxy. Restart at 10:32 UTC brought it back.
+    **Second correction:** Billing > Usage showed EVERY quota under limit
+    (egress 0.94/5 GB, cached 1.24/5, DB 0.07/0.5, MAU 20). Quota ruled out.
+    Our own workload is tiny: cache hit 99.9%, heaviest statement after the
+    restart read 397 blocks. No cause found on our side — the free Nano
+    instance (shared, 0.5 GB RAM, shared_buffers 224 MB) just stopped
+    answering twice. Free plan gives no support to ask why. Real fix is
+    Pro + dedicated compute; the code-side mitigation is making the public
+    marketplace survive a DB outage (serve last-known listings from cache).
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
