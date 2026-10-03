@@ -419,6 +419,12 @@ RPC answer is a miss. Use `publicClient` for any public read that must not wait
 on a login.
 
 ## Deployment pipeline — 3 stages
+**Vercel builds exactly TWO branches: `main` (prod) and `staging` (the one preview).**
+`vercel.json` `git.deploymentEnabled` = `"**": false` + those two (owner, 2026-10-03:
+the free plan was being flooded by a build per session branch). Never add a branch
+to that list, never push a second preview branch, and push staging ONCE per round of
+changes, not after every commit. Session/feature branches (`claude/*`, `ccr-*`,
+`temp/*`) build nothing now — that is intended.
 ```
 local (main) → staging branch → production (main on GitHub)
 ```
