@@ -2171,6 +2171,12 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
+  the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
+  and buyers stall on battery uncertainty (each 1% of State of Health ~1.2-1.6%
+  of value). A trusted SOH report per car (workshop partner + diagnostic tool),
+  then a price guide built on SOH. Constraints: brand-specific diagnostic
+  access (BYD etc.), needs a physical partner, Carsome could bolt it on.
 - **IDEA-10: A CarEdge for Malaysia (owner's own buyer-side brand, 2026-10-02)**
   — buyer's advocate: free price guide + calculators + content, paid "deal
   check" / negotiation help, takes no dealer money. Gaps vs the US: new-car
