@@ -348,69 +348,17 @@ fixes. Nothing in this batch has been built.
   each, `has_table_privilege('anon','public_car_listings','select')` = true,
   public_car_listings has 77 columns and the same row count as before.
 
-- [ ] **MINI-LIGHT-1: agent page (`/s/:slug`) goes light — SCOPED 2026-10-03,
-  owner asked for it, not built yet.** File: `src/pages/SalesmanProfilePage.jsx`
-  (815 lines, all inline styles + one `<style>` block). Follow `DESIGN.md` light
-  tokens exactly. One concern per session: this is STYLING + layout only, no data.
-  Why: the page is the one public XDrive surface still dark, and it is off-system
-  even as a dark page — blue accent (`#2563eb`/`#60a5fa`) not red, a gold
-  radial "glow" backdrop (`:402`, banned by DESIGN.md), `system-ui` not Outfit,
-  fully rounded pill tags, an orange tinted "Independent Agent" badge, green
-  `#4ade80` sold count. A buyer tapping through from the light marketplace lands
-  on a different product.
-  Target layout (mockup: owner has screenshots from the 2026-10-03 session):
-  1. Slim `#0f1115` bar: wordmark + "Browse all cars". NOT the full
-     MarketplaceHeader — see decision (a).
-  2. Cover banner (fallback: warm neutral `#EDEAE3`, no gradient glow), white
-     identity card overlapping it: avatar, Bebas name + verified tick, job title
-     · dealership/"Independent", location, plus a Malay line "Ejen kereta di
-     <area>" (the SEO gap from the same session — buyers search in Malay).
-  3. Stats row, tabular figures, hairline dividers: Available / Sold / rating.
-  4. ONE primary action: WhatsApp button + icon-only socials beside it.
-  5. Bio (3-line clamp + Read more), specialisations as square neutral tags
-     (`#ECEAE4`, radius 4), response time as a 6px status dot + text.
-  6. Cars: `ShowroomCard` (light) in the DESIGN.md flex grid, with a sort
-     select — see decision (b).
-  7. Map and `ReviewsSection` on white cards (pass a light `th`, drop
-     `DARK_REVIEW_TH` here).
-  8. Mobile only: sticky bottom bar "<name> · replies in ~1h · WhatsApp", so
-     the contact button does not scroll away under six cars.
-  Desktop keeps today's two columns (seller left, sticky; cars right).
-  Keep untouched: owner setup-nudge strip logic (restyle only), retry-on-error
-  load, visit tracking, `agentSeo.js` title/description.
-  **Owner approved 2026-10-03 with "a premium touch": decisions (a) slim bar,
-  (b) ShowroomCard-style cards, (c) red button are ACCEPTED.** Reference
-  mockup: `docs/mockups/agent-page-light.html`. Premium touches in it, all
-  inside DESIGN.md (no glow, no blur, no pills): wave-field cover fallback
-  (warm neutrals, same motif as the marketplace hero); 96px avatar with a white
-  ring; red 16px rule before the eyebrow; Bebas name ~48px; "Since <month>
-  on XDrive" from `profiles.created_at`; credential row (ID verified, reply
-  time) as ink icons; stats in Bebas numerals; Bebas section headings with a
-  muted count; Newest/Price segmented control (ink selected state); cards with
-  a hairline split above the price and a status dot; reviews card with the
-  score in Bebas and one quote. Only state real data: hide "Sold" at 0, hide
-  the reviews block with no reviews, never invent a quote.
-  **Trust blocks are BUILT on the current (dark) page as of 2026-10-03** —
-  restyle them, do not rebuild: measured reply time, "Documents checked by
-  XDrive", My terms, Recently sold, Works at <dealer> link, safety line +
-  Report this agent (see CLAUDE.md "Agent page trust signals"). They need
-  migration `20261003b_agent_trust_signals.sql` applied; until then the reply
-  time and recently-sold blocks stay hidden and Report fails with a generic error.
-  **Colour: option B chosen 2026-10-03** — colour only in the cover FALLBACK
-  (sky `#DCE8F2` -> `#EEF0EA` -> sand `#F6E3CF`, warm wave bands on top), shown
-  only when the agent has no cover photo. No scattered smudges (option A was
-  rejected: DESIGN.md bans glow blobs, and cards hid them anyway). Already in
-  `docs/mockups/agent-page-light.html`.
-  Decisions (as originally put to the owner):
-  (a) full marketplace header vs slim bar — slim recommended: this page is
-      shared by the agent on WhatsApp, and a mega-menu sends their buyer to
-      competitors' cars.
-  (b) drop the bespoke "featured newest car" block for plain ShowroomCards —
-      recommended: one card design for the same car everywhere, ~150 fewer lines.
-  (c) WhatsApp button red (system primary) or WhatsApp green — red recommended
-      (one accent on the surface); green is more recognisable.
-  Verify at 375px and 1280px; run the no-undef eslint check from the top of
-  this file (the build does not catch a removed name).
+- [ ] **MINI-LIGHT-1 follow-ups** (the light agent page shipped 2026-10-03 per
+  `docs/mockups/agent-page-light.html`, in `src/pages/SalesmanProfilePage.jsx`):
+  - "Since <month> on XDrive" is NOT shown: `get_salesman_by_slug` does not return
+    `created_at`. Adding it changes the function's return type = DROP + CREATE
+    (re-assert anon EXECUTE), so batch it with the next migration on that RPC.
+  - Cards are a local `AgentCarCard`, not `ShowroomCard` (owner decision (b)):
+    ShowroomCard carries an Agent/Dealer chip and its own WhatsApp gate, both
+    wrong on the agent's own page. Revisit only if the two card designs drift.
+  - Reviews render through `ReviewsSection` (full list + write form), not the
+    mockup's one-quote summary card; its red "Sign in to write a review" pill
+    is ReviewsSection's own styling, shared with CarDetailPage.
 
 - [ ] **PREM-MINI-2: `SalesmanOnboarding.activate()` writes `is_active: true`
   and the database throws it away.** Found while doing PREM-MINI-1 and proven

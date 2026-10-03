@@ -26,53 +26,72 @@ const fmt = (n) => Number(n).toLocaleString('en-MY');
 // something real is still missing.
 const setupDismissKey = (uid) => `sp_setup_dismissed_${uid}`;
 
-// Dark-surface theme tokens for ReviewsSection on the mini pages.
-const DARK_REVIEW_TH = {
-  text: '#e8edf5', textSec: 'rgba(255,255,255,0.62)', textMuted: 'rgba(255,255,255,0.42)',
-  border: 'rgba(255,255,255,0.08)', borderSec: 'rgba(255,255,255,0.05)',
-  card: 'rgba(255,255,255,0.03)', inputBg: 'rgba(255,255,255,0.05)',
+// Light-surface tokens (DESIGN.md) for the shared components on this page.
+const LIGHT_REVIEW_TH = {
+  text: '#111827', textSec: '#4b5563', textMuted: '#6b7280',
+  border: 'rgba(0,0,0,0.08)', borderSec: 'rgba(0,0,0,0.06)',
+  card: '#ffffff', inputBg: '#ffffff',
 };
 // The report sheet is a modal over a dimmed page, so its card must be opaque.
-const DARK_SHEET_TH = { ...DARK_REVIEW_TH, card: '#0d1117', card2: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.12)' };
+const LIGHT_SHEET_TH = { ...LIGHT_REVIEW_TH, card2: '#F0EEE8', inputBorder: 'rgba(0,0,0,0.12)' };
 
-// Icon-only social link — no label, no pill background, just the mark.
-const iconLink = {
-  background: 'none',
-  border: 'none',
-  color: '#9ca3af',
-  padding: 0,
-  width: 32,
-  height: 32,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  cursor: 'pointer',
-  transition: 'color 0.15s',
-};
-
-// Owner controls over the banner (Dashboard, Live presentation).
-const ownerPill = {
-  display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(11,14,21,0.72)',
-  backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99,
-  padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'none',
-};
-
-// Car number shown on every card, matching the presenter's "#N".
-const numBadge = {
-  position: 'absolute', top: 8, left: 8, zIndex: 1, background: 'rgba(8,12,20,0.78)',
-  color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 6, padding: '3px 7px',
-  fontVariantNumeric: 'tabular-nums',
+// Owner controls over the cover (Dashboard, Live presentation). Solid dark at
+// 0.78 like every photo overlay on the marketplace: no blur, no pill.
+const ownerChip = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(15,17,21,0.78)',
+  border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600,
+  color: '#fff', textDecoration: 'none', cursor: 'pointer', fontFamily: 'inherit',
 };
 
 // Same one-line estimate as the marketplace cards (calcMonthly: 90% loan,
 // 7 years, DEFAULT_EIR). null above the high-value threshold -> not shown.
-function MonthlyLine({ price, size = 11 }) {
+function MonthlyLine({ price }) {
   const m = calcMonthly(Number(price));
   if (!m) return null;
   return (
-    <p style={{ fontSize: size, color: '#94a3b8', margin: '0 0 6px', fontVariantNumeric: 'tabular-nums' }}>
-      est. <span style={{ color: '#e5e7eb', fontWeight: 600 }}>RM {fmt(m)}/mo</span>
-    </p>
+    <span className="ap-mo">est. <b>RM {fmt(m)}/mo</b></span>
+  );
+}
+
+// Social marks: icon-only circles beside the one primary button.
+const SOCIAL_ICONS = {
+  instagram: <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/></svg>,
+  tiktok: <svg viewBox="0 0 24 24"><path fill="currentColor" d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.7a5.7 5.7 0 1 0 4.9 5.7V9a7.4 7.4 0 0 0 4.3 1.4V7.3a4.3 4.3 0 0 1-3.2-1.5z"/></svg>,
+  facebook: <svg viewBox="0 0 24 24"><path fill="currentColor" d="M14 8h3V4h-3c-2.8 0-4.5 1.8-4.5 4.6V11H7v4h2.5v7h4v-7h3l.5-4h-3.5V9c0-.6.4-1 1-1z"/></svg>,
+  website: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>,
+};
+const WA_ICON = <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.8-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/></svg>;
+
+// One car card, per docs/mockups/agent-page-light.html. Deliberately not
+// ShowroomCard: that one carries an "Agent/Dealer" chip (meaningless on the
+// agent's own page) and its own WhatsApp gate, which would compete with this
+// page's single contact button. "#N" is the live-presentation number.
+function AgentCarCard({ car, num, onClick }) {
+  const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
+  const cond = car.condition ? car.condition.charAt(0).toUpperCase() + car.condition.slice(1) : null;
+  return (
+    <Link to={`/showroom/${car.slug}`} onClick={onClick} className="ap-card ap-car">
+      <div className="ap-ph">
+        {imgs[0]
+          ? <img src={imgs[0]} alt={[car.year, car.brand, car.model].filter(Boolean).join(' ')} loading="lazy" />
+          : <span className="ap-nophoto">No photo</span>}
+        <span className="ap-ov ap-tl">#{num}{cond ? ` · ${cond}` : ''}</span>
+        {imgs.length > 1 && <span className="ap-ov ap-br">{imgs.length} photos</span>}
+      </div>
+      <div className="ap-cb">
+        <p className="ap-cn">{[car.year, car.brand, car.model, car.variant].filter(Boolean).join(' ')}</p>
+        <p className="ap-cs">
+          {[car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission, car.state].filter(Boolean).map((t) => <span key={t}>{t}</span>)}
+        </p>
+        <div className="ap-pr">
+          <div>
+            <b>{car.selling_price > 0 ? `RM ${fmt(car.selling_price)}` : 'Price on request'}</b>
+            <MonthlyLine price={car.selling_price} />
+          </div>
+          <span className="ap-st"><i style={{ background: car.status === 'reserved' ? '#b45309' : '#15803d' }} />{car.status === 'reserved' ? 'Reserved' : 'Available'}</span>
+        </div>
+      </div>
+    </Link>
   );
 }
 
@@ -100,6 +119,11 @@ export default function SalesmanProfilePage() {
   // the car on screen pinned at the top. See src/components/live/LivePresenter.jsx.
   const [presenting, setPresenting] = useState(false);
   const [liveListingId, setLiveListingId] = useState(null);
+  // Newest (the query order, which is also the #N order) or cheapest first.
+  const [sortBy, setSortBy] = useState('newest');
+  // Review tally handed up by ReviewsSection (onSummary) for the stats row, so
+  // the page does not query reviews a second time.
+  const [reviewSummary, setReviewSummary] = useState(null);
 
   // Detect the arrival platform (Instagram/Facebook/TikTok/WhatsApp… via the
   // in-app browser UA or referrer) and stash it so every footprint we log below
@@ -187,10 +211,10 @@ export default function SalesmanProfilePage() {
 
       const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
@@ -346,15 +370,12 @@ export default function SalesmanProfilePage() {
   const metaDescription = agentPageDescription(profile, listings.length);
   const pageTitle = agentPageTitle(profile);
 
-  // The listings column leads with the newest car (the query orders
-  // created_at desc) and puts the rest in the small-card grid under it. Up to
-  // three of the featured car's OWN other photos ride alongside it; anything
-  // past that is counted on the last thumb rather than dropped silently.
-  const featured = listings[0] || null;
-  const rest = listings.slice(1);
-  const featuredImages = Array.isArray(featured?.images) ? featured.images.filter(Boolean) : [];
-  const featuredThumbs = featuredImages.slice(1, 4);
-  const featuredExtra = Math.max(0, featuredImages.length - 4);
+  // "#N" is fixed to the query order (newest first), the same array the live
+  // presenter walks, so re-sorting by price never renumbers a car mid-live.
+  const numById = new Map(listings.map((c, i) => [c.id, i + 1]));
+  const sortedListings = sortBy === 'price'
+    ? [...listings].sort((a, b) => (Number(a.selling_price) || Infinity) - (Number(b.selling_price) || Infinity))
+    : listings;
 
   // The dealership's own address (linked salesmen only) — a full free-text
   // address if the dealer set one, else fall back to city/state.
@@ -368,16 +389,17 @@ export default function SalesmanProfilePage() {
   const mapLocationStr = ownLocationStr || dealerLocationStr;
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.08)', borderTopColor: '#2563eb', animation: 'spin 0.8s linear infinite' }} />
+    <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#dc2626', animation: 'spin 0.8s linear infinite' }} />
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 
   if (notFound) return (
-    <div style={{ minHeight: '100vh', background: '#0b0e15', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "system-ui,sans-serif", padding: '0 24px', textAlign: 'center' }}>
-      <p style={{ fontSize: 14, color: '#4b5563', marginBottom: 8 }}>Agent not found</p>
-      <p style={{ fontSize: 13, color: '#374151' }}>This page doesn't exist or has been removed.</p>
+    <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--xd-font-body)', padding: '0 24px', textAlign: 'center' }}>
+      <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 8 }}>Agent not found</p>
+      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>This page doesn't exist or has been removed.</p>
+      <Link to="/showroom" style={{ fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'underline', textUnderlineOffset: 3 }}>Browse all cars</Link>
     </div>
   );
 
@@ -387,6 +409,29 @@ export default function SalesmanProfilePage() {
   const websiteHref = profile.website
     ? (profile.website.startsWith('http') ? profile.website : `https://${profile.website}`)
     : null;
+  const socials = [
+    profile.instagram && { key: 'instagram', href: `https://instagram.com/${profile.instagram.replace(/^@/, '')}`, label: 'Instagram' },
+    profile.tiktok && { key: 'tiktok', href: `https://tiktok.com/@${profile.tiktok.replace(/^@/, '')}`, label: 'TikTok' },
+    facebookHref && { key: 'facebook', href: facebookHref, label: 'Facebook' },
+    websiteHref && { key: 'website', href: websiteHref, label: 'Website' },
+  ].filter(Boolean);
+
+  // Identity lines. Eyebrow says what kind of seller this is; the Malay line
+  // is the search phrase buyers actually type ("ejen kereta <tempat>").
+  const sellerKind = dealer ? 'Sales agent' : profile.seller_type === 'private' ? 'Private seller' : 'Independent agent';
+  const eyebrow = [sellerKind, locationState || locationCity].filter(Boolean).join(' · ');
+  const malayLine = profile.seller_type !== 'private' && locationStr ? `Ejen kereta di ${locationStr}` : null;
+  const initial = (profile.full_name || 'A')[0].toUpperCase();
+  const nameWords = (profile.full_name || '').trim().split(/\s+/);
+  const nameTail = nameWords.pop() || '';
+  const nameHead = nameWords.length ? `${nameWords.join(' ')} ` : '';
+  const hasReviews = (reviewSummary?.count || 0) > 0;
+  // Only real numbers: Sold hides at 0, rating hides with no reviews.
+  const stats = [
+    { key: 'sale', n: listings.length, l: 'For sale' },
+    soldCount > 0 && { key: 'sold', n: soldCount, l: 'Sold' },
+    hasReviews && { key: 'rating', n: reviewSummary.avg.toFixed(1), suffix: '/5', l: `${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}` },
+  ].filter(Boolean);
 
   return (
     <>
@@ -394,615 +439,402 @@ export default function SalesmanProfilePage() {
         {/* Same title as the crawler render (api/og.js buildSalesmanHtml), name
             first so a search for the agent's name matches the title. */}
         <title>{pageTitle}</title>
-        {/* `bio` is the agent's own words about themselves. `about_text` is the
-            DEALER storefront's "About us" (DashboardPage Settings) and used to
-            be read here too, which gave one page two about-paragraphs and gave
-            every standalone agent a generic description, since only the
-            linked-salesman panel can write it. One field. */}
+        {/* `bio` only — `about_text` is the dealer storefront's "About us". */}
         <meta name="description" content={metaDescription} />
-        {/* This page is the whole Salesman Lite pitch ("your page at
-            xdrive.my/s/yourname") and gets shared as a link constantly, so it
-            needs a canonical + og:url of its own. Without them every share
-            lands on a URL Google can't consolidate onto one address. */}
+        {/* Shared as a link constantly, so it needs its own canonical + og:url. */}
         <link rel="canonical" href={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
         <meta property="og:url" content={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
         <meta property="og:type" content="profile" />
         <meta property="og:site_name" content="XDrive" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={metaDescription} />
-        {/* Prefer the cover banner (a wide, landscape image) for the link
-            preview so a shared mini-page shows the agent's own banner, not a
-            square avatar or the generic site image. */}
+        {/* The wide cover makes the better link preview; avatar as fallback. */}
         {(profile.cover_url || profile.avatar_url) && (
           <meta property="og:image" content={profile.cover_url || profile.avatar_url} />
         )}
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
+      {/* Light, per DESIGN.md and docs/mockups/agent-page-light.html (MINI-LIGHT-1).
+          Classes are ap- prefixed: this <style> is global while mounted. */}
       <style>{`
-        /* Bebas Neue comes from index.html — no @import here (it blocks render). */
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        /* minmax(0,1fr) — not plain 1fr — so a long non-wrapping car name can't
-           blow a column past its share and push the grid wider than the screen
-           (that overflow, clipped by the page's overflowX:hidden, was cutting
-           the right-hand cards). Columns stay exactly equal. */
-        .sp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-        @media (max-width: 640px) { .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
-
-        /* ── Desktop two-column: the seller on the left, their cars on the
-           right (the shape Mudah uses). Below 1024px nothing changes — the
-           same blocks stack in the same order they always did.
-           Column widths live in these classes rather than inline styles so
-           the media query can widen them without !important. */
-        .sp-narrow { max-width: 640px; margin: 0 auto; padding-left: clamp(14px, 5vw, 24px); padding-right: clamp(14px, 5vw, 24px); }
-        .sp-wide   { max-width: 1080px; margin: 0 auto; padding-left: clamp(14px, 5vw, 24px); padding-right: clamp(14px, 5vw, 24px); }
-        .sp-map    { max-width: 640px; margin: 36px auto 0; }
+        .ap { min-height: 100vh; background: #F7F6F2; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        .ap *, .ap *::before, .ap *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        .ap a { color: inherit; }
+        .ap-bar { background: #0f1115; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 4vw, 48px); }
+        .ap .ap-wm { font-family: 'Bebas Neue', sans-serif; color: #fff; font-size: 22px; letter-spacing: .06em; text-decoration: none; }
+        .ap .ap-wm b { color: #dc2626; font-weight: 400; }
+        .ap-bar-link { color: rgba(255,255,255,.72) !important; font-size: 13px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+        .ap-shell { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
+        .ap-cover { height: 150px; border-radius: 0 0 16px 16px; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,.06); border-top: 0; background: linear-gradient(115deg, #DCE8F2 0%, #EEF0EA 45%, #F6E3CF 100%); }
+        .ap-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .ap-cover svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70%; }
+        .ap-owner { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        .ap-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); border: 1px solid rgba(0,0,0,.06); }
+        .ap-id { padding: 20px; margin-top: -44px; position: relative; }
+        .ap-av { width: 96px; height: 96px; border-radius: 50%; padding: 3px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 3px rgba(15,23,42,.08); margin-top: -64px; }
+        .ap-av img, .ap-av div { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+        .ap-av div { background: linear-gradient(145deg, #3a3f4a, #15171c); display: flex; align-items: center; justify-content: center; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 40px; }
+        .ap-eb { font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #6b7280; }
+        .ap-id .ap-eb { margin-top: 16px; display: flex; align-items: center; gap: 8px; }
+        .ap-id .ap-eb i { width: 16px; height: 2px; background: #dc2626; display: inline-block; flex-shrink: 0; }
+        .ap h1 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(40px, 11vw, 52px); line-height: .92; letter-spacing: .015em; margin-top: 8px; color: #0f1115; overflow-wrap: anywhere; }
+        .ap-last { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+        .ap h1 svg { width: 22px; height: 22px; flex-shrink: 0; margin-top: -4px; }
+        .ap-role { font-size: 14px; color: #4b5563; margin-top: 8px; }
+        .ap-my { font-size: 13px; color: #6b7280; margin-top: 2px; font-style: italic; }
+        .ap-works { font-size: 13px; color: #4b5563; margin-top: 6px; }
+        .ap-works a { font-weight: 600; color: #111827; text-decoration: underline; text-underline-offset: 3px; }
+        .ap-creds { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; }
+        .ap-cred { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; color: #111827; }
+        .ap-stats { display: grid; margin: 18px 0; border-top: 1px solid rgba(0,0,0,.06); border-bottom: 1px solid rgba(0,0,0,.06); }
+        .ap-stats div { padding: 12px 0 10px; text-align: center; }
+        .ap-stats div + div { border-left: 1px solid rgba(0,0,0,.06); }
+        .ap-n { font-family: 'Bebas Neue', sans-serif; font-size: 32px; line-height: 1; color: #0f1115; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+        .ap-n small { font-size: 18px; color: #9ca3af; }
+        .ap-l { font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; margin-top: 4px; }
+        .ap-cta { display: flex; gap: 8px; align-items: center; }
+        .ap-btn { flex: 1; min-width: 0; height: 48px; border-radius: 10px; background: #dc2626; color: #fff !important; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; white-space: nowrap; overflow: hidden; box-shadow: 0 1px 2px rgba(220,38,38,.25), inset 0 -1px 0 rgba(0,0,0,.12); transition: background .15s; }
+        .ap-btn:hover { background: #b91c1c; }
+        .ap-btn > span { overflow: hidden; text-overflow: ellipsis; }
+        .ap-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+        .ap-ico { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); display: flex; align-items: center; justify-content: center; color: #111827; background: #fff; transition: border-color .15s; }
+        .ap-ico:hover { border-color: #111827; }
+        .ap-ico svg { width: 18px; height: 18px; }
+        .ap-bio { font-size: 15px; color: #4b5563; line-height: 1.7; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-more { background: none; border: none; color: #111827; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0 0; text-decoration: underline; text-underline-offset: 3px; font-family: inherit; }
+        .ap-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+        .ap-tag { background: #F0EEE8; color: #111827; font-size: 12px; font-weight: 500; padding: 5px 9px; border-radius: 4px; border: 1px solid rgba(0,0,0,.06); }
+        .ap-terms { margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-term { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: #6b7280; margin-top: 8px; }
+        .ap-term span + span { color: #111827; text-align: right; }
+        .ap-sec { display: flex; justify-content: space-between; align-items: flex-end; margin: 40px 0 16px; gap: 12px; }
+        .ap h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(28px, 3vw, 40px); line-height: .95; letter-spacing: .015em; color: #0f1115; }
+        .ap h2 span { color: #9ca3af; }
+        .ap-seg { display: flex; border: 1px solid rgba(0,0,0,.12); border-radius: 8px; overflow: hidden; background: #fff; flex-shrink: 0; }
+        .ap-seg button { font-size: 12px; font-weight: 600; padding: 7px 12px; border: none; background: none; color: #4b5563; cursor: pointer; font-family: inherit; }
+        .ap-seg button[aria-pressed="true"] { background: #0f1115; color: #fff; }
+        .ap-docs { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; margin: -6px 0 16px; }
+        .ap-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+        .ap-car { flex: 1 1 280px; max-width: 100%; overflow: hidden; text-decoration: none; display: block; transition: box-shadow .2s, transform .2s; }
+        .ap-car:hover { box-shadow: 0 12px 32px rgba(15,23,42,.14); transform: translateY(-3px); }
+        .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
+        .ap-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .ap-nophoto { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #9ca3af; }
+        .ap-ov { position: absolute; background: rgba(15,17,21,.78); color: #fff; font-size: 11px; font-weight: 600; padding: 4px 7px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+        .ap-tl { left: 10px; top: 10px; } .ap-br { right: 10px; bottom: 10px; }
+        .ap-cb { padding: 14px 16px 16px; }
+        .ap-cn { font-size: 15px; font-weight: 600; line-height: 1.3; color: #111827; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ap-cs { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: #6b7280; margin-top: 6px; font-variant-numeric: tabular-nums; }
+        .ap-cs span + span::before { content: ''; display: inline-block; width: 3px; height: 3px; border-radius: 50%; background: #9ca3af; margin-right: 10px; vertical-align: middle; }
+        .ap-pr { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-pr b { display: block; font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; color: #0f1115; }
+        .ap-mo { display: block; font-size: 12px; color: #6b7280; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .ap-mo b { display: inline; font-size: 12px; font-weight: 600; color: #111827; }
+        .ap-st { font-size: 12px; color: #4b5563; display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .ap-st i { width: 6px; height: 6px; border-radius: 50%; }
+        .ap-live { padding: 14px; margin-bottom: 8px; }
+        .ap-live-h { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #111827; margin-bottom: 12px; }
+        .ap-live-h i { width: 6px; height: 6px; border-radius: 50%; background: #dc2626; }
+        .ap-live a.ap-live-car { display: flex; gap: 12px; text-decoration: none; min-width: 0; }
+        .ap-live-ph { position: relative; width: 112px; flex-shrink: 0; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #EDEAE3; }
+        .ap-live-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .ap-live .ap-btn { margin-top: 12px; height: 44px; font-size: 14px; }
+        .ap-sold div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; font-size: 14px; }
+        .ap-sold div + div { border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-sold span:first-child { color: #111827; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ap-sold span:last-child { flex-shrink: 0; font-size: 12px; color: #6b7280; }
+        .ap-map { overflow: hidden; }
+        .ap-map iframe { display: block; border: 0; width: 100%; height: 170px; filter: grayscale(.35); }
+        .ap-ml { padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; text-decoration: none; }
+        .ap-ml b { font-size: 14px; font-weight: 600; color: #111827; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ap-ml span { font-size: 13px; font-weight: 600; color: #111827; text-decoration: underline; text-underline-offset: 3px; flex-shrink: 0; }
+        .ap-safe { text-align: center; padding: 40px 0 8px; max-width: 520px; margin: 0 auto; }
+        .ap-safe p { font-size: 13px; color: #6b7280; line-height: 1.6; }
+        .ap-foot { text-align: center; font-size: 12px; color: #6b7280; padding: 24px 0 110px; }
+        .ap-foot a { color: #111827; font-weight: 600; text-decoration: none; }
+        .ap-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; background: rgba(255,255,255,.98); border-top: 1px solid rgba(0,0,0,.06); box-shadow: 0 -8px 24px rgba(15,23,42,.06); padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); display: flex; gap: 12px; align-items: center; }
+        .ap-sticky .ap-mini { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; overflow: hidden; background: linear-gradient(145deg, #3a3f4a, #15171c); color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 18px; display: flex; align-items: center; justify-content: center; }
+        .ap-sticky .ap-mini img { width: 100%; height: 100%; object-fit: cover; }
+        .ap-who { flex: 1; min-width: 0; font-size: 12px; color: #6b7280; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .ap-who b { display: block; color: #111827; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+        .ap-sticky .ap-btn { flex: 0 0 auto; padding: 0 20px; height: 44px; font-size: 14px; }
         @media (min-width: 1024px) {
-          .sp-shell {
-            display: grid; grid-template-columns: 400px minmax(0, 1fr);
-            gap: 44px; max-width: 1280px; margin: 0 auto; padding: 0 32px;
-            align-items: start;
-          }
-          .sp-shell .sp-narrow, .sp-shell .sp-wide { max-width: none; margin: 0; padding-left: 0; padding-right: 0; }
-          /* The right column is ~half the width the grid used to have, so the
-             small cards drop from three across to two — that is the 2x2 block
-             under the featured car. */
-          .sp-shell .sp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-          .sp-shell .sp-map { max-width: none; margin: 36px 0 0; }
-          /* A rule between two side-by-side columns divides nothing. */
-          .sp-divider { display: none; }
-          /* The right column is roughly twice as wide as the stacked page, so
-             the same percentages give a photo half the screen tall and thumbs
-             that are no longer thumbs. Both are pinned down here. */
-          .sp-shell .sp-feat-main { padding-top: 46%; }
-          .sp-shell .sp-thumb { aspect-ratio: auto; height: 104px; }
+          .ap-cover { height: 220px; }
+          .ap-cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 48px; align-items: start; }
+          .ap-left { position: sticky; top: 20px; }
+          .ap-id { padding: 24px; }
+          .ap-car { flex: 0 0 calc(50% - 8px); max-width: calc(50% - 8px); }
+          .ap-sticky { display: none; }
+          .ap-foot { padding-bottom: 48px; }
         }
-
-        /* ── Featured (most recent) listing — one big card that leads the
-           column: a large photo with a rail of the same car's other photos
-           beside it, then the details. */
-        .sp-feat { display: block; text-decoration: none; color: inherit; background: #0d1117; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; overflow: hidden; margin-bottom: 16px; transition: border-color 0.18s, transform 0.18s; }
-        .sp-feat:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-2px); }
-        .sp-feat-media { display: grid; gap: 6px; padding: 6px; }
-        .sp-feat-main { position: relative; padding-top: 58%; border-radius: 10px; overflow: hidden; background: #0a0e18; }
-        .sp-feat-main img, .sp-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-        /* Thumbs run UNDER the big photo, not in a rail beside it: a vertical
-           rail is portrait and every car photo is landscape, so each thumb got
-           cropped to a door handle. */
-        .sp-thumbs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
-        .sp-thumb { position: relative; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: #0a0e18; }
-        .sp-thumb-more { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(10,14,24,0.66); font-size: 12px; font-weight: 700; color: #e5e7eb; }
-
-        /* The avatar hangs off the cover banner. In the stacked layout the
-           column carries its own 14-24px gutter, so the avatar is inset to
-           match; in the two-column layout the gutter is on the shell instead,
-           so it sits flush or the name (padded 106px clear) lands on top of it. */
-        .sp-avatar { left: clamp(14px, 5vw, 24px); }
-        @media (min-width: 1024px) { .sp-shell .sp-avatar { left: 0; } }
-        .sp-card { transition: border-color 0.18s, transform 0.18s; }
-        .sp-card:hover { border-color: rgba(255,255,255,0.18) !important; transform: translateY(-2px); }
-        .social-btn:hover { color: #e5e7eb !important; }
-        @keyframes sp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
       `}</style>
 
-      <div style={{ minHeight: '100vh', position: 'relative', background: '#0b0e15', fontFamily: "system-ui,sans-serif", color: '#fff', overflowX: 'hidden' }}>
-
-        {/* Decorative backdrop — soft warm-gold glow in the top-left melting into
-            a cool dark slate, matching the reference. Fixed to the viewport so it
-            stays put on a long listings page. Pure gradients = naturally soft, no
-            hard lines. */}
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none',
-          background: `
-            radial-gradient(ellipse 95% 78% at 2% -12%, rgba(216,178,94,0.42) 0%, rgba(178,150,90,0.14) 33%, transparent 62%),
-            radial-gradient(ellipse 90% 70% at 104% 106%, rgba(12,16,24,0.65) 0%, transparent 55%),
-            linear-gradient(150deg, #1b202b 0%, #141822 46%, #0b0e15 100%)
-          `,
-        }} />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-
-        <div className="sp-shell">
-        <div className="sp-left">
-
-        {/* Owner-only setup nudge — a fixed strip that slides down over the
-            top of the page rather than sitting in the document flow (it used
-            to be wedged between the banner and the avatar, which is
-            positioned absolutely against that same wrapper, so anything
-            static there risked stranding it). Closing it is per-step, not
-            forever — see setupDismissKey above and dismissSetupNudge. The
-            redirect on tap is unchanged: it still lands on the exact
-            settings tab the next step lives on. */}
+      <div className="ap">
+        {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
-          <div
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60,
-              background: '#111827', borderBottom: '1px solid rgba(255,255,255,0.1)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
-              transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)',
-              transition: 'transform 0.24s ease',
-            }}
-          >
-            <div style={{ maxWidth: 1280, margin: '0 auto', padding: '9px clamp(14px,5vw,24px)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>
+            <div style={{ maxWidth: 1360, margin: '0 auto', padding: '10px clamp(16px,4vw,48px)', display: 'flex', alignItems: 'center', gap: 10 }}>
               <Link to={setupHref} style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0, textDecoration: 'none' }}>
-                <span style={{ fontSize: 9, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#64748b', fontWeight: 700, flexShrink: 0 }}>
-                  Only you
-                </span>
-                <span style={{ fontSize: 12.5, color: '#cbd5e1', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.45)', fontWeight: 700, flexShrink: 0 }}>Only you</span>
+                <span style={{ fontSize: 13, color: '#fff', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {setupTodo[0].label}{setupTodo.length > 1 ? ` (+${setupTodo.length - 1} more)` : ''}
                 </span>
-                <ChevronRight size={13} color="#64748b" style={{ flexShrink: 0 }} />
+                <ChevronRight size={14} color="rgba(255,255,255,0.45)" style={{ flexShrink: 0 }} />
               </Link>
-              <button
-                onClick={dismissSetupNudge}
-                aria-label="Dismiss"
-                style={{ flexShrink: 0, background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4, display: 'flex' }}
-              >
-                <X size={15} />
+              <button onClick={dismissSetupNudge} aria-label="Dismiss" style={{ flexShrink: 0, background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+                <X size={16} />
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Cover banner — Facebook/blog-post style: capped to the same
-            max width as the content below (not full-bleed across the
-            viewport — on desktop that stretched into a thin "ribbon" and
-            left the avatar, which is positioned against this same wrapper,
-            stranded far to the left of the centered name/content column).
-            The avatar is positioned absolutely against this wrapper (not a
-            sibling with a negative margin) so it can never end up painted
-            behind the banner regardless of DOM/stacking edge cases. ── */}
-        <div className="sp-narrow" style={{ position: 'relative', paddingLeft: 0, paddingRight: 0 }}>
-          <div style={{
-            width: '100%', height: 'clamp(150px, 30vw, 190px)', overflow: 'hidden',
-            background: profile.cover_url
-              ? `center / cover no-repeat url(${profile.cover_url})`
-              : 'linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)',
-          }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0) 55%, rgba(11,14,21,0.5) 100%)' }} />
-          </div>
-
-          {/* Quick way back for a logged-in visitor (most often the agent
-              themselves previewing this page) — jumps to whichever
-              dashboard their own role resolves to. */}
-          {viewerHome && (
-            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-              <Link to={viewerHome.to} style={ownerPill}>
-                {viewerHome.seller ? <LayoutDashboard size={13} /> : <User size={13} />} {viewerHome.label}
-              </Link>
-              {/* Owner only, and only with something to present. */}
-              {isOwner && listings.length > 0 && (
-                <button onClick={() => setPresenting(true)} style={{ ...ownerPill, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  <Radio size={13} /> Live presentation
-                </button>
-              )}
-            </div>
-          )}
-
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt={profile.full_name} className="sp-avatar"
-              style={{ position: 'absolute', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', objectFit: 'cover', display: 'block', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }} />
-          ) : (
-            <div className="sp-avatar" style={{ position: 'absolute', bottom: -46, zIndex: 2, width: 92, height: 92, borderRadius: '50%', background: 'linear-gradient(135deg,#1d4ed8,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 34, fontWeight: 700, color: '#fff', border: '4px solid #0b0e15', boxShadow: '0 2px 10px rgba(0,0,0,0.4)' }}>
-              {(profile.full_name || 'S')[0].toUpperCase()}
-            </div>
-          )}
+        {/* Slim bar, not the full marketplace header: this page is shared by
+            the agent, and a mega-menu would send their buyer to other cars. */}
+        <div className="ap-bar">
+          <a href="https://xdrive.my" className="ap-wm">X<b>D</b>RIVE</a>
+          <Link to="/showroom" className="ap-bar-link">Browse all cars <ChevronRight size={14} /></Link>
         </div>
 
-        {/* ── Hero ── */}
-        <div className="sp-narrow" style={{ paddingBottom: 28 }}>
-
-          {/* Name (+ verified badge) and listing count sit in the space the
-              avatar overlaps — name padded clear of the avatar, count
-              anchored to the right, both bottom-aligned with the banner. */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, minHeight: 46, marginBottom: 14 }}>
-            <div style={{ minWidth: 0, paddingLeft: 106 }}>
-              <h1 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, letterSpacing: '1.5px', color: '#f1f5f9', lineHeight: 1.05, display: 'flex', alignItems: 'center', gap: 7, overflow: 'hidden' }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profile.full_name}</span>
-                {isVerified && (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#3b82f6" style={{ flexShrink: 0 }} title="Verified by XDrive">
-                    <circle cx="12" cy="12" r="11"/>
-                    <path d="M7.5 12.5l2.8 2.8 6-6.5" stroke="#0b0e15" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                  </svg>
-                )}
-              </h1>
-              {profile.job_title && (
-                <p style={{ fontSize: 11, color: '#6b7280', marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {profile.job_title}
-                </p>
-              )}
-              {/* Buyers should know who they're dealing with before they message.
-                  Only shown standalone (no dealer) — a linked salesman already
-                  gets that identity from the Dealership row below instead. */}
-              {!dealer && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', marginTop: 5, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#fb923c', background: 'rgba(251,146,60,0.15)', border: '1px solid rgba(251,146,60,0.35)', borderRadius: 5, padding: '2px 7px' }}>
-                  {profile.seller_type === 'private' ? 'Private Seller' : 'Independent Agent'}
-                </span>
-              )}
-            </div>
-
-            <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#f1f5f9', lineHeight: 1 }}>{listings.length}</p>
-              <p style={{ margin: '2px 0 0', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Available</p>
-              {soldCount > 0 && (
-                <p style={{ margin: '3px 0 0', fontSize: 10, color: '#4ade80', fontWeight: 700 }}>{soldCount} sold</p>
-              )}
-            </div>
-          </div>
-
-          {/* Dealership + location */}
-          {(dealer?.dealership || locationStr) && (
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-              {/* Being backed by a real business is trust the agent does not
-                  have to earn alone, so name it and link its storefront. */}
-              {dealer?.dealership && (
-                <span>
-                  Works at{' '}
-                  {dealer.subdomain
-                    ? <a href={`https://${dealer.subdomain}.xdrive.my`} style={{ fontWeight: 600, color: '#cbd5e1', textDecoration: 'underline', textUnderlineOffset: 3 }}>{dealer.dealership}</a>
-                    : <span style={{ fontWeight: 600 }}>{dealer.dealership}</span>}
-                </span>
-              )}
-              {dealer?.dealership && locationStr && <span style={{ color: '#374151' }}>·</span>}
-              {locationStr && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#4b5563' }}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
-                  </svg>
-                  {locationStr}
-                </span>
-              )}
-            </p>
-          )}
-
-          {/* Specializations */}
-          {profile.specializations && profile.specializations.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-              {profile.specializations.map((spec, i) => (
-                <span key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', color: '#d1d5db', borderRadius: 99, padding: '4px 12px', fontSize: 11, fontWeight: 500, letterSpacing: '0.02em' }}>
-                  {spec}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* Bio */}
-          {profile.bio && (
-            <div style={{ marginBottom: 18, maxWidth: 460 }}>
-              <p
-                ref={bioRef}
-                style={{
-                  fontSize: 13,
-                  color: '#94a3b8',
-                  lineHeight: 1.75,
-                  margin: 0,
-                  display: '-webkit-box',
-                  WebkitLineClamp: bioExpanded ? 'unset' : 3,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: bioExpanded ? 'visible' : 'hidden',
-                }}
-              >
-                {profile.bio}
-              </p>
-              {(bioOverflows || bioExpanded) && (
-                <button
-                  onClick={() => setBioExpanded(v => !v)}
-                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: '4px 0 0', display: 'inline-block' }}
-                >
-                  {bioExpanded ? 'Show less' : 'Read more'}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Reply time — MEASURED from chat (get_agent_reply_time), never
-              typed by the agent. The old free-text profiles.response_time let
-              anyone claim anything; it is no longer read. Hidden under 5
-              samples (agentTrust.js REPLY_MIN_SAMPLES). */}
-          {replyLabel && (
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Clock size={12} strokeWidth={2} style={{ flexShrink: 0, color: '#6b7280' }} />
-              {replyLabel}
-              <span style={{ color: '#4b5563' }}>· measured on XDrive chat</span>
-            </p>
-          )}
-
-          {/* Primary CTA (WhatsApp) + icon-only social links, all inline on
-              the same row so the icons sit on the button's y-axis. */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-            {waHref && (
-              <a href={waHref} target="_blank" rel="noopener noreferrer"
-                style={{ background: '#25D366', color: '#fff', fontWeight: 700, fontSize: 12, borderRadius: 8, padding: '9px 16px', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.122 1.532 5.852L.054 23.7a.5.5 0 0 0 .613.613l5.848-1.478A11.956 11.956 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22a9.956 9.956 0 0 1-5.052-1.374l-.362-.214-3.742.948.963-3.619-.236-.373A9.955 9.955 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                </svg>
-                Chat with {firstName}
-              </a>
+        <div className="ap-shell">
+          {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
+              marketplace's warm wave bands (colour lives here and nowhere else). */}
+          <div className="ap-cover">
+            {profile.cover_url ? (
+              <img src={profile.cover_url} alt="" />
+            ) : (
+              <svg viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fillOpacity=".85" />
+                <path d="M0 110 C350 60 750 150 1200 90 V160 H0z" fill="#EDE5D8" />
+                <path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2" />
+              </svg>
             )}
-            {profile.instagram && (
-              <a href={`https://instagram.com/${profile.instagram.replace(/^@/, '')}`}
-                target="_blank" rel="noopener noreferrer" className="social-btn" style={iconLink} title="Instagram">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
-              </a>
-            )}
-            {profile.tiktok && (
-              <a href={`https://tiktok.com/@${profile.tiktok.replace(/^@/, '')}`}
-                target="_blank" rel="noopener noreferrer" className="social-btn" style={iconLink} title="TikTok">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.95a8.16 8.16 0 0 0 4.77 1.52V7.01a4.85 4.85 0 0 1-1-.32z"/></svg>
-              </a>
-            )}
-            {facebookHref && (
-              <a href={facebookHref} target="_blank" rel="noopener noreferrer" className="social-btn" style={iconLink} title="Facebook">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              </a>
-            )}
-            {websiteHref && (
-              <a href={websiteHref} target="_blank" rel="noopener noreferrer" className="social-btn" style={iconLink} title="Website">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              </a>
-            )}
-          </div>
-
-          {/* The agent's own terms, only the parts they set (agentTrust.js
-              termsLines). Same deposit wording as the car page. */}
-          {terms.length > 0 && (
-            <div style={{ marginTop: 18, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px' }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>My terms</p>
-              {terms.map((t) => (
-                <div key={t.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
-                  <span style={{ flexShrink: 0 }}>{t.label}</span>
-                  <span style={{ color: '#e5e7eb', textAlign: 'right' }}>{t.text}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Location moved below the listings grid (see "Find Me Here" block
-              after All Listings) so the cars lead the page. */}
-        </div>
-
-        </div>{/* /sp-left */}
-
-        <div className="sp-right">
-
-        {/* ── Divider — only meaningful in the stacked (mobile) order, where
-            the seller block sits directly above the cars. ── */}
-        <div className="sp-narrow sp-divider">
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)' }} />
-        </div>
-
-        {/* ── All Listings ── */}
-        <div className="sp-wide" style={{ paddingTop: 28, paddingBottom: 80 }}>
-          {/* Live now: the car on the seller's live stream right now. This is
-              where a viewer lands from the TikTok bio link, so it leads. */}
-          {liveCar && (
-            <div style={{ marginBottom: 22, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 12 }}>
-              <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
-                <span style={{ width: 7, height: 7, borderRadius: 4, background: '#dc2626', animation: 'sp-pulse 1.4s ease-in-out infinite' }} />
-                Live now · showing #{liveIdx + 1}
-              </p>
-              <Link to={`/showroom/${liveCar.slug}`} onClick={() => trackCardClick(liveCar)} style={{ display: 'flex', gap: 12, textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
-                <div style={{ position: 'relative', width: 112, flexShrink: 0, aspectRatio: '4 / 3', borderRadius: 10, overflow: 'hidden', background: '#0a0e18' }}>
-                  {Array.isArray(liveCar.images) && liveCar.images[0] && (
-                    <img src={liveCar.images[0]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {[liveCar.year, liveCar.brand, liveCar.model].filter(Boolean).join(' ')}
-                  </p>
-                  {liveCar.selling_price > 0 && (
-                    <p style={{ fontSize: 17, fontWeight: 800, color: '#60a5fa', margin: '2px 0' }}>RM {fmt(liveCar.selling_price)}</p>
-                  )}
-                  <MonthlyLine price={liveCar.selling_price} />
-                </div>
-              </Link>
-              {liveWaHref && (
-                <a href={liveWaHref} target="_blank" rel="noopener noreferrer" onClick={trackLiveWhatsApp}
-                  style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, borderRadius: 9, background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
-                  Ask {firstName} about #{liveIdx + 1}
-                </a>
-              )}
-            </div>
-          )}
-
-          {listings.length > 0 && (
-            <>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
-                Listings{listings.length > 1 ? ` (${listings.length})` : ''}
-              </p>
-              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
-              {docsLine && (
-                <p style={{ fontSize: 12, color: '#94a3b8', margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <ShieldCheck size={13} style={{ flexShrink: 0, color: '#4ade80' }} />
-                  {docsLine}
-                </p>
-              )}
-
-              {/* The newest car leads the column at full width — listings come
-                  back ordered created_at desc, so [0] IS the latest. Its own
-                  extra photos sit in a rail beside it; a car with one photo
-                  gets the full width instead of an empty rail. */}
-              {featured && (
-                <Link to={`/showroom/${featured.slug}`} onClick={() => trackCardClick(featured)} className="sp-feat">
-                  <div className="sp-feat-media">
-                    <div className="sp-feat-main">
-                      <span style={numBadge}>#1</span>
-                      {featuredImages[0] ? (
-                        <img src={featuredImages[0]} alt={`${featured.brand} ${featured.model}`} />
-                      ) : (
-                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <span style={{ fontSize: 12, color: '#374151' }}>No photo</span>
-                        </div>
-                      )}
-                    </div>
-                    {featuredThumbs.length > 0 && (
-                      <div className="sp-thumbs">
-                        {featuredThumbs.map((src, i) => (
-                          <div key={i} className="sp-thumb">
-                            <img src={src} alt="" loading="lazy" />
-                            {i === featuredThumbs.length - 1 && featuredExtra > 0 && (
-                              <span className="sp-thumb-more">+{featuredExtra}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: '14px 16px 16px' }}>
-                    <p style={{ fontSize: 10, fontWeight: 700, color: '#4b5563', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6 }}>
-                      Latest listing
-                    </p>
-                    <p style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginBottom: 2 }}>
-                      {[featured.year, featured.brand, featured.model].filter(Boolean).join(' ')}
-                    </p>
-                    {featured.variant && (
-                      <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{featured.variant}</p>
-                    )}
-                    {featured.selling_price > 0 && (
-                      <p style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', marginBottom: 4 }}>
-                        RM {fmt(featured.selling_price)}
-                      </p>
-                    )}
-                    <MonthlyLine price={featured.selling_price} size={12} />
-                    <p style={{ fontSize: 11, color: '#4b5563' }}>
-                      {[featured.mileage ? `${fmt(featured.mileage)} km` : null, featured.transmission, featured.colour].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
+            {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
+            {viewerHome && (
+              <div className="ap-owner">
+                <Link to={viewerHome.to} style={ownerChip}>
+                  {viewerHome.seller ? <LayoutDashboard size={14} /> : <User size={14} />} {viewerHome.label}
                 </Link>
-              )}
+                {isOwner && listings.length > 0 && (
+                  <button onClick={() => setPresenting(true)} style={ownerChip}>
+                    <Radio size={14} /> Live presentation
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
 
-              {rest.length > 0 && (
-              <div className="sp-grid">
-                {rest.map((car, i) => {
-                  const img = Array.isArray(car.images) ? car.images[0] : null;
-                  return (
-                    <Link key={car.id} to={`/showroom/${car.slug}`} onClick={() => trackCardClick(car)} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
-                      <div className="sp-card"
-                        style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-                        <div style={{ position: 'relative', paddingTop: '65%', background: '#0a0e18', overflow: 'hidden' }}>
-                          <span style={numBadge}>#{i + 2}</span>
-                          {img ? (
-                            <img src={img} alt={`${car.brand} ${car.model}`} loading="lazy"
-                              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <span style={{ fontSize: 11, color: '#374151' }}>No photo</span>
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ padding: '12px 14px' }}>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: '#e5e7eb', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {[car.year, car.brand, car.model].filter(Boolean).join(' ')}
-                          </p>
-                          {car.variant && (
-                            <p style={{ fontSize: 10, color: '#4b5563', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {car.variant}
-                            </p>
-                          )}
-                          {car.selling_price > 0 && (
-                            <p style={{ fontSize: 14, fontWeight: 700, color: '#60a5fa', marginBottom: 2 }}>
-                              RM {fmt(car.selling_price)}
-                            </p>
-                          )}
-                          <MonthlyLine price={car.selling_price} size={10} />
-                          <p style={{ fontSize: 10, color: '#374151' }}>
-                            {[car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission].filter(Boolean).join(' · ')}
-                          </p>
-                        </div>
+          <div className="ap-cols">
+            <div className="ap-left">
+              <div className="ap-card ap-id">
+                <div className="ap-av">
+                  {profile.avatar_url ? <img src={profile.avatar_url} alt={profile.full_name} /> : <div>{initial}</div>}
+                </div>
+                {eyebrow && <p className="ap-eb"><i />{eyebrow}</p>}
+                <h1>
+                  {/* The tick rides with the LAST word (nowrap) so it never drops
+                      onto a line of its own. is_verified is granted by a person
+                      (verified_by); nothing else may be called verified. */}
+                  {nameHead}
+                  <span className="ap-last">
+                    {nameTail}
+                    {isVerified && (
+                      <svg viewBox="0 0 24 24" role="img" aria-label="Verified by XDrive"><circle cx="12" cy="12" r="10" fill="#111827" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    )}
+                  </span>
+                </h1>
+                {profile.job_title && <p className="ap-role">{profile.job_title}</p>}
+                {malayLine && <p className="ap-my">{malayLine}</p>}
+                {/* Backed by a real business: name it and link its storefront. */}
+                {dealer?.dealership && (
+                  <p className="ap-works">
+                    Works at{' '}
+                    {dealer.subdomain
+                      ? <a href={`https://${dealer.subdomain}.xdrive.my`}>{dealer.dealership}</a>
+                      : <b>{dealer.dealership}</b>}
+                  </p>
+                )}
+                {(isVerified || replyLabel) && (
+                  <div className="ap-creds">
+                    {isVerified && <span className="ap-cred"><ShieldCheck size={14} strokeWidth={2.2} />ID verified by XDrive</span>}
+                    {/* Reply time is MEASURED from chat (get_agent_reply_time), never typed. */}
+                    {replyLabel && <span className="ap-cred" title="Measured on XDrive chat"><Clock size={14} strokeWidth={2.2} />{replyLabel}</span>}
+                  </div>
+                )}
+
+                <div className="ap-stats" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
+                  {stats.map((st) => (
+                    <div key={st.key}>
+                      <p className="ap-n">{st.n}{st.suffix && <small>{st.suffix}</small>}</p>
+                      <p className="ap-l">{st.l}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ONE primary action; socials are icon-only beside it. */}
+                {(waHref || socials.length > 0) && (
+                  <div className="ap-cta">
+                    {waHref && (
+                      <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">
+                        {WA_ICON}<span>WhatsApp {firstName}</span>
+                      </a>
+                    )}
+                    {socials.map((so) => (
+                      <a key={so.key} href={so.href} target="_blank" rel="noopener noreferrer" className="ap-ico" title={so.label} aria-label={so.label}>
+                        {SOCIAL_ICONS[so.key]}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                {profile.bio && (
+                  <div className="ap-bio">
+                    <p
+                      ref={bioRef}
+                      style={{ display: '-webkit-box', WebkitLineClamp: bioExpanded ? 'unset' : 3, WebkitBoxOrient: 'vertical', overflow: bioExpanded ? 'visible' : 'hidden', whiteSpace: 'pre-line' }}
+                    >
+                      {profile.bio}
+                    </p>
+                    {(bioOverflows || bioExpanded) && (
+                      <button className="ap-more" onClick={() => setBioExpanded((v) => !v)}>
+                        {bioExpanded ? 'Show less' : 'Read more'}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {profile.specializations?.length > 0 && (
+                  <div className="ap-tags">
+                    {profile.specializations.map((spec, i) => <span key={i} className="ap-tag">{spec}</span>)}
+                  </div>
+                )}
+
+                {/* The agent's own terms, only the parts they set (agentTrust.js). */}
+                {terms.length > 0 && (
+                  <div className="ap-terms">
+                    <p className="ap-eb">My terms</p>
+                    {terms.map((t) => (
+                      <div key={t.key} className="ap-term"><span>{t.label}</span><span>{t.text}</span></div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="ap-right">
+              {/* Live now: the car on the agent's live stream right now. Viewers
+                  land here from the TikTok bio link, so it leads the column. */}
+              {liveCar && (
+                <>
+                  <div className="ap-sec"><h2>On my live now</h2></div>
+                  <div className="ap-card ap-live">
+                    <p className="ap-live-h"><i />Showing #{liveIdx + 1}</p>
+                    <Link to={`/showroom/${liveCar.slug}`} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
+                      <div className="ap-live-ph">
+                        {Array.isArray(liveCar.images) && liveCar.images[0] && <img src={liveCar.images[0]} alt="" />}
+                      </div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p className="ap-cn">{[liveCar.year, liveCar.brand, liveCar.model, liveCar.variant].filter(Boolean).join(' ')}</p>
+                        {liveCar.selling_price > 0 && <p style={{ fontSize: 18, fontWeight: 800, color: '#0f1115', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>RM {fmt(liveCar.selling_price)}</p>}
+                        <MonthlyLine price={liveCar.selling_price} />
                       </div>
                     </Link>
-                  );
-                })}
-              </div>
-              )}
-            </>
-          )}
-
-          {listings.length === 0 && (
-            <p style={{ fontSize: 13, color: '#374151', padding: '48px 0', textAlign: 'center' }}>
-              No active listings at the moment.
-            </p>
-          )}
-
-          {/* ── Recently sold — real cars this agent closed, car + month only
-              (get_agent_recent_sales). No price: that is between the agent
-              and their buyer. ── */}
-          {trust.recentSales.length > 0 && (
-            <div style={{ marginTop: 36 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
-                Recently sold
-              </p>
-              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
-                {trust.recentSales.map((c, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none', fontSize: 13 }}>
-                    <span style={{ color: '#e5e7eb', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}
-                    </span>
-                    <span style={{ flexShrink: 0, fontSize: 12, color: '#6b7280' }}>Sold {soldMonthLabel(c.sold_month)}</span>
+                    {liveWaHref && (
+                      <a href={liveWaHref} target="_blank" rel="noopener noreferrer" onClick={trackLiveWhatsApp} className="ap-btn">
+                        {WA_ICON}<span>Ask {firstName} about #{liveIdx + 1}</span>
+                      </a>
+                    )}
                   </div>
-                ))}
+                </>
+              )}
+
+              <div className="ap-sec">
+                <h2>Cars for sale{listings.length > 0 && <> <span>{listings.length}</span></>}</h2>
+                {listings.length > 1 && (
+                  <div className="ap-seg" role="group" aria-label="Sort cars">
+                    <button aria-pressed={sortBy === 'newest'} onClick={() => setSortBy('newest')}>Newest</button>
+                    <button aria-pressed={sortBy === 'price'} onClick={() => setSortBy('price')}>Price</button>
+                  </div>
+                )}
               </div>
+              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
+              {docsLine && (
+                <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
+              )}
+
+              {listings.length > 0 ? (
+                <div className="ap-grid">
+                  {sortedListings.map((car) => (
+                    <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} onClick={() => trackCardClick(car)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
+                  No cars for sale right now.
+                </div>
+              )}
+
+              {/* Recently sold — car + month only (get_agent_recent_sales). No price. */}
+              {trust.recentSales.length > 0 && (
+                <>
+                  <div className="ap-sec"><h2>Recently sold</h2></div>
+                  <div className="ap-card ap-sold">
+                    {trust.recentSales.map((c, i) => (
+                      <div key={i}>
+                        <span>{[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}</span>
+                        <span>Sold {soldMonthLabel(c.sold_month)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Location: the agent's own address, else (linked) the dealership's. */}
+              {mapLocationStr && (
+                <>
+                  <div className="ap-sec"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
+                  <div className="ap-card ap-map">
+                    <iframe
+                      title={ownLocationStr ? 'My location' : 'Dealership location'}
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
+                      loading="lazy"
+                    />
+                    <a className="ap-ml" href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`} target="_blank" rel="noopener noreferrer">
+                      <b><MapPin size={14} style={{ verticalAlign: -2, marginRight: 6 }} />{mapLocationStr}</b>
+                      <span>Directions</span>
+                    </a>
+                  </div>
+                </>
+              )}
+
+              {/* Seller reviews (same feature as CarDetailPage, seller-scoped). Its
+                  tally feeds the stats row via onSummary. */}
+              <ReviewsSection
+                dealerId={profile.id}
+                sellerName={profile.full_name || firstName || 'this seller'}
+                isXdrive
+                th={LIGHT_REVIEW_TH}
+                onSummary={setReviewSummary}
+              />
             </div>
-          )}
+          </div>
 
-          {/* ── Location — below the car cards in both layouts, so the cars
-              lead. The agent's own address, or (linked salesmen with none set)
-              the dealership's. Capped to hero width when the page is stacked,
-              full column width beside the seller panel. ── */}
-          {mapLocationStr && (
-            <div className="sp-map">
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
-                {ownLocationStr ? 'Find Me Here' : `Visit ${dealer?.dealership || 'the dealership'}`}
-              </p>
-              <div style={{ borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <iframe
-                  title={ownLocationStr ? 'My location' : 'Dealership location'}
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
-                  width="100%" height="150" loading="lazy"
-                  style={{ border: 0, display: 'block', filter: 'grayscale(0.2) contrast(1.05)' }}
-                />
-                <a href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`}
-                  target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', background: '#0d1117', color: '#93c5fd', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                  <MapPin size={13} style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mapLocationStr}</span>
-                  <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.5 }} />
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* ── Seller reviews (same feature as CarDetailPage, seller-scoped) ── */}
-          <ReviewsSection
-            dealerId={profile.id}
-            sellerName={profile.full_name || firstName || 'this seller'}
-            isXdrive={false}
-            th={DARK_REVIEW_TH}
-          />
+          {/* Buyer safety — XDrive takes no payment for any car — beside the way
+              to flag this agent (report_seller). */}
+          <div className="ap-safe">
+            <p>XDrive never collects payment for a car. See the car and its geran before you pay any deposit, and get the deposit terms in writing.</p>
+            <ReportListingButton sellerId={profile.id} th={LIGHT_SHEET_TH} />
+          </div>
+          <p className="ap-foot">{profile.full_name} sells through <a href="https://xdrive.my">XDrive</a> · <Link to="/showroom">Browse all used cars</Link></p>
         </div>
 
-        </div>{/* /sp-right */}
-        </div>{/* /sp-shell */}
-
-        {/* ── Buyer safety — XDrive takes no payment for any car, so the one
-            line of advice that prevents most losses goes here, beside the
-            way to flag this agent (report_seller). ── */}
-        <div className="sp-narrow" style={{ paddingBottom: 24, textAlign: 'center' }}>
-          <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
-            XDrive never collects payment for a car. See the car and its geran before you pay any deposit, and get the deposit terms in writing.
-          </p>
-          <ReportListingButton sellerId={profile.id} th={DARK_SHEET_TH} />
-        </div>
-
-        {/* ── Footer ── */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '22px 0', textAlign: 'center' }}>
-          <a href="https://xdrive.my" style={{ fontSize: 12, color: '#374151', textDecoration: 'none' }}>
-            Powered by <span style={{ color: '#3b82f6', fontWeight: 700 }}>XDrive</span>
-          </a>
-        </div>
-
-        </div>
+        {/* Mobile only: the contact button must not scroll away under the cars. */}
+        {waHref && (
+          <div className="ap-sticky">
+            <div className="ap-mini">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : initial}</div>
+            <p className="ap-who"><b>{profile.full_name}</b>{replyLabel || `${listings.length} ${listings.length === 1 ? 'car' : 'cars'} for sale`}</p>
+            <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}WhatsApp</a>
+          </div>
+        )}
       </div>
 
       {presenting && (
