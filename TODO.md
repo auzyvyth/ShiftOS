@@ -349,7 +349,19 @@ fixes. Nothing in this batch has been built.
   Desktop keeps today's two columns (seller left, sticky; cars right).
   Keep untouched: owner setup-nudge strip logic (restyle only), retry-on-error
   load, visit tracking, `agentSeo.js` title/description.
-  Decisions for the owner before building:
+  **Owner approved 2026-10-03 with "a premium touch": decisions (a) slim bar,
+  (b) ShowroomCard-style cards, (c) red button are ACCEPTED.** Reference
+  mockup: `docs/mockups/agent-page-light.html`. Premium touches in it, all
+  inside DESIGN.md (no glow, no blur, no pills): wave-field cover fallback
+  (warm neutrals, same motif as the marketplace hero); 96px avatar with a white
+  ring; red 16px rule before the eyebrow; Bebas name ~48px; "Since <month>
+  on XDrive" from `profiles.created_at`; credential row (ID verified, reply
+  time) as ink icons; stats in Bebas numerals; Bebas section headings with a
+  muted count; Newest/Price segmented control (ink selected state); cards with
+  a hairline split above the price and a status dot; reviews card with the
+  score in Bebas and one quote. Only state real data: hide "Sold" at 0, hide
+  the reviews block with no reviews, never invent a quote.
+  Decisions (as originally put to the owner):
   (a) full marketplace header vs slim bar — slim recommended: this page is
       shared by the agent on WhatsApp, and a mega-menu sends their buyer to
       competitors' cars.
