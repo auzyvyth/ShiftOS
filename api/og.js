@@ -494,12 +494,23 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
 // storefront's "About us" (same rule as SalesmanProfilePage) — reading it here
 // put a linked salesman's dealership blurb under their own name in Google.
 function socialUrl(v, base) {
-  const t = String(v || "").trim();
+  let t = String(v || "").trim();
   if (!t) return null;
-  if (/^https?:\/\//i.test(t)) return t;
+  // Settings are free text, so a pasted link often arrives with junk in front
+  // ("@testhttps://facebook.com/..."): keep the embedded URL if there is one.
+  const embedded = t.match(/https?:\/\/\S+/i);
+  if (embedded) t = embedded[0];
   // "facebook.com/ali" is a URL missing its scheme; "@ali" / "ali" is a handle.
-  if (!base || /[./]/.test(t.replace(/^@/, ""))) return `https://${t.replace(/^\/+/, "")}`;
-  return `${base}${t.replace(/^@/, "")}`;
+  else if (!base || /[./]/.test(t.replace(/^@/, ""))) t = `https://${t.replace(/^\/+/, "")}`;
+  else t = `${base}${t.replace(/^@/, "")}`;
+  try {
+    const u = new URL(t);
+    // An agent typing "xdrive.my" as their website is not a profile of THEM.
+    if (u.hostname === ROOT_DOMAIN || u.hostname.endsWith(`.${ROOT_DOMAIN}`)) return null;
+    return u.href;
+  } catch {
+    return null;
+  }
 }
 function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   const name = (s.full_name || s.dealership || s.slug).trim();
