@@ -71,13 +71,12 @@
 > with `target: production`), not just that `git status` says clean.
 
 ## LIVE-1: Live presentation on the salesman mini page — 2026-10-03
-- [ ] **Apply migration `20261003a_seller_live_state.sql` after 22:00 MYT** (queued
-  under the no-DDL-in-daytime rule). Until it is applied, the presenter and the
-  monthly figures work; only the "Live now" pin on the mini page stays hidden
-  (both RPC calls swallow the missing-function error). After applying: list
-  overloads of `set_live_listing` / `get_salesman_live`, and probe as anon that
-  `set_live_listing` is refused and `get_salesman_live` returns null for a seller
-  who is not live.
+- Migration `20261003a_seller_live_state.sql` APPLIED 2026-10-03 22:36 MYT (owner's
+  "apply it now"). Checked: one overload each of `set_live_listing` /
+  `get_salesman_live`; table has RLS on and no anon/authenticated grants; anon
+  cannot call `set_live_listing`; `get_salesman_live('premiummotors')` = null
+  (not live). Still worth one real click-through: start a live on a phone and
+  confirm the "Live now" card appears on the mini page.
 - Shipped in code: `src/components/live/LivePresenter.jsx` (owner-only button
   "Live presentation" on `src/pages/SalesmanProfilePage.jsx`), "#N" car numbers
   + "est. RM x/mo" on every mini-page card, "Live now" card with a WhatsApp
