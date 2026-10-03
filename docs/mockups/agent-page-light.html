@@ -10,7 +10,8 @@
 .bar a{color:rgba(255,255,255,.72);font-size:13px;font-weight:500;text-decoration:none;display:flex;align-items:center;gap:6px}
 .shell{max-width:1360px;margin:0 auto;padding:0 var(--g)}
 /* cover: agent photo slot; fallback = the brand's warm wave horizon */
-.cover{height:150px;border-radius:0 0 16px 16px;background:linear-gradient(180deg,#FFFFFF,#F3F0E9);position:relative;overflow:hidden;border:1px solid var(--hair);border-top:0}
+/* Colour B (owner, 2026-10-03): colour lives in the cover fallback ONLY - sky into sand. Nothing below it is tinted. */
+.cover{height:150px;border-radius:0 0 16px 16px;background:linear-gradient(115deg,#DCE8F2 0%,#EEF0EA 45%,#F6E3CF 100%);position:relative;overflow:hidden;border:1px solid var(--hair);border-top:0}
 .cover svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:70%}
 .card{background:var(--card);border-radius:16px;box-shadow:var(--sh);border:1px solid var(--hair)}
 .id{padding:20px;margin-top:-44px;position:relative}
@@ -81,7 +82,7 @@ h2{font-family:var(--disp);font-size:clamp(28px,3vw,40px);line-height:.95;letter
 
 <div class="bar"><div class="wm">X<b>D</b>RIVE</div><a href="#">Browse all cars &rsaquo;</a></div>
 <div class="shell">
-<div class="cover"><svg viewBox="0 0 1200 160" preserveAspectRatio="none"><path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#EFEBE2"/><path d="M0 110 C350 60 750 150 1200 90 V160 H0z" fill="#E9E4D8"/><path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2"/></svg></div>
+<div class="cover"><svg viewBox="0 0 1200 160" preserveAspectRatio="none"><path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fill-opacity=".85"/><path d="M0 110 C350 60 750 150 1200 90 V160 H0z" fill="#EDE5D8"/><path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2"/></svg></div>
 <div class="cols">
 <div class="left">
  <div class="card id">

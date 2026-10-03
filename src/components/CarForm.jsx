@@ -2092,15 +2092,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           ? parseFloat(form.deposit_amount)
           : null,
         payment_type: form.payment_type || "cash",
-        // Sambung Bayar (loan takeover) is no longer an offered payment type —
-        // it's a criminal offence under s.38 Hire Purchase Act 1967. Always
-        // null these out so re-saving an old listing through this form scrubs
-        // any figures it was carrying.
-        sambung_monthly: null,
-        sambung_months_left: null,
-        sambung_balance: null,
-        sambung_deposit: null,
-        sambung_bank: null,
+        // No sambung_* fields: Sambung Bayar is a criminal offence under s.38
+        // Hire Purchase Act 1967, and its columns are dropped by migration
+        // 20261003c. Naming a dropped column here would fail every save.
       };
 
       // All salesmen require approval — standalone → superadmin, under-dealer → manager

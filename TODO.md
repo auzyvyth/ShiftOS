@@ -319,6 +319,19 @@ fixes. Nothing in this batch has been built.
     laundering vector. Owner-only would also have satisfied the ask. One
     clause in the RPC if you want it tightened.
 
+- [ ] **DB-QUEUE-2026-10-03: three migrations written, NOT applied (DDL window).**
+  Apply after 22:00 MYT, in ONE `apply_migration` call (one API freeze, not
+  three), and only AFTER the 2026-10-03 frontend release is live on prod:
+  `20261003a_agent_sitemap_linked_salesmen.sql` (sitemap lists linked agents),
+  `20261003b_agent_trust_signals.sql` (recently sold, measured reply time,
+  report_seller; dry-run tested + rolled back), `20261003c_drop_sambung_columns.sql`
+  (drops the 5 empty sambung_* columns + rebuilds public_car_listings and
+  get_salesman_featured_listings; NOT dry-run — the owner's confirm prompt was
+  cancelled, so check it first). After: `select oid::regprocedure from pg_proc
+  where proname in ('get_salesman_featured_listings','report_seller')` = 1 row
+  each, `has_table_privilege('anon','public_car_listings','select')` = true,
+  public_car_listings has 77 columns and the same row count as before.
+
 - [ ] **MINI-LIGHT-1: agent page (`/s/:slug`) goes light — SCOPED 2026-10-03,
   owner asked for it, not built yet.** File: `src/pages/SalesmanProfilePage.jsx`
   (815 lines, all inline styles + one `<style>` block). Follow `DESIGN.md` light
@@ -367,6 +380,11 @@ fixes. Nothing in this batch has been built.
   Report this agent (see CLAUDE.md "Agent page trust signals"). They need
   migration `20261003b_agent_trust_signals.sql` applied; until then the reply
   time and recently-sold blocks stay hidden and Report fails with a generic error.
+  **Colour: option B chosen 2026-10-03** — colour only in the cover FALLBACK
+  (sky `#DCE8F2` -> `#EEF0EA` -> sand `#F6E3CF`, warm wave bands on top), shown
+  only when the agent has no cover photo. No scattered smudges (option A was
+  rejected: DESIGN.md bans glow blobs, and cards hid them anyway). Already in
+  `docs/mockups/agent-page-light.html`.
   Decisions (as originally put to the owner):
   (a) full marketplace header vs slim bar — slim recommended: this page is
       shared by the agent on WhatsApp, and a mega-menu sends their buyer to
