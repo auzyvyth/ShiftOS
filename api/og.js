@@ -490,14 +490,36 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
 // The salesman's public storefront. The OG image is their own cover banner
 // (falling back to avatar, then the site default) so a shared link previews the
 // agent's page — not the generic XDrive/ShiftOS banner it fell through to before.
+// Agent page text and schema read `bio` ONLY. `about_text` is the DEALER
+// storefront's "About us" (same rule as SalesmanProfilePage) — reading it here
+// put a linked salesman's dealership blurb under their own name in Google.
+function socialUrl(v, base) {
+  const t = String(v || "").trim();
+  if (!t) return null;
+  if (/^https?:\/\//i.test(t)) return t;
+  // "facebook.com/ali" is a URL missing its scheme; "@ali" / "ali" is a handle.
+  if (!base || /[./]/.test(t.replace(/^@/, ""))) return `https://${t.replace(/^\/+/, "")}`;
+  return `${base}${t.replace(/^@/, "")}`;
+}
 function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
-  const name = s.full_name || s.dealership || s.slug;
-  const location = [s.city, s.state].filter(Boolean).join(", ");
+  const name = (s.full_name || s.dealership || s.slug).trim();
+  const location = [s.city, s.state].map((v) => (v || "").trim()).filter(Boolean).join(", ");
   const image = s.cover_url || s.avatar_url || `${SITE_URL}/og-default.jpg`;
+  const bio = (s.bio || "").replace(/\s+/g, " ").trim();
+  const jobTitle = s.job_title || "Car Sales Agent";
   const title = `${name} — Car Agent${location ? ` in ${location}` : ""} | XDrive`;
-  const description =
-    (s.about_text || s.bio || "").slice(0, 300) ||
-    `Browse ${cars.length ? `${cars.length} ` : ""}cars for sale from ${name}${location ? ` in ${location}` : ""} on XDrive.${s.whatsapp_number ? " Contact directly on WhatsApp." : ""}`;
+  const description = bio
+    ? (bio.length > 155 ? `${bio.slice(0, 152).trimEnd()}...` : bio)
+    : `${name} is a car sales agent${location ? ` in ${location}` : ""} on XDrive.${cars.length ? ` Browse ${cars.length} ${cars.length === 1 ? "car" : "cars"} for sale and message them directly.` : ""}`;
+  // The agent's own profiles elsewhere. sameAs is how a search engine ties
+  // this page to the same person's Facebook/Instagram/TikTok, which is what
+  // makes a search for their NAME land here.
+  const sameAs = [
+    socialUrl(s.facebook, "https://facebook.com/"),
+    socialUrl(s.instagram, "https://instagram.com/"),
+    socialUrl(s.tiktok, "https://www.tiktok.com/@"),
+    socialUrl(s.website),
+  ].filter(Boolean);
   const items = cars
     .map((c) => {
       const cname = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
@@ -506,28 +528,35 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
       return `<li><a href="${baseUrl}/showroom/${esc(c.slug)}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
     })
     .join("\n      ");
+  // ProfilePage + Person: Google's documented type for a page about one
+  // person, so the name is read as the page's subject, not just text on it.
   const personLd = JSON.parse(
     JSON.stringify({
       "@context": "https://schema.org",
-      "@type": "Person",
-      name,
-      jobTitle: s.job_title || "Car Sales Agent",
-      image: s.avatar_url || undefined,
+      "@type": "ProfilePage",
       url: canonical,
-      worksFor: s.dealership ? { "@type": "AutoDealer", name: s.dealership } : undefined,
-      address: location
-        ? { "@type": "PostalAddress", addressLocality: s.city || undefined, addressRegion: s.state || undefined, addressCountry: "MY" }
-        : undefined,
-      // NO telephone — same reason as the dealer block above: this HTML is
-      // served to crawlers and AI scrapers, and an agent's personal mobile is
-      // the last thing that should sit in a machine-readable field.
+      mainEntity: {
+        "@type": "Person",
+        name,
+        jobTitle,
+        description: bio || undefined,
+        image: s.avatar_url || undefined,
+        url: canonical,
+        sameAs: sameAs.length ? sameAs : undefined,
+        worksFor: s.dealership ? { "@type": "AutoDealer", name: s.dealership } : undefined,
+        address: location
+          ? { "@type": "PostalAddress", addressLocality: (s.city || "").trim() || undefined, addressRegion: (s.state || "").trim() || undefined, addressCountry: "MY" }
+          : undefined,
+        // NO telephone — same reason as the dealer block above: this HTML is
+        // served to crawlers and AI scrapers, and an agent's personal mobile is
+        // the last thing that should sit in a machine-readable field.
+      },
     }),
   );
   const body = `  <main>
     <h1>${esc(name)}</h1>
-    ${s.dealership ? `<p>${esc(s.dealership)}</p>` : ""}
-    ${location ? `<p>${esc(location)}</p>` : ""}
-    ${s.about_text || s.bio ? `<p>${esc(s.about_text || s.bio)}</p>` : ""}
+    <p>${esc(jobTitle)}${s.dealership ? ` at ${esc(s.dealership)}` : ""}${location ? `, ${esc(location)}` : ""}</p>
+    ${bio ? `<p>${esc(bio)}</p>` : ""}
     ${s.specializations?.length ? `<p>Specialises in: ${esc(s.specializations.join(", "))}.</p>` : ""}
     ${soldCount ? `<p>${soldCount} car${soldCount === 1 ? "" : "s"} sold on XDrive.</p>` : ""}
     <h2>Cars for sale from ${esc(name)}</h2>
@@ -552,7 +581,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
         })),
       }
     : null;
-  return htmlShell({ title, description, canonical, image, jsonLd: [personLd, listLd], body });
+  return htmlShell({ title, description, canonical, image, ogType: "profile", jsonLd: [personLd, listLd], body });
 }
 
 // ── Static content pages (mirror SPA Helmet) ──────────────────────────────────
@@ -921,7 +950,10 @@ export default async function handler(req) {
     // Same hard-404 contract as the car-detail branch above.
     if (!s) return new Response("Not found", { status: 404 });
     const { cars, soldCount } = await getSalesmanCars(s.id);
-    return html(buildSalesmanHtml(s, cars, `${baseUrl}${pathname}`, baseUrl, soldCount));
+    // Canonical is ALWAYS the root domain + the stored slug, matching the SPA.
+    // The agent page is a marketplace address (sitemap lists it on root only);
+    // self-canonicalising on www. or a dealer subdomain split it into copies.
+    return html(buildSalesmanHtml(s, cars, `${SITE_URL}/s/${encodeURIComponent(s.slug)}`, SITE_URL, soldCount));
   }
 
   // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.

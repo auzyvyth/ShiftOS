@@ -264,6 +264,8 @@ export default function SalesmanProfilePage() {
     return `${profile?.full_name || 'Car agent'} has ${listings.length} ${listings.length === 1 ? 'car' : 'cars'} available${where}. Browse the listings and message them on XDrive.`;
   })();
 
+  const pageTitle = `${(profile?.full_name || profile?.slug || '').trim()} — Car Agent${locationStr ? ` in ${locationStr}` : ''} | XDrive`;
+
   // The listings column leads with the newest car (the query orders
   // created_at desc) and puts the rest in the small-card grid under it. Up to
   // three of the featured car's OWN other photos ride alongside it; anything
@@ -309,7 +311,9 @@ export default function SalesmanProfilePage() {
   return (
     <>
       <Helmet>
-        <title>{profile.full_name} · XDrive</title>
+        {/* Same title as the crawler render (api/og.js buildSalesmanHtml), name
+            first so a search for the agent's name matches the title. */}
+        <title>{pageTitle}</title>
         {/* `bio` is the agent's own words about themselves. `about_text` is the
             DEALER storefront's "About us" (DashboardPage Settings) and used to
             be read here too, which gave one page two about-paragraphs and gave
@@ -320,11 +324,11 @@ export default function SalesmanProfilePage() {
             xdrive.my/s/yourname") and gets shared as a link constantly, so it
             needs a canonical + og:url of its own. Without them every share
             lands on a URL Google can't consolidate onto one address. */}
-        <link rel="canonical" href={`https://xdrive.my/s/${slug}`} />
-        <meta property="og:url" content={`https://xdrive.my/s/${slug}`} />
+        <link rel="canonical" href={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
+        <meta property="og:url" content={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
         <meta property="og:type" content="profile" />
         <meta property="og:site_name" content="XDrive" />
-        <meta property="og:title" content={`${profile.full_name} · Car Agent on XDrive`} />
+        <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={metaDescription} />
         {/* Prefer the cover banner (a wide, landscape image) for the link
             preview so a shared mini-page shows the agent's own banner, not a
