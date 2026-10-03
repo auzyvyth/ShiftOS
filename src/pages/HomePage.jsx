@@ -257,7 +257,7 @@ const HomePage = () => {
   useMarketplaceTracking(!isSubdomain());
   const { t } = useTranslation();
   const { siteName, waUrl, profile } = useSiteProfile();
-  const { tenant, loading: tenantLoading } = useTenant();
+  const { tenant, loading: tenantLoading, error: tenantError } = useTenant();
   const ctaCtx = useCTAContext();
   const { compareIds, addToCompare, removeFromCompare, isInCompare } = useCompare();
 
@@ -556,9 +556,21 @@ const HomePage = () => {
           fontFamily: "'Outfit', sans-serif",
         }}
       >
+        {/* tenantError = the lookup failed (network/database), not a miss.
+            Saying "doesn't exist" there sent a live dealer's buyers away. */}
         <p style={{ color: "#52525A", fontSize: 15 }}>
-          This dealer page doesn't exist.
+          {tenantError
+            ? "Couldn't load this dealer page right now."
+            : "This dealer page doesn't exist."}
         </p>
+        {tenantError && (
+          <button
+            onClick={() => window.location.reload()}
+            style={{ background: "none", border: "none", color: "#DC2626", fontSize: 13, marginTop: 12, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}
+          >
+            Try again
+          </button>
+        )}
         <a
           href="https://xdrive.my"
           style={{ color: "#DC2626", fontSize: 13, marginTop: 12 }}

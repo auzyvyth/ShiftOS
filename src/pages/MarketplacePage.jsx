@@ -21,10 +21,11 @@ import HeroCarRow from '../components/marketplace/HeroCarRow';
 import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
+import StaleListingsNotice from '../components/StaleListingsNotice';
 import {
   BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, SORT_OPTIONS,
   YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS, FUEL_TYPES, COLOURS,
-  CAR_FIELDS, DEALER_JOIN,
+  CAR_FIELDS, DEALER_JOIN, LIVE_CARS_CACHE_KEY, readLiveCarsFallback, withTimeout,
   dedupe, sanitizeBrand, sanitizeBodyType, sanitizeTransmission, sanitizeFinancing,
   sanitizeState, sanitizeYear, sanitizeQ, sanitizeCondition, sanitizeMileageMax,
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
@@ -97,7 +98,7 @@ export default function MarketplacePage() {
      fetch always still runs and overwrites this the moment it lands — the
      cache only affects what paints before that first response arrives. */
   const CACHE_TTL = 30 * 60 * 1000; // 30 min
-  const DEFAULT_GRID_CACHE_KEY = 'mp_default_grid_v1';
+  const DEFAULT_GRID_CACHE_KEY = LIVE_CARS_CACHE_KEY;
   const isDefaultView = !brand && !bodyType && !transmission && !state && !minPrice && !maxPrice &&
     !financing && !yearFrom && !yearTo && !q && !condition && !mileageMax && !hotDeals &&
     !fuelType && !colour && !sellerType && !model && !variant && sort === 'newest';
@@ -111,6 +112,9 @@ export default function MarketplacePage() {
   const [totalCount, setTotal]    = useState(() => initialCache?.totalCount || 0);
   const [loading, setLoading]     = useState(() => !initialCache);
   const [error, setError]         = useState(null);
+  // True while the grid is showing the device's saved copy because the live
+  // fetch failed -- drives StaleListingsNotice. Cleared by the next success.
+  const [showingSaved, setShowingSaved] = useState(false);
   const [loadPage, setLoadPage]   = useState(1);
 
   /* Body-type carousels — lazy loaded when section enters viewport */
@@ -140,20 +144,36 @@ export default function MarketplacePage() {
   const [row2Pool, setRow2Pool] = useState([]);
 
   useEffect(() => {
-    supabase.from('public_car_listings')
-      .select(HERO_ROW_FIELDS)
-      .in('status', ['available', 'reserved'])
-      .order('created_at', { ascending: false })
-      .limit(12)
-      .then(({ data }) => setRow1Pool(data || []));
+    // On a failed or timed-out read, fill the row from the device's saved copy
+    // of the live grid (CAR_FIELDS is a superset of HERO_ROW_FIELDS) instead
+    // of leaving the top of the page empty during a database outage.
+    const fromSaved = (pick) => pick(readLiveCarsFallback()?.cars || []).slice(0, 12);
+    const load = (query, setPool, pick) =>
+      withTimeout(query)
+        .then(({ data, error: err }) => {
+          if (err) throw err;
+          setPool(data || []);
+        })
+        .catch(() => setPool(fromSaved(pick)));
 
-    supabase.from('public_car_listings')
-      .select(HERO_ROW_FIELDS)
-      .in('status', ['available', 'reserved'])
-      .eq('body_type', 'MPV')
-      .order('created_at', { ascending: false })
-      .limit(12)
-      .then(({ data }) => setRow2Pool(data || []));
+    load(
+      supabase.from('public_car_listings')
+        .select(HERO_ROW_FIELDS)
+        .in('status', ['available', 'reserved'])
+        .order('created_at', { ascending: false })
+        .limit(12),
+      setRow1Pool, (cars) => cars,
+    );
+
+    load(
+      supabase.from('public_car_listings')
+        .select(HERO_ROW_FIELDS)
+        .in('status', ['available', 'reserved'])
+        .eq('body_type', 'MPV')
+        .order('created_at', { ascending: false })
+        .limit(12),
+      setRow2Pool, (cars) => cars.filter((c) => c.body_type === 'MPV'),
+    );
   }, []);
 
   /* Row 1 upgrades to "Hot Deals" the moment any exist. Still gated on the
@@ -303,10 +323,11 @@ export default function MarketplacePage() {
 
       query = query.range(from, to);
 
-      const { data, error: err, count } = await query;
+      const { data, error: err, count } = await withTimeout(query);
       if (err) throw err;
 
       const rows = data || [];
+      setShowingSaved(false);
 
       if (loadPage === 1) {
         const deduped = dedupe(rows);
@@ -327,9 +348,17 @@ export default function MarketplacePage() {
       if (loadPage === 1) setTotal(count || 0);
     } catch (e) {
       console.error('[fetchCars]', e?.message || e?.code || e);
-      // Already showing cached cars from a previous visit — keep them on
-      // screen rather than covering them with an error banner.
-      if (!usingCachedFallback) setError('Failed to load listings. Please try again.');
+      // Database down or hanging. On the unfiltered first page, keep (or
+      // bring back) the device's saved copy of the grid with a notice, rather
+      // than an empty page. Any filtered view still gets the error: unfiltered
+      // cars under an active filter would be wrong, not just stale.
+      const saved = isDefaultView && loadPage === 1 && !usingCachedFallback ? readLiveCarsFallback() : null;
+      if (usingCachedFallback || saved) {
+        if (saved) { setCars(saved.cars); setTotal(saved.cars.length); }
+        setShowingSaved(true);
+      } else {
+        setError('Failed to load listings. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -1240,6 +1269,8 @@ export default function MarketplacePage() {
                 </div>
               </div>
 
+              {showingSaved && !error && <StaleListingsNotice onRetry={fetchCars} />}
+
               {/* Error */}
               {error && (
                 <div style={{ textAlign:'center', padding:'60px 20px' }}>
@@ -1293,7 +1324,7 @@ export default function MarketplacePage() {
               {/* Two-stage manual control (no auto-load): "Load more" once, then
                   "See all" -> Showroom. Keeps the footer reachable and stops the
                   grid from creeping down as you scroll. */}
-              {!loading && !error && cars.length > 0 && cars.length < totalCount && (
+              {!loading && !error && !showingSaved && cars.length > 0 && cars.length < totalCount && (
                 <div style={{ textAlign:'center', padding:'32px 0 60px' }}>
                   {loadPage < 2 ? (
                     <button

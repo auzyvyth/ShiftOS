@@ -383,6 +383,14 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   else. Article copy is buyer-facing: never promise something about XDrive
   listings the platform does not check (three CTAs claimed every car was
   Puspakom-inspected / fully documented; nothing verifies that).
+- **The public grids survive a database outage (2026-10-02).** The free DB
+  froze twice in a day and the marketplace went blank. Every public listing
+  query goes through `withTimeout` (a stalled DB HANGS requests, it does not
+  fail them), and on failure the unfiltered views fall back to the device's
+  saved copy, `LIVE_CARS_CACHE_KEY` (`readLiveCarsFallback`, 7 days, in
+  `src/config/marketplaceConfig.js`), with `StaleListingsNotice` above the
+  grid. Users: MarketplacePage grid + hero rows, CarListingPage `/showroom`.
+  Never show that copy under an active filter or on a dealer storefront.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.
@@ -400,6 +408,15 @@ Never use session.user.id / user.id in queries — always derive via getDealerId
   - superadmin / dealer / owner role → profile.id
 Subdomain detection: xdrive.my and www.xdrive.my → tenant=null (public marketplace)
   Only <sub>.xdrive.my triggers dealer profile lookup (useTenant.js)
+**A failed storefront lookup is NOT "this dealer doesn't exist" (2026-10-02).**
+vyth.xdrive.my said it did not exist while the dealer row was live: a stale saved
+login held the auth lock, every `supabase` request waits on that lock, so the
+lookup never left the browser, and a 6s timer settled `null`. Now `useTenant`
+looks up via `publicClient` (`src/supabaseClient.js` — anon, no session, no lock),
+caps each attempt with `withTimeout`, and a failure returns `error`, which
+HomePage/CarListingPage render as "Couldn't load, try again". Only a clean empty
+RPC answer is a miss. Use `publicClient` for any public read that must not wait
+on a login.
 
 ## Deployment pipeline — 3 stages
 ```

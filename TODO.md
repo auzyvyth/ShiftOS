@@ -135,6 +135,28 @@ At those moments EVERY request stalls at once, trivial ones included.
 - [ ] **PERF-LOAD-2 (owner decision, costs money): upgrade Supabase compute
   from Micro to Small.** Fixes the 45s schema reload and the p99 stalls at the
   source. Caching cannot help a first open on a new device or any save.
+  - **2026-10-02: two full outages in 12h, marketplace showed no cars.** Org
+    plan is `free` (not Micro — the smallest box). DB froze 22:10-02:15 UTC
+    (requests up to 6 min, cron jobs stopped), recovered, then froze again at
+    07:37 UTC and was still unreachable at 10:15 (`select now()` timed out,
+    postgres logs silent, auth 522s, storage 429/544). No migration near
+    either freeze (schema reloads that day took 2-5s), no slow query to
+    blame — trivial requests (`cron_key_matches`, `profiles`) stalled too.
+    **Correction, same day:** the dashboard showed "Grace period is over —
+    projects will not serve requests when you use up your quota", with CPU
+    25% / memory 44% / disk IO 77% over 24h. So the likelier cause is
+    free-plan QUOTA enforcement, not compute starvation. DB is 56 MB and
+    storage 287 MB (both under limit), so suspect egress: car-images
+    (avg 362 KB, 798 files) pulled in full by AhrefsBot and the wsrv.nl
+    ImageFetcher proxy. Restart at 10:32 UTC brought it back.
+    **Second correction:** Billing > Usage showed EVERY quota under limit
+    (egress 0.94/5 GB, cached 1.24/5, DB 0.07/0.5, MAU 20). Quota ruled out.
+    Our own workload is tiny: cache hit 99.9%, heaviest statement after the
+    restart read 397 blocks. No cause found on our side — the free Nano
+    instance (shared, 0.5 GB RAM, shared_buffers 224 MB) just stopped
+    answering twice. Free plan gives no support to ask why. Real fix is
+    Pro + dedicated compute. Code-side mitigation BUILT same day: public
+    grids fall back to the device's saved copy (CLAUDE.md "Marketplace").
 - [ ] **PERF-LOAD-5 (later, big): move the DB to Singapore
   (`ap-southeast-1`).** Needs a new project + data migration; ~100ms per round
   trip saved. Not worth it before PERF-LOAD-2.
@@ -2148,6 +2170,23 @@ derived meta description, and a two-column mini page at 1024px+.
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
+  the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
+  and buyers stall on battery uncertainty (each 1% of State of Health ~1.2-1.6%
+  of value). A trusted SOH report per car (workshop partner + diagnostic tool),
+  then a price guide built on SOH. Constraints: brand-specific diagnostic
+  access (BYD etc.), needs a physical partner, Carsome could bolt it on.
+- **IDEA-10: A CarEdge for Malaysia (owner's own buyer-side brand, 2026-10-02)**
+  — buyer's advocate: free price guide + calculators + content, paid "deal
+  check" / negotiation help, takes no dealer money. Gaps vs the US: new-car
+  prices are near-fixed, so the money is in used/recon; no VIN/invoice data
+  feed exists, so a price guide needs its own data. Blockers: (1) conflict of
+  interest — the same owner runs XDrive/ShiftOS, which dealers pay; CarEdge's
+  whole pitch is "no dealer money", so keep it a separate brand + entity and
+  disclose; (2) insurance comparison/recommendation needs a BNM Approved
+  Financial Adviser licence (FSA 2013) — stay out of it or partner; (3) never
+  copy CarEdge's warranty upsell without checking it isn't insurance.
 
 - **IDEA-1: Regional bump (paid visibility, by state/region)** — instead of a
   flat "bump my listing" button, let a salesman/dealer see (from their own

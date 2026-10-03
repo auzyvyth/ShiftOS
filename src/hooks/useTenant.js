@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "../supabaseClient";
+import { supabase, publicClient } from "../supabaseClient";
+import { withTimeout } from "../config/marketplaceConfig";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { readCache, writeCache } from "../utils/localCache";
 
@@ -109,37 +110,45 @@ export default function useTenant() {
   const cachedTenantRef = useRef(readTenantCache(getSubdomain()));
   const [tenant, setTenant] = useState(() => cachedTenantRef.current || undefined); // undefined = loading
   const [loading, setLoading] = useState(() => !cachedTenantRef.current);
+  // True when the lookup FAILED (network / database down) and there was no
+  // cached storefront to fall back to. Distinct from tenant === null, which is
+  // only ever a clean "no dealer has this subdomain" answer. Pages show
+  // "couldn't load, retry" for this, never "this dealer page doesn't exist".
+  const [error, setError] = useState(false);
   const tenantIdRef = useRef(null); // used by realtime subscription
 
   useEffect(() => {
     let realtimeChannel = null;
     let settled = false;
-    // Safety net: in-app webviews (Instagram/Facebook) and flaky mobile networks
-    // can make Supabase storage/auth/RPC calls throw or hang. Without this the
-    // hook would sit at tenant===undefined forever and HomePage shows the
-    // full-screen loader indefinitely. Force-resolve after a short timeout so
-    // the page always renders — falling back to the cached tenant (if we
-    // already painted one) rather than null, so a flaky network degrades to
-    // "showing slightly-stale data" instead of "storefront doesn't exist".
-    const settle = (value) => {
+    // In-app webviews, flaky mobile networks and a stalled database can make
+    // calls throw or hang. The hook must still always finish: a slow or failed
+    // lookup falls back to the cached tenant (stale data beats a blank page),
+    // and with no cache it reports `error`, never a false "doesn't exist".
+    const settle = (value, failed = false) => {
       if (settled) return;
       settled = true;
       setTenant(value);
+      setError(failed && !value);
       setLoading(false);
     };
-    const timer = setTimeout(() => settle(cachedTenantRef.current || null), 6000);
+    // There used to be a 6s timer here that settled null, i.e. "This dealer
+    // page doesn't exist", for a lookup that was merely slow -- and since
+    // settle() runs once, it then threw the real answer away. Each attempt is
+    // capped below instead, and only a clean empty answer counts as a miss.
 
     async function resolve() {
       // Each Supabase/storage touch is individually guarded — a throw here (e.g.
       // localStorage blocked in a partitioned webview) must not abort resolution.
+      // Session handoff runs alongside the lookup, never in front of it: the
+      // storefront is public and needs no session, and setSession can stall for
+      // seconds behind a stale session's refresh (see authHandoff.js).
       try {
         const { at: accessToken, rt: refreshToken } = readHandoffTokens();
         if (accessToken && refreshToken) {
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          clearHandoffTokens();
+          supabase.auth
+            .setSession({ access_token: accessToken, refresh_token: refreshToken })
+            .then(() => clearHandoffTokens())
+            .catch(() => {});
         }
       } catch (e) {
         // ignore — handoff is best-effort; storefront still resolves below
@@ -148,7 +157,6 @@ export default function useTenant() {
       const subdomain = getSubdomain();
       if (!subdomain) {
         try { localStorage.removeItem("tenantSubdomain"); } catch {}
-        clearTimeout(timer);
         settle(null); // main domain — show marketplace
         return;
       }
@@ -176,8 +184,13 @@ export default function useTenant() {
           // object Accept header, so PostgREST returns 406 for the zero-row case
           // (benign — swallowed to null — but noisy). The function already has
           // LIMIT 1; read the first row so a no-match is a clean 200 [] instead.
-          const { data, error } = await supabase
-            .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain });
+          // publicClient: anon, no session, so no auth lock to wait behind.
+          // Default 15s cap: this RPC averaged ~10s while the DB was struggling
+          // on 2026-10-02, and a tighter cap turns slow-but-working into a
+          // failure on every attempt.
+          const { data, error } = await withTimeout(
+            publicClient.rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain }),
+          );
           if (error) {
             rpcErrored = true;
           } else {
@@ -190,11 +203,10 @@ export default function useTenant() {
         }
         if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       }
-      clearTimeout(timer);
       if (rpcErrored && !profile) {
         // Transient failure — degrade to the cached storefront rather than a
         // false "not found". Don't cache or subscribe off a failed lookup.
-        settle(cachedTenantRef.current || null);
+        settle(cachedTenantRef.current || null, true);
         return;
       }
       settle(profile);
@@ -238,13 +250,12 @@ export default function useTenant() {
       }
     }
 
-    resolve().catch(() => settle(null));
+    resolve().catch(() => settle(cachedTenantRef.current || null, true));
 
     return () => {
-      clearTimeout(timer);
       if (realtimeChannel) supabase.removeChannel(realtimeChannel);
     };
   }, []);
 
-  return { tenant, loading };
+  return { tenant, loading, error };
 }
