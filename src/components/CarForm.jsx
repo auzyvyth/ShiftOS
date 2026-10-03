@@ -131,11 +131,16 @@ const STEPS = [
   { id: 1, label: "Photos",   icon: Camera,         desc: "Upload images first" },
   { id: 2, label: "Car",      icon: Car,            desc: "Brand, model & condition" },
   { id: 3, label: "Technical",icon: Gauge,          desc: "Specs & history" },
-  { id: 4, label: "Location", icon: MapPin,         desc: "State & city" },
-  { id: 5, label: "Pricing",  icon: DollarSign,     desc: "Prices & add-ons" },
-  { id: 6, label: "Details",  icon: FileText,       desc: "Features & documents" },
-  { id: 7, label: "Review",   icon: ClipboardCheck, desc: "Confirm everything before publishing" },
+  { id: 4, label: "Pricing",  icon: DollarSign,     desc: "Price, location & add-ons" },
+  { id: 5, label: "Details",  icon: FileText,       desc: "Features & documents" },
+  { id: 6, label: "Review",   icon: ClipboardCheck, desc: "Confirm everything before publishing" },
 ];
+// Location used to be its own step — a whole screen for State + City, which
+// are prefilled from the seller's profile, so for most sellers it was a "tap
+// Continue" screen. It now sits at the top of Pricing as a one-line summary.
+// Drafts saved under the old 7-step numbering are remapped on resume
+// (DRAFT_STEP_V1_TO_V2) so a resumed draft never lands on the wrong screen.
+const DRAFT_STEP_V1_TO_V2 = { 1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6 };
 
 function SortableSection({ id, section, complete, collapsed, onToggle, children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -761,7 +766,7 @@ const cfSaveDraft = (uid, form, step) => {
     // already-uploaded URLs survive a draft; unfinished files are dropped
     // and the user re-adds them.
     const safeImages = (form.images || []).filter((img) => typeof img === "string");
-    localStorage.setItem(cfDraftKey(uid), JSON.stringify({ form: { ...form, images: safeImages }, step, savedAt: Date.now() }));
+    localStorage.setItem(cfDraftKey(uid), JSON.stringify({ v: 2, form: { ...form, images: safeImages }, step, savedAt: Date.now() }));
   } catch (_) {}
 };
 const cfLoadDraft = (uid) => { try { const r = localStorage.getItem(cfDraftKey(uid)); if (!r) return null; const d = JSON.parse(r); if (Date.now() - d.savedAt > DRAFT_TTL_MS) { localStorage.removeItem(cfDraftKey(uid)); return null; } return d; } catch (_) { return null; } };
@@ -819,6 +824,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const DEFAULT_ORDER = STEPS.map((s) => s.id);
   const [sectionOrder, setSectionOrder] = useState(DEFAULT_ORDER);
   const [collapsed, setCollapsed] = useState({});
+  // Location row on the Pricing step: a one-line summary when State + City are
+  // already known (prefilled from the profile), the two pickers when not, or
+  // when the seller taps Change.
+  const [locOpen, setLocOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const photosInputRef = useRef(null);
   const previewUrlsRef = useRef([]);
@@ -1841,9 +1850,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 1) return form.images.length > 0;
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
-    if (step === 4) return form.state && form.city;
-    if (step === 5) return form.basePrice && form.sellingPrice;
-    if (step === 6) return listing ? true : geranSatisfied;
+    if (step === 4) return form.state && form.city && form.basePrice && form.sellingPrice;
+    if (step === 5) return listing ? true : geranSatisfied;
     return true;
   };
 
@@ -1859,25 +1867,25 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       [!form.mileage, "Mileage"], [!form.colour, "Colour"], [!form.condition, "Condition"],
     ]).filter(([m]) => m).map(([, l]) => l);
     if (s === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
-    if (s === 4) return [[!form.state, "State"], [!form.city, "City"]].filter(([m]) => m).map(([, l]) => l);
-    if (s === 5) {
-      if (intakeDone) return [];
-      return [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]].filter(([m]) => m).map(([, l]) => l);
-    }
-    if (s === 6)
+    if (s === 4) return [
+      [!form.state, "State"], [!form.city, "City"],
+      ...(intakeDone ? [] : [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]]),
+    ].filter(([m]) => m).map(([, l]) => l);
+    if (s === 5)
       return listing || geranSatisfied
         ? []
         : ["Geran / registration card (or the reason it's unavailable)"];
     return [];
   };
   const missingFields = () => missingForStep(step);
+  const stepMissing = missingForStep(step);
 
   // Pre-flight every required step. Returns { step, fields } for the FIRST step
   // still missing something, or null when the form is complete. Used by Publish
   // so a half-filled row never reaches the DB (which would throw a cryptic
   // not-null error the user can't act on).
   const firstIncompleteStep = () => {
-    for (const s of [1, 2, 3, 4, 5, 6]) {
+    for (const s of [1, 2, 3, 4, 5]) {
       const fields = missingForStep(s);
       if (fields.length) return { step: s, fields };
     }
@@ -2244,10 +2252,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       // so only require what this form still shows.
       case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
       case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
-      case 4: return !!(form.state && form.city);
-      case 5: return intakeDone ? true : !!(form.basePrice && form.sellingPrice);
-      case 6: return listing ? true : geranSatisfied;
-      case 7: return true;
+      case 4: return !!(form.state && form.city) && (intakeDone ? true : !!(form.basePrice && form.sellingPrice));
+      case 5: return listing ? true : geranSatisfied;
+      case 6: return true;
       default: return false;
     }
   }
@@ -2307,6 +2314,51 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             <ChevronRight className="w-3 h-3" />
           </button>
         </div>
+      </div>
+    );
+  }
+
+  function renderLocationRow() {
+    if (form.state && form.city && !locOpen) {
+      return (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-gray-500">Car location</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{form.city}, {form.state}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocOpen(true)}
+            className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Change
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-5">
+        <Field label="State" required hint="Where buyers can view this car">
+          <PickerField
+            label="Select State"
+            value={form.state}
+            onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
+            options={Object.keys(STATE_CITIES)}
+            placeholder="Select state"
+          />
+        </Field>
+        <Field label="City" required>
+          <PickerField
+            label="Select City"
+            value={form.city}
+            onChange={(v) => set("city", v)}
+            options={cityOptions}
+            placeholder={form.state ? "Select city" : "Select state first"}
+            disabled={!form.state}
+            allowCustom
+          />
+        </Field>
       </div>
     );
   }
@@ -2429,60 +2481,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>,
             document.body,
           )}
-          {!intakeDone && (
-                      <>
-                                    <Field label="Plate Number" hint="Optional — vehicle registration plate">
-            <input
-              name="plate_number"
-              value={form.plate_number}
-              onChange={handleChange}
-              onBlur={e => checkDuplicate('plate', e.target.value)}
-              placeholder="e.g. WXY 1234"
-              className={inputCls}
-            />
-            {dupWarning.plate && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
-            )}
-            {conflictWarning.plate && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-            )}
-          </Field>
-          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
-            <div className="flex gap-2">
-              <input
-                name="vin_number"
-                value={form.vin_number}
-                onChange={handleChange}
-                onBlur={e => checkDuplicate('vin', e.target.value)}
-                placeholder="e.g. JN1CA31D1XT000001 or FL5-1234567"
-                className={`${inputCls} flex-1`}
-                style={{ textTransform: "uppercase" }}
-              />
-              {isPremiumPlan && (
-                <button
-                  type="button"
-                  onClick={handleDecodeVin}
-                  disabled={decodingVin || !canDecodeVin}
-                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
-                >
-                  {decodingVin ? "Decoding…" : "Decode"}
-                </button>
-              )}
-            </div>
-            {dupWarning.vin && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
-            )}
-            {conflictWarning.vin && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-            )}
-            {vinDecodeMsg && (
-              <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
-            )}
-          </Field>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          </>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    )}
-
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              {/* Walkthrough Video */}
           {/* Walkthrough Video */}
           <div className="space-y-1">
             <label className="text-sm text-gray-600">
@@ -2502,39 +2500,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 2: return (
         <div className="space-y-4">
-          {/* Listing title — the ONE free-text field on this step, and the
-              reason every other field on it can be structured. Sellers were
-              writing "ALPHARD 2.5L" and "CIVIC 2.0L(T) HATCHBACK" into `model`
-              to get the extra words a listing needs; that broke spec lookup
-              (only the clean "Alphard" resolves) and dropped the car out of the
-              buyer's model filter. Give them the headline, keep `model` clean. */}
-          <Field
-            label="Listing Title"
-            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
-          >
-            <div className="space-y-2">
-              <input
-                name="listing_title"
-                value={form.listing_title}
-                onChange={handleChange}
-                maxLength={120}
-                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
-                enterKeyHint="next"
-                className={inputCls}
-              />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-gray-500 min-w-0 truncate">
-                  {form.listing_title?.trim()
-                    ? "This is the headline buyers read."
-                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
-                </p>
-                <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
-                  {form.listing_title?.length || 0}/120
-                </span>
-              </div>
-            </div>
-          </Field>
-
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
@@ -2638,6 +2603,112 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>
           )}
 
+          {/* Condition is required — it sits with the other required fields,
+              never below the optional extras. */}
+          <Field label="Condition" required>
+            <PillSelect
+              options={CONDITIONS}
+              value={form.condition}
+              onChange={(v) => set("condition", v)}
+            />
+          </Field>
+          <Field label="Loan Eligible">
+            <PillSelect
+              options={["Yes", "No"]}
+              value={form.loan_eligible ? "Yes" : "No"}
+              onChange={(v) => set("loan_eligible", v === "Yes")}
+            />
+          </Field>
+          {/* Plate + VIN identify THIS car, so they sit with the car, not on
+              the Photos step where they used to be. */}
+          {!intakeDone && (
+          <>
+          <Field label="Plate Number" hint="Optional — vehicle registration plate">
+            <input
+              name="plate_number"
+              value={form.plate_number}
+              onChange={handleChange}
+              onBlur={e => checkDuplicate('plate', e.target.value)}
+              placeholder="e.g. WXY 1234"
+              className={inputCls}
+            />
+            {dupWarning.plate && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+            )}
+            {conflictWarning.plate && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+          </Field>
+          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
+            <div className="flex gap-2">
+              <input
+                name="vin_number"
+                value={form.vin_number}
+                onChange={handleChange}
+                onBlur={e => checkDuplicate('vin', e.target.value)}
+                placeholder="e.g. JN1CA31D1XT000001 or FL5-1234567"
+                className={`${inputCls} flex-1`}
+                style={{ textTransform: "uppercase" }}
+              />
+              {isPremiumPlan && (
+                <button
+                  type="button"
+                  onClick={handleDecodeVin}
+                  disabled={decodingVin || !canDecodeVin}
+                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
+                >
+                  {decodingVin ? "Decoding…" : "Decode"}
+                </button>
+              )}
+            </div>
+            {dupWarning.vin && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+            )}
+            {conflictWarning.vin && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+            {vinDecodeMsg && (
+              <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
+            )}
+          </Field>
+          </>
+          )}
+
+          {/* Listing title — after the structured fields it defaults from (an
+              optional writing task should not be the first thing on the step).
+              The ONE free-text field on this step, and the
+              reason every other field on it can be structured. Sellers were
+              writing "ALPHARD 2.5L" and "CIVIC 2.0L(T) HATCHBACK" into `model`
+              to get the extra words a listing needs; that broke spec lookup
+              (only the clean "Alphard" resolves) and dropped the car out of the
+              buyer's model filter. Give them the headline, keep `model` clean. */}
+          <Field
+            label="Listing Title"
+            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
+          >
+            <div className="space-y-2">
+              <input
+                name="listing_title"
+                value={form.listing_title}
+                onChange={handleChange}
+                maxLength={120}
+                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
+                enterKeyHint="next"
+                className={inputCls}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-500 min-w-0 truncate">
+                  {form.listing_title?.trim()
+                    ? "This is the headline buyers read."
+                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
+                </p>
+                <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
+                  {form.listing_title?.length || 0}/120
+                </span>
+              </div>
+            </div>
+          </Field>
+
           <MoreDetails>
              <Field label="Registration Date">
               <input
@@ -2671,21 +2742,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </Field>
           </MoreDetails>
 
-          {/* Pills — below everything */}
-          <Field label="Condition" required>
-            <PillSelect
-              options={CONDITIONS}
-              value={form.condition}
-              onChange={(v) => set("condition", v)}
-            />
-          </Field>
-          <Field label="Loan Eligible">
-            <PillSelect
-              options={["Yes", "No"]}
-              value={form.loan_eligible ? "Yes" : "No"}
-              onChange={(v) => set("loan_eligible", v === "Yes")}
-            />
-          </Field>
         </div>
       );
       case 3: return (
@@ -3041,30 +3097,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       );
       case 4: return (
         <div className="space-y-5">
-          <Field label="State" required>
-            <PickerField
-              label="Select State"
-              value={form.state}
-              onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
-              options={Object.keys(STATE_CITIES)}
-              placeholder="Select state"
-            />
-          </Field>
-          <Field label="City" required>
-            <PickerField
-              label="Select City"
-              value={form.city}
-              onChange={(v) => set("city", v)}
-              options={cityOptions}
-              placeholder={form.state ? "Select city" : "Select state first"}
-              disabled={!form.state}
-              allowCustom
-            />
-          </Field>
-        </div>
-      );
-      case 5: return (
-        <div className="space-y-5">
+          {renderLocationRow()}
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
               <Check size={12} />
@@ -3433,7 +3466,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
         </div>
       );
-      case 6: {
+      case 5: {
         const selFeatures = parseTags(form.features);
         const isSel = (f) => selFeatures.some((t) => t.toLowerCase() === f.toLowerCase());
         const toggleFeature = (f) => {
@@ -3761,7 +3794,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </div>
         );
       }
-      case 7: {
+      case 6: {
         const rm = (v) => (v !== "" && v != null && !isNaN(Number(v)) && Number(v) > 0 ? `RM ${Number(v).toLocaleString()}` : null);
         const svcTotal = form.included_services.reduce((s, x) => s + Number(x.selling_price || 0), 0);
         return (
@@ -3820,7 +3853,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 )}
               </div>
             </ReviewSection>
-            <ReviewSection title="Location" onEdit={() => setStep(4)}>
+            <ReviewSection title="Location" onEdit={() => { setLocOpen(true); setStep(4); }}>
               {form.state || form.city ? (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                   <ReviewItem label="State" value={form.state} />
@@ -3830,7 +3863,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 <p className="text-sm text-red-500">Not set — state & city are required</p>
               )}
             </ReviewSection>
-            <ReviewSection title="Pricing" onEdit={() => setStep(5)}>
+            <ReviewSection title="Pricing" onEdit={() => setStep(4)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
                 <ReviewItem label="Payment" value={(form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
                 <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
@@ -3854,7 +3887,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             </ReviewSection>
             {(form.specs || form.options || form.features) && (
-              <ReviewSection title="Description" onEdit={() => setStep(6)}>
+              <ReviewSection title="Description" onEdit={() => setStep(5)}>
                 <div className="space-y-2.5">
                   <ReviewItem label="About" value={form.specs} />
                   <ReviewItem label="Options" value={form.options} />
@@ -3895,7 +3928,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 profile?.city || dealerLocation?.city,
               );
               setForm(d.form?.state || d.form?.city ? d.form : { ...d.form, ...loc });
-              setStep(d.step || 1);
+              setStep(d.v === 2 ? d.step || 1 : DRAFT_STEP_V1_TO_V2[d.step] || 1);
               // Re-hydrate image previews from saved URLs so the photo step isn't empty
               if (Array.isArray(d.form?.images) && d.form.images.length > 0) {
                 setPreviews(d.form.images);
@@ -4004,8 +4037,17 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         </div>
       )}
 
-      {/* Wizard navigation */}
-      <div className="mt-5 flex items-center gap-3">
+      {/* Wizard navigation — pinned to the bottom of whatever scrolls the form
+          (the modal body on Lite / Premium / manager / dealer edit, the page on
+          the dealer Add tab), so Continue is always in reach on a long step
+          instead of waiting below the fold. */}
+      <div
+        className="sticky bottom-0 z-20 mt-5 -mx-1 px-1 pt-3 flex items-center gap-3 bg-white border-t border-gray-100"
+        // The shadow paints white below the bar: every modal host pads its
+        // scroller (p-5), and sticky stops that far above the edge, so without
+        // it a strip of form shows through under the buttons.
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))", boxShadow: "0 24px 0 0 #fff" }}
+      >
         {step > 1 && (
           <button
             type="button"
@@ -4022,7 +4064,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             onClick={goNext}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all"
           >
-            Continue<ChevronRight className="w-4 h-4" />
+            Continue
+            {stepMissing.length > 0 && (
+              <span className="font-normal text-white/75 whitespace-nowrap">· {stepMissing.length} left</span>
+            )}
+            <ChevronRight className="w-4 h-4" />
           </button>
         ) : (
           <button
