@@ -1084,6 +1084,19 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   by the mini page -> "Live now" card. Never let a client write that table directly.
 - "#N" is the position in the mini page's `listings` array; presenter and page share
   the array, so do not re-sort one without the other.
+- **Answer card**: tapping a table cell shows that one instalment big, with a
+  take-home-pay guide that ALWAYS prints its rule ("instalment at 35% of take-home
+  pay. The bank decides." — `SALARY_SHARE`, `src/utils/liveMaths.js`). Never show the
+  salary number without the rule, never word it as approval.
+- **Flat (brochure) rates are accepted and converted** per tenure with `flatToEir`
+  (`eirForTenure`). Never feed a flat number straight into `monthlyPayment`.
+- **Cars above RM300k get the table in the presenter ONLY** (owner, 2026-10-03), with
+  a "banks decide case by case" note. `calcMonthly` and the mini-page card still
+  return null / "financing on request" for them — do not widen that.
+- **Live report** on exit (lives of 1 min+): counts from the seller's own
+  `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
+  opened. Counts only, never a buyer name: the screen may still be on stream.
+  `npm run test:live`.
 
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
