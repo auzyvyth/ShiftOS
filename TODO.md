@@ -319,6 +319,47 @@ fixes. Nothing in this batch has been built.
     laundering vector. Owner-only would also have satisfied the ask. One
     clause in the RPC if you want it tightened.
 
+- [ ] **MINI-LIGHT-1: agent page (`/s/:slug`) goes light — SCOPED 2026-10-03,
+  owner asked for it, not built yet.** File: `src/pages/SalesmanProfilePage.jsx`
+  (815 lines, all inline styles + one `<style>` block). Follow `DESIGN.md` light
+  tokens exactly. One concern per session: this is STYLING + layout only, no data.
+  Why: the page is the one public XDrive surface still dark, and it is off-system
+  even as a dark page — blue accent (`#2563eb`/`#60a5fa`) not red, a gold
+  radial "glow" backdrop (`:402`, banned by DESIGN.md), `system-ui` not Outfit,
+  fully rounded pill tags, an orange tinted "Independent Agent" badge, green
+  `#4ade80` sold count. A buyer tapping through from the light marketplace lands
+  on a different product.
+  Target layout (mockup: owner has screenshots from the 2026-10-03 session):
+  1. Slim `#0f1115` bar: wordmark + "Browse all cars". NOT the full
+     MarketplaceHeader — see decision (a).
+  2. Cover banner (fallback: warm neutral `#EDEAE3`, no gradient glow), white
+     identity card overlapping it: avatar, Bebas name + verified tick, job title
+     · dealership/"Independent", location, plus a Malay line "Ejen kereta di
+     <area>" (the SEO gap from the same session — buyers search in Malay).
+  3. Stats row, tabular figures, hairline dividers: Available / Sold / rating.
+  4. ONE primary action: WhatsApp button + icon-only socials beside it.
+  5. Bio (3-line clamp + Read more), specialisations as square neutral tags
+     (`#ECEAE4`, radius 4), response time as a 6px status dot + text.
+  6. Cars: `ShowroomCard` (light) in the DESIGN.md flex grid, with a sort
+     select — see decision (b).
+  7. Map and `ReviewsSection` on white cards (pass a light `th`, drop
+     `DARK_REVIEW_TH` here).
+  8. Mobile only: sticky bottom bar "<name> · replies in ~1h · WhatsApp", so
+     the contact button does not scroll away under six cars.
+  Desktop keeps today's two columns (seller left, sticky; cars right).
+  Keep untouched: owner setup-nudge strip logic (restyle only), retry-on-error
+  load, visit tracking, `agentSeo.js` title/description.
+  Decisions for the owner before building:
+  (a) full marketplace header vs slim bar — slim recommended: this page is
+      shared by the agent on WhatsApp, and a mega-menu sends their buyer to
+      competitors' cars.
+  (b) drop the bespoke "featured newest car" block for plain ShowroomCards —
+      recommended: one card design for the same car everywhere, ~150 fewer lines.
+  (c) WhatsApp button red (system primary) or WhatsApp green — red recommended
+      (one accent on the surface); green is more recognisable.
+  Verify at 375px and 1280px; run the no-undef eslint check from the top of
+  this file (the build does not catch a removed name).
+
 - [ ] **PREM-MINI-2: `SalesmanOnboarding.activate()` writes `is_active: true`
   and the database throws it away.** Found while doing PREM-MINI-1 and proven
   live (see above). The line reads as though a finished onboarding activates
