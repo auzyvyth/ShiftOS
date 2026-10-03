@@ -110,147 +110,160 @@ export default function LivePresenter({ listings, onClose }) {
   const custom = Number(customDown) || 0;
   const rows = [
     ...(custom > 0 && custom < price ? [{ key: 'c', label: `RM ${fmt(custom)}`, down: custom, custom: true }] : []),
-    ...DOWN_ROWS.map((pct) => ({ key: pct, label: `${pct}% · RM ${fmt(price * pct / 100)}`, down: price * pct / 100 })),
+    ...DOWN_ROWS.map((pct) => ({ key: pct, down: price * pct / 100 })),
   ];
   const financeable = price > 0 && price <= HIGH_VALUE_THRESHOLD;
 
   return createPortal(
-    <div
-      style={{ position: 'fixed', inset: 0, zIndex: 1000, background: '#080C14', color: '#fff', fontFamily: 'var(--xd-font-body)', display: 'flex', flexDirection: 'column' }}
-    >
+    <div className="lp">
+      {/* Light, on the marketplace tokens (DESIGN.md): page #F7F6F2, white cards,
+          ink #0f1115, one red only for the selected cell's marker. Every block
+          sits on the same 16px gutter so nothing touches a screen edge. */}
       <style>{`
-        .lp-body { flex: 1; min-height: 0; display: grid; grid-template-rows: minmax(0, 38%) minmax(0, 1fr); }
-        .lp-info { overflow-y: auto; padding: 16px clamp(16px, 4vw, 32px) 20px; }
+        .lp { position: fixed; inset: 0; z-index: 1000; background: #F7F6F2; color: #111827; font-family: var(--xd-font-body); display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; }
+        .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid rgba(0,0,0,.06); }
+        .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; font-variant-numeric: tabular-nums; }
+        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-iconbtn[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .lp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+        /* Stacked column on phones. It was a grid, and the photo (overflow:hidden,
+           so its automatic min-height is 0) let its row shrink under the car
+           name. Nothing in the column may shrink. */
+        .lp-body > * { flex-shrink: 0; }
+        .lp-card { background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,.06); box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
+        .lp-photo { position: relative; aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; background: #EDEAE3; }
+        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .lp-num { position: absolute; top: 12px; left: 12px; font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; letter-spacing: .02em; color: #fff; background: rgba(15,17,21,.78); border-radius: 8px; padding: 6px 10px 3px; }
+        .lp-dots { position: absolute; bottom: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
+        .lp-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.55); }
+        .lp-dots span[data-on="1"] { background: #fff; }
+        .lp-head { padding: 20px; }
+        .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(32px, 7vw, 48px); line-height: .95; letter-spacing: .015em; color: #0f1115; margin: 0; }
+        .lp-spec { font-size: 14px; color: #6b7280; margin: 8px 0 0; }
+        .lp-price { font-size: clamp(28px, 6vw, 40px); font-weight: 800; color: #0f1115; margin: 14px 0 0; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+        .lp-fin { padding: 20px; }
+        .lp-eb { font-size: 11px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+        .lp-eb i { width: 16px; height: 2px; background: #dc2626; display: inline-block; }
+        .lp-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .lp-table th { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #9ca3af; padding: 0 8px 10px; text-align: right; }
+        .lp-table th:first-child { text-align: left; padding-left: 0; }
+        .lp-table td { padding: 12px 8px; text-align: right; font-size: clamp(16px, 3.6vw, 20px); font-weight: 700; color: #111827; border-top: 1px solid rgba(0,0,0,.06); }
+        .lp-table td:first-child { text-align: left; padding-left: 0; font-size: 13px; font-weight: 500; color: #4b5563; white-space: nowrap; }
+        .lp-table td:first-child b { display: block; font-size: 15px; font-weight: 700; color: #111827; }
+        .lp-table td.lp-def { background: #0f1115; color: #fff; border-radius: 8px; border-top-color: transparent; }
+        .lp-note { font-size: 12px; color: #6b7280; line-height: 1.5; margin: 12px 0 0; }
+        .lp-adjust { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
+        .lp-adjust input { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
+        .lp-adjust input:focus { outline: none; border-color: #0f1115; }
+        .lp-nav { display: flex; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid rgba(0,0,0,.06); }
+        .lp-navbtn { flex: 1; height: 52px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
+        .lp-navbtn.lp-next { background: #0f1115; border-color: #0f1115; color: #fff; }
         @media (min-width: 900px) and (orientation: landscape) {
-          .lp-body { grid-template-rows: none; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
-          .lp-info { display: flex; flex-direction: column; justify-content: center; }
+          .lp-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-auto-rows: max-content; padding: 24px; gap: 24px; align-items: start; align-content: start; }
+          .lp-photo { grid-row: span 3; aspect-ratio: 4 / 3; }
         }
-        .lp-cell { padding: 10px 8px; text-align: right; font-variant-numeric: tabular-nums; }
-        .lp-input { width: 100%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; padding: 9px 10px; font-size: 15px; font-family: inherit; }
       `}</style>
 
-      {/* Top bar: position + close. Deliberately no seller name / contact. */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', fontVariantNumeric: 'tabular-nums' }}>
-          Car {idx + 1} of {listings.length}
-        </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => setAdjustOpen((v) => !v)} aria-label="Adjust financing"
-            style={{ ...iconBtn, background: adjustOpen ? 'rgba(255,255,255,0.12)' : iconBtn.background }}>
+      {/* Top bar: position + controls. Deliberately no seller name or contact. */}
+      <div className="lp-top">
+        <span className="lp-count">Car {idx + 1} of {listings.length}</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label="Adjust financing" aria-pressed={adjustOpen}>
             <SlidersHorizontal size={17} />
           </button>
-          <button onClick={onClose} aria-label="Exit live presentation" style={iconBtn}><X size={18} /></button>
+          <button className="lp-iconbtn" onClick={onClose} aria-label="Exit live presentation"><X size={18} /></button>
         </div>
       </div>
 
       <div className="lp-body" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        {/* Photo: tap left/right half to step through this car's photos. */}
-        <div style={{ position: 'relative', background: '#0a0e18', overflow: 'hidden' }}>
-          {images[imgIdx] ? (
-            <img src={images[imgIdx]} alt={carName(car)} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>No photo</div>
-          )}
+        {/* Photo: tap the left / right third to step through this car's photos. */}
+        <div className="lp-photo lp-card">
+          {images[imgIdx]
+            ? <img src={images[imgIdx]} alt={carName(car)} />
+            : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>No photo</div>}
           {images.length > 1 && (
             <>
               <button aria-label="Previous photo" onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
                 style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '35%', background: 'none', border: 'none', cursor: 'pointer' }} />
               <button aria-label="Next photo" onClick={() => setImgIdx((i) => (i + 1) % images.length)}
                 style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '35%', background: 'none', border: 'none', cursor: 'pointer' }} />
-              <div style={{ position: 'absolute', bottom: 10, left: 0, right: 0, display: 'flex', justifyContent: 'center', gap: 5, pointerEvents: 'none' }}>
-                {images.slice(0, 12).map((_, i) => (
-                  <span key={i} style={{ width: 6, height: 6, borderRadius: 3, background: i === imgIdx ? '#fff' : 'rgba(255,255,255,0.35)' }} />
-                ))}
+              <div className="lp-dots">
+                {images.slice(0, 12).map((_, i) => <span key={i} data-on={i === imgIdx ? '1' : '0'} />)}
               </div>
             </>
           )}
-          <span style={{ position: 'absolute', top: 12, left: 12, fontFamily: "'Bebas Neue', sans-serif", fontSize: 34, lineHeight: 1, letterSpacing: '1px', background: 'rgba(8,12,20,0.78)', borderRadius: 10, padding: '6px 12px 3px' }}>
-            #{idx + 1}
-          </span>
+          <span className="lp-num">#{idx + 1}</span>
         </div>
 
-        <div className="lp-info">
-          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(30px, 6vw, 48px)', letterSpacing: '1px', lineHeight: 1, margin: 0 }}>
-            {carName(car)}
-          </h2>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)', margin: '6px 0 0' }}>
+        <div className="lp-card lp-head">
+          <h2 className="lp-name">{carName(car)}</h2>
+          <p className="lp-spec">
             {[car.variant, car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission, car.colour].filter(Boolean).join(' · ')}
           </p>
-          {price > 0 && (
-            <p style={{ fontSize: 'clamp(28px, 5.5vw, 42px)', fontWeight: 800, color: '#60a5fa', margin: '12px 0 0', fontVariantNumeric: 'tabular-nums' }}>
-              RM {fmt(price)}
-            </p>
-          )}
-
-          {adjustOpen && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <label style={labelStyle}>
-                Rate (EIR % p.a.)
-                <input className="lp-input" type="number" inputMode="decimal" step="0.1" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
-              </label>
-              <label style={labelStyle}>
-                Custom deposit (RM)
-                <input className="lp-input" type="number" inputMode="numeric" min="0" placeholder="e.g. 5000" value={customDown} onChange={(e) => setCustomDown(e.target.value)} />
-              </label>
-            </div>
-          )}
-
-          {financeable ? (
-            <div style={{ marginTop: 16 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'clamp(14px, 2.6vw, 18px)' }}>
-                <thead>
-                  <tr style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    <th style={{ textAlign: 'left', padding: '0 8px 8px 0', fontWeight: 600 }}>Deposit</th>
-                    {TENURES.map((y) => <th key={y} className="lp-cell" style={{ paddingTop: 0, fontWeight: 600 }}>{y} yrs</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.key} style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                      <td style={{ padding: '10px 8px 10px 0', fontSize: 13, color: r.custom ? '#fff' : 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap' }}>{r.label}</td>
-                      {TENURES.map((y) => {
-                        const isDefault = !r.custom && r.key === DEFAULT_DOWN && y === DEFAULT_TENURE;
-                        return (
-                          <td key={y} className="lp-cell" style={{ fontWeight: 700, color: isDefault ? '#fff' : 'rgba(255,255,255,0.85)', background: isDefault ? 'rgba(96,165,250,0.14)' : 'none', borderRadius: 6 }}>
-                            {fmt(monthlyPayment(price - r.down, rate, y * 12))}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', margin: '10px 0 0', lineHeight: 1.5 }}>
-                RM per month. Estimate at {rate}% EIR p.a., reducing balance. Subject to bank approval.
-              </p>
-            </div>
-          ) : price > HIGH_VALUE_THRESHOLD ? (
-            <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: 16 }}>Financing on request for this car.</p>
-          ) : null}
+          <p className="lp-price">{price > 0 ? `RM ${fmt(price)}` : 'Price on request'}</p>
         </div>
+
+        {adjustOpen && (
+          <div className="lp-card lp-adjust">
+            <label>
+              Rate (EIR % a year)
+              <input type="number" inputMode="decimal" step="0.1" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
+            </label>
+            <label>
+              Custom deposit (RM)
+              <input type="number" inputMode="numeric" min="0" placeholder="e.g. 5000" value={customDown} onChange={(e) => setCustomDown(e.target.value)} />
+            </label>
+          </div>
+        )}
+
+        {financeable ? (
+          <div className="lp-card lp-fin">
+            <p className="lp-eb"><i />Monthly instalment</p>
+            <table className="lp-table">
+              <thead>
+                <tr>
+                  <th>Deposit</th>
+                  {TENURES.map((y) => <th key={y}>{y} yrs</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.key}>
+                    <td>
+                      {r.custom ? <b>{r.label}</b> : <><b>{r.key}%</b>RM {fmt(r.down)}</>}
+                    </td>
+                    {TENURES.map((y) => {
+                      const isDefault = !r.custom && r.key === DEFAULT_DOWN && y === DEFAULT_TENURE;
+                      return (
+                        <td key={y} className={isDefault ? 'lp-def' : undefined}>
+                          {fmt(monthlyPayment(price - r.down, rate, y * 12))}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="lp-note">RM per month. Estimate at {rate}% EIR a year, reducing balance. Subject to bank approval.</p>
+          </div>
+        ) : price > HIGH_VALUE_THRESHOLD ? (
+          <div className="lp-card lp-fin">
+            <p className="lp-eb"><i />Monthly instalment</p>
+            <p style={{ fontSize: 15, color: '#4b5563', margin: 0 }}>Financing on request for this car.</p>
+          </div>
+        ) : null}
       </div>
 
-      {/* Big prev/next — a seller talking to camera needs a target they can hit blind. */}
+      {/* Big prev / next: a seller talking to camera needs a target they can hit blind. */}
       {listings.length > 1 && (
-        <div style={{ display: 'flex', gap: 10, padding: '10px 14px calc(10px + env(safe-area-inset-bottom))', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={() => go(-1)} style={navBtn}><ChevronLeft size={20} /> #{((idx - 1 + listings.length) % listings.length) + 1}</button>
-          <button onClick={() => go(1)} style={navBtn}>#{((idx + 1) % listings.length) + 1} <ChevronRight size={20} /></button>
+        <div className="lp-nav">
+          <button className="lp-navbtn" onClick={() => go(-1)}><ChevronLeft size={20} /> #{((idx - 1 + listings.length) % listings.length) + 1}</button>
+          <button className="lp-navbtn lp-next" onClick={() => go(1)}>#{((idx + 1) % listings.length) + 1} <ChevronRight size={20} /></button>
         </div>
       )}
     </div>,
     document.body,
   );
 }
-
-const iconBtn = {
-  width: 38, height: 38, borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.04)', color: '#fff', display: 'inline-flex',
-  alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-};
-const navBtn = {
-  flex: 1, height: 50, borderRadius: 12, border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: 16, fontWeight: 700,
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-  fontFamily: 'inherit',
-};
-const labelStyle = { display: 'flex', flexDirection: 'column', gap: 5, fontSize: 11, color: 'rgba(255,255,255,0.55)' };

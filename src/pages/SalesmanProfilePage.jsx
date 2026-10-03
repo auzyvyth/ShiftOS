@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
-import { Link, useParams } from 'react-router-dom';
-import { Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
@@ -39,7 +39,7 @@ const LIGHT_SHEET_TH = { ...LIGHT_REVIEW_TH, card2: '#F0EEE8', inputBorder: 'rgb
 // 0.78 like every photo overlay on the marketplace: no blur, no pill.
 const ownerChip = {
   display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(15,17,21,0.78)',
-  border: 'none', borderRadius: 8, padding: '8px 12px', fontSize: 12, fontWeight: 600,
+  border: 'none', borderRadius: 6, padding: '5px 9px', fontSize: 11, fontWeight: 600, lineHeight: 1.2,
   color: '#fff', textDecoration: 'none', cursor: 'pointer', fontFamily: 'inherit',
 };
 
@@ -97,6 +97,15 @@ function AgentCarCard({ car, num, onClick }) {
 
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
+  const navigate = useNavigate();
+  // Back = wherever the visitor was before this page. A buyer who arrived
+  // straight from a TikTok / WhatsApp link has no in-app history (the router's
+  // history.state.idx is 0), so they go to the marketplace instead of being
+  // thrown out of the site.
+  const goBack = () => {
+    if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
+    else navigate('/');
+  };
   const [profile, setProfile] = useState(null);
   const [dealer, setDealer] = useState(null);
   const [listings, setListings] = useState([]);
@@ -460,15 +469,14 @@ export default function SalesmanProfilePage() {
         .ap { min-height: 100vh; background: #F7F6F2; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
         .ap *, .ap *::before, .ap *::after { box-sizing: border-box; margin: 0; padding: 0; }
         .ap a { color: inherit; }
-        .ap-bar { background: #0f1115; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 4vw, 48px); }
-        .ap .ap-wm { font-family: 'Bebas Neue', sans-serif; color: #fff; font-size: 22px; letter-spacing: .06em; text-decoration: none; }
-        .ap .ap-wm b { color: #dc2626; font-weight: 400; }
-        .ap-bar-link { color: rgba(255,255,255,.72) !important; font-size: 13px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
-        .ap-shell { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
-        .ap-cover { height: 150px; border-radius: 0 0 16px 16px; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,.06); border-top: 0; background: linear-gradient(115deg, #DCE8F2 0%, #EEF0EA 45%, #F6E3CF 100%); }
+                .ap-shell { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
+        .ap-cover { height: 150px; margin-top: 12px; border-radius: 16px; position: relative; overflow: hidden; border: 1px solid rgba(0,0,0,.06); background: linear-gradient(115deg, #DCE8F2 0%, #EEF0EA 45%, #F6E3CF 100%); }
         .ap-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-        .ap-cover svg { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70%; }
-        .ap-owner { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        /* Scoped to the wave art ONLY. Plain '.ap-cover svg' also caught the
+           icons inside the owner buttons and blew them up across the cover. */
+        .ap-cover > svg.ap-waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70%; }
+        .ap-back { position: absolute; top: 12px; left: 12px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.94); color: #0f1115; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.16); }
+        .ap-owner { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .ap-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); border: 1px solid rgba(0,0,0,.06); }
         .ap-id { padding: 20px; margin-top: -44px; position: relative; }
         .ap-av { width: 96px; height: 96px; border-radius: 50%; padding: 3px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.06), 0 1px 3px rgba(15,23,42,.08); margin-top: -64px; }
@@ -588,12 +596,8 @@ export default function SalesmanProfilePage() {
           </div>
         )}
 
-        {/* Slim bar, not the full marketplace header: this page is shared by
-            the agent, and a mega-menu would send their buyer to other cars. */}
-        <div className="ap-bar">
-          <a href="https://xdrive.my" className="ap-wm">X<b>D</b>RIVE</a>
-          <Link to="/showroom" className="ap-bar-link">Browse all cars <ChevronRight size={14} /></Link>
-        </div>
+        {/* No site header (owner, 2026-10-03): just a back button on the cover.
+            The page is the agent's own; XDrive is credited in the footer. */}
 
         <div className="ap-shell">
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
@@ -602,21 +606,22 @@ export default function SalesmanProfilePage() {
             {profile.cover_url ? (
               <img src={profile.cover_url} alt="" />
             ) : (
-              <svg viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
+              <svg className="ap-waves" viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fillOpacity=".85" />
                 <path d="M0 110 C350 60 750 150 1200 90 V160 H0z" fill="#EDE5D8" />
                 <path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2" />
               </svg>
             )}
+            <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
             {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
             {viewerHome && (
               <div className="ap-owner">
                 <Link to={viewerHome.to} style={ownerChip}>
-                  {viewerHome.seller ? <LayoutDashboard size={14} /> : <User size={14} />} {viewerHome.label}
+                  {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
                 </Link>
                 {isOwner && listings.length > 0 && (
                   <button onClick={() => setPresenting(true)} style={ownerChip}>
-                    <Radio size={14} /> Live presentation
+                    <Radio size={12} /> Live presentation
                   </button>
                 )}
               </div>
