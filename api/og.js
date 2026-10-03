@@ -17,6 +17,7 @@ import {
 import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
+import { agentName, agentLocation, agentPageTitle, agentPageDescription } from "../src/utils/agentSeo.js";
 
 export const config = { runtime: "edge" };
 
@@ -513,15 +514,15 @@ function socialUrl(v, base) {
   }
 }
 function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
-  const name = (s.full_name || s.dealership || s.slug).trim();
-  const location = [s.city, s.state].map((v) => (v || "").trim()).filter(Boolean).join(", ");
+  const name = agentName(s);
+  const location = agentLocation(s);
   const image = s.cover_url || s.avatar_url || `${SITE_URL}/og-default.jpg`;
   const bio = (s.bio || "").replace(/\s+/g, " ").trim();
   const jobTitle = s.job_title || "Car Sales Agent";
-  const title = `${name} — Car Agent${location ? ` in ${location}` : ""} | XDrive`;
-  const description = bio
-    ? (bio.length > 155 ? `${bio.slice(0, 152).trimEnd()}...` : bio)
-    : `${name} is a car sales agent${location ? ` in ${location}` : ""} on XDrive.${cars.length ? ` Browse ${cars.length} ${cars.length === 1 ? "car" : "cars"} for sale and message them directly.` : ""}`;
+  // Title + description come from agentSeo.js — the Premium settings preview
+  // runs the same functions, so what the agent sees is what Google gets.
+  const title = agentPageTitle(s);
+  const description = agentPageDescription(s, cars.length);
   // The agent's own profiles elsewhere. sameAs is how a search engine ties
   // this page to the same person's Facebook/Instagram/TikTok, which is what
   // makes a search for their NAME land here.

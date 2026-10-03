@@ -15,6 +15,7 @@ import { placeTourCard } from "../utils/tourPlacement";
 import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
+import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
@@ -5096,6 +5097,13 @@ export default function SalesmanPremium() {
  </div>
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
  </div>
+ {/* Live Google result preview — reads the unsaved form, so the effect of
+ a name or bio edit shows before saving. Same code as api/og.js. */}
+ <AgentSearchPreview
+ profile={settingsForm}
+ slug={profile?.slug}
+ carCount={myListings.filter((l) => l.status === "available" || l.status === "reserved").length}
+ />
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
  <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />

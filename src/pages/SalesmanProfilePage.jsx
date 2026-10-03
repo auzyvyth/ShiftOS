@@ -7,6 +7,7 @@ import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
+import { agentPageTitle, agentPageDescription } from '../utils/agentSeo';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -253,18 +254,11 @@ export default function SalesmanProfilePage() {
     }, 240);
   };
 
-  // One description for <meta name="description"> and og:description, so a
-  // Google snippet and a WhatsApp link preview never disagree. A bio is written
-  // as a paragraph, so collapse its line breaks and cap it near the length
-  // Google renders; with no bio, say what the page actually offers.
-  const metaDescription = (() => {
-    const written = (profile?.bio || '').replace(/\s+/g, ' ').trim();
-    if (written) return written.length > 155 ? written.slice(0, 152).trimEnd() + '...' : written;
-    const where = locationStr ? ` in ${locationStr}` : '';
-    return `${profile?.full_name || 'Car agent'} has ${listings.length} ${listings.length === 1 ? 'car' : 'cars'} available${where}. Browse the listings and message them on XDrive.`;
-  })();
-
-  const pageTitle = `${(profile?.full_name || profile?.slug || '').trim()} — Car Agent${locationStr ? ` in ${locationStr}` : ''} | XDrive`;
+  // Title + description from agentSeo.js, the same functions the crawler
+  // render (api/og.js) and the Premium settings preview run, so Google, a
+  // WhatsApp link preview and the agent's own preview never disagree.
+  const metaDescription = agentPageDescription(profile, listings.length);
+  const pageTitle = agentPageTitle(profile);
 
   // The listings column leads with the newest car (the query orders
   // created_at desc) and puts the rest in the small-card grid under it. Up to
