@@ -1,7 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
-import { Clock, LayoutDashboard, MapPin, ChevronRight, User, X, ShieldCheck } from 'lucide-react';
+import { Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
@@ -11,6 +11,10 @@ import { agentPageTitle, agentPageDescription } from '../utils/agentSeo';
 import { useAgentTrust } from '../hooks/useAgentTrust';
 import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
 import ReportListingButton from '../components/ReportListingButton';
+import { calcMonthly } from '../utils/financing';
+
+// Seller-only, so buyers never download it.
+const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -46,6 +50,32 @@ const iconLink = {
   transition: 'color 0.15s',
 };
 
+// Owner controls over the banner (Dashboard, Live presentation).
+const ownerPill = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(11,14,21,0.72)',
+  backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99,
+  padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'none',
+};
+
+// Car number shown on every card, matching the presenter's "#N".
+const numBadge = {
+  position: 'absolute', top: 8, left: 8, zIndex: 1, background: 'rgba(8,12,20,0.78)',
+  color: '#fff', fontSize: 11, fontWeight: 800, borderRadius: 6, padding: '3px 7px',
+  fontVariantNumeric: 'tabular-nums',
+};
+
+// Same one-line estimate as the marketplace cards (calcMonthly: 90% loan,
+// 7 years, DEFAULT_EIR). null above the high-value threshold -> not shown.
+function MonthlyLine({ price, size = 11 }) {
+  const m = calcMonthly(Number(price));
+  if (!m) return null;
+  return (
+    <p style={{ fontSize: size, color: '#94a3b8', margin: '0 0 6px', fontVariantNumeric: 'tabular-nums' }}>
+      est. <span style={{ color: '#e5e7eb', fontWeight: 600 }}>RM {fmt(m)}/mo</span>
+    </p>
+  );
+}
+
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
   const [profile, setProfile] = useState(null);
@@ -64,6 +94,12 @@ export default function SalesmanProfilePage() {
   const [viewerId, setViewerId] = useState(null);
   // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
   const visitTracked = useRef(false);
+  // Live presentation (owner only) and the car it is showing right now. The
+  // presenter writes that car via set_live_listing; this page reads it back by
+  // slug for every visitor, so a viewer arriving from a TikTok bio link sees
+  // the car on screen pinned at the top. See src/components/live/LivePresenter.jsx.
+  const [presenting, setPresenting] = useState(false);
+  const [liveListingId, setLiveListingId] = useState(null);
 
   // Detect the arrival platform (Instagram/Facebook/TikTok/WhatsApp… via the
   // in-app browser UA or referrer) and stash it so every footprint we log below
@@ -80,7 +116,7 @@ export default function SalesmanProfilePage() {
       car_name: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(' '),
       dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
       salesman_slug: slug,
-      metadata: { source: 'minipage_card' },
+      metadata: { source: liveListingId ? 'minipage_live' : 'minipage_card' },
     });
   };
 
@@ -207,11 +243,49 @@ export default function SalesmanProfilePage() {
     }
   }, [profile?.bio, bioExpanded]);
 
+  // Poll rather than subscribe: the state lives in a no-policy table that only
+  // SECURITY DEFINER functions read, so anon cannot use realtime on it. 15s is
+  // fast enough for "the car he's talking about" and costs one tiny RPC. A
+  // missing function (migration not applied yet) just means no banner.
+  useEffect(() => {
+    if (!profile?.id) return undefined;
+    let cancelled = false;
+    const check = () => {
+      if (document.visibilityState !== 'visible') return;
+      supabase.rpc('get_salesman_live', { p_slug: slug }).then(({ data, error }) => {
+        if (!cancelled && !error) setLiveListingId(data || null);
+      }, () => {});
+    };
+    check();
+    const t = setInterval(check, 15000);
+    document.addEventListener('visibilitychange', check);
+    return () => { cancelled = true; clearInterval(t); document.removeEventListener('visibilitychange', check); };
+  }, [profile?.id, slug]);
+
   const waPhone = (profile?.whatsapp_number || '').replace(/\D/g, '');
   const firstName = (profile?.full_name || 'Agent').split(' ')[0];
   const waMessage = `Hi ${firstName}, I came across your listings on ShiftOS and would like to know more.`;
   const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}?text=${encodeURIComponent(waMessage)}` : null;
   const isVerified = !!(profile?.is_verified);
+
+  // The car the seller is showing on their live right now, if any. Numbers are
+  // positions in `listings` — the same array, same order, the presenter uses —
+  // so "#3" on the stream is "#3" here.
+  const liveIdx = liveListingId ? listings.findIndex((c) => c.id === liveListingId) : -1;
+  const liveCar = liveIdx >= 0 ? listings[liveIdx] : null;
+  const liveWaHref = waPhone && liveCar
+    ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}?text=${encodeURIComponent(
+        `Hi ${firstName}, I'm watching your live. Interested in #${liveIdx + 1}, the ${[liveCar.year, liveCar.brand, liveCar.model].filter(Boolean).join(' ')}.`)}`
+    : null;
+  const trackLiveWhatsApp = () => {
+    if (!liveCar) return;
+    trackEvent(supabase, 'whatsapp_click', {
+      car_id: liveCar.id,
+      dealer_id: liveCar.dealer_id || profile?.dealer_id || profile?.id || null,
+      salesman_slug: slug,
+      metadata: { source: 'minipage_live' },
+    });
+  };
   const locationCity = profile?.city || dealer?.city;
   const locationState = profile?.state || dealer?.state;
   const locationStr = [locationCity, locationState].filter(Boolean).join(', ');
@@ -407,6 +481,7 @@ export default function SalesmanProfilePage() {
         .sp-card { transition: border-color 0.18s, transform 0.18s; }
         .sp-card:hover { border-color: rgba(255,255,255,0.18) !important; transform: translateY(-2px); }
         .social-btn:hover { color: #e5e7eb !important; }
+        @keyframes sp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
       `}</style>
 
       <div style={{ minHeight: '100vh', position: 'relative', background: '#0b0e15', fontFamily: "system-ui,sans-serif", color: '#fff', overflowX: 'hidden' }}>
@@ -490,10 +565,17 @@ export default function SalesmanProfilePage() {
               themselves previewing this page) — jumps to whichever
               dashboard their own role resolves to. */}
           {viewerHome && (
-            <Link to={viewerHome.to}
-              style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(11,14,21,0.72)', backdropFilter: 'blur(6px)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 99, padding: '7px 14px', fontSize: 12, fontWeight: 700, color: '#fff', textDecoration: 'none' }}>
-              {viewerHome.seller ? <LayoutDashboard size={13} /> : <User size={13} />} {viewerHome.label}
-            </Link>
+            <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 3, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+              <Link to={viewerHome.to} style={ownerPill}>
+                {viewerHome.seller ? <LayoutDashboard size={13} /> : <User size={13} />} {viewerHome.label}
+              </Link>
+              {/* Owner only, and only with something to present. */}
+              {isOwner && listings.length > 0 && (
+                <button onClick={() => setPresenting(true)} style={{ ...ownerPill, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  <Radio size={13} /> Live presentation
+                </button>
+              )}
+            </div>
           )}
 
           {profile.avatar_url ? (
@@ -691,6 +773,39 @@ export default function SalesmanProfilePage() {
 
         {/* ── All Listings ── */}
         <div className="sp-wide" style={{ paddingTop: 28, paddingBottom: 80 }}>
+          {/* Live now: the car on the seller's live stream right now. This is
+              where a viewer lands from the TikTok bio link, so it leads. */}
+          {liveCar && (
+            <div style={{ marginBottom: 22, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 12 }}>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 4, background: '#dc2626', animation: 'sp-pulse 1.4s ease-in-out infinite' }} />
+                Live now · showing #{liveIdx + 1}
+              </p>
+              <Link to={`/showroom/${liveCar.slug}`} onClick={() => trackCardClick(liveCar)} style={{ display: 'flex', gap: 12, textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+                <div style={{ position: 'relative', width: 112, flexShrink: 0, aspectRatio: '4 / 3', borderRadius: 10, overflow: 'hidden', background: '#0a0e18' }}>
+                  {Array.isArray(liveCar.images) && liveCar.images[0] && (
+                    <img src={liveCar.images[0]} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: '#f1f5f9', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {[liveCar.year, liveCar.brand, liveCar.model].filter(Boolean).join(' ')}
+                  </p>
+                  {liveCar.selling_price > 0 && (
+                    <p style={{ fontSize: 17, fontWeight: 800, color: '#60a5fa', margin: '2px 0' }}>RM {fmt(liveCar.selling_price)}</p>
+                  )}
+                  <MonthlyLine price={liveCar.selling_price} />
+                </div>
+              </Link>
+              {liveWaHref && (
+                <a href={liveWaHref} target="_blank" rel="noopener noreferrer" onClick={trackLiveWhatsApp}
+                  style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 40, borderRadius: 9, background: '#25D366', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
+                  Ask {firstName} about #{liveIdx + 1}
+                </a>
+              )}
+            </div>
+          )}
+
           {listings.length > 0 && (
             <>
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
@@ -712,6 +827,7 @@ export default function SalesmanProfilePage() {
                 <Link to={`/showroom/${featured.slug}`} onClick={() => trackCardClick(featured)} className="sp-feat">
                   <div className="sp-feat-media">
                     <div className="sp-feat-main">
+                      <span style={numBadge}>#1</span>
                       {featuredImages[0] ? (
                         <img src={featuredImages[0]} alt={`${featured.brand} ${featured.model}`} />
                       ) : (
@@ -744,10 +860,11 @@ export default function SalesmanProfilePage() {
                       <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>{featured.variant}</p>
                     )}
                     {featured.selling_price > 0 && (
-                      <p style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', marginBottom: 8 }}>
+                      <p style={{ fontSize: 22, fontWeight: 800, color: '#60a5fa', marginBottom: 4 }}>
                         RM {fmt(featured.selling_price)}
                       </p>
                     )}
+                    <MonthlyLine price={featured.selling_price} size={12} />
                     <p style={{ fontSize: 11, color: '#4b5563' }}>
                       {[featured.mileage ? `${fmt(featured.mileage)} km` : null, featured.transmission, featured.colour].filter(Boolean).join(' · ')}
                     </p>
@@ -757,13 +874,14 @@ export default function SalesmanProfilePage() {
 
               {rest.length > 0 && (
               <div className="sp-grid">
-                {rest.map(car => {
+                {rest.map((car, i) => {
                   const img = Array.isArray(car.images) ? car.images[0] : null;
                   return (
                     <Link key={car.id} to={`/showroom/${car.slug}`} onClick={() => trackCardClick(car)} style={{ textDecoration: 'none', color: 'inherit', display: 'block', minWidth: 0 }}>
                       <div className="sp-card"
                         style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
                         <div style={{ position: 'relative', paddingTop: '65%', background: '#0a0e18', overflow: 'hidden' }}>
+                          <span style={numBadge}>#{i + 2}</span>
                           {img ? (
                             <img src={img} alt={`${car.brand} ${car.model}`} loading="lazy"
                               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -783,10 +901,11 @@ export default function SalesmanProfilePage() {
                             </p>
                           )}
                           {car.selling_price > 0 && (
-                            <p style={{ fontSize: 14, fontWeight: 700, color: '#60a5fa', marginBottom: 4 }}>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: '#60a5fa', marginBottom: 2 }}>
                               RM {fmt(car.selling_price)}
                             </p>
                           )}
+                          <MonthlyLine price={car.selling_price} size={10} />
                           <p style={{ fontSize: 10, color: '#374151' }}>
                             {[car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission].filter(Boolean).join(' · ')}
                           </p>
@@ -885,6 +1004,12 @@ export default function SalesmanProfilePage() {
 
         </div>
       </div>
+
+      {presenting && (
+        <Suspense fallback={null}>
+          <LivePresenter listings={listings} onClose={() => setPresenting(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

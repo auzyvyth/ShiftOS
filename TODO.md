@@ -70,6 +70,22 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## LIVE-1: Live presentation on the salesman mini page — 2026-10-03
+- [ ] **Apply migration `20261003a_seller_live_state.sql` after 22:00 MYT** (queued
+  under the no-DDL-in-daytime rule). Until it is applied, the presenter and the
+  monthly figures work; only the "Live now" pin on the mini page stays hidden
+  (both RPC calls swallow the missing-function error). After applying: list
+  overloads of `set_live_listing` / `get_salesman_live`, and probe as anon that
+  `set_live_listing` is refused and `get_salesman_live` returns null for a seller
+  who is not live.
+- Shipped in code: `src/components/live/LivePresenter.jsx` (owner-only button
+  "Live presentation" on `src/pages/SalesmanProfilePage.jsx`), "#N" car numbers
+  + "est. RM x/mo" on every mini-page card, "Live now" card with a WhatsApp
+  prefill ("I'm watching your live, #3"). Live-sourced taps are tagged
+  `metadata.source = 'minipage_live'` on `minipage_card_click` / `whatsapp_click`.
+- Follow-up idea: surface "leads from your live" as a count in the salesman
+  Performance tab once there is data.
+
 ## HP-EIR: loan calculators still use the abolished flat rate — logged 2026-09-26
 
 **Law (verified by search, not memory):** Hire-Purchase (Amendment) Act 2026,
