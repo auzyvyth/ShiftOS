@@ -212,7 +212,7 @@ export default function JadiSalesmanKeretaArticle() {
                 ))}
               </div>
               <p style={{ ...P, marginTop: 16, marginBottom: 0 }}>
-                Satu perkara baharu untuk 2026: Akta Sewa Beli (Pindaan) 2026 berkuat kuasa pada 1 Jun 2026 dan menggantikan kadar rata (flat rate) dengan kadar faedah efektif (EIR) atas baki berkurangan bagi perjanjian sewa beli baharu. Kalau anda masih menyebut ansuran bulanan guna formula kadar rata yang lama, angka anda mungkin salah. Gunakan <Link to="/calculator" style={LINK}>kalkulator loan</Link> sebagai anggaran, dan biar bank sahkan angka sebenar.
+                Satu perkara baharu untuk 2026: Akta Sewa Beli (Pindaan) 2026 berkuat kuasa pada 1 Jun 2026 dan menggantikan kadar rata (flat rate) dengan kadar faedah efektif (EIR) atas baki berkurangan bagi perjanjian sewa beli baharu (penjelasan penuh: <Link to="/articles/akta-sewa-beli-2026-eir-pinjaman-kereta" style={LINK}>Akta Sewa Beli 2026 dan EIR</Link>). Kalau anda masih menyebut ansuran bulanan guna formula kadar rata yang lama, angka anda mungkin salah. Gunakan <Link to="/calculator" style={LINK}>kalkulator loan</Link> sebagai anggaran, dan biar bank sahkan angka sebenar.
               </p>
             </section>
 
@@ -228,7 +228,7 @@ export default function JadiSalesmanKeretaArticle() {
                 <li><strong style={{ color: '#111827' }}>Jaga pelanggan lama.</strong> Pembeli yang puas hati akan rujuk kawan dan keluarga — sumber lead paling murah.</li>
               </ul>
               <p style={P}>
-                Untuk itulah kami bina <Link to="/for-salesmen" style={LINK}>Salesman Lite</Link>: akaun percuma (RM0, tiada kad kredit) untuk salesman dan agent kereta di Malaysia. Anda dapat page sendiri di <strong style={{ color: '#111827' }}>xdrive.my/s/namaanda</strong>, boleh senaraikan sehingga 10 kereta aktif di marketplace XDrive, dan setiap kereta ada butang WhatsApp yang terus kepada anda. Setiap pertanyaan menjadi lead dalam pipeline dengan peringatan susulan, dan analitik asas menunjukkan jumlah tontonan dan tekanan WhatsApp bagi setiap listing. Kalau stok anda melebihi 10 kereta, Salesman Premium (RM35 sebulan) menaikkan had kepada 30 listing dan menambah penjejakan komisen.
+                Untuk itulah kami bina <Link to="/for-salesmen" style={LINK}>Salesman Lite</Link>: akaun percuma (RM0, tiada kad kredit) untuk salesman dan agent kereta di Malaysia. Anda dapat page sendiri di <strong style={{ color: '#111827' }}>xdrive.my/s/namaanda</strong>, boleh senaraikan sehingga 10 kereta aktif di marketplace XDrive, dan setiap kereta ada butang WhatsApp yang terus kepada anda. Setiap pertanyaan menjadi lead dalam pipeline dengan peringatan susulan, dan analitik asas menunjukkan jumlah tontonan dan klik WhatsApp bagi setiap listing. Kalau stok anda melebihi 10 kereta, Salesman Premium (RM35 sebulan) menaikkan had kepada 30 listing dan menambah penjejakan komisen.
               </p>
             </section>
 
@@ -274,7 +274,7 @@ export default function JadiSalesmanKeretaArticle() {
                 ))}
               </div>
               <p style={P}>
-                Di XDrive, masa balas anda dalam chat diukur, bukan ditaip sendiri. Bila sudah cukup data (sekurang-kurangnya lima mesej pembeli), page anda di xdrive.my/s/namaanda menunjukkan anggaran seperti "Usually replies within 15 minutes" kepada pembeli. Bagi pengguna Salesman Premium, tab Performance menunjukkan di mana deal anda hilang dalam funnel, close rate anda dan kelajuan balas — berdasarkan rekod lead anda sendiri, bukan anggaran.
+                Bagi pengguna Salesman Premium, tab Performance menunjukkan di mana deal anda hilang dalam funnel, close rate anda dan kelajuan balas — berdasarkan rekod lead anda sendiri, bukan anggaran.
               </p>
             </section>
 

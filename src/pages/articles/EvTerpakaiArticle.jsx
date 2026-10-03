@@ -18,7 +18,7 @@ const ARTICLE = {
 const FAQS = [
   {
     q: 'Adakah waranti bateri EV boleh dipindah kepada pemilik kedua?',
-    a: 'Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera. Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar.',
+    a: 'Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025; unit 2026 mungkin berbeza). Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar.',
   },
   {
     q: 'Berapa cukai jalan kereta elektrik di Malaysia pada 2026?',
@@ -177,7 +177,7 @@ export default function EvTerpakaiArticle() {
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 12 }}>
                 <p style={{ fontWeight: 600, color: '#111827', fontSize: 15, margin: '0 0 8px' }}>Proton e.MAS 7</p>
                 <p style={{ color: '#4b5563', fontSize: 14, lineHeight: 1.7, margin: 0 }}>
-                  Bateri dan unit motor elektrik e.MAS 7 dilindungi waranti 8 tahun atau 160,000 km. Buku waranti dan servis rasmi untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang pertukaran alamat/pemilikan di belakang buku servis dan menghantarnya ke alamat yang tertera. Waranti juga bersyarat pada servis berkala yang dicop oleh pengedar sah Proton e.MAS. Menurut laporan media, polisi waranti ini tidak terpakai untuk kenderaan yang digunakan secara komersial.
+                  Bateri dan unit motor elektrik e.MAS 7 dilindungi waranti 8 tahun atau 160,000 km. Buku waranti dan servis rasmi untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang pertukaran alamat/pemilikan di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025). Unit 2026 mungkin berbeza; minta pengedar sahkan berdasarkan nombor casis. Waranti juga bersyarat pada servis berkala yang dicop oleh pengedar sah Proton e.MAS. Menurut laporan media, polisi waranti ini tidak terpakai untuk kenderaan yang digunakan secara komersial.
                 </p>
               </div>
               <p style={P}>
@@ -191,7 +191,7 @@ export default function EvTerpakaiArticle() {
                 Pengecualian cukai jalan EV sudah tamat. Mulai 1 Januari 2026, kadar fi Lesen Kenderaan Motor (LKM) untuk kenderaan elektrik ditetapkan berdasarkan kuasa motor elektrik, seperti diumumkan oleh Menteri Pengangkutan Anthony Loke. Kadar dibahagi kepada blok kuasa; blok pertama meliputi motor 1 hingga 100,000 watt, dengan kadar minimum RM20 dan maksimum RM70 setahun. Kereta dengan motor lebih berkuasa jatuh dalam blok lebih tinggi dan membayar lebih.
               </p>
               <p style={P}>
-                Jadi sebelum beli, semak kuasa motor (kW) kereta dalam geran atau spesifikasi rasmi, kemudian semak jumlah cukai jalan sebenar melalui MyJPJ. Ini lebih tepat daripada senarai di internet.
+                Jadi sebelum beli, semak kuasa motor (kW) kereta dalam spesifikasi rasmi kereta, kemudian semak jumlah cukai jalan sebenar melalui MyJPJ. Ini lebih tepat daripada senarai di internet.
               </p>
             </section>
 

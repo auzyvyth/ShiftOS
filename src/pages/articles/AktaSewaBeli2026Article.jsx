@@ -130,17 +130,17 @@ export default function AktaSewaBeli2026Article() {
 
             <section>
               <p style={P}>
-                <strong style={{ color: '#111827' }}>Mulai 1 Jun 2026, cara faedah pinjaman kereta dikira di Malaysia sudah berubah.</strong> Akta Sewa Beli (Pindaan) 2026 memansuhkan kadar rata (flat rate) dan kaedah Rule of 78. Sebagai ganti, faedah dikira atas baki pinjaman yang masih tertunggak (kaedah baki berkurangan) dan kos pinjaman dinyatakan sebagai EIR, iaitu kadar faedah efektif.
+                <strong style={{ color: '#111827' }}>Mulai 1 Jun 2026, cara faedah pinjaman kereta dikira di Malaysia sudah berubah bagi perjanjian baharu (dengan tempoh peralihan untuk bank sehingga 31 Mac 2027).</strong> Akta Sewa Beli (Pindaan) 2026 memansuhkan kadar rata (flat rate) dan kaedah Rule of 78. Sebagai ganti, faedah dikira atas baki pinjaman yang masih tertunggak (kaedah baki berkurangan) dan kos pinjaman dinyatakan sebagai EIR, iaitu kadar faedah efektif.
               </p>
               <p style={P}>
-                Untuk pembeli kereta, maksudnya mudah: angka kadar faedah dalam sebut harga kini lebih jujur, dan selesai loan kereta awal tidak lagi "menghukum" anda dengan baki faedah yang tinggi. Artikel ini menerangkan apa yang berubah, satu contoh kiraan, dan apa yang perlu anda semak sebelum menandatangani perjanjian.
+                Untuk pembeli kereta, maksudnya mudah: angka kadar faedah dalam sebut harga kini lebih jujur, dan bagi perjanjian baharu dengan kaedah baki berkurangan, selesai loan kereta awal tidak lagi "menghukum" anda dengan baki faedah yang tinggi. Artikel ini menerangkan apa yang berubah, satu contoh kiraan, dan apa yang perlu anda semak sebelum menandatangani perjanjian.
               </p>
             </section>
 
             <section>
               <h2 style={H2}>Apa Itu Akta Sewa Beli (Pindaan) 2026 dan Bila Berkuat Kuasa?</h2>
               <p style={P}>
-                Akta ini meminda Akta Sewa Beli 1967 (Akta 212), undang-undang yang mengawal perjanjian sewa beli termasuk pinjaman kereta. Pindaan ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026, seperti diumumkan oleh Kementerian Perdagangan Dalam Negeri dan Kos Sara Hidup (KPDN). KPDN kekal sebagai pihak berkuasa yang mengawal selia urusan sewa beli di bawah akta yang dipinda.
+                Akta ini meminda Akta Sewa Beli 1967 (Akta 212), undang-undang yang mengawal perjanjian sewa beli termasuk pinjaman kereta. Pindaan ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026, seperti diumumkan oleh Kementerian Perdagangan Dalam Negeri dan Kos Sara Hidup (KPDN).
               </p>
               <p style={P}>Menurut panduan pengguna Bank Negara Malaysia (BNM), perubahan utamanya ialah:</p>
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
@@ -217,7 +217,7 @@ export default function AktaSewaBeli2026Article() {
             <section>
               <h2 style={H2}>Rule of 78 dan Selesai Loan Kereta Awal</h2>
               <p style={P}>
-                Rule of 78 ialah kaedah lama untuk mengira berapa faedah yang dikira "sudah dibayar" bila anda selesaikan pinjaman awal. Kaedah ini meletakkan sebahagian besar faedah di awal tempoh. Akibatnya, dalam tahun-tahun awal, kebanyakan ansuran anda pergi kepada faedah dan hanya sedikit kepada pokok. Peminjam yang mahu selesaikan awal mendapati baki mereka masih tinggi.
+                Rule of 78 ialah kaedah lama untuk mengira berapa faedah yang dikira "sudah dibayar" bila anda selesaikan pinjaman awal. Kaedah ini meletakkan sebahagian besar faedah di awal tempoh. Akibatnya, dalam tahun-tahun awal, bahagian faedah dalam ansuran anda lebih besar dan bahagian pokok lebih kecil. Peminjam yang mahu selesaikan awal mendapati baki mereka masih tinggi.
               </p>
               <p style={P}>
                 Dengan kaedah baki berkurangan, faedah terikat kepada pokok yang masih anda hutang. Jika anda selesaikan awal, anda membayar baki pokok itu, bukan faedah masa depan yang dikira mengikut jadual Rule of 78. KPDN menyatakan perubahan ini menjadikan penyelesaian awal lebih telus dan adil kepada pengguna.
@@ -233,14 +233,14 @@ export default function AktaSewaBeli2026Article() {
                 Perjanjian sewa beli yang dibuat sebelum ini <strong style={{ color: '#111827' }}>tidak ditukar secara automatik</strong> kepada kaedah baru. Jika anda terus membayar ansuran sehingga tamat tempoh, anda tidak perlu berbuat apa-apa.
               </p>
               <p style={P}>
-                Jika anda mahu selesaikan awal, bank-bank di bawah Persatuan Bank-Bank Dalam Malaysia (ABM) menawarkan <strong style={{ color: '#111827' }}>diskaun muhibah (goodwill discount)</strong> mulai 1 Jun 2026 kepada individu serta perniagaan mikro dan kecil yang layak, bagi perjanjian kadar tetap sedia ada yang menggunakan Rule of 78. Tujuannya supaya baki penyelesaian lebih hampir dengan apa yang akan dibayar di bawah kaedah baki berkurangan. Setiap bank mengira diskaun berdasarkan ciri perjanjian anda, termasuk tempoh pembiayaan dan masa penyelesaian. Jumlah tepat diberi bila anda memohon penyelesaian awal.
+                Jika anda mahu selesaikan awal, bank-bank di bawah Persatuan Bank-Bank Dalam Malaysia (ABM), Persatuan Institusi Perbankan dan Kewangan Islam Malaysia (AIBIM) dan Persatuan Institusi Kewangan Pembangunan Malaysia (ADFIM) menawarkan <strong style={{ color: '#111827' }}>diskaun muhibah (goodwill discount)</strong> mulai 1 Jun 2026 kepada individu serta perniagaan mikro dan kecil yang layak, bagi perjanjian kadar tetap yang menggunakan Rule of 78, termasuk yang dibuat dalam tempoh peralihan sehingga 31 Mac 2027. Tujuannya supaya baki penyelesaian lebih hampir dengan apa yang akan dibayar di bawah kaedah baki berkurangan. Setiap bank mengira diskaun berdasarkan ciri perjanjian anda, termasuk tempoh pembiayaan dan masa penyelesaian. Jumlah tepat diberi bila anda memohon penyelesaian awal.
               </p>
             </section>
 
             <section>
               <h2 style={H2}>Tempoh Peralihan Sehingga 31 Mac 2027</h2>
               <p style={P}>
-                Walaupun akta berkuat kuasa 1 Jun 2026, penyedia sewa beli diberi masa sehingga 31 Mac 2027 untuk menaik taraf sistem bagi kaedah baki berkurangan dan harga dalam EIR. ABM menyatakan sesetengah bank sudah bersedia menawarkan kaedah baki berkurangan dalam tempoh peralihan ini.
+                Walaupun akta berkuat kuasa 1 Jun 2026, penyedia sewa beli diberi masa sehingga 31 Mac 2027 untuk menaik taraf sistem bagi kaedah baki berkurangan dan harga dalam EIR. Menurut KPDN (September 2026), 14 daripada 20 bank sudah menawarkan kaedah baki berkurangan, dan baki enam bank lagi komited untuk beralih sebelum 31 Disember 2026.
               </p>
               <p style={P}>
                 Maksudnya untuk anda: jika anda membeli kereta sebelum 31 Mac 2027, tanya terus kepada bank atau salesman sama ada sebut harga itu menggunakan kaedah baki berkurangan dengan EIR, atau masih kaedah lama.

@@ -209,7 +209,7 @@ export default function UrusDealershipArticle() {
                 Salesman yang menutup banyak unit dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang menutup kurang unit. Sebab itu komisen paling selamat dikira dari untung kasar. Formula dan contoh pengiraan ada di <Link to="/articles/cara-kira-komisen-salesman-kereta" style={A}>Cara Kira Komisen Salesman Kereta Dengan Betul</Link>.
               </p>
               <p style={P}>
-                Dalam ShiftOS, tab pasukan dealer memaparkan papan kedudukan salesman dengan unit terjual, untung kasar dan komisen setiap orang. Analitik hasil pula menunjukkan masa respons mengikut salesman dan perbandingan bulan ini dengan tempoh yang sama bulan lepas. Lihat <Link to="/features/salesman-performance" style={A}>ciri prestasi salesman</Link> dan <Link to="/features/revenue-analytics" style={A}>ciri analitik hasil</Link>.
+                Dalam ShiftOS, tab pasukan dealer memaparkan papan kedudukan salesman dengan unit terjual, untung kasar dan komisen setiap orang. Tab prestasi menunjukkan masa respons setiap salesman, dan papan Overview membandingkan bulan ini dengan tempoh yang sama bulan lepas. Lihat <Link to="/features/salesman-performance" style={A}>ciri prestasi salesman</Link> dan <Link to="/features/revenue-analytics" style={A}>ciri analitik hasil</Link>.
               </p>
             </section>
 
@@ -241,7 +241,7 @@ export default function UrusDealershipArticle() {
                 ShiftOS menyediakan senarai semak handover 8 langkah secara automatik untuk setiap deal yang menang: penyelesaian pinjaman, insurans pembeli, Puspakom B5, Puspakom B7, pindah milik JPJ, cukai jalan, ambil geran, dan serahan kereta. Setiap langkah ada status dan pemilik, dan kos yang direkod untuk langkah-langkah ini ditolak daripada untung kasar unit. Lihat <Link to="/features/post-sale-handover" style={A}>ciri handover selepas jual</Link>.
               </p>
               <p style={P}>
-                Selepas handover, pembeli menjadi pelanggan. Rekod pelanggan dengan tarikh tamat insurans dan cukai jalan membolehkan anda menghubungi mereka semula. ShiftOS menghantar peringatan bila tarikh ini tinggal 30 atau 7 hari.
+                Selepas handover, pembeli menjadi pelanggan. Rekod pelanggan dengan tarikh tamat insurans dan cukai jalan membolehkan anda menghubungi mereka semula. ShiftOS memberi notifikasi kepada anda bila tarikh ini tinggal 30 atau 7 hari, supaya anda boleh hubungi pelanggan.
               </p>
             </section>
 
@@ -251,7 +251,7 @@ export default function UrusDealershipArticle() {
                 Kedai kereta memegang banyak data peribadi: nama, nombor telefon, nombor IC, alamat dan butiran pinjaman. Data ini tertakluk kepada <strong style={{ color: '#111827' }}>Akta Perlindungan Data Peribadi 2010</strong>, yang menetapkan tujuh prinsip: Am, Notis dan Pilihan, Penzahiran, Keselamatan, Penyimpanan, Integriti Data, dan Akses.
               </p>
               <p style={P}>
-                Pindaan kepada akta ini yang berkuat kuasa pada 1 Jun 2025 mewajibkan pengawal data memaklumkan Pesuruhjaya Perlindungan Data Peribadi jika berlaku pelanggaran data, dan memperkenalkan kewajipan melantik Pegawai Perlindungan Data. Dari segi operasi harian, ini bermaksud: jangan simpan salinan IC pelanggan di telefon peribadi salesman atau dalam kumpulan WhatsApp, hadkan siapa boleh melihat data pelanggan, dan jangan simpan data lebih lama daripada yang perlu. Untuk keperluan tepat bagi perniagaan anda, rujuk laman rasmi Jabatan Perlindungan Data Peribadi (pdp.gov.my).
+                Pindaan kepada akta ini yang berkuat kuasa pada 1 Jun 2025 mewajibkan pengawal data memaklumkan Pesuruhjaya Perlindungan Data Peribadi jika berlaku pelanggaran data, dan mewajibkan pengawal data yang melepasi ambang tertentu (contohnya data lebih 20,000 orang, atau lebih 10,000 bagi data sensitif atau kewangan) melantik Pegawai Perlindungan Data. Dari segi operasi harian, ini bermaksud: jangan simpan salinan IC pelanggan di telefon peribadi salesman atau dalam kumpulan WhatsApp, hadkan siapa boleh melihat data pelanggan, dan jangan simpan data lebih lama daripada yang perlu. Untuk keperluan tepat bagi perniagaan anda, rujuk laman rasmi Jabatan Perlindungan Data Peribadi (pdp.gov.my).
               </p>
             </section>
 

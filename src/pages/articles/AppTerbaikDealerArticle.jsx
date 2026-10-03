@@ -18,15 +18,15 @@ const ARTICLE = {
 const FAQS = [
   {
     q: 'Apa app terbaik untuk dealer kereta terpakai di Malaysia?',
-    a: 'Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist pula sesuai untuk pemasaran, tetapi bukan untuk urus operasi dalaman.',
+    a: 'Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist kuat untuk pemasaran dan mendapatkan pembeli.',
   },
   {
     q: 'Adakah Mudah atau Carlist boleh urus stok dan jualan saya?',
-    a: 'Tidak sepenuhnya. Mudah dan Carlist ialah platform iklan untuk dapatkan pembeli, bukan software dealer kereta untuk urus stok, kos, lead dan komisen. Kebanyakan dealer guna Mudah/Carlist untuk iklan, dan app untuk dealer kereta terpakai seperti ShiftOS untuk urus operasi.',
+    a: 'Mudah dan Carlist terutamanya platform iklan. Carlist ada app dealer (iCarSuite) untuk urus listing dan lead di Carlist; semak sama ada ia meliputi kos unit, recon, komisen dan handover yang anda perlukan. Ramai dealer guna platform iklan untuk cari pembeli, dan sistem dealer seperti ShiftOS untuk urus operasi.',
   },
   {
     q: 'Ada tak software dealer kereta murah untuk dealer kecil?',
-    a: 'Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu (app salesman kereta Malaysia). Ini jauh lebih murah berbanding sistem DMS antarabangsa yang selalunya berharga ribuan ringgit sebulan.',
+    a: 'Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu. Sistem DMS antarabangsa biasanya dibina untuk pasaran luar negara dan dihargai dalam dolar AS, dan tidak meliputi aliran kerja tempatan seperti Puspakom dan pindah milik JPJ.',
   },
   {
     q: 'Perlu ke guna app khas, atau cukup dengan Excel?',
@@ -142,9 +142,9 @@ export default function AppTerbaikDealerArticle() {
                   <tbody>
                     {[
                       { opt: 'ShiftOS', use: 'Urus stok, lead, jualan, komisen & analitik', limit: 'Fokus pasaran Malaysia' },
-                      { opt: 'Mudah / Carlist', use: 'Iklan & cari pembeli', limit: 'Bukan untuk urus operasi dalaman' },
+                      { opt: 'Mudah / Carlist', use: 'Iklan & cari pembeli', limit: 'Fokus pada iklan di platform sendiri' },
                       { opt: 'Excel / Sheets', use: 'Dealer sangat kecil (<5 unit)', limit: 'Manual, mudah silap, tiada automasi' },
-                      { opt: 'DMS antarabangsa', use: 'Francais besar', limit: 'Mahal, tak sesuai konteks tempatan' },
+                      { opt: 'DMS antarabangsa', use: 'Francais besar', limit: 'Harga dalam USD; tak ikut konteks tempatan' },
                     ].map(({ opt, use, limit }, i, arr) => (
                       <tr key={opt} style={{ background: i % 2 === 1 ? '#fafafa' : '#fff' }}>
                         <td style={{ color: '#111827', fontWeight: 600, padding: '11px 14px', borderBottom: i < arr.length - 1 ? '1px solid #f3f4f6' : 'none' }}>{opt}</td>
@@ -182,10 +182,10 @@ export default function AppTerbaikDealerArticle() {
             <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Kenapa ShiftOS Sesuai Untuk Dealer Malaysia</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
-                ShiftOS dibina khas untuk aliran kerja kereta terpakai Malaysia — Puspakom B5/B7, pindah milik JPJ, pembiayaan HP, dan F&amp;I add-on. Sebagai car dealer management app Malaysia, ia menyatukan semua yang dealer perlukan tanpa kerumitan sistem antarabangsa.
+                ShiftOS dibina khas untuk aliran kerja kereta terpakai Malaysia — Puspakom B5/B7, pindah milik JPJ, pembiayaan HP, dan F&amp;I add-on. Ia menyatukan semua yang dealer perlukan tanpa kerumitan sistem antarabangsa.
               </p>
               <p style={{ color: '#4b5563', lineHeight: 1.75 }}>
-                Untuk salesman individu pula, ShiftOS menyediakan app salesman kereta Malaysia percuma untuk urus listing, lead dan komisen sendiri — pilihan ringan sebelum naik taraf ke pelan dealer penuh.
+                Untuk salesman individu pula, ShiftOS menyediakan Salesman Lite percuma untuk urus listing dan lead sendiri; penjejakan komisen ada dalam Salesman Premium (RM35/bulan) — pilihan ringan sebelum naik taraf ke pelan dealer penuh.
               </p>
             </section>
 
@@ -220,7 +220,7 @@ export default function AppTerbaikDealerArticle() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cuba App Dealer Terbaik Untuk Malaysia</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                ShiftOS — software dealer kereta Malaysia yang lengkap. Mula percuma, naik taraf bila perlu.
+                ShiftOS — software dealer kereta Malaysia yang lengkap. Cuba percuma 14 hari, atau mula dengan Salesman Lite percuma.
               </p>
               <Link to="/shiftos" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat ShiftOS

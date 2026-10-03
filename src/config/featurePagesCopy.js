@@ -11,7 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export const FEATURES = {
   "smart-inventory": {
-    metaTitle: "Sistem Urus Stok Kereta Terpakai — Used Car Inventory Software",
+    metaTitle: "Sistem Urus Stok Kereta Terpakai — Used Car Inventory",
     icon: "Car",
     kicker: "Inventory & Stock",
     titleLead: "Every unit, real cost, real profit —",
@@ -87,7 +87,7 @@ export const FEATURES = {
   },
 
   "revenue-analytics": {
-    metaTitle: "Untung Sebenar Setiap Kereta — Dealer Profit & Commission",
+    metaTitle: "Untung Sebenar Setiap Kereta — Dealer Profit Tracking",
     icon: "LineChart",
     kicker: "Revenue & Profit",
     titleLead: "Your real profit —",

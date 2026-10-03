@@ -6,5 +6,5 @@
 export const CALC_META = {
   title: "Kalkulator Loan Kereta EIR 2026 — Car Loan Calculator Malaysia | XDrive",
   description:
-    "Kira ansuran bulanan kereta ikut kadar faedah efektif (EIR) atas baki berkurangan, cara yang diwajibkan Akta Sewa Beli (Pindaan) 2026. Free car loan calculator for Malaysia.",
+    "Kira ansuran bulanan kereta ikut kadar faedah efektif (EIR) atas baki berkurangan, cara yang diwajibkan Akta Sewa Beli (Pindaan) 2026 bagi perjanjian baharu. Free car loan calculator for Malaysia.",
 };
