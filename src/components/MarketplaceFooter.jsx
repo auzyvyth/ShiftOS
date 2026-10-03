@@ -62,6 +62,7 @@ export default function MarketplaceFooter() {
         { label: 'Smart Inventory',    to: '/features/smart-inventory' },
         { label: 'Leads CRM',          to: '/features/leads-crm' },
         { label: 'Revenue Analytics',  to: '/features/revenue-analytics' },
+        { label: 'Salesman Performance', to: '/features/salesman-performance' },
         { label: 'F&I & Documents',    to: '/features/fi-documents' },
         { label: 'Post-Sale Handover', to: '/features/post-sale-handover' },
         { label: 'Partner with XDrive', href: `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with XDrive / ShiftOS for my dealership. Can we discuss?")}` },

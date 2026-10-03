@@ -7,11 +7,11 @@ import MarketplaceFooter from '../../components/MarketplaceFooter';
 
 const ARTICLE = {
   slug: 'app-terbaik-dealer-kereta-terpakai-malaysia',
-  title: 'App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2025',
+  title: 'App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2026',
   description:
-    'Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2025. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.',
+    'Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2026. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.',
   datePublished: '2026-06-22',
-  dateModified: '2026-06-22',
+  dateModified: '2026-10-03',
   readMins: 8,
 };
 
@@ -96,7 +96,7 @@ export default function AppTerbaikDealerArticle() {
             </div>
             <h1 style={{ fontSize: 'clamp(1.8rem,5vw,2.6rem)', fontWeight: 800, color: '#111827', lineHeight: 1.15, margin: '0 0 16px', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.02em' }}>
               App Terbaik Untuk Dealer<br />
-              <span style={{ color: '#dc2626' }}>Kereta Terpakai 2025</span>
+              <span style={{ color: '#dc2626' }}>Kereta Terpakai 2026</span>
             </h1>
             <p style={{ color: '#4b5563', fontSize: 16, lineHeight: 1.7, margin: '0 0 20px' }}>
               {ARTICLE.description}
@@ -121,7 +121,7 @@ export default function AppTerbaikDealerArticle() {
 
             <section>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12, fontSize: 16 }}>
-                <strong style={{ color: '#111827' }}>App terbaik untuk dealer kereta terpakai di Malaysia ialah sistem yang dibina khas untuk operasi dealer tempatan</strong> — bukan sekadar platform iklan. Pilihan terbaik 2025 ialah ShiftOS, sebuah used car dealer software Malaysia yang menggabungkan urus stok, lead CRM, komisen salesman, dokumen dan analitik dalam satu app untuk dealer kereta terpakai.
+                <strong style={{ color: '#111827' }}>App terbaik untuk dealer kereta terpakai di Malaysia ialah sistem yang dibina khas untuk operasi dealer tempatan</strong> — bukan sekadar platform iklan. Pilihan terbaik 2026 ialah ShiftOS, sebuah used car dealer software Malaysia yang menggabungkan urus stok, lead CRM, komisen salesman, dokumen dan analitik dalam satu app untuk dealer kereta terpakai.
               </p>
               <p style={{ color: '#4b5563', lineHeight: 1.75 }}>
                 Di bawah, kami bandingkan jenis-jenis pilihan secara adil supaya anda boleh pilih yang sesuai dengan saiz dan keperluan perniagaan anda.

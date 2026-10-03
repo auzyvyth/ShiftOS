@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet";
-import { FEATURES, ORDER, featureTitle } from "../config/featurePagesCopy";
+import { FEATURES, ORDER, featureMetaTitle } from "../config/featurePagesCopy";
 import {
   ArrowRight, ArrowLeft, Check, MessageCircle, ChevronRight,
   Car, Package, Wallet, Clock, Calculator, Gauge, Globe,
@@ -58,7 +58,7 @@ export default function FeaturePage() {
   return (
     <div className="fp-root">
       <Helmet>
-        <title>{`${featureTitle(data)} | ShiftOS`}</title>
+        <title>{featureMetaTitle(data)}</title>
         <meta name="description" content={data.seo} />
         <link rel="canonical" href={`https://xdrive.my/features/${slug}`} />
       </Helmet>

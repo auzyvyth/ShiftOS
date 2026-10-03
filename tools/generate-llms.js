@@ -28,6 +28,10 @@ const ARTICLES = [
   ["/articles/apa-itu-puspakom-b5-b7", "What Puspakom B5 and B7 inspections are, when each is required, and current fees."],
   ["/articles/cara-pindah-milik-kereta-mysikap", "How to transfer car ownership (pindah milik) via JPJ MySikap, step by step."],
   ["/articles/beza-kereta-recon-dan-terpakai", "The difference between recond (recon) and locally-used cars for Malaysian buyers."],
+  ["/articles/cara-urus-dealership-kedai-kereta-terpakai", "How to run a used car dealership day to day: stock age, lead follow-up, salesman performance, paperwork and handover."],
+  ["/articles/cara-jadi-salesman-kereta-freelance", "How to become a car salesman or freelance car agent in Malaysia: pay structures, skills and finding buyers."],
+  ["/articles/akta-sewa-beli-2026-eir-pinjaman-kereta", "What the Hire-Purchase (Amendment) Act 2026 changed for car loans: flat rate and Rule of 78 abolished, EIR on reducing balance."],
+  ["/articles/beli-kereta-ev-terpakai-apa-perlu-semak", "What to check before buying a used EV in Malaysia: battery health, warranty transfer, 2026 EV road tax, charging."],
 ];
 
 const CONTENT = `# XDrive

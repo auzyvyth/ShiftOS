@@ -91,6 +91,10 @@ const AppTerbaikDealerArticle = lazy(() => import("./pages/articles/AppTerbaikDe
 const KomisenSalesmanArticle = lazy(() => import("./pages/articles/KomisenSalesmanArticle"));
 const ApaItuDmsArticle   = lazy(() => import("./pages/articles/ApaItuDmsArticle"));
 const SalesAgreementArticle = lazy(() => import("./pages/articles/SalesAgreementArticle"));
+const UrusDealershipArticle = lazy(() => import("./pages/articles/UrusDealershipArticle"));
+const JadiSalesmanKeretaArticle = lazy(() => import("./pages/articles/JadiSalesmanKeretaArticle"));
+const EvTerpakaiArticle = lazy(() => import("./pages/articles/EvTerpakaiArticle"));
+const AktaSewaBeli2026Article = lazy(() => import("./pages/articles/AktaSewaBeli2026Article"));
 
 const COMPARE_PATHS = ["/", "/cars", "/showroom", "/compare"];
 
@@ -182,6 +186,10 @@ function App() {
           <Route path="/articles/cara-kira-komisen-salesman-kereta" element={<KomisenSalesmanArticle />} />
           <Route path="/articles/apa-itu-dms-dealer-kereta" element={<ApaItuDmsArticle />} />
           <Route path="/articles/cara-buat-sales-agreement-kereta-terpakai" element={<SalesAgreementArticle />} />
+          <Route path="/articles/cara-urus-dealership-kedai-kereta-terpakai" element={<UrusDealershipArticle />} />
+          <Route path="/articles/cara-jadi-salesman-kereta-freelance" element={<JadiSalesmanKeretaArticle />} />
+          <Route path="/articles/beli-kereta-ev-terpakai-apa-perlu-semak" element={<EvTerpakaiArticle />} />
+          <Route path="/articles/akta-sewa-beli-2026-eir-pinjaman-kereta" element={<AktaSewaBeli2026Article />} />
 
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
 import { Helmet } from 'react-helmet';
+import { CALC_META } from '../config/calculatorCopy';
 import { useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import MarketplaceHeader from '@/components/MarketplaceHeader';
@@ -37,8 +38,9 @@ const CalculatorPage = () => {
   return (
     <>
       <Helmet>
-        <title>{t('calculator.header.title')} | XDrive</title>
-        <meta name="description" content={t('calculator.header.subtitle')} />
+        <title>{CALC_META.title}</title>
+        <meta name="description" content={CALC_META.description} />
+        <link rel="canonical" href="https://xdrive.my/calculator" />
       </Helmet>
 
       {sub ? <Header /> : <MarketplaceHeader />}

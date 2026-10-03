@@ -43,7 +43,7 @@ const ARTICLES = [
   },
   {
     slug: 'app-terbaik-dealer-kereta-terpakai-malaysia',
-    title: 'App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2025',
+    title: 'App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2026',
     description: 'Bandingkan app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai — ciri, harga dan kelebihan setiap pilihan.',
     category: 'Urus Dealer',
     readMins: 8,
@@ -61,6 +61,34 @@ const ARTICLES = [
     description: 'Apa yang wajib ada dalam sales agreement kereta terpakai, contoh klausa, dan cara automasikan dokumen jualan guna software rekod jualan kereta.',
     category: 'Urus Dealer',
     readMins: 7,
+  },
+  {
+    slug: 'cara-urus-dealership-kedai-kereta-terpakai',
+    title: 'Cara Urus Dealership & Kedai Kereta Terpakai Setiap Hari (2026)',
+    description: 'Panduan urus dealership kereta terpakai: stok dan umur stok, follow-up lead, pantau prestasi salesman, dokumen, handover dan nombor yang perlu dilihat setiap minggu.',
+    category: 'Urus Dealer',
+    readMins: 8,
+  },
+  {
+    slug: 'akta-sewa-beli-2026-eir-pinjaman-kereta',
+    title: 'Akta Sewa Beli (Pindaan) 2026: Apa Berubah Untuk Pinjaman Kereta Anda',
+    description: 'Kadar rata dan Rule of 78 dimansuhkan, diganti EIR atas baki berkurangan. Contoh kiraan, perjanjian lama, dan apa perlu disemak dalam sebut harga loan.',
+    category: 'Kewangan',
+    readMins: 8,
+  },
+  {
+    slug: 'beli-kereta-ev-terpakai-apa-perlu-semak',
+    title: 'Beli Kereta EV Terpakai: Apa Perlu Semak Sebelum Bayar (2026)',
+    description: 'Cara semak kesihatan bateri, waranti bila pindah milik, cukai jalan EV 2026, insurans dan pengecas di rumah sebelum beli EV terpakai.',
+    category: 'Panduan Beli',
+    readMins: 8,
+  },
+  {
+    slug: 'cara-jadi-salesman-kereta-freelance',
+    title: 'Cara Jadi Salesman Kereta (Termasuk Freelance) di Malaysia 2026',
+    description: 'Beza showroom cawangan, dealer terpakai dan agent freelance, cara gaji dan komisen berfungsi, dan cara cari pembeli sendiri.',
+    category: 'Salesman',
+    readMins: 8,
   },
 ];
 
