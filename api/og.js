@@ -148,10 +148,26 @@ function carCanonical(car, seller) {
     : `${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`;
 }
 
+// dealer_id -> subdomain for every storefront dealer, so list pages link each
+// car at its canonical address instead of /showroom/<slug> (which only
+// canonicalises away and shows up as an "alternate page" in Search Console).
+// Public data, same for every request, so a short module cache is safe.
+let subsCache = { at: 0, map: new Map() };
+async function loadSubdomains() {
+  if (Date.now() - subsCache.at < 300000) return subsCache.map;
+  const rows = await sbRpc("get_subdomain_dealer_ids", {});
+  subsCache = { at: Date.now(), map: new Map(rows.filter((r) => r?.id && r.subdomain).map((r) => [r.id, r.subdomain])) };
+  return subsCache.map;
+}
+// Same rule as carCanonical, for list rows (which carry dealer_id, not a seller).
+function carHref(c) {
+  return carCanonical(c, { subdomain: subsCache.map.get(c.dealer_id) });
+}
+
 async function getRecentListings(dealerId, limit = 48) {
   const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "";
   return sbFetch(
-    `public_car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
+    `public_car_listings?status=eq.available${filter}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
 }
 
@@ -159,7 +175,7 @@ async function getRecentListings(dealerId, limit = 48) {
 // does: cars they own + cars assigned to them + dealer cars they feature via
 // salesman_listings. Owned-only missed the last two, so a salesman under a
 // dealer showed Google "New listings coming soon" over a page full of cars.
-const SALESMAN_CAR_COLS = "id,slug,brand,model,variant,year,selling_price,mileage,state,images,status";
+const SALESMAN_CAR_COLS = "id,slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images,status";
 async function getSalesmanCars(id) {
   const live = "status=in.(available,reserved)";
   const [owned, assigned, featured, stats] = await Promise.all([
@@ -186,7 +202,7 @@ async function getHubs() {
 async function getHubCars(brand, model) {
   const or = encodeURIComponent(`(${hubCarFilter(brand, model)})`);
   return sbFetch(
-    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
+    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
   );
 }
 
@@ -201,7 +217,7 @@ function buildHubHtml(hubs, brand, model, cars) {
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
     const km = c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : "";
-    return `<li><a href="${SITE_URL}/showroom/${esc(c.slug)}">${esc(name)}</a> — ${esc(price)}${esc(km)}${c.state ? ` · ${esc(c.state)}` : ""}</li>`;
+    return `<li><a href="${esc(carHref(c))}">${esc(name)}</a> — ${esc(price)}${esc(km)}${c.state ? ` · ${esc(c.state)}` : ""}</li>`;
   }).join("\n      ");
   const hubLink = (h, label) => `<li><a href="${SITE_URL}${h.path}">${esc(label)}</a> (${h.count})</li>`;
   let nav = "";
@@ -220,7 +236,7 @@ function buildHubHtml(hubs, brand, model, cars) {
         name: copy.h1,
         numberOfItems: cars.length,
         itemListElement: cars.map((c, i) => ({
-          "@type": "ListItem", position: i + 1, url: `${SITE_URL}/showroom/${c.slug}`,
+          "@type": "ListItem", position: i + 1, url: carHref(c),
           name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
         })),
       }
@@ -476,7 +492,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
     const loc = c.state ? ` · ${c.state}` : "";
-    return `<li><a href="${baseUrl}${carBase}${esc(c.slug)}">${esc(name)} — ${esc(price)}${esc(loc)}</a></li>`;
+    return `<li><a href="${esc(carHref(c))}">${esc(name)} — ${esc(price)}${esc(loc)}</a></li>`;
   }).join("\n      ");
   const itemList = {
     "@context": "https://schema.org",
@@ -484,7 +500,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     itemListElement: cars.map((c, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `${baseUrl}${carBase}${c.slug}`,
+      url: carHref(c),
       name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
     })),
   };
@@ -552,7 +568,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
       const cname = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
       const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
       const loc = c.state ? ` · ${c.state}` : "";
-      return `<li><a href="${baseUrl}/showroom/${esc(c.slug)}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
+      return `<li><a href="${esc(carHref(c))}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
     })
     .join("\n      ");
   // ProfilePage + Person: Google's documented type for a page about one
@@ -603,7 +619,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
         itemListElement: cars.map((c, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `${baseUrl}/showroom/${c.slug}`,
+          url: carHref(c),
           name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
         })),
       }
@@ -878,6 +894,8 @@ export default async function handler(req) {
   if (!isBot(ua)) {
     return new Response(null, { status: 302, headers: { Location: `${baseUrl}${pathname}` } });
   }
+
+  await loadSubdomains();
 
   const html = (h, status = 200, cache = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400") =>
     new Response(h, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
