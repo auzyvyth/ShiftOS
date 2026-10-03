@@ -419,6 +419,12 @@ RPC answer is a miss. Use `publicClient` for any public read that must not wait
 on a login.
 
 ## Deployment pipeline — 3 stages
+**Vercel builds exactly TWO branches: `main` (prod) and `staging` (the one preview).**
+`vercel.json` `git.deploymentEnabled` = `"**": false` + those two (owner, 2026-10-03:
+the free plan was being flooded by a build per session branch). Never add a branch
+to that list, never push a second preview branch, and push staging ONCE per round of
+changes, not after every commit. Session/feature branches (`claude/*`, `ccr-*`,
+`temp/*`) build nothing now — that is intended.
 ```
 local (main) → staging branch → production (main on GitHub)
 ```
@@ -1064,6 +1070,20 @@ the tab used to be, unchanged).
   as `report_listing`; `listing_snapshot.kind='seller'`).
 - `ic_verified_at` only means an IC NUMBER was typed. Only `is_verified` (granted by
   a person, `verified_by`) may be called "verified" on a public page.
+
+## Live presentation (LIVE-1) — the mini page as a live-stream tool
+`src/components/live/LivePresenter.jsx`, opened by the owner-only "Live presentation"
+button on `SalesmanProfilePage.jsx`. One car per screen, "#N", price, and a monthly
+table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
+generated. The default cell equals `calcMonthly`, so it matches the card.
+- **NEVER render a phone number, URL, QR code or messaging-app logo in the presenter.**
+  TikTok strikes / cuts a live for any of them (checked 2026-10-03). This is also why
+  the quotation poster (it prints the mini-page link) must not be the live tool.
+- The bridge is the bio link: `set_live_listing` (presenter, debounced + 4-min
+  heartbeat, 10-min window) -> `seller_live_state` -> `get_salesman_live(slug)` polled
+  by the mini page -> "Live now" card. Never let a client write that table directly.
+- "#N" is the position in the mini page's `listings` array; presenter and page share
+  the array, so do not re-sort one without the other.
 
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
