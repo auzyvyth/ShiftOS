@@ -1,0 +1,123 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- MINI-LIGHT-1 reference mockup (TODO.md). Static HTML; photos are placeholders. -->
+<style>
+
+:root{--bg:#F7F6F2;--card:#fff;--ink:#0f1115;--t1:#111827;--t2:#4b5563;--t3:#6b7280;--t4:#9ca3af;--hair:rgba(0,0,0,.06);--line:rgba(0,0,0,.12);--red:#dc2626;--sh:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.05);--sh2:0 12px 32px rgba(15,23,42,.14);--g:clamp(16px,4vw,48px);--disp:'Bebas Neue',Impact,'Arial Narrow',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);font-family:Outfit,system-ui,sans-serif;color:var(--t1);-webkit-font-smoothing:antialiased}
+.bar{background:var(--ink);height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 var(--g)}
+.wm{font-family:var(--disp);color:#fff;font-size:22px;letter-spacing:.06em}.wm b{color:var(--red);font-weight:400}
+.bar a{color:rgba(255,255,255,.72);font-size:13px;font-weight:500;text-decoration:none;display:flex;align-items:center;gap:6px}
+.shell{max-width:1360px;margin:0 auto;padding:0 var(--g)}
+/* cover: agent photo slot; fallback = the brand's warm wave horizon */
+/* Colour B (owner, 2026-10-03): colour lives in the cover fallback ONLY - sky into sand. Nothing below it is tinted. */
+.cover{height:150px;border-radius:0 0 16px 16px;background:linear-gradient(115deg,#DCE8F2 0%,#EEF0EA 45%,#F6E3CF 100%);position:relative;overflow:hidden;border:1px solid var(--hair);border-top:0}
+.cover svg{position:absolute;left:0;right:0;bottom:0;width:100%;height:70%}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--sh);border:1px solid var(--hair)}
+.id{padding:20px;margin-top:-44px;position:relative}
+.top{display:flex;align-items:flex-end;justify-content:space-between;margin-top:-64px}
+.av{width:96px;height:96px;border-radius:50%;padding:3px;background:#fff;box-shadow:0 0 0 1px var(--hair),var(--sh)}
+.av div{width:100%;height:100%;border-radius:50%;background:linear-gradient(145deg,#3a3f4a,#15171c);display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--disp);font-size:40px;letter-spacing:.02em}
+.since{font-size:11px;color:var(--t3);text-align:right;line-height:1.4}.since b{display:block;color:var(--t1);font-weight:600;font-size:12px}
+.eb{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--t3)}
+.id .eb{margin-top:16px;display:flex;align-items:center;gap:8px}.id .eb i{width:16px;height:2px;background:var(--red);display:inline-block}
+h1{font-family:var(--disp);font-size:clamp(44px,11vw,52px);line-height:.92;letter-spacing:.015em;margin-top:8px;color:var(--ink)}
+.role{font-size:14px;color:var(--t2);margin-top:8px}
+.my{font-size:13px;color:var(--t3);margin-top:2px;font-style:italic}
+.creds{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px}
+.cred{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;color:var(--t1)}
+.cred svg{width:14px;height:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);margin:18px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
+.stats div{padding:12px 0 10px;text-align:center}.stats div+div{border-left:1px solid var(--hair)}
+.n{font-family:var(--disp);font-size:32px;line-height:1;color:var(--ink);letter-spacing:.02em}.n small{font-size:18px;color:var(--t4)}
+.l{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-top:4px}
+.cta{display:flex;gap:8px;align-items:center}
+.btn{flex:1;height:48px;border-radius:10px;background:var(--red);color:#fff;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 1px 2px rgba(220,38,38,.25),inset 0 -1px 0 rgba(0,0,0,.12)}
+.btn svg{width:17px;height:17px;flex-shrink:0}.btn{white-space:nowrap}
+.ico{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--t1);background:#fff}
+.ico svg{width:18px;height:18px}
+.bio{font-size:15px;color:var(--t2);line-height:1.7;margin-top:18px;padding-top:16px;border-top:1px solid var(--hair)}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}.tag{background:#F0EEE8;color:var(--t1);font-size:12px;font-weight:500;padding:5px 9px;border-radius:4px;border:1px solid var(--hair)}
+.sec{display:flex;justify-content:space-between;align-items:flex-end;margin:40px 0 16px;gap:12px}
+h2{font-family:var(--disp);font-size:clamp(28px,3vw,40px);line-height:.95;letter-spacing:.015em;color:var(--ink)}h2 span{color:var(--t4)}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff;flex-shrink:0}.seg b,.seg s{font-size:12px;font-weight:600;padding:6px 10px;text-decoration:none}.seg b{background:var(--ink);color:#fff}.seg s{color:var(--t2)}
+.grid{display:flex;flex-wrap:wrap;gap:16px;justify-content:flex-start}
+.car{flex:1 1 280px;max-width:100%;overflow:hidden;transition:.2s}
+.car:hover{box-shadow:var(--sh2);transform:translateY(-3px)}
+.ph{aspect-ratio:4/3;position:relative;background:radial-gradient(120% 90% at 50% 20%,#F4F2EC 0%,#DCD6CA 70%,#CFC8BA 100%);display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+.ph svg.carsil{width:78%;margin-bottom:12%;opacity:.9}
+.ph .floor{position:absolute;left:0;right:0;bottom:0;height:22%;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.06))}
+.ov{position:absolute;background:rgba(15,17,21,.78);color:#fff;font-size:11px;font-weight:600;padding:4px 7px;border-radius:4px}
+.ov.tl{left:10px;top:10px}.ov.br{right:10px;bottom:10px;display:flex;gap:5px;align-items:center}
+.cb{padding:14px 16px 16px}
+.cn{font-size:15px;font-weight:600;line-height:1.3}
+.cs{display:flex;gap:10px;font-size:12px;color:var(--t3);margin-top:6px;font-variant-numeric:tabular-nums}
+.cs span+span:before{content:'';display:inline-block;width:3px;height:3px;border-radius:50%;background:var(--t4);margin-right:10px;vertical-align:middle}
+.pr{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--hair)}
+.pr b{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--ink)}
+.st{font-size:12px;color:var(--t2);display:flex;align-items:center;gap:6px}.st i{width:6px;height:6px;border-radius:50%;background:#15803d}
+.duo{display:grid;gap:16px}
+.map .mp{height:150px;background:#EDEAE3;position:relative;overflow:hidden}
+.map .mp svg{position:absolute;inset:0;width:100%;height:100%}
+.ml{padding:14px 16px;display:flex;justify-content:space-between;align-items:center}.ml b{font-size:14px;font-weight:600}.ml span{font-size:13px;font-weight:600;color:var(--t1);text-decoration:underline;text-underline-offset:3px}
+.rv{padding:20px}.stars{color:#111827;letter-spacing:2px;font-size:14px}.score{display:flex;align-items:baseline;gap:10px}.score b{font-family:var(--disp);font-size:44px;line-height:1;color:var(--ink)}
+.q{font-size:15px;line-height:1.6;color:var(--t1);margin-top:14px;padding-top:14px;border-top:1px solid var(--hair)}.qa{font-size:12px;color:var(--t3);margin-top:8px}
+.foot{text-align:center;font-size:12px;color:var(--t3);padding:40px 0 110px}.foot b{color:var(--t1)}
+.sticky{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.98);border-top:1px solid var(--hair);box-shadow:0 -8px 24px rgba(15,23,42,.06);padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center}
+.sticky .mini{width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#3a3f4a,#15171c);color:#fff;font-family:var(--disp);font-size:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sticky .who{flex:1;min-width:0;font-size:12px;color:var(--t3)}.sticky .who b{display:block;color:var(--t1);font-size:14px;font-weight:600}
+.sticky .btn{flex:0 0 auto;padding:0 20px;height:44px;font-size:14px}
+@media(min-width:1024px){.cover{height:220px}.cols{display:grid;grid-template-columns:400px minmax(0,1fr);gap:48px;align-items:start}.left{position:sticky;top:20px}.sticky{display:none}.foot{padding-bottom:48px}.duo{grid-template-columns:1fr 1fr}.id{padding:24px}.car{flex:0 0 calc(50% - 8px);max-width:calc(50% - 8px)}}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="car" viewBox="0 0 240 90"><path fill="#fff" fill-opacity=".92" d="M18 62c0-6 3-10 9-12l22-6c10-14 26-26 56-27 30-1 50 8 68 22l30 6c12 2 19 8 19 17v6c0 3-2 5-5 5h-15a19 19 0 0 0-37 0H80a19 19 0 0 0-37 0H24c-4 0-6-2-6-5z"/><path fill="#111827" fill-opacity=".14" d="M60 44c12-12 25-19 45-20v20zm52 0V24c20 1 33 7 46 20z"/><circle cx="61" cy="74" r="13" fill="#2b2f37"/><circle cx="61" cy="74" r="6" fill="#9ca3af"/><circle cx="180" cy="74" r="13" fill="#2b2f37"/><circle cx="180" cy="74" r="6" fill="#9ca3af"/></symbol>
+<symbol id="wa" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.8-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/></symbol>
+<symbol id="ig" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/></symbol>
+<symbol id="tt" viewBox="0 0 24 24"><path fill="currentColor" d="M16.6 5.8A4.3 4.3 0 0 1 15.5 3h-3.1v12.4a2.6 2.6 0 1 1-2.6-2.6c.3 0 .5 0 .8.1V9.7a5.7 5.7 0 1 0 4.9 5.7V9a7.4 7.4 0 0 0 4.3 1.4V7.3a4.3 4.3 0 0 1-3.2-1.5z"/></symbol>
+<symbol id="ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#111827"/><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="clk" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="#111827" stroke-width="2"/><path d="M12 7v5l3 2" stroke="#111827" stroke-width="2" fill="none" stroke-linecap="round"/></symbol>
+<symbol id="pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z" fill="none" stroke="#111827" stroke-width="2"/><circle cx="12" cy="10" r="2.5" fill="#111827"/></symbol>
+<symbol id="cam" viewBox="0 0 24 24"><path d="M4 7h3l2-3h6l2 3h3v13H4z" fill="none" stroke="#fff" stroke-width="2"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="#fff" stroke-width="2"/></symbol>
+</defs></svg>
+
+<div class="bar"><div class="wm">X<b>D</b>RIVE</div><a href="#">Browse all cars &rsaquo;</a></div>
+<div class="shell">
+<div class="cover"><svg viewBox="0 0 1200 160" preserveAspectRatio="none"><path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fill-opacity=".85"/><path d="M0 110 C350 60 750 150 1200 90 V160 H0z" fill="#EDE5D8"/><path d="M0 135 C400 105 800 160 1200 125 V160 H0z" fill="#F7F6F2"/></svg></div>
+<div class="cols">
+<div class="left">
+ <div class="card id">
+  <div class="top"><div class="av"><div>A</div></div><p class="since"><b>Since Aug 2026</b>on XDrive</p></div>
+  <p class="eb"><i></i>Independent agent · Penang</p>
+  <h1>Auzyvyth</h1>
+  <p class="role">Car Sales Agent, Sungai Jawi</p>
+  <p class="my">Ejen kereta di Sungai Jawi, Penang</p>
+  <div class="creds">
+   <span class="cred"><svg><use href="#ok"/></svg>ID verified</span>
+   <span class="cred"><svg><use href="#clk"/></svg>Replies in ~1 hour</span>
+  </div>
+  <div class="stats"><div><p class="n">3</p><p class="l">For sale</p></div><div><p class="n">14</p><p class="l">Sold</p></div><div><p class="n">4.8<small>/5</small></p><p class="l">12 reviews</p></div></div>
+  <div class="cta"><div class="btn"><svg><use href="#wa"/></svg>WhatsApp Auzyvyth</div><div class="ico"><svg><use href="#ig"/></svg></div><div class="ico"><svg><use href="#tt"/></svg></div></div>
+  <p class="bio">Selling recon Toyota Alphard, Vellfire and Lexus RX. WhatsApp me for custom enquiries.</p>
+  <div class="tags"><span class="tag">Recon imports</span><span class="tag">Alphard / Vellfire</span><span class="tag">Lexus</span></div>
+ </div>
+</div>
+<div class="right">
+ <div class="sec"><h2>Cars for sale <span>3</span></h2><div class="seg"><b>Newest</b><s>Price</s></div></div>
+ <div class="grid">
+  <div class="card car"><div class="ph"><span class="ov tl">Used</span><svg class="carsil"><use href="#car"/></svg><div class="floor"></div><span class="ov br"><svg width="12" height="12"><use href="#cam"/></svg>9</span></div><div class="cb"><p class="cn">2023 Lexus RX 350 2.4L Turbo F-Sport</p><p class="cs"><span>47,225 km</span><span>Kuala Lumpur</span></p><div class="pr"><b>RM 305,000</b><span class="st"><i></i>Available</span></div></div></div>
+  <div class="card car"><div class="ph"><span class="ov tl">Recon</span><svg class="carsil"><use href="#car"/></svg><div class="floor"></div><span class="ov br"><svg width="12" height="12"><use href="#cam"/></svg>7</span></div><div class="cb"><p class="cn">2025 Toyota Alphard 2.5L Z</p><p class="cs"><span>1,819 km</span><span>Kuala Lumpur</span></p><div class="pr"><b>RM 295,000</b><span class="st"><i></i>Available</span></div></div></div>
+  <div class="card car"><div class="ph"><span class="ov tl">Recon</span><svg class="carsil"><use href="#car"/></svg><div class="floor"></div><span class="ov br"><svg width="12" height="12"><use href="#cam"/></svg>15</span></div><div class="cb"><p class="cn">2023 Lexus RX 350 2.4L (T) F-Sport</p><p class="cs"><span>12,000 km</span><span>Kuala Lumpur</span></p><div class="pr"><b>RM 310,000</b><span class="st"><i></i>Available</span></div></div></div>
+ </div>
+ <div class="duo">
+  <div><div class="sec"><h2>Find me</h2></div>
+   <div class="card map" style="overflow:hidden"><div class="mp"><svg viewBox="0 0 400 150" preserveAspectRatio="xMidYMid slice"><path d="M-10 100 Q120 60 220 95 T420 70" stroke="#fff" stroke-width="10" fill="none"/><path d="M80 -10 L130 160" stroke="#fff" stroke-width="6"/><path d="M260 -10 Q240 80 300 160" stroke="#fff" stroke-width="6" fill="none"/><path d="M-10 30 L410 45" stroke="#F7F6F2" stroke-width="4"/><circle cx="200" cy="80" r="9" fill="#dc2626"/><circle cx="200" cy="80" r="3.5" fill="#fff"/></svg></div>
+   <div class="ml"><b>Sungai Jawi, Penang</b><span>Directions</span></div></div></div>
+  <div><div class="sec"><h2>Reviews</h2></div>
+   <div class="card rv"><div class="score"><b>4.8</b><span class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</span></div><p style="font-size:12px;color:var(--t3);margin-top:4px">From 12 buyers on XDrive</p>
+   <p class="q">"Straight answers on the Alphard's history, and the paperwork was done in a week."</p><p class="qa">Verified buyer · Sep 2026</p></div></div>
+ </div>
+</div></div>
+<p class="foot">Auzyvyth sells through <b>XDrive</b> · Browse all used cars</p>
+</div>
+<div class="sticky"><div class="mini">A</div><div class="who"><b>Auzyvyth</b>Replies in ~1 hour</div><div class="btn"><svg><use href="#wa"/></svg>WhatsApp</div></div>
+</body></html>

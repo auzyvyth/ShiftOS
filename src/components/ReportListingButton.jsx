@@ -18,6 +18,9 @@ import { useDialogA11y } from '../hooks/useDialogA11y';
  *
  * Props:
  *   listingId string  — car_listings.id
+ *   sellerId  string  — profiles.id of an agent. Set INSTEAD of listingId to
+ *                       report the agent from their page (/s/:slug); goes
+ *                       through report_seller(), same table, same 3-per-24h cap.
  *   th        object  — page theme tokens (CarDetailPage runs light on xdrive.my
  *                       and dark on dealer subdomains, so colours come from here)
  *   variant   'icon' | 'link' — 'icon' is a small unlabelled flag that sits
@@ -41,14 +44,28 @@ const REASONS = [
   { key: 'other',           label: 'Something else' },
 ];
 
+// An agent has no "sold elsewhere" or "duplicate" — those are about one car.
+const AGENT_REASONS = ['wrong_info', 'scam_suspicious', 'offensive', 'other'];
+
 const ERRORS = {
   rate_limited:     'You have reached the limit of 3 reports in 24 hours. Please try again tomorrow.',
   already_reported: 'You have already reported this listing. We are looking into it.',
   not_signed_in:    'Please sign in to report a listing.',
   listing_not_found:'This listing is no longer available.',
 };
+const AGENT_ERRORS = {
+  ...ERRORS,
+  already_reported:   'You have already reported this agent. We are looking into it.',
+  not_signed_in:      'Please sign in to report an agent.',
+  seller_not_found:   'This agent page is no longer available.',
+  cannot_report_self: 'This is your own page.',
+};
 
-export default function ReportListingButton({ listingId, th, variant = 'link' }) {
+export default function ReportListingButton({ listingId, sellerId, th, variant = 'link' }) {
+  const isAgent = !listingId && !!sellerId;
+  const noun = isAgent ? 'agent' : 'listing';
+  const errors = isAgent ? AGENT_ERRORS : ERRORS;
+  const reasons = isAgent ? REASONS.filter((r) => AGENT_REASONS.includes(r.key)) : REASONS;
   const [open, setOpen]       = useState(false);
   const [session, setSession] = useState(null);
   const [reason, setReason]   = useState('');
@@ -75,7 +92,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
     setReason(''); setNote(''); setError(''); setDone(false);
   };
 
-  const dialog = useDialogA11y(open, close, 'Report this listing');
+  const dialog = useDialogA11y(open, close, `Report this ${noun}`);
 
   const signIn = async () => {
     sessionStorage.setItem('post_auth_return', window.location.href);
@@ -89,21 +106,19 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
   const submit = async () => {
     if (!reason || busy) return;
     setBusy(true); setError('');
-    const { error: rpcError } = await supabase.rpc('report_listing', {
-      p_listing_id: listingId,
-      p_reason: reason,
-      p_note: note.trim() || null,
-    });
+    const { error: rpcError } = isAgent
+      ? await supabase.rpc('report_seller', { p_seller_id: sellerId, p_reason: reason, p_note: note.trim() || null })
+      : await supabase.rpc('report_listing', { p_listing_id: listingId, p_reason: reason, p_note: note.trim() || null });
     setBusy(false);
     if (rpcError) {
-      const code = Object.keys(ERRORS).find(k => rpcError.message?.includes(k));
-      setError(code ? ERRORS[code] : 'Could not send the report. Please try again.');
+      const code = Object.keys(errors).find(k => rpcError.message?.includes(k));
+      setError(code ? errors[code] : 'Could not send the report. Please try again.');
       return;
     }
     setDone(true);
   };
 
-  if (!listingId) return null;
+  if (!listingId && !sellerId) return null;
 
   return (
     <>
@@ -113,8 +128,8 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
       {variant === 'icon' ? (
         <button
           onClick={(e) => { e.stopPropagation(); setOpen(true); }}
-          aria-label="Report this listing"
-          title="Report this listing"
+          aria-label={`Report this ${noun}`}
+          title={`Report this ${noun}`}
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 26, height: 26, borderRadius: '50%', padding: 0,
@@ -136,7 +151,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
           }}
         >
           <Flag size={12} />
-          Report this listing
+          {`Report this ${noun}`}
         </button>
       )}
 
@@ -164,7 +179,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: th?.text || '#e2e8f0', fontFamily: 'var(--xd-font-body)' }}>
-                {done ? 'Report sent' : 'Report this listing'}
+                {done ? 'Report sent' : `Report this ${noun}`}
               </p>
               <button onClick={close} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: th?.textMuted || '#64748b', display: 'flex', padding: 2 }}>
                 <X size={16} />
@@ -176,7 +191,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, marginBottom: 16 }}>
                   <Check size={15} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }} />
                   <p style={{ margin: 0, fontSize: 13, color: th?.textSec || '#94a3b8', lineHeight: 1.6, fontFamily: 'var(--xd-font-body)' }}>
-                    Thanks — our team will review this listing. We do not share who reported a listing with the seller.
+                    {`Thanks — our team will review this ${noun}. We do not share who reported it with the seller.`}
                   </p>
                 </div>
                 <button
@@ -189,7 +204,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
             ) : !session ? (
               <div style={{ paddingTop: 10 }}>
                 <p style={{ margin: '0 0 16px', fontSize: 13, color: th?.textSec || '#94a3b8', lineHeight: 1.6, fontFamily: 'var(--xd-font-body)' }}>
-                  Sign in to report a listing. This keeps reports accountable and stops false reports being used against sellers.
+                  {`Sign in to report this ${noun}. This keeps reports accountable and stops false reports being used against sellers.`}
                 </p>
                 <button
                   onClick={signIn}
@@ -205,7 +220,7 @@ export default function ReportListingButton({ listingId, th, variant = 'link' })
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 14 }}>
-                  {REASONS.map(r => {
+                  {reasons.map(r => {
                     const active = reason === r.key;
                     return (
                       <label

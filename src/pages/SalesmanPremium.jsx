@@ -15,6 +15,7 @@ import { placeTourCard } from "../utils/tourPlacement";
 import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
+import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
@@ -537,7 +538,6 @@ export default function SalesmanPremium() {
  // Public-profile extras — a Premium-only addition over Lite (which has no
  // editor for these at all yet; only the linked-salesman panel does).
  bio: "",
- response_time: "",
  specializations: [],
  // Selling terms buyers see on every listing this agent owns.
  deposit_policy: "",
@@ -899,7 +899,6 @@ export default function SalesmanPremium() {
  facebook: profile.facebook || "",
  website: profile.website || "",
  bio: profile.bio || "",
- response_time: profile.response_time || "",
  specializations: profile.specializations || [],
  deposit_policy: profile.deposit_policy || "",
  deposit_terms: profile.deposit_terms || "",
@@ -4895,7 +4894,6 @@ export default function SalesmanPremium() {
  facebook: settingsForm.facebook || null,
  website: settingsForm.website || null,
  bio: settingsForm.bio || null,
- response_time: settingsForm.response_time || null,
  telegram_chat_id: (settingsForm.telegram_chat_id || "").trim() || null,
  specializations,
  deposit_policy: settingsForm.deposit_policy || null,
@@ -5070,10 +5068,6 @@ export default function SalesmanPremium() {
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown below your name on your public page, with a "Read more" toggle.</p>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Response Time</label>
- <input value={settingsForm.response_time} onChange={(e) => setSettingsForm((p) => ({ ...p, response_time: e.target.value }))} placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
- </div>
- <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Specializations</label>
  {settingsForm.specializations.length > 0 && (
  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
@@ -5096,6 +5090,13 @@ export default function SalesmanPremium() {
  </div>
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
  </div>
+ {/* Live Google result preview — reads the unsaved form, so the effect of
+ a name or bio edit shows before saving. Same code as api/og.js. */}
+ <AgentSearchPreview
+ profile={settingsForm}
+ slug={profile?.slug}
+ carCount={myListings.filter((l) => l.status === "available" || l.status === "reserved").length}
+ />
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
  <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />

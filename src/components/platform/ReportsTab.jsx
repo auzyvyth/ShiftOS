@@ -138,6 +138,19 @@ export default function ReportsTab() {
                 )}
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12, marginBottom: 14 }}>
+                  {/* report_seller() rows: no listing, the agent's page is the subject. */}
+                  {snap.kind === "seller" ? (
+                  <div>
+                    <p style={{ margin: "0 0 3px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.09em", color: "#6b7280", fontWeight: 700 }}>Agent page</p>
+                    <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", fontWeight: 600 }}>{snap.name || "Agent"}</p>
+                    {snap.slug && (
+                      <a href={`/s/${snap.slug}`} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 11, color: "#f87171", textDecoration: "none", fontWeight: 600 }}>
+                        Open agent page →
+                      </a>
+                    )}
+                  </div>
+                  ) : (
                   <div>
                     <p style={{ margin: "0 0 3px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.09em", color: "#6b7280", fontWeight: 700 }}>Listing</p>
                     <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", fontWeight: 600 }}>{carName}</p>
@@ -155,6 +168,7 @@ export default function ReportsTab() {
                       </a>
                     )}
                   </div>
+                  )}
                   <div>
                     <p style={{ margin: "0 0 3px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.09em", color: "#6b7280", fontWeight: 700 }}>Seller</p>
                     <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0" }}>{r.dealer_name || "—"}</p>
