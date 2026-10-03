@@ -5,6 +5,7 @@ import { supabase } from '../../supabaseClient';
 import {
   monthlyPayment, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
 } from '../../utils/financing';
+import { salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE } from '../../utils/liveMaths';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -20,6 +21,19 @@ import {
 // lives, generated for every car: deposit rows x tenure columns. One formula
 // (financing.js). The default cell (10% down, 7 years) is the same estimate
 // the mini page card shows, so the two never disagree.
+//
+// Tap any cell and it becomes the answer card: one big number a camera can
+// read, with the deposit, tenure, rate and a take-home-pay guide (35% rule,
+// shown with the rule). The rate can be typed FLAT, the way brochures quote
+// it, and is converted to EIR per tenure (liveMaths.eirForTenure).
+//
+// Cars above HIGH_VALUE_THRESHOLD get the table HERE ONLY (owner's call,
+// 2026-10-03: a seller on a live is asked about them too), labelled as a rough
+// guide. calcMonthly and the mini page card still say "financing on request".
+//
+// Leaving after a minute or more shows the live report: counts from the
+// seller's own analytics rows in the live window. Counts only, never a buyer's
+// name — the report may still be on stream.
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 const TENURES = [5, 7, MAX_TENURE_YEARS];
@@ -27,15 +41,20 @@ const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
 const DOWN_ROWS = [DEFAULT_DOWN, 20, 30];
 const DEFAULT_TENURE = 7;
 const HEARTBEAT_MS = 4 * 60 * 1000; // live_until window is 10 min server-side
+const REPORT_MIN_MS = 60 * 1000;     // a quick peek at the presenter is not a live
 
 const carName = (c) => [c.year, c.brand, c.model].filter(Boolean).join(' ');
 
-export default function LivePresenter({ listings, onClose }) {
+export default function LivePresenter({ listings, slug, sellerId, onClose }) {
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [eir, setEir] = useState(String(DEFAULT_EIR));
+  const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
   const [customDown, setCustomDown] = useState('');
+  const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
+  const [report, setReport] = useState(null); // null = presenting; {loading} | result
+  const startedAt = useRef(new Date());
   const touchX = useRef(null);
 
   const car = listings[idx] || null;
@@ -48,6 +67,34 @@ export default function LivePresenter({ listings, onClose }) {
     setImgIdx(0);
   }, [listings.length]);
 
+  // Exit: a live of a minute or more ends on its report; a peek just closes.
+  const finish = useCallback(async () => {
+    const endedAt = new Date();
+    if (endedAt - startedAt.current < REPORT_MIN_MS || !slug) { onClose(); return; }
+    setReport({ loading: true });
+    const since = startedAt.current.toISOString();
+    const [ev, ld] = await Promise.all([
+      supabase.from('analytics_events')
+        .select('event_type,session_id,car_id')
+        .eq('salesman_slug', slug)
+        .gte('created_at', since)
+        .in('event_type', ['minipage_view', 'minipage_card_click', 'whatsapp_click'])
+        .limit(5000),
+      sellerId
+        ? supabase.from('leads').select('id', { count: 'exact', head: true })
+          .eq('salesman_id', sellerId).gte('created_at', since)
+        : Promise.resolve({ error: true }),
+    ]).catch(() => [{ error: true }, { error: true }]);
+    setReport({
+      ...liveReport({
+        events: ev.error ? [] : ev.data,
+        newLeads: ld.error ? undefined : ld.count,
+        listings, startedAt: startedAt.current, endedAt,
+      }),
+      eventsFailed: !!ev.error,
+    });
+  }, [slug, sellerId, listings, onClose]);
+
   // Overlay rules 1+2: portalled, body scroll locked while open.
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -58,13 +105,14 @@ export default function LivePresenter({ listings, onClose }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.target?.tagName === 'INPUT') return;
+      if (report) { if (e.key === 'Escape') onClose(); return; }
       if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
-      else if (e.key === 'Escape') onClose();
+      else if (e.key === 'Escape') finish();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose]);
+  }, [go, onClose, finish, report]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -85,7 +133,11 @@ export default function LivePresenter({ listings, onClose }) {
   // five cars is one write; heartbeat keeps the 10-minute window open; closing
   // clears it. Errors are ignored on purpose: the presenter must keep working
   // even if the sync is down (or before migration 20261003a is applied).
-  const carId = car?.id || null;
+  // The report screen means the live is over: stop pinning the car right away.
+  const carId = report ? null : (car?.id || null);
+  useEffect(() => {
+    if (report) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
+  }, [report]);
   useEffect(() => {
     if (!carId) return undefined;
     const push = () => { supabase.rpc('set_live_listing', { p_listing_id: carId }).then(() => {}, () => {}); };
@@ -107,12 +159,24 @@ export default function LivePresenter({ listings, onClose }) {
 
   if (!car) return null;
 
-  const custom = Number(customDown) || 0;
+  // Typed deposit, 0 included: "no deposit" is the most-asked question on a live.
+  const custom = customDown === '' ? null : Math.max(0, Number(customDown) || 0);
   const rows = [
-    ...(custom > 0 && custom < price ? [{ key: 'c', label: `RM ${fmt(custom)}`, down: custom, custom: true }] : []),
+    ...(custom !== null && custom < price
+      ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : 'No deposit', down: custom, custom: true }] : []),
     ...DOWN_ROWS.map((pct) => ({ key: pct, down: price * pct / 100 })),
   ];
-  const financeable = price > 0 && price <= HIGH_VALUE_THRESHOLD;
+  const financeable = price > 0;
+  const highValue = price > HIGH_VALUE_THRESHOLD;
+  const rateFor = (y) => eirForTenure(rate, basis, y);
+  const monthlyFor = (down, y) => monthlyPayment(price - down, rateFor(y), y * 12);
+  const picked = rows.find((r) => r.key === pick.row) || rows.find((r) => r.key === DEFAULT_DOWN);
+  const pickYears = TENURES.includes(pick.years) ? pick.years : DEFAULT_TENURE;
+  const answer = financeable ? monthlyFor(picked.down, pickYears) : 0;
+  const salary = salaryGuide(answer);
+  const rateText = basis === 'flat'
+    ? `${fmtRate(rate)}% flat (${fmtRate(rateFor(pickYears))}% EIR)`
+    : `${fmtRate(rate)}% EIR`;
 
   return createPortal(
     <div className="lp">
@@ -160,6 +224,26 @@ export default function LivePresenter({ listings, onClose }) {
         .lp-nav { display: flex; gap: 12px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid rgba(0,0,0,.06); }
         .lp-navbtn { flex: 1; height: 52px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-navbtn.lp-next { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .lp-table td.lp-cell { cursor: pointer; border-radius: 8px; }
+        .lp-table td.lp-cell:hover { background: rgba(15,17,21,.05); }
+        .lp-table td.lp-cell.lp-def:hover { background: #0f1115; }
+        .lp-answer { padding: 20px; }
+        .lp-big { font-size: clamp(48px, 13vw, 76px); font-weight: 800; line-height: 1; letter-spacing: -.02em; color: #0f1115; margin: 0; font-variant-numeric: tabular-nums; }
+        .lp-big span { font-size: .32em; font-weight: 600; letter-spacing: 0; color: #6b7280; margin-left: 6px; }
+        .lp-terms { font-size: clamp(15px, 3.6vw, 18px); font-weight: 600; color: #374151; margin: 10px 0 0; font-variant-numeric: tabular-nums; }
+        .lp-salary { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(0,0,0,.06); }
+        .lp-salary b { display: block; font-size: clamp(17px, 4vw, 22px); font-weight: 700; color: #0f1115; font-variant-numeric: tabular-nums; }
+        .lp-salary span { display: block; font-size: 12px; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+        .lp-seg { grid-column: 1 / -1; display: flex; gap: 6px; padding: 4px; background: #F1EFEA; border-radius: 10px; }
+        .lp-seg button { flex: 1; height: 36px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #4b5563; cursor: pointer; }
+        .lp-seg button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
+        .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
+        .lp-report { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; max-width: 640px; width: 100%; margin: 0 auto; }
+        .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #0f1115; margin: 0; }
+        .lp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .lp-tile { padding: 16px; }
+        .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
+        .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
         @media (min-width: 900px) and (orientation: landscape) {
           .lp-body { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-auto-rows: max-content; padding: 24px; gap: 24px; align-items: start; align-content: start; }
           .lp-photo { grid-row: span 3; aspect-ratio: 4 / 3; }
@@ -168,15 +252,18 @@ export default function LivePresenter({ listings, onClose }) {
 
       {/* Top bar: position + controls. Deliberately no seller name or contact. */}
       <div className="lp-top">
-        <span className="lp-count">Car {idx + 1} of {listings.length}</span>
+        <span className="lp-count">{report ? 'Live ended' : `Car ${idx + 1} of ${listings.length}`}</span>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label="Adjust financing" aria-pressed={adjustOpen}>
-            <SlidersHorizontal size={17} />
-          </button>
-          <button className="lp-iconbtn" onClick={onClose} aria-label="Exit live presentation"><X size={18} /></button>
+          {!report && (
+            <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label="Adjust financing" aria-pressed={adjustOpen}>
+              <SlidersHorizontal size={17} />
+            </button>
+          )}
+          <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label="Exit live presentation"><X size={18} /></button>
         </div>
       </div>
 
+      {report ? <LiveReport report={report} onDone={onClose} /> : (<>
       <div className="lp-body" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {/* Photo: tap the left / right third to step through this car's photos. */}
         <div className="lp-photo lp-card">
@@ -207,20 +294,47 @@ export default function LivePresenter({ listings, onClose }) {
 
         {adjustOpen && (
           <div className="lp-card lp-adjust">
+            <div className="lp-seg" role="group" aria-label="How the rate is quoted">
+              <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
+              <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>Flat (brochure)</button>
+            </div>
             <label>
-              Rate (EIR % a year)
-              <input type="number" inputMode="decimal" step="0.1" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
+              {basis === 'flat' ? 'Rate (flat % a year)' : 'Rate (EIR % a year)'}
+              <input type="number" inputMode="decimal" step="0.01" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
             </label>
             <label>
               Custom deposit (RM)
-              <input type="number" inputMode="numeric" min="0" placeholder="e.g. 5000" value={customDown} onChange={(e) => setCustomDown(e.target.value)} />
+              <input type="number" inputMode="numeric" min="0" placeholder="0 = no deposit" value={customDown}
+                onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
             </label>
+            {basis === 'flat' && (
+              <p className="lp-hint">
+                Type the bank's flat rate as quoted. Flat rates were abolished for new loans on
+                1 June 2026, so the table works it out as EIR: {TENURES.map((y) => `${y} yrs ${fmtRate(rateFor(y))}%`).join(', ')}.
+              </p>
+            )}
           </div>
         )}
 
-        {financeable ? (
-          <div className="lp-card lp-fin">
+        {financeable && (
+          <div className="lp-card lp-answer">
             <p className="lp-eb"><i />Monthly instalment</p>
+            <p className="lp-big">RM {fmt(answer)}<span>/month</span></p>
+            <p className="lp-terms">
+              {picked.down > 0 ? `RM ${fmt(picked.down)} down` : 'No deposit'} · {pickYears} years · {rateText}
+            </p>
+            {salary && (
+              <div className="lp-salary">
+                <b>Take-home pay needed: about RM {fmt(salary)}</b>
+                <span>Rough guide: instalment at {Math.round(SALARY_SHARE * 100)}% of take-home pay. The bank decides.</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {financeable && (
+          <div className="lp-card lp-fin">
+            <p className="lp-eb"><i />Tap a number to show it big</p>
             <table className="lp-table">
               <thead>
                 <tr>
@@ -235,10 +349,12 @@ export default function LivePresenter({ listings, onClose }) {
                       {r.custom ? <b>{r.label}</b> : <><b>{r.key}%</b>RM {fmt(r.down)}</>}
                     </td>
                     {TENURES.map((y) => {
-                      const isDefault = !r.custom && r.key === DEFAULT_DOWN && y === DEFAULT_TENURE;
+                      const on = r.key === picked.key && y === pickYears;
                       return (
-                        <td key={y} className={isDefault ? 'lp-def' : undefined}>
-                          {fmt(monthlyPayment(price - r.down, rate, y * 12))}
+                        <td key={y} className={on ? 'lp-cell lp-def' : 'lp-cell'}
+                          onClick={() => setPick({ row: r.key, years: y })}
+                          role="button" aria-pressed={on}>
+                          {fmt(monthlyFor(r.down, y))}
                         </td>
                       );
                     })}
@@ -246,14 +362,17 @@ export default function LivePresenter({ listings, onClose }) {
                 ))}
               </tbody>
             </table>
-            <p className="lp-note">RM per month. Estimate at {rate}% EIR a year, reducing balance. Subject to bank approval.</p>
+            <p className="lp-note">
+              RM per month, reducing balance.{' '}
+              {basis === 'flat'
+                ? `${fmtRate(rate)}% flat worked out as EIR per tenure.`
+                : `Estimate at ${fmtRate(rate)}% EIR a year.`}{' '}
+              {highValue
+                ? 'Above RM300k banks decide case by case, often with a bigger deposit or shorter tenure, so treat this as a rough guide.'
+                : 'Subject to bank approval.'}
+            </p>
           </div>
-        ) : price > HIGH_VALUE_THRESHOLD ? (
-          <div className="lp-card lp-fin">
-            <p className="lp-eb"><i />Monthly instalment</p>
-            <p style={{ fontSize: 15, color: '#4b5563', margin: 0 }}>Financing on request for this car.</p>
-          </div>
-        ) : null}
+        )}
       </div>
 
       {/* Big prev / next: a seller talking to camera needs a target they can hit blind. */}
@@ -263,7 +382,41 @@ export default function LivePresenter({ listings, onClose }) {
           <button className="lp-navbtn lp-next" onClick={() => go(1)}>#{((idx + 1) % listings.length) + 1} <ChevronRight size={20} /></button>
         </div>
       )}
+      </>)}
     </div>,
     document.body,
+  );
+}
+
+// After the live. Counts only: this can still be on the stream, so no buyer
+// name, phone or message ever renders here.
+function LiveReport({ report, onDone }) {
+  if (report.loading) {
+    return <div className="lp-report"><p className="lp-note">Adding up your live...</p></div>;
+  }
+  const n = (v) => (v === null || v === undefined ? '-' : fmt(v));
+  return (
+    <div className="lp-report">
+      <h2>Your live, {report.minutes} min</h2>
+      <div className="lp-tiles">
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.visitors)}</b><span>opened your page</span></div>
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.carTaps)}</b><span>car taps</span></div>
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.whatsappTaps)}</b><span>WhatsApp taps</span></div>
+        <div className="lp-card lp-tile"><b>{n(report.newLeads)}</b><span>new leads in your pipeline</span></div>
+      </div>
+      {report.topCar && (
+        <div className="lp-card lp-tile">
+          <span>Most tapped</span>
+          <b style={{ fontSize: 22 }}>#{report.topCar.n} {report.topCar.name}</b>
+          <span>{report.topCar.taps} taps. Lead with it next live.</span>
+        </div>
+      )}
+      <p className="lp-note">
+        Counted from the moment you opened the presentation. Page opens are everyone who opened
+        your page in that time, not only your viewers, and visitors who turned analytics off
+        are not counted, so the real number can be higher. Your new leads are waiting in your pipeline.
+      </p>
+      <button className="lp-navbtn lp-next" onClick={onDone} style={{ flex: 'none' }}>Done</button>
+    </div>
   );
 }

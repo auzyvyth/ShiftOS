@@ -82,6 +82,10 @@
   + "est. RM x/mo" on every mini-page card, "Live now" card with a WhatsApp
   prefill ("I'm watching your live, #3"). Live-sourced taps are tagged
   `metadata.source = 'minipage_live'` on `minipage_card_click` / `whatsapp_click`.
+- 2026-10-03 (later): answer card + take-home-pay guide (35% rule), flat-rate
+  input converted to EIR, table for cars above RM300k (presenter only), and the
+  after-live report. Click-test on staging: run a 1-min+ presentation, open the
+  mini page from another phone, tap a car, then exit and check the counts.
 - Follow-up idea: surface "leads from your live" as a count in the salesman
   Performance tab once there is data.
 

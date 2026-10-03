@@ -844,7 +844,7 @@ export default function SalesmanProfilePage() {
 
       {presenting && (
         <Suspense fallback={null}>
-          <LivePresenter listings={listings} onClose={() => setPresenting(false)} />
+          <LivePresenter listings={listings} slug={slug} sellerId={profile?.id} onClose={() => setPresenting(false)} />
         </Suspense>
       )}
     </>
