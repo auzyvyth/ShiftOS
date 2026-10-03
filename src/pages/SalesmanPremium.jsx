@@ -538,7 +538,6 @@ export default function SalesmanPremium() {
  // Public-profile extras — a Premium-only addition over Lite (which has no
  // editor for these at all yet; only the linked-salesman panel does).
  bio: "",
- response_time: "",
  specializations: [],
  // Selling terms buyers see on every listing this agent owns.
  deposit_policy: "",
@@ -900,7 +899,6 @@ export default function SalesmanPremium() {
  facebook: profile.facebook || "",
  website: profile.website || "",
  bio: profile.bio || "",
- response_time: profile.response_time || "",
  specializations: profile.specializations || [],
  deposit_policy: profile.deposit_policy || "",
  deposit_terms: profile.deposit_terms || "",
@@ -4896,7 +4894,6 @@ export default function SalesmanPremium() {
  facebook: settingsForm.facebook || null,
  website: settingsForm.website || null,
  bio: settingsForm.bio || null,
- response_time: settingsForm.response_time || null,
  telegram_chat_id: (settingsForm.telegram_chat_id || "").trim() || null,
  specializations,
  deposit_policy: settingsForm.deposit_policy || null,
@@ -5069,10 +5066,6 @@ export default function SalesmanPremium() {
  placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
  style={{ ...inputStyle, resize: "vertical" }} />
  <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown below your name on your public page, with a "Read more" toggle.</p>
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Response Time</label>
- <input value={settingsForm.response_time} onChange={(e) => setSettingsForm((p) => ({ ...p, response_time: e.target.value }))} placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Specializations</label>

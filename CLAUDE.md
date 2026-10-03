@@ -1049,6 +1049,22 @@ the tab used to be, unchanged).
 - `useStageHistory` only runs when the lazy tab mounts, so no other surface gains
   a query, and it selects three columns — no buyer name, phone or note.
 
+## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
+`src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
+`npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.
+- **Reply time is MEASURED** (`get_agent_reply_time`, median over chat, unanswered
+  bursts count as 24h, hidden under 5 samples). The free-text `profiles.response_time`
+  was removed from every settings form and is no longer read. Do not add it back.
+- **"Documents checked by XDrive"** reads `car_listings.docs_verified`, which only a
+  superadmin can set (`set_listing_docs_verified`; `trg_protect_listing_docs_verified`
+  blocks sellers). Never label a seller-set flag as an XDrive check.
+- **Recently sold** (`get_agent_recent_sales`) returns car + MONTH only. No price, no buyer.
+- **Terms** show only what the agent set; wording is `DEPOSIT_POLICY_COPY`, shared
+  with CarDetailPage. **Report this agent** = `report_seller` (same table, same cap
+  as `report_listing`; `listing_snapshot.kind='seller'`).
+- `ic_verified_at` only means an IC NUMBER was typed. Only `is_verified` (granted by
+  a person, `verified_by`) may be called "verified" on a public page.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

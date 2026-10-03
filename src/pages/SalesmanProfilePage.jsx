@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useParams } from 'react-router-dom';
-import { Clock, LayoutDashboard, MapPin, ChevronRight, User, X } from 'lucide-react';
+import { Clock, LayoutDashboard, MapPin, ChevronRight, User, X, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
 import { agentPageTitle, agentPageDescription } from '../utils/agentSeo';
+import { useAgentTrust } from '../hooks/useAgentTrust';
+import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
+import ReportListingButton from '../components/ReportListingButton';
 
 const fmt = (n) => Number(n).toLocaleString('en-MY');
 
@@ -25,6 +28,8 @@ const DARK_REVIEW_TH = {
   border: 'rgba(255,255,255,0.08)', borderSec: 'rgba(255,255,255,0.05)',
   card: 'rgba(255,255,255,0.03)', inputBg: 'rgba(255,255,255,0.05)',
 };
+// The report sheet is a modal over a dimmed page, so its card must be opaque.
+const DARK_SHEET_TH = { ...DARK_REVIEW_TH, card: '#0d1117', card2: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.12)' };
 
 // Icon-only social link — no label, no pill background, just the mark.
 const iconLink = {
@@ -146,10 +151,10 @@ export default function SalesmanProfilePage() {
 
       const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
@@ -188,6 +193,13 @@ export default function SalesmanProfilePage() {
     load();
     return () => { cancelled = true; };
   }, [slug]);
+
+  // Trust signals (measured reply time, recently sold, the agent's own terms).
+  // Above the early returns: hooks cannot sit below a conditional return.
+  const trust = useAgentTrust(profile?.id);
+  const replyLabel = replyTimeLabel(trust.reply);
+  const terms = termsLines(trust.seller);
+  const docsLine = docsCheckedLine(listings);
 
   useEffect(() => {
     if (bioRef.current) {
@@ -538,7 +550,16 @@ export default function SalesmanProfilePage() {
           {/* Dealership + location */}
           {(dealer?.dealership || locationStr) && (
             <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-              {dealer?.dealership && <span style={{ fontWeight: 600 }}>{dealer.dealership}</span>}
+              {/* Being backed by a real business is trust the agent does not
+                  have to earn alone, so name it and link its storefront. */}
+              {dealer?.dealership && (
+                <span>
+                  Works at{' '}
+                  {dealer.subdomain
+                    ? <a href={`https://${dealer.subdomain}.xdrive.my`} style={{ fontWeight: 600, color: '#cbd5e1', textDecoration: 'underline', textUnderlineOffset: 3 }}>{dealer.dealership}</a>
+                    : <span style={{ fontWeight: 600 }}>{dealer.dealership}</span>}
+                </span>
+              )}
               {dealer?.dealership && locationStr && <span style={{ color: '#374151' }}>·</span>}
               {locationStr && (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: '#4b5563' }}>
@@ -591,11 +612,15 @@ export default function SalesmanProfilePage() {
             </div>
           )}
 
-          {/* Response Time */}
-          {profile.response_time && (
-            <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <Clock size={12} strokeWidth={2} style={{ flexShrink: 0, color: '#4b5563' }} />
-              {profile.response_time}
+          {/* Reply time — MEASURED from chat (get_agent_reply_time), never
+              typed by the agent. The old free-text profiles.response_time let
+              anyone claim anything; it is no longer read. Hidden under 5
+              samples (agentTrust.js REPLY_MIN_SAMPLES). */}
+          {replyLabel && (
+            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <Clock size={12} strokeWidth={2} style={{ flexShrink: 0, color: '#6b7280' }} />
+              {replyLabel}
+              <span style={{ color: '#4b5563' }}>· measured on XDrive chat</span>
             </p>
           )}
 
@@ -636,6 +661,20 @@ export default function SalesmanProfilePage() {
             )}
           </div>
 
+          {/* The agent's own terms, only the parts they set (agentTrust.js
+              termsLines). Same deposit wording as the car page. */}
+          {terms.length > 0 && (
+            <div style={{ marginTop: 18, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8 }}>My terms</p>
+              {terms.map((t) => (
+                <div key={t.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: '#94a3b8', marginTop: 6 }}>
+                  <span style={{ flexShrink: 0 }}>{t.label}</span>
+                  <span style={{ color: '#e5e7eb', textAlign: 'right' }}>{t.text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Location moved below the listings grid (see "Find Me Here" block
               after All Listings) so the cars lead the page. */}
         </div>
@@ -657,6 +696,13 @@ export default function SalesmanProfilePage() {
               <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 14 }}>
                 Listings{listings.length > 1 ? ` (${listings.length})` : ''}
               </p>
+              {/* Only cars a superadmin checked (car_listings.docs_verified). */}
+              {docsLine && (
+                <p style={{ fontSize: 12, color: '#94a3b8', margin: '-6px 0 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ShieldCheck size={13} style={{ flexShrink: 0, color: '#4ade80' }} />
+                  {docsLine}
+                </p>
+              )}
 
               {/* The newest car leads the column at full width — listings come
                   back ordered created_at desc, so [0] IS the latest. Its own
@@ -760,6 +806,27 @@ export default function SalesmanProfilePage() {
             </p>
           )}
 
+          {/* ── Recently sold — real cars this agent closed, car + month only
+              (get_agent_recent_sales). No price: that is between the agent
+              and their buyer. ── */}
+          {trust.recentSales.length > 0 && (
+            <div style={{ marginTop: 36 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 10 }}>
+                Recently sold
+              </p>
+              <div style={{ border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden' }}>
+                {trust.recentSales.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '11px 14px', borderTop: i ? '1px solid rgba(255,255,255,0.05)' : 'none', fontSize: 13 }}>
+                    <span style={{ color: '#e5e7eb', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 12, color: '#6b7280' }}>Sold {soldMonthLabel(c.sold_month)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ── Location — below the car cards in both layouts, so the cars
               lead. The agent's own address, or (linked salesmen with none set)
               the dealership's. Capped to hero width when the page is stacked,
@@ -798,6 +865,16 @@ export default function SalesmanProfilePage() {
 
         </div>{/* /sp-right */}
         </div>{/* /sp-shell */}
+
+        {/* ── Buyer safety — XDrive takes no payment for any car, so the one
+            line of advice that prevents most losses goes here, beside the
+            way to flag this agent (report_seller). ── */}
+        <div className="sp-narrow" style={{ paddingBottom: 24, textAlign: 'center' }}>
+          <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
+            XDrive never collects payment for a car. See the car and its geran before you pay any deposit, and get the deposit terms in writing.
+          </p>
+          <ReportListingButton sellerId={profile.id} th={DARK_SHEET_TH} />
+        </div>
 
         {/* ── Footer ── */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '22px 0', textAlign: 'center' }}>

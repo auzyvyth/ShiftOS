@@ -541,7 +541,7 @@ export default function SalesmanPanel() {
  // page", and the mini page rendered both as consecutive paragraphs. Bio
  // is the agent's one about-field.
  monthly_target: 5,
- bio: '', response_time: '', specializations: [],
+ bio: '', specializations: [],
  telegram_chat_id: '',
  });
  const [settingsSaving, setSettingsSaving] = useState(false);
@@ -570,7 +570,6 @@ export default function SalesmanPanel() {
  state: profile.state || '',
  location: profile.location || '',
  bio: profile.bio || '',
- response_time: profile.response_time || '',
  specializations: profile.specializations || [],
  telegram_chat_id: profile.telegram_chat_id || '',
  monthly_target: profile.monthly_target || 5,
@@ -7193,7 +7192,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  state: profileSettings.state,
  location: profileSettings.location || null,
  bio: profileSettings.bio || null,
- response_time: profileSettings.response_time || null,
  specializations: specializations.length > 0 ? specializations : null,
  telegram_chat_id: profileSettings.telegram_chat_id || null,
  monthly_target: Number(profileSettings.monthly_target) || 5,
@@ -7332,12 +7330,6 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  rows={4} style={{ ...inputStyle, resize: 'vertical' }} />
  <p style={{ margin: '5px 0 0', fontSize: 11, color: '#374151' }}>Shown below your name on your public page, with a "Read more" toggle.
  </p>
- </div>
- <div>
- <label style={labelStyle}>Response Time</label>
- <input type="text" value={profileSettings.response_time}
- onChange={e => setProfileSettings(p => ({ ...p, response_time: e.target.value }))}
- placeholder="e.g. Usually replies within 1 hour" style={inputStyle} />
  </div>
  <div>
  <label style={labelStyle}>Specializations</label>

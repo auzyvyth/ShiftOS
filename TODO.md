@@ -361,6 +361,12 @@ fixes. Nothing in this batch has been built.
   a hairline split above the price and a status dot; reviews card with the
   score in Bebas and one quote. Only state real data: hide "Sold" at 0, hide
   the reviews block with no reviews, never invent a quote.
+  **Trust blocks are BUILT on the current (dark) page as of 2026-10-03** —
+  restyle them, do not rebuild: measured reply time, "Documents checked by
+  XDrive", My terms, Recently sold, Works at <dealer> link, safety line +
+  Report this agent (see CLAUDE.md "Agent page trust signals"). They need
+  migration `20261003b_agent_trust_signals.sql` applied; until then the reply
+  time and recently-sold blocks stay hidden and Report fails with a generic error.
   Decisions (as originally put to the owner):
   (a) full marketplace header vs slim bar — slim recommended: this page is
       shared by the agent on WhatsApp, and a mega-menu sends their buyer to

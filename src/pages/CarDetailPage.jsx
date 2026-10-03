@@ -73,6 +73,7 @@ import MarketplaceHeader from "../components/MarketplaceHeader";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 import { shouldSkipTracking } from "../utils/internalTraffic";
+import { DEPOSIT_POLICY_COPY } from "../utils/agentTrust";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -437,12 +438,7 @@ function PriceIncludes({ car, seller, th }) {
    matters: do I get this back? Policy is per-dealer (profiles.deposit_policy).
    When the dealer has not set one we say exactly that instead of guessing a
    policy on their behalf. */
-const DEPOSIT_POLICY_COPY = {
-  refundable: 'Refundable if you decide not to go ahead.',
-  refundable_on_loan_rejection:
-    'Refunded in full if your loan is rejected. Otherwise it is held against the purchase price.',
-  non_refundable: 'Non-refundable once paid.',
-};
+// DEPOSIT_POLICY_COPY lives in utils/agentTrust.js, shared with the agent page.
 
 function DepositTerms({ amount, seller, th, isXdrive }) {
   if (!(amount > 0)) return null;
