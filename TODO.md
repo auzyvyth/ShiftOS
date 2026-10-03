@@ -71,13 +71,12 @@
 > with `target: production`), not just that `git status` says clean.
 
 ## LIVE-1: Live presentation on the salesman mini page — 2026-10-03
-- [ ] **Apply migration `20261003a_seller_live_state.sql` after 22:00 MYT** (queued
-  under the no-DDL-in-daytime rule). Until it is applied, the presenter and the
-  monthly figures work; only the "Live now" pin on the mini page stays hidden
-  (both RPC calls swallow the missing-function error). After applying: list
-  overloads of `set_live_listing` / `get_salesman_live`, and probe as anon that
-  `set_live_listing` is refused and `get_salesman_live` returns null for a seller
-  who is not live.
+- Migration `20261003a_seller_live_state.sql` APPLIED 2026-10-03 22:36 MYT (owner's
+  "apply it now"). Checked: one overload each of `set_live_listing` /
+  `get_salesman_live`; table has RLS on and no anon/authenticated grants; anon
+  cannot call `set_live_listing`; `get_salesman_live('premiummotors')` = null
+  (not live). Still worth one real click-through: start a live on a phone and
+  confirm the "Live now" card appears on the mini page.
 - Shipped in code: `src/components/live/LivePresenter.jsx` (owner-only button
   "Live presentation" on `src/pages/SalesmanProfilePage.jsx`), "#N" car numbers
   + "est. RM x/mo" on every mini-page card, "Live now" card with a WhatsApp
@@ -335,18 +334,20 @@ fixes. Nothing in this batch has been built.
     laundering vector. Owner-only would also have satisfied the ask. One
     clause in the RPC if you want it tightened.
 
-- [ ] **DB-QUEUE-2026-10-03: three migrations written, NOT applied (DDL window).**
-  Apply after 22:00 MYT, in ONE `apply_migration` call (one API freeze, not
-  three), and only AFTER the 2026-10-03 frontend release is live on prod:
-  `20261003a_agent_sitemap_linked_salesmen.sql` (sitemap lists linked agents),
-  `20261003b_agent_trust_signals.sql` (recently sold, measured reply time,
-  report_seller; dry-run tested + rolled back), `20261003c_drop_sambung_columns.sql`
-  (drops the 5 empty sambung_* columns + rebuilds public_car_listings and
-  get_salesman_featured_listings; NOT dry-run — the owner's confirm prompt was
-  cancelled, so check it first). After: `select oid::regprocedure from pg_proc
-  where proname in ('get_salesman_featured_listings','report_seller')` = 1 row
-  each, `has_table_privilege('anon','public_car_listings','select')` = true,
-  public_car_listings has 77 columns and the same row count as before.
+- [ ] **DB-QUEUE-2026-10-03: ONE migration left — `20261003c_drop_sambung_columns.sql`.**
+  `20261003a` + `20261003b` were APPLIED 2026-10-03 22:20 MYT as one migration
+  (`20261003ab_agent_sitemap_and_trust_signals`) and post-checked: sitemap lists
+  3 agents incl. diara, recent sales + reply time return data, report_seller is
+  authenticated-only. Still to do: `20261003c` (drops the 5 empty sambung_*
+  columns, rebuilds public_car_listings + get_salesman_featured_listings). It
+  contains DROP statements, so the Supabase tool asks the OWNER to confirm; the
+  confirm was cancelled three times (twice unattended, once with the owner
+  present), so do NOT retry it without the owner saying so in that session.
+  Dry-run it first in a self-rolling-back DO block with `set local lock_timeout
+  = '5s'` (a lock wait on car_listings stalls the live site). After: one row
+  for get_salesman_featured_listings in pg_proc,
+  `has_table_privilege('anon','public_car_listings','select')` = true, 77
+  columns, same row count as before (65 on 2026-10-03).
 
 - [ ] **MINI-LIGHT-1 follow-ups** (the light agent page shipped 2026-10-03 per
   `docs/mockups/agent-page-light.html`, in `src/pages/SalesmanProfilePage.jsx`):
