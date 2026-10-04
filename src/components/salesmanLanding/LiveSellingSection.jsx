@@ -1,9 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Check, ArrowRight } from "lucide-react";
+import { Check, ArrowRight, ExternalLink } from "lucide-react";
 import { monthlyPayment, DEFAULT_EIR, DEFAULT_LOAN_RATIO } from "../../utils/financing";
-import { LIVE_SELLING } from "../../config/salesmanLandingCopy";
+import { LIVE_SELLING, EXAMPLE_PAGE } from "../../config/salesmanLandingCopy";
 
 // Premium "Live selling" section on /for-salesmen: a static recreation of the
 // live presentation's Cars screen (src/components/live/LivePresenter.jsx), the
@@ -36,9 +36,14 @@ export default function LiveSellingSection({ reveal, fadeUp }) {
               <li key={p}><Check size={16} className="sll-tick" /> {p}</li>
             ))}
           </ul>
-          <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-dark">
-            Start Premium <ArrowRight size={17} />
-          </Link>
+          <div className="lss-ctas">
+            <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-dark">
+              Start Premium <ArrowRight size={17} />
+            </Link>
+            <Link to={EXAMPLE_PAGE.path} className="sll-example lss-example">
+              See a Premium page <ExternalLink size={14} />
+            </Link>
+          </div>
         </div>
 
         <figure className="sll-phone lss-stage" aria-label="Live presentation screen, sample car">
@@ -95,6 +100,8 @@ export default function LiveSellingSection({ reveal, fadeUp }) {
 
 const CSS = `
   .lss-list { margin-bottom: 24px; }
+  .lss-ctas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+  .lss-ctas .lss-example { margin-top: 0; }
   .lss-list li { align-items: flex-start; line-height: 1.45; }
   .lss-list li svg { margin-top: 4px; }
   .lss-stage { margin: 0; padding: 0; overflow: hidden; background: #fafafa; }

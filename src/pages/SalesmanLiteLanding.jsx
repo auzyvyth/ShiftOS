@@ -17,6 +17,7 @@ import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection
 import {
   CANON, SEO_TITLE, SEO_DESC, SEO_KEYWORDS, FAQS, SOFTWARE_LD, FAQ_LD,
   HERO_INTRO, COMPARE_ROWS, STEPS, FEATURE_COPY, LITE_BULLETS, PREMIUM_BULLETS,
+  WEBPAGE_LD, REVIEWED_LABEL, EXAMPLE_PAGE,
 } from "../config/salesmanLandingCopy";
 
 // ─── Scroll-reveal (restrained on purpose — see DESIGN.md: no ambient/looping
@@ -95,7 +96,11 @@ export default function SalesmanLiteLanding() {
         <meta property="og:description" content={SEO_DESC} />
         <meta property="og:url" content={CANON} />
         <meta property="og:site_name" content="XDrive" />
+        <meta property="og:image" content="https://xdrive.my/og-default.jpg" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={SEO_TITLE} />
+        <meta name="twitter:description" content={SEO_DESC} />
+        <script type="application/ld+json">{JSON.stringify(WEBPAGE_LD)}</script>
         <script type="application/ld+json">{JSON.stringify(SOFTWARE_LD)}</script>
         <script type="application/ld+json">{JSON.stringify(FAQ_LD)}</script>
       </Helmet>
@@ -239,6 +244,10 @@ export default function SalesmanLiteLanding() {
                 <li><Check size={16} className="sll-tick" /> Every car with photos, price and specs</li>
                 <li><Check size={16} className="sll-tick" /> Tap-to-WhatsApp on each listing</li>
               </ul>
+              {/* A real, live Premium page beats any mock-up (EXAMPLE_PAGE). */}
+              <Link to={EXAMPLE_PAGE.path} className="sll-example">
+                See a real page: <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
+              </Link>
             </div>
             <div className="sll-phone">
               <div className="sll-phone-top">
@@ -361,7 +370,7 @@ export default function SalesmanLiteLanding() {
           <div className="sll-wrap sll-wrap-narrow">
             <p className="sll-kicker">Questions</p>
             <h2 className="sll-h2" style={{ marginBottom: 8 }}>Good to know.</h2>
-            <p className="sll-updated">Page last reviewed August 2026.</p>
+            <p className="sll-updated">Page last reviewed {REVIEWED_LABEL}.</p>
             <div className="sll-faqs">
               {FAQS.map((f) => <Faq key={f.q} {...f} />)}
             </div>
@@ -492,6 +501,9 @@ const CSS = `
   .sll-showcase-copy .sll-h2 { margin-bottom: 18px; }
   .sll-showcase-lead { font-size: 16px; line-height: 1.65; color: #4b5563; margin: 0 0 20px; }
   .sll-showcase-list { list-style: none; padding: 0; margin: 0; }
+  .sll-example { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 15px; font-weight: 600; color: #0a0a0a; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
+  .sll-example:hover { text-decoration-color: #0a0a0a; }
+  .sll-example strong { font-weight: 800; }
   .sll-showcase-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: #1f2733; padding: 7px 0; }
   .sll-phone { border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
   .sll-phone-top { text-align: center; padding: 4px 0 12px; }

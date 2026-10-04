@@ -728,7 +728,7 @@ const STATIC_PAGES = {
     const body = `  <main>
     <h1>${esc(SL.HERO_H1)}</h1>
     <p>${esc(SL.HERO_INTRO)}</p>
-    <p><a href="${SITE_URL}/salesman-onboarding/lite">Sign up free</a></p>
+    <p><a href="${SITE_URL}/salesman-onboarding/lite">Sign up free</a> · <a href="${SL.EXAMPLE_PAGE.url}">See a real salesman page: ${esc(SL.EXAMPLE_PAGE.label)}</a></p>
     <h2>Salesman Lite vs Mudah / Carlist</h2>
     <ul>${SL.COMPARE_ROWS.map((r) => `<li><strong>${esc(r.label)}:</strong> Mudah / Carlist — ${esc(r.old)}. Salesman Lite — ${esc(r.lite)}.</li>`).join("")}</ul>
     <h2>What you get</h2>
@@ -743,13 +743,14 @@ const STATIC_PAGES = {
     <h3>Salesman Premium — RM35/month</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
     <h2>FAQ</h2>
     ${SL.FAQS.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    <p>Page last reviewed ${esc(SL.REVIEWED_LABEL)}.</p>
     <p><a href="${SITE_URL}/showroom">Browse cars on XDrive</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
   </main>`;
     return htmlShell({
       title: SL.SEO_TITLE,
       description: SL.SEO_DESC,
       canonical: SL.CANON,
-      jsonLd: [SL.SOFTWARE_LD, SL.FAQ_LD],
+      jsonLd: [SL.WEBPAGE_LD, SL.SOFTWARE_LD, SL.FAQ_LD],
       body,
     });
   },
