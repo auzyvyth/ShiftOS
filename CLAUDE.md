@@ -170,6 +170,12 @@ Project ID: lemdkdizdlcirhbzqlos
 - src/hooks/useRoleRedirect.js — role-based routing hook
 - src/hooks/useSiteProfile.js — dealer profile context
 - src/utils/serviceCategories.js — shared icon/color/label map for service categories
+- src/components/DamageMap.jsx — THE condition-report diagram (auction-sheet "unfolded car"),
+  used by CarForm, CarDetailPage, ListingReviewModal and the dealer ListingDetailDrawer. One
+  copy only: the drawer had its own fork reading a `{zone}` shape nothing writes, so it showed
+  every car as clean. Pass `theme="light"|"dark"` to match the surface. Marks are
+  `{x,y,type,severity,panel,v:2}`; marks without `v` came from the old top-down drawing and
+  are re-projected onto the top view by `toCurrent` - never strip `v` when saving.
 
 ## Roles
 owner / superadmin / dealer → /dashboard

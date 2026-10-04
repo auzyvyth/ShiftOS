@@ -476,7 +476,7 @@ export default function ListingReviewModal({
               {showCondition && (
                 <Section title="Declared condition" right={<span style={{ fontSize: 10.5, color: "#4b5563" }}>{damageMarks.length} area{damageMarks.length === 1 ? "" : "s"} marked</span>}>
                   <div style={{ maxWidth: 220 }}>
-                    <DamageMap value={damageMarks} readOnly />
+                    <DamageMap value={damageMarks} readOnly theme="dark" />
                   </div>
                 </Section>
               )}
