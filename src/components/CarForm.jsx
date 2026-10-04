@@ -42,6 +42,7 @@ import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
 import QuickCarFlow from "./carform/QuickCarFlow";
+import QuickSteps, { Tile, BigNumber, fmtNum } from "./carform/QuickSteps";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { DOC_TYPES } from "../utils/docTypes";
@@ -808,6 +809,16 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       : {}),
   });
   const [step, setStep] = useState(1);
+  // Quick stages a seller has already walked through: coming back to one lands
+  // on its summary instead of restarting at its first question.
+  const [visitedStages, setVisitedStages] = useState({});
+  const prevStepRef = useRef(1);
+  useEffect(() => {
+    const prev = prevStepRef.current;
+    if (step > prev) setVisitedStages((v) => (v[prev] ? v : { ...v, [prev]: true }));
+    prevStepRef.current = step;
+  }, [step]);
+  const [damageYes, setDamageYes] = useState(false);
   const [draftBanner, setDraftBanner] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1012,7 +1023,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const geranSatisfied = !!docInSlot("registration_card") || !!form.geranReason;
 
   // ── Included services state ──────────────────────────────────────────────
-  const [servicesOpen, setServicesOpen] = useState(false);
+  const [servicesOpen, setServicesOpen] = useState(quickMode);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [serviceCatalogue, setServiceCatalogue] = useState([]);
   const [catalogueLoaded, setCatalogueLoaded] = useState(false);
@@ -1207,10 +1218,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     setSpecsUnlocked(false);
   }, [specLock]);
   const specsLocked = !!specLock && !specsUnlocked;
-  // Body/fuel/gearbox/cc were answered (or confirmed from the catalogue) in the
-  // quick Car step: Technical shows a one-line summary instead of asking again. Falls back to the inputs if a
-  // required one is somehow still blank, so Technical can never be unfillable.
-  const quickSpecsDone = quickMode && (specsLocked || (!!form.bodyType && !!form.fuelType));
   const unlockSpecs = () => {
     setSpecsUnlocked(true);
     set("specs_overridden", true);
@@ -1412,7 +1419,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
   // Fetch dealer products when picker is first opened
   useEffect(() => {
-    if (!pickerOpen || catalogueLoaded || !dealerId) return;
+    if ((!pickerOpen && !quickMode) || catalogueLoaded || !dealerId) return;
     (async () => {
       const { data } = await supabase
         .from("dealer_products")
@@ -2459,458 +2466,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </MoreDetails>
   );
 
-  const renderQuickExtras = () => (
-    <div className="space-y-4">
-      <p className="text-sm text-gray-500">All optional — tap Done to skip.</p>
-      {renderPlateVin()}
-      {renderListingTitle()}
-      <Field label="Loan Eligible">
-        <PillSelect
-          options={["Yes", "No"]}
-          value={form.loan_eligible ? "Yes" : "No"}
-          onChange={(v) => set("loan_eligible", v === "Yes")}
-        />
-      </Field>
-      {renderCarMore()}
-    </div>
-  );
-
-  function renderLocationRow() {
-    if (form.state && form.city && !locOpen) {
-      return (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
-          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[11px] text-gray-500">Car location</p>
-            <p className="text-sm font-medium text-gray-900 truncate">{form.city}, {form.state}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setLocOpen(true)}
-            className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-          >
-            Change
-          </button>
-        </div>
-      );
-    }
+  // Stage building blocks shared by the classic layout (edits, dealer intake)
+  // and the quick one-question-per-screen stages (new listings), so uploads,
+  // the damage map, services and the document slots exist exactly once.
+  const renderDamage = () => {
     return (
-      <div className="space-y-5">
-        <Field label="State" required hint="Where buyers can view this car">
-          <PickerField
-            label="Select State"
-            value={form.state}
-            onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
-            options={Object.keys(STATE_CITIES)}
-            placeholder="Select state"
-          />
-        </Field>
-        <Field label="City" required>
-          <PickerField
-            label="Select City"
-            value={form.city}
-            onChange={(v) => set("city", v)}
-            options={cityOptions}
-            placeholder={form.state ? "Select city" : "Select state first"}
-            disabled={!form.state}
-            allowCustom
-          />
-        </Field>
-      </div>
-    );
-  }
-
-  function renderSectionContent(id) {
-    switch (id) {
-      case 1: return (
-        <div className="space-y-5">
-          <input
-            ref={photosInputRef}
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleFiles}
-            className="hidden"
-          />
-          {previews.length === 0 ? (
-            <label
-              onClick={() => photosInputRef.current?.click()}
-              className="block border-2 border-dashed border-gray-300 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
-            >
-              <Camera className="w-10 h-10 text-gray-400 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
-              <p className="text-gray-900 font-medium mb-1">Choose Photos</p>
-              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
-              <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
-            </label>
-          ) : (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => photosInputRef.current?.click()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                Add more · {form.images.length}/30
-              </button>
-            </div>
-          )}
-          {imgProgress.filter(p => p.status !== 'done').length > 0 && (
-            <div className="space-y-1.5">
-              {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
-                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50
-                     border border-gray-200 rounded-lg text-xs">
-                  {p.status === 'uploading'
-                    ? <div className="w-3 h-3 border border-gray-300 border-t-gray-600
-                           rounded-full animate-spin flex-shrink-0" />
-                    : <span className="text-red-400 flex-shrink-0">✕</span>}
-                  <span className="text-gray-600 truncate">{p.name}</span>
-                  <span className={p.status === 'error'
-                    ? 'text-red-400 ml-auto flex-shrink-0'
-                    : 'text-gray-500 ml-auto flex-shrink-0'}>
-                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {previews.length > 0 && (
-            <>
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-gray-500">
-                  Image #1 is the main thumbnail · use arrows to reorder
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPhotosFull(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex-shrink-0"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                  Manage all
-                </button>
-              </div>
-              {/* Compact single-row strip — scrolls horizontally, mobile-friendly */}
-              <div className="flex gap-2 overflow-x-auto pb-1 px-0.5">
-                {previews.map((src, i) => (
-                  <div key={src + i} className="w-24 sm:w-28 flex-shrink-0">
-                    {renderPhotoTile(src, i)}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-          {photosFull && createPortal(
-            <div
-              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col"
-              onClick={() => setPhotosFull(false)}
-            >
-              <div
-                className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-2 text-white min-w-0">
-                  <span className="font-semibold text-sm flex-shrink-0">Manage Photos</span>
-                  <span className="text-white/50 text-xs truncate">
-                    {previews.length}/30 · drag or use arrows to reorder
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => photosInputRef.current?.click()}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
-                  >
-                    <Camera className="w-3.5 h-3.5" /> Add more
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPhotosFull(false)}
-                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-w-5xl mx-auto">
-                  {previews.map((src, i) => renderPhotoTile(src, i))}
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )}
-          {/* Walkthrough Video */}
-          <div className="space-y-1">
-            <label className="text-sm text-gray-600">
-              Walkthrough Video{" "}
-              <span className="text-gray-400">(optional)</span>
-            </label>
-            <input
-              type="url"
-              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
-              value={form.video_url || ""}
-              onChange={(e) => set("video_url", e.target.value)}
-              className={inputCls}
-            />
-            {form.video_url && <VideoPreview url={form.video_url} />}
-          </div>
-        </div>
-      );
-      case 2: return quickMode ? (
-        <QuickCarFlow
-          form={form}
-          setForm={setForm}
-          specLock={specLock}
-          specsLocked={specsLocked}
-          unlockSpecs={unlockSpecs}
-          onExitBack={() => setStep(1)}
-          onDone={() => setStep(3)}
-          renderExtras={renderQuickExtras}
-        />
-      ) : (
-        <div className="space-y-4">
-          {intakeDone && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
-              <Check size={12} />
-              {form.year} {form.brand} {form.model} — identity carried over from Core Details
-            </div>
-          )}
-          {/* Core inputs — one per row */}
-          {!intakeDone && (
-          <>
-          <Field label="Brand" required>
-            <PickerField
-              label="Select Brand"
-              value={form.brand}
-              onChange={(v) => setForm((f) => ({ ...f, brand: v, model: "" }))}
-              options={ALL_BRANDS}
-              placeholder="Select brand"
-              allowCustom
-            />
-          </Field>
-          {offCatalogueBrand && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-              <span>
-                "{form.brand}" is not a brand we recognise yet. The listing will still publish —
-                we're just noting the gap so it can be added properly.
-              </span>
-            </div>
-          )}
-         <Field label="Model" required>
-            <PickerField
-              label="Select Model"
-              value={form.model}
-              onChange={(v) => set("model", v)}
-              options={modelOptions}
-              placeholder={form.brand ? "Select model" : "Pick brand first"}
-              disabled={!form.brand}
-              allowCustom
-            />
-          </Field>
-          {offCatalogueModel && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-              <span>
-                "{form.model}" is not a model we recognise for {form.brand}. Specs will not
-                fill in, and buyers filtering by model will not see this car. Pick the plain
-                model name and put the rest in the Listing Title or Variant.
-              </span>
-            </div>
-          )}
-          <Field label="Variant">
-            <input
-              name="variant"
-              value={form.variant}
-              onChange={handleChange}
-              placeholder="e.g. 1.5 G"
-              enterKeyHint="next"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Year" required>
-            <input
-              type="number"
-              name="year"
-              value={form.year}
-              onChange={handleChange}
-              placeholder="e.g. 2021"
-              min="1900"
-              max="2030"
-              enterKeyHint="next"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Mileage (km)" required>
-            <input
-              type="number"
-              name="mileage"
-              value={form.mileage}
-              onChange={handleChange}
-              placeholder="e.g. 45000"
-              min="0"
-              enterKeyHint="next"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Colour" required>
-            <input
-              name="colour"
-              value={form.colour}
-              onChange={handleChange}
-              placeholder="e.g. Pearl White"
-              enterKeyHint="next"
-              className={inputCls}
-            />
-          </Field>
-          </>
-          )}
-          {autoFilled && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
-              <Check size={12} />
-              Specs auto-filled — review Technical section and adjust if needed
-            </div>
-          )}
-
-          {/* Condition is required — it sits with the other required fields,
-              never below the optional extras. */}
-          <Field label="Condition" required>
-            <PillSelect
-              options={CONDITIONS}
-              value={form.condition}
-              onChange={(v) => set("condition", v)}
-            />
-          </Field>
-          <Field label="Loan Eligible">
-            <PillSelect
-              options={["Yes", "No"]}
-              value={form.loan_eligible ? "Yes" : "No"}
-              onChange={(v) => set("loan_eligible", v === "Yes")}
-            />
-          </Field>
-          {renderPlateVin()}
-
-          {renderListingTitle()}
-
-          {renderCarMore()}
-
-        </div>
-      );
-      case 3: return (
-        <div className="space-y-4">
-          {/* Catalogue lock. When the curated table knows this exact car, its
-              specs are shown and NOT retypeable — that is the whole point: two
-              sellers listing the same 2019 Civic have to produce the same
-              engine_cc, or no buyer filter built on it can be trusted. The
-              override exists because the catalogue covers a fraction of the
-              fleet and a seller with a 3.5 in a car we recorded as a 2.5 must
-              not be trapped; it stamps specs_overridden, which is the
-              catalogue's error log. */}
-          {specsLocked && !quickMode && (
-            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-              <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
-                    <Check size={13} className="text-emerald-600 flex-shrink-0" />
-                    Specs from our catalogue
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">
-                    {specLock.make} {specLock.model} · {specLock.yearFrom}
-                    {specLock.yearTo >= 2099 ? " onwards" : `-${specLock.yearTo}`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={unlockSpecs}
-                  className="flex-shrink-0 text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-gray-900"
-                >
-                  Not my car?
-                </button>
-              </div>
-              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
-                {[
-                  ["Engine",       form.engineCc && `${form.engineCc} cc`],
-                  ["Cylinders",    form.cylinders],
-                  ["Body",         form.bodyType],
-                  ["Fuel",         form.fuelType],
-                  ["Transmission", form.transmission],
-                  ["Power",        form.horsepower && `${form.horsepower} hp`],
-                  ["Doors",        form.doors],
-                  ["Seats",        form.seats],
-                  ["Economy",      form.fuelEconomyKpl && `${form.fuelEconomyKpl} km/L`],
-                ].filter(([, v]) => v).map(([k, v]) => (
-                  <div key={k} className="min-w-0">
-                    <dt className="text-[11px] uppercase tracking-wide text-gray-400">{k}</dt>
-                    <dd className="text-sm font-medium text-gray-900 tabular-nums truncate">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
-          {specsUnlocked && specLock && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
-              <span>
-                You are overriding our catalogue figures for the {specLock.make} {specLock.model}.
-                Buyers see these as seller-stated, and we will review the catalogue entry.
-              </span>
-            </div>
-          )}
-          {intakeDone && !specsLocked && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
-              <Check size={12} />
-              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
-            </div>
-          )}
-          {/* Core input */}
-          {quickSpecsDone && (
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
-              <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-              <p className="flex-1 min-w-0 text-sm text-gray-900 truncate">
-                {[form.engineCc && `${form.engineCc}cc`, form.bodyType, form.fuelType, form.transmission].filter(Boolean).join(" · ")}
-              </p>
-              <button type="button" onClick={() => setStep(2)} className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700">
-                Change
-              </button>
-            </div>
-          )}
-          {!intakeDone && !specsLocked && !quickSpecsDone && (
-          <Field
-            label="Engine Displacement (CC)"
-            hint="Used for road tax & insurance calc"
-          >
-            <div className="space-y-3">
-              <div className="relative">
-                <input
-                  type="number"
-                  name="engineCc"
-                  value={form.engineCc}
-                  onChange={handleChange}
-                  placeholder="e.g. 1500"
-                  min="50"
-                  max="10000"
-                  className={`${inputCls} pr-12`}
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
-                  cc
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {CC_PRESETS.map((cc) => (
-                  <button
-                    key={cc}
-                    type="button"
-                    onClick={() => set("engineCc", String(cc))}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-100 border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
-                  >
-                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
-                    cc
-                  </button>
-                ))}
-              </div>
-            </div>
-          </Field>
-          )}
-
+      <>
           {/* Condition report — every car, not just recon. Buyers cannot tell a
               clean car from a skipped walkaround unless the dealer says which it
               is, so the map is paired with an explicit declaration. */}
@@ -2952,72 +2513,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </button>
             </div>
           </Field>
-
-          {/* Recon toggle — mode switch, stays visible */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
-            <div>
-              <p className="text-gray-900 font-semibold text-sm">
-                Recon / Grey Import Vehicle
-              </p>
-              <p className="text-gray-500 text-xs mt-0.5">
-                Enable if this car was imported from overseas
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => set("isRecon", !form.isRecon)}
-              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-300"}`}
-            >
-              <span
-                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
-              />
-            </button>
-          </div>
-
-          {form.isRecon && (
-            <div className="space-y-4">
-              <Field
-                label="Auction Grade"
-                hint={`Suggested: ${suggestedGrade}`}
-              >
-                <PickerField
-                  label="Auction Grade"
-                  value={form.auctionGrade}
-                  onChange={(v) => set("auctionGrade", v)}
-                  options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
-                    value: g,
-                    label: g === suggestedGrade ? `${g}  ★ suggested` : g,
-                  }))}
-                  placeholder="Select grade"
-                />
-                {!form.auctionGrade && (
-                  <button
-                    type="button"
-                    onClick={() => set("auctionGrade", suggestedGrade)}
-                    className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
-                  >
-                    Use suggested: {suggestedGrade}
-                  </button>
-                )}
-              </Field>
-              <Field label="Interior Grade">
-                <PickerField
-                  label="Interior Grade"
-                  value={form.interiorGrade}
-                  onChange={(v) => set("interiorGrade", v)}
-                  options={["A", "B", "C", "D"]}
-                  placeholder="Select"
-                />
-              </Field>
-              <Field label="Import Country">
-                <PickerField
-                  label="Import Country"
-                  value={form.importCountry}
-                  onChange={(v) => set("importCountry", v)}
-                  options={["Japan", "UK", "Australia", "Other"]}
-                  placeholder="Select"
-                />
-              </Field>
+      </>
+    );
+  };
+  const renderReconTyped = () => {
+    return (
+      <>
               <Field label="Auction House" hint="e.g. USS, TAA, JAA">
                 <input
                   name="auctionHouse"
@@ -3039,28 +2540,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                   className={inputCls}
                 />
               </Field>
-              <Field label="Chassis Status">
-                <PickerField
-                  label="Chassis Status"
-                  value={form.chassisStatus}
-                  onChange={(v) => set("chassisStatus", v)}
-                  options={[
-                    { value: "clean", label: "Clean" },
-                    { value: "repaired", label: "Repaired" },
-                    { value: "written_off", label: "Written Off" },
-                  ]}
-                  placeholder="Select"
-                />
-              </Field>
-            </div>
-          )}
-
-          {/* Advanced specs — enthusiast-facing, collapsed by default. A
-              salesman's VIN decode fills bhp/cylinders/doors/seats for them.
-              Hidden under the catalogue lock: every field in here is already
-              shown, and correct, in the block above. */}
-          {!specsLocked && (
-          <MoreDetails collapsible label="Advanced specs (optional)">
+      </>
+    );
+  };
+  const renderAdvancedSpecs = () => {
+    return (
+      <>
             <Field label="Power (bhp)">
               <div className="relative">
                 <input
@@ -3126,141 +2611,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 className={inputCls}
               />
             </Field>
-          </MoreDetails>
-          )}
-
-          {/* Pills — below everything */}
-          {!intakeDone && !specsLocked && !quickSpecsDone && (
-          <>
-          <Field label="Body Type" required>
-            <PillSelect
-              options={BODY_TYPES}
-              value={form.bodyType}
-              onChange={(v) => set("bodyType", v)}
-            />
-          </Field>
-          <Field label="Fuel Type" required>
-            <PillSelect
-              options={FUEL_TYPES}
-              value={form.fuelType}
-              onChange={(v) => set("fuelType", v)}
-            />
-          </Field>
-          <Field label="Transmission">
-            <PillSelect
-              options={["Auto", "Manual"]}
-              value={form.transmission}
-              onChange={(v) => set("transmission", v)}
-            />
-          </Field>
-          </>
-          )}
-        </div>
-      );
-      case 4: return (
-        <div className="space-y-5">
-          {renderLocationRow()}
-          {intakeDone && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
-              <Check size={12} />
-              Asking RM {Number(form.sellingPrice || 0).toLocaleString()} — pricing carried over from Core Details
-            </div>
-          )}
-          <Field label="Payment Type" required>
-            <PillSelect
-              options={["Cash", "Loan"]}
-              value={
-                form.payment_type
-                  ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
-                  : "Cash"
-              }
-              onChange={(v) => set("payment_type", v.toLowerCase())}
-            />
-          </Field>
-
-          <Field
-            label="Encumbrance Status"
-            hint="Is there still an outstanding loan on this car?"
-          >
-            <PillSelect
-              options={["Clear", "Under Hire-Purchase", "Unknown"]}
-              value={
-                form.encumbranceStatus === "clear"
-                  ? "Clear"
-                  : form.encumbranceStatus === "under_hp"
-                    ? "Under Hire-Purchase"
-                    : "Unknown"
-              }
-              onChange={(v) =>
-                set("encumbranceStatus", v === "Clear" ? "clear" : v === "Under Hire-Purchase" ? "under_hp" : "unknown")
-              }
-            />
-          </Field>
-
-          {!intakeDone && (
-          <>
-          <Field
-            label="Base Price (RM)"
-            required
-            hint="Your cost / purchase price"
-          >
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
-                RM
-              </span>
-              <input
-                type="number"
-                name="basePrice"
-                value={form.basePrice}
-                onChange={handleChange}
-                placeholder="0"
-                min="0"
-                enterKeyHint="next"
-                inputMode="numeric"
-                className={`${inputCls} pl-12`}
-              />
-            </div>
-          </Field>
-          <Field
-            label="Selling Price (RM)"
-            required
-            hint="What you're selling it for"
-          >
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
-                RM
-              </span>
-              <input
-                type="number"
-                name="sellingPrice"
-                value={form.sellingPrice}
-                onChange={handleChange}
-                placeholder="0"
-                min="0"
-                enterKeyHint="next"
-                inputMode="numeric"
-                className={`${inputCls} pl-12`}
-              />
-            </div>
-          </Field>
-          {/* The manual "Original Price" input was removed here. A seller typing
-              their own crossed-out "was" price is an anchor they invent, not a
-              price the car was ever listed at — a misleading price indication
-              under the Trade Descriptions Act 2011, and it made the Hot Deals
-              feed meaningless. original_price is still recorded, but only by
-              PriceEditModal (DashboardPage.jsx:2654) when a dealer actually
-              drops a live listing's price, so a crossed-out price on a card is
-              now always a real one. */}
-          {form.basePrice && form.sellingPrice && (
-            <div
-              className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
-            >
-              {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
-                ? `Profit margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()} above your cost`
-                : `⚠ Selling price is RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()} below your cost (base price) — you'd sell this at a loss`}
-            </div>
-          )}
-          {!hideCommission && (
+      </>
+    );
+  };
+  const renderCommission = () => {
+    return (
+      <>
           <Field
             label="Salesman Commission (RM)"
             hint="Paid to the salesman who closes this deal. Filled from your commission rule in Settings."
@@ -3303,27 +2659,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               )}
             </>
           </Field>
-          )}
-          <Field
-            label="Warranty (months)"
-            hint="Warranty offered with this car — shown to buyers"
-          >
-            <input
-              type="number"
-              name="warranty_months"
-              value={form.warranty_months}
-              onChange={handleChange}
-              placeholder="e.g. 6"
-              min="0"
-              max="120"
-              enterKeyHint="next"
-              inputMode="numeric"
-              className={inputCls}
-            />
-          </Field>
-          </>
-          )}
-          <MoreDetails>
+      </>
+    );
+  };
+  const renderDeposit = () => {
+    return (
+      <>
             <Field
               label="Deposit to Reserve (RM)"
               hint="Amount needed to hold this unit"
@@ -3343,10 +2684,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 />
               </div>
             </Field>
-          </MoreDetails>
-
-          {/* ── Included Services & Add-ons ── */}
-          {!intakeDone && (
+      </>
+    );
+  };
+  const renderServices = () => {
+    return (
+      <>
           <div className="rounded-2xl border border-gray-200 overflow-hidden">
             {/* Header toggle */}
             <button
@@ -3525,21 +2868,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               </div>
             )}
           </div>
-          )}
-        </div>
-      );
-      case 5: {
-        const selFeatures = parseTags(form.features);
-        const isSel = (f) => selFeatures.some((t) => t.toLowerCase() === f.toLowerCase());
-        const toggleFeature = (f) => {
-          const tags = parseTags(form.features);
-          const i = tags.findIndex((t) => t.toLowerCase() === f.toLowerCase());
-          if (i >= 0) tags.splice(i, 1);
-          else tags.push(f);
-          set("features", tags.join(", "));
-        };
-        return (
-          <div className="space-y-5">
+      </>
+    );
+  };
+  const renderAbout = () => {
+    return (
+      <>
             <Field
               label="About this car"
               hint={'Condition, history, why it stands out — shown as the "About this car" section on the listing.'}
@@ -3576,47 +2910,12 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </p>
               )}
             </Field>
-            <Field
-              label="Features & options"
-              hint="What buyers search for on Google — tap to add, or type your own. The more you list, the more searches this car shows up in."
-            >
-              {/* Chips: max 4 rows tall, flowing into columns that scroll/drag
-                  horizontally so the free-text box below stays reachable (mobile-first). */}
-              <div className="overflow-x-auto pb-2 mb-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
-                <div
-                  className="grid grid-flow-col justify-items-start gap-2"
-                  style={{ gridTemplateRows: "repeat(4, auto)", gridAutoColumns: "max-content" }}
-                >
-                  {COMMON_FEATURES.map((f) => {
-                    const on = isSel(f);
-                    return (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => toggleFeature(f)}
-                        className={`inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                          on
-                            ? "bg-blue-600 border-blue-600 text-white"
-                            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
-                        }`}
-                      >
-                        {on && <Check className="w-3.5 h-3.5" />}
-                        {f}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <textarea
-                name="features"
-                value={form.features}
-                onChange={handleChange}
-                placeholder="Anything else — e.g. bucket seats, carbon pack, tinted windows. Separate with commas."
-                className={textareaCls}
-                rows={2}
-              />
-            </Field>
-
+      </>
+    );
+  };
+  const renderDocuments = () => {
+    return (
+      <>
             {/* ── Car Documents ─────────────────────────────────────────────
                 Named slots for the four documents a buyer can open and check
                 for themselves, plus a free-form list for everything else. The
@@ -3853,6 +3152,926 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                 </p>
               </div>
             </div>
+      </>
+    );
+  };
+  const renderFeatures = () => {
+    const selFeatures = parseTags(form.features);
+    const isSel = (f) => selFeatures.some((t) => t.toLowerCase() === f.toLowerCase());
+    const toggleFeature = (f) => {
+      const tags = parseTags(form.features);
+      const i = tags.findIndex((t) => t.toLowerCase() === f.toLowerCase());
+      if (i >= 0) tags.splice(i, 1);
+      else tags.push(f);
+      set("features", tags.join(", "));
+    };
+    return (
+      <>
+            <Field
+              label="Features & options"
+              hint="What buyers search for on Google — tap to add, or type your own. The more you list, the more searches this car shows up in."
+            >
+              {/* Chips: max 4 rows tall, flowing into columns that scroll/drag
+                  horizontally so the free-text box below stays reachable (mobile-first). */}
+              <div className="overflow-x-auto pb-2 mb-2.5" style={{ WebkitOverflowScrolling: "touch" }}>
+                <div
+                  className="grid grid-flow-col justify-items-start gap-2"
+                  style={{ gridTemplateRows: "repeat(4, auto)", gridAutoColumns: "max-content" }}
+                >
+                  {COMMON_FEATURES.map((f) => {
+                    const on = isSel(f);
+                    return (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => toggleFeature(f)}
+                        className={`inline-flex items-center gap-1 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                          on
+                            ? "bg-blue-600 border-blue-600 text-white"
+                            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                        }`}
+                      >
+                        {on && <Check className="w-3.5 h-3.5" />}
+                        {f}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <textarea
+                name="features"
+                value={form.features}
+                onChange={handleChange}
+                placeholder="Anything else — e.g. bucket seats, carbon pack, tinted windows. Separate with commas."
+                className={textareaCls}
+                rows={2}
+              />
+            </Field>
+      </>
+    );
+  };
+
+  const renderQuickExtras = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">All optional — tap Done to skip.</p>
+      {renderPlateVin()}
+      {renderListingTitle()}
+      <Field label="Loan Eligible">
+        <PillSelect
+          options={["Yes", "No"]}
+          value={form.loan_eligible ? "Yes" : "No"}
+          onChange={(v) => set("loan_eligible", v === "Yes")}
+        />
+      </Field>
+      {renderCarMore()}
+    </div>
+  );
+
+
+  // ── Quick stages (new listings): one question per screen ────────────────
+  // Same `form` fields as the classic layout; QuickSteps owns navigation.
+  const carLine = [form.year, form.brand, form.model].filter(Boolean).join(" ");
+  const quickStage = (id, screens, summaryRows) => (
+    <QuickSteps
+      key={`quick-${id}`}
+      setForm={setForm}
+      screens={screens}
+      summaryRows={summaryRows}
+      landOnSummary={!!visitedStages[id]}
+      contextLine={carLine}
+      onExitBack={() => setStep(id - 1)}
+      onDone={() => setStep(id + 1)}
+    />
+  );
+  const tiles = (options, current, onPick, cols = "grid-cols-2") => (
+    <div className={`grid ${cols} gap-2`}>
+      {options.map((o) => {
+        const { value, label, hint } = typeof o === "object" ? o : { value: o, label: o };
+        return (
+          <Tile key={String(value)} selected={String(current) === String(value)} onClick={() => onPick(value)} className={hint ? "py-3.5" : ""}>
+            <span className="block font-semibold">{label}</span>
+            {hint && <span className="block text-xs font-normal text-gray-500 mt-0.5">{hint}</span>}
+          </Tile>
+        );
+      })}
+    </div>
+  );
+  const isClean = form.conditionDeclared && form.damageMap.length === 0;
+
+  const renderQuickTechnical = () => quickStage(3, [
+    // A spec the Car stage should have filled but did not (an old draft):
+    // asked here so Technical can never be unfinishable.
+    { key: "body_fix", title: "Body type?", skip: !!form.bodyType, required: true, answered: !!form.bodyType,
+      render: ({ pick }) => tiles(BODY_TYPES, form.bodyType, (v) => pick({ bodyType: v })) },
+    { key: "fuel_fix", title: "Fuel type?", skip: !!form.fuelType, required: true, answered: !!form.fuelType,
+      render: ({ pick }) => tiles(FUEL_TYPES, form.fuelType, (v) => pick({ fuelType: v })) },
+    { key: "damage", title: "Any dents, scratches or rust?", filled: form.conditionDeclared || form.damageMap.length > 0, hideContext: false,
+      render: ({ pick }) => (
+        <div className="space-y-3">
+          {tiles([
+            { value: "clean", label: "No visible damage", hint: "The listing states you found none" },
+            { value: "marked", label: "Yes, I'll mark it", hint: "Tap the panels on a car diagram" },
+          ], isClean ? "clean" : (damageYes || form.damageMap.length > 0) ? "marked" : "", (v) => {
+            setDamageYes(v === "marked");
+            pick(v === "clean" ? { damageMap: [], conditionDeclared: true } : { conditionDeclared: false });
+          }, "grid-cols-1")}
+        </div>
+      ) },
+    { key: "damage_map", title: "Mark every defect", skip: !(damageYes || form.damageMap.length > 0),
+      filled: form.conditionDeclared, primaryLabel: "Continue", render: renderDamage },
+    { key: "grade", title: "Auction grade?", skip: !form.isRecon, filled: !!form.auctionGrade,
+      render: ({ pick }) => (
+        <div className="space-y-3">
+          {tiles(["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({ value: g, label: g === suggestedGrade ? `${g} ★` : g })),
+            form.auctionGrade, (v) => pick({ auctionGrade: v }), "grid-cols-5")}
+          <p className="text-xs text-gray-500">Suggested from mileage and year: {suggestedGrade}</p>
+        </div>
+      ) },
+    { key: "interior", title: "Interior grade?", skip: !form.isRecon, filled: !!form.interiorGrade,
+      render: ({ pick }) => tiles(["A", "B", "C", "D"], form.interiorGrade, (v) => pick({ interiorGrade: v }), "grid-cols-4") },
+    { key: "country", title: "Imported from?", skip: !form.isRecon, filled: !!form.importCountry,
+      render: ({ pick }) => tiles(["Japan", "UK", "Australia", "Other"], form.importCountry, (v) => pick({ importCountry: v })) },
+    { key: "chassis", title: "Chassis status?", skip: !form.isRecon, filled: !!form.chassisStatus,
+      render: ({ pick }) => tiles([
+        { value: "clean", label: "Clean" }, { value: "repaired", label: "Repaired" }, { value: "written_off", label: "Written off" },
+      ], form.chassisStatus, (v) => pick({ chassisStatus: v }), "grid-cols-1") },
+    { key: "recon_more", title: "Auction details (optional)", skip: !form.isRecon, enter: "pass",
+      filled: !!(form.auctionHouse || form.localRegDate), render: () => <div className="space-y-4">{renderReconTyped()}</div> },
+    { key: "adv", title: "More specs (optional)", skip: specsLocked, enter: "pass",
+      filled: !!(form.horsepower || form.cylinders || form.fuelEconomyKpl || form.doors || form.seats),
+      render: () => <div className="space-y-4">{renderAdvancedSpecs()}</div> },
+  ], [
+    { key: "damage", label: "Condition", value: form.damageMap.length ? `${form.damageMap.length} area${form.damageMap.length > 1 ? "s" : ""} marked` : isClean ? "No visible damage" : "" },
+    { key: "grade", label: "Auction grade", value: form.auctionGrade },
+    { key: "interior", label: "Interior grade", value: form.interiorGrade },
+    { key: "country", label: "Imported from", value: form.importCountry },
+    { key: "chassis", label: "Chassis", value: { clean: "Clean", repaired: "Repaired", written_off: "Written off" }[form.chassisStatus] || "" },
+    { key: "adv", label: "More specs", value: [form.horsepower && `${form.horsepower} bhp`, form.seats && `${form.seats} seats`].filter(Boolean).join(" · ") },
+  ]);
+
+  const margin = form.basePrice && form.sellingPrice ? Number(form.sellingPrice) - Number(form.basePrice) : null;
+  const svcEmpty = catalogueLoaded && !serviceCatalogue.some((p) => p.is_active !== false);
+  const renderQuickPricing = () => quickStage(4, [
+    { key: "price", title: "Asking price?", required: true, answered: !!form.sellingPrice, focus: "always",
+      render: ({ inputRef }) => (
+        <div className="space-y-3">
+          <BigNumber inputRef={inputRef} value={form.sellingPrice} onChange={(v) => set("sellingPrice", v)} prefix="RM" placeholder="e.g. 45,000" />
+          <p className="text-xs text-gray-500">What buyers see on the listing.</p>
+        </div>
+      ) },
+    { key: "cost", title: "What did it cost you?", required: true, answered: !!form.basePrice, focus: "always",
+      render: ({ inputRef }) => (
+        <div className="space-y-3">
+          <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
+          {margin != null && (
+            <p className={`text-sm font-medium ${margin >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+              {margin >= 0 ? `Margin: RM ${fmtNum(margin)}` : `RM ${fmtNum(-margin)} below your cost — you'd sell at a loss`}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">Your purchase price. Used to work out your margin.</p>
+        </div>
+      ) },
+    { key: "payment", title: "Cash or loan?", required: true, answered: true,
+      render: ({ pick }) => tiles([{ value: "cash", label: "Cash" }, { value: "loan", label: "Loan" }], form.payment_type || "cash", (v) => pick({ payment_type: v })) },
+    { key: "encumbrance", title: "Is there still a loan on the car?", filled: true,
+      render: ({ pick }) => tiles([
+        { value: "clear", label: "No, it's clear" },
+        { value: "under_hp", label: "Yes, under hire-purchase" },
+        { value: "unknown", label: "Not sure" },
+      ], form.encumbranceStatus || "unknown", (v) => pick({ encumbranceStatus: v }), "grid-cols-1") },
+    { key: "commission", title: "Salesman commission?", skip: hideCommission, filled: !!form.commissionAmount,
+      render: () => <div className="space-y-4">{renderCommission()}</div> },
+    { key: "warranty", title: "Any warranty?", filled: form.warranty_months !== "" && form.warranty_months != null,
+      render: ({ pick, otherOpen, setOtherOpen }) => (
+        <div className="space-y-4">
+          {tiles([
+            { value: "0", label: "None" }, { value: "3", label: "3 months" }, { value: "6", label: "6 months" },
+            { value: "12", label: "1 year" }, { value: "24", label: "2 years" }, { value: "36", label: "3 years" },
+          ], form.warranty_months, (v) => pick({ warranty_months: v }))}
+          {otherOpen ? (
+            <input autoFocus inputMode="numeric" placeholder="Months, e.g. 18" value={form.warranty_months}
+              onChange={(e) => set("warranty_months", e.target.value.replace(/\D/g, "").slice(0, 3))}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500" />
+          ) : (
+            <button type="button" onClick={() => setOtherOpen(true)} className="text-sm font-medium text-gray-500 underline underline-offset-2">Other length</button>
+          )}
+        </div>
+      ) },
+    { key: "services", title: "Anything included with the car?", skip: svcEmpty, filled: form.included_services.length > 0,
+      render: () => renderServices() },
+    { key: "pricing_more", title: "Location & deposit", enter: "pass", primaryLabel: "Done",
+      render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
+  ], [
+    { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
+    { key: "cost", label: "Your cost", value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" },
+    { key: "payment", label: "Payment", value: form.payment_type === "loan" ? "Loan" : "Cash" },
+    { key: "encumbrance", label: "Loan on car", value: { clear: "Clear", under_hp: "Under hire-purchase", unknown: "Not sure" }[form.encumbranceStatus] || "" },
+    { key: "commission", label: "Commission", value: form.commissionAmount ? `RM ${fmtNum(form.commissionAmount)}` : "" },
+    { key: "warranty", label: "Warranty", value: form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : form.warranty_months === "0" ? "None" : "" },
+    { key: "services", label: "Included", value: form.included_services.length ? `${form.included_services.length} item${form.included_services.length > 1 ? "s" : ""}` : "" },
+    { key: "pricing_more", label: "Location", value: [form.city, form.state].filter(Boolean).join(", ") },
+  ]);
+
+  const renderQuickDetails = () => quickStage(5, [
+    { key: "about", title: "Tell buyers about it", filled: !!String(form.specs || "").trim(),
+      render: () => renderAbout() },
+    { key: "features", title: "What does it have?", filled: !!String(form.features || "").trim(), enter: "pass",
+      render: () => renderFeatures() },
+    { key: "documents", title: "Documents", required: true, answered: geranSatisfied,
+      render: () => renderDocuments() },
+  ], [
+    { key: "about", label: "About", value: String(form.specs || "").trim().split("\n")[0] },
+    { key: "features", label: "Features", value: parseTags(form.features).length ? `${parseTags(form.features).length} listed` : "" },
+    { key: "documents", label: "Documents", value: geranSatisfied ? `${(form.car_documents || []).length} attached${form.geranReason && !docInSlot("registration_card") ? " · geran reason given" : ""}` : "" },
+  ]);
+
+  function renderLocationRow() {
+    if (form.state && form.city && !locOpen) {
+      return (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+          <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-gray-500">Car location</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{form.city}, {form.state}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLocOpen(true)}
+            className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+          >
+            Change
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-5">
+        <Field label="State" required hint="Where buyers can view this car">
+          <PickerField
+            label="Select State"
+            value={form.state}
+            onChange={(v) => setForm((f) => ({ ...f, state: v, city: "" }))}
+            options={Object.keys(STATE_CITIES)}
+            placeholder="Select state"
+          />
+        </Field>
+        <Field label="City" required>
+          <PickerField
+            label="Select City"
+            value={form.city}
+            onChange={(v) => set("city", v)}
+            options={cityOptions}
+            placeholder={form.state ? "Select city" : "Select state first"}
+            disabled={!form.state}
+            allowCustom
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  function renderSectionContent(id) {
+    switch (id) {
+      case 1: return (
+        <div className="space-y-5">
+          <input
+            ref={photosInputRef}
+            type="file"
+            multiple
+            accept="image/*"
+            onChange={handleFiles}
+            className="hidden"
+          />
+          {previews.length === 0 ? (
+            <label
+              onClick={() => photosInputRef.current?.click()}
+              className="block border-2 border-dashed border-gray-300 hover:border-red-500 rounded-2xl p-8 text-center cursor-pointer transition-colors group"
+            >
+              <Camera className="w-10 h-10 text-gray-400 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
+              <p className="text-gray-900 font-medium mb-1">Choose Photos</p>
+              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
+              <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
+            </label>
+          ) : (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => photosInputRef.current?.click()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                Add more · {form.images.length}/30
+              </button>
+            </div>
+          )}
+          {imgProgress.filter(p => p.status !== 'done').length > 0 && (
+            <div className="space-y-1.5">
+              {imgProgress.filter(p => p.status !== 'done').map((p, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-gray-50
+                     border border-gray-200 rounded-lg text-xs">
+                  {p.status === 'uploading'
+                    ? <div className="w-3 h-3 border border-gray-300 border-t-gray-600
+                           rounded-full animate-spin flex-shrink-0" />
+                    : <span className="text-red-400 flex-shrink-0">✕</span>}
+                  <span className="text-gray-600 truncate">{p.name}</span>
+                  <span className={p.status === 'error'
+                    ? 'text-red-400 ml-auto flex-shrink-0'
+                    : 'text-gray-500 ml-auto flex-shrink-0'}>
+                    {p.status === 'error' ? 'Failed' : 'Uploading…'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {previews.length > 0 && (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-gray-500">
+                  Image #1 is the main thumbnail · use arrows to reorder
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPhotosFull(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors flex-shrink-0"
+                >
+                  <Maximize2 className="w-3.5 h-3.5" />
+                  Manage all
+                </button>
+              </div>
+              {/* Compact single-row strip — scrolls horizontally, mobile-friendly */}
+              <div className="flex gap-2 overflow-x-auto pb-1 px-0.5">
+                {previews.map((src, i) => (
+                  <div key={src + i} className="w-24 sm:w-28 flex-shrink-0">
+                    {renderPhotoTile(src, i)}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {photosFull && createPortal(
+            <div
+              className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex flex-col"
+              onClick={() => setPhotosFull(false)}
+            >
+              <div
+                className="flex items-center justify-between gap-2 px-4 py-3 border-b border-white/10 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2 text-white min-w-0">
+                  <span className="font-semibold text-sm flex-shrink-0">Manage Photos</span>
+                  <span className="text-white/50 text-xs truncate">
+                    {previews.length}/30 · drag or use arrows to reorder
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => photosInputRef.current?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium transition-colors"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Add more
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhotosFull(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-w-5xl mx-auto">
+                  {previews.map((src, i) => renderPhotoTile(src, i))}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )}
+          {/* Walkthrough Video */}
+          <div className="space-y-1">
+            <label className="text-sm text-gray-600">
+              Walkthrough Video{" "}
+              <span className="text-gray-400">(optional)</span>
+            </label>
+            <input
+              type="url"
+              placeholder="Paste YouTube, TikTok, or Instagram Reel URL"
+              value={form.video_url || ""}
+              onChange={(e) => set("video_url", e.target.value)}
+              className={inputCls}
+            />
+            {form.video_url && <VideoPreview url={form.video_url} />}
+          </div>
+        </div>
+      );
+      case 2: return quickMode ? (
+        <QuickCarFlow
+          key="quick-2"
+          form={form}
+          setForm={setForm}
+          specLock={specLock}
+          specsLocked={specsLocked}
+          unlockSpecs={unlockSpecs}
+          onExitBack={() => setStep(1)}
+          onDone={() => setStep(3)}
+          renderExtras={renderQuickExtras}
+        />
+      ) : (
+        <div className="space-y-4">
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {form.year} {form.brand} {form.model} — identity carried over from Core Details
+            </div>
+          )}
+          {/* Core inputs — one per row */}
+          {!intakeDone && (
+          <>
+          <Field label="Brand" required>
+            <PickerField
+              label="Select Brand"
+              value={form.brand}
+              onChange={(v) => setForm((f) => ({ ...f, brand: v, model: "" }))}
+              options={ALL_BRANDS}
+              placeholder="Select brand"
+              allowCustom
+            />
+          </Field>
+          {offCatalogueBrand && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                "{form.brand}" is not a brand we recognise yet. The listing will still publish —
+                we're just noting the gap so it can be added properly.
+              </span>
+            </div>
+          )}
+         <Field label="Model" required>
+            <PickerField
+              label="Select Model"
+              value={form.model}
+              onChange={(v) => set("model", v)}
+              options={modelOptions}
+              placeholder={form.brand ? "Select model" : "Pick brand first"}
+              disabled={!form.brand}
+              allowCustom
+            />
+          </Field>
+          {offCatalogueModel && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                "{form.model}" is not a model we recognise for {form.brand}. Specs will not
+                fill in, and buyers filtering by model will not see this car. Pick the plain
+                model name and put the rest in the Listing Title or Variant.
+              </span>
+            </div>
+          )}
+          <Field label="Variant">
+            <input
+              name="variant"
+              value={form.variant}
+              onChange={handleChange}
+              placeholder="e.g. 1.5 G"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Year" required>
+            <input
+              type="number"
+              name="year"
+              value={form.year}
+              onChange={handleChange}
+              placeholder="e.g. 2021"
+              min="1900"
+              max="2030"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Mileage (km)" required>
+            <input
+              type="number"
+              name="mileage"
+              value={form.mileage}
+              onChange={handleChange}
+              placeholder="e.g. 45000"
+              min="0"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Colour" required>
+            <input
+              name="colour"
+              value={form.colour}
+              onChange={handleChange}
+              placeholder="e.g. Pearl White"
+              enterKeyHint="next"
+              className={inputCls}
+            />
+          </Field>
+          </>
+          )}
+          {autoFilled && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 border border-green-200 text-green-700 text-xs font-medium">
+              <Check size={12} />
+              Specs auto-filled — review Technical section and adjust if needed
+            </div>
+          )}
+
+          {/* Condition is required — it sits with the other required fields,
+              never below the optional extras. */}
+          <Field label="Condition" required>
+            <PillSelect
+              options={CONDITIONS}
+              value={form.condition}
+              onChange={(v) => set("condition", v)}
+            />
+          </Field>
+          <Field label="Loan Eligible">
+            <PillSelect
+              options={["Yes", "No"]}
+              value={form.loan_eligible ? "Yes" : "No"}
+              onChange={(v) => set("loan_eligible", v === "Yes")}
+            />
+          </Field>
+          {renderPlateVin()}
+
+          {renderListingTitle()}
+
+          {renderCarMore()}
+
+        </div>
+      );
+      case 3: return quickMode ? renderQuickTechnical() : (
+        <div className="space-y-4">
+          {/* Catalogue lock. When the curated table knows this exact car, its
+              specs are shown and NOT retypeable — that is the whole point: two
+              sellers listing the same 2019 Civic have to produce the same
+              engine_cc, or no buyer filter built on it can be trusted. The
+              override exists because the catalogue covers a fraction of the
+              fleet and a seller with a 3.5 in a car we recorded as a 2.5 must
+              not be trapped; it stamps specs_overridden, which is the
+              catalogue's error log. */}
+          {specsLocked && (
+            <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+              <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5">
+                    <Check size={13} className="text-emerald-600 flex-shrink-0" />
+                    Specs from our catalogue
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    {specLock.make} {specLock.model} · {specLock.yearFrom}
+                    {specLock.yearTo >= 2099 ? " onwards" : `-${specLock.yearTo}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={unlockSpecs}
+                  className="flex-shrink-0 text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-gray-900"
+                >
+                  Not my car?
+                </button>
+              </div>
+              <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 px-4 py-3">
+                {[
+                  ["Engine",       form.engineCc && `${form.engineCc} cc`],
+                  ["Cylinders",    form.cylinders],
+                  ["Body",         form.bodyType],
+                  ["Fuel",         form.fuelType],
+                  ["Transmission", form.transmission],
+                  ["Power",        form.horsepower && `${form.horsepower} hp`],
+                  ["Doors",        form.doors],
+                  ["Seats",        form.seats],
+                  ["Economy",      form.fuelEconomyKpl && `${form.fuelEconomyKpl} km/L`],
+                ].filter(([, v]) => v).map(([k, v]) => (
+                  <div key={k} className="min-w-0">
+                    <dt className="text-[11px] uppercase tracking-wide text-gray-400">{k}</dt>
+                    <dd className="text-sm font-medium text-gray-900 tabular-nums truncate">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+          {specsUnlocked && specLock && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <span>
+                You are overriding our catalogue figures for the {specLock.make} {specLock.model}.
+                Buyers see these as seller-stated, and we will review the catalogue entry.
+              </span>
+            </div>
+          )}
+          {intakeDone && !specsLocked && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              {[form.bodyType, form.fuelType, form.transmission, form.engineCc && `${form.engineCc}cc`].filter(Boolean).join(" · ")} — carried over from Core Details
+            </div>
+          )}
+          {/* Core input */}
+          {!intakeDone && !specsLocked && (
+          <Field
+            label="Engine Displacement (CC)"
+            hint="Used for road tax & insurance calc"
+          >
+            <div className="space-y-3">
+              <div className="relative">
+                <input
+                  type="number"
+                  name="engineCc"
+                  value={form.engineCc}
+                  onChange={handleChange}
+                  placeholder="e.g. 1500"
+                  min="50"
+                  max="10000"
+                  className={`${inputCls} pr-12`}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium pointer-events-none">
+                  cc
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CC_PRESETS.map((cc) => (
+                  <button
+                    key={cc}
+                    type="button"
+                    onClick={() => set("engineCc", String(cc))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${String(form.engineCc) === String(cc) ? "bg-blue-600 border-blue-600 text-white" : "bg-gray-100 border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-600"}`}
+                  >
+                    {cc >= 1000 ? `${cc / 1000}`.replace(/\.0$/, "") + "k" : cc}
+                    cc
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Field>
+          )}
+
+          {renderDamage()}
+
+          {/* Recon toggle — mode switch, stays visible */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-2xl">
+            <div>
+              <p className="text-gray-900 font-semibold text-sm">
+                Recon / Grey Import Vehicle
+              </p>
+              <p className="text-gray-500 text-xs mt-0.5">
+                Enable if this car was imported from overseas
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => set("isRecon", !form.isRecon)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors flex-shrink-0 ${form.isRecon ? "bg-blue-600" : "bg-gray-300"}`}
+            >
+              <span
+                className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${form.isRecon ? "translate-x-6" : "translate-x-1"}`}
+              />
+            </button>
+          </div>
+
+          {form.isRecon && (
+            <div className="space-y-4">
+              <Field
+                label="Auction Grade"
+                hint={`Suggested: ${suggestedGrade}`}
+              >
+                <PickerField
+                  label="Auction Grade"
+                  value={form.auctionGrade}
+                  onChange={(v) => set("auctionGrade", v)}
+                  options={["S", "5", "4.5", "4", "3.5", "3", "R", "RA", "2", "1"].map((g) => ({
+                    value: g,
+                    label: g === suggestedGrade ? `${g}  ★ suggested` : g,
+                  }))}
+                  placeholder="Select grade"
+                />
+                {!form.auctionGrade && (
+                  <button
+                    type="button"
+                    onClick={() => set("auctionGrade", suggestedGrade)}
+                    className="mt-1.5 text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                  >
+                    Use suggested: {suggestedGrade}
+                  </button>
+                )}
+              </Field>
+              <Field label="Interior Grade">
+                <PickerField
+                  label="Interior Grade"
+                  value={form.interiorGrade}
+                  onChange={(v) => set("interiorGrade", v)}
+                  options={["A", "B", "C", "D"]}
+                  placeholder="Select"
+                />
+              </Field>
+              <Field label="Import Country">
+                <PickerField
+                  label="Import Country"
+                  value={form.importCountry}
+                  onChange={(v) => set("importCountry", v)}
+                  options={["Japan", "UK", "Australia", "Other"]}
+                  placeholder="Select"
+                />
+              </Field>
+              {renderReconTyped()}
+              <Field label="Chassis Status">
+                <PickerField
+                  label="Chassis Status"
+                  value={form.chassisStatus}
+                  onChange={(v) => set("chassisStatus", v)}
+                  options={[
+                    { value: "clean", label: "Clean" },
+                    { value: "repaired", label: "Repaired" },
+                    { value: "written_off", label: "Written Off" },
+                  ]}
+                  placeholder="Select"
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* Advanced specs — enthusiast-facing, collapsed by default. A
+              salesman's VIN decode fills bhp/cylinders/doors/seats for them.
+              Hidden under the catalogue lock: every field in here is already
+              shown, and correct, in the block above. */}
+          {!specsLocked && (
+          <MoreDetails collapsible label="Advanced specs (optional)">
+            {renderAdvancedSpecs()}
+          </MoreDetails>
+          )}
+
+          {/* Pills — below everything */}
+          {!intakeDone && !specsLocked && (
+          <>
+          <Field label="Body Type" required>
+            <PillSelect
+              options={BODY_TYPES}
+              value={form.bodyType}
+              onChange={(v) => set("bodyType", v)}
+            />
+          </Field>
+          <Field label="Fuel Type" required>
+            <PillSelect
+              options={FUEL_TYPES}
+              value={form.fuelType}
+              onChange={(v) => set("fuelType", v)}
+            />
+          </Field>
+          <Field label="Transmission">
+            <PillSelect
+              options={["Auto", "Manual"]}
+              value={form.transmission}
+              onChange={(v) => set("transmission", v)}
+            />
+          </Field>
+          </>
+          )}
+        </div>
+      );
+      case 4: return quickMode ? renderQuickPricing() : (
+        <div className="space-y-5">
+          {renderLocationRow()}
+          {intakeDone && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
+              <Check size={12} />
+              Asking RM {Number(form.sellingPrice || 0).toLocaleString()} — pricing carried over from Core Details
+            </div>
+          )}
+          <Field label="Payment Type" required>
+            <PillSelect
+              options={["Cash", "Loan"]}
+              value={
+                form.payment_type
+                  ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
+                  : "Cash"
+              }
+              onChange={(v) => set("payment_type", v.toLowerCase())}
+            />
+          </Field>
+
+          <Field
+            label="Encumbrance Status"
+            hint="Is there still an outstanding loan on this car?"
+          >
+            <PillSelect
+              options={["Clear", "Under Hire-Purchase", "Unknown"]}
+              value={
+                form.encumbranceStatus === "clear"
+                  ? "Clear"
+                  : form.encumbranceStatus === "under_hp"
+                    ? "Under Hire-Purchase"
+                    : "Unknown"
+              }
+              onChange={(v) =>
+                set("encumbranceStatus", v === "Clear" ? "clear" : v === "Under Hire-Purchase" ? "under_hp" : "unknown")
+              }
+            />
+          </Field>
+
+          {!intakeDone && (
+          <>
+          <Field
+            label="Base Price (RM)"
+            required
+            hint="Your cost / purchase price"
+          >
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
+                RM
+              </span>
+              <input
+                type="number"
+                name="basePrice"
+                value={form.basePrice}
+                onChange={handleChange}
+                placeholder="0"
+                min="0"
+                enterKeyHint="next"
+                inputMode="numeric"
+                className={`${inputCls} pl-12`}
+              />
+            </div>
+          </Field>
+          <Field
+            label="Selling Price (RM)"
+            required
+            hint="What you're selling it for"
+          >
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
+                RM
+              </span>
+              <input
+                type="number"
+                name="sellingPrice"
+                value={form.sellingPrice}
+                onChange={handleChange}
+                placeholder="0"
+                min="0"
+                enterKeyHint="next"
+                inputMode="numeric"
+                className={`${inputCls} pl-12`}
+              />
+            </div>
+          </Field>
+          {/* The manual "Original Price" input was removed here. A seller typing
+              their own crossed-out "was" price is an anchor they invent, not a
+              price the car was ever listed at — a misleading price indication
+              under the Trade Descriptions Act 2011, and it made the Hot Deals
+              feed meaningless. original_price is still recorded, but only by
+              PriceEditModal (DashboardPage.jsx:2654) when a dealer actually
+              drops a live listing's price, so a crossed-out price on a card is
+              now always a real one. */}
+          {form.basePrice && form.sellingPrice && (
+            <div
+              className={`px-4 py-3 rounded-xl text-sm font-medium border ${parseFloat(form.sellingPrice) >= parseFloat(form.basePrice) ? "bg-green-500/10 text-green-600 border-green-500/20" : "bg-red-500/10 text-red-600 border-red-500/20"}`}
+            >
+              {parseFloat(form.sellingPrice) >= parseFloat(form.basePrice)
+                ? `Profit margin: +RM ${(parseFloat(form.sellingPrice) - parseFloat(form.basePrice)).toLocaleString()} above your cost`
+                : `⚠ Selling price is RM ${(parseFloat(form.basePrice) - parseFloat(form.sellingPrice)).toLocaleString()} below your cost (base price) — you'd sell this at a loss`}
+            </div>
+          )}
+          {!hideCommission && renderCommission()}
+          <Field
+            label="Warranty (months)"
+            hint="Warranty offered with this car — shown to buyers"
+          >
+            <input
+              type="number"
+              name="warranty_months"
+              value={form.warranty_months}
+              onChange={handleChange}
+              placeholder="e.g. 6"
+              min="0"
+              max="120"
+              enterKeyHint="next"
+              inputMode="numeric"
+              className={inputCls}
+            />
+          </Field>
+          </>
+          )}
+          <MoreDetails>
+            {renderDeposit()}
+          </MoreDetails>
+
+          {/* ── Included Services & Add-ons ── */}
+          {!intakeDone && renderServices()}
+        </div>
+      );
+      case 5: {
+        if (quickMode) return renderQuickDetails();
+        return (
+          <div className="space-y-5">
+            {renderAbout()}
+            {renderFeatures()}
+
+            {renderDocuments()}
           </div>
         );
       }
@@ -4103,7 +4322,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           (the modal body on Lite / Premium / manager / dealer edit, the page on
           the dealer Add tab), so Continue is always in reach on a long step
           instead of waiting below the fold. */}
-      {!(quickMode && step === 2) && (
+      {!(quickMode && step >= 2 && step <= 5) && (
       <div
         className="sticky bottom-0 z-20 mt-5 -mx-1 px-1 pt-3 flex items-center gap-3 bg-white border-t border-gray-100"
         // The shadow paints white below the bar: every modal host pads its
