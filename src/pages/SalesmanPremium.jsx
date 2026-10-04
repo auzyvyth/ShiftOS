@@ -24,6 +24,7 @@ import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+import BookingWeekCalendar from "../components/bookings/BookingWeekCalendar";
 // Lazy — each of these is a self-contained tab/section that shouldn't ship in
 // the initial SalesmanPremium chunk. See src/pages/salesmanPremium/ for the
 // tab-by-tab split (Dashboard/Listings/Analytics so far).
@@ -295,6 +296,29 @@ export default function SalesmanPremium() {
  const setActiveTab = (tab, opts) => navigate(`/salesman-premium/${tab}`, opts);
  // Bookings is a sub-view of Enquiries now; Lead History is the other half.
  const [inboxSubTab, setInboxSubTab] = useState("bookings");
+ // Bookings layout: the week calendar or the original list. A per-device
+ // preference only, so localStorage (wrapped: private mode can throw).
+ const [bookingView, setBookingViewState] = useState(() => {
+ try { return localStorage.getItem("sp_booking_view") === "list" ? "list" : "week"; } catch { return "week"; }
+ });
+ const setBookingView = (v) => { setBookingViewState(v); try { localStorage.setItem("sp_booking_view", v); } catch { /* ignore */ } };
+ // The same hours buyers book inside (booking_availability, AvailabilityEditor).
+ // null = never set, which the calendar shows as the buyer-side fallback.
+ const [bookingHours, setBookingHours] = useState(null);
+ // Read on arriving at the Inbox, so hours edited in Settings show on return.
+ // A failed read keeps the last value; the calendar still works without it.
+ useEffect(() => {
+ if (!userId || activeTab !== "enquiries") return;
+ let live = true;
+ supabase.from("booking_availability")
+ .select("weekdays, start_hour, end_hour, slot_minutes, is_active")
+ .eq("owner_id", userId).maybeSingle()
+ .then(({ data, error }) => {
+ if (!live || error) return;
+ setBookingHours(data && data.is_active !== false && Array.isArray(data.weekdays) ? data : null);
+ });
+ return () => { live = false; };
+ }, [userId, activeTab]);
  // Listings hosts both halves of "things I sell": the cars, and the paid
  // add-on catalogue those cars get sold with. Same table the deal-add-on
  // picker in the lead drawer reads (dealer_products).
@@ -1411,7 +1435,7 @@ export default function SalesmanPremium() {
  supabase
  .from("appointments")
  .select(
- "id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)",
+ "id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, duration_minutes, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)",
  )
  .eq("salesman_id", uid)
  .order("appointment_date", { ascending: false })
@@ -2089,7 +2113,7 @@ export default function SalesmanPremium() {
  remind_at: remindAt,
  remind_sent: false,
  })
- .select("id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
+ .select("id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, duration_minutes, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
  .single();
  setSellerBookingSaving(false);
  if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error("Could not create the booking"); return; }
@@ -4701,12 +4725,52 @@ export default function SalesmanPremium() {
  );
  };
 
+ // Week | List. Same rows, same detail sheet, same actions; the week view
+ // (BookingWeekCalendar) is a layout, it never writes on its own.
+ const viewToggle = (
+ <div role="group" aria-label="Bookings layout" style={{ display: "flex", gap: 2, padding: 3, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+ {[["week", "Week"], ["list", "List"]].map(([k, label]) => (
+ <button key={k} type="button" aria-pressed={bookingView === k} onClick={() => setBookingView(k)}
+ style={{ padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: bookingView === k ? C.surfaceRaised : "transparent", color: bookingView === k ? C.text : C.textSec }}>
+ {label}
+ </button>
+ ))}
+ </div>
+ );
+ // Same branch the list card's Confirm button takes: with a phone it opens the
+ // drafted WhatsApp confirm (the seller sends it), without one it just confirms.
+ const confirmFromCalendar = async (apt) => {
+ if (apt.buyer_phone) { openConfirmBookingModal(apt); return; }
+ await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt);
+ };
+
+ if (bookingView === "week") {
  return (
  <div>
  {renderBookingDetailModal()}
- <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+ <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>{viewToggle}</div>
+ <BookingWeekCalendar
+ appointments={appointments}
+ hours={bookingHours}
+ nowTick={nowTick}
+ onOpen={(apt) => setBookingDetailId(apt.id)}
+ onConfirm={confirmFromCalendar}
+ onMove={(apt) => { setBookingDetailId(apt.id); setReschedulingAptId(apt.id); }}
+ onEditHours={() => openSettings("availability")}
+ />
+ </div>
+ );
+ }
+
+ return (
+ <div>
+ {renderBookingDetailModal()}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 16px" }}>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
  Bookings ({confirmedApts.length})
  </p>
+ {viewToggle}
+ </div>
  {appointments.length === 0 && (
  <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
