@@ -2594,7 +2594,7 @@ export default function CarDetailPage() {
                       <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
                         <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Report</p>
                         <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
-                          <DamageMap value={damageMarks} readOnly />
+                          <DamageMap value={damageMarks} readOnly theme={isXdrive ? "light" : "dark"} />
                           <p style={{ fontSize:12, color: th.textSec, marginTop:14, lineHeight:1.6 }}>{conditionSummary}</p>
                           {conditionDeclaredOn && (
                             <p style={{ fontSize:11, color: th.textMuted, marginTop:4 }}>Declared by the dealer on {conditionDeclaredOn}</p>
@@ -3631,7 +3631,7 @@ export default function CarDetailPage() {
                             padding: "16px 20px",
                           }}
                         >
-                          <DamageMap value={damageMarks} readOnly />
+                          <DamageMap value={damageMarks} readOnly theme={isXdrive ? "light" : "dark"} />
                           <p
                             style={{
                               fontSize: 12,

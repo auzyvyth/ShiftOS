@@ -21,6 +21,24 @@ import { PLAN_CONFIG } from './planConfig.js';
  * to sign in only when they need something kept (see useSavedCars).
  */
 
+// Salesman Premium's feature list, the ONE copy. The /for-salesmen landing
+// page (salesmanLandingCopy.js), the Premium signup screen
+// (SalesmanOnboarding.jsx) and the plan cards below all read it. Every line
+// must be something the Premium panel actually does today: "priority
+// marketplace placement" and a "custom profile subdomain" were advertised on
+// all three for months and neither existed (nothing ranks by plan; no
+// standalone salesman has a subdomain). A paid feature we describe but do not
+// ship is a false claim to the person paying for it.
+export const SALESMAN_PREMIUM_FEATURES = [
+  'Live presentation for TikTok / FB lives',
+  '"This week" call list + drafted follow-ups',
+  'Loan desk: affordability check + bank comparison',
+  'Handover checklist + customer list',
+  'AI listing captions + AI chat reply drafts',
+  'Commission tracking',
+  'Performance: where your deals are lost',
+];
+
 const PRESENTATION = {
   salesman_lite: {
     tier: 'lite', route: '/salesman-onboarding/lite',
@@ -33,13 +51,7 @@ const PRESENTATION = {
   },
   salesman_full: {
     tier: 'premium', route: '/salesman-onboarding/premium',
-    features: [
-      'Priority marketplace placement',
-      'Advanced CRM automation',
-      'Commission tracking',
-      'Advanced analytics',
-      'Custom profile subdomain',
-    ],
+    features: SALESMAN_PREMIUM_FEATURES,
   },
   dealer_starter: {
     tier: 'starter', route: '/dealer-onboarding/starter', trial: '14-day free trial',

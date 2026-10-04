@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images, GitCompare, ShieldCheck } from 'lucide-react';
+import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images, GitCompare, BadgeCheck } from 'lucide-react';
 import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
@@ -443,8 +443,16 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
             {/* Verified-dealer trust chip — marketplace only (mixed dealers);
                 redundant on a single-dealer storefront where every card shares it */}
             {xdrive && car.dealer_is_verified && (
-              <span style={{ ...badgePill('rgba(37,99,235,0.92)', '#fff'), display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                <ShieldCheck size={10} strokeWidth={2.5} /> VERIFIED
+              // Tick only — the word "VERIFIED" made the pill too long and it
+              // clipped against the other badges. The label survives for screen
+              // readers and as a hover tooltip.
+              <span
+                role="img"
+                aria-label="Verified seller"
+                title="Verified seller"
+                style={{ ...badgePill('rgba(37,99,235,0.92)', '#fff'), display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', padding: '3px 5px' }}
+              >
+                <BadgeCheck size={12} strokeWidth={2.5} />
               </span>
             )}
           </div>

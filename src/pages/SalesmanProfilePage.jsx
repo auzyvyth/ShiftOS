@@ -176,6 +176,9 @@ export default function SalesmanProfilePage() {
         to: routeForProfile(viewer),
         label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
         seller: isSellerRole(viewer.role),
+        // Live presentation is not part of Salesman Lite: the button showed
+        // there and did nothing, so Lite does not get it at all.
+        lite: routeForProfile(viewer) === '/salesman-lite',
       });
     });
     return () => { cancelled = true; };
@@ -508,6 +511,10 @@ export default function SalesmanProfilePage() {
         .ap-ico { width: 48px; height: 48px; flex-shrink: 0; border-radius: 50%; border: 1px solid rgba(0,0,0,.12); display: flex; align-items: center; justify-content: center; color: #111827; background: #fff; transition: border-color .15s; }
         .ap-ico:hover { border-color: #111827; }
         .ap-ico svg { width: 18px; height: 18px; }
+        /* 3+ socials: four 48px circles left the button ~80px on a phone and
+           squeezed the logo out of line, so WhatsApp takes its own row. */
+        .ap-cta--stack { flex-wrap: wrap; row-gap: 10px; }
+        .ap-cta--stack .ap-btn { flex: 1 1 100%; }
         .ap-bio { font-size: 15px; color: #4b5563; line-height: 1.7; margin-top: 18px; padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
         .ap-more { background: none; border: none; color: #111827; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 0 0; text-decoration: underline; text-underline-offset: 3px; font-family: inherit; }
         .ap-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
@@ -619,7 +626,7 @@ export default function SalesmanProfilePage() {
                 <Link to={viewerHome.to} style={ownerChip}>
                   {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
                 </Link>
-                {isOwner && listings.length > 0 && (
+                {isOwner && !viewerHome.lite && listings.length > 0 && (
                   <button onClick={() => setPresenting(true)} style={ownerChip}>
                     <Radio size={12} /> Live presentation
                   </button>
@@ -677,7 +684,7 @@ export default function SalesmanProfilePage() {
 
                 {/* ONE primary action; socials are icon-only beside it. */}
                 {(waHref || socials.length > 0) && (
-                  <div className="ap-cta">
+                  <div className={`ap-cta${waHref && socials.length >= 3 ? ' ap-cta--stack' : ''}`}>
                     {waHref && (
                       <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">
                         {WA_ICON}<span>WhatsApp {firstName}</span>
@@ -844,7 +851,8 @@ export default function SalesmanProfilePage() {
 
       {presenting && (
         <Suspense fallback={null}>
-          <LivePresenter listings={listings} onClose={() => setPresenting(false)} />
+          <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
+            sellerName={profile?.full_name} sellerPhone={profile?.whatsapp_number} onClose={() => setPresenting(false)} />
         </Suspense>
       )}
     </>

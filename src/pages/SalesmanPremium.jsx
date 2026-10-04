@@ -144,6 +144,7 @@ import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
 // SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
+import { hasUnreadRejection } from "../utils/listingReview";
 import {
  priceStyle, SOFT, CARD, CARD_HEADER, ROW_LINE, EYEBROW, STAT, PrevMonthModal,
  timeAgo, preciseAgo, preciseUntil, timeLabels, STAGE_NEUTRAL, STATUS_LABEL,
@@ -618,6 +619,17 @@ export default function SalesmanPremium() {
  // notifications
  const [notifications, setNotifications] = useState([]);
  const [notifOpen, setNotifOpen] = useState(false);
+ // The list defaults to Available, so a rejected car looked like it had
+ // vanished. While a rejection is unread, open Listings on Rejected instead
+ // (once per session — after that the seller's own tab choice wins).
+ const rejectionLanded = useRef(false);
+ useEffect(() => {
+ if (rejectionLanded.current || activeTab !== "listings" || !listingsLoaded) return;
+ if (hasUnreadRejection(notifications, myListings)) {
+ rejectionLanded.current = true;
+ setFilterStatus("rejected");
+ }
+ }, [activeTab, listingsLoaded, notifications, myListings]); // eslint-disable-line react-hooks/exhaustive-deps
 
  // enquiry templates
  const [openTemplateId, setOpenTemplateId] = useState(null);
@@ -1845,9 +1857,15 @@ export default function SalesmanPremium() {
  switchTab("enquiries");
  setInboxSubTab("enquiries");
  break;
+ // Open the tab the car is actually on — the list defaults to Available,
+ // so a rejected car was invisible after tapping its own notification.
  case "listing_approved":
+ switchTab("listings");
+ setFilterStatus("available");
+ break;
  case "listing_rejected":
  switchTab("listings");
+ setFilterStatus("rejected");
  break;
  default:
  break;

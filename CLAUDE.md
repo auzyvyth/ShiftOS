@@ -170,6 +170,12 @@ Project ID: lemdkdizdlcirhbzqlos
 - src/hooks/useRoleRedirect.js — role-based routing hook
 - src/hooks/useSiteProfile.js — dealer profile context
 - src/utils/serviceCategories.js — shared icon/color/label map for service categories
+- src/components/DamageMap.jsx — THE condition-report diagram (auction-sheet "unfolded car"),
+  used by CarForm, CarDetailPage, ListingReviewModal and the dealer ListingDetailDrawer. One
+  copy only: the drawer had its own fork reading a `{zone}` shape nothing writes, so it showed
+  every car as clean. Pass `theme="light"|"dark"` to match the surface. Marks are
+  `{x,y,type,severity,panel,v:2}`; marks without `v` came from the old top-down drawing and
+  are re-projected onto the top view by `toCurrent` - never strip `v` when saving.
 
 ## Roles
 owner / superadmin / dealer → /dashboard
@@ -1076,14 +1082,41 @@ the tab used to be, unchanged).
 button on `SalesmanProfilePage.jsx`. One car per screen, "#N", price, and a monthly
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
-- **NEVER render a phone number, URL, QR code or messaging-app logo in the presenter.**
-  TikTok strikes / cuts a live for any of them (checked 2026-10-03). This is also why
-  the quotation poster (it prints the mini-page link) must not be the live tool.
+- **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
+  (owner, 2026-10-04: top-bar contact button, tap the box to hide). TikTok can strike a
+  live for a phone number (checked 2026-10-03), so never default it on or persist it.
+  NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
+  mini-page link) must not be the live tool.
+- **Cars screen = the poster layout** (owner, 2026-10-04): title, small photo | price -
+  deposit = loan at rate, deposit chips, (contact |) tenure rows 9/7/5 with the monthly,
+  "Comment #N" bar. Must fit the stage with no scroll at 375x667 and on desktop.
 - The bridge is the bio link: `set_live_listing` (presenter, debounced + 4-min
   heartbeat, 10-min window) -> `seller_live_state` -> `get_salesman_live(slug)` polled
   by the mini page -> "Live now" card. Never let a client write that table directly.
 - "#N" is the position in the mini page's `listings` array; presenter and page share
   the array, so do not re-sort one without the other.
+- **Tenure pick**: tapping a tenure row shows that instalment big, with a
+  take-home-pay guide that ALWAYS prints its rule ("instalment at 35% of take-home
+  pay. The bank decides." — `SALARY_SHARE`, `src/utils/liveMaths.js`). Never show the
+  salary number without the rule, never word it as approval.
+- **Flat (brochure) rates are accepted and converted** per tenure with `flatToEir`
+  (`eirForTenure`). Never feed a flat number straight into `monthlyPayment`.
+- **Cars above RM300k get the table in the presenter ONLY** (owner, 2026-10-03), with
+  a "banks decide case by case" note. `calcMonthly` and the mini-page card still
+  return null / "financing on request" for them — do not widen that.
+- **One portrait stage (9:16 max), never a landscape layout.** Sellers film their
+  monitor with a phone held upright, so on a desktop the presenter is a centred
+  column; sizes are container units and `.lp-fit` auto-shrinks the Cars screen to
+  fit (80% floor, then it scrolls). Name + price sit ON the photo.
+- **Show working** under the big number (price - deposit = loan, months, rate) and
+  **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
+  monthly budget or take-home pay (35% rule backwards, rule always printed) lists
+  the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
+  that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Live report** on exit (lives of 1 min+): counts from the seller's own
+  `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
+  opened. Counts only, never a buyer name: the screen may still be on stream.
+  `npm run test:live`.
 
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up

@@ -108,6 +108,7 @@ import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
+import DamageMap from "../components/DamageMap";
 import PushPromptStrip from "../components/chat/PushPromptStrip";
 import { getPlanConfig, nextDealerPlan } from "../utils/planConfig";
 import { color, border, radius, font } from "../theme/tokens";
@@ -6026,65 +6027,6 @@ function parseTags(raw) {
 }
 
 const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
-const DRAWER_DMG_COLORS   = { scratch:'#fbbf24', dent:'#93c5fd', crack:'#f43f5e', replaced:'#a78bfa' };
-
-function DrawerDamageMap({ damageMap }) {
-  const zones = Array.isArray(damageMap) ? damageMap : [];
-  const byZone = {};
-  zones.forEach(z => { byZone[z.zone] = z.type; });
-  const fill   = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]] + '44' : '#f3f4f6';
-  const stroke = z => byZone[z] ? DRAWER_DMG_COLORS[byZone[z]]       : '#e5e7eb';
-  return (
-    <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', alignItems: 'flex-start', marginTop: 16 }}>
-      <svg viewBox="0 0 170 220" width={150} height={220} style={{ flexShrink: 0 }}>
-        <rect x="42" y="6"   width="86" height="44" rx="6" fill={fill('hood')}        stroke={stroke('hood')}        strokeWidth="1.3"/>
-        <text x="85" y="33"  textAnchor="middle" fontSize="10" fill="#9ca3af" fontFamily="system-ui,sans-serif">Hood</text>
-        <rect x="6"  y="6"   width="34" height="44" rx="5" fill={fill('front-left')}  stroke={stroke('front-left')}  strokeWidth="1.3"/>
-        <text x="23" y="23"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">FL</text>
-        <text x="23" y="34"  textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Fender</text>
-        <rect x="130" y="6"  width="34" height="44" rx="5" fill={fill('front-right')} stroke={stroke('front-right')} strokeWidth="1.3"/>
-        <text x="147" y="23" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">FR</text>
-        <text x="147" y="34" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Fender</text>
-        <rect x="6"  y="54"  width="32" height="80" rx="4" fill={fill('left')}        stroke={stroke('left')}        strokeWidth="1.3"/>
-        <text x="22" y="97"  textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif" transform="rotate(-90,22,97)">Left</text>
-        <rect x="132" y="54" width="32" height="80" rx="4" fill={fill('right')}       stroke={stroke('right')}       strokeWidth="1.3"/>
-        <text x="148" y="97" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif" transform="rotate(90,148,97)">Right</text>
-        <rect x="40" y="54"  width="90" height="80" rx="4" fill={fill('roof')}        stroke={stroke('roof')}        strokeWidth="1.3"/>
-        <text x="85" y="98"  textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="system-ui,sans-serif">Roof</text>
-        <rect x="6"  y="138" width="32" height="36" rx="4" fill={fill('rear-left')}   stroke={stroke('rear-left')}   strokeWidth="1.3"/>
-        <text x="22" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">RL</text>
-        <text x="22" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Qtr</text>
-        <rect x="132" y="138" width="32" height="36" rx="4" fill={fill('rear-right')} stroke={stroke('rear-right')} strokeWidth="1.3"/>
-        <text x="148" y="155" textAnchor="middle" fontSize="8" fill="#9ca3af" fontFamily="system-ui,sans-serif">RR</text>
-        <text x="148" y="166" textAnchor="middle" fontSize="7" fill="#6b7280" fontFamily="system-ui,sans-serif">Qtr</text>
-        <rect x="40" y="138" width="90" height="36" rx="4" fill={fill('trunk')}       stroke={stroke('trunk')}       strokeWidth="1.3"/>
-        <text x="85" y="161" textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="system-ui,sans-serif">Trunk</text>
-        <text x="85" y="192" textAnchor="middle" fontSize="8" fill="#374151" fontFamily="system-ui,sans-serif">▲ FRONT · REAR ▼</text>
-      </svg>
-      <div style={{ flex: 1, minWidth: 140 }}>
-        <p style={{ fontSize: 10, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Legend</p>
-        {Object.entries(DRAWER_DMG_COLORS).map(([type, color]) => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-            <div style={{ width: 11, height: 11, borderRadius: 3, background: color + '44', border: `1.5px solid ${color}`, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: '#9ca3af', textTransform: 'capitalize' }}>{type}</span>
-          </div>
-        ))}
-        <p style={{ fontSize: 10, color: '#374151', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '16px 0 10px' }}>Reported</p>
-        {zones.length === 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34d399' }} />
-            <span style={{ fontSize: 12, color: '#34d399' }}>No damage reported</span>
-          </div>
-        ) : zones.map((z, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: (DRAWER_DMG_COLORS[z.type] || '#9ca3af') + '44', border: `1.5px solid ${DRAWER_DMG_COLORS[z.type] || '#9ca3af'}`, flexShrink: 0 }} />
-            <span style={{ fontSize: 12, color: '#6b7280' }}><span style={{ color: '#e5e5e5' }}>{z.zone}</span> — {z.type}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
@@ -6357,7 +6299,11 @@ function ListingDetailDrawer({
                     </div>
                   ))}
                   <p style={{ fontSize: 11, color: '#6b7280', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 20, marginBottom: 0 }}>Condition Map</p>
-                  <DrawerDamageMap damageMap={damageMap} />
+                  {Array.isArray(damageMap) && damageMap.length > 0 ? (
+                    <div style={{ marginTop: 16 }}><DamageMap value={damageMap} readOnly theme="light" /></div>
+                  ) : (
+                    <p style={{ fontSize: 12, color: '#6b7280', marginTop: 10 }}>No damage marked on this car.</p>
+                  )}
                 </div>
               )}
               </>
