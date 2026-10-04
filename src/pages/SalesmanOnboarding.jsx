@@ -8,6 +8,8 @@ import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import useAuthCaptcha from '../hooks/useAuthCaptcha';
 import { emailActionGate, EMAIL_ACTIONS } from '../utils/authThrottle';
 import { advanceOnEnter } from '../utils/onboardingKeys';
+import { PLAN_CONFIG } from '../utils/planConfig';
+import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -122,14 +124,8 @@ const TIERS = {
   premium: {
     label: 'SALESMAN PREMIUM',
     price: 'First month free, then RM 35 / mo',
-    features: [
-      'Up to 30 active listings',
-      'Priority marketplace placement',
-      'Full CRM + lead pipeline',
-      'Commission tracking',
-      'Advanced analytics',
-      'Custom profile subdomain',
-    ],
+    // One list, shared with /plans and /for-salesmen (src/utils/plans.js).
+    features: [`Up to ${PLAN_CONFIG.salesman_full.listingCap} active listings`, ...SALESMAN_PREMIUM_FEATURES],
   },
 };
 

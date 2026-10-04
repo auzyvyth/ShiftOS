@@ -1082,15 +1082,20 @@ the tab used to be, unchanged).
 button on `SalesmanProfilePage.jsx`. One car per screen, "#N", price, and a monthly
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
-- **NEVER render a phone number, URL, QR code or messaging-app logo in the presenter.**
-  TikTok strikes / cuts a live for any of them (checked 2026-10-03). This is also why
-  the quotation poster (it prints the mini-page link) must not be the live tool.
+- **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
+  (owner, 2026-10-04: top-bar contact button, tap the box to hide). TikTok can strike a
+  live for a phone number (checked 2026-10-03), so never default it on or persist it.
+  NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
+  mini-page link) must not be the live tool.
+- **Cars screen = the poster layout** (owner, 2026-10-04): title, small photo | price -
+  deposit = loan at rate, deposit chips, (contact |) tenure rows 9/7/5 with the monthly,
+  "Comment #N" bar. Must fit the stage with no scroll at 375x667 and on desktop.
 - The bridge is the bio link: `set_live_listing` (presenter, debounced + 4-min
   heartbeat, 10-min window) -> `seller_live_state` -> `get_salesman_live(slug)` polled
   by the mini page -> "Live now" card. Never let a client write that table directly.
 - "#N" is the position in the mini page's `listings` array; presenter and page share
   the array, so do not re-sort one without the other.
-- **Answer card**: tapping a table cell shows that one instalment big, with a
+- **Tenure pick**: tapping a tenure row shows that instalment big, with a
   take-home-pay guide that ALWAYS prints its rule ("instalment at 35% of take-home
   pay. The bank decides." — `SALARY_SHARE`, `src/utils/liveMaths.js`). Never show the
   salary number without the rule, never word it as approval.

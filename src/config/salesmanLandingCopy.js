@@ -3,16 +3,29 @@
 // Googlebot and every AI crawler are routed to api/og.js by vercel.json and
 // never run the SPA, so this file IS what search engines and AI answers read.
 // Keep it plain data (no JSX, no icons) — api/og.js runs on the edge.
+// Every claim here must be something the product does today; the Premium
+// feature list is NOT typed here, it comes from src/utils/plans.js.
+
+import { SALESMAN_PREMIUM_FEATURES } from "../utils/plans.js";
 
 export const CANON = "https://xdrive.my/for-salesmen";
-export const SEO_TITLE = "Salesman Lite — Free Car Listing Page for Malaysian Car Agents | XDrive";
+// Bump when the copy changes: it feeds dateModified (WEBPAGE_LD) and the
+// "last reviewed" line, a freshness signal search and AI answers both read.
+export const REVIEWED_ISO = "2026-10-04";
+export const REVIEWED_LABEL = "October 2026";
+// A real, live Salesman Premium page, linked so buyers and crawlers can see
+// the product rather than a mock-up. Must stay an active account with cars.
+export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
+export const SEO_TITLE = "Free Car Salesman Page & CRM for Malaysian Agents | XDrive";
 export const SEO_DESC =
-  "Salesman Lite is a free account for Malaysian car salesmen and agents. Get your own car listing page on xdrive.my, list up to 10 cars, and receive buyer enquiries straight on WhatsApp. Akaun jual kereta percuma untuk salesman — tiada kad kredit.";
+  "Free car page and lead pipeline for Malaysian salesmen: 10 cars on xdrive.my, buyers WhatsApp you direct. Premium adds a TikTok Live instalment calculator.";
 export const SEO_KEYWORDS = [
   "salesman kereta online", "app salesman kereta Malaysia", "akaun jual kereta percuma",
   "free car listing Malaysia", "senarai kereta percuma", "car agent page Malaysia",
   "jual kereta online percuma", "profil salesman kereta", "listing kereta percuma Malaysia",
   "car salesman website Malaysia", "WhatsApp car enquiries", "XDrive salesman lite",
+  "CRM salesman kereta", "jual kereta TikTok live", "kira ansuran kereta live",
+  "kalkulator ansuran bulanan kereta", "car loan instalment calculator Malaysia", "salesman premium XDrive",
 ].join(", ");
 
 export const FAQS = [
@@ -25,28 +38,61 @@ export const FAQS = [
   { q: "Can I still use Mudah and Carlist?",
     a: "Absolutely. Salesman Lite works alongside them. The difference is this page is yours, it lives on Malaysia's XDrive marketplace, and it doesn't charge you per listing." },
   { q: "What happens when I have more than 10 cars?",
-    a: "Salesman Premium (RM35/month) triples your cap to 30 listings and adds priority marketplace placement, commission tracking, advanced analytics and a custom subdomain. Your Lite page and cars carry straight over — upgrade any time from your panel." },
+    a: "Salesman Premium (RM35/month) triples your cap to 30 listings and adds a live presentation for TikTok and Facebook lives, a sorted \"This week\" call list with follow-up messages already drafted, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, AI listing captions and chat reply drafts, commission tracking, and a Performance view that shows where your deals are lost. Your Lite page and cars carry straight over — upgrade any time from your panel." },
+  { q: "Can XDrive work out monthly instalments for my TikTok Live?",
+    a: "Yes, on Salesman Premium. Live presentation shows one car per screen with a number (#1, #2, #3) for viewers to comment, the price, deposit, loan and rate, and the monthly instalment over 9, 7 and 5 years. Change the deposit or type the bank's flat rate and every figure updates; budget mode lists which of your cars fit a viewer's salary or monthly budget. Figures are estimates on the reducing balance (EIR) and subject to bank approval. Your contact details only appear when you tap to show them." },
+  { q: "Is there an example of a real salesman page?",
+    a: "Yes. xdrive.my/s/premiummotors is a live Salesman Premium page: the seller's stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
   { q: "How long does setup take?",
     a: "A few minutes. Sign up with email or Google, add your phone and a link name, and you're in your panel — add your first car with a few photos to go live. IC verification can wait until just before your listings appear on the marketplace, so nothing holds up getting started." },
   { q: "Apa itu Salesman Lite?",
     a: "Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di xdrive.my, senaraikan sehingga 10 kereta, dan terima enquiry pembeli terus di WhatsApp — tanpa sebarang kos atau kad kredit." },
+  { q: "Boleh kira ansuran bulanan kereta masa live TikTok?",
+    a: "Boleh, dengan Salesman Premium (RM35 sebulan). Live presentation tunjuk satu kereta satu skrin dengan nombor (#1, #2, #3) untuk penonton komen, harga, deposit, jumlah loan, kadar faedah dan ansuran bulanan untuk 9, 7 dan 5 tahun. Tukar deposit atau masukkan kadar flat bank, semua angka dikira semula. Anggaran sahaja atas baki berkurangan (EIR), tertakluk kepada kelulusan bank." },
 ];
 
 export const SOFTWARE_LD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "XDrive Salesman Lite",
+  name: "XDrive for Salesmen (Salesman Lite and Premium)",
+  alternateName: ["XDrive Salesman Lite", "XDrive Salesman Premium"],
   applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
+  applicationSubCategory: "Car sales CRM",
+  operatingSystem: "Web, Android, iOS (browser)",
   url: CANON,
   description: SEO_DESC,
-  offers: [
-    { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR" },
-    { "@type": "Offer", name: "Salesman Premium", price: "35", priceCurrency: "MYR" },
+  screenshot: "https://xdrive.my/for-salesmen/premium-dashboard.png",
+  featureList: [
+    "Own car listing page at xdrive.my/s/yourname",
+    "Up to 10 listings free, 30 on Premium",
+    "Buyer enquiries direct to WhatsApp and in-app chat",
+    "Lead pipeline with follow-up reminders",
+    ...SALESMAN_PREMIUM_FEATURES,
   ],
+  offers: [
+    { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR", url: "https://xdrive.my/salesman-onboarding/lite" },
+    { "@type": "Offer", name: "Salesman Premium", price: "35", priceCurrency: "MYR", url: "https://xdrive.my/salesman-onboarding/premium",
+      priceSpecification: { "@type": "UnitPriceSpecification", price: "35", priceCurrency: "MYR", unitCode: "MON", referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" } } },
+  ],
+  audience: { "@type": "BusinessAudience", audienceType: "Car salesmen and car agents in Malaysia" },
   areaServed: "MY",
   inLanguage: ["en-MY", "ms-MY"],
   publisher: { "@type": "Organization", name: "XDrive", url: "https://xdrive.my" },
+};
+export const WEBPAGE_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: SEO_TITLE,
+  url: CANON,
+  description: SEO_DESC,
+  inLanguage: "en-MY",
+  dateModified: REVIEWED_ISO,
+  isPartOf: { "@type": "WebSite", name: "XDrive", url: "https://xdrive.my" },
+  about: { "@type": "SoftwareApplication", name: "XDrive for Salesmen", url: CANON },
+  breadcrumb: { "@type": "BreadcrumbList", itemListElement: [
+    { "@type": "ListItem", position: 1, name: "XDrive", item: "https://xdrive.my" },
+    { "@type": "ListItem", position: 2, name: "For salesmen", item: CANON },
+  ] },
 };
 export const FAQ_LD = {
   "@context": "https://schema.org",
@@ -86,4 +132,23 @@ export const FEATURE_COPY = [
 ];
 
 export const LITE_BULLETS = ["Up to 10 active listings", "Your page on the XDrive marketplace", "Direct WhatsApp enquiries", "Lead pipeline + follow-up reminders", "Basic performance analytics", "No credit card required"];
-export const PREMIUM_BULLETS = ["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"];
+export const PREMIUM_BULLETS = ["Everything in Lite", "Up to 30 active listings", ...SALESMAN_PREMIUM_FEATURES];
+
+// Premium "Live selling" section (LiveSellingSection.jsx) — the live
+// presentation mode (src/components/live/LivePresenter.jsx), sold to agents
+// who already hold a calculation poster up on TikTok / FB lives.
+export const LIVE_SELLING = {
+  kicker: "Premium · Live selling",
+  title: "Selling on TikTok Live? Your calculation poster, done for you.",
+  lead:
+    "Agents on live hold up a spreadsheet of monthly instalments, one car at a time, retyped for every unit. Premium builds that poster for every car you list. Open Live presentation, film your screen, and answer \"monthly berapa?\" with one tap.",
+  points: [
+    "Every car numbered #1, #2, #3, so viewers comment the number they want",
+    "Price, deposit, loan and rate worked out, then 9, 7 and 5 year monthly instalments",
+    "Change the deposit or type the bank's flat rate and every number updates",
+    "Budget mode: type a viewer's salary or monthly budget, see which of your cars fit",
+    "Your contact box shows only when you tap it, so you decide what goes on stream",
+    "The car on screen is pinned on your page as \"Live now\" for viewers who tap your bio",
+  ],
+  note: "Estimates on the reducing balance (EIR). Subject to bank approval.",
+};
