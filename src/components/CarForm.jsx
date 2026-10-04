@@ -791,11 +791,13 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // apply. Their margin (selling price − base price) IS their earnings, shown
   // automatically instead of asking them to type a number.
   const hideCommission = isSalesman;
-  // New listings get the quick one-question-per-screen Car step (QuickCarFlow).
-  // Edits keep the classic layout (fixing one field should not mean walking ten
-  // screens) and so does the dealer intake path, whose identity fields were
-  // already captured by AddCarForm.
-  const quickMode = !listing && !intakeDone;
+  // New listings get the quick one-question-per-screen stages, and so does the
+  // dealer intake path (AddCarForm -> CarForm): there every stage lands on its
+  // "Check and continue" summary or the first gap, and the screens AddCarForm
+  // already asked (prices, commission, warranty, services) are skipped. Plain
+  // edits keep the classic layout — fixing one field should not mean walking
+  // ten screens.
+  const quickMode = !listing || !!intakeDone;
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -1419,7 +1421,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
 
   // Fetch dealer products when picker is first opened
   useEffect(() => {
-    if ((!pickerOpen && !quickMode) || catalogueLoaded || !dealerId) return;
+    if ((!pickerOpen && !(quickMode && !intakeDone)) || catalogueLoaded || !dealerId) return;
     (async () => {
       const { data } = await supabase
         .from("dealer_products")
@@ -3312,14 +3314,14 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   const margin = form.basePrice && form.sellingPrice ? Number(form.sellingPrice) - Number(form.basePrice) : null;
   const svcEmpty = catalogueLoaded && !serviceCatalogue.some((p) => p.is_active !== false);
   const renderQuickPricing = () => quickStage(4, [
-    { key: "price", title: "Asking price?", required: true, answered: !!form.sellingPrice, focus: "always",
+    { key: "price", title: "Asking price?", skip: !!intakeDone, required: true, answered: !!form.sellingPrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.sellingPrice} onChange={(v) => set("sellingPrice", v)} prefix="RM" placeholder="e.g. 45,000" />
           <p className="text-xs text-gray-500">What buyers see on the listing.</p>
         </div>
       ) },
-    { key: "cost", title: "What did it cost you?", required: true, answered: !!form.basePrice, focus: "always",
+    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: true, answered: !!form.basePrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
@@ -3339,9 +3341,9 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         { value: "under_hp", label: "Yes, under hire-purchase" },
         { value: "unknown", label: "Not sure" },
       ], form.encumbranceStatus || "unknown", (v) => pick({ encumbranceStatus: v }), "grid-cols-1") },
-    { key: "commission", title: "Salesman commission?", skip: hideCommission, filled: !!form.commissionAmount,
+    { key: "commission", title: "Salesman commission?", skip: hideCommission || !!intakeDone, filled: !!form.commissionAmount,
       render: () => <div className="space-y-4">{renderCommission()}</div> },
-    { key: "warranty", title: "Any warranty?", filled: form.warranty_months !== "" && form.warranty_months != null,
+    { key: "warranty", title: "Any warranty?", skip: !!intakeDone, filled: form.warranty_months !== "" && form.warranty_months != null,
       render: ({ pick, otherOpen, setOtherOpen }) => (
         <div className="space-y-4">
           {tiles([
@@ -3357,7 +3359,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
         </div>
       ) },
-    { key: "services", title: "Anything included with the car?", skip: svcEmpty, filled: form.included_services.length > 0,
+    { key: "services", title: "Anything included with the car?", skip: svcEmpty || !!intakeDone, filled: form.included_services.length > 0,
       render: () => renderServices() },
     { key: "pricing_more", title: "Location & deposit", enter: "pass", primaryLabel: "Done",
       render: () => <div className="space-y-4">{renderLocationRow()}{renderDeposit()}</div> },
@@ -3377,7 +3379,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       render: () => renderAbout() },
     { key: "features", title: "What does it have?", filled: !!String(form.features || "").trim(), enter: "pass",
       render: () => renderFeatures() },
-    { key: "documents", title: "Documents", required: true, answered: geranSatisfied,
+    { key: "documents", title: "Documents", required: !listing, answered: geranSatisfied, filled: (form.car_documents || []).length > 0,
       render: () => renderDocuments() },
   ], [
     { key: "about", label: "About", value: String(form.specs || "").trim().split("\n")[0] },

@@ -83,7 +83,11 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
       : live[0]?.key,
   );
   const [dir, setDir] = useState("fwd");
-  const [fromSummary, setFromSummary] = useState(false);
+  // Landing on a gap (returning seller, or a dealer whose intake already filled
+  // most of the stage) counts as coming from the summary: answer the gap, then
+  // straight on to the next gap or back to the summary — never a walk through
+  // every screen that is already answered.
+  const [fromSummary, setFromSummary] = useState(() => !!(landOnSummary && summaryRows?.length && !allRequired));
   const [query, setQuery] = useState("");
   const [otherOpen, setOtherOpen] = useState(false);
   const rootRef = useRef(null);
@@ -117,7 +121,11 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
   // (a catalogue match, picking Recon) is already reflected.
   const next = (from = key) => {
     if (from === "summary") { onDone(); return; }
-    if (fromSummary && allRequired) { goto("summary"); return; }
+    if (fromSummary) {
+      const gap = gaps.find((s) => s.key !== from);
+      if (allRequired || !gap) { goto("summary"); return; }
+      setDir("fwd"); setKey(gap.key); return;
+    }
     const i = screens.findIndex((s) => s.key === from);
     const n = screens.slice(i + 1).find((s) => !s.skip);
     if (n) goto(n.key); else onDone();

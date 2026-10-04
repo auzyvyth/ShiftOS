@@ -43,6 +43,7 @@ import NotificationPanel from "../components/notifications/NotificationPanel";
 import StarterTasks, { starterTasksAllDone } from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
+import { hasUnreadRejection } from "../utils/listingReview";
 import {
   LogOut,
   Copy,
@@ -1144,10 +1145,19 @@ export default function SalesmanLite() {
   const [openTemplateId, setOpenTemplateId] = useState(null);
   const [templateToast, setTemplateToast] = useState(null);
 
-  // listings sort/filter — reset to "available" whenever user navigates to the listings tab
+  // listings sort/filter — reset whenever user navigates to the listings tab:
+  // to the tab a notification tap asked for, else to Rejected while a rejection
+  // is still unread (it is the one thing on this page that needs the seller),
+  // else Available.
   const [sortBy, setSortBy] = useState("newest");
   const [filterStatus, setFilterStatus] = useState("available");
-  useEffect(() => { if (activeTab === "listings") setFilterStatus("available"); }, [activeTab]);
+  const listingFilterIntent = useRef(null);
+  const listingStatusRef = useRef({});
+  useEffect(() => {
+    if (activeTab !== "listings") return;
+    setFilterStatus(listingFilterIntent.current || (hasUnreadRejection(notifications, myListings) ? "rejected" : "available"));
+    listingFilterIntent.current = null;
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
   // Lock body scroll while the booking-detail popup is open (overlay rule).
   useEffect(() => {
     if (!bookingDetailId) return;
@@ -1183,6 +1193,21 @@ export default function SalesmanLite() {
   // the fraction of a second before the real count landed. That flash is the
   // "it still appears for a second every time I log in" report.
   const [listingsLoaded, setListingsLoaded] = useState(false);
+  // Status of every car as we last saw it — the realtime handler compares
+  // against this because Supabase does not send the old row.
+  useEffect(() => {
+    listingStatusRef.current = Object.fromEntries(myListings.map((c) => [c.id, c.status]));
+  }, [myListings]);
+  // Data can arrive after the seller is already on Listings (first load, or a
+  // rejection landing live). Jump to Rejected once per session when it does.
+  const rejectionLanded = useRef(false);
+  useEffect(() => {
+    if (rejectionLanded.current || activeTab !== "listings" || !listingsLoaded) return;
+    if (hasUnreadRejection(notifications, myListings)) {
+      rejectionLanded.current = true;
+      setFilterStatus("rejected");
+    }
+  }, [activeTab, listingsLoaded, notifications, myListings]);
 
   // Dismissal is PERSISTED, not component state. It was `useState(false)` with
   // nothing written anywhere, so the card came back on every single login no
@@ -1858,13 +1883,22 @@ export default function SalesmanLite() {
             )
             .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings", filter: `dealer_id=eq.${uid}` },
               (payload) => {
-                setMyListings((p) => p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
-                writeCache(`slite_listings_${uid}`, myListings.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
-                if (payload.new.status === "available" && payload.old?.status === "pending_approval") {
+                // payload.old carries only the primary key (car_listings has the
+                // default replica identity), so the status BEFORE this update has to
+                // come from our own copy. Reading payload.old.status never matched,
+                // which is why an approval or rejection arrived with no toast and the
+                // car just vanished from the Pending tab.
+                const prevStatus = listingStatusRef.current[payload.new.id];
+                setMyListings((p) => {
+                  const next = p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c);
+                  writeCache(`slite_listings_${uid}`, next);
+                  return next;
+                });
+                if (payload.new.status === "available" && prevStatus === "pending_approval") {
                   setFilterStatus("available");
                   toast.success(t("salesmanLite.toast.listingApproved"), { description: t("salesmanLite.toast.listingApprovedDesc", { car: `${payload.new.brand} ${payload.new.model}` }) });
                 }
-                if (payload.new.status === "rejected" && payload.old?.status === "pending_approval") {
+                if (payload.new.status === "rejected" && prevStatus === "pending_approval") {
                   setFilterStatus("rejected");
                   toast.error(t("salesmanLite.toast.listingRejected"), { description: t("salesmanLite.toast.listingRejectedDesc", { car: `${payload.new.brand} ${payload.new.model}` }) });
                 }
@@ -2566,9 +2600,17 @@ export default function SalesmanLite() {
         switchTab("enquiries");
         setInboxSubTab("enquiries");
         break;
+      // Open the tab the car is actually on — the list defaults to Available,
+      // so a rejected car was invisible after tapping its own notification.
       case "listing_approved":
-      case "listing_rejected":
+        listingFilterIntent.current = "available";
         switchTab("listings");
+        setFilterStatus("available");
+        break;
+      case "listing_rejected":
+        listingFilterIntent.current = "rejected";
+        switchTab("listings");
+        setFilterStatus("rejected");
         break;
       default:
         break;
