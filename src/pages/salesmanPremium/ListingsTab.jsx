@@ -391,6 +391,23 @@ export default function ListingsTab({
  transition: "opacity 0.2s", display: "flex", flexDirection: "column", height: "100%",
  }}
  >
+ {/* Rejected — the reason is the first thing on the card: it is the
+ only thing the seller needs to act on. No left accent bar (anti-slop);
+ a full-width tint carries the state. */}
+ {isRejected && (
+ <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+ <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.dangerText, flexShrink: 0 }} />
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.dangerText }}>Not approved</span>
+ </div>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
+ {car.rejection_reason || "No reason was given. Check the details and photos, then resubmit."}
+ </p>
+ <button onClick={() => setEditListing(car)} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
+ <Pencil size={13} /> Edit & Resubmit
+ </button>
+ </div>
+ )}
  {/* Image */}
  {img ? (
  <img
@@ -407,7 +424,7 @@ export default function ListingsTab({
  )}
 
  {/* Status indicator — compact single-line strip */}
- {(isSold || isReserved || isPending || isRejected) && (
+ {(isSold || isReserved || isPending) && (
  <div style={{
  display: "flex", alignItems: "center", gap: 6, padding: "5px 14px",
  borderBottom: `1px solid ${isRejected ? withAlpha(C.danger, 0.18) : isSold ? withAlpha(C.textMuted, 0.15) : withAlpha(C.warn, 0.15)}`,
@@ -423,9 +440,6 @@ export default function ListingsTab({
  </span>
  )}
  {isPending && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· not visible to buyers yet</span>}
- {isRejected && car.rejection_reason && (
- <span style={{ fontSize: T.size.xs, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>· {car.rejection_reason}</span>
- )}
  </div>
  )}
 
@@ -456,6 +470,9 @@ export default function ListingsTab({
  const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : C.successText;
  const locked = isPending || isRejected;
  const open = statusMenuCarId === car.id;
+ // Locked (pending / rejected): the state is already said above the
+ // title, and a disabled "available" pill just contradicts it.
+ if (locked) return null;
  return (
  <button
  onClick={(e) => { e.stopPropagation(); if (locked) return; setStatusMenuCarId(open ? null : car.id); }}
@@ -568,8 +585,8 @@ export default function ListingsTab({
  );
  })()}
 
- {/* CVR bar — hidden for sold */}
- {!isSold && (
+ {/* CVR bar — hidden for sold, and for rejected (never shown to buyers) */}
+ {!isSold && !isRejected && (
  <div style={{ marginBottom: 10, position: "relative" }} onMouseEnter={() => setCvrHover(car.id)} onMouseLeave={() => setCvrHover(null)}>
  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
  <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
@@ -591,7 +608,7 @@ export default function ListingsTab({
  )}
 
  {/* Photo nudge — fewer than 3 photos hurts views */}
- {!isSold && (!car.images || car.images.length < 3) && (
+ {!isSold && !isRejected && (!car.images || car.images.length < 3) && (
  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: R.sm, background: withAlpha(C.warn, 0.05), border: `1px solid ${withAlpha(C.warn, 0.14)}` }}>
  <Camera size={11} style={{ flexShrink: 0, color: C.warn }} />
  <span style={{ fontSize: T.size.xs, color: C.warn, flex: 1 }}>
@@ -613,10 +630,10 @@ export default function ListingsTab({
  </button>
  </>
  ) : isRejected ? (
- <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.accent), color: C.dangerText, flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
- <Pencil size={10} /> Edit & Resubmit
- </button>
- ) : (
+<button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
+View
+</button>
+) : (
  <>
  <button
  onClick={() => handleListingCopy(car, "link")}
