@@ -11,6 +11,9 @@ import { LIVE_SELLING } from "../../config/salesmanLandingCopy";
 // formula (financing.js) at the default deposit and rate, so the picture never
 // shows a number the product would not. The contact box shows a placeholder,
 // never a phone number: no real person's details on a marketing page.
+// Themed to THIS page, not the presenter: reuses the page's .sll-showcase
+// layout and .sll-phone frame, Outfit only (the page loads no Bebas), and its
+// neutral greys (#fafafa / #eceaea / #0a0a0a) rather than the presenter's beige.
 
 const SAMPLE = { n: 3, name: "2021 Honda City", spec: "1.5 V · 38,000 km · Auto", price: 72800 };
 const DOWN = Math.round(SAMPLE.price * (1 - DEFAULT_LOAN_RATIO));
@@ -23,12 +26,12 @@ export default function LiveSellingSection({ reveal, fadeUp }) {
   return (
     <motion.section className="sll-section lss" variants={fadeUp} {...reveal}>
       <style>{CSS}</style>
-      <div className="sll-wrap lss-grid">
-        <div className="lss-copy">
+      <div className="sll-wrap sll-showcase">
+        <div className="sll-showcase-copy">
           <p className="sll-kicker">{LIVE_SELLING.kicker}</p>
           <h2 className="sll-h2">{LIVE_SELLING.title}</h2>
-          <p className="lss-lead">{LIVE_SELLING.lead}</p>
-          <ul className="lss-list">
+          <p className="sll-showcase-lead">{LIVE_SELLING.lead}</p>
+          <ul className="sll-showcase-list lss-list">
             {LIVE_SELLING.points.map((p) => (
               <li key={p}><Check size={16} className="sll-tick" /> {p}</li>
             ))}
@@ -38,7 +41,7 @@ export default function LiveSellingSection({ reveal, fadeUp }) {
           </Link>
         </div>
 
-        <figure className="lss-stage" aria-label="Live presentation screen, sample car">
+        <figure className="sll-phone lss-stage" aria-label="Live presentation screen, sample car">
           <div className="lss-top">
             <span className="lss-live"><i />Live</span>
             <span className="lss-seg"><b>Cars</b><span>Budget</span></span>
@@ -91,44 +94,39 @@ export default function LiveSellingSection({ reveal, fadeUp }) {
 }
 
 const CSS = `
-  .lss-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 48px; align-items: center; }
-  .lss-lead { font-size: 17px; line-height: 1.6; color: #4b5563; margin: 0 0 18px; }
-  .lss-list { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 10px; }
-  .lss-list li { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.5; color: #1f2937; }
-  .lss-list li svg { flex-shrink: 0; margin-top: 3px; }
-  .lss-stage { margin: 0; width: 100%; max-width: 380px; justify-self: center; background: #F7F6F2; border: 1px solid rgba(0,0,0,.08); border-radius: 22px; overflow: hidden; box-shadow: 0 18px 40px -18px rgba(15,23,42,.35); }
-  .lss-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .lss-list { margin-bottom: 24px; }
+  .lss-list li { align-items: flex-start; line-height: 1.45; }
+  .lss-list li svg { margin-top: 4px; }
+  .lss-stage { margin: 0; padding: 0; overflow: hidden; background: #fafafa; }
+  .lss-top { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: #fff; border-bottom: 1px solid #eceaea; }
   .lss-live { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #dc2626; }
   .lss-live i { width: 7px; height: 7px; border-radius: 50%; background: #dc2626; }
-  .lss-seg { display: inline-flex; gap: 2px; padding: 3px; background: #F1EFEA; border-radius: 8px; font-size: 12px; font-weight: 700; color: #4b5563; }
+  .lss-seg { display: inline-flex; gap: 2px; padding: 3px; background: #f3f4f6; border-radius: 8px; font-size: 12px; font-weight: 700; color: #6b7280; }
   .lss-seg > * { padding: 4px 10px; border-radius: 6px; }
-  .lss-seg b { background: #fff; color: #0f1115; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
-  .lss-sheet { margin: 12px; padding: 12px; background: #fff; border-radius: 14px; border: 1px solid rgba(0,0,0,.06); display: flex; flex-direction: column; gap: 10px; }
+  .lss-seg b { background: #fff; color: #0a0a0a; box-shadow: 0 1px 2px rgba(10,10,10,.12); }
+  .lss-sheet { margin: 12px; padding: 12px; background: #fff; border-radius: 14px; border: 1px solid #eceaea; display: flex; flex-direction: column; gap: 10px; }
   .lss-title { display: flex; align-items: center; gap: 10px; }
-  .lss-num { font-family: 'Bebas Neue', sans-serif; font-size: 30px; line-height: 1; color: #fff; background: #0f1115; border-radius: 8px; padding: 5px 9px 2px; flex-shrink: 0; }
-  .lss-name { font-family: 'Bebas Neue', sans-serif; font-size: 28px; line-height: .95; margin: 0; color: #0f1115; }
-  .lss-spec { font-size: 12px; color: #6b7280; margin: 3px 0 0; }
+  .lss-num { font-size: 22px; font-weight: 900; line-height: 1; letter-spacing: -.02em; color: #fff; background: #0a0a0a; border-radius: 8px; padding: 6px 8px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+  .lss-name { font-size: 20px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; margin: 0; color: #0a0a0a; }
+  .lss-spec { font-size: 12px; color: #6b7280; margin: 2px 0 0; }
   .lss-pair { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 10px; align-items: center; }
-  .lss-photo { aspect-ratio: 4 / 3; border-radius: 10px; background: #EDEAE3; display: flex; align-items: center; justify-content: center; }
+  .lss-photo { aspect-ratio: 4 / 3; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; }
   .lss-brk, .lss-ten { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   .lss-brk td { padding: 2px 0; font-size: 13px; color: #4b5563; }
-  .lss-brk td:last-child { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; }
-  .lss-brk .lss-loan td { padding-top: 5px; border-top: 1px solid rgba(0,0,0,.1); font-weight: 700; color: #0f1115; }
+  .lss-brk td:last-child { text-align: right; font-weight: 700; color: #1f2733; white-space: nowrap; }
+  .lss-brk .lss-loan td { padding-top: 5px; border-top: 1px solid #eceaea; font-weight: 700; color: #0a0a0a; }
   .lss-brk .lss-loan td:last-child { font-size: 15px; }
   .lss-low { display: grid; grid-template-columns: minmax(0, 36fr) minmax(0, 64fr); gap: 10px; }
-  .lss-contact { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 10px; background: #F1EFEA; text-align: center; padding: 8px 4px; }
-  .lss-contact b { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0f1115; }
+  .lss-contact { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border-radius: 10px; background: #fafafa; border: 1px solid #eceaea; text-align: center; padding: 8px 4px; }
+  .lss-contact b { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #0a0a0a; }
   .lss-contact span { font-size: 11px; color: #6b7280; }
   .lss-ten th { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 8px 3px; text-align: right; }
   .lss-ten th:first-child { text-align: left; }
-  .lss-ten td { padding: 5px 8px; font-size: 13px; font-weight: 600; color: #4b5563; border-top: 1px solid rgba(0,0,0,.06); }
-  .lss-ten td:last-child { text-align: right; font-size: 16px; font-weight: 800; color: #111827; }
-  .lss-ten .lss-def td { background: #0f1115; color: #fff; border-top-color: transparent; }
+  .lss-ten td { padding: 5px 8px; font-size: 13px; font-weight: 600; color: #4b5563; border-top: 1px solid #eceaea; }
+  .lss-ten td:last-child { text-align: right; font-size: 16px; font-weight: 800; color: #1f2733; }
+  .lss-ten .lss-def td { background: #0a0a0a; color: #fff; border-top-color: transparent; }
   .lss-ten .lss-def td:first-child { border-radius: 8px 0 0 8px; }
   .lss-ten .lss-def td:last-child { border-radius: 0 8px 8px 0; font-size: 20px; }
-  .lss-cta { margin: 0; padding: 7px 8px; border-radius: 8px; background: #0f1115; color: #fff; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+  .lss-cta { margin: 0; padding: 7px 8px; border-radius: 8px; background: #0a0a0a; color: #fff; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .lss-note { font-size: 12px; color: #6b7280; text-align: center; padding: 0 12px 12px; margin: 0; }
-  @media (max-width: 820px) {
-    .lss-grid { grid-template-columns: minmax(0, 1fr); gap: 32px; }
-  }
 `;
