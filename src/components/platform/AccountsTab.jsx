@@ -226,6 +226,27 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
 
   const open = openId ? byId[openId] : null;
 
+  // Billing extras for the open record: the payment log and who invited them
+  // (REFER-1, migration 20261004a). Fetched here rather than in the console's
+  // bootstrap select so a missing column can never blank the whole table.
+  const [billing, setBilling] = useState(null);
+  const loadBilling = async (id) => {
+    const [p, pays] = await Promise.all([
+      supabase.from("profiles").select("plan_expires_at, referred_by, referred_at").eq("id", id).maybeSingle(),
+      supabase.from("subscription_payments").select("id, amount_myr, months, paid_on, note").eq("user_id", id)
+        .order("created_at", { ascending: false }).limit(12),
+    ]);
+    setBilling(b => (b?.id === id || !b ? {
+      id,
+      profile: p.error ? null : p.data,
+      payments: pays.error ? null : (pays.data || []),
+    } : b));
+  };
+  useEffect(() => {
+    setBilling(null);
+    if (openId) loadBilling(openId);
+  }, [openId]);
+
   function flash(id) {
     setSaved(id);
     setTimeout(() => setSaved(s => (s === id ? null : s)), 2000);
@@ -330,11 +351,18 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       return r;
     });
 
+  // One row per payment in subscription_payments (record_subscription_payment).
+  // For a standalone seller it moves Premium forward a month instead of
+  // flipping payment_status to 'received', which never expired. The second
+  // paid row of an invited seller is what earns their inviter a free month.
   const markPaid = (a) =>
-    run(a.id, "Marking paid", async () => {
-      const patch = { payment_status: "received", subscription_status: "active" };
-      const r = await supabase.from("profiles").update(patch).eq("id", a.id);
-      if (!r.error) onPatch(a.id, patch);
+    run(a.id, "Logging payment", async () => {
+      const r = await supabase.rpc("record_subscription_payment", { p_user: a.id });
+      if (r.error) return r;
+      const { data } = await supabase.from("profiles")
+        .select("plan, plan_expires_at, payment_status, subscription_status").eq("id", a.id).maybeSingle();
+      if (data) onPatch(a.id, data);
+      await loadBilling(a.id);
       return r;
     });
 
@@ -588,10 +616,31 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               {[7, 14, 30].map(d => (
                 <button key={d} disabled={busy === open.id} onClick={() => extendTrial(open, d)} style={btn()}>+{d} days</button>
               ))}
-              {open.payment_status === "pending" && (
-                <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good")}>Mark payment received</button>
+              {(open.payment_status === "pending" || accountKind(open) === "solo") && (
+                <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good")}>
+                  {accountKind(open) === "solo" ? "Log RM35 payment (+1 month)" : "Mark payment received"}
+                </button>
               )}
             </div>
+
+            {accountKind(open) === "solo" && billing?.id === open.id && (
+              <>
+                <Field label="Premium paid until" value={billing.profile?.plan_expires_at ? fmtDate(billing.profile.plan_expires_at) : "No end date"} />
+                <Field label="Invited by" value={
+                  billing.profile?.referred_by ? (
+                    <button onClick={() => setOpenId(billing.profile.referred_by)}
+                      style={{ background: "none", border: "none", color: "#60a5fa", cursor: "pointer", font: "inherit", fontWeight: 600, padding: 0 }}>
+                      {byId[billing.profile.referred_by]?.full_name || byId[billing.profile.referred_by]?.slug || "another seller"} →
+                    </button>
+                  ) : "Nobody"
+                } />
+                <Field label="Payments" value={
+                  billing.payments === null ? "Couldn't load"
+                    : billing.payments.length === 0 ? "None logged"
+                    : billing.payments.map(p => `${fmtDate(p.paid_on)} RM${Number(p.amount_myr)}`).join(", ")
+                } />
+              </>
+            )}
 
             {!open.onboarding_complete && (
               <Field label="Reminder" value={open.signup_reminder_sent_at ? `Sent ${fmtDate(open.signup_reminder_sent_at)}` : "Not sent yet"} />

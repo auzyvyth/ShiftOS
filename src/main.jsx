@@ -11,6 +11,7 @@ import './utils/installPrompt';
 import App from '@/App';
 import { logError } from '@/utils/logError';
 import { purgeDeadImageCaches } from '@/utils/localCache';
+import { captureInvite } from '@/utils/invite';
 import '@/index.css';
 
 const queryClient = new QueryClient({
@@ -196,6 +197,8 @@ if ('serviceWorker' in navigator) {
 // Reclaim the Cache Storage buckets the old hand-rolled image precache left on
 // existing installs — they hold real megabytes and nothing reads them.
 purgeDeadImageCaches();
+// Before the router runs: /signup and /register redirect and drop ?invite=.
+captureInvite();
 
 i18nReady.then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(

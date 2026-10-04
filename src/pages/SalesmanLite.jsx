@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import ReferralCard from "../components/referral/ReferralCard";
+import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
@@ -763,6 +765,7 @@ const LITE_SETTINGS_NAV = [
   { key: "contact", labelKey: "salesmanLite.settings.navContact", fallback: "Contact & Location" },
   { key: "selling", labelKey: "salesmanLite.settings.navSelling", fallback: "Selling" },
   { key: "alerts", labelKey: "salesmanLite.settings.navAlerts", fallback: "Alerts" },
+  { key: "refer", labelKey: "salesmanLite.settings.navRefer", fallback: "Refer a seller" },
   { key: "account", labelKey: "salesmanLite.settings.navAccount", fallback: "Account" },
 ];
 
@@ -790,6 +793,10 @@ export default function SalesmanLite() {
   const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
 
   const [profile, setProfile] = useState(seed.profile);
+  // A seller who signed up through someone's invite link (?invite=) gets it
+  // attached once the panel knows who they are. claim_referral decides if it
+  // counts; nothing here can set referred_by directly (src/utils/invite.js).
+  useEffect(() => { if (profile?.id) claimStoredInvite(); }, [profile?.id]);
   const [userId, setUserId] = useState(seed.uid);
   // A cached profile is enough to render the panel; the fresh one lands moments
   // later and every access gate below (pending / deleted / wrong role) re-runs
@@ -7220,6 +7227,7 @@ export default function SalesmanLite() {
           </div>
               </>
             )}
+            {snav === "refer" && <ReferralCard slug={profile?.slug} />}
             {snav === "account" && (
               <>
           {/* Identity verification — earns the public Verified badge. Sits first

@@ -1061,6 +1061,24 @@ the tab used to be, unchanged).
 - `useStageHistory` only runs when the lazy tab mounts, so no other surface gains
   a query, and it selects three columns — no buyer name, phone or note.
 
+## Seller referrals + payment log (REFER-1, 2026-10-04) — one path, in the DB
+Migration `20261004a_seller_referrals.sql`. Owner's terms: 30 days of Premium per
+invited seller who has made TWO paid Premium payments; one level; no joining fee;
+max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
+- **Payments are rows in `subscription_payments`, written ONLY by
+  `record_subscription_payment(p_user)` (superadmin).** The console's "Log RM35
+  payment" button calls it. For a standalone salesman it moves `plan_expires_at`
+  forward and sets `payment_status` NULL — 'received' never expired, so a paid
+  seller used to stay Premium forever. Never flip `payment_status='received'` for
+  a salesman again.
+- Invite link = `xdrive.my/plans?invite=<slug>` (`src/utils/invite.js`), NOT
+  `?ref=` (that is buyer attribution). Captured in `main.jsx` before routing
+  (`/signup` redirects drop the query). `profiles.referred_by` is writable only via
+  `claim_referral(code)` (`trg_guard_profile_referral`); the panels call it on load.
+- The reward is `grant_referral_reward`, fired inside the payment RPC; one
+  `referral_rewards` row per invited seller (granted | capped | ineligible).
+  The UI card is `src/components/referral/ReferralCard.jsx` (Lite + Premium settings).
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

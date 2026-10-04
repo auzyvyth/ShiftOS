@@ -5,6 +5,8 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import ReferralCard from "../components/referral/ReferralCard";
+import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -95,6 +97,7 @@ import {
  MessageCircle,
  ClipboardList,
   Mail,
+ Gift,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
@@ -210,6 +213,7 @@ const SETTINGS_GROUPS = [
  ]},
  { group: "Account", items: [
  { key: "verify", icon: ShieldCheck, label: "Verified Badge", desc: "ID & IC verification" },
+ { key: "refer", icon: Gift, label: "Refer a Seller", desc: "Earn free Premium months" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
  // Premium had no language control anywhere, so a seller who picked Malay in
  // Lite found no way to change it back (or set it at all) on this panel.
@@ -256,6 +260,10 @@ export default function SalesmanPremium() {
  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
 
  const [profile, setProfile] = useState(seed.profile);
+ // A seller who signed up through someone's invite link (?invite=) gets it
+ // attached once the panel knows who they are. claim_referral decides if it
+ // counts; nothing here can set referred_by directly (src/utils/invite.js).
+ useEffect(() => { if (profile?.id) claimStoredInvite(); }, [profile?.id]);
  const [userId, setUserId] = useState(seed.uid);
  // A cached profile is enough to render the panel; the fresh one lands moments
  // later and every access gate below (pending pay / expired trial / wrong role)
@@ -5366,6 +5374,7 @@ export default function SalesmanPremium() {
  </div>
  </>
  )}
+ {nav === "refer" && <ReferralCard slug={profile?.slug} />}
  {nav === "dealership" && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a
