@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Contact, SlidersHorizontal, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
   monthlyPayment, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
@@ -8,6 +9,7 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
 } from '../../utils/liveMaths';
+import { LIVE_COPY, initialLiveLang, saveLiveLang } from './liveCopy';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -83,6 +85,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [budgetDown, setBudgetDown] = useState('');
   const [budgetYears, setBudgetYears] = useState(DEFAULT_TENURE);
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
+  // Presenter language, separate from the app's (liveCopy.js).
+  const { i18n } = useTranslation();
+  const [lang, setLang] = useState(() => initialLiveLang(i18n.language));
+  const t = LIVE_COPY[lang];
+  const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; saveLiveLang(next); return next; });
   const startedAt = useRef(new Date());
   const touchX = useRef(null);
   const fitRef = useRef(null);
@@ -224,7 +231,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const custom = customDown === '' ? null : Math.max(0, Number(customDown) || 0);
   const rows = [
     ...(custom !== null && custom < price
-      ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : 'No deposit', down: custom, custom: true }] : []),
+      ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : t.noDeposit, down: custom, custom: true }] : []),
     ...DOWN_ROWS.map((pct) => ({ key: pct, down: price * pct / 100 })),
   ];
   const financeable = price > 0;
@@ -236,7 +243,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const answer = financeable ? monthlyFor(picked.down, pickYears) : 0;
   const salary = salaryGuide(answer);
   const rateTextFor = (y) => (basis === 'flat'
-    ? `${fmtRate(rate)}% flat (${fmtRate(rateFor(y))}% EIR)`
+    ? t.rateFlatText(fmtRate(rate), fmtRate(rateFor(y)))
     : `${fmtRate(rate)}% EIR`);
 
   // Budget mode. "pay" runs the 35% rule backwards; the line under the input
@@ -258,12 +265,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     <div className="lp">
       {/* Light, on the marketplace tokens (DESIGN.md): page #F7F6F2, white cards,
           ink #0f1115, one red only for the selected cell's marker.
-          Everything lives on ONE portrait stage, 9:16 at most. On a phone that
-          is the whole screen; on a monitor it is a centred column, because the
-          seller films the monitor with a phone held upright, and a landscape
-          two-column layout came out cropped or tiny on a portrait stream.
-          Sizes use container units (cqw / cqh) so the same screen fits a
-          375px phone and a 1080p monitor without a scroll. */}
+          Phones and tablets: ONE portrait stage, 9:16 at most, sized in
+          container units so it fits a 375px phone with no scroll.
+          Desktop (mouse + landscape screen, 1024px+): a wide two-column sheet
+          (photo left, the working and the tenure table right). Owner's call,
+          2026-10-04: sellers film their monitor and the 9:16 column was too
+          thin to read on camera. The desktop block at the end of the styles is
+          the only place that layout lives. */}
       <style>{`
         .lp { position: fixed; inset: 0; z-index: 1000; background: #E8E5DE; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
@@ -271,6 +279,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: #fff; border-bottom: 1px solid rgba(0,0,0,.06); flex-shrink: 0; }
         .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
         .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .lp-lang { font-size: 13px; font-weight: 800; letter-spacing: .04em; font-family: inherit; }
         .lp-iconbtn[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
         .lp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
@@ -358,57 +367,110 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
+
+        /* Desktop only: a wide, landscape quotation sheet for sellers who film
+           their monitor. Phones and tablets keep the portrait stage above.
+           Sizes switch to cqh (stage height) so a 768px laptop and a 1080p
+           monitor both fit with no scroll. */
+        @media (min-width: 1024px) and (orientation: landscape) and (hover: hover) and (pointer: fine) {
+          .lp-stage { width: min(100%, 1440px, calc(100dvh * 1.7)); }
+          .lp-top { padding: 10px 20px; }
+          .lp-body { padding: 16px 20px; }
+          /* Spare height on a tall monitor goes above and below the card, not all under it. */
+          .lp-fit:has(.lp-sheet) { margin-block: auto; }
+          .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
+            grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note cta"; align-items: start; }
+          .lp-sheet .lp-title { grid-area: title; }
+          .lp-sheet .lp-pair { display: contents; }
+          .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
+          .lp-sheet .lp-brk { grid-area: brk; }
+          .lp-sheet .lp-deps { grid-area: deps; }
+          .lp-sheet .lp-low { grid-area: low; }
+          .lp-sheet .lp-salary { grid-area: salary; }
+          .lp-sheet .lp-note { grid-area: note; align-self: center; }
+          .lp-sheet .lp-cta { grid-area: cta; align-self: center; }
+          .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
+          .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
+          .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
+          .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
+          .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
+          .lp-seg button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
+          .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
+          .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
+          .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
+          .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
+          .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
+          .lp-ten tr.lp-def td:last-child { font-size: clamp(26px, 5cqh, 56px); }
+          .lp-salary { font-size: clamp(13px, 1.9cqh, 21px); }
+          .lp-note { font-size: clamp(12px, 1.6cqh, 17px); }
+          .lp-cta { font-size: clamp(13px, 2cqh, 22px); padding: 10px 14px; }
+          .lp-adjust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .lp-adjust .lp-seg { grid-column: auto; }
+          /* Budget: the viewer's number on the left, the cars that fit on the right. */
+          .lp-fit:has(.lp-bud) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+          .lp-fit:has(.lp-bud) > .lp-adjust { grid-column: 1 / -1; }
+          .lp-row img, .lp-row .lp-noimg { width: clamp(64px, 9cqh, 110px); }
+          .lp-row .lp-n { font-size: clamp(24px, 4cqh, 44px); }
+          .lp-row .lp-rn b { font-size: clamp(14px, 2.1cqh, 22px); }
+          .lp-row .lp-m { font-size: clamp(16px, 2.7cqh, 30px); }
+          .lp-nav { justify-content: center; }
+          .lp-navbtn { flex: 0 1 320px; }
+          .lp-report { max-width: 760px; width: 100%; margin: 0 auto; }
+        }
       `}</style>
 
       <div className="lp-stage">
       {/* Top bar: mode + controls. Contact only shows when the seller turns it on. */}
       <div className="lp-top">
-        {report ? <span className="lp-count">Live ended</span> : (
+        {report ? <span className="lp-count">{t.liveEnded}</span> : (
           <div className="lp-seg" role="group" aria-label="Show">
-            <button type="button" aria-pressed={mode === 'cars'} onClick={() => setMode('cars')}>Cars</button>
-            <button type="button" aria-pressed={mode === 'budget'} onClick={() => setMode('budget')}>Budget</button>
+            <button type="button" aria-pressed={mode === 'cars'} onClick={() => setMode('cars')}>{t.cars}</button>
+            <button type="button" aria-pressed={mode === 'budget'} onClick={() => setMode('budget')}>{t.budget}</button>
           </div>
         )}
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* Shows the language on screen now; tap to switch. */}
+          <button className="lp-iconbtn lp-lang" onClick={toggleLang} aria-label={t.langLabel}>
+            {lang === 'ms' ? 'BM' : 'EN'}
+          </button>
           {!report && mode === 'cars' && contact && (
             <button className="lp-iconbtn" onClick={() => setShowContact((v) => !v)}
-              aria-label={showContact ? 'Hide contact' : 'Show contact'} aria-pressed={showContact}>
+              aria-label={showContact ? t.hideContact : t.showContact} aria-pressed={showContact}>
               <Contact size={17} />
             </button>
           )}
           {!report && (
-            <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label="Adjust financing" aria-pressed={adjustOpen}>
+            <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
               <SlidersHorizontal size={17} />
             </button>
           )}
-          <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label="Exit live presentation"><X size={18} /></button>
+          <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label={t.exit}><X size={18} /></button>
         </div>
       </div>
 
-      {report ? <LiveReport report={report} onDone={onClose} /> : (<>
+      {report ? <LiveReport report={report} onDone={onClose} t={t} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {adjustOpen && (
           <div className="lp-card lp-adjust">
-            <div className="lp-seg" role="group" aria-label="How the rate is quoted">
+            <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
               <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
-              <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>Flat (brochure)</button>
+              <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
             </div>
             <label style={mode === 'budget' ? { gridColumn: '1 / -1' } : undefined}>
-              {basis === 'flat' ? 'Rate (flat % a year)' : 'Rate (EIR % a year)'}
+              {basis === 'flat' ? t.rateFlat : t.rateEir}
               <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
             </label>
             {mode === 'cars' && (
               <label>
-                Custom deposit (RM)
-                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0 = no deposit" value={customDown}
+                {t.customDeposit}
+                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder={t.noDepositHint} value={customDown}
                   onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
               </label>
             )}
             {basis === 'flat' && (
               <p className="lp-hint">
-                Type the bank's flat rate as quoted. Flat rates were abolished for new loans on
-                1 June 2026, so it is worked out as EIR: {TENURES.map((y) => `${y} yrs ${fmtRate(rateFor(y))}%`).join(', ')}.
+                {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(rateFor(y))}%`).join(', '))}
               </p>
             )}
           </div>
@@ -431,12 +493,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-photo">
               {images[imgIdx]
                 ? <img src={images[imgIdx]} alt={carName(car)} />
-                : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>No photo</div>}
+                : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
-                  <button aria-label="Previous photo" onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
+                  <button aria-label={t.prevPhoto} onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
                     style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '50%', background: 'none', border: 'none', cursor: 'pointer' }} />
-                  <button aria-label="Next photo" onClick={() => setImgIdx((i) => (i + 1) % images.length)}
+                  <button aria-label={t.nextPhoto} onClick={() => setImgIdx((i) => (i + 1) % images.length)}
                     style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '50%', background: 'none', border: 'none', cursor: 'pointer' }} />
                   <div className="lp-dots">
                     {images.slice(0, 12).map((_, i) => <span key={i} data-on={i === imgIdx ? '1' : '0'} />)}
@@ -448,42 +510,42 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* The working, line by line: price - deposit = loan, at this rate. */}
             <table className="lp-brk">
               <tbody>
-                <tr><td>Price</td><td>{price > 0 ? `RM ${fmt(price)}` : 'On request'}</td></tr>
+                <tr><td>{t.price}</td><td>{price > 0 ? `RM ${fmt(price)}` : t.onRequest}</td></tr>
                 {financeable && (<>
-                  <tr><td>Deposit</td><td>{picked.down > 0 ? `RM ${fmt(picked.down)}` : 'None'}</td></tr>
-                  <tr className="lp-loan"><td>Loan</td><td>RM {fmt(price - picked.down)}</td></tr>
-                  <tr><td>Rate</td><td>{fmtRate(rate)}% {basis === 'flat' ? 'flat' : 'EIR'}</td></tr>
+                  <tr><td>{t.deposit}</td><td>{picked.down > 0 ? `RM ${fmt(picked.down)}` : t.none}</td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td>RM {fmt(price - picked.down)}</td></tr>
+                  <tr><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
                 </>)}
               </tbody>
             </table>
           </div>
 
           {financeable && (<>
-            <div className="lp-seg lp-deps" role="group" aria-label="Deposit">
+            <div className="lp-seg lp-deps" role="group" aria-label={t.deposit}>
               {rows.map((r) => (
                 <button key={r.key} type="button" aria-pressed={r.key === picked.key}
                   onClick={() => setPick((p) => ({ ...p, row: r.key }))}>
-                  {r.custom ? r.label : `${r.key}% down`}
+                  {r.custom ? r.label : t.pctDown(r.key)}
                 </button>
               ))}
             </div>
 
             <div className={showContact && contact ? 'lp-low lp-with' : 'lp-low'}>
               {showContact && contact && (
-                <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label="Hide contact">
+                <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
                   {contact.name && <b>{contact.name}</b>}
                   {contact.phone && <span>{contact.phone}</span>}
                 </button>
               )}
               <table className="lp-ten">
-                <thead><tr><th>Tenure</th><th>Monthly</th></tr></thead>
+                <thead><tr><th>{t.tenure}</th><th>{t.monthly}</th></tr></thead>
                 <tbody>
                   {TENURES_DESC.map((y) => {
                     const on = y === pickYears;
                     return (
                       <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={() => setPick((p) => ({ ...p, years: y }))}
                         role="button" aria-pressed={on}>
-                        <td>{y} years</td>
+                        <td>{t.years(y)}</td>
                         <td>RM {fmt(monthlyFor(picked.down, y))}</td>
                       </tr>
                     );
@@ -494,67 +556,65 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
             {salary && (
               <p className="lp-salary">
-                {pickYears} years: take-home pay needed <b>about RM {fmt(salary)}</b>. Instalment at {Math.round(SALARY_SHARE * 100)}% of take-home pay. The bank decides.
+                {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
               </p>
             )}
             <p className="lp-note" style={{ margin: 0 }}>
-              Reducing balance{basis === 'flat' ? `, flat rate worked out as EIR (${pickYears} yrs ${fmtRate(rateFor(pickYears))}%)` : ''}.{' '}
-              {highValue
-                ? 'Above RM300k banks decide case by case, often with a bigger deposit or shorter tenure, so treat this as a rough guide.'
-                : 'Subject to bank approval.'}
+              {t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
+              {highValue ? t.highValue : t.subjectBank}
             </p>
           </>)}
 
-          <p className="lp-cta">Comment #{idx + 1}, your deposit &amp; tenure</p>
+          <p className="lp-cta">{t.cta(idx + 1)}</p>
         </div>
         ) : (<>
         {/* Budget: the viewer's number in, the cars that fit out. */}
         <div className="lp-card lp-bud">
-          <div className="lp-seg" role="group" aria-label="Budget is">
-            <button type="button" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>Monthly budget</button>
-            <button type="button" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>Take-home pay</button>
+          <div className="lp-seg" role="group" aria-label={t.budgetIs}>
+            <button type="button" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
+            <button type="button" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
           </div>
           <label className="lp-money">
             <span>RM</span>
             <input type="number" inputMode="numeric" min="0" value={budgetAmount} placeholder="0"
-              aria-label={budgetKind === 'pay' ? 'Take-home pay a month' : 'Monthly budget'}
+              aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
               onChange={(e) => setBudgetAmount(e.target.value)} />
           </label>
           <div className="lp-budrow">
             <label>
-              Deposit (RM)
-              <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0 = no deposit" value={budgetDown}
+              {t.depositRm}
+              <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder={t.noDepositHint} value={budgetDown}
                 onChange={(e) => setBudgetDown(e.target.value)} />
             </label>
-            <div className="lp-seg" role="group" aria-label="Years">
+            <div className="lp-seg" role="group" aria-label={t.yearsAria}>
               {TENURES.map((y) => (
-                <button key={y} type="button" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{y} yrs</button>
+                <button key={y} type="button" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.yrsShort(y)}</button>
               ))}
             </div>
           </div>
           {maxMonthly ? (
             <p className="lp-work" style={{ margin: 0 }}>
               {budgetKind === 'pay' && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}% <em>=</em> </>}
-              up to <b>RM {fmt(maxMonthly)}/month</b>
-              <br />{bDown > 0 ? `RM ${fmt(bDown)} deposit` : 'No deposit'} · {budgetYears} years at {rateTextFor(budgetYears)}
+              {t.upTo}<b>RM {fmt(maxMonthly)}{t.perMonth}</b>
+              <br />{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}
             </p>
           ) : null}
           {budgetKind === 'pay' && maxMonthly ? (
-            <p className="lp-salary" style={{ margin: 0 }}>Rough guide: instalment at {Math.round(SALARY_SHARE * 100)}% of take-home pay. The bank decides.</p>
+            <p className="lp-salary" style={{ margin: 0 }}>{t.roughRule(Math.round(SALARY_SHARE * 100))}</p>
           ) : null}
         </div>
 
         <div className="lp-card lp-res">
           {!maxMonthly ? (
-            <p className="lp-empty">Type the monthly amount a viewer can pay, or their take-home pay, and the cars that fit show here.</p>
+            <p className="lp-empty">{t.budgetEmpty}</p>
           ) : (<>
-            <h3>{matches.fits.length ? `${matches.fits.length} ${matches.fits.length === 1 ? 'car fits' : 'cars fit'}` : 'None fit this budget yet'}</h3>
-            {matches.fits.map((m) => <BudgetRow key={m.car.id} m={m} onOpen={openFromBudget} />)}
-            {matches.above.length > 0 && <h3>Just above</h3>}
-            {matches.above.map((m) => <BudgetRow key={m.car.id} m={m} over onOpen={openFromBudget} />)}
+            <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
+            {matches.fits.map((m) => <BudgetRow key={m.car.id} m={m} onOpen={openFromBudget} t={t} />)}
+            {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
+            {matches.above.map((m) => <BudgetRow key={m.car.id} m={m} over onOpen={openFromBudget} t={t} />)}
             <p className="lp-note" style={{ marginBottom: 8 }}>
-              RM per month, reducing balance. Subject to bank approval.
-              {anyHighValue ? ' Above RM300k banks decide case by case, so treat those as a rough guide.' : ''}
+              {t.budgetNote}
+              {anyHighValue ? t.budgetHigh : ''}
             </p>
           </>)}
         </div>
@@ -578,7 +638,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
 // One budget result. Tapping it opens that car on the Cars screen with the
 // same deposit and years picked, so the big number matches this row.
-function BudgetRow({ m, over, onOpen }) {
+function BudgetRow({ m, over, onOpen, t }) {
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
   return (
     <button type="button" className={over ? 'lp-row lp-over' : 'lp-row'} onClick={() => onOpen(m)}>
@@ -588,40 +648,38 @@ function BudgetRow({ m, over, onOpen }) {
         <b>{carName(m.car)}</b>
         <span>RM {fmt(m.price)}</span>
       </span>
-      <span className="lp-m">RM {fmt(m.monthly)}<small>/month</small></span>
+      <span className="lp-m">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
     </button>
   );
 }
 
 // After the live. Counts only: this can still be on the stream, so no buyer
 // name, phone or message ever renders here.
-function LiveReport({ report, onDone }) {
+function LiveReport({ report, onDone, t }) {
   if (report.loading) {
-    return <div className="lp-report"><p className="lp-note">Adding up your live...</p></div>;
+    return <div className="lp-report"><p className="lp-note">{t.adding}</p></div>;
   }
   const n = (v) => (v === null || v === undefined ? '-' : fmt(v));
   return (
     <div className="lp-report">
-      <h2>Your live, {report.minutes} min</h2>
+      <h2>{t.yourLive(report.minutes)}</h2>
       <div className="lp-tiles">
-        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.visitors)}</b><span>opened your page</span></div>
-        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.carTaps)}</b><span>car taps</span></div>
-        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.whatsappTaps)}</b><span>WhatsApp taps</span></div>
-        <div className="lp-card lp-tile"><b>{n(report.newLeads)}</b><span>new leads in your pipeline</span></div>
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.visitors)}</b><span>{t.openedPage}</span></div>
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.carTaps)}</b><span>{t.carTaps}</span></div>
+        <div className="lp-card lp-tile"><b>{report.eventsFailed ? '-' : n(report.whatsappTaps)}</b><span>{t.waTaps}</span></div>
+        <div className="lp-card lp-tile"><b>{n(report.newLeads)}</b><span>{t.newLeads}</span></div>
       </div>
       {report.topCar && (
         <div className="lp-card lp-tile">
-          <span>Most tapped</span>
+          <span>{t.mostTapped}</span>
           <b style={{ fontSize: 22 }}>#{report.topCar.n} {report.topCar.name}</b>
-          <span>{report.topCar.taps} taps. Lead with it next live.</span>
+          <span>{t.topTaps(report.topCar.taps)}</span>
         </div>
       )}
       <p className="lp-note">
-        Counted from the moment you opened the presentation. Page opens are everyone who opened
-        your page in that time, not only your viewers, and visitors who turned analytics off
-        are not counted, so the real number can be higher. Your new leads are waiting in your pipeline.
+        {t.reportNote}
       </p>
-      <button className="lp-navbtn lp-next" onClick={onDone} style={{ flex: 'none' }}>Done</button>
+      <button className="lp-navbtn lp-next" onClick={onDone} style={{ flex: 'none' }}>{t.done}</button>
     </div>
   );
 }

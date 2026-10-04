@@ -28,6 +28,10 @@ const ARTICLES = [
   ["/articles/apa-itu-puspakom-b5-b7", "What Puspakom B5 and B7 inspections are, when each is required, and current fees."],
   ["/articles/cara-pindah-milik-kereta-mysikap", "How to transfer car ownership (pindah milik) via JPJ MySikap, step by step."],
   ["/articles/beza-kereta-recon-dan-terpakai", "The difference between recond (recon) and locally-used cars for Malaysian buyers."],
+  ["/articles/cara-urus-dealership-kedai-kereta-terpakai", "How to run a used car dealership day to day: stock age, lead follow-up, salesman performance, paperwork and handover."],
+  ["/articles/cara-jadi-salesman-kereta-freelance", "How to become a car salesman or freelance car agent in Malaysia: pay structures, skills and finding buyers."],
+  ["/articles/akta-sewa-beli-2026-eir-pinjaman-kereta", "What the Hire-Purchase (Amendment) Act 2026 changed for car loans: flat rate and Rule of 78 abolished, EIR on reducing balance."],
+  ["/articles/beli-kereta-ev-terpakai-apa-perlu-semak", "What to check before buying a used EV in Malaysia: battery health, warranty transfer, 2026 EV road tax, charging."],
 ];
 
 const CONTENT = `# XDrive
@@ -58,7 +62,8 @@ ${ORDER.map((slug) => `- [${FEATURES[slug].kicker}](${SITE}/features/${slug}): $
 - Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
 
 ## For salesmen
-- [ShiftOS for salesmen](${SITE}/for-salesmen): A free app for individual car salesmen to manage their own listings, leads and commission, share cars with tracked referral links, and see which channels drive their traffic.
+- [XDrive for salesmen](${SITE}/for-salesmen): For individual car salesmen and agents in Malaysia. Salesman Lite (free): a page at xdrive.my/s/yourname, up to 10 cars on the marketplace, buyer enquiries direct to WhatsApp and in-app chat, and a lead pipeline with follow-up reminders. Salesman Premium (RM35/month) adds a live presentation for TikTok / Facebook lives that works out monthly instalments (9, 7 and 5 years) for every car, a sorted call list with follow-up messages drafted, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking.
+- [Example salesman page](${SITE}/s/premiummotors): A live Salesman Premium page, showing what a buyer sees when a salesman shares their link.
 
 ## Guides & articles
 - [Guides](${SITE}/guides): Practical guides for Malaysian used-car buyers and dealers.
@@ -69,7 +74,7 @@ ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${d
 
 ## Pricing (RM/month, prices in Malaysian Ringgit)
 - Salesman Lite — RM0 (free): up to 10 listings, 1 seat.
-- Salesman Premium — RM35/month: up to 30 listings, 1 seat, plus AI captions, financing tools and deal sheets.
+- Salesman Premium — RM35/month: up to 30 listings, 1 seat, plus a TikTok / Facebook Live instalment presenter, a follow-up call list, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking.
 - Dealer Starter — RM299/month: up to 30 listings, 4 seats. 14-day free trial.
 - Dealer Growth — RM599/month: up to 80 listings, 8 seats.
 - Dealer Pro — RM1,199/month: up to 150 listings, 15 seats.

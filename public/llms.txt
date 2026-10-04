@@ -24,6 +24,7 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 - [Inventory & Stock](https://xdrive.my/features/smart-inventory): ShiftOS Smart Inventory — used car stock management for Malaysian dealers. Track purchase cost, recon, days-in-stock, holding cost and true per-unit profit.
 - [Leads & CRM](https://xdrive.my/features/leads-crm): ShiftOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the XDrive marketplace in one visual sales pipeline built for Malaysian dealers.
 - [Revenue & Profit](https://xdrive.my/features/revenue-analytics): ShiftOS Revenue Analytics — see true gross profit per unit, per salesman and month-over-month, with automatic commission and F&I back-end revenue.
+- [Salesman Performance](https://xdrive.my/features/salesman-performance): ShiftOS Salesman Performance — pantau prestasi salesman kereta: conversion rate, response time, gross per deal and link traffic per rep, plus a personal funnel and close-rate trend on Salesman Premium.
 - [F&I & Documents](https://xdrive.my/features/fi-documents): ShiftOS F&I & Documents — sell and track F&I add-ons, manage HP financing, and generate sales agreements and receipts for Malaysian used-car deals.
 - [Post-Sale Handover](https://xdrive.my/features/post-sale-handover): ShiftOS Post-Sale Handover — automate the Malaysian car ownership transfer: loan settlement, Puspakom B5/B7, JPJ pindah milik, road tax and geran, as a per-sale checklist.
 - [Plans & pricing](https://xdrive.my/plans): Every salesman and dealer plan side by side, with listing caps and seats.
@@ -46,6 +47,10 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 - [apa-itu-puspakom-b5-b7](https://xdrive.my/articles/apa-itu-puspakom-b5-b7): What Puspakom B5 and B7 inspections are, when each is required, and current fees.
 - [cara-pindah-milik-kereta-mysikap](https://xdrive.my/articles/cara-pindah-milik-kereta-mysikap): How to transfer car ownership (pindah milik) via JPJ MySikap, step by step.
 - [beza-kereta-recon-dan-terpakai](https://xdrive.my/articles/beza-kereta-recon-dan-terpakai): The difference between recond (recon) and locally-used cars for Malaysian buyers.
+- [cara-urus-dealership-kedai-kereta-terpakai](https://xdrive.my/articles/cara-urus-dealership-kedai-kereta-terpakai): How to run a used car dealership day to day: stock age, lead follow-up, salesman performance, paperwork and handover.
+- [cara-jadi-salesman-kereta-freelance](https://xdrive.my/articles/cara-jadi-salesman-kereta-freelance): How to become a car salesman or freelance car agent in Malaysia: pay structures, skills and finding buyers.
+- [akta-sewa-beli-2026-eir-pinjaman-kereta](https://xdrive.my/articles/akta-sewa-beli-2026-eir-pinjaman-kereta): What the Hire-Purchase (Amendment) Act 2026 changed for car loans: flat rate and Rule of 78 abolished, EIR on reducing balance.
+- [beli-kereta-ev-terpakai-apa-perlu-semak](https://xdrive.my/articles/beli-kereta-ev-terpakai-apa-perlu-semak): What to check before buying a used EV in Malaysia: battery health, warranty transfer, 2026 EV road tax, charging.
 
 ## Pricing (RM/month, prices in Malaysian Ringgit)
 - Salesman Lite — RM0 (free): up to 10 listings, 1 seat.

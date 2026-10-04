@@ -176,7 +176,9 @@ export default async function handler(req) {
     ? [
         { path: "/",            changefreq: "daily",   priority: "1.0" },
         { path: "/cars",        changefreq: "daily",   priority: "0.9" },
-        { path: "/calculator",  changefreq: "monthly", priority: "0.6" },
+        // No /calculator: it canonicalises to xdrive.my/calculator (one
+        // calculator, not one per storefront), so listing it here only fed
+        // Search Console another "alternate page" row.
       ]
     : [
         { path: "/",             changefreq: "daily",   priority: "1.0" },

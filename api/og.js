@@ -8,7 +8,7 @@
 import { getChassisCode } from "../src/utils/chassisCodes.js";
 import * as SL from "../src/config/salesmanLandingCopy.js";
 import { GUIDE_META, GUIDE_STEPS, GUIDE_FAQS, GUIDE_TIPS, GUIDE_FAQ_LD } from "../src/config/guidesCopy.js";
-import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle } from "../src/config/featurePagesCopy.js";
+import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle, featureMetaTitle } from "../src/config/featurePagesCopy.js";
 import { SALESMAN_PLANS, DEALER_PLANS } from "../src/utils/plans.js";
 import { TERMS, PRIVACY, DPA, LEGAL_META } from "../src/legal/legalDocs.js";
 import {
@@ -17,6 +17,7 @@ import {
 import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
+import { CALC_META } from "../src/config/calculatorCopy.js";
 import { agentName, agentLocation, agentPageTitle, agentPageDescription } from "../src/utils/agentSeo.js";
 
 export const config = { runtime: "edge" };
@@ -125,18 +126,48 @@ async function getSellerData(car) {
   return getDealerData(car.dealer_id);
 }
 
+// Anon has no SELECT on profiles, so the direct profiles read this replaced
+// always came back empty: every storefront then listed EVERY dealer's cars
+// under its own /cars/ URLs (duplicate addresses for Google). The SECURITY
+// DEFINER RPC is the same lookup the storefront itself uses (useTenant.js).
 async function getDealerBySubdomain(subdomain) {
   if (!subdomain) return null;
-  const [dealer] = await sbFetch(
-    `profiles?subdomain=eq.${encodeURIComponent(subdomain)}&select=id,dealership,site_name,subdomain,city,state&limit=1`,
-  );
-  return dealer ?? null;
+  const [dealer] = await sbRpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain });
+  return dealer?.id ? dealer : null;
+}
+
+// The one address a car lives at, matching CarDetailPage's canonical: a
+// dealer with a storefront owns its cars at <sub>.xdrive.my/cars/<slug>,
+// everyone else at xdrive.my/showroom/<slug>. It used to be "whatever URL
+// the crawler came in on", so /cars/<slug>, www. and every storefront each
+// claimed to be the real page.
+function carCanonical(car, seller) {
+  const sub = seller?.kind !== "agent" ? seller?.subdomain : null;
+  return sub && /^[a-z0-9-]{1,63}$/.test(sub)
+    ? `https://${sub}.${ROOT_DOMAIN}/cars/${encodeURIComponent(car.slug)}`
+    : `${SITE_URL}/showroom/${encodeURIComponent(car.slug)}`;
+}
+
+// dealer_id -> subdomain for every storefront dealer, so list pages link each
+// car at its canonical address instead of /showroom/<slug> (which only
+// canonicalises away and shows up as an "alternate page" in Search Console).
+// Public data, same for every request, so a short module cache is safe.
+let subsCache = { at: 0, map: new Map() };
+async function loadSubdomains() {
+  if (Date.now() - subsCache.at < 300000) return subsCache.map;
+  const rows = await sbRpc("get_subdomain_dealer_ids", {});
+  subsCache = { at: Date.now(), map: new Map(rows.filter((r) => r?.id && r.subdomain).map((r) => [r.id, r.subdomain])) };
+  return subsCache.map;
+}
+// Same rule as carCanonical, for list rows (which carry dealer_id, not a seller).
+function carHref(c) {
+  return carCanonical(c, { subdomain: subsCache.map.get(c.dealer_id) });
 }
 
 async function getRecentListings(dealerId, limit = 48) {
   const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "";
   return sbFetch(
-    `public_car_listings?status=eq.available${filter}&select=slug,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
+    `public_car_listings?status=eq.available${filter}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
 }
 
@@ -144,7 +175,7 @@ async function getRecentListings(dealerId, limit = 48) {
 // does: cars they own + cars assigned to them + dealer cars they feature via
 // salesman_listings. Owned-only missed the last two, so a salesman under a
 // dealer showed Google "New listings coming soon" over a page full of cars.
-const SALESMAN_CAR_COLS = "id,slug,brand,model,variant,year,selling_price,mileage,state,images,status";
+const SALESMAN_CAR_COLS = "id,slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images,status";
 async function getSalesmanCars(id) {
   const live = "status=in.(available,reserved)";
   const [owned, assigned, featured, stats] = await Promise.all([
@@ -171,7 +202,7 @@ async function getHubs() {
 async function getHubCars(brand, model) {
   const or = encodeURIComponent(`(${hubCarFilter(brand, model)})`);
   return sbFetch(
-    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
+    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
   );
 }
 
@@ -186,7 +217,7 @@ function buildHubHtml(hubs, brand, model, cars) {
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
     const km = c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : "";
-    return `<li><a href="${SITE_URL}/showroom/${esc(c.slug)}">${esc(name)}</a> — ${esc(price)}${esc(km)}${c.state ? ` · ${esc(c.state)}` : ""}</li>`;
+    return `<li><a href="${esc(carHref(c))}">${esc(name)}</a> — ${esc(price)}${esc(km)}${c.state ? ` · ${esc(c.state)}` : ""}</li>`;
   }).join("\n      ");
   const hubLink = (h, label) => `<li><a href="${SITE_URL}${h.path}">${esc(label)}</a> (${h.count})</li>`;
   let nav = "";
@@ -205,7 +236,7 @@ function buildHubHtml(hubs, brand, model, cars) {
         name: copy.h1,
         numberOfItems: cars.length,
         itemListElement: cars.map((c, i) => ({
-          "@type": "ListItem", position: i + 1, url: `${SITE_URL}/showroom/${c.slug}`,
+          "@type": "ListItem", position: i + 1, url: carHref(c),
           name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
         })),
       }
@@ -461,7 +492,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
     const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
     const loc = c.state ? ` · ${c.state}` : "";
-    return `<li><a href="${baseUrl}${carBase}${esc(c.slug)}">${esc(name)} — ${esc(price)}${esc(loc)}</a></li>`;
+    return `<li><a href="${esc(carHref(c))}">${esc(name)} — ${esc(price)}${esc(loc)}</a></li>`;
   }).join("\n      ");
   const itemList = {
     "@context": "https://schema.org",
@@ -469,7 +500,7 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
     itemListElement: cars.map((c, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      url: `${baseUrl}${carBase}${c.slug}`,
+      url: carHref(c),
       name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
     })),
   };
@@ -537,7 +568,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
       const cname = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
       const price = c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "";
       const loc = c.state ? ` · ${c.state}` : "";
-      return `<li><a href="${baseUrl}/showroom/${esc(c.slug)}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
+      return `<li><a href="${esc(carHref(c))}">${esc(cname)} — ${esc(price)}${esc(loc)}</a></li>`;
     })
     .join("\n      ");
   // ProfilePage + Person: Google's documented type for a page about one
@@ -588,7 +619,7 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
         itemListElement: cars.map((c, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `${baseUrl}/showroom/${c.slug}`,
+          url: carHref(c),
           name: [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" "),
         })),
       }
@@ -677,7 +708,7 @@ function buildFeatureHtml(slug) {
     ? `<h2>${esc(f.steps.title)}</h2>${f.steps.sub ? `<p>${esc(f.steps.sub)}</p>` : ""}<ol>${f.steps.items.map((st) => `<li><strong>${esc(st.title)}</strong> — ${esc(st.desc)}</li>`).join("")}</ol>`
     : "";
   return htmlShell({
-    title: `${featureTitle(f)} | ShiftOS`,
+    title: featureMetaTitle(f),
     description: f.seo,
     canonical: `${SITE_URL}/features/${slug}`,
     jsonLd: [SOFTWARE_LD],
@@ -810,13 +841,14 @@ const STATIC_PAGES = {
   </main>`,
   }),
   "/calculator": () => htmlShell({
-    title: "Car Loan Calculator Malaysia | XDrive",
-    description: "Free car loan calculator for Malaysia. Estimate your monthly instalment, interest and total cost for any used car price, down payment and tenure.",
+    title: CALC_META.title,
+    description: CALC_META.description,
     canonical: `${SITE_URL}/calculator`,
     body: `  <main>
-    <h1>Car loan calculator Malaysia</h1>
-    <p>Estimate your monthly car loan instalment by price, down payment, interest rate and tenure before you buy a used car.</p>
-    <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
+    <h1>Kalkulator loan kereta (EIR) — car loan calculator Malaysia</h1>
+    <p>${esc(CALC_META.description)}</p>
+    <p>Estimate your monthly car loan instalment by price, down payment, interest rate (EIR) and tenure before you buy a used car.</p>
+    <p><a href="${SITE_URL}/articles/akta-sewa-beli-2026-eir-pinjaman-kereta">Akta Sewa Beli 2026: apa berubah untuk pinjaman kereta</a> · <a href="${SITE_URL}/showroom">Browse used cars</a></p>
   </main>`,
   }),
   "/articles": () => {
@@ -844,6 +876,16 @@ const STATIC_PAGES = {
   "/account": () => htmlShell({ title: "My Account | XDrive", description: "Your XDrive account.", canonical: `${SITE_URL}/account`, robots: "noindex, follow", body: "  <main><h1>My account</h1></main>" }),
 };
 
+// SPA routes that are screens, not content. Everything else og.js does not
+// render is a 404 for crawlers (see the end of the handler).
+const APP_ONLY = [
+  "/login", "/buyer-login", "/buyer-signup", "/signup", "/register", "/waitlist",
+  "/unsubscribe", "/reset-password", "/choose-plan", "/salesman-setup", "/mindmap",
+  "/style-guide", "/auth", "/onboarding", "/salesman-onboarding", "/dealer-onboarding",
+  "/loan", "/deal", "/account", "/dashboard", "/salesman", "/salesman-lite",
+  "/salesman-premium", "/manager", "/accountant", "/fi", "/admin", "/accounts", "/platform",
+];
+
 export default async function handler(req) {
   const url = new URL(req.url);
   const pathname = (url.searchParams.get("path") || url.pathname).replace(/\/+$/, "") || "/";
@@ -856,6 +898,8 @@ export default async function handler(req) {
   if (!isBot(ua)) {
     return new Response(null, { status: 302, headers: { Location: `${baseUrl}${pathname}` } });
   }
+
+  await loadSubdomains();
 
   const html = (h, status = 200, cache = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400") =>
     new Response(h, { status, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": cache } });
@@ -875,7 +919,7 @@ export default async function handler(req) {
       hubSlugOf(cm.matched ? cm.model : car.model),
     );
     const crumbs = hubBrand ? hubCrumbs(hubBrand, hubModel) : null;
-    return html(buildCarHtml(car, dealer, `${baseUrl}${pathname}`, baseUrl, carBase, crumbs));
+    return html(buildCarHtml(car, dealer, carCanonical(car, dealer), baseUrl, carBase, crumbs));
   }
 
   // A single Find me post: buyer-typed and short-lived, never indexed.
@@ -914,6 +958,9 @@ export default async function handler(req) {
   const tenantListing = subdomain && (pathname === "/" || pathname === "/cars");
   if (rootListing || tenantListing) {
     const dealer = subdomain ? await getDealerBySubdomain(subdomain) : null;
+    // A storefront with no dealer behind it is not a page. Without this it
+    // fell back to the whole marketplace's cars.
+    if (subdomain && !dealer) return new Response("Not found", { status: 404 });
     const cars = await getRecentListings(dealer?.id, 48);
     if (subdomain) {
       const name = dealer?.site_name || dealer?.dealership || subdomain;
@@ -972,18 +1019,28 @@ export default async function handler(req) {
     return html(buildSalesmanHtml(s, cars, `${SITE_URL}/s/${encodeURIComponent(s.slug)}`, SITE_URL, soldCount));
   }
 
-  // 5. Fallback (unknown / dealer slug landing) — unique-ish, indexable.
-  return html(htmlShell({
-    title: "XDrive — Quality Used Cars in Malaysia",
-    description: "Browse verified used cars for sale in Malaysia from trusted dealers on xdrive.my.",
-    canonical: `${baseUrl}${pathname === "/" ? "" : pathname}`,
-    body: `  <main>
-    <h1>Quality used cars in Malaysia</h1>
-    <p>Browse verified used cars for sale in Malaysia from trusted dealers on xdrive.my.</p>
-    <ul>
-      <li><a href="${SITE_URL}/showroom">Browse all used cars</a></li>
-      <li><a href="${SITE_URL}/calculator">Car loan calculator</a></li>
-    </ul>
-  </main>`,
-  }));
+  // 5. App screens that exist in the SPA but are not content (sign-in, setup,
+  // private token links). A real page, so 200, but never indexed.
+  if (APP_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return html(htmlShell({
+      title: "XDrive",
+      description: "Browse verified used cars for sale in Malaysia on xdrive.my.",
+      canonical: `${baseUrl}${pathname}`,
+      robots: "noindex, follow",
+      body: `  <main><h1>XDrive</h1><p><a href="${SITE_URL}/showroom">Browse all used cars</a></p></main>`,
+    }));
+  }
+
+  // 6. /<dealer-subdomain> on the marketplace: the SPA sends people to that
+  // dealer's storefront (DealerSlugRedirect.jsx), so crawlers get the same
+  // move as a permanent redirect.
+  const slugMatch = !subdomain && pathname.match(/^\/([a-z0-9-]{1,63})$/);
+  if (slugMatch) {
+    const [d] = await sbFetch(`public_dealer_profiles?subdomain=eq.${slugMatch[1]}&select=subdomain&limit=1`);
+    if (d?.subdomain) return new Response(null, { status: 301, headers: { Location: `https://${d.subdomain}.${ROOT_DOMAIN}` } });
+  }
+
+  // 7. Anything else is not a page. It used to get a generic "Quality used
+  // cars" page with a 200 and index,follow, which Google files as a soft 404.
+  return new Response("Not found", { status: 404, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }

@@ -3,6 +3,104 @@
 //   node tools/generate-article-pages.mjs
 // Read by api/og.js so crawlers get the same article a visitor reads.
 export const ARTICLE_PAGES = {
+  "akta-sewa-beli-2026-eir-pinjaman-kereta": {
+    "slug": "akta-sewa-beli-2026-eir-pinjaman-kereta",
+    "title": "Akta Sewa Beli (Pindaan) 2026: Apa Berubah Untuk Pinjaman Kereta Anda",
+    "description": "Akta Sewa Beli (Pindaan) 2026 berkuat kuasa 1 Jun 2026. Kadar rata dan Rule of 78 dimansuhkan, diganti EIR atas baki berkurangan. Panduan mudah untuk pembeli kereta: contoh kiraan, selesai loan awal, perjanjian lama, dan apa perlu disemak dalam sebut harga.",
+    "datePublished": "2026-10-03",
+    "dateModified": "2026-10-03",
+    "faqs": [
+      {
+        "q": "Bila Akta Sewa Beli (Pindaan) 2026 berkuat kuasa?",
+        "a": "Akta ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026. Penyedia sewa beli diberi tempoh peralihan sehingga 31 Mac 2027 untuk menaik taraf sistem mereka kepada kaedah baki berkurangan dan harga dalam EIR."
+      },
+      {
+        "q": "Adakah loan kereta lama saya bertukar kepada EIR secara automatik?",
+        "a": "Tidak. Perjanjian sewa beli sedia ada tidak ditukar secara automatik. Jika anda terus membayar sehingga tamat tempoh, anda tidak perlu buat apa-apa. Jika anda mahu selesaikan awal perjanjian kadar tetap lama yang guna Rule of 78, bank menawarkan diskaun muhibah (goodwill discount) mulai 1 Jun 2026."
+      },
+      {
+        "q": "Apa beza kadar rata (flat rate) dan EIR?",
+        "a": "Kadar rata mengira faedah atas jumlah pinjaman asal untuk sepanjang tempoh, walaupun hutang anda makin berkurang. EIR (kadar faedah efektif) atas baki berkurangan mengira faedah hanya atas baki pokok yang masih tertunggak. Sebab itu angka kadar rata kelihatan lebih rendah daripada kos sebenar."
+      },
+      {
+        "q": "3.5% flat sama dengan berapa EIR?",
+        "a": "Sebagai ilustrasi, bagi pinjaman 7 tahun, ansuran pada kadar rata 3.5% sama dengan ansuran pada EIR sekitar 6.44% setahun. Angka tepat bergantung kepada tempoh pinjaman. Jadi jangan bandingkan angka flat dengan angka EIR secara terus."
+      },
+      {
+        "q": "Bagaimana kira ansuran kereta 2026?",
+        "a": "Gunakan formula baki berkurangan dengan EIR. Kalkulator pinjaman XDrive di /calculator mengira ansuran bulanan dan jumlah faedah berdasarkan EIR atas baki berkurangan. Ia anggaran sahaja; kadar sebenar datang daripada bank anda."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Akta Sewa Beli (Pindaan) 2026: Apa Berubah Untuk Pinjaman Kereta Anda",
+          "description": "Akta Sewa Beli (Pindaan) 2026 berkuat kuasa 1 Jun 2026. Kadar rata dan Rule of 78 dimansuhkan, diganti EIR atas baki berkurangan. Panduan mudah untuk pembeli kereta: contoh kiraan, selesai loan awal, perjanjian lama, dan apa perlu disemak dalam sebut harga.",
+          "datePublished": "2026-10-03",
+          "dateModified": "2026-10-03",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/akta-sewa-beli-2026-eir-pinjaman-kereta",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Bila Akta Sewa Beli (Pindaan) 2026 berkuat kuasa?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Akta ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026. Penyedia sewa beli diberi tempoh peralihan sehingga 31 Mac 2027 untuk menaik taraf sistem mereka kepada kaedah baki berkurangan dan harga dalam EIR."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah loan kereta lama saya bertukar kepada EIR secara automatik?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak. Perjanjian sewa beli sedia ada tidak ditukar secara automatik. Jika anda terus membayar sehingga tamat tempoh, anda tidak perlu buat apa-apa. Jika anda mahu selesaikan awal perjanjian kadar tetap lama yang guna Rule of 78, bank menawarkan diskaun muhibah (goodwill discount) mulai 1 Jun 2026."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa beza kadar rata (flat rate) dan EIR?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Kadar rata mengira faedah atas jumlah pinjaman asal untuk sepanjang tempoh, walaupun hutang anda makin berkurang. EIR (kadar faedah efektif) atas baki berkurangan mengira faedah hanya atas baki pokok yang masih tertunggak. Sebab itu angka kadar rata kelihatan lebih rendah daripada kos sebenar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "3.5% flat sama dengan berapa EIR?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sebagai ilustrasi, bagi pinjaman 7 tahun, ansuran pada kadar rata 3.5% sama dengan ansuran pada EIR sekitar 6.44% setahun. Angka tepat bergantung kepada tempoh pinjaman. Jadi jangan bandingkan angka flat dengan angka EIR secara terus."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Bagaimana kira ansuran kereta 2026?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Gunakan formula baki berkurangan dengan EIR. Kalkulator pinjaman XDrive di /calculator mengira ansuran bulanan dan jumlah faedah berdasarkan EIR atas baki berkurangan. Ia anggaran sahaja; kadar sebenar datang daripada bank anda."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Akta Sewa Beli 2026</span></nav><header><div><span>Pinjaman Kereta</span></div><h1>Akta Sewa Beli (Pindaan) 2026:<br><span>Apa Berubah Untuk Pinjaman Kereta Anda</span></h1><p>Akta Sewa Beli (Pindaan) 2026 berkuat kuasa 1 Jun 2026. Kadar rata dan Rule of 78 dimansuhkan, diganti EIR atas baki berkurangan. Panduan mudah untuk pembeli kereta: contoh kiraan, selesai loan awal, perjanjian lama, dan apa perlu disemak dalam sebut harga.</p><div><span>3 Oktober 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI. Ia panduan umum, bukan nasihat undang-undang atau kewangan.</p></header><div><section><p><strong>Mulai 1 Jun 2026, cara faedah pinjaman kereta dikira di Malaysia sudah berubah bagi perjanjian baharu (dengan tempoh peralihan untuk bank sehingga 31 Mac 2027).</strong> Akta Sewa Beli (Pindaan) 2026 memansuhkan kadar rata (flat rate) dan kaedah Rule of 78. Sebagai ganti, faedah dikira atas baki pinjaman yang masih tertunggak (kaedah baki berkurangan) dan kos pinjaman dinyatakan sebagai EIR, iaitu kadar faedah efektif.</p><p>Untuk pembeli kereta, maksudnya mudah: angka kadar faedah dalam sebut harga kini lebih jujur, dan bagi perjanjian baharu dengan kaedah baki berkurangan, selesai loan kereta awal tidak lagi &quot;menghukum&quot; anda dengan baki faedah yang tinggi. Artikel ini menerangkan apa yang berubah, satu contoh kiraan, dan apa yang perlu anda semak sebelum menandatangani perjanjian.</p></section><section><h2>Apa Itu Akta Sewa Beli (Pindaan) 2026 dan Bila Berkuat Kuasa?</h2><p>Akta ini meminda Akta Sewa Beli 1967 (Akta 212), undang-undang yang mengawal perjanjian sewa beli termasuk pinjaman kereta. Pindaan ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026, seperti diumumkan oleh Kementerian Perdagangan Dalam Negeri dan Kos Sara Hidup (KPDN).</p><p>Menurut panduan pengguna Bank Negara Malaysia (BNM), perubahan utamanya ialah:</p><div><ul><li>EIR dan kaedah baki berkurangan digunakan untuk semua jenis pembiayaan sewa beli, sama ada kadar tetap atau kadar boleh ubah.</li><li>Istilah Kadar Pinjaman Asas (Base Lending Rate) diganti dengan Kadar Rujukan (Reference Rate).</li><li>Had kadar faedah maksimum kini dinyatakan dalam EIR.</li><li>Tempoh peralihan untuk penyedia menaik taraf sistem, sehingga 31 Mac 2027.</li><li>Pilihan untuk menandatangani secara elektronik atau digital dan menerima perjanjian serta dokumen berkaitan secara elektronik.</li></ul></div></section><section><h2>Kadar Rata Dimansuhkan: Beza Flat Rate dan EIR Baki Berkurangan</h2><p><strong>Kadar rata</strong> mengira faedah atas jumlah pinjaman asal, untuk setiap tahun pinjaman. Walaupun selepas lima tahun anda sudah bayar sebahagian besar hutang, faedah masih dikira seolah-olah anda berhutang jumlah penuh. Sebab itu angka &quot;3.5%&quot; kelihatan murah.</p><p><strong>EIR atas baki berkurangan</strong> mengira faedah hanya atas baki pokok yang masih ada. Bulan pertama, faedah tinggi kerana baki masih besar. Setiap bulan baki turun, jadi bahagian faedah dalam ansuran makin kecil dan bahagian pokok makin besar.</p><p>Penting: undang-undang ini mengubah <em>cara kiraan</em>, bukan menetapkan kadar yang bank mesti beri. Kadar sebenar anda masih bergantung kepada bank, profil kredit anda dan kereta yang dibeli.</p></section><section><h2>Contoh Kiraan: Kenapa 3.5% Flat Bukan 3.5% EIR</h2><p>Ilustrasi di bawah menggunakan pinjaman RM60,000 selama 7 tahun (84 bulan). Angka ini dikira dengan formula yang sama yang digunakan oleh kalkulator XDrive. Ia contoh matematik sahaja, bukan sebut harga mana-mana bank.</p><div><table><thead><tr><th>Pinjaman RM60,000, 7 tahun</th><th>3.5% flat</th><th>3.5% EIR</th></tr></thead><tbody><tr><td>Ansuran bulanan</td><td>RM889</td><td>RM806</td></tr><tr><td>Jumlah faedah</td><td>RM14,700</td><td>RM7,737</td></tr><tr><td>Jumlah dibayar</td><td>RM74,700</td><td>RM67,737</td></tr></tbody></table></div><p>Kiraan kadar rata: RM60,000 x 3.5% x 7 tahun = RM14,700 faedah. Campur pokok, RM74,700 dibahagi 84 bulan = lebih kurang RM889 sebulan.</p><p>Sekarang soalan sebenar: kalau ansuran RM889 itu dikira semula dengan kaedah baki berkurangan, berapa EIR-nya? Jawapannya sekitar <strong>6.44% setahun</strong>. Jadi &quot;3.5% flat&quot; bukan 3.5% kos sebenar. Kos sebenarnya hampir dua kali ganda angka yang tertulis.</p><p>Pengajarannya: bila anda bandingkan dua tawaran, pastikan kedua-duanya dalam EIR. Tawaran 6% EIR sebenarnya lebih murah daripada 3.5% flat untuk pinjaman 7 tahun, walaupun angkanya nampak lebih tinggi.</p></section><section><h2>Rule of 78 dan Selesai Loan Kereta Awal</h2><p>Rule of 78 ialah kaedah lama untuk mengira berapa faedah yang dikira &quot;sudah dibayar&quot; bila anda selesaikan pinjaman awal. Kaedah ini meletakkan sebahagian besar faedah di awal tempoh. Akibatnya, dalam tahun-tahun awal, bahagian faedah dalam ansuran anda lebih besar dan bahagian pokok lebih kecil. Peminjam yang mahu selesaikan awal mendapati baki mereka masih tinggi.</p><p>Dengan kaedah baki berkurangan, faedah terikat kepada pokok yang masih anda hutang. Jika anda selesaikan awal, anda membayar baki pokok itu, bukan faedah masa depan yang dikira mengikut jadual Rule of 78. KPDN menyatakan perubahan ini menjadikan penyelesaian awal lebih telus dan adil kepada pengguna.</p><p>Sebelum selesaikan awal, minta penyata penyelesaian daripada bank dan baca perjanjian anda untuk sebarang caj atau notis yang dikenakan.</p></section><section><h2>Perjanjian Lama: Adakah Loan Sedia Ada Terkesan?</h2><p>Perjanjian sewa beli yang dibuat sebelum ini <strong>tidak ditukar secara automatik</strong> kepada kaedah baru. Jika anda terus membayar ansuran sehingga tamat tempoh, anda tidak perlu berbuat apa-apa.</p><p>Jika anda mahu selesaikan awal, bank-bank di bawah Persatuan Bank-Bank Dalam Malaysia (ABM), Persatuan Institusi Perbankan dan Kewangan Islam Malaysia (AIBIM) dan Persatuan Institusi Kewangan Pembangunan Malaysia (ADFIM) menawarkan <strong>diskaun muhibah (goodwill discount)</strong> mulai 1 Jun 2026 kepada individu serta perniagaan mikro dan kecil yang layak, bagi perjanjian kadar tetap yang menggunakan Rule of 78, termasuk yang dibuat dalam tempoh peralihan sehingga 31 Mac 2027. Tujuannya supaya baki penyelesaian lebih hampir dengan apa yang akan dibayar di bawah kaedah baki berkurangan. Setiap bank mengira diskaun berdasarkan ciri perjanjian anda, termasuk tempoh pembiayaan dan masa penyelesaian. Jumlah tepat diberi bila anda memohon penyelesaian awal.</p></section><section><h2>Tempoh Peralihan Sehingga 31 Mac 2027</h2><p>Walaupun akta berkuat kuasa 1 Jun 2026, penyedia sewa beli diberi masa sehingga 31 Mac 2027 untuk menaik taraf sistem bagi kaedah baki berkurangan dan harga dalam EIR. Menurut KPDN (September 2026), 14 daripada 20 bank sudah menawarkan kaedah baki berkurangan, dan baki enam bank lagi komited untuk beralih sebelum 31 Disember 2026.</p><p>Maksudnya untuk anda: jika anda membeli kereta sebelum 31 Mac 2027, tanya terus kepada bank atau salesman sama ada sebut harga itu menggunakan kaedah baki berkurangan dengan EIR, atau masih kaedah lama.</p></section><section><h2>Perjanjian Digital dan Tandatangan Elektronik</h2><p>Akta yang dipinda membenarkan pengguna memilih untuk menandatangani secara elektronik atau digital, dan menerima perjanjian sewa beli serta dokumen berkaitan secara elektronik. Ini pilihan, bukan kewajipan. Ia boleh mempercepat proses kerana anda tidak semestinya perlu hadir ke bank untuk urusan dokumen.</p></section><section><h2>Had Kadar Faedah Maksimum Dalam EIR</h2><p>Menurut panduan BNM, bagi pembiayaan kadar tetap, had maksimum ialah EIR 17% setahun untuk tempoh sehingga lima tahun dan 16% untuk tempoh melebihi lima tahun. Bagi pembiayaan kadar boleh ubah, had kekal pada EIR 17% untuk semua tempoh. Ini had atas, bukan kadar biasa yang ditawarkan.</p></section><section><h2>Apa Perlu Disemak Dalam Sebut Harga Loan Kereta</h2><div><ul><li>Kadar ditulis sebagai EIR atau flat? Jangan bandingkan satu flat dengan satu EIR.</li><li>Kadar tetap atau kadar boleh ubah? Kadar boleh ubah boleh berubah sepanjang tempoh pinjaman.</li><li>Jumlah pinjaman, tempoh (bulan) dan ansuran bulanan yang tepat.</li><li>Jumlah faedah sepanjang tempoh dan jumlah keseluruhan yang akan dibayar.</li><li>Jadual bayaran: berapa pokok dan berapa faedah setiap bulan.</li><li>Syarat penyelesaian awal, termasuk sebarang caj atau notis.</li><li>Anda mahu tandatangan secara fizikal atau elektronik.</li></ul></div><p>Jika anda membeli kereta terpakai daripada dealer, pastikan juga harga jualan, deposit dan jumlah pinjaman dalam perjanjian jualan sama dengan apa yang dihantar ke bank. Panduan kami tentang <a href=\"https://xdrive.my/articles/cara-buat-sales-agreement-kereta-terpakai\">perjanjian jualan kereta terpakai</a> menerangkan apa yang patut ada di dalamnya.</p></section><section><h2>Kira Ansuran Kereta 2026 Dengan Kaedah Baru</h2><p><a href=\"https://xdrive.my/calculator\">Kalkulator pinjaman kereta XDrive</a> mengira ansuran bulanan dan jumlah faedah menggunakan EIR atas baki berkurangan, iaitu kaedah di bawah akta yang dipinda. Masukkan harga kereta, deposit, tempoh dan kadar EIR yang bank beri. Jika bank masih memberi anda angka flat, tukar dahulu ke EIR atau minta bank nyatakan EIR-nya, kerana memasukkan angka flat terus ke dalam kalkulator EIR akan memberi ansuran yang terlalu rendah.</p><p>Hasilnya anggaran sahaja. Kelulusan, kadar dan ansuran sebenar hanya datang daripada bank atau penyedia pembiayaan. Bila anda sudah tahu bajet bulanan, anda boleh <a href=\"https://xdrive.my/showroom\">lihat kereta di showroom XDrive</a> dalam julat harga itu.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Bila Akta Sewa Beli (Pindaan) 2026 berkuat kuasa?</p><p>Akta ini diwartakan pada 30 Januari 2026 dan berkuat kuasa pada 1 Jun 2026. Penyedia sewa beli diberi tempoh peralihan sehingga 31 Mac 2027 untuk menaik taraf sistem mereka kepada kaedah baki berkurangan dan harga dalam EIR.</p></div><div><p>Adakah loan kereta lama saya bertukar kepada EIR secara automatik?</p><p>Tidak. Perjanjian sewa beli sedia ada tidak ditukar secara automatik. Jika anda terus membayar sehingga tamat tempoh, anda tidak perlu buat apa-apa. Jika anda mahu selesaikan awal perjanjian kadar tetap lama yang guna Rule of 78, bank menawarkan diskaun muhibah (goodwill discount) mulai 1 Jun 2026.</p></div><div><p>Apa beza kadar rata (flat rate) dan EIR?</p><p>Kadar rata mengira faedah atas jumlah pinjaman asal untuk sepanjang tempoh, walaupun hutang anda makin berkurang. EIR (kadar faedah efektif) atas baki berkurangan mengira faedah hanya atas baki pokok yang masih tertunggak. Sebab itu angka kadar rata kelihatan lebih rendah daripada kos sebenar.</p></div><div><p>3.5% flat sama dengan berapa EIR?</p><p>Sebagai ilustrasi, bagi pinjaman 7 tahun, ansuran pada kadar rata 3.5% sama dengan ansuran pada EIR sekitar 6.44% setahun. Angka tepat bergantung kepada tempoh pinjaman. Jadi jangan bandingkan angka flat dengan angka EIR secara terus.</p></div><div><p>Bagaimana kira ansuran kereta 2026?</p><p>Gunakan formula baki berkurangan dengan EIR. Kalkulator pinjaman XDrive di /calculator mengira ansuran bulanan dan jumlah faedah berdasarkan EIR atas baki berkurangan. Ia anggaran sahaja; kadar sebenar datang daripada bank anda.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-buat-sales-agreement-kereta-terpakai\"><p>Beli Kereta</p><p>Cara Buat Sales Agreement Kereta Terpakai</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\"><p>Beli Kereta</p><p>Beza Kereta Recon dan Kereta Terpakai</p><p>Baca panduan →</p></a></div></section><div><p>Kira Ansuran Anda Dalam EIR</p><p>Kalkulator XDrive menggunakan kaedah baki berkurangan. Anggaran sahaja; kadar sebenar daripada bank anda.</p><a href=\"https://xdrive.my/calculator\">Buka Kalkulator</a></div></div>"
+  },
   "apa-itu-dms-dealer-kereta": {
     "slug": "apa-itu-dms-dealer-kereta",
     "title": "Apa Itu Dealer Management System (DMS) Dan Kenapa Dealer Kereta Perlu Guna",
@@ -91,22 +189,22 @@ export const ARTICLE_PAGES = {
   },
   "app-terbaik-dealer-kereta-terpakai-malaysia": {
     "slug": "app-terbaik-dealer-kereta-terpakai-malaysia",
-    "title": "App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2025",
-    "description": "Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2025. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.",
+    "title": "App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2026",
+    "description": "Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2026. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.",
     "datePublished": "2026-06-22",
-    "dateModified": "2026-06-22",
+    "dateModified": "2026-10-03",
     "faqs": [
       {
         "q": "Apa app terbaik untuk dealer kereta terpakai di Malaysia?",
-        "a": "Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist pula sesuai untuk pemasaran, tetapi bukan untuk urus operasi dalaman."
+        "a": "Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist kuat untuk pemasaran dan mendapatkan pembeli."
       },
       {
         "q": "Adakah Mudah atau Carlist boleh urus stok dan jualan saya?",
-        "a": "Tidak sepenuhnya. Mudah dan Carlist ialah platform iklan untuk dapatkan pembeli, bukan software dealer kereta untuk urus stok, kos, lead dan komisen. Kebanyakan dealer guna Mudah/Carlist untuk iklan, dan app untuk dealer kereta terpakai seperti ShiftOS untuk urus operasi."
+        "a": "Mudah dan Carlist terutamanya platform iklan. Carlist ada app dealer (iCarSuite) untuk urus listing dan lead di Carlist; semak sama ada ia meliputi kos unit, recon, komisen dan handover yang anda perlukan. Ramai dealer guna platform iklan untuk cari pembeli, dan sistem dealer seperti ShiftOS untuk urus operasi."
       },
       {
         "q": "Ada tak software dealer kereta murah untuk dealer kecil?",
-        "a": "Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu (app salesman kereta Malaysia). Ini jauh lebih murah berbanding sistem DMS antarabangsa yang selalunya berharga ribuan ringgit sebulan."
+        "a": "Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu. Sistem DMS antarabangsa biasanya dibina untuk pasaran luar negara dan dihargai dalam dolar AS, dan tidak meliputi aliran kerja tempatan seperti Puspakom dan pindah milik JPJ."
       },
       {
         "q": "Perlu ke guna app khas, atau cukup dengan Excel?",
@@ -118,10 +216,10 @@ export const ARTICLE_PAGES = {
       "@graph": [
         {
           "@type": "Article",
-          "headline": "App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2025",
-          "description": "Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2025. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.",
+          "headline": "App Terbaik Untuk Dealer Kereta Terpakai Di Malaysia 2026",
+          "description": "Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2026. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.",
           "datePublished": "2026-06-22",
-          "dateModified": "2026-06-22",
+          "dateModified": "2026-10-03",
           "author": {
             "@type": "Organization",
             "name": "ShiftOS by XDrive"
@@ -142,7 +240,7 @@ export const ARTICLE_PAGES = {
               "name": "Apa app terbaik untuk dealer kereta terpakai di Malaysia?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist pula sesuai untuk pemasaran, tetapi bukan untuk urus operasi dalaman."
+                "text": "Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist kuat untuk pemasaran dan mendapatkan pembeli."
               }
             },
             {
@@ -150,7 +248,7 @@ export const ARTICLE_PAGES = {
               "name": "Adakah Mudah atau Carlist boleh urus stok dan jualan saya?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Tidak sepenuhnya. Mudah dan Carlist ialah platform iklan untuk dapatkan pembeli, bukan software dealer kereta untuk urus stok, kos, lead dan komisen. Kebanyakan dealer guna Mudah/Carlist untuk iklan, dan app untuk dealer kereta terpakai seperti ShiftOS untuk urus operasi."
+                "text": "Mudah dan Carlist terutamanya platform iklan. Carlist ada app dealer (iCarSuite) untuk urus listing dan lead di Carlist; semak sama ada ia meliputi kos unit, recon, komisen dan handover yang anda perlukan. Ramai dealer guna platform iklan untuk cari pembeli, dan sistem dealer seperti ShiftOS untuk urus operasi."
               }
             },
             {
@@ -158,7 +256,7 @@ export const ARTICLE_PAGES = {
               "name": "Ada tak software dealer kereta murah untuk dealer kecil?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu (app salesman kereta Malaysia). Ini jauh lebih murah berbanding sistem DMS antarabangsa yang selalunya berharga ribuan ringgit sebulan."
+                "text": "Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu. Sistem DMS antarabangsa biasanya dibina untuk pasaran luar negara dan dihargai dalam dolar AS, dan tidak meliputi aliran kerja tempatan seperti Puspakom dan pindah milik JPJ."
               }
             },
             {
@@ -173,7 +271,203 @@ export const ARTICLE_PAGES = {
         }
       ]
     },
-    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>App Terbaik Dealer</span></nav><header><div><span>Urus Dealer</span></div><h1>App Terbaik Untuk Dealer<br><span>Kereta Terpakai 2025</span></h1><p>Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2025. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.</p><div><span>22 Jun 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>App terbaik untuk dealer kereta terpakai di Malaysia ialah sistem yang dibina khas untuk operasi dealer tempatan</strong> — bukan sekadar platform iklan. Pilihan terbaik 2025 ialah ShiftOS, sebuah used car dealer software Malaysia yang menggabungkan urus stok, lead CRM, komisen salesman, dokumen dan analitik dalam satu app untuk dealer kereta terpakai.</p><p>Di bawah, kami bandingkan jenis-jenis pilihan secara adil supaya anda boleh pilih yang sesuai dengan saiz dan keperluan perniagaan anda.</p></section><section><h2>Perbandingan Pilihan Untuk Dealer</h2><div><table><thead><tr><th>Pilihan</th><th>Sesuai untuk</th><th>Had</th></tr></thead><tbody><tr><td>ShiftOS</td><td>Urus stok, lead, jualan, komisen &amp; analitik</td><td>Fokus pasaran Malaysia</td></tr><tr><td>Mudah / Carlist</td><td>Iklan &amp; cari pembeli</td><td>Bukan untuk urus operasi dalaman</td></tr><tr><td>Excel / Sheets</td><td>Dealer sangat kecil (&lt;5 unit)</td><td>Manual, mudah silap, tiada automasi</td></tr><tr><td>DMS antarabangsa</td><td>Francais besar</td><td>Mahal, tak sesuai konteks tempatan</td></tr></tbody></table></div><p>Nota: Mudah dan Carlist adalah platform iklan yang bagus dan boleh digunakan serentak dengan ShiftOS — bukan pesaing langsung.</p></section><section><h2>Ciri Yang Patut Ada Dalam App Dealer</h2><div><div><span>Urus stok kereta dengan kos &amp; untung setiap unit</span></div><div><span>CRM lead untuk urus enquiry dari pelbagai sumber</span></div><div><span>Rekod komisen salesman secara automatik</span></div><div><span>Penyediaan dokumen &amp; sales agreement</span></div><div><span>Analitik keuntungan &amp; prestasi bulanan</span></div><div><span>Akses mudah alih (telefon) untuk salesman</span></div></div></section><section><h2>Kenapa ShiftOS Sesuai Untuk Dealer Malaysia</h2><p>ShiftOS dibina khas untuk aliran kerja kereta terpakai Malaysia — Puspakom B5/B7, pindah milik JPJ, pembiayaan HP, dan F&amp;I add-on. Sebagai car dealer management app Malaysia, ia menyatukan semua yang dealer perlukan tanpa kerumitan sistem antarabangsa.</p><p>Untuk salesman individu pula, ShiftOS menyediakan app salesman kereta Malaysia percuma untuk urus listing, lead dan komisen sendiri — pilihan ringan sebelum naik taraf ke pelan dealer penuh.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Apa app terbaik untuk dealer kereta terpakai di Malaysia?</p><p>Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist pula sesuai untuk pemasaran, tetapi bukan untuk urus operasi dalaman.</p></div><div><p>Adakah Mudah atau Carlist boleh urus stok dan jualan saya?</p><p>Tidak sepenuhnya. Mudah dan Carlist ialah platform iklan untuk dapatkan pembeli, bukan software dealer kereta untuk urus stok, kos, lead dan komisen. Kebanyakan dealer guna Mudah/Carlist untuk iklan, dan app untuk dealer kereta terpakai seperti ShiftOS untuk urus operasi.</p></div><div><p>Ada tak software dealer kereta murah untuk dealer kecil?</p><p>Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu (app salesman kereta Malaysia). Ini jauh lebih murah berbanding sistem DMS antarabangsa yang selalunya berharga ribuan ringgit sebulan.</p></div><div><p>Perlu ke guna app khas, atau cukup dengan Excel?</p><p>Excel boleh berfungsi untuk segelintir kereta, tetapi gagal apabila stok bertambah, ada ramai salesman, atau anda perlu jejak komisen dan keuntungan tepat. App khas mengautomasikan kiraan dan mengurangkan kesilapan — menjimatkan masa dan melindungi margin anda.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-urus-stok-kereta-terpakai-sistem-digital\"><p>Urus Dealer</p><p>Cara Urus Stok Kereta Terpakai Dengan Sistem Digital</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\"><p>Urus Dealer</p><p>Cara Kira Komisen Salesman Kereta Dengan Betul</p><p>Baca panduan →</p></a></div></section><div><p>Cuba App Dealer Terbaik Untuk Malaysia</p><p>ShiftOS — software dealer kereta Malaysia yang lengkap. Mula percuma, naik taraf bila perlu.</p><a href=\"https://xdrive.my/shiftos\">Lihat ShiftOS</a></div></div>"
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>App Terbaik Dealer</span></nav><header><div><span>Urus Dealer</span></div><h1>App Terbaik Untuk Dealer<br><span>Kereta Terpakai 2026</span></h1><p>Senarai app terbaik dan software dealer kereta Malaysia untuk dealer kereta terpakai 2026. Bandingkan ciri, harga dan kelebihan setiap pilihan — termasuk used car dealer software Malaysia yang dibina khas tempatan.</p><div><span>22 Jun 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>App terbaik untuk dealer kereta terpakai di Malaysia ialah sistem yang dibina khas untuk operasi dealer tempatan</strong> — bukan sekadar platform iklan. Pilihan terbaik 2026 ialah ShiftOS, sebuah used car dealer software Malaysia yang menggabungkan urus stok, lead CRM, komisen salesman, dokumen dan analitik dalam satu app untuk dealer kereta terpakai.</p><p>Di bawah, kami bandingkan jenis-jenis pilihan secara adil supaya anda boleh pilih yang sesuai dengan saiz dan keperluan perniagaan anda.</p></section><section><h2>Perbandingan Pilihan Untuk Dealer</h2><div><table><thead><tr><th>Pilihan</th><th>Sesuai untuk</th><th>Had</th></tr></thead><tbody><tr><td>ShiftOS</td><td>Urus stok, lead, jualan, komisen &amp; analitik</td><td>Fokus pasaran Malaysia</td></tr><tr><td>Mudah / Carlist</td><td>Iklan &amp; cari pembeli</td><td>Fokus pada iklan di platform sendiri</td></tr><tr><td>Excel / Sheets</td><td>Dealer sangat kecil (&lt;5 unit)</td><td>Manual, mudah silap, tiada automasi</td></tr><tr><td>DMS antarabangsa</td><td>Francais besar</td><td>Harga dalam USD; tak ikut konteks tempatan</td></tr></tbody></table></div><p>Nota: Mudah dan Carlist adalah platform iklan yang bagus dan boleh digunakan serentak dengan ShiftOS — bukan pesaing langsung.</p></section><section><h2>Ciri Yang Patut Ada Dalam App Dealer</h2><div><div><span>Urus stok kereta dengan kos &amp; untung setiap unit</span></div><div><span>CRM lead untuk urus enquiry dari pelbagai sumber</span></div><div><span>Rekod komisen salesman secara automatik</span></div><div><span>Penyediaan dokumen &amp; sales agreement</span></div><div><span>Analitik keuntungan &amp; prestasi bulanan</span></div><div><span>Akses mudah alih (telefon) untuk salesman</span></div></div></section><section><h2>Kenapa ShiftOS Sesuai Untuk Dealer Malaysia</h2><p>ShiftOS dibina khas untuk aliran kerja kereta terpakai Malaysia — Puspakom B5/B7, pindah milik JPJ, pembiayaan HP, dan F&amp;I add-on. Ia menyatukan semua yang dealer perlukan tanpa kerumitan sistem antarabangsa.</p><p>Untuk salesman individu pula, ShiftOS menyediakan Salesman Lite percuma untuk urus listing dan lead sendiri; penjejakan komisen ada dalam Salesman Premium (RM35/bulan) — pilihan ringan sebelum naik taraf ke pelan dealer penuh.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Apa app terbaik untuk dealer kereta terpakai di Malaysia?</p><p>Untuk dealer kereta terpakai Malaysia, ShiftOS adalah antara pilihan terbaik kerana ia dibina khas untuk pasaran tempatan — merangkumi urus stok, lead CRM, komisen salesman, dokumen dan analitik keuntungan dalam satu app. Platform iklan seperti Mudah dan Carlist kuat untuk pemasaran dan mendapatkan pembeli.</p></div><div><p>Adakah Mudah atau Carlist boleh urus stok dan jualan saya?</p><p>Mudah dan Carlist terutamanya platform iklan. Carlist ada app dealer (iCarSuite) untuk urus listing dan lead di Carlist; semak sama ada ia meliputi kos unit, recon, komisen dan handover yang anda perlukan. Ramai dealer guna platform iklan untuk cari pembeli, dan sistem dealer seperti ShiftOS untuk urus operasi.</p></div><div><p>Ada tak software dealer kereta murah untuk dealer kecil?</p><p>Ada. ShiftOS bermula RM299/bulan untuk Dealer Starter, dan ada pelan percuma untuk salesman individu. Sistem DMS antarabangsa biasanya dibina untuk pasaran luar negara dan dihargai dalam dolar AS, dan tidak meliputi aliran kerja tempatan seperti Puspakom dan pindah milik JPJ.</p></div><div><p>Perlu ke guna app khas, atau cukup dengan Excel?</p><p>Excel boleh berfungsi untuk segelintir kereta, tetapi gagal apabila stok bertambah, ada ramai salesman, atau anda perlu jejak komisen dan keuntungan tepat. App khas mengautomasikan kiraan dan mengurangkan kesilapan — menjimatkan masa dan melindungi margin anda.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-urus-stok-kereta-terpakai-sistem-digital\"><p>Urus Dealer</p><p>Cara Urus Stok Kereta Terpakai Dengan Sistem Digital</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\"><p>Urus Dealer</p><p>Cara Kira Komisen Salesman Kereta Dengan Betul</p><p>Baca panduan →</p></a></div></section><div><p>Cuba App Dealer Terbaik Untuk Malaysia</p><p>ShiftOS — software dealer kereta Malaysia yang lengkap. Cuba percuma 14 hari, atau mula dengan Salesman Lite percuma.</p><a href=\"https://xdrive.my/shiftos\">Lihat ShiftOS</a></div></div>"
+  },
+  "beli-kereta-ev-terpakai-apa-perlu-semak": {
+    "slug": "beli-kereta-ev-terpakai-apa-perlu-semak",
+    "title": "Beli Kereta EV Terpakai: Apa Perlu Semak Sebelum Bayar (2026)",
+    "description": "Panduan beli EV terpakai di Malaysia: cara semak kesihatan bateri (State of Health), waranti bateri bila pindah milik, cukai jalan EV 2026, insurans, pengecas di rumah dan susut nilai.",
+    "datePublished": "2026-10-03",
+    "dateModified": "2026-10-03",
+    "faqs": [
+      {
+        "q": "Adakah waranti bateri EV boleh dipindah kepada pemilik kedua?",
+        "a": "Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025; unit 2026 mungkin berbeza). Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar."
+      },
+      {
+        "q": "Berapa cukai jalan kereta elektrik di Malaysia pada 2026?",
+        "a": "Mulai 1 Januari 2026, fi lesen kenderaan motor (cukai jalan) untuk EV dikira berdasarkan kuasa motor elektrik dalam watt, bukan cc. Bagi blok pertama (1 hingga 100,000 watt), kadarnya antara RM20 hingga RM70 setahun. Kereta yang lebih berkuasa membayar lebih. Semak jumlah tepat untuk kereta yang anda mahu beli di MyJPJ atau kaunter JPJ."
+      },
+      {
+        "q": "Apa itu State of Health (SoH) bateri EV?",
+        "a": "State of Health ialah ukuran baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Sebagai contoh, waranti bateri Proton e.MAS 7 dilaporkan menawarkan penggantian jika SoH jatuh bawah 70% dalam tempoh waranti. Minta laporan kesihatan bateri dari pusat servis sah jenama sebelum membeli."
+      },
+      {
+        "q": "Perlu ke pasang pengecas di rumah bila beli EV terpakai?",
+        "a": "Tidak wajib, tetapi jika mahu pasang wallbox, panduan TNB menyatakan anda perlu melantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah. Pengecas mesti guna litar khas sendiri dari papan agihan (DB). Jika jumlah beban melebihi 10 kW, bekalan perlu dinaik taraf kepada tiga fasa melalui permohonan kepada TNB."
+      },
+      {
+        "q": "Adakah XDrive memeriksa bateri kereta EV yang dijual?",
+        "a": "Tidak. XDrive ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Beli Kereta EV Terpakai: Apa Perlu Semak Sebelum Bayar (2026)",
+          "description": "Panduan beli EV terpakai di Malaysia: cara semak kesihatan bateri (State of Health), waranti bateri bila pindah milik, cukai jalan EV 2026, insurans, pengecas di rumah dan susut nilai.",
+          "datePublished": "2026-10-03",
+          "dateModified": "2026-10-03",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/beli-kereta-ev-terpakai-apa-perlu-semak",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Adakah waranti bateri EV boleh dipindah kepada pemilik kedua?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025; unit 2026 mungkin berbeza). Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Berapa cukai jalan kereta elektrik di Malaysia pada 2026?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Mulai 1 Januari 2026, fi lesen kenderaan motor (cukai jalan) untuk EV dikira berdasarkan kuasa motor elektrik dalam watt, bukan cc. Bagi blok pertama (1 hingga 100,000 watt), kadarnya antara RM20 hingga RM70 setahun. Kereta yang lebih berkuasa membayar lebih. Semak jumlah tepat untuk kereta yang anda mahu beli di MyJPJ atau kaunter JPJ."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa itu State of Health (SoH) bateri EV?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "State of Health ialah ukuran baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Sebagai contoh, waranti bateri Proton e.MAS 7 dilaporkan menawarkan penggantian jika SoH jatuh bawah 70% dalam tempoh waranti. Minta laporan kesihatan bateri dari pusat servis sah jenama sebelum membeli."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Perlu ke pasang pengecas di rumah bila beli EV terpakai?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak wajib, tetapi jika mahu pasang wallbox, panduan TNB menyatakan anda perlu melantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah. Pengecas mesti guna litar khas sendiri dari papan agihan (DB). Jika jumlah beban melebihi 10 kW, bekalan perlu dinaik taraf kepada tiga fasa melalui permohonan kepada TNB."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah XDrive memeriksa bateri kereta EV yang dijual?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak. XDrive ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>EV Terpakai</span></nav><header><div><span>Panduan Beli</span></div><h1>Beli Kereta EV Terpakai:<br><span>Apa Perlu Semak Sebelum Bayar</span></h1><p>Panduan beli EV terpakai di Malaysia: cara semak kesihatan bateri (State of Health), waranti bateri bila pindah milik, cukai jalan EV 2026, insurans, pengecas di rumah dan susut nilai.</p><div><span>3 Oktober 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Perkara paling penting bila beli EV terpakai ialah bateri</strong>: berapa banyak kapasiti yang tinggal, dan sama ada waranti bateri masih berjalan untuk anda sebagai pemilik baharu. Enjin kereta petrol boleh didengar dan dirasa semasa pandu uji. Bateri EV tidak. Anda perlukan laporan dan dokumen.</p><p>Panduan ini menerangkan apa yang perlu disemak sebelum anda bayar deposit: kesihatan bateri, pindah milik waranti, cukai jalan EV 2026, insurans, pengecas di rumah, dan harga.</p></section><section><h2>Kenapa Lebih Banyak EV Terpakai di Pasaran Sekarang?</h2><p>Jualan EV baharu di Malaysia naik dengan cepat. Menurut data Persatuan Automotif Malaysia (MAA), 30,848 kereta elektrik bateri baharu dijual pada 2025, naik 109% berbanding 2024. Kereta yang dibeli pada 2023 hingga 2025 inilah yang mula ditukar ganti oleh pemilik pertama, jadi pilihan EV berumur satu hingga tiga tahun semakin banyak.</p><p>Satu lagi sebab: pengecualian duti import dan duti eksais untuk EV import penuh (CBU) tamat pada 31 Disember 2025, dan Kementerian Kewangan mengesahkan ia tidak dilanjutkan. Laporan industri mengaitkan lonjakan jualan pada hujung 2025 dengan pembeli yang mengejar insentif ini sebelum tamat. EV pasang siap tempatan (CKD) pula masih menikmati pengecualian sehingga 31 Disember 2027.</p></section><section><h2>Cara Semak Kesihatan Bateri EV Terpakai (State of Health)</h2><p><strong>State of Health (SoH)</strong> ialah baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Bateri dengan SoH lebih rendah menyimpan tenaga lebih sedikit, jadi jarak perjalanan sekali cas juga lebih pendek.</p><p>Angka SoH juga penting untuk waranti. Contohnya, waranti bateri Proton e.MAS 7 selama 8 tahun atau 160,000 km dilaporkan menawarkan penggantian satu-ke-satu jika SoH jatuh bawah 70% dalam tempoh waranti.</p><div><div><p>Minta laporan bateri dari pusat servis sah</p><p>Minta penjual bawa kereta ke pusat servis sah jenama untuk diagnostik bateri, atau minta salinan laporan terkini. Laporan dari bengkel yang tidak dikenali lebih sukar disahkan.</p></div><div><p>Semak rekod servis bercop</p><p>Waranti biasanya bersyarat pada servis berkala di pusat sah. Rekod yang tidak lengkap boleh menjejaskan tuntutan waranti anda nanti.</p></div><div><p>Tanya bagaimana kereta dicas</p><p>Tanya pemilik sama ada kereta kebanyakannya dicas di rumah atau di pengecas laju DC awam, dan untuk apa kereta digunakan (peribadi atau komersial).</p></div><div><p>Pandu uji dengan bateri penuh</p><p>Lihat anggaran jarak di skrin semasa bateri hampir penuh, dan bandingkan dengan spesifikasi asal model tersebut.</p></div></div></section><section><h2>Waranti Bateri EV Bila Pindah Milik: Masih Sah Atau Tidak?</h2><p>Jangan anggap waranti bateri ikut kereta secara automatik. Syaratnya berbeza mengikut jenama, dan ada yang memerlukan anda membuat sesuatu selepas pindah milik.</p><div><p>Proton e.MAS 7</p><p>Bateri dan unit motor elektrik e.MAS 7 dilindungi waranti 8 tahun atau 160,000 km. Buku waranti dan servis rasmi untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang pertukaran alamat/pemilikan di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025). Unit 2026 mungkin berbeza; minta pengedar sahkan berdasarkan nombor casis. Waranti juga bersyarat pada servis berkala yang dicop oleh pengedar sah Proton e.MAS. Menurut laporan media, polisi waranti ini tidak terpakai untuk kenderaan yang digunakan secara komersial.</p></div><p>Untuk jenama lain seperti BYD, Tesla atau Volvo, kami tidak dapat mengesahkan syarat pindah milik waranti bateri daripada dokumen waranti rasmi untuk pasaran Malaysia, jadi kami tidak menyenaraikannya di sini. Jika anda mencari BYD terpakai atau mana-mana jenama lain, berikan nombor casis kepada pengedar rasmi dan minta mereka sahkan secara bertulis: tarikh mula waranti, baki tempoh dan jarak, dan apa yang perlu dibuat selepas pindah milik.</p></section><section><h2>Cukai Jalan EV 2026: Berapa Perlu Bayar?</h2><p>Pengecualian cukai jalan EV sudah tamat. Mulai 1 Januari 2026, kadar fi Lesen Kenderaan Motor (LKM) untuk kenderaan elektrik ditetapkan berdasarkan kuasa motor elektrik, seperti diumumkan oleh Menteri Pengangkutan Anthony Loke. Kadar dibahagi kepada blok kuasa; blok pertama meliputi motor 1 hingga 100,000 watt, dengan kadar minimum RM20 dan maksimum RM70 setahun. Kereta dengan motor lebih berkuasa jatuh dalam blok lebih tinggi dan membayar lebih.</p><p>Jadi sebelum beli, semak kuasa motor (kW) kereta dalam spesifikasi rasmi kereta, kemudian semak jumlah cukai jalan sebenar melalui MyJPJ. Ini lebih tepat daripada senarai di internet.</p></section><section><h2>Insurans Kereta Elektrik Terpakai</h2><p>Sejak pasaran insurans motor diliberalisasikan oleh Bank Negara Malaysia (harga premium komprehensif dan pihak ketiga, kebakaran dan kecurian bebas daripada tarif mulai 1 Julai 2017), premium tidak lagi tetap. Syarikat insurans boleh mengambil kira faktor seperti jenama dan model kereta, ciri keselamatan, pengalaman pemandu, lokasi dan rekod kesalahan trafik.</p><p>Beberapa syarikat insurans di Malaysia kini menawarkan tambahan khusus EV, contohnya perlindungan untuk pengecas dinding di rumah dan kabel pengecas mudah alih. Minta sebut harga daripada beberapa syarikat sebelum tandatangan perjanjian jual beli, kerana premium boleh berbeza mengikut model.</p></section><section><h2>Pengecas Di Rumah: Semak Sebelum Beli</h2><p>Jika anda mahu cas di rumah dengan wallbox, panduan pelanggan TNB menyatakan perkara berikut:</p><div><ul><li>Lantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah termasuk pengecas.</li><li>Pengecas mesti disambung melalui litar khas sendiri dari papan agihan (DB).</li><li>Bekalan satu fasa sesuai untuk penggunaan sehingga 10 kW; melebihi itu, rumah perlu dinaik taraf ke tiga fasa melalui permohonan kepada TNB.</li><li>Kelulusan TNB tidak diperlukan untuk pasang pengecas itu sendiri, kecuali jika perlu naik taraf bekalan.</li></ul></div><p>Tanya juga penjual sama ada pengecas mudah alih atau kabel asal disertakan bersama kereta. Jika tiada, masukkan kosnya dalam bajet anda.</p></section><section><h2>Susut Nilai EV: Bagaimana Nak Tahu Harga Berpatutan</h2><p>Harga EV terpakai bergerak mengikut harga EV baharu. Bila model baharu atau versi yang dikemas kini dilancarkan, atau harga kereta baharu turun, harga unit terpakai biasanya ikut terkesan. Jadi sebelum tawar-menawar:</p><div><ul><li>Jangan bandingkan dengan harga asal masa kereta itu baharu. Bandingkan dengan harga model sama yang dijual baharu hari ini.</li><li>Bandingkan beberapa iklan untuk model, tahun dan varian bateri yang sama.</li><li>Ambil kira baki waranti bateri. Kereta dengan waranti yang sah dan boleh dipindah lebih bernilai.</li><li>Jangan bayar deposit sebelum laporan bateri dan status waranti disahkan.</li></ul></div><p>Anda boleh lihat EV yang sedang dijual di <a href=\"https://xdrive.my/showroom?fuel_type=Electric\">showroom XDrive</a> (pilih jenis bahan api Electric), dan kira anggaran bayaran bulanan dengan <a href=\"https://xdrive.my/calculator\">kalkulator pinjaman kereta</a>. Ingat, XDrive ialah platform jual beli dan tidak memeriksa kesihatan bateri mana-mana kereta. Semakan bateri tetap tanggungjawab anda sebagai pembeli.</p></section><section><h2>Senarai Semak Ringkas Beli EV Terpakai</h2><div><div><span>Laporan State of Health bateri dari pusat servis sah</span></div><div><span>Rekod servis lengkap dan bercop</span></div><div><span>Pengesahan bertulis status dan pindah milik waranti bateri</span></div><div><span>Kuasa motor (kW) dan jumlah cukai jalan 2026</span></div><div><span>Sebut harga insurans, termasuk tambahan EV</span></div><div><span>Kemampuan bekalan elektrik rumah untuk pengecas</span></div></div><p>Sedang pertimbangkan EV import terpakai berbanding unit tempatan? Baca juga <a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\">beza kereta recon dan terpakai</a>.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Adakah waranti bateri EV boleh dipindah kepada pemilik kedua?</p><p>Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025; unit 2026 mungkin berbeza). Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar.</p></div><div><p>Berapa cukai jalan kereta elektrik di Malaysia pada 2026?</p><p>Mulai 1 Januari 2026, fi lesen kenderaan motor (cukai jalan) untuk EV dikira berdasarkan kuasa motor elektrik dalam watt, bukan cc. Bagi blok pertama (1 hingga 100,000 watt), kadarnya antara RM20 hingga RM70 setahun. Kereta yang lebih berkuasa membayar lebih. Semak jumlah tepat untuk kereta yang anda mahu beli di MyJPJ atau kaunter JPJ.</p></div><div><p>Apa itu State of Health (SoH) bateri EV?</p><p>State of Health ialah ukuran baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Sebagai contoh, waranti bateri Proton e.MAS 7 dilaporkan menawarkan penggantian jika SoH jatuh bawah 70% dalam tempoh waranti. Minta laporan kesihatan bateri dari pusat servis sah jenama sebelum membeli.</p></div><div><p>Perlu ke pasang pengecas di rumah bila beli EV terpakai?</p><p>Tidak wajib, tetapi jika mahu pasang wallbox, panduan TNB menyatakan anda perlu melantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah. Pengecas mesti guna litar khas sendiri dari papan agihan (DB). Jika jumlah beban melebihi 10 kW, bekalan perlu dinaik taraf kepada tiga fasa melalui permohonan kepada TNB.</p></div><div><p>Adakah XDrive memeriksa bateri kereta EV yang dijual?</p><p>Tidak. XDrive ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\"><p>Panduan Beli</p><p>Beza Kereta Recon &amp; Terpakai — Mana Lebih Berbaloi?</p><p>Baca panduan →</p></a></div></section><div><p>Cari EV Terpakai Di XDrive</p><p>Tapis showroom ikut jenis bahan api Electric, kemudian hubungi penjual terus. Minta laporan bateri sebelum anda bayar deposit.</p><a href=\"https://xdrive.my/showroom?fuel_type=Electric\">Lihat EV di showroom</a></div></div>"
+  },
+  "cara-jadi-salesman-kereta-freelance": {
+    "slug": "cara-jadi-salesman-kereta-freelance",
+    "title": "Cara Jadi Salesman Kereta (Termasuk Freelance) di Malaysia 2026",
+    "description": "Panduan cara jadi salesman kereta di Malaysia: beza kerja di showroom cawangan, dealer kereta terpakai dan agent kereta freelance, cara gaji dan komisen berfungsi, kemahiran yang perlu, cara cari pembeli sendiri, dan garis undang-undang yang tidak boleh dilanggar.",
+    "datePublished": "2026-10-03",
+    "dateModified": "2026-10-03",
+    "faqs": [
+      {
+        "q": "Berapa gaji salesman kereta di Malaysia?",
+        "a": "Menurut Indeed Malaysia, purata gaji Car Sales Executive ialah RM4,606 sebulan, berdasarkan 187 laporan gaji (dikemas kini 5 Julai 2026). Angka ini purata — pendapatan sebenar bergantung pada berapa unit anda jual, kerana sebahagian besarnya datang daripada komisen."
+      },
+      {
+        "q": "Apa beza salesman kereta biasa dan agent kereta freelance?",
+        "a": "Salesman biasa ialah pekerja showroom atau dealer: ada majikan, biasanya ada gaji asas, dan menjual stok syarikat. Agent freelance pula bekerja atas komisen sahaja tanpa gaji asas — pendapatan tidak tetap, tetapi masa lebih bebas. Sebagai pekerja, gaji asas anda dilindungi Perintah Gaji Minimum (RM1,700 sebulan sejak 1 Februari 2025); sebagai freelance, anda bukan pekerja dan perlu urus KWSP sendiri, contohnya melalui i-Saraan."
+      },
+      {
+        "q": "Bolehkah saya bantu pelanggan buat kereta sambung bayar?",
+        "a": "Tidak. KPDN telah menegaskan kontrak sambung bayar kenderaan adalah tidak sah. Menjual atau melupuskan kereta yang masih di bawah perjanjian sewa beli tanpa kebenaran pemilik (bank) dan dengan itu menipu pemilik ialah kesalahan di bawah seksyen 38 Akta Sewa Beli 1967. Pemindahan hak penyewa hanya boleh dibuat dengan kebenaran pemilik. Jangan tawarkan, aturkan atau iklankan sambung bayar."
+      },
+      {
+        "q": "Macam mana agent kereta freelance nak cari pembeli?",
+        "a": "Kumpulkan semua kereta anda dalam satu link yang boleh dikongsi di status WhatsApp, bio Instagram dan iklan anda, balas pertanyaan dengan cepat, rekod setiap pertanyaan sebagai lead, dan buat susulan. Pelanggan lama juga sumber rujukan yang paling murah."
+      },
+      {
+        "q": "Perlu ke saya ada laman web sendiri?",
+        "a": "Tidak semestinya. Salesman Lite di XDrive ialah akaun percuma (RM0, tiada kad kredit) yang memberi anda page sendiri di xdrive.my/s/namaanda, sehingga 10 listing aktif, dan butang WhatsApp terus kepada anda pada setiap kereta."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Cara Jadi Salesman Kereta (Termasuk Freelance) di Malaysia 2026",
+          "description": "Panduan cara jadi salesman kereta di Malaysia: beza kerja di showroom cawangan, dealer kereta terpakai dan agent kereta freelance, cara gaji dan komisen berfungsi, kemahiran yang perlu, cara cari pembeli sendiri, dan garis undang-undang yang tidak boleh dilanggar.",
+          "datePublished": "2026-10-03",
+          "dateModified": "2026-10-03",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/cara-jadi-salesman-kereta-freelance",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Berapa gaji salesman kereta di Malaysia?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Menurut Indeed Malaysia, purata gaji Car Sales Executive ialah RM4,606 sebulan, berdasarkan 187 laporan gaji (dikemas kini 5 Julai 2026). Angka ini purata — pendapatan sebenar bergantung pada berapa unit anda jual, kerana sebahagian besarnya datang daripada komisen."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa beza salesman kereta biasa dan agent kereta freelance?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Salesman biasa ialah pekerja showroom atau dealer: ada majikan, biasanya ada gaji asas, dan menjual stok syarikat. Agent freelance pula bekerja atas komisen sahaja tanpa gaji asas — pendapatan tidak tetap, tetapi masa lebih bebas. Sebagai pekerja, gaji asas anda dilindungi Perintah Gaji Minimum (RM1,700 sebulan sejak 1 Februari 2025); sebagai freelance, anda bukan pekerja dan perlu urus KWSP sendiri, contohnya melalui i-Saraan."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Bolehkah saya bantu pelanggan buat kereta sambung bayar?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak. KPDN telah menegaskan kontrak sambung bayar kenderaan adalah tidak sah. Menjual atau melupuskan kereta yang masih di bawah perjanjian sewa beli tanpa kebenaran pemilik (bank) dan dengan itu menipu pemilik ialah kesalahan di bawah seksyen 38 Akta Sewa Beli 1967. Pemindahan hak penyewa hanya boleh dibuat dengan kebenaran pemilik. Jangan tawarkan, aturkan atau iklankan sambung bayar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Macam mana agent kereta freelance nak cari pembeli?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Kumpulkan semua kereta anda dalam satu link yang boleh dikongsi di status WhatsApp, bio Instagram dan iklan anda, balas pertanyaan dengan cepat, rekod setiap pertanyaan sebagai lead, dan buat susulan. Pelanggan lama juga sumber rujukan yang paling murah."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Perlu ke saya ada laman web sendiri?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak semestinya. Salesman Lite di XDrive ialah akaun percuma (RM0, tiada kad kredit) yang memberi anda page sendiri di xdrive.my/s/namaanda, sehingga 10 listing aktif, dan butang WhatsApp terus kepada anda pada setiap kereta."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Jadi Salesman Kereta</span></nav><header><div><span>Kerjaya Salesman</span></div><h1>Cara Jadi Salesman Kereta<br><span>Termasuk Agent Freelance</span></h1><p>Panduan cara jadi salesman kereta di Malaysia: beza kerja di showroom cawangan, dealer kereta terpakai dan agent kereta freelance, cara gaji dan komisen berfungsi, kemahiran yang perlu, cara cari pembeli sendiri, dan garis undang-undang yang tidak boleh dilanggar.</p><div><span>3 Oktober 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Untuk jadi salesman kereta di Malaysia, anda ada tiga jalan: bekerja di showroom cawangan sesuatu jenama, bekerja dengan dealer kereta terpakai, atau jadi agent kereta freelance yang dibayar atas komisen sahaja.</strong> Ketiga-tiganya menjual benda yang sama — kereta — tetapi cara anda dibayar, siapa yang bawa pembeli, dan berapa banyak kawalan yang anda ada sangat berbeza.</p><p>Panduan ini menerangkan beza ketiga-tiga jalan itu, cara gaji dan komisen berfungsi (dengan angka daripada sumber yang boleh disemak), kemahiran yang paling penting, cara cari pembeli sendiri, dan garis undang-undang yang mesti anda jaga.</p></section><section><h2>Showroom Cawangan, Dealer Terpakai atau Freelance?</h2><div><div><p>1. Showroom cawangan (kereta baharu)</p><p>Anda pekerja syarikat yang mengendalikan showroom jenama. Pembeli datang sendiri ke showroom, stok dan harga ditetapkan oleh syarikat, dan biasanya ada gaji asas, KWSP dan PERKESO. Kebebasan rendah, tetapi pendapatan paling stabil untuk orang baru.</p></div><div><p>2. Dealer kereta terpakai</p><p>Anda menjual stok milik dealer. Setiap kereta lain keadaan, sejarah dan harganya, jadi anda perlu faham cara semak kereta, dokumen dan proses pindah milik. Struktur gaji berbeza-beza antara dealer — ada yang beri gaji asas, ada yang komisen sahaja.</p></div><div><p>3. Agent kereta freelance</p><p>Tiada gaji asas, dibayar komisen bagi setiap kereta yang terjual. Anda cari pembeli sendiri dan selalunya bekerja dengan stok satu atau beberapa dealer. Masa bebas, tetapi bulan tanpa jualan bermakna bulan tanpa pendapatan.</p></div></div><p>Kalau anda baru bermula, jalan pertama atau kedua memberi anda gaji semasa belajar. Ramai agent freelance yang berjaya bermula sebagai pekerja dahulu, kemudian keluar selepas ada pelanggan dan rangkaian sendiri.</p></section><section><h2>Gaji Salesman Kereta: Berapa Sebenarnya?</h2><p>Angka di bawah datang daripada laman kerja utama Malaysia. Ia purata yang dilaporkan, bukan janji pendapatan.</p><div><table><tbody><tr><td>Purata Car Sales Executive (Indeed Malaysia, 187 laporan, dikemas kini 5 Julai 2026)</td><td>RM4,606 / bulan</td></tr><tr><td>Purata Sales Executive semua industri (JobStreet, Ogos 2026)</td><td>RM3,400 – RM4,800 / bulan</td></tr><tr><td>Gaji minimum untuk pekerja (Perintah Gaji Minimum 2024, sejak 1 Feb 2025)</td><td>RM1,700 / bulan</td></tr></tbody></table></div><p>Purata ini menyembunyikan jurang yang besar. Pendapatan salesman kereta terdiri daripada dua bahagian: <strong>gaji asas</strong> (jika ada) dan <strong>komisen</strong> bagi setiap unit yang anda tutup. Jadi dua orang dengan jawatan yang sama boleh bawa pulang jumlah yang sangat berbeza bergantung pada berapa kereta mereka jual sebulan.</p><p>Kalau anda pekerja, majikan wajib bayar sekurang-kurangnya gaji minimum RM1,700 sebulan sejak 1 Februari 2025 (bagi majikan dengan lima pekerja atau lebih; majikan kecil mula 1 Ogos 2025). Kalau anda agent freelance komisen sahaja, anda bukan pekerja — tiada gaji asas, dan tiada majikan yang mencarum KWSP untuk anda. Skim i-Saraan KWSP dibuat untuk orang bekerja sendiri seperti ini: anda mencarum secara sukarela dan kerajaan memberi insentif 20% daripada caruman tahunan, sehingga RM500 setahun.</p></section><section><h2>Komisen Salesman Kereta Terpakai: Cara Ia Dikira</h2><p>Tiada kadar komisen standard yang ditetapkan oleh undang-undang — setiap dealer tetapkan sendiri. Secara umum ada tiga bentuk: peratusan daripada untung kasar unit, jumlah tetap bagi setiap kereta, atau peratusan daripada harga jual. Sebelum anda terima tawaran, tanya dengan jelas: komisen dikira daripada apa, bila dibayar, dan apa jadi kalau pembeli batal atau loan ditolak.</p><p>Penerangan penuh setiap struktur, dengan contoh kiraan, ada dalam panduan kami: <a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\">Cara Kira Komisen Salesman Kereta Dengan Betul</a>.</p></section><section><h2>Kemahiran Yang Paling Penting</h2><div><div><span>Balas cepat. Pembeli bertanya kepada beberapa penjual serentak; yang membalas dulu selalunya yang dapat temu janji.</span></div><div><span>Faham produk. Tahu spesifikasi, kos penyelenggaraan dan kelemahan biasa setiap model yang anda jual.</span></div><div><span>Faham proses. Pinjaman bank, insurans, pemeriksaan Puspakom dan pindah milik JPJ — pembeli harapkan anda tahu langkahnya.</span></div><div><span>Buat susulan. Kebanyakan pembeli tidak membeli pada hari pertama mereka bertanya.</span></div><div><span>Jujur tentang angka. Jangan sebut kadar faedah, kelulusan loan atau nilai trade-in yang anda belum sahkan.</span></div></div><p>Satu perkara baharu untuk 2026: Akta Sewa Beli (Pindaan) 2026 berkuat kuasa pada 1 Jun 2026 dan menggantikan kadar rata (flat rate) dengan kadar faedah efektif (EIR) atas baki berkurangan bagi perjanjian sewa beli baharu (penjelasan penuh: <a href=\"https://xdrive.my/articles/akta-sewa-beli-2026-eir-pinjaman-kereta\">Akta Sewa Beli 2026 dan EIR</a>). Kalau anda masih menyebut ansuran bulanan guna formula kadar rata yang lama, angka anda mungkin salah. Gunakan <a href=\"https://xdrive.my/calculator\">kalkulator loan</a> sebagai anggaran, dan biar bank sahkan angka sebenar.</p></section><section><h2>Cara Cari Pembeli Sebagai Agent Kereta Freelance</h2><p>Di showroom, pembeli datang sendiri. Sebagai freelance, mencari pembeli ialah separuh daripada kerja anda. Beberapa asas yang berkesan:</p><ul><li><strong>Satu link untuk semua kereta.</strong> Pembeli yang nampak satu iklan sepatutnya boleh lihat semua stok anda dengan satu tekan, bukan minta anda hantar gambar satu demi satu.</li><li><strong>Letak link itu di mana-mana.</strong> Status WhatsApp, bio Instagram dan TikTok, dan di bawah iklan anda di portal lain.</li><li><strong>Rekod setiap pertanyaan.</strong> Pertanyaan yang tinggal dalam chat WhatsApp mudah hilang. Simpan nama, kereta yang diminati dan tarikh susulan.</li><li><strong>Jaga pelanggan lama.</strong> Pembeli yang puas hati akan rujuk kawan dan keluarga — sumber lead paling murah.</li></ul><p>Untuk itulah kami bina <a href=\"https://xdrive.my/for-salesmen\">Salesman Lite</a>: akaun percuma (RM0, tiada kad kredit) untuk salesman dan agent kereta di Malaysia. Anda dapat page sendiri di <strong>xdrive.my/s/namaanda</strong>, boleh senaraikan sehingga 10 kereta aktif di marketplace XDrive, dan setiap kereta ada butang WhatsApp yang terus kepada anda. Setiap pertanyaan menjadi lead dalam pipeline dengan peringatan susulan, dan analitik asas menunjukkan jumlah tontonan dan klik WhatsApp bagi setiap listing. Kalau stok anda melebihi 10 kereta, Salesman Premium (RM35 sebulan) menaikkan had kepada 30 listing dan menambah penjejakan komisen.</p></section><section><h2>Garis Undang-Undang Yang Tidak Boleh Dilanggar</h2><p>Salesman yang baru selalunya diuji dengan permintaan &quot;jalan pintas&quot; daripada pelanggan. Yang paling biasa ialah <strong>sambung bayar</strong> — pembeli ambil alih kereta yang masih ada loan dan terus bayar ansuran atas nama pemilik asal, tanpa pindah milik dan tanpa kebenaran bank.</p><div><ul><li>KPDN telah menegaskan bahawa sebarang kontrak sambung bayar kenderaan adalah tidak sah.</li><li>Menjual atau melupuskan kereta di bawah perjanjian sewa beli dengan cara yang menipu pemilik (bank) ialah kesalahan di bawah seksyen 38 Akta Sewa Beli 1967, dan boleh membawa hukuman penjara.</li><li>Hak penyewa hanya boleh dipindahkan dengan kebenaran pemilik. Jalan yang betul ialah selesaikan loan, atau pembeli memohon pembiayaan baharu, kemudian pindah milik melalui JPJ.</li><li>Jangan tawarkan, aturkan atau iklankan sambung bayar — walaupun pelanggan sendiri yang minta.</li></ul></div><p>Prinsip yang sama terpakai pada perkara lain: jangan janjikan kelulusan loan, jangan reka kadar faedah, dan jangan sembunyikan sejarah kereta yang anda tahu. Nama baik ialah aset terbesar seorang agent freelance, kerana pelanggan anda sendiri yang akan merujuk pelanggan seterusnya.</p></section><section><h2>Jejak Prestasi Sendiri: Close Rate dan Kelajuan Balas</h2><p>Salesman yang bertambah baik dari bulan ke bulan biasanya menjejak dua nombor:</p><div><div><p>Close rate</p><p>Berapa peratus pertanyaan yang akhirnya membeli. Kira daripada rekod lead anda sendiri: jumlah deal ditutup dibahagi jumlah lead dalam tempoh yang sama. Lebih berguna lagi kalau anda tahu di peringkat mana deal paling banyak hilang — selepas pertanyaan pertama, selepas test drive, atau semasa loan.</p></div><div><p>Kelajuan balas</p><p>Berapa lama pembeli menunggu jawapan pertama anda. Ini antara perkara yang paling mudah dibaiki, dan pembeli perasan.</p></div></div><p>Bagi pengguna Salesman Premium, tab Performance menunjukkan di mana deal anda hilang dalam funnel, close rate anda dan kelajuan balas — berdasarkan rekod lead anda sendiri, bukan anggaran.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Berapa gaji salesman kereta di Malaysia?</p><p>Menurut Indeed Malaysia, purata gaji Car Sales Executive ialah RM4,606 sebulan, berdasarkan 187 laporan gaji (dikemas kini 5 Julai 2026). Angka ini purata — pendapatan sebenar bergantung pada berapa unit anda jual, kerana sebahagian besarnya datang daripada komisen.</p></div><div><p>Apa beza salesman kereta biasa dan agent kereta freelance?</p><p>Salesman biasa ialah pekerja showroom atau dealer: ada majikan, biasanya ada gaji asas, dan menjual stok syarikat. Agent freelance pula bekerja atas komisen sahaja tanpa gaji asas — pendapatan tidak tetap, tetapi masa lebih bebas. Sebagai pekerja, gaji asas anda dilindungi Perintah Gaji Minimum (RM1,700 sebulan sejak 1 Februari 2025); sebagai freelance, anda bukan pekerja dan perlu urus KWSP sendiri, contohnya melalui i-Saraan.</p></div><div><p>Bolehkah saya bantu pelanggan buat kereta sambung bayar?</p><p>Tidak. KPDN telah menegaskan kontrak sambung bayar kenderaan adalah tidak sah. Menjual atau melupuskan kereta yang masih di bawah perjanjian sewa beli tanpa kebenaran pemilik (bank) dan dengan itu menipu pemilik ialah kesalahan di bawah seksyen 38 Akta Sewa Beli 1967. Pemindahan hak penyewa hanya boleh dibuat dengan kebenaran pemilik. Jangan tawarkan, aturkan atau iklankan sambung bayar.</p></div><div><p>Macam mana agent kereta freelance nak cari pembeli?</p><p>Kumpulkan semua kereta anda dalam satu link yang boleh dikongsi di status WhatsApp, bio Instagram dan iklan anda, balas pertanyaan dengan cepat, rekod setiap pertanyaan sebagai lead, dan buat susulan. Pelanggan lama juga sumber rujukan yang paling murah.</p></div><div><p>Perlu ke saya ada laman web sendiri?</p><p>Tidak semestinya. Salesman Lite di XDrive ialah akaun percuma (RM0, tiada kad kredit) yang memberi anda page sendiri di xdrive.my/s/namaanda, sehingga 10 listing aktif, dan butang WhatsApp terus kepada anda pada setiap kereta.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\"><p>Komisen</p><p>Cara Kira Komisen Salesman Kereta Dengan Betul</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/cara-pindah-milik-kereta-mysikap\"><p>Dokumen</p><p>Cara Pindah Milik Kereta di MySikap</p><p>Baca panduan →</p></a></div></section><div><p>Page Percuma Untuk Agent Kereta</p><p>Salesman Lite: page sendiri di xdrive.my/s/namaanda, sehingga 10 kereta, pertanyaan terus ke WhatsApp anda. RM0, tiada kad kredit.</p><a href=\"https://xdrive.my/for-salesmen\">Lihat Salesman Lite</a></div></div>"
   },
   "cara-kira-komisen-salesman-kereta": {
     "slug": "cara-kira-komisen-salesman-kereta",
@@ -604,6 +898,104 @@ export const ARTICLE_PAGES = {
       ]
     },
     "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Sales Agreement</span></nav><header><div><span>Urus Dealer</span></div><h1>Cara Buat Sales Agreement<br><span>Kereta Terpakai</span></h1><p>Panduan cara buat sales agreement (perjanjian jual beli) kereta terpakai Malaysia — apa yang wajib ada, contoh klausa, dan cara automasikan dokumen jualan guna software rekod jualan kereta.</p><div><span>22 Jun 2026</span><span>7 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Sales agreement kereta terpakai ialah dokumen bertulis yang merekod butiran jualan antara dealer dan pembeli</strong> — maklumat kereta, harga, deposit, baki bayaran dan syarat jualan. Dokumen ini penting untuk melindungi dealer dan pembeli jika berlaku pertikaian, dan menjadi rekod rasmi transaksi.</p><p>Berikut adalah apa yang wajib ada, contoh struktur, dan cara automasikan pembuatannya.</p></section><section><h2>Apa Yang Wajib Ada Dalam Sales Agreement</h2><div><div><p>Butiran penjual (dealer): nama syarikat, alamat, no. SSM/pendaftaran.</p></div><div><p>Butiran pembeli: nama penuh, no. IC, alamat, no. telefon.</p></div><div><p>Maklumat kenderaan: jenama, model, tahun, no. plat, no. enjin &amp; VIN.</p></div><div><p>Harga jual penuh dan jumlah deposit yang dibayar.</p></div><div><p>Baki bayaran dan kaedah pembayaran (tunai/pinjaman HP).</p></div><div><p>Tarikh serahan kereta dan tanggungjawab pindah milik.</p></div><div><p>Keadaan jualan: as-is atau dengan waranti dealer.</p></div><div><p>Tandatangan kedua-dua pihak dan tarikh.</p></div></div></section><section><h2>Contoh Struktur Klausa</h2><div><p><strong>1. Pihak Terlibat</strong> — Penjual (dealer) dan Pembeli, dengan butiran penuh masing-masing.</p><p><strong>2. Kenderaan</strong> — Spesifikasi penuh kereta dan nombor pendaftaran.</p><p><strong>3. Harga &amp; Bayaran</strong> — Harga jual, deposit, baki dan jadual bayaran.</p><p><strong>4. Serahan &amp; Pindah Milik</strong> — Tarikh serahan dan tanggungjawab pindah milik JPJ.</p><p><strong>5. Syarat &amp; Tandatangan</strong> — Keadaan jualan, terma tambahan, dan tandatangan kedua pihak.</p></div></section><section><h2>Cara Automasikan Sales Agreement Anda</h2><p>Menulis sales agreement secara manual setiap kali memakan masa dan mudah silap. Dengan software rekod jualan kereta seperti ShiftOS, dokumen dijana automatik dari rekod jualan — butiran kereta dan pembeli diisi terus dari sistem. Anda hanya semak dan hantar.</p><div><div><span>Dokumen diisi automatik dari rekod kereta &amp; pembeli</span></div><div><span>Hantar terus kepada pembeli melalui e-mel</span></div><div><span>Rekod jualan &amp; keuntungan dikemas kini serentak</span></div><div><span>Simpan semua dokumen di satu tempat untuk rujukan</span></div></div><p>Nota: Artikel ini panduan umum, bukan nasihat undang-undang. Rujuk peguam untuk perjanjian bernilai tinggi atau kes khusus.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Apa itu sales agreement kereta terpakai?</p><p>Sales agreement (perjanjian jual beli) kereta terpakai ialah dokumen bertulis yang merekod butiran jualan antara dealer dan pembeli — termasuk maklumat kereta, harga, deposit, baki bayaran dan syarat. Ia melindungi kedua-dua pihak jika berlaku pertikaian.</p></div><div><p>Apa yang wajib ada dalam sales agreement kereta?</p><p>Sales agreement wajib mengandungi butiran pembeli &amp; penjual, maklumat kenderaan (jenama, model, tahun, plat, VIN), harga jual, jumlah deposit, baki bayaran, tarikh serahan, dan syarat berkaitan pindah milik serta keadaan kereta (as-is atau dengan waranti).</p></div><div><p>Boleh ke automasikan pembuatan sales agreement?</p><p>Boleh. Software rekod jualan kereta seperti ShiftOS boleh menjana sales agreement dan invois secara automatik dari rekod jualan — mengisi butiran kereta dan pembeli terus dari sistem, jadi tiada perlu taip semula setiap kali.</p></div><div><p>Adakah sales agreement sama dengan borang pindah milik JPJ?</p><p>Tidak. Sales agreement ialah perjanjian komersial antara dealer dan pembeli. Pindah milik pula dibuat melalui sistem JPJ (MySikap) dengan dokumen berasingan. Kedua-duanya diperlukan: agreement untuk merekod jualan, dan pindah milik untuk tukar pemilikan rasmi.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-pindah-milik-kereta-mysikap\"><p>Pindah Milik</p><p>Cara Pindah Milik Kereta Online Guna MySikap 2026</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/apa-itu-dms-dealer-kereta\"><p>Urus Dealer</p><p>Apa Itu Dealer Management System (DMS)?</p><p>Baca panduan →</p></a></div></section><div><p>Jana Dokumen Jualan Secara Automatik</p><p>ShiftOS jana sales agreement &amp; invois terus dari rekod jualan anda. Jimat masa, kurang silap.</p><a href=\"https://xdrive.my/shiftos\">Cuba ShiftOS</a></div></div>"
+  },
+  "cara-urus-dealership-kedai-kereta-terpakai": {
+    "slug": "cara-urus-dealership-kedai-kereta-terpakai",
+    "title": "Cara Urus Dealership & Kedai Kereta Terpakai Setiap Hari (2026)",
+    "description": "Panduan praktikal cara urus dealership dan kedai kereta terpakai di Malaysia: kawal umur stok, susul lead, pantau prestasi salesman dan komisen, uruskan dokumen, handover selepas jual, dan nombor harian yang perlu dilihat.",
+    "datePublished": "2026-10-03",
+    "dateModified": "2026-10-03",
+    "faqs": [
+      {
+        "q": "Apa perkara paling penting bila urus kedai kereta terpakai?",
+        "a": "Tiga perkara: berapa lama setiap kereta sudah duduk dalam stok, berapa cepat setiap lead dijawab, dan berapa untung kasar sebenar setiap unit selepas tolak kos beli, recon, komisen dan kos handover. Kalau tiga ini terkawal, kebanyakan masalah lain lebih mudah diurus."
+      },
+      {
+        "q": "Macam mana nak pantau prestasi salesman kereta?",
+        "a": "Lihat lebih daripada jumlah unit terjual. Bandingkan unit terjual, untung kasar yang dijana, komisen, dan berapa cepat salesman menjawab lead. Salesman yang jual banyak unit tetapi dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang jual kurang unit."
+      },
+      {
+        "q": "Berapa lama kereta terpakai patut duduk dalam stok?",
+        "a": "Tiada satu angka yang betul untuk semua kedai. Yang penting ialah anda tetapkan had sendiri, contohnya 60 hari, dan semak setiap minggu kereta mana yang sudah melepasi had itu supaya boleh ubah harga, iklan semula atau lepaskan unit sebelum kos pegangan memakan untung."
+      },
+      {
+        "q": "Adakah dealer kereta perlu patuh PDPA?",
+        "a": "Ya, jika anda memproses data peribadi pelanggan dalam urusan komersial, seperti nama, nombor telefon, nombor IC dan alamat. Akta Perlindungan Data Peribadi 2010 menetapkan tujuh prinsip perlindungan data, dan pindaan yang berkuat kuasa pada 1 Jun 2025 mewajibkan notifikasi pelanggaran data kepada Pesuruhjaya."
+      },
+      {
+        "q": "Boleh ke urus dealership guna Excel dan WhatsApp sahaja?",
+        "a": "Boleh untuk kedai yang sangat kecil, tetapi masalah biasanya muncul bila stok dan bilangan salesman bertambah: lead terlepas, umur stok tidak dikira, komisen dipertikai dan dokumen handover tercicir. Sistem urus dealer seperti ShiftOS menyimpan semua ini di satu tempat."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Cara Urus Dealership & Kedai Kereta Terpakai Setiap Hari (2026)",
+          "description": "Panduan praktikal cara urus dealership dan kedai kereta terpakai di Malaysia: kawal umur stok, susul lead, pantau prestasi salesman dan komisen, uruskan dokumen, handover selepas jual, dan nombor harian yang perlu dilihat.",
+          "datePublished": "2026-10-03",
+          "dateModified": "2026-10-03",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/cara-urus-dealership-kedai-kereta-terpakai",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Apa perkara paling penting bila urus kedai kereta terpakai?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tiga perkara: berapa lama setiap kereta sudah duduk dalam stok, berapa cepat setiap lead dijawab, dan berapa untung kasar sebenar setiap unit selepas tolak kos beli, recon, komisen dan kos handover. Kalau tiga ini terkawal, kebanyakan masalah lain lebih mudah diurus."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Macam mana nak pantau prestasi salesman kereta?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Lihat lebih daripada jumlah unit terjual. Bandingkan unit terjual, untung kasar yang dijana, komisen, dan berapa cepat salesman menjawab lead. Salesman yang jual banyak unit tetapi dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang jual kurang unit."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Berapa lama kereta terpakai patut duduk dalam stok?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tiada satu angka yang betul untuk semua kedai. Yang penting ialah anda tetapkan had sendiri, contohnya 60 hari, dan semak setiap minggu kereta mana yang sudah melepasi had itu supaya boleh ubah harga, iklan semula atau lepaskan unit sebelum kos pegangan memakan untung."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah dealer kereta perlu patuh PDPA?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Ya, jika anda memproses data peribadi pelanggan dalam urusan komersial, seperti nama, nombor telefon, nombor IC dan alamat. Akta Perlindungan Data Peribadi 2010 menetapkan tujuh prinsip perlindungan data, dan pindaan yang berkuat kuasa pada 1 Jun 2025 mewajibkan notifikasi pelanggaran data kepada Pesuruhjaya."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Boleh ke urus dealership guna Excel dan WhatsApp sahaja?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Boleh untuk kedai yang sangat kecil, tetapi masalah biasanya muncul bila stok dan bilangan salesman bertambah: lead terlepas, umur stok tidak dikira, komisen dipertikai dan dokumen handover tercicir. Sistem urus dealer seperti ShiftOS menyimpan semua ini di satu tempat."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Urus Dealership</span></nav><header><div><span>Urus Dealer</span></div><h1>Cara Urus Dealership &amp; Kedai<br><span>Kereta Terpakai Setiap Hari</span></h1><p>Panduan praktikal cara urus dealership dan kedai kereta terpakai di Malaysia: kawal umur stok, susul lead, pantau prestasi salesman dan komisen, uruskan dokumen, handover selepas jual, dan nombor harian yang perlu dilihat.</p><div><span>3 Oktober 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Urus dealership atau kedai kereta terpakai sebenarnya ialah urus enam perkara serentak:</strong> stok, lead, salesman, dokumen, handover selepas jual, dan nombor yang memberitahu sama ada semua itu menjana untung. Kebanyakan kedai bukan rugi kerana tiada pembeli, tetapi kerana satu daripada enam perkara ini terlepas pandang: kereta duduk terlalu lama, lead tidak dijawab, atau komisen dibayar atas deal yang untungnya nipis.</p><p>Panduan ini menerangkan rutin harian dan mingguan untuk setiap bahagian. Untuk topik yang sudah ada panduan penuh, kami pautkan terus supaya anda boleh baca lebih mendalam.</p></section><section><h2>1. Cara Urus Stok Kereta Terpakai &amp; Pantau Umur Stok</h2><p>Setiap hari sebuah kereta duduk di lot, modal anda terikat padanya. Sebab itu angka paling penting dalam stok bukan jumlah unit, tetapi <strong>umur setiap unit</strong> (berapa hari sejak ia masuk stok).</p><p>Rutin yang mudah diikut:</p><div><div><span>Rekod tarikh masuk, harga beli dan kos recon untuk setiap unit pada hari ia masuk, bukan selepas ia terjual.</span></div><div><span>Tetapkan had umur stok sendiri (contohnya 60 hari) dan semak senarai unit yang melepasi had itu setiap minggu.</span></div><div><span>Untuk unit yang sudah lama, pilih satu tindakan: ubah harga, tukar gambar dan iklan semula, beri kepada salesman tertentu, atau lepaskan.</span></div><div><span>Jangan beli stok baru yang serupa dengan unit yang sudah lama tidak bergerak.</span></div></div><p>Dalam ShiftOS, tab stok dealer menanda unit yang sudah lebih 60 hari dalam stok dan menunjukkan bilangannya di bahagian atas, jadi anda tidak perlu kira sendiri. Panduan penuh tentang sistem stok ada di <a href=\"https://xdrive.my/articles/cara-urus-stok-kereta-terpakai-sistem-digital\">Cara Urus Stok Kereta Terpakai Dengan Sistem Digital</a>.</p></section><section><h2>2. Cara Susul Lead Supaya Pembeli Tidak Terlepas</h2><p>Pembeli kereta terpakai biasanya bertanya kepada beberapa kedai serentak. Kedai yang menjawab dahulu dan terus menyusul biasanya yang dapat peluang untuk test drive. Masalahnya, bila lead masuk melalui WhatsApp, panggilan, walk-in dan iklan, ia mudah bertaburan di telefon salesman masing-masing.</p><div><div><span>Satu tempat untuk semua lead, tidak kira dari mana ia datang.</span></div><div><span>Setiap lead ada peringkat yang jelas: baru, sudah dihubungi, test drive, rundingan, deposit, menang atau kalah.</span></div><div><span>Setiap lead ada pemilik (salesman) supaya tiada yang terbiar atau dijawab dua kali.</span></div><div><span>Semak setiap pagi: lead mana belum dijawab, dan lead mana sudah senyap beberapa hari.</span></div><div><span>Bila lead kalah, rekod sebabnya. Selepas beberapa bulan, sebab-sebab ini tunjuk di mana kedai anda selalu tewas.</span></div></div><p>ShiftOS menyimpan lead dalam papan pipeline mengikut peringkat, dan bila sesuatu lead ditanda menang, kereta itu terus ditanda terjual, rekod pelanggan dicipta dan senarai semak handover disediakan secara automatik. Lihat <a href=\"https://xdrive.my/features/leads-crm\">ciri Leads CRM</a>.</p></section><section><h2>3. Cara Pantau Prestasi Salesman &amp; Lihat Prestasi Jualan</h2><p>Ramai pemilik kedai hanya melihat siapa jual paling banyak unit bulan ini. Itu satu angka sahaja. Untuk pantau prestasi salesman dengan adil, lihat sekurang-kurangnya empat perkara bersama:</p><div><table><tbody><tr><td>Unit terjual</td><td>Berapa deal yang ditutup dalam tempoh itu.</td></tr><tr><td>Untung kasar dijana</td><td>Jumlah untung unit yang ditutup, bukan harga jual.</td></tr><tr><td>Komisen</td><td>Berapa yang perlu dibayar, mengikut peraturan yang anda tetapkan.</td></tr><tr><td>Masa respons</td><td>Berapa cepat salesman menjawab lead baru.</td></tr></tbody></table></div><p>Salesman yang menutup banyak unit dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang menutup kurang unit. Sebab itu komisen paling selamat dikira dari untung kasar. Formula dan contoh pengiraan ada di <a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\">Cara Kira Komisen Salesman Kereta Dengan Betul</a>.</p><p>Dalam ShiftOS, tab pasukan dealer memaparkan papan kedudukan salesman dengan unit terjual, untung kasar dan komisen setiap orang. Tab prestasi menunjukkan masa respons setiap salesman, dan papan Overview membandingkan bulan ini dengan tempoh yang sama bulan lepas. Lihat <a href=\"https://xdrive.my/features/salesman-performance\">ciri prestasi salesman</a> dan <a href=\"https://xdrive.my/features/revenue-analytics\">ciri analitik hasil</a>.</p></section><section><h2>4. Dokumen: Sales Agreement, Puspakom &amp; Pindah Milik</h2><p>Bahagian dokumen jarang menjana untung, tetapi kesilapan di sini boleh melambatkan serahan kereta atau menimbulkan pertikaian dengan pembeli. Tiga perkara yang perlu ada rutin tetap:</p><div><div><span>Sales agreement untuk setiap jualan, dengan butiran kereta, harga, deposit dan syarat yang dipersetujui.</span></div><div><span>Pemeriksaan Puspakom yang berkaitan sebelum pindah milik.</span></div><div><span>Pindah milik kenderaan melalui JPJ, yang melibatkan kedua-dua penjual dan pembeli.</span></div></div><p>Setiap satu sudah ada panduan langkah demi langkah: <a href=\"https://xdrive.my/articles/cara-buat-sales-agreement-kereta-terpakai\">sales agreement</a>, <a href=\"https://xdrive.my/articles/apa-itu-puspakom-b5-b7\">Puspakom B5 &amp; B7</a>, dan <a href=\"https://xdrive.my/articles/cara-pindah-milik-kereta-mysikap\">pindah milik melalui MySikap</a>. Untuk yuran rasmi dan syarat terkini, sentiasa rujuk laman JPJ dan Puspakom kerana ia boleh berubah.</p></section><section><h2>5. Handover Selepas Jual</h2><p>Deal belum selesai bila pembeli bayar deposit. Antara deposit dan kunci diserahkan, ada beberapa langkah yang melibatkan bank, syarikat insurans, Puspakom dan JPJ. Kalau tiada senarai semak, mudah untuk satu langkah tertinggal dan pembeli menunggu tanpa tahu sebabnya.</p><p>ShiftOS menyediakan senarai semak handover 8 langkah secara automatik untuk setiap deal yang menang: penyelesaian pinjaman, insurans pembeli, Puspakom B5, Puspakom B7, pindah milik JPJ, cukai jalan, ambil geran, dan serahan kereta. Setiap langkah ada status dan pemilik, dan kos yang direkod untuk langkah-langkah ini ditolak daripada untung kasar unit. Lihat <a href=\"https://xdrive.my/features/post-sale-handover\">ciri handover selepas jual</a>.</p><p>Selepas handover, pembeli menjadi pelanggan. Rekod pelanggan dengan tarikh tamat insurans dan cukai jalan membolehkan anda menghubungi mereka semula. ShiftOS memberi notifikasi kepada anda bila tarikh ini tinggal 30 atau 7 hari, supaya anda boleh hubungi pelanggan.</p></section><section><h2>6. Data Pelanggan &amp; PDPA</h2><p>Kedai kereta memegang banyak data peribadi: nama, nombor telefon, nombor IC, alamat dan butiran pinjaman. Data ini tertakluk kepada <strong>Akta Perlindungan Data Peribadi 2010</strong>, yang menetapkan tujuh prinsip: Am, Notis dan Pilihan, Penzahiran, Keselamatan, Penyimpanan, Integriti Data, dan Akses.</p><p>Pindaan kepada akta ini yang berkuat kuasa pada 1 Jun 2025 mewajibkan pengawal data memaklumkan Pesuruhjaya Perlindungan Data Peribadi jika berlaku pelanggaran data, dan mewajibkan pengawal data yang melepasi ambang tertentu (contohnya data lebih 20,000 orang, atau lebih 10,000 bagi data sensitif atau kewangan) melantik Pegawai Perlindungan Data. Dari segi operasi harian, ini bermaksud: jangan simpan salinan IC pelanggan di telefon peribadi salesman atau dalam kumpulan WhatsApp, hadkan siapa boleh melihat data pelanggan, dan jangan simpan data lebih lama daripada yang perlu. Untuk keperluan tepat bagi perniagaan anda, rujuk laman rasmi Jabatan Perlindungan Data Peribadi (pdp.gov.my).</p></section><section><h2>7. Nombor Harian &amp; Mingguan Yang Perlu Dilihat</h2><p>Anda tidak perlu laporan panjang. Cukup beberapa nombor yang dilihat pada masa yang sama setiap hari dan setiap minggu:</p><div><div><p>Setiap pagi</p><ul><li>Lead baru semalam dan siapa yang menjawabnya</li><li>Lead yang belum dijawab</li><li>Test drive dan temu janji hari ini</li><li>Langkah handover yang tertangguh</li></ul></div><div><p>Setiap minggu</p><ul><li>Unit yang melepasi had umur stok</li><li>Unit terjual dan untung kasar minggu ini</li><li>Prestasi setiap salesman: unit, untung, masa respons</li><li>Sebab lead kalah</li><li>Sumber lead yang paling banyak menjadi jualan</li></ul></div></div><p>Setiap bulan, lihat untung kasar setiap unit yang terjual dalam dua bahagian: untung depan (harga jual tolak kos beli, recon, perkhidmatan termasuk, komisen dan kos handover) dan untung belakang (hasil produk tambahan seperti insurans atau perlindungan, tolak kosnya). ShiftOS memaparkan kedua-duanya dalam modal P&amp;L setiap unit, jadi anda nampak unit mana yang benar-benar menjana untung.</p></section><section><h2>Mula Dari Mana?</h2><p>Jika semua ini terasa banyak, mulakan dengan dua perkara sahaja: rekod umur setiap unit stok, dan pastikan setiap lead ada pemilik. Dua tabiat ini sahaja sudah mengurangkan modal yang terikat dan pembeli yang terlepas. Bila sudah stabil, tambah pemantauan prestasi salesman dan senarai semak handover.</p><p><a href=\"https://xdrive.my/shiftos\">ShiftOS</a> menggabungkan stok, lead, pasukan, dokumen dan handover dalam satu sistem untuk dealer kereta terpakai di Malaysia.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Apa perkara paling penting bila urus kedai kereta terpakai?</p><p>Tiga perkara: berapa lama setiap kereta sudah duduk dalam stok, berapa cepat setiap lead dijawab, dan berapa untung kasar sebenar setiap unit selepas tolak kos beli, recon, komisen dan kos handover. Kalau tiga ini terkawal, kebanyakan masalah lain lebih mudah diurus.</p></div><div><p>Macam mana nak pantau prestasi salesman kereta?</p><p>Lihat lebih daripada jumlah unit terjual. Bandingkan unit terjual, untung kasar yang dijana, komisen, dan berapa cepat salesman menjawab lead. Salesman yang jual banyak unit tetapi dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang jual kurang unit.</p></div><div><p>Berapa lama kereta terpakai patut duduk dalam stok?</p><p>Tiada satu angka yang betul untuk semua kedai. Yang penting ialah anda tetapkan had sendiri, contohnya 60 hari, dan semak setiap minggu kereta mana yang sudah melepasi had itu supaya boleh ubah harga, iklan semula atau lepaskan unit sebelum kos pegangan memakan untung.</p></div><div><p>Adakah dealer kereta perlu patuh PDPA?</p><p>Ya, jika anda memproses data peribadi pelanggan dalam urusan komersial, seperti nama, nombor telefon, nombor IC dan alamat. Akta Perlindungan Data Peribadi 2010 menetapkan tujuh prinsip perlindungan data, dan pindaan yang berkuat kuasa pada 1 Jun 2025 mewajibkan notifikasi pelanggaran data kepada Pesuruhjaya.</p></div><div><p>Boleh ke urus dealership guna Excel dan WhatsApp sahaja?</p><p>Boleh untuk kedai yang sangat kecil, tetapi masalah biasanya muncul bila stok dan bilangan salesman bertambah: lead terlepas, umur stok tidak dikira, komisen dipertikai dan dokumen handover tercicir. Sistem urus dealer seperti ShiftOS menyimpan semua ini di satu tempat.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/cara-urus-stok-kereta-terpakai-sistem-digital\"><p>Urus Dealer</p><p>Cara Urus Stok Kereta Terpakai Dengan Sistem Digital</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/cara-kira-komisen-salesman-kereta\"><p>Urus Dealer</p><p>Cara Kira Komisen Salesman Kereta Dengan Betul</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/apa-itu-dms-dealer-kereta\"><p>Urus Dealer</p><p>Apa Itu Dealer Management System (DMS)?</p><p>Baca panduan →</p></a></div></section><div><p>Urus Seluruh Dealership Di Satu Tempat</p><p>Stok, lead, prestasi salesman, komisen dan handover dalam satu sistem.</p><a href=\"https://xdrive.my/shiftos\">Cuba ShiftOS</a></div></div>"
   },
   "cara-urus-stok-kereta-terpakai-sistem-digital": {
     "slug": "cara-urus-stok-kereta-terpakai-sistem-digital",

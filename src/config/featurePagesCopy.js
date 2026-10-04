@@ -11,6 +11,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 export const FEATURES = {
   "smart-inventory": {
+    metaTitle: "Sistem Urus Stok Kereta Terpakai — Used Car Inventory",
     icon: "Car",
     kicker: "Inventory & Stock",
     titleLead: "Every unit, real cost, real profit —",
@@ -42,6 +43,7 @@ export const FEATURES = {
   },
 
   "leads-crm": {
+    metaTitle: "CRM Dealer Kereta — Urus Lead & Follow-Up Pelanggan",
     icon: "Users",
     kicker: "Leads & CRM",
     titleLead: "Every enquiry, every channel,",
@@ -85,6 +87,7 @@ export const FEATURES = {
   },
 
   "revenue-analytics": {
+    metaTitle: "Untung Sebenar Setiap Kereta — Dealer Profit Tracking",
     icon: "LineChart",
     kicker: "Revenue & Profit",
     titleLead: "Your real profit —",
@@ -116,6 +119,7 @@ export const FEATURES = {
   },
 
   "fi-documents": {
+    metaTitle: "F&I dan Dokumen Jualan Kereta — Sales Agreement & HP",
     icon: "Landmark",
     kicker: "F&I & Documents",
     titleLead: "Back-end profit and paperwork,",
@@ -146,7 +150,40 @@ export const FEATURES = {
     ],
   },
 
+  "salesman-performance": {
+    icon: "Gauge",
+    kicker: "Salesman Performance",
+    metaTitle: "Pantau Prestasi Salesman Kereta — Salesman Performance",
+    titleLead: "Who is selling, who is stalling —",
+    titleAccent: "and where deals die",
+    sub: "See every salesman's conversion, reply speed and gross on one table, worked out from the pipeline itself rather than from memory. Independent agents on Salesman Premium also get a page that shows them where they lose deals.",
+    seo: "ShiftOS Salesman Performance — pantau prestasi salesman kereta: conversion rate, response time, gross per deal and link traffic per rep, plus a personal funnel and close-rate trend on Salesman Premium.",
+    painTitle: "The old way",
+    solutionTitle: "With ShiftOS",
+    pains: [
+      "You know who sold the most units, not who converts or who answers fast.",
+      "A slow reply loses the buyer, and nobody sees it happened.",
+      "Salesmen can't tell which stage their deals die at, so they can't fix it.",
+      "Which rep's shared link actually brings in buyers is a guess.",
+    ],
+    solutions: [
+      "A team table for the last 30 days: score, conversion, response time, gross and deals won per salesman.",
+      "Response time tracked per rep and flagged when it runs past an hour.",
+      "On Salesman Premium, an agent's own funnel charges a lost deal to the stage it died at.",
+      "Clicks and WhatsApp contacts counted per salesman link.",
+    ],
+    capabilities: [
+      { icon: "Users", title: "Team scoreboard", desc: "Every salesman ranked on the last 30 days: overall score, conversion rate, average response time, average gross per deal and deals won out of leads." },
+      { icon: "Clock", title: "Response time per rep", desc: "Average first-reply time for each salesman, coloured once it runs past an hour, so slow follow-up is visible the same day." },
+      { icon: "Gauge", title: "Funnel drop-off", desc: "On Salesman Premium: where an agent's leads stop moving, read from the stage history, so a loss is charged to the step it actually happened at." },
+      { icon: "TrendingUp", title: "Close rate and trend", desc: "On Salesman Premium: close rate overall and the last 30 days against the 30 before, so an agent can see if they are getting better." },
+      { icon: "Globe", title: "Link traffic per salesman", desc: "Listing clicks and WhatsApp contacts that came through each salesman's own link." },
+      { icon: "LineChart", title: "Coaching insights with real numbers", desc: "On Salesman Premium: ranked notes on loss reasons, reply speed and lead sources. Each quotes a real count and only shows once there is enough data to mean something." },
+    ],
+  },
+
   "post-sale-handover": {
+    metaTitle: "Senarai Semak Pindah Milik Kereta — Handover Checklist",
     icon: "ClipboardCheck",
     kicker: "Post-Sale Handover",
     titleLead: "After “sold” comes the hard part —",
@@ -192,8 +229,12 @@ export const FEATURES = {
   },
 };
 
-export const ORDER = ["smart-inventory", "leads-crm", "revenue-analytics", "fi-documents", "post-sale-handover"];
+export const ORDER = ["smart-inventory", "leads-crm", "revenue-analytics", "salesman-performance", "fi-documents", "post-sale-handover"];
 
 // Page <title> text. Keeps the lead's trailing dash: stripping it ran the two
 // halves together ("…the hard part we run the checklist").
 export const featureTitle = (f) => `${f.titleLead} ${f.titleAccent}`;
+
+// Search-result <title>: the words people actually search (BM + EN), not the
+// slogan. The slogan stays the on-page heading.
+export const featureMetaTitle = (f) => `${f.metaTitle || featureTitle(f)} | ShiftOS`;
