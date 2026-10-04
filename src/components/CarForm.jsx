@@ -40,6 +40,8 @@ import { lookupFullSpec } from "../utils/carSpecs";
 import { apiUrl } from "../utils/apiUrl";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
+import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
+import QuickCarFlow from "./carform/QuickCarFlow";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
 import { DOC_TYPES } from "../utils/docTypes";
@@ -122,10 +124,6 @@ const ALL_BRANDS = Object.keys(CAR_DATA).sort();
 
 
 
-const CONDITIONS = ["used", "recon", "new"];
-const BODY_TYPES = ["Sedan", "SUV", "MPV", "Hatchback", "Coupe", "Pickup"];
-const FUEL_TYPES = ["Petrol", "Diesel", "Hybrid", "Electric"];
-const CC_PRESETS = [660, 1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000, 3500];
 
 const STEPS = [
   { id: 1, label: "Photos",   icon: Camera,         desc: "Upload images first" },
@@ -792,6 +790,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // apply. Their margin (selling price − base price) IS their earnings, shown
   // automatically instead of asking them to type a number.
   const hideCommission = isSalesman;
+  // New listings get the quick one-question-per-screen Car step (QuickCarFlow).
+  // Edits keep the classic layout (fixing one field should not mean walking ten
+  // screens) and so does the dealer intake path, whose identity fields were
+  // already captured by AddCarForm.
+  const quickMode = !listing && !intakeDone;
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -1204,6 +1207,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     setSpecsUnlocked(false);
   }, [specLock]);
   const specsLocked = !!specLock && !specsUnlocked;
+  // Body/fuel/gearbox/cc were answered (or confirmed from the catalogue) in the
+  // quick Car step: Technical shows a one-line summary instead of asking again. Falls back to the inputs if a
+  // required one is somehow still blank, so Technical can never be unfillable.
+  const quickSpecsDone = quickMode && (specsLocked || (!!form.bodyType && !!form.fuelType));
   const unlockSpecs = () => {
     setSpecsUnlocked(true);
     set("specs_overridden", true);
@@ -2318,6 +2325,156 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     );
   }
 
+  // Car-step building blocks shared by the classic layout (edits, dealer
+  // intake) and the quick one-question-per-screen flow (new listings), so the
+  // duplicate checks, VIN decode and title counter exist exactly once.
+  const renderPlateVin = () => (
+    <>
+          {/* Plate + VIN identify THIS car, so they sit with the car, not on
+              the Photos step where they used to be. */}
+          {!intakeDone && (
+          <>
+          <Field label="Plate Number" hint="Optional — vehicle registration plate">
+            <input
+              name="plate_number"
+              value={form.plate_number}
+              onChange={handleChange}
+              onBlur={e => checkDuplicate('plate', e.target.value)}
+              placeholder="e.g. WXY 1234"
+              className={inputCls}
+            />
+            {dupWarning.plate && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
+            )}
+            {conflictWarning.plate && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+          </Field>
+          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
+            <div className="flex gap-2">
+              <input
+                name="vin_number"
+                value={form.vin_number}
+                onChange={handleChange}
+                onBlur={e => checkDuplicate('vin', e.target.value)}
+                placeholder="e.g. JN1CA31D1XT000001 or FL5-1234567"
+                className={`${inputCls} flex-1`}
+                style={{ textTransform: "uppercase" }}
+              />
+              {isPremiumPlan && (
+                <button
+                  type="button"
+                  onClick={handleDecodeVin}
+                  disabled={decodingVin || !canDecodeVin}
+                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
+                >
+                  {decodingVin ? "Decoding…" : "Decode"}
+                </button>
+              )}
+            </div>
+            {dupWarning.vin && (
+              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
+            )}
+            {conflictWarning.vin && (
+              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
+            )}
+            {vinDecodeMsg && (
+              <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
+            )}
+          </Field>
+          </>
+          )}
+    </>
+  );
+  const renderListingTitle = () => (
+    <>
+          {/* Listing title — after the structured fields it defaults from (an
+              optional writing task should not be the first thing on the step).
+              The ONE free-text field on this step, and the
+              reason every other field on it can be structured. Sellers were
+              writing "ALPHARD 2.5L" and "CIVIC 2.0L(T) HATCHBACK" into `model`
+              to get the extra words a listing needs; that broke spec lookup
+              (only the clean "Alphard" resolves) and dropped the car out of the
+              buyer's model filter. Give them the headline, keep `model` clean. */}
+          <Field
+            label="Listing Title"
+            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
+          >
+            <div className="space-y-2">
+              <input
+                name="listing_title"
+                value={form.listing_title}
+                onChange={handleChange}
+                maxLength={120}
+                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
+                enterKeyHint="next"
+                className={inputCls}
+              />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-500 min-w-0 truncate">
+                  {form.listing_title?.trim()
+                    ? "This is the headline buyers read."
+                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
+                </p>
+                <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
+                  {form.listing_title?.length || 0}/120
+                </span>
+              </div>
+            </div>
+          </Field>
+    </>
+  );
+  const renderCarMore = () => (
+          <MoreDetails>
+             <Field label="Registration Date">
+              <input
+                type="date"
+                name="registrationDate"
+                value={form.registrationDate}
+                onChange={handleChange}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Previous Owners">
+              <input
+                type="number"
+                name="previous_owners"
+                value={form.previous_owners}
+                onChange={handleChange}
+                placeholder="e.g. 2"
+                min="0"
+                max="10"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Road Tax Expiry">
+              <input
+                type="date"
+                name="road_tax_expiry"
+                value={form.road_tax_expiry}
+                onChange={handleChange}
+                className={inputCls}
+              />
+            </Field>
+          </MoreDetails>
+  );
+
+  const renderQuickExtras = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-gray-500">All optional — tap Done to skip.</p>
+      {renderPlateVin()}
+      {renderListingTitle()}
+      <Field label="Loan Eligible">
+        <PillSelect
+          options={["Yes", "No"]}
+          value={form.loan_eligible ? "Yes" : "No"}
+          onChange={(v) => set("loan_eligible", v === "Yes")}
+        />
+      </Field>
+      {renderCarMore()}
+    </div>
+  );
+
   function renderLocationRow() {
     if (form.state && form.city && !locOpen) {
       return (
@@ -2498,7 +2655,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </div>
         </div>
       );
-      case 2: return (
+      case 2: return quickMode ? (
+        <QuickCarFlow
+          form={form}
+          setForm={setForm}
+          specLock={specLock}
+          specsLocked={specsLocked}
+          unlockSpecs={unlockSpecs}
+          onExitBack={() => setStep(1)}
+          onDone={() => setStep(3)}
+          renderExtras={renderQuickExtras}
+        />
+      ) : (
         <div className="space-y-4">
           {intakeDone && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium">
@@ -2619,128 +2787,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               onChange={(v) => set("loan_eligible", v === "Yes")}
             />
           </Field>
-          {/* Plate + VIN identify THIS car, so they sit with the car, not on
-              the Photos step where they used to be. */}
-          {!intakeDone && (
-          <>
-          <Field label="Plate Number" hint="Optional — vehicle registration plate">
-            <input
-              name="plate_number"
-              value={form.plate_number}
-              onChange={handleChange}
-              onBlur={e => checkDuplicate('plate', e.target.value)}
-              placeholder="e.g. WXY 1234"
-              className={inputCls}
-            />
-            {dupWarning.plate && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.plate}</p>
-            )}
-            {conflictWarning.plate && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This plate is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-            )}
-          </Field>
-          <Field label="VIN / chassis number" hint={isPremiumPlan ? "17-char VIN, or the Japanese chassis code — tap Decode to auto-fill specs" : "VIN, or the Japanese chassis code from the grant"}>
-            <div className="flex gap-2">
-              <input
-                name="vin_number"
-                value={form.vin_number}
-                onChange={handleChange}
-                onBlur={e => checkDuplicate('vin', e.target.value)}
-                placeholder="e.g. JN1CA31D1XT000001 or FL5-1234567"
-                className={`${inputCls} flex-1`}
-                style={{ textTransform: "uppercase" }}
-              />
-              {isPremiumPlan && (
-                <button
-                  type="button"
-                  onClick={handleDecodeVin}
-                  disabled={decodingVin || !canDecodeVin}
-                  className={`shrink-0 px-4 text-sm font-semibold text-white transition-colors ${canDecodeVin && !decodingVin ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-300 cursor-not-allowed"}`}
-                >
-                  {decodingVin ? "Decoding…" : "Decode"}
-                </button>
-              )}
-            </div>
-            {dupWarning.vin && (
-              <p className="text-xs text-amber-600 mt-1">Duplicate detected — {dupWarning.vin}</p>
-            )}
-            {conflictWarning.vin && (
-              <p className="text-xs text-red-600 mt-1 font-semibold">This VIN is already live on another dealer's listing. Confirm you hold the vehicle before publishing — duplicate/cloned listings are removed.</p>
-            )}
-            {vinDecodeMsg && (
-              <p className={`text-xs mt-1 ${vinDecodeMsg.ok ? "text-emerald-600" : "text-amber-600"}`}>{vinDecodeMsg.text}</p>
-            )}
-          </Field>
-          </>
-          )}
+          {renderPlateVin()}
 
-          {/* Listing title — after the structured fields it defaults from (an
-              optional writing task should not be the first thing on the step).
-              The ONE free-text field on this step, and the
-              reason every other field on it can be structured. Sellers were
-              writing "ALPHARD 2.5L" and "CIVIC 2.0L(T) HATCHBACK" into `model`
-              to get the extra words a listing needs; that broke spec lookup
-              (only the clean "Alphard" resolves) and dropped the car out of the
-              buyer's model filter. Give them the headline, keep `model` clean. */}
-          <Field
-            label="Listing Title"
-            hint="How buyers see this car in search. Write it your way — extras, condition, anything worth shouting about."
-          >
-            <div className="space-y-2">
-              <input
-                name="listing_title"
-                value={form.listing_title}
-                onChange={handleChange}
-                maxLength={120}
-                placeholder="e.g. BMW M4 G82 2025 LCI LIGHTS + BUCKET SEAT, LOW MILEAGE"
-                enterKeyHint="next"
-                className={inputCls}
-              />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-gray-500 min-w-0 truncate">
-                  {form.listing_title?.trim()
-                    ? "This is the headline buyers read."
-                    : `Leave it blank and buyers see "${[form.year, form.brand, form.model, form.variant].filter(Boolean).join(" ") || "Year Brand Model"}".`}
-                </p>
-                <span className={`text-xs tabular-nums flex-shrink-0 ${(form.listing_title?.length || 0) > 105 ? "text-amber-600" : "text-gray-400"}`}>
-                  {form.listing_title?.length || 0}/120
-                </span>
-              </div>
-            </div>
-          </Field>
+          {renderListingTitle()}
 
-          <MoreDetails>
-             <Field label="Registration Date">
-              <input
-                type="date"
-                name="registrationDate"
-                value={form.registrationDate}
-                onChange={handleChange}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Previous Owners">
-              <input
-                type="number"
-                name="previous_owners"
-                value={form.previous_owners}
-                onChange={handleChange}
-                placeholder="e.g. 2"
-                min="0"
-                max="10"
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Road Tax Expiry">
-              <input
-                type="date"
-                name="road_tax_expiry"
-                value={form.road_tax_expiry}
-                onChange={handleChange}
-                className={inputCls}
-              />
-            </Field>
-          </MoreDetails>
+          {renderCarMore()}
 
         </div>
       );
@@ -2754,7 +2805,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
               fleet and a seller with a 3.5 in a car we recorded as a 2.5 must
               not be trapped; it stamps specs_overridden, which is the
               catalogue's error log. */}
-          {specsLocked && (
+          {specsLocked && !quickMode && (
             <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
               <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50">
                 <div className="min-w-0">
@@ -2811,7 +2862,18 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             </div>
           )}
           {/* Core input */}
-          {!intakeDone && !specsLocked && (
+          {quickSpecsDone && (
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 bg-gray-50">
+              <Check className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <p className="flex-1 min-w-0 text-sm text-gray-900 truncate">
+                {[form.engineCc && `${form.engineCc}cc`, form.bodyType, form.fuelType, form.transmission].filter(Boolean).join(" · ")}
+              </p>
+              <button type="button" onClick={() => setStep(2)} className="flex-shrink-0 text-sm font-semibold text-blue-600 hover:text-blue-700">
+                Change
+              </button>
+            </div>
+          )}
+          {!intakeDone && !specsLocked && !quickSpecsDone && (
           <Field
             label="Engine Displacement (CC)"
             hint="Used for road tax & insurance calc"
@@ -3068,7 +3130,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           )}
 
           {/* Pills — below everything */}
-          {!intakeDone && !specsLocked && (
+          {!intakeDone && !specsLocked && !quickSpecsDone && (
           <>
           <Field label="Body Type" required>
             <PillSelect
@@ -4041,6 +4103,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           (the modal body on Lite / Premium / manager / dealer edit, the page on
           the dealer Add tab), so Continue is always in reach on a long step
           instead of waiting below the fold. */}
+      {!(quickMode && step === 2) && (
       <div
         className="sticky bottom-0 z-20 mt-5 -mx-1 px-1 pt-3 flex items-center gap-3 bg-white border-t border-gray-100"
         // The shadow paints white below the bar: every modal host pads its
@@ -4085,6 +4148,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           </button>
         )}
       </div>
+      )}
 
       {gapConfirm && createPortal(
         <div className="fixed inset-0 z-[300] flex items-end sm:items-center sm:justify-center">

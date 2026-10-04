@@ -670,6 +670,22 @@ export function lookupFullSpec(make, model, year) {
   return rows.reduce((a, b) => (b.yearFrom > a.yearFrom ? b : a));
 }
 
+// The model years our catalogue knows for a make + model, across every
+// generation: { from, to } with `to` capped at next year (open-ended rows say
+// 2099). Null when the model is not in the table. The quick listing flow uses
+// it to offer only years the car was actually sold in.
+export function specYearRange(make, model) {
+  const m = norm(make);
+  const mo = modelKey(make, model);
+  const rows = SPECS.filter((r) => norm(r.make) === m && modelKey(r.make, r.model) === mo);
+  if (!rows.length) return null;
+  const cap = new Date().getFullYear() + 1;
+  return {
+    from: Math.min(...rows.map((r) => r.yearFrom)),
+    to: Math.min(cap, Math.max(...rows.map((r) => r.yearTo))),
+  };
+}
+
 // Legacy accessor kept for AddCarForm (dealer intake) — returns just { cc, body }
 // so that flow is unchanged. New callers should use lookupFullSpec.
 export function lookupCarSpec(make, model) {
