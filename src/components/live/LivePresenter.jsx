@@ -258,12 +258,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     <div className="lp">
       {/* Light, on the marketplace tokens (DESIGN.md): page #F7F6F2, white cards,
           ink #0f1115, one red only for the selected cell's marker.
-          Everything lives on ONE portrait stage, 9:16 at most. On a phone that
-          is the whole screen; on a monitor it is a centred column, because the
-          seller films the monitor with a phone held upright, and a landscape
-          two-column layout came out cropped or tiny on a portrait stream.
-          Sizes use container units (cqw / cqh) so the same screen fits a
-          375px phone and a 1080p monitor without a scroll. */}
+          Phones and tablets: ONE portrait stage, 9:16 at most, sized in
+          container units so it fits a 375px phone with no scroll.
+          Desktop (mouse + landscape screen, 1024px+): a wide two-column sheet
+          (photo left, the working and the tenure table right). Owner's call,
+          2026-10-04: sellers film their monitor and the 9:16 column was too
+          thin to read on camera. The desktop block at the end of the styles is
+          the only place that layout lives. */}
       <style>{`
         .lp { position: fixed; inset: 0; z-index: 1000; background: #E8E5DE; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
@@ -358,6 +359,56 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
+
+        /* Desktop only: a wide, landscape quotation sheet for sellers who film
+           their monitor. Phones and tablets keep the portrait stage above.
+           Sizes switch to cqh (stage height) so a 768px laptop and a 1080p
+           monitor both fit with no scroll. */
+        @media (min-width: 1024px) and (orientation: landscape) and (hover: hover) and (pointer: fine) {
+          .lp-stage { width: min(100%, 1440px, calc(100dvh * 1.7)); }
+          .lp-top { padding: 10px 20px; }
+          .lp-body { padding: 16px 20px; }
+          /* Spare height on a tall monitor goes above and below the card, not all under it. */
+          .lp-fit:has(.lp-sheet) { margin-block: auto; }
+          .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
+            grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note cta"; align-items: start; }
+          .lp-sheet .lp-title { grid-area: title; }
+          .lp-sheet .lp-pair { display: contents; }
+          .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
+          .lp-sheet .lp-brk { grid-area: brk; }
+          .lp-sheet .lp-deps { grid-area: deps; }
+          .lp-sheet .lp-low { grid-area: low; }
+          .lp-sheet .lp-salary { grid-area: salary; }
+          .lp-sheet .lp-note { grid-area: note; align-self: center; }
+          .lp-sheet .lp-cta { grid-area: cta; align-self: center; }
+          .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
+          .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
+          .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
+          .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
+          .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
+          .lp-seg button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
+          .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
+          .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
+          .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
+          .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
+          .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
+          .lp-ten tr.lp-def td:last-child { font-size: clamp(26px, 5cqh, 56px); }
+          .lp-salary { font-size: clamp(13px, 1.9cqh, 21px); }
+          .lp-note { font-size: clamp(12px, 1.6cqh, 17px); }
+          .lp-cta { font-size: clamp(13px, 2cqh, 22px); padding: 10px 14px; }
+          .lp-adjust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .lp-adjust .lp-seg { grid-column: auto; }
+          /* Budget: the viewer's number on the left, the cars that fit on the right. */
+          .lp-fit:has(.lp-bud) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+          .lp-fit:has(.lp-bud) > .lp-adjust { grid-column: 1 / -1; }
+          .lp-row img, .lp-row .lp-noimg { width: clamp(64px, 9cqh, 110px); }
+          .lp-row .lp-n { font-size: clamp(24px, 4cqh, 44px); }
+          .lp-row .lp-rn b { font-size: clamp(14px, 2.1cqh, 22px); }
+          .lp-row .lp-m { font-size: clamp(16px, 2.7cqh, 30px); }
+          .lp-nav { justify-content: center; }
+          .lp-navbtn { flex: 0 1 320px; }
+          .lp-report { max-width: 760px; width: 100%; margin: 0 auto; }
+        }
       `}</style>
 
       <div className="lp-stage">
