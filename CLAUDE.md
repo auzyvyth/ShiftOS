@@ -1113,6 +1113,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Presenter language (EN/BM) is the presenter's OWN switch** (top-bar "EN"/"BM"
+  button), not the app's i18n language: a seller may run the dashboard in one and
+  present in the other. Starts in the last presenter choice (`xd_live_lang`), else the
+  app's. Every on-screen word lives in `src/components/live/liveCopy.js` (both
+  languages); a new string goes there in BOTH, never hardcoded in the JSX.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
