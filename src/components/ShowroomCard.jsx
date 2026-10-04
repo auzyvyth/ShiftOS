@@ -311,19 +311,23 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               : 'Agent';
             const chipColor = isIndividual ? '#fb923c' : '#60a5fa';
             const rgb = isIndividual ? '251,146,60' : '59,130,246';
-            // Verified says so in WORDS. It shipped as a 9px tick tucked in
-            // beside the role label and was invisible at that size — a trust
-            // signal nobody can read is not a trust signal. It stays inside
+            // Verified = the tick, not the word (owner, 2026-10-04): "Verified
+            // Private Seller" was too long and clipped on narrow cards. The
+            // tick is drawn larger than the role icon (12px vs 8px) and the
+            // chip keeps its stronger alpha, so it still reads first — it
+            // shipped once as a 9px tick nobody could see. It stays inside
             // this one chip, in the chip's own hue, rather than becoming a
-            // fourth saturated pill on a row that already carries the photo
-            // count and the discount badge; the verified chip just sits at a
-            // stronger alpha so it reads first.
+            // fourth saturated pill on the row. "Verified" survives as the
+            // accessible label and hover tooltip.
             const RoleIcon = isVerified ? BadgeCheck : Users;
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: `rgba(${rgb},${isVerified ? 0.3 : 0.18})`, border: `1px solid rgba(${rgb},${isVerified ? 0.6 : 0.4})`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}>
-                <RoleIcon size={isVerified ? 10 : 8} color={chipColor} strokeWidth={isVerified ? 2.6 : 2} style={{ flexShrink: 0 }} />
+              <div
+                title={isVerified ? `Verified ${label}` : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: 3, background: `rgba(${rgb},${isVerified ? 0.3 : 0.18})`, border: `1px solid rgba(${rgb},${isVerified ? 0.6 : 0.4})`, borderRadius: '6px', padding: '2px 7px', backdropFilter: 'blur(6px)' }}
+              >
+                <RoleIcon size={isVerified ? 12 : 8} color={chipColor} strokeWidth={isVerified ? 2.6 : 2} style={{ flexShrink: 0 }} aria-label={isVerified ? 'Verified' : undefined} role={isVerified ? 'img' : undefined} aria-hidden={isVerified ? undefined : true} />
                 <span style={{ fontSize: '9px', fontWeight: '700', color: chipColor, whiteSpace: 'nowrap' }}>
-                  {isVerified ? 'Verified ' : ''}{label}
+                  {label}
                 </span>
               </div>
             );
