@@ -13,6 +13,7 @@ import {
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
+import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection";
 import {
   CANON, SEO_TITLE, SEO_DESC, SEO_KEYWORDS, FAQS, SOFTWARE_LD, FAQ_LD,
   HERO_INTRO, COMPARE_ROWS, STEPS, FEATURE_COPY, LITE_BULLETS, PREMIUM_BULLETS,
@@ -317,6 +318,9 @@ export default function SalesmanLiteLanding() {
             </Link>
           </div>
         </motion.section>
+
+        {/* ── Premium: live selling (the live presentation, recreated) ── */}
+        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} />
 
         {/* ── Lite vs Premium ── */}
         <section className="sll-section sll-section-alt">

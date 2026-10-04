@@ -86,4 +86,23 @@ export const FEATURE_COPY = [
 ];
 
 export const LITE_BULLETS = ["Up to 10 active listings", "Your page on the XDrive marketplace", "Direct WhatsApp enquiries", "Lead pipeline + follow-up reminders", "Basic performance analytics", "No credit card required"];
-export const PREMIUM_BULLETS = ["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Advanced analytics + custom subdomain"];
+export const PREMIUM_BULLETS = ["Everything in Lite", "Up to 30 active listings", "Priority marketplace placement", "Advanced CRM automation", "Commission tracking", "Live presentation for TikTok / FB lives", "Advanced analytics + custom subdomain"];
+
+// Premium "Live selling" section (LiveSellingSection.jsx) — the live
+// presentation mode (src/components/live/LivePresenter.jsx), sold to agents
+// who already hold a calculation poster up on TikTok / FB lives.
+export const LIVE_SELLING = {
+  kicker: "Premium · Live selling",
+  title: "Selling on TikTok Live? Your calculation poster, done for you.",
+  lead:
+    "Agents on live hold up a spreadsheet of monthly instalments, one car at a time, retyped for every unit. Premium builds that poster for every car you list. Open Live presentation, film your screen, and answer \"monthly berapa?\" with one tap.",
+  points: [
+    "Every car numbered #1, #2, #3, so viewers comment the number they want",
+    "Price, deposit, loan and rate worked out, then 9, 7 and 5 year monthly instalments",
+    "Change the deposit or type the bank's flat rate and every number updates",
+    "Budget mode: type a viewer's salary or monthly budget, see which of your cars fit",
+    "Your contact box shows only when you tap it, so you decide what goes on stream",
+    "The car on screen is pinned on your page as \"Live now\" for viewers who tap your bio",
+  ],
+  note: "Estimates on the reducing balance (EIR). Subject to bank approval.",
+};

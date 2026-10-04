@@ -735,6 +735,9 @@ const STATIC_PAGES = {
     ${SL.FEATURE_COPY.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
     <h2>How it works</h2>
     <ol>${SL.STEPS.map((st) => `<li><strong>${esc(st.title)}</strong> — ${esc(st.body)}</li>`).join("")}</ol>
+    <h2>${esc(SL.LIVE_SELLING.title)}</h2>
+    <p>${esc(SL.LIVE_SELLING.lead)}</p>
+    <ul>${li(SL.LIVE_SELLING.points)}</ul>
     <h2>Pricing</h2>
     <h3>Salesman Lite — RM0, free forever</h3><ul>${li(SL.LITE_BULLETS)}</ul>
     <h3>Salesman Premium — RM35/month</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
