@@ -15,10 +15,26 @@ import { panel as C, panelType as T } from "../../theme/tokens";
 // seller sends, never an automatic one — AI trust boundary), "Move" opens the
 // detail sheet on its reschedule step.
 //
-// Status is a dot + a quiet tint, never a coloured side bar (anti-slop rule).
+// Status is the block's whole fill + border + a dot, never a coloured side bar
+// (anti-slop rule). Colours were chosen FOR the dark panel, measured, not
+// borrowed from the light dashboard: a dark block on a dark grid (1.09:1) and
+// a 45%-opacity "done" block were unreadable. See PALETTE below; every name
+// and car line clears 5:1 against its fill, most 8-12:1. Open hours are
+// lighter than closed hours, so "where buyers can book" reads at a glance.
 // Cancelled bookings are left off the grid; the List view still has them.
 
 const HOUR_PX = 56;
+// Dark-surface palette for this view. Solid hexes (not alpha) so the contrast
+// is the same on every monitor; ratios measured against each fill.
+const PALETTE = {
+  open: "#111722",       // bookable hours: one step lighter than the card
+  closed: "#090c12",     // outside hours: one step darker, hatched
+  hourLine: "rgba(255,255,255,.07)",
+  todayTint: "rgba(220,38,38,.06)",
+  ok:   { fill: "#133524", border: "#2f8f5b", name: "#ecfdf5", sub: "#9fd8b5", dot: "#4ade80" }, // 12.8 / 8.3:1
+  wait: { fill: "#3a2a0a", border: "#d4a02a", name: "#fef3c7", sub: "#e9c46a", dot: "#fbbf24" }, // 12.4 / 8.3:1
+  done: { fill: "#1a202a", border: "#2c3644", name: "#a8b3c4", sub: "#8391a5", dot: "#8391a5" }, //  7.7 / 5.1:1
+};
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // When a seller has set no hours, buyers get an open Mon-Sun 9am-6pm grid
 // (BookingCalendar.jsx fallback), so that is what "outside hours" means here.
@@ -201,7 +217,7 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
             <div className="bwc-body" style={{ height: gridH }}>
               {timeCol}
               {days.map((d, i) => (
-                <div key={i} className="bwc-col" style={{ height: gridH }}>
+                <div key={i} className={sameDay(d, now) ? "bwc-col bwc-col-today" : "bwc-col"} style={{ height: gridH }}>
                   {offBands(d)}
                   {nowLine(d)}
                   {byDay[i].map((b) => block(b, false))}
@@ -310,36 +326,43 @@ const CSS = `
   .bwc-dn { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: ${C.textMuted}; }
   .bwc-dd { display: inline-block; margin-top: 4px; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .bwc-today .bwc-dd { background: ${C.accent}; color: #fff; }
-  .bwc-dc { font-size: 10px; color: ${C.textMuted}; margin-top: 2px; min-height: 13px; }
+  .bwc-dc { font-size: 10px; color: ${C.textSec}; margin-top: 2px; min-height: 13px; }
   .bwc-closed .bwc-dd { color: ${C.textDim}; }
   .bwc-today.bwc-closed .bwc-dd { color: #fff; }
   .bwc-dayempty { margin: 0; padding: 10px 14px; font-size: 12px; color: ${C.textSec}; border-bottom: 1px solid ${C.border}; }
   .bwc-body { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); position: relative; }
   .bwc-mbody { grid-template-columns: 48px minmax(0, 1fr); }
   .bwc-times { position: relative; }
-  .bwc-times div { position: absolute; right: 8px; transform: translateY(-6px); font-size: 10px; color: ${C.textMuted}; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .bwc-col { position: relative; border-left: 1px solid ${C.line}; background-image: linear-gradient(${C.line} 1px, transparent 1px); background-size: 100% var(--hour); }
-  .bwc-off { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 6px, transparent 6px 12px); pointer-events: none; }
+  .bwc-times div { position: absolute; right: 8px; transform: translateY(-6px); font-size: 10px; font-weight: 600; color: ${C.textSec}; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bwc-col { position: relative; border-left: 1px solid ${PALETTE.hourLine}; background-color: ${PALETTE.open}; background-image: linear-gradient(${PALETTE.hourLine} 1px, transparent 1px); background-size: 100% var(--hour); }
+  .bwc-col.bwc-col-today { background-image: linear-gradient(${PALETTE.hourLine} 1px, transparent 1px), linear-gradient(${PALETTE.todayTint}, ${PALETTE.todayTint}); background-size: 100% var(--hour), 100% 100%; }
+  .bwc-off { position: absolute; left: 0; right: 0; background-color: ${PALETTE.closed}; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 2px, transparent 2px 9px); pointer-events: none; }
   .bwc-now { position: absolute; left: -1px; right: 0; height: 2px; background: ${C.accent}; z-index: 3; pointer-events: none; }
   .bwc-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: ${C.accent}; }
 
-  .bwc-bk { position: absolute; z-index: 2; border-radius: 8px; padding: 5px 7px; overflow: hidden; cursor: pointer; text-align: left; color: ${C.text}; border: 1px solid ${C.borderStrong}; background: ${C.surfaceRaised}; }
-  .bwc-bk b { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bwc-bk span { display: block; font-size: 11px; color: ${C.textSec}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-  .bwc-bk i { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: ${C.success}; }
-  .bwc-bk:hover { border-color: rgba(255,255,255,.28); }
-  .bwc-wait { background: rgba(245,158,11,.07); border: 1px dashed rgba(245,158,11,.45); }
-  .bwc-wait i { background: #f59e0b; }
-  .bwc-done { opacity: .45; }
-  .bwc-done i { background: ${C.textMuted}; }
+  .bwc-bk { position: absolute; z-index: 2; border-radius: 8px; padding: 5px 7px; overflow: hidden; cursor: pointer; text-align: left; border: 1px solid; box-shadow: 0 1px 0 rgba(0,0,0,.35); transition: filter .12s; }
+  .bwc-bk b { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bwc-bk span { display: block; font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .bwc-bk i { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .bwc-bk:hover { filter: brightness(1.18); }
+  .bwc-bk:focus-visible { outline: 2px solid #fff; outline-offset: 1px; }
+  .bwc-ok   { background: ${PALETTE.ok.fill};   border-color: ${PALETTE.ok.border};   color: ${PALETTE.ok.name}; }
+  .bwc-ok span { color: ${PALETTE.ok.sub}; }     .bwc-ok i { background: ${PALETTE.ok.dot}; }
+  .bwc-wait { background: ${PALETTE.wait.fill}; border-color: ${PALETTE.wait.border}; border-style: dashed; color: ${PALETTE.wait.name}; }
+  .bwc-wait span { color: ${PALETTE.wait.sub}; } .bwc-wait i { background: ${PALETTE.wait.dot}; }
+  .bwc-done { background: ${PALETTE.done.fill}; border-color: ${PALETTE.done.border}; color: ${PALETTE.done.name}; }
+  .bwc-done span { color: ${PALETTE.done.sub}; } .bwc-done i { background: ${PALETTE.done.dot}; }
 
   .bwc-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid ${C.border}; font-size: 11px; color: ${C.textSec}; }
   .bwc-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .bwc-legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-  .bwc-dot-ok { background: ${C.success}; }
-  .bwc-dot-wait { background: #f59e0b; }
-  .bwc-dot-done { background: ${C.textMuted}; }
-  .bwc-legend .bwc-hatch { width: 14px; height: 10px; border-radius: 2px; background: repeating-linear-gradient(135deg, rgba(255,255,255,.12) 0 3px, transparent 3px 6px); }
+  .bwc-legend i { width: 16px; height: 11px; border-radius: 3px; display: inline-block; border: 1px solid; }
+  .bwc-legend .bwc-dot-ok { background: ${PALETTE.ok.fill}; border-color: ${PALETTE.ok.border}; }
+  .bwc-legend .bwc-dot-wait { background: ${PALETTE.wait.fill}; border-color: ${PALETTE.wait.border}; border-style: dashed; }
+  .bwc-legend .bwc-dot-done { background: ${PALETTE.done.fill}; border-color: ${PALETTE.done.border}; }
+  .bwc-legend .bwc-hatch { background-color: ${PALETTE.closed}; border-color: rgba(255,255,255,.12); background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 2px, transparent 2px 5px); }
+  .bwc-dots .bwc-dot-ok { background: ${PALETTE.ok.dot}; }
+  .bwc-dots .bwc-dot-wait { background: ${PALETTE.wait.dot}; }
+  .bwc-dots .bwc-dot-done { background: ${PALETTE.done.dot}; }
   .bwc-empty { margin: 0; padding: 12px 14px; font-size: 12px; color: ${C.textSec}; border-top: 1px solid ${C.border}; }
 
   .bwc-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -351,7 +374,7 @@ const CSS = `
   .bwc-eb + .bwc-req { border-top: none; padding-top: 2px; }
   .bwc-who { font-size: 13px; font-weight: 600; }
   .bwc-what { margin: 2px 0 0; font-size: 12px; color: ${C.textSec}; line-height: 1.5; }
-  .bwc-when { margin-top: 4px; font-size: 12px; font-weight: 600; color: #fbbf24; font-variant-numeric: tabular-nums; }
+  .bwc-when { margin-top: 4px; font-size: 12px; font-weight: 600; color: ${PALETTE.wait.dot}; font-variant-numeric: tabular-nums; }
   .bwc-passed { color: ${C.textMuted}; }
   .bwc-acts { display: flex; gap: 6px; margin-top: 8px; }
   .bwc-primary { flex: 1; height: 32px; border: none; border-radius: 8px; background: ${C.accent}; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
@@ -366,8 +389,9 @@ const CSS = `
   .bwc-strip .bwc-today .bwc-dd { color: ${C.dangerText}; }
   .bwc-strip button.bwc-on { background: ${C.accent}; }
   .bwc-strip button.bwc-on .bwc-dn, .bwc-strip button.bwc-on .bwc-dd { color: #fff; }
-  .bwc-dots { display: flex; gap: 2px; height: 6px; }
-  .bwc-dots i { width: 4px; height: 4px; border-radius: 50%; }
+  .bwc-strip button.bwc-on .bwc-dots i { box-shadow: 0 0 0 1.5px #fff; }
+  .bwc-dots { display: flex; gap: 3px; height: 6px; }
+  .bwc-dots i { width: 5px; height: 5px; border-radius: 50%; }
   .bwc-mbody .bwc-bk { padding: 7px 10px; }
   .bwc-mbody .bwc-bk b { font-size: 13px; }
 
