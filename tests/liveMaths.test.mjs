@@ -1,6 +1,6 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE } from '../src/utils/liveMaths.js';
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 
 let pass = 0, fail = 0;
@@ -46,6 +46,34 @@ is('report: top car is #2', r.topCar, { n: 2, name: '2019 Proton X70', taps: 2 }
 is('report: leads', r.newLeads, 2);
 is('report: failed leads read is null', liveReport({ events: [], newLeads: undefined, listings, startedAt: 0, endedAt: 0 }).newLeads, null);
 is('report: one tap is not a "most tapped"', liveReport({ events: [{ event_type: 'minipage_card_click', car_id: 'a' }], listings, startedAt: 0, endedAt: 0 }).topCar, null);
+
+// Budget mode: the 35% rule backwards.
+is('budget: RM3,500 pay -> RM1,225', maxMonthlyFromPay(3500), 1225);
+is('budget: rounds down', maxMonthlyFromPay(3333), 1166);
+is('budget: zero pay is null', maxMonthlyFromPay(0), null);
+is('budget: and forwards again stays under the pay', salaryGuide(maxMonthlyFromPay(3500)) <= 3500, true);
+
+const cars = [
+  { id: 'myvi', selling_price: 56000 },
+  { id: 'x70', selling_price: 90000 },
+  { id: 'nop', selling_price: 0 },
+  { id: 'city', selling_price: 75000 },
+  { id: 'cheap', selling_price: 4000 },
+];
+const at = (p, d) => monthlyPayment(p - d, 3, 108);
+const b = budgetMatches(cars, { maxMonthly: Math.ceil(at(75000, 5000)), deposit: 5000, years: 9, rate: 3, basis: 'eir' });
+is('budget: fits dearest first, keeps #n', b.fits.map((x) => x.n), [4, 1]);
+is('budget: fit monthly is the table formula', b.fits[1].monthly, at(56000, 5000));
+is('budget: over-budget car listed above', b.above.map((x) => x.n), [2]);
+is('budget: unpriced and deposit-covered cars left out', [...b.fits, ...b.above].some((x) => x.n === 3 || x.n === 5), false);
+is('budget: no budget, no results', budgetMatches(cars, { maxMonthly: 0, years: 7, rate: 3, basis: 'eir' }), { fits: [], above: [] });
+const flat = budgetMatches(cars, { maxMonthly: 100000, deposit: 0, years: 7, rate: 2.5, basis: 'flat' });
+is('budget: flat rate converted like the table', flat.fits.find((x) => x.n === 1).monthly, monthlyPayment(56000, eirForTenure(2.5, 'flat', 7), 84));
+const near = (p) => monthlyPayment(p, 3, 84);
+const many = [{ selling_price: 50000 }, { selling_price: 51000 }, { selling_price: 52000 }, { selling_price: 200000 }];
+const m2 = budgetMatches(many, { maxMonthly: near(49000), years: 7, rate: 3, basis: 'eir' });
+is('budget: at most two just-over cars, cheapest first', m2.above.map((x) => x.n), [1, 2]);
+is('budget: a car far over budget is not "just above"', budgetMatches(many, { maxMonthly: near(100000), years: 7, rate: 3, basis: 'eir' }).above.length, 0);
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -1093,6 +1093,15 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Cars above RM300k get the table in the presenter ONLY** (owner, 2026-10-03), with
   a "banks decide case by case" note. `calcMonthly` and the mini-page card still
   return null / "financing on request" for them — do not widen that.
+- **One portrait stage (9:16 max), never a landscape layout.** Sellers film their
+  monitor with a phone held upright, so on a desktop the presenter is a centred
+  column; sizes are container units and `.lp-fit` auto-shrinks the Cars screen to
+  fit (80% floor, then it scrolls). Name + price sit ON the photo.
+- **Show working** under the big number (price - deposit = loan, months, rate) and
+  **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
+  monthly budget or take-home pay (35% rule backwards, rule always printed) lists
+  the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
+  that deposit + tenure, so the numbers match. Never word a fit as approval.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.

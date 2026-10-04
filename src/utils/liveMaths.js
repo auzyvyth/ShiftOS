@@ -3,7 +3,7 @@
 //
 // Pure: no React, no Supabase (tests/liveMaths.test.mjs).
 
-import { flatToEir } from './financing.js';
+import { flatToEir, monthlyPayment } from './financing.js';
 
 // "Take-home pay needed" rule: the instalment as a share of net monthly pay.
 // It is a rule of thumb shown WITH its rule, never an approval — the bank
@@ -27,6 +27,46 @@ export function salaryGuide(monthly) {
 export function eirForTenure(rate, basis, years) {
   const r = Math.max(0, Number(rate) || 0);
   return basis === 'flat' ? flatToEir(r, years * 12) : r;
+}
+
+// Budget mode, the reverse question ("gaji RM3,500, boleh ambil kereta apa?"):
+// the same 35% rule run backwards. Rounded DOWN to the ringgit so the budget
+// never reads more generous than the rule.
+export function maxMonthlyFromPay(net) {
+  const n = Number(net);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.floor(Math.round(n * SALARY_SHARE * 100) / 100);
+}
+
+// Which of the seller's cars fit a monthly budget, with one deposit (RM) and
+// one tenure for all of them. Same formula and rate as the table, so tapping a
+// result opens a card that shows the same number.
+//   fits:  within budget, dearest first (the most car for the money)
+//   above: up to two just over it (within ABOVE_MARGIN), cheapest monthly
+//          first ("add a bit more deposit and #5 is yours"). A car at three
+//          times the budget is not "just above", it is noise.
+// n is the presenter's #number (index + 1). Unpriced cars and cars the deposit
+// already covers are left out: neither is a financing question.
+export const ABOVE_MARGIN = 0.25;
+
+export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis }) {
+  const cap = Number(maxMonthly);
+  if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
+  const down = Math.max(0, Number(deposit) || 0);
+  const eir = eirForTenure(rate, basis, years);
+  const fits = [];
+  const above = [];
+  (listings || []).forEach((car, i) => {
+    const price = Number(car?.selling_price) || 0;
+    if (price <= 0 || down >= price) return;
+    const monthly = monthlyPayment(price - down, eir, years * 12);
+    const row = { n: i + 1, car, price, monthly };
+    if (monthly <= cap) fits.push(row);
+    else if (monthly <= cap * (1 + ABOVE_MARGIN)) above.push(row);
+  });
+  fits.sort((a, b) => b.price - a.price);
+  above.sort((a, b) => a.monthly - b.monthly);
+  return { fits, above: above.slice(0, 2) };
 }
 
 export const fmtRate = (n) => {
