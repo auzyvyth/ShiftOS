@@ -1079,6 +1079,18 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   `referral_rewards` row per invited seller (granted | capped | ineligible).
   The UI card is `src/components/referral/ReferralCard.jsx` (Lite + Premium settings).
 
+## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
+- **The free month is a paid-through date, not a trial flag:** `plan_expires_at =
+  now() + 30 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
+  `start_premium_trial()` from Lite). `subscription_status='trial'` never granted
+  Premium (is_salesman_premium ignores it), which is why Premium signups used to land
+  on Lite. `premium_trial_started_at` = the one free month is used.
+- The upgrade door is Lite Settings > Premium (`src/components/premium/PremiumUpgradeCard.jsx`).
+  `/plans` -> Premium for an already-onboarded seller goes there
+  (`SalesmanOnboarding.jsx`), not back into signup.
+- `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
+  self-writable between lite/full, so the cap must follow entitlement, not `plan`.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

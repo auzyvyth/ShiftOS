@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ReferralCard from "../components/referral/ReferralCard";
+import PremiumUpgradeCard from "../components/premium/PremiumUpgradeCard";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { useTranslation } from "react-i18next";
@@ -765,6 +766,7 @@ const LITE_SETTINGS_NAV = [
   { key: "contact", labelKey: "salesmanLite.settings.navContact", fallback: "Contact & Location" },
   { key: "selling", labelKey: "salesmanLite.settings.navSelling", fallback: "Selling" },
   { key: "alerts", labelKey: "salesmanLite.settings.navAlerts", fallback: "Alerts" },
+  { key: "premium", labelKey: "salesmanLite.settings.navPremium", fallback: "Premium" },
   { key: "refer", labelKey: "salesmanLite.settings.navRefer", fallback: "Refer a seller" },
   { key: "account", labelKey: "salesmanLite.settings.navAccount", fallback: "Account" },
 ];
@@ -1109,7 +1111,12 @@ export default function SalesmanLite() {
   // Which Settings subject is open. Defaults to the first rather than to a
   // menu: on desktop the rail is always visible, and on mobile the pill row
   // is, so there is never a state where the seller is looking at nothing.
-  const [settingsNav, setSettingsNav] = useState("profile");
+  // ?section=<key> opens a settings section directly (the /plans Premium card
+  // sends a signed-in Lite seller to ?section=premium).
+  const [settingsNav, setSettingsNav] = useState(() => {
+    const s = new URLSearchParams(window.location.search).get("section");
+    return LITE_SETTINGS_NAV.some((n) => n.key === s) ? s : "profile";
+  });
   // Avatar cache is keyed by user id (set once profile loads) so it never
   // bleeds across salesmen sharing a device. Profile fetch repopulates it.
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -7227,6 +7234,7 @@ export default function SalesmanLite() {
           </div>
               </>
             )}
+            {snav === "premium" && <PremiumUpgradeCard profile={profile} />}
             {snav === "refer" && <ReferralCard slug={profile?.slug} />}
             {snav === "account" && (
               <>
