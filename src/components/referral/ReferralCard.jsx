@@ -12,15 +12,14 @@ import { inviteUrl } from "../../utils/invite";
 // Dark seller-panel surface (Lite + Premium settings), so light text.
 export default function ReferralCard({ slug, style }) {
   const [stats, setStats] = useState(null);
-  const [failed, setFailed] = useState(false);
   const link = inviteUrl(slug);
 
   useEffect(() => {
     let alive = true;
     supabase.rpc("get_my_referrals").then(({ data, error }) => {
       if (!alive) return;
-      if (error) setFailed(true);
-      else setStats(data || { joined: 0, earned: 0, capped: 0 });
+      // On error the counts are simply not shown; the link still works.
+      if (!error) setStats(data || { joined: 0, earned: 0, capped: 0 });
     });
     return () => { alive = false; };
   }, []);
@@ -81,9 +80,6 @@ export default function ReferralCard({ slug, style }) {
           <Stat n={stats.joined} label="Signed up" />
           <Stat n={stats.earned} label={stats.earned === 1 ? "Month earned" : "Months earned"} />
         </div>
-      )}
-      {failed && (
-        <p style={{ margin: "12px 0 0", fontSize: 11.5, color: "#6b7280" }}>Couldn't load your invite count right now.</p>
       )}
 
       <p style={{ margin: "12px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>

@@ -358,6 +358,14 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const markPaid = (a) =>
     run(a.id, "Logging payment", async () => {
       const r = await supabase.rpc("record_subscription_payment", { p_user: a.id });
+      // PGRST202 = the function does not exist yet (migration 20261004a not
+      // applied). Fall back to the old flag so payments can still be confirmed.
+      if (r.error?.code === "PGRST202") {
+        const patch = { payment_status: "received", subscription_status: "active" };
+        const u = await supabase.from("profiles").update(patch).eq("id", a.id);
+        if (!u.error) onPatch(a.id, patch);
+        return u;
+      }
       if (r.error) return r;
       const { data } = await supabase.from("profiles")
         .select("plan, plan_expires_at, payment_status, subscription_status").eq("id", a.id).maybeSingle();
@@ -623,7 +631,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               )}
             </div>
 
-            {accountKind(open) === "solo" && billing?.id === open.id && (
+            {accountKind(open) === "solo" && billing?.id === open.id && billing.payments !== null && (
               <>
                 <Field label="Premium paid until" value={billing.profile?.plan_expires_at ? fmtDate(billing.profile.plan_expires_at) : "No end date"} />
                 <Field label="Invited by" value={
