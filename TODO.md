@@ -80,18 +80,59 @@ instead of greying it, "Paying" = payment logged (was a dropdown: RM 2,398 phant
 MRR), Premium sellers counted, platform account excluded; "Live listings 74" ->
 "Cars for sale" (status available on the public view, 33). Premium now shows
 `AccountReviewBanner`; its false "goes live the moment you're approved" line is gone.
-Open — OWNER DECISIONS, do not pick a side:
-- [ ] What is seller approval FOR? Today it only gates `find_me_reply`. (A) keep it an
-  identity check (current copy says so) or (B) make it a real gate on cars.
-- [ ] A pending DEALER's cars go live with NO review: CarForm.jsx:2125 only sends
-  salesmen to `pending_approval`, and DealerOnboarding.jsx:486 / SalesmanOnboarding.jsx:543
-  write `is_active: true` themselves, which `public_car_listings` trusts. Nothing in
-  the DB enforces either (status is client-chosen). Fix belongs in a trigger.
-- [ ] `is_active` is self-writable (`guard_profile_approval_cols` does not cover it).
-  Verify a suspended seller cannot flip it back on (suspended_at checks may cover it).
-- [ ] "Fast" + "99test" (owner's fasttrackautos test emails): is_active=false, never
-  suspended, subscription 'active', no payment. Console now labels them "Switched off
-  · no reason recorded" / "Marked active · no payment logged". Fix, delete or keep?
+Owner decisions, 2026-10-05:
+- Seller approval = ID CHECK ONLY. No verified tick means buyers trust you less,
+  not that you are locked out. (Copy already says this.) Finishing onboarding
+  switches every seller on -- in migration 20261005f (see SEC-2).
+- "Fast" + "99test": DELETED (soft delete, 30-day restore window, purge cron hard-deletes).
+- Suspended sellers: no self-revival; they request an APPEAL. Appeal flow not built
+  yet -- [ ] PLAT-APPEAL: "Request review" button on SuspendedBanner -> a row the
+  console's Review queue shows -> platform restores via set_account_suspended.
+
+## SEC: security sweep 2026-10-05 — findings (owner asked "check for security issues, data breach chance")
+Verified live, not from reading code. Probes ran as real anon / guest-buyer roles
+inside self-rolling-back transactions.
+- [x] SEC-0 `expiry-reminders` (no auth at all) and `notify-price-alerts` (`if
+  (CRON_SECRET)`, unset) could be triggered by anyone. Both now require
+  `cron_key_matches` (deployed v14 / v20; no-key and wrong-key = 401, cron key = 200).
+- [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
+  -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
+  role outside the seller set (deployed v23).
+- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (CDP-3 defeated). `/api/wa` + `/api/call-number`
+  called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
+  RPCs are anon-executable and anyone can loop every public car id straight against
+  /rest/v1/rpc, skipping the route's rate limit. Code now prefers
+  SUPABASE_SERVICE_ROLE_KEY. NEXT: confirm that env var is set in Vercel Production,
+  deploy, then `revoke execute on both from public, anon, authenticated`.
+- [ ] SEC-2 SUSPENSION BYPASS: a suspended seller can switch themselves back on and
+  erase the suspension (toggle onboarding_complete false->true; the onboarding branch
+  of prevent_profile_privilege_escalation skips the is_active/suspended_at guards;
+  same path un-deletes). Proven with a rolled-back probe. Fix written:
+  `supabase/migrations/20261005f_security_sweep.sql` (new trigger
+  trg_zy_guard_profile_lifecycle). NOT APPLIED -- the apply was cancelled at approval.
+  Same migration also: drops `workshop_jobs.public_read_job_by_token` (shape-check
+  share token, 0 rows today, would publish customer name+phone) and limits
+  `car_images_select_own` to your own folder (today any signed-in guest can LIST the
+  bucket and find 23 geran / loan-letter scans under docs/).
+- [ ] SEC-3 Car documents live in the PUBLIC car-images bucket (CarForm.jsx:962). Names
+  are random now, so listing (SEC-2) is the main hole, but they belong in a private
+  bucket served by signed URL, like kyc-docs.
+- [ ] SEC-4 `_bk_airy_*` (8 tables: leads, customers, wa, appointments...) are stale
+  backup copies of real buyer data. Not API-readable, but PDPA retention: drop them
+  once the owner confirms nothing needs restoring.
+- [ ] SEC-5 Supabase Auth "leaked password protection" is OFF (dashboard toggle,
+  Authentication > Settings). Owner action.
+- [ ] SEC-6 `api/ai-messages.js` (TikTok Studio, Import Stock, Accountant) reads the
+  profile with the bare anon client, so it 403s "profile not found" for everyone; and
+  `lib/aiGuard.js` would let buyers through once fixed. Fix both together.
+- [ ] SEC-7 SalesmanLite.jsx:8243 "Pending Approval" gate is dead (no account has
+  account_status='pending') and shows a placeholder support number +60 12-345 6789.
+  Delete the block.
+- Checked and CLEAN: anon can read only the intended public tables/views; a guest
+  buyer sees only their own profile/chat; no service key in the client bundle;
+  send-push, invites, create-salesman, send-telegram, chat-assist all check the caller;
+  public_dealer_profiles phone/email columns are NULL for every row; hero slide
+  numbers are the dealer's own storefront number (allowed exception).
 
 ## PAY-2: Automatic payment confirmation (gateway + webhook) — researched 2026-10-05, PARKED by owner
 Owner: "we don't need this for now". Today a seller pays the static DuitNow QR

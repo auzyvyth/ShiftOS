@@ -70,8 +70,20 @@ function summarise(items: Overdue[]) {
   return { title, body: top.join(" · ") + more };
 }
 
-serve(async (_req) => {
+serve(async (req) => {
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+  // verify_jwt is off, and this had no check at all: anyone with the URL could
+  // run it on demand and fire pushes + Telegram at every dealer. Only the
+  // pg_cron job (jobid 5) holds the key; cron_key_matches answers yes/no and
+  // never returns it. Same gate as notify-seller-unread.
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  let authorised = false;
+  if (bearer) {
+    const { data } = await supabase.rpc("cron_key_matches", { p_key: bearer });
+    authorised = data === true;
+  }
+  if (!authorised) return new Response("unauthorized", { status: 401 });
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);

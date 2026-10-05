@@ -51,7 +51,14 @@ export default async function handler(req, res) {
     return page(res, 400, 'Link not complete', 'This WhatsApp link is missing who to message.');
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Server key first: see api/call-number.js. With the public key the RPC must
+  // stay open to anon, which lets anyone bypass this route's rate limit and
+  // harvest every seller's number straight from /rest/v1/rpc (TODO SEC-1).
+  const supabase = createClient(
+    SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
   const { data, error } = await supabase.rpc('get_seller_whatsapp', {
     p_listing_id: car,
     p_slug: slug,

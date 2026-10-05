@@ -220,9 +220,12 @@ export default function DashboardTab({
  // would have been counting from this time yesterday. Live Listings is a count,
  // not a time series, so it has no daily figure and shows no badge.
  const TRAFFIC_STATS = [
- { label: "Views", value: totalViews || 0, today: viewsTrend[6] || 0, Icon: Eye, hue: C.info },
- { label: "Page Visits", value: minipageStats.visits || 0, today: visitsTrend[6] || 0, Icon: LinkIcon, hue: "#a78bfa" },
- { label: "WA Taps", value: totalWATaps || 0, today: waTrend[6] || 0, Icon: MessageCircle, hue: C.success },
+ { label: "Views (30d)", value: totalViews || 0, today: viewsTrend[6] || 0, Icon: Eye, hue: C.info },
+ { label: "Page visits (all time)", value: minipageStats.visits || 0, today: visitsTrend[6] || 0, Icon: LinkIcon, hue: "#a78bfa" },
+ // Counts WhatsApp AND call taps, deduped per visitor, over a ROLLING 30 days
+ // (get_salesman_analytics p_cutoff). It falls as old taps age out -- a seller
+ // read 90 -> 88 as "upgrading lost my taps". Say both facts on the tile.
+ { label: "WhatsApp + call taps (30d)", value: totalWATaps || 0, today: waTrend[6] || 0, Icon: MessageCircle, hue: C.success },
  { label: "Live Listings", value: available.length, today: null, Icon: Car, hue: null },
  ];
  const todayTotal = (viewsTrend[6] || 0) + (visitsTrend[6] || 0) + (waTrend[6] || 0);
@@ -612,7 +615,7 @@ export default function DashboardTab({
  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: `1px solid ${C.line}` }}>
  {[
  { label: "Views", value: totalViews || 0, today: viewsTrend[6] || 0 },
- { label: "WA Taps", value: totalWATaps || 0, today: waTrend[6] || 0 },
+ { label: "WhatsApp + call taps", value: totalWATaps || 0, today: waTrend[6] || 0 },
  { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", today: 0 },
  ].map(({ label, value, today }, i, arr) => (
  <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
