@@ -191,7 +191,7 @@ export default function JadiSalesmanKeretaArticle() {
                 Tiada kadar komisen standard yang ditetapkan oleh undang-undang — setiap dealer tetapkan sendiri. Secara umum ada tiga bentuk: peratusan daripada untung kasar unit, jumlah tetap bagi setiap kereta, atau peratusan daripada harga jual. Sebelum anda terima tawaran, tanya dengan jelas: komisen dikira daripada apa, bila dibayar, dan apa jadi kalau pembeli batal atau loan ditolak.
               </p>
               <p style={P}>
-                Penerangan penuh setiap struktur, dengan contoh kiraan, ada dalam panduan kami: <Link to="/articles/cara-kira-komisen-salesman-kereta" style={LINK}>Cara Kira Komisen Salesman Kereta Dengan Betul</Link>.
+                Penerangan penuh setiap struktur, dengan contoh kiraan, ada dalam panduan kami: <Link to="/articles/cara-kira-komisen-salesman-kereta" style={LINK}>Komisen Jual Kereta: Berapa & Cara Kira</Link>.
               </p>
             </section>
 
@@ -294,7 +294,7 @@ export default function JadiSalesmanKeretaArticle() {
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20 }}>Baca Seterusnya</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
                 {[
-                  { to: '/articles/cara-kira-komisen-salesman-kereta', cat: 'Komisen', title: 'Cara Kira Komisen Salesman Kereta Dengan Betul' },
+                  { to: '/articles/cara-kira-komisen-salesman-kereta', cat: 'Komisen', title: 'Komisen Jual Kereta: Berapa & Cara Kira' },
                   { to: '/articles/cara-pindah-milik-kereta-mysikap', cat: 'Dokumen', title: 'Cara Pindah Milik Kereta di MySikap' },
                 ].map(({ to, cat, title }) => (
                   <Link key={to} to={to} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, textDecoration: 'none', display: 'block' }}>

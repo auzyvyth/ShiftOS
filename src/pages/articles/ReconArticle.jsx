@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Apa beza kereta recon dan kereta terpakai di Malaysia? Panduan lengkap tentang kelebihan, kelemahan, kos tersembunyi, dan mana yang lebih berbaloi untuk pembeli Malaysia 2026.',
   datePublished: '2026-06-13',
-  dateModified: '2026-09-25',
+  dateModified: '2026-10-05',
   readMins: 8,
 };
 
@@ -281,7 +281,7 @@ export default function ReconArticle() {
                   'Untuk recon: periksa kerosakan akibat iklim (getah rosak, pendawaian)',
                   'Pastikan nombor enjin dan casis sepadan dengan dokumen JPJ',
                   'Semak jika kenderaan pernah direkodkan dalam kemalangan',
-                  'Dapatkan Puspakom B5 (dan B7 jika ada HP) sebelum bayar deposit penuh',
+                  'Dapatkan Puspakom B5 (dan B7 jika anda ambil loan) sebelum bayar deposit penuh',
                 ].map((item, i) => (
                   <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                     <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 12, flexShrink: 0, marginTop: 1 }}>{String(i + 1).padStart(2, '0')}</span>
@@ -309,7 +309,7 @@ export default function ReconArticle() {
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20 }}>Baca Seterusnya</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
                 {[
-                  { to: '/articles/apa-itu-puspakom-b5-b7', cat: 'Puspakom', title: 'Apa Itu Puspakom B5 & B7? Panduan Penuh 2026' },
+                  { to: '/articles/apa-itu-puspakom-b5-b7', cat: 'Puspakom', title: 'Puspakom B5 & B7 Untuk Apa? Beza, Kos & Bila Perlu' },
                   { to: '/articles/cara-pindah-milik-kereta-mysikap', cat: 'Pindah Milik', title: 'Cara Pindah Milik Kereta Online Guna MySikap 2026' },
                 ].map(({ to, cat, title }) => (
                   <Link key={to} to={to} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, textDecoration: 'none', display: 'block' }}>
