@@ -2217,6 +2217,26 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-12: Bank officer inbox — send the loan file, get the answer back (2026-10-05)** —
+  each partner bank has a named F&I/credit officer with their own XDrive login.
+  The seller ticks banks on the loan comparison (step 4 "Which banks to try"),
+  presses send, and the buyer's file + documents land in that officer's inbox;
+  the officer marks it approved / rejected / needs more docs, and the result
+  comes back onto the lead. Why: replaces the WhatsApp-the-PDF loop and gives a
+  real approval rate per bank. Builds on what exists: `src/components/loans/
+  LoanDesk.jsx` already holds loan applications and a read-only share link
+  (`ensure_loan_share_token` / `get_loan_share`); this adds a bank-side login
+  that can WRITE a status, which must be a role + RLS, never the share token.
+  Constraints: (1) PDPA s.8 - buyer must consent, per bank, before their IC /
+  payslips go to that bank (checked 2026-10-05: disclosure to a third party
+  needs the buyer's consent for that purpose). (2) Each bank must sign up; a
+  bank officer account is a partnership, not a feature. (3) Consumer Credit Act
+  2025 (in force 1 Mar 2026, licensing from 1 Jun 2026): its Schedule 3 credit
+  services list (debt collection, repossession, debt counselling, crowdlending,
+  impaired-loan buying) does not name loan referral, but get a lawyer's view
+  before XDrive takes any fee from a bank. (4) Documents are sensitive: storage
+  bucket with per-bank RLS + expiry, not email.
+
 - **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
   the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
   and buyers stall on battery uncertainty (each 1% of State of Health ~1.2-1.6%
