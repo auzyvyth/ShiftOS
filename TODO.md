@@ -2301,8 +2301,8 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   Blockers: our presenter is driven by listings (used cars); a new-car SA has no
   listing per variant. Decide whether new-car SAs are a target before building.
   Possible channel: the same Instagram ad slot aimed at SAs.
-  2026-10-05: rebate line SHIPPED in the presenter (`netPrice`). Insurance/NCD
-  rows, variants side by side and the documents list are still open.
+  2026-10-05: rebate line and Docs screen SHIPPED in the presenter. Insurance/NCD
+  rows and variants side by side are still open.
 - **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
   FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
   comparison, presses "Send to loan desk", and the buyer's file + documents +

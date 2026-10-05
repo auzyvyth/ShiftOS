@@ -1182,6 +1182,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
   never counted as the buyer's deposit.
+- **Docs screen = what the bank asks the BUYER for** (top-bar "Docs", list in
+  `liveCopy.js docsList`). One list for new, used and recon: the car does not change
+  it, how the buyer earns does (Employee | Own business). Always says each bank sets
+  its own list, and "never post your IC or payslip in the comments". The top bar must
+  fit three labels + four buttons at 360px in BM; check it after adding a button.
 - **Presenter language (EN/BM) is the presenter's OWN switch** (top-bar "EN"/"BM"
   button), not the app's i18n language: a seller may run the dashboard in one and
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the

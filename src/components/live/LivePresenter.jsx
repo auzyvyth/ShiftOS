@@ -71,7 +71,8 @@ const fmtPhone = (raw) => {
 };
 
 export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose }) {
-  const [mode, setMode] = useState('cars'); // 'cars' | 'budget'
+  const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
+  const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   const [adjustOpen, setAdjustOpen] = useState(false);
@@ -380,6 +381,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; }
         .lp-row.lp-over { opacity: .62; }
+        .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; }
+        .lp-docs .lp-name { white-space: normal; }
+        .lp-docs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+        .lp-docs li { display: flex; align-items: center; gap: 12px; font-size: clamp(16px, 4.8cqw, 26px); font-weight: 700; color: #0f1115; line-height: 1.25; }
+        .lp-docs li span { flex-shrink: 0; width: 1.6em; height: 1.6em; border-radius: 8px; background: var(--lp-grad); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .8em; font-variant-numeric: tabular-nums; }
+        .lp-top > .lp-seg { min-width: 0; }
+        .lp-top > .lp-seg button { flex: 1 1 auto; padding: 0 8px; font-size: 13px; }
+        .lp-tools { display: flex; gap: 8px; flex-shrink: 0; }
+        /* Three mode labels + four buttons must share one row on a 360px phone
+           (BM "Dokumen" is the longest label), so the bar tightens there. */
+        @container (max-width: 400px) {
+          .lp-top { padding: 8px; gap: 6px; }
+          .lp-tools { gap: 5px; }
+          .lp-top .lp-iconbtn { width: 36px; height: 36px; }
+          .lp-top > .lp-seg { padding: 3px; gap: 2px; }
+          .lp-top > .lp-seg button { padding: 0 6px; font-size: 12px; }
+        }
         .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
         .lp-report { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
         .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #0f1115; margin: 0; }
@@ -446,9 +464,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           <div className="lp-seg" role="group" aria-label="Show">
             <button type="button" aria-pressed={mode === 'cars'} onClick={() => setMode('cars')}>{t.cars}</button>
             <button type="button" aria-pressed={mode === 'budget'} onClick={() => setMode('budget')}>{t.budget}</button>
+            <button type="button" aria-pressed={mode === 'docs'} onClick={() => setMode('docs')}>{t.docs}</button>
           </div>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="lp-tools">
           {/* Shows the language on screen now; tap to switch. */}
           <button className="lp-iconbtn lp-lang" onClick={toggleLang} aria-label={t.langLabel}>
             {lang === 'ms' ? 'BM' : 'EN'}
@@ -459,7 +478,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <Contact size={17} />
             </button>
           )}
-          {!report && (
+          {!report && mode !== 'docs' && (
             <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
               <SlidersHorizontal size={17} />
             </button>
@@ -471,7 +490,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       {report ? <LiveReport report={report} onDone={onClose} t={t} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
-        {adjustOpen && (
+        {adjustOpen && mode !== 'docs' && (
           <div className="lp-card lp-adjust">
             <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
               <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
@@ -594,6 +613,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           </>)}
 
           <p className="lp-cta">{t.cta(idx + 1)}</p>
+        </div>
+        ) : mode === 'docs' ? (
+        /* Docs: what the bank asks the BUYER for. The car (new, used, recon)
+           does not change it; how the buyer earns does. */
+        <div className="lp-card lp-docs">
+          <h2 className="lp-name">{t.docsTitle}</h2>
+          <div className="lp-seg" role="group" aria-label={t.docsTitle}>
+            <button type="button" aria-pressed={docsKind === 'employee'} onClick={() => setDocsKind('employee')}>{t.docsEmployee}</button>
+            <button type="button" aria-pressed={docsKind === 'self'} onClick={() => setDocsKind('self')}>{t.docsSelf}</button>
+          </div>
+          <ol>
+            {t.docsList[docsKind].map((d, i) => <li key={d}><span>{i + 1}</span>{d}</li>)}
+          </ol>
+          <p className="lp-note" style={{ margin: 0 }}>{t.docsAnyCar} {t.docsNote}</p>
+          <p className="lp-salary" style={{ margin: 0 }}><b>{t.docsPrivacy}</b></p>
         </div>
         ) : (<>
         {/* Budget: the viewer's number in, the cars that fit out. */}
