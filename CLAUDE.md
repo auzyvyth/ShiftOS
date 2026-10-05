@@ -776,6 +776,13 @@ across all sections, one state each).
   (migration `20260926c`) — never re-do them client-side. Messaging is a human
   `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
   s.43 makes a "stop" final).
+- **Account state is answered ONCE: `src/utils/accountState.js`** (`accessState`,
+  `reviewState`, `billingState`, `headlineState`, `isPlatformAccount`). Never read
+  `approval_status` / `is_active` / `subscription_status` raw in a console tab and
+  paint it — each has moved meaning (pending is NOT locked out; subscription_status
+  means nothing for a salesman; is_active=false without suspended_at is not a
+  suspension; "active" is not "paid"). Nothing is dimmed or coloured without a word.
+  "Paying" = `billingState(a).paying` everywhere (Home, Billing).
 - Global search lives in the console header and searches accounts, pending
   listings and waitlist out of already-loaded state — no queries. Per-tab search
   boxes are for filtering within a tab, not for finding someone.

@@ -70,6 +70,29 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
+Pattern: the console painted raw columns (approval_status, is_active,
+subscription_status) whose meaning had moved. Fixed in this pass: one helper,
+`src/utils/accountState.js` (access / ID check / billing, each in words, tested by
+`npm run test:accountstate`), used by Accounts, Billing and Home. Home "New sellers"
+no longer claims they can't reach their dashboard; Billing names why a row is quiet
+instead of greying it, "Paying" = payment logged (was a dropdown: RM 2,398 phantom
+MRR), Premium sellers counted, platform account excluded; "Live listings 74" ->
+"Cars for sale" (status available on the public view, 33). Premium now shows
+`AccountReviewBanner`; its false "goes live the moment you're approved" line is gone.
+Open — OWNER DECISIONS, do not pick a side:
+- [ ] What is seller approval FOR? Today it only gates `find_me_reply`. (A) keep it an
+  identity check (current copy says so) or (B) make it a real gate on cars.
+- [ ] A pending DEALER's cars go live with NO review: CarForm.jsx:2125 only sends
+  salesmen to `pending_approval`, and DealerOnboarding.jsx:486 / SalesmanOnboarding.jsx:543
+  write `is_active: true` themselves, which `public_car_listings` trusts. Nothing in
+  the DB enforces either (status is client-chosen). Fix belongs in a trigger.
+- [ ] `is_active` is self-writable (`guard_profile_approval_cols` does not cover it).
+  Verify a suspended seller cannot flip it back on (suspended_at checks may cover it).
+- [ ] "Fast" + "99test" (owner's fasttrackautos test emails): is_active=false, never
+  suspended, subscription 'active', no payment. Console now labels them "Switched off
+  · no reason recorded" / "Marked active · no payment logged". Fix, delete or keep?
+
 ## PAY-2: Automatic payment confirmation (gateway + webhook) — researched 2026-10-05, PARKED by owner
 Owner: "we don't need this for now". Today a seller pays the static DuitNow QR
 (`public/payment-qr.png`) and the owner presses "Log RM35 payment" in /platform.

@@ -12,6 +12,7 @@ import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/us
 import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
+import { accessState, billingState, isPlatformAccount } from "../utils/accountState";
 import FunnelTab from "../components/platform/FunnelTab";
 import EngagementTab from "../components/platform/EngagementTab";
 import UserApprovalsTab from "../components/platform/UserApprovalsTab";
@@ -86,64 +87,79 @@ const StatCard = ({ label, value, sub, color = "#e5e7eb" }) => (
   </div>
 );
 
-// Billing is the ONE place MRR and subscription mix are stated (P2). The same
-// Total / Active / Trial / Expired / MRR figures used to render on Dealers and
-// on Platform Stats as well -- three surfaces, one truth, no indication which
-// was canonical, and they disagreed: the per-plan chips here multiplied plan
-// price by EVERY dealer on that plan, counting trial and expired accounts as
-// revenue. Only a paying dealer is revenue, and it is counted here only.
-function BillingTab({ dealers, dealerStats }) {
-  const rows = dealers.map(d => {
-    const cfg = PLAN_CONFIG[d.plan] || null;
-    const ds = dealerStats[d.id] || {};
-    return { ...d, cfg, ds };
+// Billing is the ONE place MRR and subscription mix are stated (P2).
+//
+// "Paying" means money was logged, not that a dropdown says active: every
+// count here comes from billingState (src/utils/accountState.js). It used to
+// read subscription_status === 'active', which counted two dealers who had
+// never paid (RM 2,398 of MRR that did not exist) and the platform's own
+// account. Standalone Premium sellers pay too and were missing entirely.
+//
+// No row is dimmed without a word. The old table set opacity 0.45 on
+// is_active=false and said nothing, so an account switched off with no reason
+// on file looked the same as one with no cars yet.
+function BillingTab({ dealers, salesmen, dealerStats }) {
+  const rows = dealers.filter(d => !isPlatformAccount(d) && d.account_status !== 'deleted').map(d => ({
+    ...d, cfg: PLAN_CONFIG[d.plan] || null, ds: dealerStats[d.id] || {}, bill: billingState(d), acc: accessState(d),
+  }));
+  const sellers = salesmen.filter(s => !s.dealer_id && s.account_status !== 'deleted').map(s => ({ ...s, bill: billingState(s) }));
+  const premiumPrice = PLAN_CONFIG.salesman_full?.price ?? 0;
+
+  const tally = (list) => ({
+    paying: list.filter(r => r.bill.paying).length,
+    free: list.filter(r => r.bill.id === 'trial' || r.bill.id === 'free_month').length,
+    owed: list.filter(r => ['lapsed', 'unpaid', 'unconfirmed'].includes(r.bill.id)).length,
   });
-  const paying = r => r.subscription_status === 'active';
+  const d = tally(rows);
+  const sl = tally(sellers.filter(r => r.bill.id !== 'lite'));
+  const lite = sellers.filter(r => r.bill.id === 'lite').length;
+  const dealerMrr = rows.filter(r => r.bill.paying).reduce((sum, r) => sum + (r.cfg?.price ?? 0), 0);
+  const sellerMrr = sl.paying * premiumPrice;
+  const unconfirmed = rows.filter(r => r.bill.id === 'unconfirmed');
+
   const plans = {};
   rows.forEach(r => {
     const k = r.plan || 'none';
     if (!plans[k]) plans[k] = { total: 0, paying: 0 };
     plans[k].total += 1;
-    if (paying(r)) plans[k].paying += 1;
+    if (r.bill.paying) plans[k].paying += 1;
   });
-  const counts = {
-    total: rows.length,
-    active: rows.filter(paying).length,
-    trial: rows.filter(r => r.subscription_status === 'trial').length,
-    expired: rows.filter(r => r.subscription_status === 'expired').length,
-  };
-  // Unknown / legacy plans count 0 rather than silently inflating MRR.
-  const mrr = rows.filter(paying).reduce((sum, r) => sum + (r.cfg?.price ?? 0), 0);
+  const mixTotal = d.paying + d.free + d.owed;
 
   return (
     <div>
       <div style={{ marginBottom: 18 }}>
         <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>Billing</p>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>The only place revenue and plan mix are stated. Counts are dealers; MRR counts paying dealers only.</p>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280' }}>The only place revenue is stated. "Paying" means a payment was logged. Your own platform account is left out.</p>
       </div>
 
-      <div className="adm-stat4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 22 }}>
-        <StatCard label="Est. MRR" value={`RM ${mrr.toLocaleString()}`} color="#dc2626" sub="Sum of paying plan prices" />
-        <StatCard label="Paying" value={counts.active} color="#4ade80" />
-        <StatCard label="On trial" value={counts.trial} color="#facc15" />
-        <StatCard label="Expired" value={counts.expired} color="#f87171" />
-        <StatCard label="Total dealers" value={counts.total} />
+      <div className="adm-stat4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 14 }}>
+        <StatCard label="Est. MRR" value={`RM ${(dealerMrr + sellerMrr).toLocaleString()}`} color="#dc2626" sub={`Dealers RM ${dealerMrr.toLocaleString()} · Premium sellers RM ${sellerMrr.toLocaleString()}`} />
+        <StatCard label="Paying dealers" value={d.paying} color="#4ade80" sub={`of ${rows.length} dealers`} />
+        <StatCard label="Paying Premium sellers" value={sl.paying} color="#4ade80" sub={`${sl.free} on free month · ${lite} on free Lite`} />
+        <StatCard label="Owed / lapsed" value={d.owed + sl.owed} color="#f87171" sub="trial ended, lapsed, or never paid" />
       </div>
 
-      {/* Subscription mix */}
+      {unconfirmed.length > 0 && (
+        <div style={{ background: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.25)', borderRadius: 10, padding: '10px 14px', marginBottom: 20, fontSize: 12.5, color: '#fde68a', lineHeight: 1.6 }}>
+          {unconfirmed.length} {unconfirmed.length === 1 ? 'dealer is' : 'dealers are'} set to "active" with no payment ever marked received ({unconfirmed.map(r => r.dealership || r.email).join(', ')}). They are not counted as revenue. Open the account in Accounts to mark a payment, or set it back to trial or expired.
+        </div>
+      )}
+
+      {/* Dealer subscription mix */}
       <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-        <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Subscription mix</p>
+        <p style={{ fontSize: 11, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>Dealer subscription mix</p>
         <div style={{ display: 'flex', gap: 0, height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 12, background: 'rgba(255,255,255,0.04)' }}>
-          {counts.total > 0 && (
+          {mixTotal > 0 && (
             <>
-              <div style={{ flex: counts.active, background: '#16a34a' }} />
-              <div style={{ flex: counts.trial, background: '#ca8a04' }} />
-              <div style={{ flex: counts.expired, background: '#dc2626' }} />
+              <div style={{ flex: d.paying, background: '#16a34a' }} />
+              <div style={{ flex: d.free, background: '#2563eb' }} />
+              <div style={{ flex: d.owed, background: '#dc2626' }} />
             </>
           )}
         </div>
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-          {[{ label: 'Paying', count: counts.active, color: '#16a34a' }, { label: 'Trial', count: counts.trial, color: '#ca8a04' }, { label: 'Expired', count: counts.expired, color: '#dc2626' }].map(({ label, count, color }) => (
+          {[{ label: 'Paying', count: d.paying, color: '#16a34a' }, { label: 'On trial', count: d.free, color: '#2563eb' }, { label: 'Owed / lapsed / unconfirmed', count: d.owed, color: '#dc2626' }].map(({ label, count, color }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
               <span style={{ fontSize: 12, color: '#9ca3af' }}>{label}: <strong style={{ color: '#e5e7eb' }}>{count}</strong></span>
@@ -158,7 +174,7 @@ function BillingTab({ dealers, dealerStats }) {
           const cfg = PLAN_CONFIG[plan];
           return (
             <div key={plan} style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 14px', minWidth: 120 }}>
-              <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{cfg?.label || plan}</p>
+              <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{cfg?.label || (plan === 'none' ? 'No plan' : plan)}</p>
               <p style={{ fontSize: 20, fontWeight: 700, color: '#f0f0f0' }}>{c.total}</p>
               <p style={{ fontSize: 10, color: '#4b5563' }}>
                 {cfg ? `${c.paying} paying · RM ${(cfg.price * c.paying).toLocaleString()} MRR` : `${c.paying} paying`}
@@ -174,7 +190,7 @@ function BillingTab({ dealers, dealerStats }) {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ background: 'rgba(255,255,255,0.025)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                {['Dealer', 'Plan', 'Price/mo', 'Listings', 'Seats', 'Status'].map(h => (
+                {['Dealer', 'Plan', 'Price/mo', 'Listings', 'Seats', 'Billing'].map(h => (
                   <th key={h} style={{ textAlign: 'left', padding: '10px 14px', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -182,35 +198,42 @@ function BillingTab({ dealers, dealerStats }) {
             <tbody>
               {rows.length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#4b5563' }}>No dealers.</td></tr>
-              ) : rows.map(r => (
-                <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', opacity: r.is_active === false ? 0.45 : 1 }}>
-                  <td style={{ padding: '10px 14px' }}>
-                    <p style={{ fontWeight: 600, color: '#f0f0f0' }}>{r.dealership || r.full_name || '—'}</p>
-                    <p style={{ fontSize: 10, color: '#6b7280' }}>{r.email}</p>
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>
-                    {r.cfg ? (
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.1)', borderRadius: 4, padding: '2px 7px' }}>{r.cfg.label}</span>
-                    ) : (
-                      <span style={{ fontSize: 11, color: '#4b5563' }}>{r.plan || '—'}</span>
-                    )}
-                  </td>
-                  <td style={{ padding: '10px 14px', color: '#9ca3af' }}>
-                    {r.cfg ? `RM ${r.cfg.price.toLocaleString()}` : '—'}
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <UsageBar used={r.ds.available ?? r.ds.listings ?? 0} cap={r.cfg?.listingCap ?? null} danger={(r.ds.available ?? 0) >= (r.cfg?.listingCap ?? Infinity) * 0.8} />
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <UsageBar used={r.ds.team ?? 0} cap={r.cfg?.seatCap ?? null} danger={(r.ds.team ?? 0) >= (r.cfg?.seatCap ?? Infinity) * 0.8} />
-                  </td>
-                  <td style={{ padding: '10px 14px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: r.subscription_status === 'active' ? '#4ade80' : r.subscription_status === 'trial' ? '#facc15' : '#f87171' }}>
-                      {r.subscription_status || '—'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              ) : rows.map(r => {
+                const cars = r.ds.listings ?? 0;
+                const team = r.ds.team ?? 0;
+                // Say WHY a row looks quiet instead of greying it out.
+                const notes = [];
+                if (r.acc.id !== 'in') notes.push({ text: r.acc.text, color: r.acc.color });
+                if (!cars && !team) notes.push({ text: 'No cars and no team yet', color: '#6b7280' });
+                return (
+                  <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <td style={{ padding: '10px 14px' }}>
+                      <p style={{ fontWeight: 600, color: '#f0f0f0' }}>{r.dealership || r.full_name || 'No name'}</p>
+                      <p style={{ fontSize: 10, color: '#6b7280' }}>{r.email}</p>
+                      {notes.map(n => <p key={n.text} style={{ fontSize: 10.5, color: n.color, marginTop: 2 }}>{n.text}</p>)}
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      {r.cfg ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(220,38,38,0.1)', borderRadius: 4, padding: '2px 7px' }}>{r.cfg.label}</span>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#4b5563' }}>{r.plan || 'No plan'}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '10px 14px', color: '#9ca3af' }}>
+                      {r.cfg ? `RM ${r.cfg.price.toLocaleString()}` : '—'}
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <UsageBar used={r.ds.available ?? r.ds.listings ?? 0} cap={r.cfg?.listingCap ?? null} danger={(r.ds.available ?? 0) >= (r.cfg?.listingCap ?? Infinity) * 0.8} />
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <UsageBar used={team} cap={r.cfg?.seatCap ?? null} danger={team >= (r.cfg?.seatCap ?? Infinity) * 0.8} />
+                    </td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: r.bill.color }}>{r.bill.text}</span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -512,7 +535,7 @@ export default function AdminPage() {
     // a full IC has no business crossing the wire to build a table.
     const { data: accountData } = await supabase
       .from("profiles")
-      .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at, approval_status, rejection_reason, onboarding_complete, signup_reminder_sent_at")
+      .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at, approval_status, rejection_reason, onboarding_complete, signup_reminder_sent_at, plan_expires_at, premium_trial_started_at")
       .in("role", ["dealer", "owner", "superadmin", "salesman"])
       .order("created_at", { ascending: false });
 
@@ -523,17 +546,24 @@ export default function AdminPage() {
     setSalesmen(allAccounts.filter(a => a.role === "salesman"));
 
     // Global stats
-    const active = dealers.filter(d => d.subscription_status === "active").length;
-    const trial  = dealers.filter(d => d.subscription_status === "trial").length;
-    const expired = dealers.filter(d => d.subscription_status === "expired").length;
+    // Customers only: the platform's own account is not a dealer, and a
+    // signup that never finished is not one yet. "Paying" comes from the same
+    // billingState Billing uses, so Home and Billing cannot disagree.
+    const realDealers = dealers.filter(d => !isPlatformAccount(d) && d.account_status !== "deleted" && d.onboarding_complete);
+    const active = realDealers.filter(d => billingState(d).paying).length;
+    const trial  = realDealers.filter(d => billingState(d).id === "trial").length;
+    const expired = realDealers.filter(d => billingState(d).id === "lapsed").length;
 
+    // "Live" = a buyer can see it and buy it today. This used to count every
+    // car_listings row ever written, sold, rejected and unpublished included
+    // (74 when 33 were for sale).
     const { count: totalListings } = await supabase
-      .from("car_listings").select("*", { count: "exact", head: true });
+      .from("public_car_listings").select("id", { count: "exact", head: true }).eq("status", "available");
     const { count: totalEnquiries } = await supabase
       .from("whatsapp_enquiries").select("*", { count: "exact", head: true });
 
     // No mrr here: revenue is computed once, in BillingTab (P2).
-    setStats({ total: dealers.length, active, trial, expired,
+    setStats({ total: realDealers.length, active, trial, expired,
       totalListings: totalListings || 0, totalEnquiries: totalEnquiries || 0 });
 
     // Activity for EVERY account, from one RPC (A4). Salesmen had no counts at
@@ -924,19 +954,22 @@ export default function AdminPage() {
           <QueueCard label="Cars to approve" n={pendingListings.length}
             sub={pendingListings.length ? (listingWait || "waiting") : "none waiting"}
             onClick={() => openReview("listings")} />
-          <QueueCard label="New sellers" n={pendingSignupCount}
-            sub={pendingSignupCount ? "cannot reach their dashboard yet" : "none waiting"}
+          <QueueCard label="ID checks: new sellers" n={pendingSignupCount}
+            // Waiting sellers are NOT locked out: since 20260912b/c they use
+            // their dashboard and list cars while they wait. This card used to
+            // say "cannot reach their dashboard yet" -- false for every one.
+            sub={pendingSignupCount ? "already in their dashboard · waiting on you" : "none waiting"}
             onClick={() => openReview("signups")} />
-          <QueueCard label="ID checks" n={pendingKycCount}
+          <QueueCard label="ID checks: Verified badge" n={pendingKycCount}
             sub={pendingKycCount ? "waiting on the Verified badge" : "none waiting"}
             onClick={() => openReview("ids")} />
         </div>
 
         <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Platform</p>
         <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>
-          <HealthStat label="Dealers" value={stats.total} sub={`${stats.active} active · ${stats.trial} on trial`} />
+          <HealthStat label="Dealers" value={stats.total} sub={`${stats.active} paying · ${stats.trial} on trial`} />
           <HealthStat label="Salesmen" value={salesmen.length} sub={`${salesmen.filter(s => !s.dealer_id).length} standalone`} />
-          <HealthStat label="Live listings" value={stats.totalListings} />
+          <HealthStat label="Cars for sale" value={stats.totalListings} sub="live on the marketplace now" />
           <HealthStat label="Waitlist" value={waitlist.length} sub="not signed up yet" />
         </div>
       </div>
@@ -1647,7 +1680,7 @@ export default function AdminPage() {
                   breakdown that used to sit here were the same figures Billing
                   states, and the third copy of them (P2). Removed, not moved. */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
-                <StatCard label="Total Listings" value={stats.totalListings.toLocaleString()} />
+                <StatCard label="Cars for sale" value={stats.totalListings.toLocaleString()} sub="live on the marketplace now" />
                 <StatCard label="Total Enquiries" value={stats.totalEnquiries.toLocaleString()} />
                 <StatCard label="Dealers" value={stats.total} sub="mix and revenue in Billing" />
                 <StatCard label="Salesmen" value={salesmen.length} sub={`${salesmen.filter(s => !s.dealer_id).length} standalone`} />
@@ -1866,7 +1899,7 @@ export default function AdminPage() {
 
           ) : activeTab === "billing" ? (
             /* ── BILLING TAB ── */
-            <BillingTab dealers={dealers} dealerStats={accountStats} />
+            <BillingTab dealers={dealers} salesmen={salesmen} dealerStats={accountStats} />
           ) : null}
         </div>
           </div>
