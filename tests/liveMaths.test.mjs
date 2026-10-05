@@ -2,6 +2,7 @@
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
+import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -80,6 +81,14 @@ is('rebate: none typed', netPrice({ id: 'a', selling_price: 75000 }, {}).net, 75
 is('rebate: capped at the price', netPrice({ id: 'a', selling_price: 5000 }, { a: 9000 }).net, 0);
 const rb = budgetMatches([{ id: 'a', selling_price: 75000 }], { maxMonthly: 100000, deposit: 5000, years: 7, rate: 3, basis: 'eir', rebates: { a: 3000 } });
 is('rebate: budget uses the net price', rb.fits[0].monthly, monthlyPayment(67000, 3, 84));
+
+// Accent colour: every result must carry white text, at the light end too.
+const readable = (hex) => contrastWithWhite(hexToRgb(accentTheme(hex).light)) >= 3;
+is('accent: every preset is readable', ACCENT_PRESETS.every(readable), true);
+is('accent: default red is unchanged', accentTheme(DEFAULT_ACCENT).accent, DEFAULT_ACCENT);
+is('accent: yellow is darkened until readable', readable('#FFEB3B') && accentTheme('#FFEB3B').accent !== '#FFEB3B', true);
+is('accent: white is darkened until readable', readable('#FFFFFF'), true);
+is('accent: junk falls back to the default', accentTheme('nope').accent, DEFAULT_ACCENT);
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

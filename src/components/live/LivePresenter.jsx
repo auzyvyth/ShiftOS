@@ -11,6 +11,7 @@ import {
   netPrice,
 } from '../../utils/liveMaths';
 import { LIVE_COPY, initialLiveLang, saveLiveLang } from './liveCopy';
+import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -93,6 +94,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   const [lang, setLang] = useState(() => initialLiveLang(i18n.language));
+  // Accent colour: the seller's pick, kept readable for white text (liveAccent.js).
+  const [accentPick, setAccentPick] = useState(initialLiveAccent);
+  const theme = accentTheme(accentPick);
+  const pickAccent = (hex) => { setAccentPick(hex); saveLiveAccent(hex); };
   const t = LIVE_COPY[lang];
   const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; saveLiveLang(next); return next; });
   const startedAt = useRef(new Date());
@@ -268,7 +273,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
 
   return createPortal(
-    <div className="lp">
+    <div className="lp" style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
       {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
           one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
@@ -279,7 +284,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           thin to read on camera. The desktop block at the end of the styles is
           the only place that layout lives. */}
       <style>{`
-        .lp { --lp-grad: linear-gradient(120deg, #F0472C 0%, #E8341B 45%, #B8240F 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
+        .lp { --lp-grad: linear-gradient(120deg, var(--lp-a1) 0%, var(--lp-a) 45%, var(--lp-a2) 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
         /* Owner, 2026-10-05: the flat beige felt dead on stream. Colour lives in
            the stage BEHIND the cards (the brand's red glow in the corners of
@@ -288,9 +293,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            read through a phone camera filming a monitor. */
         .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
           background:
-            radial-gradient(75% 45% at 0% 0%, rgba(232,52,27,.30), transparent 70%),
-            radial-gradient(70% 45% at 100% 100%, rgba(232,52,27,.28), transparent 70%),
-            radial-gradient(50% 30% at 100% 10%, rgba(232,52,27,.10), transparent 70%),
+            radial-gradient(75% 45% at 0% 0%, rgba(var(--lp-rgb),.30), transparent 70%),
+            radial-gradient(70% 45% at 100% 100%, rgba(var(--lp-rgb),.28), transparent 70%),
+            radial-gradient(50% 30% at 100% 10%, rgba(var(--lp-rgb),.10), transparent 70%),
             #EBEAE8; display: flex; flex-direction: column; container-type: size; }
         .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
@@ -299,13 +304,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-iconbtn[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
         .lp-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
-        .lp-card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(120,40,20,.14), 0 1px 2px rgba(33,31,30,.08); }
+        .lp-card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(var(--lp-rgb),.14), 0 1px 2px rgba(33,31,30,.08); }
         /* The quotation sheet (the poster sellers hold up on lives): title, then
            photo | price breakdown, then contact | tenure table, then the comment
            bar. Sized in container units so it fits the stage with no scroll. */
         .lp-sheet { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 44px); line-height: 1; letter-spacing: .02em; color: #fff; background: var(--lp-grad); border-radius: 8px; padding: 6px 10px 3px; box-shadow: 0 4px 14px rgba(232,52,27,.35); flex-shrink: 0; }
+        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 44px); line-height: 1; letter-spacing: .02em; color: #fff; background: var(--lp-grad); border-radius: 8px; padding: 6px 10px 3px; box-shadow: 0 4px 14px rgba(var(--lp-rgb),.35); flex-shrink: 0; }
         .lp-tt { min-width: 0; }
         .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(24px, 7.4cqw, 44px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-spec { font-size: clamp(11px, 3cqw, 15px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -337,7 +342,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten tr.lp-t { cursor: pointer; }
         .lp-ten tr.lp-t:hover td { background: rgba(15,17,21,.04); }
         /* Vertical gradient so the two cells line up with no seam between them. */
-        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: linear-gradient(180deg, #F0472C 0%, #E8341B 50%, #C42A12 100%); color: #fff; border-top-color: transparent; }
+        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: linear-gradient(180deg, var(--lp-a1) 0%, var(--lp-a) 50%, var(--lp-a2) 100%); color: #fff; border-top-color: transparent; }
         .lp-ten tr.lp-def td:last-child { text-shadow: 0 1px 8px rgba(80,10,0,.3); }
         .lp-ten tr.lp-def td:last-child { font-size: clamp(22px, 7cqw, 40px); }
         .lp-ten tr.lp-def td:first-child { border-radius: 8px 0 0 8px; }
@@ -360,7 +365,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
         .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
-        .lp-navbtn.lp-next { background: var(--lp-grad); border-color: transparent; color: #fff; box-shadow: 0 6px 20px rgba(232,52,27,.4); }
+        .lp-navbtn.lp-next { background: var(--lp-grad); border-color: transparent; color: #fff; box-shadow: 0 6px 20px rgba(var(--lp-rgb),.4); }
         .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
         .lp-money { display: flex; align-items: center; gap: 8px; height: clamp(56px, 15cqw, 80px); padding: 0 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; }
         .lp-money:focus-within { border-color: #0f1115; }
@@ -381,6 +386,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; }
         .lp-row.lp-over { opacity: .62; }
+        .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+        .lp-colours > span { flex-basis: 100%; font-size: 12px; font-weight: 700; color: #4b5563; }
+        .lp-sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); cursor: pointer; padding: 0; flex-shrink: 0; position: relative; overflow: hidden; }
+        .lp-sw[aria-pressed="true"], .lp-sw[data-on="1"] { box-shadow: 0 0 0 2px #0f1115; }
+        .lp-sw-any { background: conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444); }
+        .lp-sw-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
         .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; }
         .lp-docs .lp-name { white-space: normal; }
         .lp-docs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -514,6 +525,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
               </label>
             )}
+            <div className="lp-colours" role="group" aria-label={t.colour}>
+              <span>{t.colour}</span>
+              {ACCENT_PRESETS.map((c) => (
+                <button key={c} type="button" className="lp-sw" style={{ background: accentTheme(c).accent }}
+                  aria-label={c} aria-pressed={theme.accent === accentTheme(c).accent} onClick={() => pickAccent(c)} />
+              ))}
+              {/* Any colour; a too-light pick is darkened so white text stays readable. */}
+              <label className="lp-sw lp-sw-any" aria-label={t.colourAny}
+                data-on={ACCENT_PRESETS.every((c) => accentTheme(c).accent !== theme.accent) ? '1' : '0'}>
+                <input type="color" value={theme.accent.toLowerCase()} onChange={(e) => pickAccent(e.target.value)} />
+              </label>
+            </div>
             {basis === 'flat' && (
               <p className="lp-hint">
                 {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(rateFor(y))}%`).join(', '))}

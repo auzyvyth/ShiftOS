@@ -1187,6 +1187,12 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   it, how the buyer earns does (Employee | Own business). Always says each bank sets
   its own list, and "never post your IC or payslip in the comments". The top bar must
   fit three labels + four buttons at 360px in BM; check it after adding a button.
+- **Accent colour is the seller's pick** (Adjust > Colour: 8 presets + any colour,
+  remembered per device, `xd_live_accent`). Every red in the presenter CSS is a
+  variable (`--lp-a`, `--lp-a1`, `--lp-a2`, `--lp-rgb`) set from
+  `accentTheme()` in `src/utils/liveAccent.js`, which darkens a too-light pick until
+  white text passes 3:1 (bold text) at the gradient's light end. Never hardcode a
+  colour back into the presenter CSS, and never skip `accentTheme` for a new pick.
 - **Presenter language (EN/BM) is the presenter's OWN switch** (top-bar "EN"/"BM"
   button), not the app's i18n language: a seller may run the dashboard in one and
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the
