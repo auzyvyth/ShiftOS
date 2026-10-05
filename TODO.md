@@ -2287,6 +2287,20 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-13: Win the new-car SAs who go live with an Excel sheet (2026-10-05)** —
+  owner saw Proton, Perodua and Toyota SAs on TikTok Live filming a spreadsheet
+  calculator off their laptop, and an Instagram ad (Zweet Data) selling that
+  template for RM199.90 one-off. Proof the LIVE-1 habit exists, and a price anchor
+  (RM199.90 once vs RM35/month Premium). What their sheets have that
+  `LivePresenter.jsx` does not: (1) new-car OTR build-up (selling price +
+  insurance - NCD - rebate = loan), (2) variants side by side in one table,
+  (3) a documents-needed list (MyKad, licence, 3-6 months payslip, EPF, bank
+  statement). What we do better: generated from listings, budget tab, contact
+  off by default. Their sheets all show 2.20-2.30% FLAT (checked: X50 RM926/9y,
+  Emas 5 RM974.63/5y match flat maths) and a phone number on screen.
+  Blockers: our presenter is driven by listings (used cars); a new-car SA has no
+  listing per variant. Decide whether new-car SAs are a target before building.
+  Possible channel: the same Instagram ad slot aimed at SAs.
 - **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
   FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
   comparison, presses "Send to loan desk", and the buyer's file + documents +
