@@ -2236,6 +2236,16 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   impaired-loan buying) does not name loan referral, but get a lawyer's view
   before XDrive takes any fee from a bank. (4) Documents are sensitive: storage
   bucket with per-bank RLS + expiry, not email.
+  Research 2026-10-05 (owner asked: would a big-dealer salesman want this?):
+  banks already put "marketing executive - hire purchase" staff on dealers
+  (their job is the dealer relationship), and BNM lets a bank pay the DEALER a
+  handling fee of max RM600 per case and NO other payment. So at a big dealer
+  (Rasniaga, 22-yr recon importer) the salesman hands the file to the dealer's
+  loan admin or the bank's rep; this feature is redundant there and bypasses
+  the dealer's fee. Real users: standalone agents (Lite/Premium) and small
+  dealers with no bank rep. Fee-from-bank model looks blocked by the BNM rule
+  (re-check current BNM text before any pricing). Linked salesmen should route
+  into their dealer's own LoanDesk, not out to banks.
 
 - **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
   the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
