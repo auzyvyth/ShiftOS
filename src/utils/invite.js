@@ -58,6 +58,39 @@ export async function claimStoredInvite() {
   }
 }
 
+// What claim_referral's answer means, in words a seller can act on.
+export const CLAIM_MESSAGES = {
+  ok: 'Done. You joined through their invite.',
+  self: "That's your own link name.",
+  unknown_code: "No seller uses that link name. Check the spelling.",
+  already_set: 'Your invite is already set.',
+  too_late: 'Invites can only be added in your first 14 days, before your first payment.',
+  rate_limited: 'Too many tries. Try again tomorrow.',
+  not_eligible: 'Only independent sellers can join through an invite.',
+};
+
+// The "Invited by" box (ReferralCard). Takes a bare link name or a whole
+// pasted invite link.
+export async function claimInviteCode(input) {
+  let code = String(input || '').trim();
+  try {
+    const u = new URL(code);
+    code = u.searchParams.get('invite') || u.pathname.split('/').filter(Boolean).pop() || '';
+  } catch {
+    // "xdrive.my/s/name" without https:// is not a URL to the parser.
+    const m = code.match(/invite=([A-Za-z0-9-]+)/);
+    code = m ? m[1] : code.split('?')[0].split('/').filter(Boolean).pop() || '';
+  }
+  if (!/^[A-Za-z0-9-]+$/.test(code)) {
+    return { result: 'unknown_code', message: CLAIM_MESSAGES.unknown_code };
+  }
+  code = code.toLowerCase().slice(0, 64);
+  const { data, error } = await supabase.rpc('claim_referral', { p_code: code });
+  if (error) return { result: 'error', message: "Couldn't save. Check your connection and try again." };
+  if (data === 'ok') clearInvite();
+  return { result: data, message: CLAIM_MESSAGES[data] || 'Something went wrong.' };
+}
+
 export function inviteUrl(slug) {
   return slug ? `https://xdrive.my/plans?invite=${encodeURIComponent(slug)}` : null;
 }

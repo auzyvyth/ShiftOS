@@ -233,7 +233,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const loadBilling = async (id) => {
     const [p, pays] = await Promise.all([
       supabase.from("profiles").select("plan_expires_at, referred_by, referred_at").eq("id", id).maybeSingle(),
-      supabase.from("subscription_payments").select("id, amount_myr, months, paid_on, note").eq("user_id", id)
+      supabase.from("subscription_payments").select("id, amount_myr, months, paid_on, note, voided_at").eq("user_id", id)
         .order("created_at", { ascending: false }).limit(12),
     ]);
     setBilling(b => (b?.id === id || !b ? {
@@ -373,6 +373,23 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       await loadBilling(a.id);
       return r;
     });
+
+  // Undo a payment logged by mistake or refunded (void_subscription_payment,
+  // migration 20261005a). Takes the months back off, and if the seller drops
+  // below two paid payments, takes their inviter's free month back too.
+  const voidPayment = (a, pay) => {
+    const reason = window.prompt(`Void the RM${Number(pay.amount_myr)} payment of ${fmtDate(pay.paid_on)}? This takes ${pay.months} month(s) of Premium back off. Reason:`);
+    if (reason === null) return;
+    return run(a.id, "Voiding payment", async () => {
+      const r = await supabase.rpc("void_subscription_payment", { p_payment: pay.id, p_reason: reason });
+      if (r.error) return r;
+      const { data } = await supabase.from("profiles")
+        .select("plan, plan_expires_at, payment_status, subscription_status").eq("id", a.id).maybeSingle();
+      if (data) onPatch(a.id, data);
+      await loadBilling(a.id);
+      return r;
+    });
+  };
 
   const counts = useMemo(() => ({
     all: accounts.length,
@@ -645,7 +662,25 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                 <Field label="Payments" value={
                   billing.payments === null ? "Couldn't load"
                     : billing.payments.length === 0 ? "None logged"
-                    : billing.payments.map(p => `${fmtDate(p.paid_on)} RM${Number(p.amount_myr)}`).join(", ")
+                    : (
+                      <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                        {billing.payments.map(p => (
+                          <span key={p.id} style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                            <span style={p.voided_at ? { textDecoration: "line-through", color: "#6b7280" } : undefined}>
+                              {fmtDate(p.paid_on)} RM{Number(p.amount_myr)}
+                            </span>
+                            {p.voided_at ? (
+                              <span style={{ fontSize: 11, color: "#6b7280" }}>voided</span>
+                            ) : (
+                              <button disabled={busy === open.id} onClick={() => voidPayment(open, p)}
+                                style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", font: "inherit", fontSize: 11, padding: 0 }}>
+                                Void
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    )
                 } />
               </>
             )}

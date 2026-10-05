@@ -19,7 +19,7 @@ const PRICE = PLAN_CONFIG.salesman_full?.price ?? 35;
 const LITE_CAP = PLAN_CONFIG.salesman_lite?.listingCap ?? 10;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full?.listingCap ?? 30;
 
-export default function PremiumUpgradeCard({ profile }) {
+export default function PremiumUpgradeCard({ profile, onRefer }) {
   const [offer, setOffer] = useState(null);
   const [starting, setStarting] = useState(false);
 
@@ -91,6 +91,16 @@ export default function PremiumUpgradeCard({ profile }) {
             I've paid, tell XDrive
           </a>
         </div>
+      )}
+
+      {onRefer && (
+        <p style={{ margin: "14px 0 0", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
+          Or earn it free: each seller you invite who pays for Premium twice gives you 30 days.{" "}
+          <button type="button" onClick={onRefer}
+            style={{ padding: 0, border: "none", background: "none", color: "#f87171", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>
+            Invite a seller
+          </button>
+        </p>
       )}
     </div>
   );

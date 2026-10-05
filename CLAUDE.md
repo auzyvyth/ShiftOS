@@ -1078,6 +1078,16 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 - The reward is `grant_referral_reward`, fired inside the payment RPC; one
   `referral_rewards` row per invited seller (granted | capped | ineligible).
   The UI card is `src/components/referral/ReferralCard.jsx` (Lite + Premium settings).
+- Hardening (`20261005a`, applies AFTER a + b): `claim_referral` is capped at 10 tries
+  per seller per 24h (`referral_claim_attempts`, every try logged; errors are RETURNED,
+  not raised, or the log row rolls back and the cap counts nothing). The card's
+  "Did another seller invite you?" box calls it, because the stored invite only lives
+  on the phone that tapped the link. A seller's `slug` is LOCKED once onboarding is
+  done (`trg_guard_profile_slug`): it IS the invite code. A mistaken/refunded payment
+  is undone with `void_subscription_payment` (console "Void"), which takes the months
+  back and, below 2 paid, the inviter's 30 days too. A referrer suspended when the
+  reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
+  restore cannot move `plan_expires_at` (escalation guard), so it waits.
 
 ## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
 - **The free month is a paid-through date, not a trial flag:** `plan_expires_at =

@@ -7267,7 +7267,7 @@ export default function SalesmanLite() {
           </div>
               </>
             )}
-            {snav === "premium" && <PremiumUpgradeCard profile={profile} />}
+            {snav === "premium" && <PremiumUpgradeCard profile={profile} onRefer={() => setSettingsNav("refer")} />}
             {snav === "refer" && <ReferralCard slug={profile?.slug} />}
             {snav === "account" && (
               <>
