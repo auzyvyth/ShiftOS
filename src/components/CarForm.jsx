@@ -777,7 +777,7 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 // inputs are hidden here (values carry over via the `listing` prefill) and their
 // step validations are relaxed. Standalone CarForm (salesman flows, plain edits)
 // still shows everything.
-export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone }) {
+export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
   // VIN decode is a Premium-salesman convenience only. It's gated off for
@@ -4314,9 +4314,17 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
             Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
           </p>
-          <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-            Upgrade Plan
-          </a>
+          {/* A host that has an in-app upgrade (Salesman Lite -> its Premium
+              section) passes onUpgrade; everyone else keeps the email link. */}
+          {onUpgrade ? (
+            <button type="button" onClick={onUpgrade} style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', border: 'none', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              See Premium (30 listings)
+            </button>
+          ) : (
+            <a href="mailto:support@xdrive.my?subject=Upgrade Plan" style={{ display: 'inline-block', marginTop: 10, padding: '7px 14px', background: '#dc2626', borderRadius: 6, color: '#fff', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
+              Upgrade Plan
+            </a>
+          )}
         </div>
       )}
 

@@ -771,6 +771,29 @@ const LITE_SETTINGS_NAV = [
   { key: "account", labelKey: "salesmanLite.settings.navAccount", fallback: "Account" },
 ];
 
+// Top-bar door to Premium. One red accent, small: it sits beside the bell, so
+// it must not shout over the panel's own primary action.
+function GoPremiumButton({ onClick, compact }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Go Premium"
+      style={{
+        display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+        background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)",
+        borderRadius: 8, color: "#fca5a5", padding: compact ? "8px 8px" : "8px 12px",
+        fontSize: compact ? 11 : 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+        marginRight: compact ? 0 : 6, whiteSpace: "nowrap",
+      }}
+    >
+      {/* Phone: text only. The bar already holds the logo + four icon
+          buttons, and a 360px screen has ~60px left for this. */}
+      {!compact && <Sparkles size={13} />} {compact ? "Premium" : "Go Premium"}
+    </button>
+  );
+}
+
 export default function SalesmanLite() {
   const navigate = useNavigate();
   const isMobile = useWindowSize() < 768;
@@ -857,6 +880,15 @@ export default function SalesmanLite() {
   // — see renderLockedPanel + the content switch. The lock is intentionally NOT
   // enforced in switchTab: blocking navigation here is what made the tour and the
   // lock fight each other (tour → switchTab('leads') → forced back to listings).
+  // The one door to Premium (owner, 2026-10-05): the top-bar button and the
+  // listing-cap prompt both open Settings > Premium (PremiumUpgradeCard), the
+  // single upgrade screen. Never build a second one.
+  function goPremium() {
+    setShowAddForm(false);
+    setSettingsNav("premium");
+    switchTab("settings");
+  }
+
   function switchTab(tab) {
     setActiveTab(tab);
   }
@@ -4372,6 +4404,7 @@ export default function SalesmanLite() {
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
+              onUpgrade={goPremium}
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);
@@ -8545,13 +8578,14 @@ export default function SalesmanLite() {
             padding: isMobile ? "12px 16px" : "14px 24px",
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: isMobile ? 6 : 12,
           }}
         >
           {isMobile ? (
             <>
               <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
               <div style={{ flex: 1 }} />
+              <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 title="Notifications"
@@ -8659,6 +8693,7 @@ export default function SalesmanLite() {
                   · {t("salesmanLite.header.litePanel")}
                 </p>
               </div>
+              <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 title="Notifications"
