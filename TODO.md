@@ -2217,35 +2217,28 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
-- **IDEA-12: Bank officer inbox — send the loan file, get the answer back (2026-10-05)** —
-  each partner bank has a named F&I/credit officer with their own XDrive login.
-  The seller ticks banks on the loan comparison (step 4 "Which banks to try"),
-  presses send, and the buyer's file + documents land in that officer's inbox;
-  the officer marks it approved / rejected / needs more docs, and the result
-  comes back onto the lead. Why: replaces the WhatsApp-the-PDF loop and gives a
-  real approval rate per bank. Builds on what exists: `src/components/loans/
-  LoanDesk.jsx` already holds loan applications and a read-only share link
-  (`ensure_loan_share_token` / `get_loan_share`); this adds a bank-side login
-  that can WRITE a status, which must be a role + RLS, never the share token.
-  Constraints: (1) PDPA s.8 - buyer must consent, per bank, before their IC /
-  payslips go to that bank (checked 2026-10-05: disclosure to a third party
-  needs the buyer's consent for that purpose). (2) Each bank must sign up; a
-  bank officer account is a partnership, not a feature. (3) Consumer Credit Act
-  2025 (in force 1 Mar 2026, licensing from 1 Jun 2026): its Schedule 3 credit
-  services list (debt collection, repossession, debt counselling, crowdlending,
-  impaired-loan buying) does not name loan referral, but get a lawyer's view
-  before XDrive takes any fee from a bank. (4) Documents are sensitive: storage
-  bucket with per-bank RLS + expiry, not email.
-  Research 2026-10-05 (owner asked: would a big-dealer salesman want this?):
-  banks already put "marketing executive - hire purchase" staff on dealers
-  (their job is the dealer relationship), and BNM lets a bank pay the DEALER a
-  handling fee of max RM600 per case and NO other payment. So at a big dealer
-  (Rasniaga, 22-yr recon importer) the salesman hands the file to the dealer's
-  loan admin or the bank's rep; this feature is redundant there and bypasses
-  the dealer's fee. Real users: standalone agents (Lite/Premium) and small
-  dealers with no bank rep. Fee-from-bank model looks blocked by the BNM rule
-  (re-check current BNM text before any pricing). Linked salesmen should route
-  into their dealer's own LoanDesk, not out to banks.
+- **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
+  FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
+  comparison, presses "Send to loan desk", and the buyer's file + documents +
+  chosen banks land in the dealer's F&I officer / admin queue (`FIPanel.jsx`).
+  The officer submits through each bank's OWN channel (CIMB Auto Dealer App,
+  the bank's HP marketing exec, MAE) - ShiftOS cannot submit into a bank - then
+  logs each bank's answer, and the rep sees it live on the lead.
+  Found while scoping: this is a SPLIT BRAIN today. Salesman side writes
+  `loan_applications` (Salesmanpanel.jsx:6726, LoanDesk.jsx); dealer side reads
+  `deal_financing` (FIPanel.jsx:607, LeadDrawer.jsx, HPBoard.jsx). No trigger
+  bridges them (`trg_sync_lead_loan` only copies onto `leads`), so a linked
+  rep's loan work never reaches the F&I board. Build = one table / one bridge,
+  not a third copy. Live usage tiny (2026-10-05: 4 loan_applications, 7
+  deal_financing, 1 fi_officer account), so the merge is cheap now.
+  Market check: CIMB's Auto Dealer App already gives dealers submit + real-time
+  status for CIMB only; Malaysian DMS products (HTC ERP, MERP, GreenFlow) cover
+  in-house HP / accounting, not multi-bank tracking. ShiftOS's angle = one
+  board across ALL banks + the docs collected from the rep in one place.
+  Constraints: PDPA consent before IC/payslips go to each bank; documents in a
+  storage bucket with dealer RLS, never email; BNM allows banks to pay the
+  DEALER a handling fee (max RM600/case) and nothing else, so no bank fee to us.
+  Standalone agents (no loan desk) are a separate, later question.
 
 - **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
   the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
