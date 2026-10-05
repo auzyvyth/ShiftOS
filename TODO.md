@@ -98,7 +98,9 @@ inside self-rolling-back transactions.
 - [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
   -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
   role outside the seller set (deployed v23).
-- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (CDP-3 defeated). `/api/wa` + `/api/call-number`
+- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (owner confirmed 2026-10-06: the service key IS set in
+  Vercel. Remaining: this branch must reach PRODUCTION first, then revoke -- revoking
+  before that breaks every WhatsApp/Call button on the live site.) (CDP-3 defeated). `/api/wa` + `/api/call-number`
   called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
   RPCs are anon-executable and anyone can loop every public car id straight against
   /rest/v1/rpc, skipping the route's rate limit. Code now prefers
@@ -111,24 +113,23 @@ inside self-rolling-back transactions.
   seller on (owner decision: approval = ID check), and car-images listing is limited
   to your own folder (guest buyer now lists 0 files, was the whole bucket incl. 23
   geran/loan-letter scans).
-- [ ] SEC-2b `workshop_jobs.public_read_job_by_token` still exists (shape-check share
-  token; 0 rows today, would publish customer name+phone). Needs
-  `drop policy public_read_job_by_token on public.workshop_jobs;` -- left out because
-  DROP statements were cancelled at approval. No client reads it.
-- [ ] SEC-3 Car documents live in the PUBLIC car-images bucket (CarForm.jsx:962). Names
-  are random now, so listing (SEC-2) is the main hole, but they belong in a private
-  bucket served by signed URL, like kyc-docs.
-- [ ] SEC-4 `_bk_airy_*` (8 tables: leads, customers, wa, appointments...) are stale
-  backup copies of real buyer data. Not API-readable, but PDPA retention: drop them
-  once the owner confirms nothing needs restoring.
-- [ ] SEC-5 Supabase Auth "leaked password protection" is OFF (dashboard toggle,
-  Authentication > Settings). Owner action.
-- [ ] SEC-6 `api/ai-messages.js` (TikTok Studio, Import Stock, Accountant) reads the
-  profile with the bare anon client, so it 403s "profile not found" for everyone; and
-  `lib/aiGuard.js` would let buyers through once fixed. Fix both together.
-- [ ] SEC-7 SalesmanLite.jsx:8243 "Pending Approval" gate is dead (no account has
-  account_status='pending') and shows a placeholder support number +60 12-345 6789.
-  Delete the block.
+- [ ] SEC-2b + SEC-4 OWNER RUNS SQL: `supabase/migrations/20261005g_drop_backups_and_workshop_share.sql`
+  (drop the 8 `_bk_airy_*` backup tables of old buyer data + the workshop_jobs
+  shape-check share policy). Owner approved both 2026-10-06; every DROP was cancelled
+  at the session's approval step (3 times), so paste that file into the Supabase SQL
+  editor. Nothing references the tables (checked views, functions, client, edge fns).
+- [ ] SEC-3 (DEFERRED, low residual risk) Car documents live in the PUBLIC car-images
+  bucket (CarForm.jsx:962). Listing is closed (20261005f) and names are random, so a
+  link only reaches people who can read car_documents (seller, team, superadmin).
+  Plan when built: private `car-docs` bucket (owner folder + team + superadmin read),
+  store PATH not public URL in car_documents, signed URLs in CarForm /
+  ListingDetailDrawer / ListingReviewModal, one-off service-role copy of the 23 files.
+- [ ] SEC-5 Leaked password protection needs the Supabase Pro plan (owner, 2026-10-06).
+  Revisit on upgrade.
+- [x] SEC-6 lib/aiGuard.js (api/ai-messages + server twin): profile now read as the
+  caller (was anon -> "profile not found" for everyone), buyers refused, a failed
+  usage record now refuses instead of being logged past.
+- [x] SEC-7 Removed the dead Lite "Pending Approval" screen + its placeholder number.
 - Checked and CLEAN: anon can read only the intended public tables/views; a guest
   buyer sees only their own profile/chat; no service key in the client bundle;
   send-push, invites, create-salesman, send-telegram, chat-assist all check the caller;
