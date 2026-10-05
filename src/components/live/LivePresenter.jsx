@@ -281,7 +281,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .lp-lang { font-size: 13px; font-weight: 800; letter-spacing: .04em; font-family: inherit; }
         .lp-iconbtn[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
-        .lp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .lp-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
         .lp-card { background: #fff; border-radius: 14px; border: 1px solid rgba(0,0,0,.06); box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
         /* The quotation sheet (the poster sellers hold up on lives): title, then
@@ -304,7 +304,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brk td:last-child { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; }
         .lp-brk tr.lp-loan td { padding-top: 6px; border-top: 1px solid rgba(0,0,0,.1); font-weight: 700; color: #0f1115; }
         .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 24px); }
-        .lp-deps button { padding: 0 4px; }
+        /* Four chips must share one phone-width row: "Tanpa deposit" + three
+           "Deposit N%" in BM is ~470px of unbreakable text, which pushed the
+           whole sheet sideways. Chips shrink equally and wrap onto two lines. */
+        .lp-seg.lp-deps button { flex: 1 1 0; min-width: 0; height: auto; min-height: 34px; padding: 4px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 13px); }
         .lp-low { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
         .lp-low.lp-with { grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); }
         .lp-contact { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; border: none; border-radius: 10px; background: #F1EFEA; font: inherit; color: #0f1115; text-align: center; cursor: pointer; min-width: 0; }
@@ -394,7 +397,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
           .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
           .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
-          .lp-seg button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
+          .lp-seg button, .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
           .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
           .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
           .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
