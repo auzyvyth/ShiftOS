@@ -70,6 +70,31 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PAY-2: Automatic payment confirmation (gateway + webhook) — researched 2026-10-05, PARKED by owner
+Owner: "we don't need this for now". Today a seller pays the static DuitNow QR
+(`public/payment-qr.png`) and the owner presses "Log RM35 payment" in /platform.
+- TNG has no self-serve online API for us: merchant QR = no API; its online
+  gateway is an enterprise sales deal (Lazada/TikTok Shop tier). TNG is reached
+  through a gateway. A dynamic DuitNow QR from a gateway covers TNG AND every bank app.
+- Options: toyyibPay / Billplz (pay-now QR each month, cheapest) or Curlec
+  (only one with TNG auto-debit recurring, official TNG partner since 2024-05).
+- Owner decisions before building: auto-renew vs pay-each-month; SSM registration done?
+Rules when it is built:
+- Legal (verified 2026-10-05): every gateway needs SSM registration. Consumer
+  Protection (Electronic Trade Transactions) Regs 2012: the plans/checkout page must
+  show business name, SSM no., email + phone/address, full price, payment methods,
+  terms (cancellation/refund) — non-compliance is an offence. LHDN e-invoice:
+  exempt below RM3m turnover (from 2026-09-01), recheck if revenue grows.
+  Auto-debit needs the seller's explicit mandate; show the amount + how to cancel.
+  Never touch card numbers ourselves (the gateway's hosted page does), so no PCI scope.
+- Engineering: the webhook (gateway's server -> our `/api` route) MUST verify the
+  gateway's signature, be idempotent on the gateway's payment id (they retry), and
+  credit ONLY through `record_subscription_payment` (referral rewards + paid-until
+  hang off it — never a direct `profiles` update). Amount is checked against
+  `planConfig.js`, never trusted from the browser. Keys live in Vercel env, never
+  the client. Refunds go through `void_subscription_payment`. Keep the manual
+  "Log payment" button as the fallback.
+
 ## LIVE-1: Live presentation on the salesman mini page — 2026-10-03
 - Migration `20261003a_seller_live_state.sql` APPLIED 2026-10-03 22:36 MYT (owner's
   "apply it now"). Checked: one overload each of `set_live_listing` /
