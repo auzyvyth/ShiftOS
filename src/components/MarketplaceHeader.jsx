@@ -82,7 +82,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   ];
   const GUIDES = [
     { to: '/articles',                                  Icon: BookOpen,  label: 'Semua Panduan',            desc: 'All guides & articles' },
-    { to: '/articles/apa-itu-puspakom-b5-b7',           Icon: FileCheck, label: 'Apa Itu Puspakom B5 & B7?', desc: 'Inspection rules explained' },
+    { to: '/articles/apa-itu-puspakom-b5-b7',           Icon: FileCheck, label: 'Puspakom B5 & B7 Untuk Apa?', desc: 'Inspection rules explained' },
     { to: '/articles/cara-pindah-milik-kereta-mysikap', Icon: FileText,  label: 'Cara Pindah Milik MySikap', desc: 'Ownership transfer steps' },
     { to: '/articles/beza-kereta-recon-dan-terpakai',   Icon: GitCompare,label: 'Kereta Recon vs Terpakai',  desc: 'Which one is right for you' },
   ];

@@ -11,7 +11,7 @@ const ARTICLE = {
   description:
     'Panduan langkah demi langkah cara buat pindah milik kereta secara online menggunakan sistem MySikap JPJ 2026. Dokumen diperlukan, kos, tempoh masa, dan tips mengelak kesilapan biasa.',
   datePublished: '2026-06-13',
-  dateModified: '2026-09-25',
+  dateModified: '2026-10-05',
   readMins: 7,
 };
 
@@ -156,7 +156,7 @@ export default function MySikapArticle() {
                 {[
                   {
                     title: 'Penjual Perlu Sedia',
-                    items: ['MyKad (IC) asal + salinan', 'Geran kenderaan (VOC) asal', 'Surat penyelesaian hutang dari bank (jika ada HP)', 'Laporan Puspakom B5 & B7', 'Insurans yang masih sah'],
+                    items: ['MyKad (IC) asal + salinan', 'Geran kenderaan (VOC) asal', 'Surat penyelesaian hutang dari bank (jika ada HP)', 'Laporan Puspakom B5 (dan B7 jika pembeli ambil loan)', 'Insurans yang masih sah'],
                     color: '#16a34a',
                   },
                   {
@@ -185,7 +185,7 @@ export default function MySikapArticle() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { num: '01', title: 'Selesaikan Pinjaman (Jika Ada)', desc: 'Jika kenderaan masih ada baki HP, penjual mesti dapatkan surat penyelesaian dari bank terlebih dahulu. Bank biasanya ambil 3–7 hari bekerja untuk keluarkan surat ini setelah bayaran diterima.', link: null },
-                  { num: '02', title: 'Buat Puspakom B5 & B7', desc: 'Bawa kenderaan ke pusat Puspakom terdekat. Kedua-dua pemeriksaan boleh dibuat serentak. Kos: B5 = RM 30, B7 = RM 60. Laporan B5 sah 3 bulan.', link: { to: '/articles/apa-itu-puspakom-b5-b7', label: 'Baca panduan penuh kami tentang Puspakom B5 & B7' } },
+                  { num: '02', title: 'Buat Puspakom B5 (dan B7 jika ambil loan)', desc: 'B5 diperlukan JPJ untuk tukar nama. B7 hanya jika pembeli ambil pinjaman bank. Kedua-duanya boleh dibuat pada hari yang sama. Kos: B5 = RM 30, B7 = RM 60. Laporan B5 sah 120 hari (mulai 1 Julai 2026).', link: { to: '/articles/apa-itu-puspakom-b5-b7', label: 'Baca panduan penuh kami tentang Puspakom B5 & B7' } },
                   { num: '03', title: 'Pembeli Dapatkan Insurans Baharu', desc: 'Pembeli perlu ada polisi insurans motor atas nama mereka sebelum pindah milik boleh diproses. Hubungi syarikat insurans atau ejen untuk dapatkan nota lindungan sementara.', link: null },
                   { num: '04', title: 'Akses MySikap & Muat Naik Dokumen', desc: 'Penjual log masuk ke portal MySikap (mysikap.jpj.gov.my) menggunakan MyKad digital atau kata laluan. Masukkan maklumat pembeli, nombor pendaftaran kenderaan, dan muat naik dokumen berkaitan.', link: null },
                   { num: '05', title: 'Kedua-dua Pihak Hadir ke JPJ (Biometrik)', desc: 'Penjual DAN pembeli perlu hadir ke pejabat JPJ yang sama pada hari yang sama untuk pengesahan cap jari. Ini tidak boleh dilakukan secara online.', link: null },
@@ -220,7 +220,7 @@ export default function MySikapArticle() {
                   <tbody>
                     {[
                       { item: 'Puspakom B5', cost: 'RM 30' },
-                      { item: 'Puspakom B7 (jika ada HP)', cost: 'RM 60' },
+                      { item: 'Puspakom B7 (jika pembeli ambil loan)', cost: 'RM 60' },
                       { item: 'Pindah milik JPJ', cost: 'RM 100' },
                       { item: 'Insurans baharu (anggaran)', cost: 'RM 500 – 2,000+' },
                       { item: 'Ejen (jika guna)', cost: 'RM 200 – 500' },
@@ -274,7 +274,7 @@ export default function MySikapArticle() {
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 20 }}>Baca Seterusnya</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
                 {[
-                  { to: '/articles/apa-itu-puspakom-b5-b7', cat: 'Puspakom', title: 'Apa Itu Puspakom B5 & B7? Panduan Penuh 2026' },
+                  { to: '/articles/apa-itu-puspakom-b5-b7', cat: 'Puspakom', title: 'Puspakom B5 & B7 Untuk Apa? Beza, Kos & Bila Perlu' },
                   { to: '/articles/beza-kereta-recon-dan-terpakai', cat: 'Panduan Beli', title: 'Beza Kereta Recon & Terpakai — Mana Lebih Berbaloi?' },
                 ].map(({ to, cat, title }) => (
                   <Link key={to} to={to} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, textDecoration: 'none', display: 'block' }}>

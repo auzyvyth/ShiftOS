@@ -72,7 +72,7 @@ export default function MarketplaceFooter() {
       heading: 'Panduan & Artikel',
       links: [
         { label: 'Semua Panduan',              to: '/articles' },
-        { label: 'Apa Itu Puspakom B5 & B7?',  to: '/articles/apa-itu-puspakom-b5-b7' },
+        { label: 'Puspakom B5 & B7 Untuk Apa?',  to: '/articles/apa-itu-puspakom-b5-b7' },
         { label: 'Cara Pindah Milik MySikap',  to: '/articles/cara-pindah-milik-kereta-mysikap' },
         { label: 'Kereta Recon vs Terpakai',   to: '/articles/beza-kereta-recon-dan-terpakai' },
       ],

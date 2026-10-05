@@ -206,7 +206,7 @@ export default function UrusDealershipArticle() {
                 </table>
               </div>
               <p style={P}>
-                Salesman yang menutup banyak unit dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang menutup kurang unit. Sebab itu komisen paling selamat dikira dari untung kasar. Formula dan contoh pengiraan ada di <Link to="/articles/cara-kira-komisen-salesman-kereta" style={A}>Cara Kira Komisen Salesman Kereta Dengan Betul</Link>.
+                Salesman yang menutup banyak unit dengan diskaun besar mungkin menjana untung lebih rendah daripada rakan yang menutup kurang unit. Sebab itu komisen paling selamat dikira dari untung kasar. Formula dan contoh pengiraan ada di <Link to="/articles/cara-kira-komisen-salesman-kereta" style={A}>Komisen Jual Kereta: Berapa & Cara Kira</Link>.
               </p>
               <p style={P}>
                 Dalam ShiftOS, tab pasukan dealer memaparkan papan kedudukan salesman dengan unit terjual, untung kasar dan komisen setiap orang. Tab prestasi menunjukkan masa respons setiap salesman, dan papan Overview membandingkan bulan ini dengan tempoh yang sama bulan lepas. Lihat <Link to="/features/salesman-performance" style={A}>ciri prestasi salesman</Link> dan <Link to="/features/revenue-analytics" style={A}>ciri analitik hasil</Link>.
@@ -305,7 +305,7 @@ export default function UrusDealershipArticle() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 14 }}>
                 {[
                   { to: '/articles/cara-urus-stok-kereta-terpakai-sistem-digital', cat: 'Urus Dealer', title: 'Cara Urus Stok Kereta Terpakai Dengan Sistem Digital' },
-                  { to: '/articles/cara-kira-komisen-salesman-kereta', cat: 'Urus Dealer', title: 'Cara Kira Komisen Salesman Kereta Dengan Betul' },
+                  { to: '/articles/cara-kira-komisen-salesman-kereta', cat: 'Urus Dealer', title: 'Komisen Jual Kereta: Berapa & Cara Kira' },
                   { to: '/articles/apa-itu-dms-dealer-kereta', cat: 'Urus Dealer', title: 'Apa Itu Dealer Management System (DMS)?' },
                 ].map(({ to, cat, title }) => (
                   <Link key={to} to={to} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, textDecoration: 'none', display: 'block' }}>

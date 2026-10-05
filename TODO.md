@@ -1105,17 +1105,6 @@ different concerns and the house rule is one per session.
   Verified: eslint clean, all 7 test suites pass, production build clean.
   NOT eyeballed in a browser from this session.
 
-- [ ] **PREM-3: Lite's follow-up quick presets are off by one before 8am.**
-  `SalesmanLite.jsx:7516-7519` builds "Tomorrow / In 2 days / In 3 days / Next
-  week" with `d.toISOString().slice(0, 10)`. That is UTC; Malaysia is UTC+8, so
-  between midnight and 8am local the string is the PREVIOUS day — "Tomorrow"
-  sets the reminder for today and it fires immediately. Premium's port already
-  builds from local parts and is correct; this is the same four lines in Lite.
-  Low severity (an 8-hour window), but it is a wrong date written to
-  `follow_up_at`, which drives nudges and the "This week" list.
-  Salesmanpanel.jsx:1894 writes `follow_up_at` too — check its presets for the
-  same pattern while in there.
-
 - [x] **PREM-4 DONE 2026-09-11 — and the answer was not the one the question
   asked for. ONE shared rule, measured off the right column.**
   The question was "AND or OR?". Researching it turned up a bigger problem and
@@ -1212,16 +1201,6 @@ different concerns and the house rule is one per session.
   (migration `20260926a`). Before prod: click through password, Google, magic
   link, reset code and a signup-reminder link for dealer, Lite, Premium, linked
   salesman, manager and buyer on staging.
-- [ ] **OWNER DECISION: the Premium free month does not unlock Premium.** A new
-  solo Premium signup gets `subscription_status='trial'` + `trial_ends_at` (+30
-  days) from `prevent_profile_privilege_escalation`, and the Premium panel has
-  a "first month free" branch — but `is_salesman_premium()` /
-  `isPremiumSalesman` only accept `dealer_id`, `plan_expires_at > now()` or
-  `payment_status='received'`. So a trial rep is treated as Lite everywhere
-  (routing now agrees and no longer loops). Either count an unexpired trial as
-  Premium in BOTH functions (trial_ends_at cannot be extended by the user, the
-  trigger pins it), or drop the free-month copy. Zero live accounts affected
-  today.
 - [ ] Confirm `RESEND_FROM_EMAIL` is set on the edge functions — without it
   invites/setup/reminder emails fall back to Resend's sandbox sender, which
   only delivers to the Resend account owner.
@@ -2216,6 +2195,29 @@ derived meta description, and a two-column mini page at 1024px+.
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
+  FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
+  comparison, presses "Send to loan desk", and the buyer's file + documents +
+  chosen banks land in the dealer's F&I officer / admin queue (`FIPanel.jsx`).
+  The officer submits through each bank's OWN channel (CIMB Auto Dealer App,
+  the bank's HP marketing exec, MAE) - ShiftOS cannot submit into a bank - then
+  logs each bank's answer, and the rep sees it live on the lead.
+  Found while scoping: this is a SPLIT BRAIN today. Salesman side writes
+  `loan_applications` (Salesmanpanel.jsx:6726, LoanDesk.jsx); dealer side reads
+  `deal_financing` (FIPanel.jsx:607, LeadDrawer.jsx, HPBoard.jsx). No trigger
+  bridges them (`trg_sync_lead_loan` only copies onto `leads`), so a linked
+  rep's loan work never reaches the F&I board. Build = one table / one bridge,
+  not a third copy. Live usage tiny (2026-10-05: 4 loan_applications, 7
+  deal_financing, 1 fi_officer account), so the merge is cheap now.
+  Market check: CIMB's Auto Dealer App already gives dealers submit + real-time
+  status for CIMB only; Malaysian DMS products (HTC ERP, MERP, GreenFlow) cover
+  in-house HP / accounting, not multi-bank tracking. ShiftOS's angle = one
+  board across ALL banks + the docs collected from the rep in one place.
+  Constraints: PDPA consent before IC/payslips go to each bank; documents in a
+  storage bucket with dealer RLS, never email; BNM allows banks to pay the
+  DEALER a handling fee (max RM600/case) and nothing else, so no bank fee to us.
+  Standalone agents (no loan desk) are a separate, later question.
 
 - **IDEA-11: Used-EV battery health certificate + valuation (2026-10-03)** —
   the first wave of 2022-24 EVs is hitting resale; some lost ~45% in two years
@@ -4523,31 +4525,6 @@ native build.
   NOTE: deliberately NOT gated behind a form (owner decision). A buyer tapping Call is the
   highest-intent action on the page and pre-call friction loses calls, so Call still captures
   no lead — that is intended, not a missing-lead bug.
-
-- [ ] **CDP-3 (MED): WhatsApp numbers still ship in the page payload.** CDP-2 closed the Call
-  button and the crawler surface, but the wa.me CTAs still need a number at page-load time, so
-  `get_dealer_profile_by_id` / `get_salesman_by_id` / `get_salesman_by_slug` /
-  `get_dealer_profile_by_subdomain` continue to return `whatsapp_number` to anon for any id —
-  the bulk-harvest vector is open for WhatsApp even though it is closed for the call line.
-  Closing it means moving every wa.me build to on-tap (the enquiry modal already defers the
-  actual open to submit time, so CarDetailPage is most of the way there) and then stripping the
-  number from those RPCs. Blast radius is why it was deferred: storefront header,
-  StickyWhatsAppButton, car cards, ContactGate and useCTAContext all read it at load. Needs its
-  own tested pass with a full staging sweep.
-
-- [ ] **PUSH-2 (MED): solo Salesman Lite gets no `salesman_notifications` row for an organic
-  enquiry.** `notify_salesman_new_enquiry` resolves the rep from `NEW.salesman_id`, then
-  `ref_slug`, then falls back to looping `profiles WHERE dealer_id = NEW.dealer_id`. A solo
-  Lite salesman owns themselves (`dealer_id IS NULL`), so that loop matches NOBODY and no
-  salesman notification is written. It is missing rule 4 of the `resolve_lead_salesman`
-  doctrine in CLAUDE.md ("the dealer IS a self-owned salesman → attribute to them") — the
-  exact inline-reimplementation drift that section was written to prevent.
-  IMPACT IS LIMITED, which is why this is not a blocker: the Lite user still gets the PUSH,
-  because they are their own dealer and `notify_new_enquiry` writes a `dealer_notifications`
-  row that the push fan-out picks up. What they miss is the in-app salesman bell entry.
-  FIX: make `notify_salesman_new_enquiry` call `resolve_lead_salesman()` instead of its own
-  inline resolution, so there is one resolver again. Verify no double-notify results (the
-  same person would then be both dealer and salesman for that enquiry — dedupe by user id).
 
 - [x] **CRON-1: two cron jobs had never once succeeded (found + fixed 2026-08-16).**
   `expiry-reminders-daily` and `warm-leads-push` both built their auth header as

@@ -3,6 +3,9 @@ import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import ReferralCard from "../components/referral/ReferralCard";
+import PremiumUpgradeCard from "../components/premium/PremiumUpgradeCard";
+import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
@@ -23,7 +26,7 @@ import {
   panelRadius as R,
   withAlpha,
 } from "../theme/tokens";
-import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REASON } from "../lib/leadsHelpers";
+import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REASON, localDateKey } from "../lib/leadsHelpers";
 import FollowUpRow from "../components/crm/FollowUpRow";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
@@ -763,8 +766,33 @@ const LITE_SETTINGS_NAV = [
   { key: "contact", labelKey: "salesmanLite.settings.navContact", fallback: "Contact & Location" },
   { key: "selling", labelKey: "salesmanLite.settings.navSelling", fallback: "Selling" },
   { key: "alerts", labelKey: "salesmanLite.settings.navAlerts", fallback: "Alerts" },
+  { key: "premium", labelKey: "salesmanLite.settings.navPremium", fallback: "Premium" },
+  { key: "refer", labelKey: "salesmanLite.settings.navRefer", fallback: "Refer a seller" },
   { key: "account", labelKey: "salesmanLite.settings.navAccount", fallback: "Account" },
 ];
+
+// Top-bar door to Premium. One red accent, small: it sits beside the bell, so
+// it must not shout over the panel's own primary action.
+function GoPremiumButton({ onClick, compact }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Go Premium"
+      style={{
+        display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+        background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.35)",
+        borderRadius: 8, color: "#fca5a5", padding: compact ? "8px 8px" : "8px 12px",
+        fontSize: compact ? 11 : 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+        marginRight: compact ? 0 : 6, whiteSpace: "nowrap",
+      }}
+    >
+      {/* Phone: text only. The bar already holds the logo + four icon
+          buttons, and a 360px screen has ~60px left for this. */}
+      {!compact && <Sparkles size={13} />} {compact ? "Premium" : "Go Premium"}
+    </button>
+  );
+}
 
 export default function SalesmanLite() {
   const navigate = useNavigate();
@@ -790,6 +818,10 @@ export default function SalesmanLite() {
   const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
 
   const [profile, setProfile] = useState(seed.profile);
+  // A seller who signed up through someone's invite link (?invite=) gets it
+  // attached once the panel knows who they are. claim_referral decides if it
+  // counts; nothing here can set referred_by directly (src/utils/invite.js).
+  useEffect(() => { if (profile?.id) claimStoredInvite(); }, [profile?.id]);
   const [userId, setUserId] = useState(seed.uid);
   // A cached profile is enough to render the panel; the fresh one lands moments
   // later and every access gate below (pending / deleted / wrong role) re-runs
@@ -848,6 +880,15 @@ export default function SalesmanLite() {
   // — see renderLockedPanel + the content switch. The lock is intentionally NOT
   // enforced in switchTab: blocking navigation here is what made the tour and the
   // lock fight each other (tour → switchTab('leads') → forced back to listings).
+  // The one door to Premium (owner, 2026-10-05): the top-bar button and the
+  // listing-cap prompt both open Settings > Premium (PremiumUpgradeCard), the
+  // single upgrade screen. Never build a second one.
+  function goPremium() {
+    setShowAddForm(false);
+    setSettingsNav("premium");
+    switchTab("settings");
+  }
+
   function switchTab(tab) {
     setActiveTab(tab);
   }
@@ -1102,7 +1143,12 @@ export default function SalesmanLite() {
   // Which Settings subject is open. Defaults to the first rather than to a
   // menu: on desktop the rail is always visible, and on mobile the pill row
   // is, so there is never a state where the seller is looking at nothing.
-  const [settingsNav, setSettingsNav] = useState("profile");
+  // ?section=<key> opens a settings section directly (the /plans Premium card
+  // sends a signed-in Lite seller to ?section=premium).
+  const [settingsNav, setSettingsNav] = useState(() => {
+    const s = new URLSearchParams(window.location.search).get("section");
+    return LITE_SETTINGS_NAV.some((n) => n.key === s) ? s : "profile";
+  });
   // Avatar cache is keyed by user id (set once profile loads) so it never
   // bleeds across salesmen sharing a device. Profile fetch repopulates it.
   const [avatarUrl, setAvatarUrl] = useState("");
@@ -4358,6 +4404,7 @@ export default function SalesmanLite() {
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
+              onUpgrade={goPremium}
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);
@@ -7220,6 +7267,8 @@ export default function SalesmanLite() {
           </div>
               </>
             )}
+            {snav === "premium" && <PremiumUpgradeCard profile={profile} onRefer={() => setSettingsNav("refer")} />}
+            {snav === "refer" && <ReferralCard slug={profile?.slug} />}
             {snav === "account" && (
               <>
           {/* Identity verification — earns the public Verified badge. Sits first
@@ -7712,8 +7761,7 @@ export default function SalesmanLite() {
             { label: t("salesmanLite.followUp.in3days"), days: 3 },
             { label: t("salesmanLite.followUp.nextWeek"), days: 7 },
           ].map(({ label, days }) => {
-            const d = new Date(); d.setDate(d.getDate() + days);
-            const val = d.toISOString().slice(0, 10);
+            const val = localDateKey(days);
             return (
               <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val ? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val ? 600 : 400 }}>
                 {label}
@@ -8529,13 +8577,14 @@ export default function SalesmanLite() {
             padding: isMobile ? "12px 16px" : "14px 24px",
             display: "flex",
             alignItems: "center",
-            gap: 12,
+            gap: isMobile ? 6 : 12,
           }}
         >
           {isMobile ? (
             <>
               <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
               <div style={{ flex: 1 }} />
+              <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 title="Notifications"
@@ -8643,6 +8692,7 @@ export default function SalesmanLite() {
                   · {t("salesmanLite.header.litePanel")}
                 </p>
               </div>
+              <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
                 onClick={() => setNotifOpen((v) => !v)}
                 title="Notifications"

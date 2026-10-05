@@ -86,7 +86,7 @@ import {
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
-import { followUpHoursFor, isLeadStale, lastTouch } from "../lib/leadsHelpers";
+import { followUpHoursFor, isLeadStale, lastTouch, localDateKey } from "../lib/leadsHelpers";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -276,7 +276,7 @@ export default function SalesmanPanel() {
  const [reminderMsg, setReminderMsg] = useState("");
  const [inboxSubTab, setInboxSubTab] = useState("enquiries");
  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
- const [calSelected, setCalSelected] = useState(() => new Date().toISOString().slice(0, 10));
+ const [calSelected, setCalSelected] = useState(() => localDateKey());
  const [reschedulingAptId, setReschedulingAptId] = useState(null);
  const [rescheduleDate, setRescheduleDate] = useState("");
  const [cancelConfirmId, setCancelConfirmId] = useState(null);
@@ -1740,7 +1740,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  if (!isPremium) return;
  setFollowupsLoading(true);
  try {
- const today = new Date().toISOString().slice(0, 10);
+ const today = localDateKey();
  const topLeads = leads
  .filter((l) =>!["won", "closed_won", "lost", "closed_lost"].includes(l.stage))
  .filter((l) =>!l.follow_up_at || l.follow_up_at <= today)
@@ -4851,8 +4851,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  { label: "In 3 days", days: 3 },
  { label: "Next week", days: 7 },
  ].map(({ label, days }) => {
- const d = new Date(); d.setDate(d.getDate() + days);
- const val = d.toISOString().slice(0, 10);
+ const val = localDateKey(days);
  return (
  <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val? 600 : 400 }}>
  {label}

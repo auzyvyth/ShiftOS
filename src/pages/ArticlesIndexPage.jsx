@@ -8,8 +8,8 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 const ARTICLES = [
   {
     slug: 'apa-itu-puspakom-b5-b7',
-    title: 'Apa Itu Puspakom B5 & B7? Panduan Penuh untuk Dealer & Pembeli (2026)',
-    description: 'Fahami perbezaan pemeriksaan Puspakom B5 dan B7, berapa kos sebenar, bila wajib dibuat, dan apa yang berlaku jika gagal.',
+    title: 'Puspakom B5 & B7 Untuk Apa? Beza, Kos & Bila Perlu (2026)',
+    description: 'B5 untuk tukar nama (RM30), B7 untuk loan kereta terpakai (RM60). Apa yang diperiksa dan bila perlu buat kedua-duanya.',
     category: 'Pindah Milik',
     readMins: 6,
   },
@@ -50,8 +50,8 @@ const ARTICLES = [
   },
   {
     slug: 'cara-kira-komisen-salesman-kereta',
-    title: 'Cara Kira Komisen Salesman Kereta Dengan Betul (2026)',
-    description: 'Formula komisen salesman kereta, kesilapan biasa yang menghakis margin, dan cara buat rekod komisen salesmen kereta secara automatik.',
+    title: 'Komisen Jual Kereta: Berapa Salesman Dapat & Cara Kira (2026)',
+    description: 'Berapa komisen jual kereta di Malaysia, tiga struktur biasa, contoh kiraan dan kesilapan yang menghakis margin.',
     category: 'Urus Dealer',
     readMins: 7,
   },

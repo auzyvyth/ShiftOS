@@ -7,30 +7,30 @@ import MarketplaceFooter from '../../components/MarketplaceFooter';
 
 const ARTICLE = {
   slug: 'apa-itu-puspakom-b5-b7',
-  title: 'Apa Itu Puspakom B5 & B7? Panduan Penuh untuk Dealer & Pembeli (2026)',
+  title: 'Puspakom B5 & B7 Untuk Apa? Beza, Kos & Bila Perlu (2026)',
   description:
-    'Fahami perbezaan pemeriksaan Puspakom B5 dan B7, berapa kos sebenar, bila wajib dibuat, dan apa yang berlaku jika gagal. Panduan lengkap untuk pembeli dan penjual kereta terpakai Malaysia.',
+    'B5 untuk tukar nama kereta (RM30, laporan sah 120 hari). B7 untuk loan kereta terpakai (RM60, bank yang minta). Apa yang diperiksa, kos sebenar dan bila perlu buat kedua-duanya.',
   datePublished: '2026-06-13',
-  dateModified: '2026-09-25',
-  readMins: 6,
+  dateModified: '2026-10-05',
+  readMins: 5,
 };
 
 const FAQS = [
   {
-    q: 'Adakah Puspakom B5 wajib untuk semua pindah milik kereta?',
-    a: 'Ya. Puspakom B5 adalah pemeriksaan kelayakan jalan mandatori untuk semua kenderaan terpakai yang ingin menukar pemilik. Tanpa pas B5 yang sah, JPJ tidak akan proses pindah milik.',
+    q: 'Puspakom B5 untuk apa?',
+    a: 'B5 (kini dipanggil MV15) ialah pemeriksaan tukar hak milik. JPJ perlukan laporan B5 yang lulus sebelum boleh pindah milik kereta terpakai. Ia mengesahkan nombor casis dan nombor enjin sepadan dengan rekod, dan memeriksa perkara asas seperti lampu dan tahap kegelapan tint. Yuran pemeriksaan RM30.',
   },
   {
-    q: 'Berapa lama tempoh sah laporan Puspakom B5?',
-    a: 'Laporan B5 sah selama 3 bulan dari tarikh pemeriksaan. Pastikan pindah milik selesai dalam tempoh ini atau anda perlu buat semula.',
+    q: 'Puspakom B7 untuk apa?',
+    a: 'B7 ialah pemeriksaan sewa beli. Bank atau syarikat kewangan minta laporan B7 sebelum meluluskan pinjaman untuk kereta terpakai. Jika anda bayar tunai, B7 biasanya tidak diperlukan. Yuran pemeriksaan RM60.',
   },
   {
-    q: 'Apa yang diperiksa dalam Puspakom B7?',
-    a: 'B7 memfokuskan pengesahan nombor siri enjin dan nombor casis untuk memastikan kenderaan tiada sebarang sekatan HP atau bebanan lain dari institusi kewangan sebelum pindah milik boleh diproses.',
+    q: 'Berapa lama laporan Puspakom B5 sah?',
+    a: '120 hari dari tarikh pemeriksaan, berkuat kuasa 1 Julai 2026. Sebelum itu tempohnya 60 hari. Selesaikan pindah milik dalam tempoh ini atau pemeriksaan perlu dibuat semula.',
   },
   {
-    q: 'Bolehkah saya buat Puspakom tanpa hadir sendiri?',
-    a: 'Untuk B5, kenderaan mesti hadir secara fizikal untuk pemeriksaan. Walau bagaimanapun, pemilik tidak semestinya hadir — pembantu atau wakil boleh membawa kenderaan atas nama pemilik.',
+    q: 'Perlu buat B5 dan B7 sekali?',
+    a: 'Jika pembeli ambil pinjaman, ya: JPJ perlukan B5 untuk tukar nama dan bank perlukan B7 untuk pinjaman. Kedua-duanya boleh dibuat pada hari yang sama. Yuran pemeriksaan RM90, tidak termasuk yuran pemprosesan tempahan.',
   },
 ];
 
@@ -75,7 +75,7 @@ export default function PuspakomB5B7Article() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "var(--xd-font-body)" }}>
         <MarketplaceHeader />
 
         <main style={{ paddingTop: 72, maxWidth: 760, margin: '0 auto', padding: '72px 20px 64px' }}>
@@ -97,8 +97,8 @@ export default function PuspakomB5B7Article() {
               </span>
             </div>
             <h1 style={{ fontSize: 'clamp(1.8rem,5vw,2.6rem)', fontWeight: 800, color: '#111827', lineHeight: 1.15, margin: '0 0 16px', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.02em' }}>
-              Apa Itu Puspakom B5 & B7?<br />
-              <span style={{ color: '#dc2626' }}>Panduan Penuh 2026</span>
+              Puspakom B5 & B7 Untuk Apa?<br />
+              <span style={{ color: '#dc2626' }}>Beza, Kos & Bila Perlu</span>
             </h1>
             <p style={{ color: '#4b5563', fontSize: 16, lineHeight: 1.7, margin: '0 0 20px' }}>
               {ARTICLE.description}
@@ -124,11 +124,11 @@ export default function PuspakomB5B7Article() {
             <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#dc2626', marginBottom: 14 }}>Ringkasan Pantas</p>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                'B5 = pemeriksaan kelayakan jalan (RM 30) — wajib untuk semua pindah milik',
-                'B7 = pengesahan enjin/casis & sekatan HP (RM 60) — wajib jika kenderaan pernah ada pinjaman',
-                'Kedua-dua pemeriksaan dilakukan di pusat Puspakom berdekatan',
-                'Laporan B5 sah 3 bulan; B7 sah sepanjang proses pindah milik',
-                'Gagal B5? Kenderaan perlu dibaiki dan diperiksa semula sebelum pindah milik',
+                'B5 (kini dipanggil MV15) untuk tukar nama. JPJ perlukan laporan B5 yang lulus sebelum pindah milik kereta terpakai. Yuran RM30.',
+                'B7 untuk pinjaman. Hanya perlu jika pembeli ambil loan bank untuk beli kereta itu, dan bank yang minta. Yuran RM60.',
+                'Bayar tunai: biasanya B5 sahaja. Ambil loan: B5 dan B7, boleh dibuat pada hari yang sama.',
+                'Laporan B5 sah 120 hari mulai 1 Julai 2026 (sebelum ini 60 hari).',
+                'Setiap tempahan dikenakan yuran pemprosesan RM5 + SST, jadi B5 berjumlah RM37.80.',
               ].map((pt, i) => (
                 <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: '#374151' }}>
                   <CheckCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: 2 }} />
@@ -144,35 +144,33 @@ export default function PuspakomB5B7Article() {
             <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Apa Itu Pemeriksaan Puspakom?</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
-                Puspakom (Pusat Pemeriksaan Kenderaan Motor) adalah agensi kerajaan Malaysia di bawah Kementerian Pengangkutan yang menjalankan pemeriksaan kenderaan bermotor. Terdapat beberapa jenis pemeriksaan Puspakom — yang paling relevan untuk urusan jual beli kereta terpakai ialah <strong style={{ color: '#111827' }}>B5</strong> dan <strong style={{ color: '#111827' }}>B7</strong>.
+                Puspakom ialah syarikat pemeriksaan kenderaan yang dilantik oleh Kementerian Pengangkutan. Terdapat beberapa jenis pemeriksaan Puspakom — yang paling relevan untuk urusan jual beli kereta terpakai ialah <strong style={{ color: '#111827' }}>B5</strong> dan <strong style={{ color: '#111827' }}>B7</strong>.
               </p>
               <p style={{ color: '#4b5563', lineHeight: 1.75 }}>
-                Kedua-dua pemeriksaan ini adalah <strong style={{ color: '#111827' }}>wajib</strong> sebelum JPJ akan memproses pindah milik kenderaan. Ini bermakna sama ada anda pembeli atau penjual, anda perlu memastikan semua pemeriksaan ini selesai dan lulus sebelum proses tukar nama boleh dimulakan.
+                Ramai sangka kedua-duanya wajib untuk setiap jualan. Sebenarnya tidak: <strong style={{ color: '#111827' }}>B5 diperlukan oleh JPJ untuk tukar nama</strong>, manakala <strong style={{ color: '#111827' }}>B7 diperlukan oleh bank untuk pinjaman</strong>. Pembeli tunai biasanya hanya perlukan B5.
               </p>
             </section>
 
             <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Pemeriksaan B5: Kelayakan Jalan</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Puspakom B5 Untuk Apa? (Tukar Hak Milik)</h2>
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <span style={{ fontWeight: 700, color: '#111827' }}>Puspakom B5</span>
                   <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 14 }}>RM 30</span>
                 </div>
                 <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.65 }}>
-                  Pemeriksaan fizikal menyeluruh ke atas kenderaan untuk memastikan ia selamat dan layak untuk bergerak di jalan raya.
+                  Pemeriksaan tukar hak milik. Kini dipanggil MV15. JPJ tidak akan proses pindah milik tanpa laporan yang lulus.
                 </p>
               </div>
-              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>B5 adalah pemeriksaan "kesihatan" kenderaan. Juruteknik Puspakom akan memeriksa lebih daripada 40 komponen merangkumi:</p>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>Tujuan utama B5 ialah memastikan kereta itu memang kereta yang tertera dalam rekod JPJ, bukan kereta curi atau kereta klon. Antara yang diperiksa:</p>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  'Sistem brek (brek kaki dan brek tangan)',
-                  'Sistem suspensi dan stereng',
-                  'Lampu hadapan, belakang, signal dan lampu brek',
-                  'Tayar (kedalaman alur, tekanan, keadaan)',
-                  'Ekzos dan tahap pelepasan asap',
-                  'Wiper dan cermin pandang belakang',
-                  'Badan kenderaan (tidak ada kerosakan struktur yang bahaya)',
-                  'Meter dan speedometer berfungsi',
+                  'Nombor casis sepadan dengan rekod JPJ',
+                  'Nombor enjin sepadan dengan rekod JPJ',
+                  'Keadaan badan dan bahagian bawah kenderaan',
+                  'Tahap kegelapan cermin (tint) mengikut had JPJ',
+                  'Lampu berfungsi',
+                  'Pemeriksaan mekanikal asas',
                 ].map((item, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: '#374151' }}>
                     <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }} />
@@ -183,29 +181,29 @@ export default function PuspakomB5B7Article() {
               <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <AlertCircle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
                 <p style={{ color: '#92400e', fontSize: 13, lineHeight: 1.65, margin: 0 }}>
-                  Jika kenderaan gagal B5, anda akan menerima laporan terperinci tentang komponen yang perlu dibaiki. Selepas pembaikan, kenderaan perlu datang semula untuk pemeriksaan ulang (bayaran semula dikenakan).
+                  Jika kenderaan gagal B5, laporan akan menyatakan sebabnya. Betulkan perkara itu dahulu (contohnya tint terlalu gelap), kemudian tempah pemeriksaan semula. Semak caj pemeriksaan semula semasa membuat tempahan.
                 </p>
               </div>
             </section>
 
             <section>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Pemeriksaan B7: Pengesahan Enjin & Sekatan</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Puspakom B7 Untuk Apa? (Pinjaman Sewa Beli)</h2>
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <span style={{ fontWeight: 700, color: '#111827' }}>Puspakom B7</span>
                   <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 14 }}>RM 60</span>
                 </div>
                 <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.65 }}>
-                  Pengesahan nombor siri enjin, nombor casis, dan semakan sekiranya kenderaan masih ada baki pinjaman atau sekatan dari institusi kewangan.
+                  Pemeriksaan sewa beli. Bank atau syarikat kewangan minta laporan ini sebelum meluluskan pinjaman untuk kereta terpakai.
                 </p>
               </div>
-              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>B7 diperlukan khas apabila kenderaan <strong style={{ color: '#111827' }}>pernah atau masih mempunyai pinjaman (hire purchase / HP)</strong>. Tujuannya adalah untuk:</p>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>B7 diperlukan apabila <strong style={{ color: '#111827' }}>pembeli mengambil pinjaman sewa beli (hire purchase) untuk membeli kereta terpakai itu</strong>. Ia lebih menyeluruh daripada B5, sebab itu yurannya dua kali ganda:</p>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  'Mengesahkan nombor enjin dan casis sepadan dengan dokumen JPJ',
-                  'Memastikan kenderaan tidak lagi tertakluk kepada sekatan dari bank/syarikat kewangan',
-                  'Mengelakkan penipuan di mana kenderaan dijual sebelum pinjaman diselesaikan',
-                  'Melindungi pembeli daripada mewarisi hutang penjual',
+                  'Semua yang diperiksa dalam B5',
+                  'Pemeriksaan identiti kenderaan yang lebih mendalam',
+                  'Pemeriksaan fizikal keadaan dan keselamatan, termasuk brek',
+                  'Tujuannya: bank perlu yakin kereta yang menjadi cagaran pinjaman itu tulen dan dalam keadaan baik',
                 ].map((item, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: '#374151' }}>
                     <CheckCircle size={13} style={{ color: '#2563eb', flexShrink: 0, marginTop: 2 }} />
@@ -216,7 +214,7 @@ export default function PuspakomB5B7Article() {
               <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: 14, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <Info size={14} style={{ color: '#2563eb', flexShrink: 0, marginTop: 2 }} />
                 <p style={{ color: '#1e40af', fontSize: 13, lineHeight: 1.65, margin: 0 }}>
-                  Jika kenderaan tidak pernah ada pinjaman (bayar tunai terus), B7 mungkin tidak diperlukan. Semak dengan JPJ atau ejen pindah milik anda untuk pengesahan.
+                  Nak tahu sama ada kereta itu masih ada baki loan penjual? Itu bukan kerja B7. Minta penjual tunjuk surat penyelesaian daripada bank. Selagi bank belum melepaskan tuntutannya ke atas kereta itu, pindah milik tidak boleh dibuat.
                 </p>
               </div>
             </section>
@@ -226,11 +224,11 @@ export default function PuspakomB5B7Article() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
                   { step: '1', label: 'Selesaikan baki pinjaman', desc: 'Dapatkan surat penyelesaian hutang dari bank jika kenderaan pernah ada HP.' },
-                  { step: '2', label: 'Puspakom B5 & B7', desc: 'Bawa kenderaan ke pusat Puspakom berdekatan. B5 dan B7 boleh dibuat serentak.' },
+                  { step: '2', label: 'Pemeriksaan B5 (dan B7 jika ambil loan)', desc: 'Tempah di Puspakom atau pusat MV15 yang dilantik. B5 dan B7 boleh dibuat pada hari yang sama.' },
                   { step: '3', label: 'Dapatkan insurans baharu', desc: 'Pembeli perlu ada polisi insurans atas nama mereka sebelum JPJ boleh proses pindah milik.' },
-                  { step: '4', label: 'JPJ Pindah Milik (RM 100)', desc: 'Kedua-dua pihak hadir secara biometrik ke JPJ dalam masa 7 hari dari tarikh jualan.' },
+                  { step: '4', label: 'JPJ Pindah Milik (RM 100)', desc: 'Penjual dan pembeli sahkan biometrik, kemudian JPJ proses tukar nama. Buat sebelum laporan B5 tamat tempoh.' },
                   { step: '5', label: 'Renew road tax', desc: 'Selepas pindah milik selesai, renew road tax atas nama pembeli baharu.' },
-                  { step: '6', label: 'Kumpul geran', desc: 'Dokumen geran (VOC) akan diterima dalam tempoh beberapa minggu.' },
+                  { step: '6', label: 'Semak rekod baharu', desc: 'Pastikan nama pembeli kini tertera sebagai pemilik dalam rekod JPJ (aplikasi MyJPJ).' },
                 ].map(({ step, label, desc }) => (
                   <div key={step} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 16px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#dc2626', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 700 }}>
@@ -248,10 +246,10 @@ export default function PuspakomB5B7Article() {
             <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Di Mana Boleh Buat Puspakom?</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
-                Puspakom mempunyai lebih 70 pusat pemeriksaan di seluruh Malaysia. Anda boleh cari cawangan terdekat melalui laman web rasmi Puspakom atau aplikasi MyJPJ. Kebanyakan pusat beroperasi dari Isnin hingga Sabtu, 8am–5pm.
+                Tempah melalui laman web rasmi Puspakom. Sejak 2025, Kementerian Pengangkutan juga melantik pusat pemeriksaan MV15 (B5) selain Puspakom, iaitu Carro, Carsome Academy, Wawasan Bintang dan Beriman Gold, dengan yuran yang sama. Pemeriksaan B7 masih dibuat di Puspakom.
               </p>
               <p style={{ color: '#4b5563', lineHeight: 1.75 }}>
-                <strong style={{ color: '#111827' }}>Tip:</strong> Datang awal pagi atau buat temujanji terlebih dahulu untuk elakkan beratur panjang, terutama pada hari Isnin dan hujung bulan apabila permintaan tinggi.
+                <strong style={{ color: '#111827' }}>Tip:</strong> Buat B5 hanya selepas tarikh pindah milik hampir pasti. Laporan sah 120 hari, dan jika tamat tempoh anda perlu bayar dan periksa semula.
               </p>
             </section>
 

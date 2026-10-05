@@ -12,6 +12,7 @@ import { useAgentTrust } from '../hooks/useAgentTrust';
 import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
 import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
+import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -120,6 +121,9 @@ export default function SalesmanProfilePage() {
   // whether the "finish your page" note renders — it must never be shown to a
   // buyer sitting on someone else's page.
   const [viewerId, setViewerId] = useState(null);
+  // The viewer's OWN number, read from their own row. The public page no longer
+  // carries the seller's number (CDP-3), but the presenter shows it to its owner.
+  const [viewerPhone, setViewerPhone] = useState(null);
   // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
   const visitTracked = useRef(false);
   // Live presentation (owner only) and the car it is showing right now. The
@@ -170,8 +174,9 @@ export default function SalesmanProfilePage() {
       if (!uid || cancelled) return;
       setViewerId(uid);
       const { data: viewer } = await supabase
-        .from('profiles').select(ROUTE_PROFILE_COLUMNS).eq('id', uid).maybeSingle();
+        .from('profiles').select(`${ROUTE_PROFILE_COLUMNS}, whatsapp_number, phone`).eq('id', uid).maybeSingle();
       if (cancelled || !viewer?.role) return;
+      setViewerPhone(viewer.whatsapp_number || viewer.phone || null);
       setViewerHome({
         to: routeForProfile(viewer),
         label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
@@ -298,10 +303,11 @@ export default function SalesmanProfilePage() {
     return () => { cancelled = true; clearInterval(t); document.removeEventListener('visibilitychange', check); };
   }, [profile?.id, slug]);
 
-  const waPhone = (profile?.whatsapp_number || '').replace(/\D/g, '');
+  // The number is never in this page (CDP-3): /api/wa resolves it on tap.
+  const hasWa = hasWhatsApp(profile) && !!profile?.slug;
   const firstName = (profile?.full_name || 'Agent').split(' ')[0];
   const waMessage = `Hi ${firstName}, I came across your listings on ShiftOS and would like to know more.`;
-  const waHref = waPhone ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}?text=${encodeURIComponent(waMessage)}` : null;
+  const waHref = hasWa ? sellerWaUrl({ slug: profile.slug, text: waMessage }) : null;
   const isVerified = !!(profile?.is_verified);
 
   // The car the seller is showing on their live right now, if any. Numbers are
@@ -309,9 +315,10 @@ export default function SalesmanProfilePage() {
   // so "#3" on the stream is "#3" here.
   const liveIdx = liveListingId ? listings.findIndex((c) => c.id === liveListingId) : -1;
   const liveCar = liveIdx >= 0 ? listings[liveIdx] : null;
-  const liveWaHref = waPhone && liveCar
-    ? `https://wa.me/${waPhone.startsWith('6') ? waPhone : '6' + waPhone}?text=${encodeURIComponent(
-        `Hi ${firstName}, I'm watching your live. Interested in #${liveIdx + 1}, the ${[liveCar.year, liveCar.brand, liveCar.model].filter(Boolean).join(' ')}.`)}`
+  // Slug only: the viewer is messaging THIS agent about the car on their live.
+  const liveWaHref = hasWa && liveCar
+    ? sellerWaUrl({ slug: profile.slug,
+        text: `Hi ${firstName}, I'm watching your live. Interested in #${liveIdx + 1}, the ${[liveCar.year, liveCar.brand, liveCar.model].filter(Boolean).join(' ')}.` })
     : null;
   const trackLiveWhatsApp = () => {
     if (!liveCar) return;
@@ -852,7 +859,7 @@ export default function SalesmanProfilePage() {
       {presenting && (
         <Suspense fallback={null}>
           <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
-            sellerName={profile?.full_name} sellerPhone={profile?.whatsapp_number} onClose={() => setPresenting(false)} />
+            sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)} />
         </Suspense>
       )}
     </>

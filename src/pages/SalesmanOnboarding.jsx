@@ -291,7 +291,10 @@ export default function SalesmanOnboarding() {
         .maybeSingle();
 
       if (profile?.onboarding_complete && profile?.role === 'salesman') {
-        navigate('/salesman');
+        // A seller who already has an account and picked Premium wants to
+        // upgrade, not sign up again: open Lite's Premium section (Lite
+        // forwards them on if they already have Premium).
+        navigate(tier === 'premium' ? '/salesman-lite/settings?section=premium' : '/salesman');
         return;
       }
 

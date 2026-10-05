@@ -402,6 +402,16 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   which is how the announcement bar ended up a dark band above a white header.
   Paint an explicit light colour, and don't reuse a grey across both surfaces.
 
+## Seller numbers never ship to the public (CDP-3, 2026-10-05)
+Every public WhatsApp button links to `sellerWaUrl({ car, slug, seller, text })`
+(`src/utils/sellerWhatsApp.js`) -> `/api/wa` (rate-limited per IP in
+`middleware.js`) -> `get_seller_whatsapp` -> 302 to wa.me. Call goes through
+`/api/call-number`. `get_salesman_by_id` / `get_salesman_by_slug` /
+`get_dealer_profile_by_id` return NULL numbers plus `has_whatsapp` / `has_phone`;
+gate buttons on those flags. Never add a number back to a public RPC, view or
+page payload, and never build `wa.me/<number>` from one on a public page. The
+one exception is a dealer's OWN storefront (`get_dealer_profile_by_subdomain`).
+
 ## Multi-tenancy
 All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', dealerId)
 `car_listings` has NO public SELECT policy (this line used to say it was open,
@@ -1060,6 +1070,46 @@ the tab used to be, unchanged).
   is no "this is costing you RM x" (same rule as AI drafts).
 - `useStageHistory` only runs when the lazy tab mounts, so no other surface gains
   a query, and it selects three columns — no buyer name, phone or note.
+
+## Seller referrals + payment log (REFER-1, 2026-10-04) — one path, in the DB
+Migration `20261004a_seller_referrals.sql`. Owner's terms: 30 days of Premium per
+invited seller who has made TWO paid Premium payments; one level; no joining fee;
+max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
+- **Payments are rows in `subscription_payments`, written ONLY by
+  `record_subscription_payment(p_user)` (superadmin).** The console's "Log RM35
+  payment" button calls it. For a standalone salesman it moves `plan_expires_at`
+  forward and sets `payment_status` NULL — 'received' never expired, so a paid
+  seller used to stay Premium forever. Never flip `payment_status='received'` for
+  a salesman again.
+- Invite link = `xdrive.my/plans?invite=<slug>` (`src/utils/invite.js`), NOT
+  `?ref=` (that is buyer attribution). Captured in `main.jsx` before routing
+  (`/signup` redirects drop the query). `profiles.referred_by` is writable only via
+  `claim_referral(code)` (`trg_guard_profile_referral`); the panels call it on load.
+- The reward is `grant_referral_reward`, fired inside the payment RPC; one
+  `referral_rewards` row per invited seller (granted | capped | ineligible).
+  The UI card is `src/components/referral/ReferralCard.jsx` (Lite + Premium settings).
+- Hardening (`20261005a`, applies AFTER a + b): `claim_referral` is capped at 10 tries
+  per seller per 24h (`referral_claim_attempts`, every try logged; errors are RETURNED,
+  not raised, or the log row rolls back and the cap counts nothing). The card's
+  "Did another seller invite you?" box calls it, because the stored invite only lives
+  on the phone that tapped the link. A seller's `slug` is LOCKED once onboarding is
+  done (`trg_guard_profile_slug`): it IS the invite code. A mistaken/refunded payment
+  is undone with `void_subscription_payment` (console "Void"), which takes the months
+  back and, below 2 paid, the inviter's 30 days too. A referrer suspended when the
+  reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
+  restore cannot move `plan_expires_at` (escalation guard), so it waits.
+
+## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
+- **The free month is a paid-through date, not a trial flag:** `plan_expires_at =
+  now() + 30 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
+  `start_premium_trial()` from Lite). `subscription_status='trial'` never granted
+  Premium (is_salesman_premium ignores it), which is why Premium signups used to land
+  on Lite. `premium_trial_started_at` = the one free month is used.
+- The upgrade door is Lite Settings > Premium (`src/components/premium/PremiumUpgradeCard.jsx`).
+  `/plans` -> Premium for an already-onboarded seller goes there
+  (`SalesmanOnboarding.jsx`), not back into signup.
+- `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
+  self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
