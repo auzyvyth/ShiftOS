@@ -7,11 +7,11 @@ import MarketplaceFooter from '../../components/MarketplaceFooter';
 
 const ARTICLE = {
   slug: 'cara-kira-komisen-salesman-kereta',
-  title: 'Cara Kira Komisen Salesman Kereta Dengan Betul (2026)',
+  title: 'Komisen Jual Kereta: Berapa Salesman Dapat & Cara Kira (2026)',
   description:
-    'Panduan cara kira komisen salesman kereta dengan betul untuk dealer Malaysia. Formula komisen, kesilapan biasa, dan cara buat rekod komisen salesmen kereta secara automatik guna app salesmen kereta.',
+    'Berapa komisen jual kereta di Malaysia? Tiada kadar tetap: ada dealer bayar jumlah tetap setiap unit, ada yang beri peratus untung. Formula, contoh kiraan dan kesilapan biasa.',
   datePublished: '2026-06-22',
-  dateModified: '2026-06-22',
+  dateModified: '2026-10-05',
   readMins: 7,
 };
 
@@ -22,15 +22,15 @@ const FAQS = [
   },
   {
     q: 'Apa kesilapan biasa dalam kira komisen salesman?',
-    a: 'Kesilapan biasa termasuk mengira komisen dari harga jual tanpa tolak kos recon dan kos handover, lupa kira semula bila ada diskaun, dan rekod manual yang menyebabkan pertikaian. Sistem automatik seperti ShiftOS mengelakkan semua ini dengan rekod komisen salesmen kereta yang tepat.',
+    a: 'Kesilapan biasa termasuk mengira komisen dari harga jual tanpa tolak kos recon dan kos handover, lupa kira semula bila ada diskaun, dan rekod manual yang menyebabkan pertikaian. Sistem seperti ShiftOS mengurangkan pertikaian kerana setiap komisen direkodkan pada unit dan salesman yang menutup deal.',
   },
   {
     q: 'Boleh ke automasikan rekod komisen salesman?',
-    a: 'Boleh. App salesmen kereta seperti ShiftOS mengira komisen secara automatik setiap kali deal ditutup — berdasarkan peraturan yang anda tetapkan. Ini dipanggil salesman commission tracking dan ia menghapuskan kiraan manual serta pertikaian gaji.',
+    a: 'Boleh. App seperti ShiftOS mencadangkan komisen setiap kereta ikut peraturan yang dealer tetapkan, dan bila deal ditutup komisen itu direkodkan pada salesman yang menutupnya. Tiada lagi kiraan manual hujung bulan.',
   },
   {
     q: 'Berapa kadar komisen salesman kereta biasa di Malaysia?',
-    a: 'Kadar berbeza mengikut dealer, tetapi lazimnya antara 10%–30% dari untung kasar unit, atau RM200–RM1,000 setiap unit untuk struktur tetap. Sesetengah dealer tambah bonus prestasi untuk salesman yang capai sasaran bulanan.',
+    a: 'Tiada kadar rasmi. Setiap dealer tetapkan sendiri. Angka yang dikongsi secara umum oleh salesman kereta terpakai biasanya sekitar RM500 hingga RM1,500 setiap unit, lebih tinggi untuk kereta mewah. Dealer yang bayar ikut untung kasar beri satu peratusan daripada untung unit itu. Tanya struktur sebenar secara bertulis sebelum mula bekerja.',
   },
 ];
 
@@ -75,7 +75,7 @@ export default function KomisenSalesmanArticle() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "var(--xd-font-body)" }}>
         <MarketplaceHeader />
 
         <main style={{ paddingTop: 72, maxWidth: 760, margin: '0 auto', padding: '72px 20px 64px' }}>
@@ -95,8 +95,8 @@ export default function KomisenSalesmanArticle() {
               </span>
             </div>
             <h1 style={{ fontSize: 'clamp(1.8rem,5vw,2.6rem)', fontWeight: 800, color: '#111827', lineHeight: 1.15, margin: '0 0 16px', fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.02em' }}>
-              Cara Kira Komisen Salesman<br />
-              <span style={{ color: '#dc2626' }}>Kereta Dengan Betul</span>
+              Komisen Jual Kereta:<br />
+              <span style={{ color: '#dc2626' }}>Berapa & Cara Kira</span>
             </h1>
             <p style={{ color: '#4b5563', fontSize: 16, lineHeight: 1.7, margin: '0 0 20px' }}>
               {ARTICLE.description}
@@ -121,10 +121,10 @@ export default function KomisenSalesmanArticle() {
 
             <section>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12, fontSize: 16 }}>
-                <strong style={{ color: '#111827' }}>Cara paling betul untuk kira komisen salesman kereta ialah berdasarkan untung kasar (gross profit) setiap unit</strong>, bukan harga jual semata-mata. Ini kerana harga jual tidak mengambil kira kos recon, komisen dan kos handover — jadi mengira komisen dari harga jual boleh menghakis margin dealer tanpa disedari.
+                <strong style={{ color: '#111827' }}>Berapa komisen jual kereta? Tiada kadar rasmi di Malaysia.</strong> Setiap dealer tetapkan sendiri. Angka yang dikongsi secara umum oleh salesman kereta terpakai biasanya sekitar RM500 hingga RM1,500 setiap unit, lebih tinggi untuk kereta mewah. Ada dealer bayar jumlah tetap, ada yang bayar peratus daripada untung kasar unit itu.
               </p>
               <p style={{ color: '#4b5563', lineHeight: 1.75 }}>
-                Artikel ini menerangkan formula komisen, kesilapan biasa, dan cara buat rekod komisen salesmen kereta secara automatik.
+                Untuk dealer, cara paling adil ialah kira ikut untung kasar (gross profit), bukan harga jual, kerana harga jual tidak mengambil kira kos recon dan handover. Di bawah: tiga struktur biasa, contoh kiraan dan kesilapan yang selalu berlaku.
               </p>
             </section>
 
@@ -132,7 +132,7 @@ export default function KomisenSalesmanArticle() {
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 16 }}>3 Struktur Komisen Yang Biasa Digunakan</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {[
-                  { label: '1. Peratusan dari untung kasar', desc: 'Contoh: 20% × (harga jual − kos beli − recon − komisen − handover). Paling adil — salesman didorong jaga margin, bukan sekadar tutup deal cepat.' },
+                  { label: '1. Peratusan dari untung kasar', desc: 'Contoh: 20% × (harga jual − kos beli − recon − handover). Paling adil — salesman didorong jaga margin, bukan sekadar tutup deal cepat.' },
                   { label: '2. Jumlah tetap setiap unit', desc: 'Contoh: RM500 setiap kereta terjual. Mudah difahami, tetapi tidak membezakan deal margin tinggi dan rendah.' },
                   { label: '3. Peratusan dari harga jual', desc: 'Contoh: 1% × harga jual. Berisiko — boleh bayar komisen tinggi walaupun untung sebenar unit rendah.' },
                 ].map(({ label, desc }) => (
@@ -190,14 +190,14 @@ export default function KomisenSalesmanArticle() {
             <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Cara Buat Rekod Komisen Salesmen Kereta Secara Automatik</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
-                Cara paling selamat ialah guna app salesmen kereta yang mengira komisen secara automatik. Dalam ShiftOS, setiap kali salesman menutup deal (lead bertukar status "won"), sistem terus menandakan kereta sebagai terjual, mengira untung kasar, dan mengira komisen salesman berdasarkan peraturan yang anda tetapkan.
+                Cara paling selamat ialah guna app salesmen kereta yang mengira komisen secara automatik. Dalam ShiftOS, komisen setiap kereta dicadangkan ikut peraturan yang dealer tetapkan. Bila salesman menutup deal (lead bertukar status "won"), sistem terus menandakan kereta sebagai terjual dan merekodkan komisen itu pada salesman yang menutupnya.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
                 {[
-                  'Komisen dikira automatik setiap deal (salesman commission tracking car dealer)',
+                  'Komisen direkodkan automatik pada setiap deal yang ditutup',
                   'Setiap unit jelas ditutup oleh salesman mana — tiada pertikaian',
                   'Laporan komisen bulanan setiap salesman',
-                  'Diselaras dengan untung sebenar, bukan harga jual',
+                  'Untung kasar setiap unit dikira dengan komisennya sekali',
                 ].map((item, i) => (
                   <div key={i} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 16, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                     <CheckCircle size={14} style={{ color: '#16a34a', flexShrink: 0, marginTop: 2 }} />
