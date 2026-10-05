@@ -163,6 +163,18 @@ export function calcInstalment(price) {
   return calcMonthly(price) ?? 0;
 }
 
+/**
+ * YYYY-MM-DD for today + offsetDays in the device's LOCAL calendar.
+ * Never toISOString().slice(0,10): that is UTC, and Malaysia is UTC+8, so
+ * before 8am it returns yesterday and "Tomorrow" quietly sets today.
+ */
+export function localDateKey(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** Days since a timestamp */
 export function getLeadAgeDays(createdAt) {
   return Math.floor((Date.now() - new Date(createdAt)) / 86400000);

@@ -1105,17 +1105,6 @@ different concerns and the house rule is one per session.
   Verified: eslint clean, all 7 test suites pass, production build clean.
   NOT eyeballed in a browser from this session.
 
-- [ ] **PREM-3: Lite's follow-up quick presets are off by one before 8am.**
-  `SalesmanLite.jsx:7516-7519` builds "Tomorrow / In 2 days / In 3 days / Next
-  week" with `d.toISOString().slice(0, 10)`. That is UTC; Malaysia is UTC+8, so
-  between midnight and 8am local the string is the PREVIOUS day — "Tomorrow"
-  sets the reminder for today and it fires immediately. Premium's port already
-  builds from local parts and is correct; this is the same four lines in Lite.
-  Low severity (an 8-hour window), but it is a wrong date written to
-  `follow_up_at`, which drives nudges and the "This week" list.
-  Salesmanpanel.jsx:1894 writes `follow_up_at` too — check its presets for the
-  same pattern while in there.
-
 - [x] **PREM-4 DONE 2026-09-11 — and the answer was not the one the question
   asked for. ONE shared rule, measured off the right column.**
   The question was "AND or OR?". Researching it turned up a bigger problem and
@@ -4536,31 +4525,6 @@ native build.
   NOTE: deliberately NOT gated behind a form (owner decision). A buyer tapping Call is the
   highest-intent action on the page and pre-call friction loses calls, so Call still captures
   no lead — that is intended, not a missing-lead bug.
-
-- [ ] **CDP-3 (MED): WhatsApp numbers still ship in the page payload.** CDP-2 closed the Call
-  button and the crawler surface, but the wa.me CTAs still need a number at page-load time, so
-  `get_dealer_profile_by_id` / `get_salesman_by_id` / `get_salesman_by_slug` /
-  `get_dealer_profile_by_subdomain` continue to return `whatsapp_number` to anon for any id —
-  the bulk-harvest vector is open for WhatsApp even though it is closed for the call line.
-  Closing it means moving every wa.me build to on-tap (the enquiry modal already defers the
-  actual open to submit time, so CarDetailPage is most of the way there) and then stripping the
-  number from those RPCs. Blast radius is why it was deferred: storefront header,
-  StickyWhatsAppButton, car cards, ContactGate and useCTAContext all read it at load. Needs its
-  own tested pass with a full staging sweep.
-
-- [ ] **PUSH-2 (MED): solo Salesman Lite gets no `salesman_notifications` row for an organic
-  enquiry.** `notify_salesman_new_enquiry` resolves the rep from `NEW.salesman_id`, then
-  `ref_slug`, then falls back to looping `profiles WHERE dealer_id = NEW.dealer_id`. A solo
-  Lite salesman owns themselves (`dealer_id IS NULL`), so that loop matches NOBODY and no
-  salesman notification is written. It is missing rule 4 of the `resolve_lead_salesman`
-  doctrine in CLAUDE.md ("the dealer IS a self-owned salesman → attribute to them") — the
-  exact inline-reimplementation drift that section was written to prevent.
-  IMPACT IS LIMITED, which is why this is not a blocker: the Lite user still gets the PUSH,
-  because they are their own dealer and `notify_new_enquiry` writes a `dealer_notifications`
-  row that the push fan-out picks up. What they miss is the in-app salesman bell entry.
-  FIX: make `notify_salesman_new_enquiry` call `resolve_lead_salesman()` instead of its own
-  inline resolution, so there is one resolver again. Verify no double-notify results (the
-  same person would then be both dealer and salesman for that enquiry — dedupe by user id).
 
 - [x] **CRON-1: two cron jobs had never once succeeded (found + fixed 2026-08-16).**
   `expiry-reminders-daily` and `warm-leads-push` both built their auth header as

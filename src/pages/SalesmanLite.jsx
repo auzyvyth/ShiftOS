@@ -26,7 +26,7 @@ import {
   panelRadius as R,
   withAlpha,
 } from "../theme/tokens";
-import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REASON } from "../lib/leadsHelpers";
+import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REASON, localDateKey } from "../lib/leadsHelpers";
 import FollowUpRow from "../components/crm/FollowUpRow";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
@@ -7761,8 +7761,7 @@ export default function SalesmanLite() {
             { label: t("salesmanLite.followUp.in3days"), days: 3 },
             { label: t("salesmanLite.followUp.nextWeek"), days: 7 },
           ].map(({ label, days }) => {
-            const d = new Date(); d.setDate(d.getDate() + days);
-            const val = d.toISOString().slice(0, 10);
+            const val = localDateKey(days);
             return (
               <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val ? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val ? 600 : 400 }}>
                 {label}

@@ -11,6 +11,7 @@ const PROTECTED = new Set([
   '/api/whatsapp-lead',
   '/api/booking',
   '/api/call-number',
+  '/api/wa',
   '/api/waitlist',
   '/api/ai-messages',
   '/api/car-specs',
@@ -25,6 +26,9 @@ const LIMITS = {
   // Low enough that bulk harvesting a number per listing is impractical, high
   // enough that a real buyer comparing a few cars never hits it.
   '/api/call-number':  { window: '60 s',  max: 6,  prefix: 'rl:callnum' },
+  // CDP-3: one seller WhatsApp number per tap. A buyer messaging a handful of
+  // sellers fits easily; walking every listing for numbers does not.
+  '/api/wa':           { window: '60 s',  max: 10, prefix: 'rl:wa' },
   '/api/waitlist':     { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
   '/api/ai-messages':  { window: '60 s',  max: 20, prefix: 'rl:ai' },
   '/api/car-specs':    { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
@@ -96,5 +100,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
+  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
 };

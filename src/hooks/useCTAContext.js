@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { setRef } from '../lib/analytics';
+import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 
 function getSubdomain() {
   const hostname = window.location.hostname;
@@ -88,9 +89,12 @@ export function useCTAContext() {
 export function buildWaUrl(ctx, dealerPhone, text) {
   const clean = (p) => p?.replace(/\D/g, '') || '';
 
-  if (ctx.type === 'salesman' && ctx.profile?.whatsapp_number) {
+  // A ?ref= salesman's number is never in the page (CDP-3): link through
+  // /api/wa, which resolves it server side. Slug only, no car: the buyer came
+  // through this rep, so the rep gets the chat whichever car it is about.
+  if (ctx.type === 'salesman' && hasWhatsApp(ctx.profile)) {
     const msg = `${text}\n\nvia: ${ctx.ref}`;
-    return `https://wa.me/${clean(ctx.profile.whatsapp_number)}?text=${encodeURIComponent(msg)}`;
+    return sellerWaUrl({ slug: ctx.ref, text: msg });
   }
   if (ctx.type === 'dealer' && ctx.profile?.whatsapp_number) {
     return `https://wa.me/${clean(ctx.profile.whatsapp_number)}?text=${encodeURIComponent(text)}`;

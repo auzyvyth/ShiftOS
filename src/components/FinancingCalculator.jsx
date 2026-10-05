@@ -630,6 +630,15 @@ const FinancingCalculator = ({
                 .rpc('get_dealer_profile_by_id', { p_dealer_id: dealerId })
                 .maybeSingle();
               resolvedDealer = dealerRow || null;
+              // The public RPC no longer returns numbers (CDP-3). Someone on the
+              // dealer's own team may read them straight off the dealer's row
+              // (RLS: salesman_reads_linked_dealer_profile).
+              if (resolvedDealer) {
+                const { data: nums } = await supabase
+                  .from('profiles').select('whatsapp_number, phone')
+                  .eq('id', dealerId).maybeSingle();
+                if (nums) resolvedDealer = { ...resolvedDealer, ...nums };
+              }
             }
           }
         }

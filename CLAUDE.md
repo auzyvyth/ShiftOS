@@ -402,6 +402,16 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   which is how the announcement bar ended up a dark band above a white header.
   Paint an explicit light colour, and don't reuse a grey across both surfaces.
 
+## Seller numbers never ship to the public (CDP-3, 2026-10-05)
+Every public WhatsApp button links to `sellerWaUrl({ car, slug, seller, text })`
+(`src/utils/sellerWhatsApp.js`) -> `/api/wa` (rate-limited per IP in
+`middleware.js`) -> `get_seller_whatsapp` -> 302 to wa.me. Call goes through
+`/api/call-number`. `get_salesman_by_id` / `get_salesman_by_slug` /
+`get_dealer_profile_by_id` return NULL numbers plus `has_whatsapp` / `has_phone`;
+gate buttons on those flags. Never add a number back to a public RPC, view or
+page payload, and never build `wa.me/<number>` from one on a public page. The
+one exception is a dealer's OWN storefront (`get_dealer_profile_by_subdomain`).
+
 ## Multi-tenancy
 All queries scoped by dealer_id via RLS + frontend .eq('dealer_id', dealerId)
 `car_listings` has NO public SELECT policy (this line used to say it was open,

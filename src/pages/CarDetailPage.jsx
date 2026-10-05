@@ -63,6 +63,7 @@ import { isSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { apiUrl } from "../utils/apiUrl";
+import { sellerWaUrl, hasWhatsApp, hasPhone } from "../utils/sellerWhatsApp";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
@@ -495,7 +496,7 @@ function SellerRating({ summary, floor, anchorId, th }) {
 function hasDealerIdentity(dealer) {
   if (!dealer) return false;
   return !!(dealer.is_verified || dealer.ssm_number || dealer.location || dealer.city ||
-    dealer.business_hours || dealer.phone || dealer.stat_years > 0);
+    dealer.business_hours || hasPhone(dealer) || dealer.stat_years > 0);
 }
 
 // The line under the seller's name. The mobile card and the desktop sidebar
@@ -532,7 +533,7 @@ function SellerTypeLine({ isAgent, sellerType, salesmanProfile, dealer, th, isXd
   );
 }
 
-function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
+function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId, onCall }) {
   if (!hasDealerIdentity(dealer)) return null;
 
   const addressLine = [dealer.location, [dealer.postcode, dealer.city].filter(Boolean).join(' '), dealer.state]
@@ -558,13 +559,13 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
       label: 'Business hours',
       value: dealer.business_hours,
     },
-    dealer.phone && {
+    hasPhone(dealer) && onCall && {
       icon: Phone,
-      label: 'Landline',
-      // Never render the raw digits — tapping "Call" dials the number
-      // directly via the tel: link without showing it anywhere on screen.
-      value: 'Tap "Call" to ring this dealer directly',
-      href: `tel:${dealer.phone}`,
+      label: 'Phone',
+      // The number is not in the page at all (CDP-3): "Call" fetches it on tap
+      // through /api/call-number, the same path as the main Call button.
+      value: 'Tap "Call" to ring the seller directly',
+      onClick: onCall,
       hrefLabel: 'Call',
     },
     dealer.stat_years > 0 && {
@@ -597,7 +598,7 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
 
         {rows.length > 0 && (
           <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {rows.map(({ icon: Icon, label, value, note, href, hrefLabel }) => (
+            {rows.map(({ icon: Icon, label, value, note, href, hrefLabel, onClick }) => (
               <div key={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                 <Icon size={14} style={{ color: th.textMuted, flexShrink: 0, marginTop: 2 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -607,10 +608,16 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId }) {
                   <p style={{ fontSize: 13, color: th.text, margin: 0, lineHeight: 1.6, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{value}</p>
                 </div>
                 {href && (
-                  <a href={href} target={href.startsWith('tel:') ? undefined : '_blank'} rel="noopener noreferrer"
+                  <a href={href} target="_blank" rel="noopener noreferrer"
                     style={{ flexShrink: 0, fontSize: 11, color: accent, textDecoration: 'none', fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {hrefLabel}
                   </a>
+                )}
+                {onClick && (
+                  <button type="button" onClick={onClick}
+                    style={{ flexShrink: 0, fontSize: 11, color: accent, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                    {hrefLabel}
+                  </button>
                 )}
               </div>
             ))}
@@ -686,11 +693,10 @@ const FieldError = ({ id, msg, th }) =>
    1280-1600px image; the srcset lets the browser pick. The primary cell is
    ~62% of the viewport on desktop and full-bleed below 900px. */
 // The agent a WhatsApp enquiry goes to on a Salesman Lite/Premium listing.
+// No number here (CDP-3): the slug is enough, /api/wa resolves it on tap.
 function repTargetFor(profile) {
-  const digits = (profile?.whatsapp_number || '').replace(/\D/g, '');
-  if (!digits) return null;
+  if (!hasWhatsApp(profile) || !profile.slug) return null;
   return {
-    phone: digits.startsWith('6') ? digits : '6' + digits,
     slug: profile.slug,
     name: (profile.full_name || '').trim().split(' ')[0] || 'Agent',
   };
@@ -1532,8 +1538,8 @@ export default function CarDetailPage() {
 
   function handleWhatsApp(target) {
     // Most call sites are onClick={handleWhatsApp}, so the first arg is a
-    // MouseEvent — only treat it as a target when it actually carries a phone.
-    setEnquiryTarget(target && typeof target === "object" && target.phone ? target : null);
+    // MouseEvent — only treat it as a target when it actually names a rep.
+    setEnquiryTarget(target && typeof target === "object" && target.slug ? target : null);
     // Prefill from device-remembered details (preferences consent tier; returns
     // null when not granted) first, then fall back to the signed-in buyer's
     // saved account details so a logged-in buyer never retypes — even on a
@@ -1616,11 +1622,15 @@ export default function CarDetailPage() {
     // before any await, otherwise popup blockers will intercept window.open.
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
     // A targeted enquiry ("Chat with <agent>") must reach THAT agent, not the
-    // dealer's main line that buildWaUrl would otherwise prefer.
-    const targetPhone = target?.phone?.replace(/\D/g, "") || null;
-    const waUrl = targetPhone
-      ? `https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`
-      : buildWaUrl(ctaCtx, contactPhone, message);
+    // dealer's main line that buildWaUrl would otherwise prefer. Neither number
+    // is in the page (CDP-3): /api/wa resolves it for this car on tap, the
+    // same way the lead is attributed.
+    const ctxUrl = buildWaUrl(ctaCtx, null, message);
+    const waUrl = target?.slug
+      ? sellerWaUrl({ car: car.id, slug: target.slug, text: message })
+      : ctxUrl !== "#" ? ctxUrl
+      : hasContact ? sellerWaUrl({ car: car.id, text: message })
+      : "#";
     // buildWaUrl returns '#' when no phone is resolvable — opening that just
     // reloads the current page in a new tab, so guard against it.
     if (waUrl && waUrl !== "#") {
@@ -1807,8 +1817,10 @@ export default function CarDetailPage() {
       e.currentTarget.src = '/placeholder-car.jpg';
     }
   };
-  const contactPhone =
-    dealer?.whatsapp_number || salesmanProfile?.whatsapp_number || null;
+  // Whether the seller has ANY number. The number itself never reaches the
+  // page (CDP-3); Call and WhatsApp fetch it on tap.
+  const hasContact = hasWhatsApp(dealer) || hasPhone(dealer) ||
+    hasWhatsApp(salesmanProfile) || hasPhone(salesmanProfile);
   const isOwnListing = !!currentUserId && (
     currentUserId === car.dealer_id || currentUserId === car.assigned_to
   );
@@ -2871,7 +2883,7 @@ export default function CarDetailPage() {
           )}
 
           {/* About this dealer (mobile) */}
-          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
+          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" onCall={handleCall} />
 
           {/* Reviews + Q&A, one section (mobile) */}
           <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-m" onSummary={handleReviewSummary} />
@@ -3979,7 +3991,7 @@ export default function CarDetailPage() {
             )}
 
             {/* ── ABOUT THIS DEALER (desktop) ── */}
-            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
+            <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" onCall={handleCall} />
 
             {/* ── REVIEWS + Q&A, one section (desktop) ── */}
             <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-d" onSummary={handleReviewSummary} />
@@ -4091,7 +4103,7 @@ export default function CarDetailPage() {
                 carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
                 sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
                 onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
-                onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
+                onCall={handleCall} callLoading={callLoading} showCall={hasContact} />
             </div>
 
             <div style={{ marginTop: 16 }}>
@@ -4230,7 +4242,7 @@ export default function CarDetailPage() {
             carName={[car.year, car.brand, car.model].filter(Boolean).join(' ')}
             sellerName={repFirstName ? `Chat with ${repFirstName}` : null}
             onWhatsApp={enquiryClick} whatsappLabel={enquiryLabel}
-            onCall={handleCall} callLoading={callLoading} showCall={!!contactPhone} />
+            onCall={handleCall} callLoading={callLoading} showCall={hasContact} />
         </div>
         {!isOwnListing && (
         <button className="cdp-mobile-bar-book" onClick={handleBookingClick}>Book a Viewing</button>

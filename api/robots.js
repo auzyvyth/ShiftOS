@@ -13,6 +13,7 @@ const INTERNAL_PATHS = [
   "/platform",
   "/onboarding",
   "/auth",
+  "/api/wa",
 ];
 
 export default function handler(req, res) {
