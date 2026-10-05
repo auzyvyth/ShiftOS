@@ -104,16 +104,17 @@ inside self-rolling-back transactions.
   /rest/v1/rpc, skipping the route's rate limit. Code now prefers
   SUPABASE_SERVICE_ROLE_KEY. NEXT: confirm that env var is set in Vercel Production,
   deploy, then `revoke execute on both from public, anon, authenticated`.
-- [ ] SEC-2 SUSPENSION BYPASS: a suspended seller can switch themselves back on and
-  erase the suspension (toggle onboarding_complete false->true; the onboarding branch
-  of prevent_profile_privilege_escalation skips the is_active/suspended_at guards;
-  same path un-deletes). Proven with a rolled-back probe. Fix written:
-  `supabase/migrations/20261005f_security_sweep.sql` (new trigger
-  trg_zy_guard_profile_lifecycle). NOT APPLIED -- the apply was cancelled at approval.
-  Same migration also: drops `workshop_jobs.public_read_job_by_token` (shape-check
-  share token, 0 rows today, would publish customer name+phone) and limits
-  `car_images_select_own` to your own folder (today any signed-in guest can LIST the
-  bucket and find 23 geran / loan-letter scans under docs/).
+- [x] SEC-2 SUSPENSION BYPASS -- FIXED 2026-10-06 (migration 20261005f, trigger
+  trg_zy_guard_profile_lifecycle). A suspended seller toggling onboarding_complete
+  could switch themselves back on and erase the suspension (and un-delete). Re-probed:
+  stays suspended, reason intact. Same migration: finishing onboarding switches any
+  seller on (owner decision: approval = ID check), and car-images listing is limited
+  to your own folder (guest buyer now lists 0 files, was the whole bucket incl. 23
+  geran/loan-letter scans).
+- [ ] SEC-2b `workshop_jobs.public_read_job_by_token` still exists (shape-check share
+  token; 0 rows today, would publish customer name+phone). Needs
+  `drop policy public_read_job_by_token on public.workshop_jobs;` -- left out because
+  DROP statements were cancelled at approval. No client reads it.
 - [ ] SEC-3 Car documents live in the PUBLIC car-images bucket (CarForm.jsx:962). Names
   are random now, so listing (SEC-2) is the main hole, but they belong in a private
   bucket served by signed URL, like kyc-docs.

@@ -770,6 +770,13 @@ across all sections, one state each).
   (now rendered by SalesmanLite and SalesmanPremium too — they showed nothing
   before, so a suspended standalone seller lost the marketplace with a working
   dashboard and no explanation).
+- **Account lifecycle is guarded by `trg_zy_guard_profile_lifecycle`** (on `profiles`,
+  migration `20261005f`): for any non-platform UPDATE, `onboarding_complete` is one-way,
+  `suspended_at`/`suspension_reason` cannot change, a suspended or deleted account cannot
+  switch itself on, and finishing onboarding switches a seller ON (owner, 2026-10-05:
+  approval is an ID check, not an access gate). It exists because the onboarding branch
+  of `prevent_profile_privilege_escalation` skipped those guards -- a suspended seller
+  could revive themselves. Suspended sellers appeal; they never self-restore.
 - **Prospects (the owner's own sales CRM)** is `ProspectsTab.jsx` on
   `platform_prospects` (superadmin-only RLS). Linking to an account, waitlist
   import, contact stamping and the do-not-contact refusal are DB triggers
