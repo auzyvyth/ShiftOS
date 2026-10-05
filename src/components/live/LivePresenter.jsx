@@ -263,8 +263,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   return createPortal(
     <div className="lp">
-      {/* Light, on the marketplace tokens (DESIGN.md): page #F7F6F2, white cards,
-          ink #0f1115, one red only for the selected cell's marker.
+      {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
+          one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
           container units so it fits a 375px phone with no scroll.
           Desktop (mouse + landscape screen, 1024px+): a wide two-column sheet
@@ -273,23 +273,33 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           thin to read on camera. The desktop block at the end of the styles is
           the only place that layout lives. */}
       <style>{`
-        .lp { position: fixed; inset: 0; z-index: 1000; background: #E8E5DE; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
+        .lp { --lp-grad: linear-gradient(120deg, #F0472C 0%, #E8341B 45%, #B8240F 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
-        .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto; background: #F7F6F2; display: flex; flex-direction: column; container-type: size; }
-        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: #fff; border-bottom: 1px solid rgba(0,0,0,.06); flex-shrink: 0; }
+        /* Owner, 2026-10-05: the flat beige felt dead on stream. Colour lives in
+           the stage BEHIND the cards (the brand's red glow in the corners of
+           brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
+           red and cream only, no dark) and in one red gradient; the numbers stay dark on near-white glass so they still
+           read through a phone camera filming a monitor. */
+        .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
+          background:
+            radial-gradient(75% 45% at 0% 0%, rgba(232,52,27,.30), transparent 70%),
+            radial-gradient(70% 45% at 100% 100%, rgba(232,52,27,.28), transparent 70%),
+            radial-gradient(50% 30% at 100% 10%, rgba(232,52,27,.10), transparent 70%),
+            #EBEAE8; display: flex; flex-direction: column; container-type: size; }
+        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
-        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(33,31,30,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .lp-lang { font-size: 13px; font-weight: 800; letter-spacing: .04em; font-family: inherit; }
-        .lp-iconbtn[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
-        .lp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .lp-iconbtn[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
+        .lp-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
-        .lp-card { background: #fff; border-radius: 14px; border: 1px solid rgba(0,0,0,.06); box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
+        .lp-card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(120,40,20,.14), 0 1px 2px rgba(33,31,30,.08); }
         /* The quotation sheet (the poster sellers hold up on lives): title, then
            photo | price breakdown, then contact | tenure table, then the comment
            bar. Sized in container units so it fits the stage with no scroll. */
         .lp-sheet { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 44px); line-height: 1; letter-spacing: .02em; color: #fff; background: #0f1115; border-radius: 8px; padding: 6px 10px 3px; flex-shrink: 0; }
+        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 44px); line-height: 1; letter-spacing: .02em; color: #fff; background: var(--lp-grad); border-radius: 8px; padding: 6px 10px 3px; box-shadow: 0 4px 14px rgba(232,52,27,.35); flex-shrink: 0; }
         .lp-tt { min-width: 0; }
         .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(24px, 7.4cqw, 44px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-spec { font-size: clamp(11px, 3cqw, 15px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -304,7 +314,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brk td:last-child { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; }
         .lp-brk tr.lp-loan td { padding-top: 6px; border-top: 1px solid rgba(0,0,0,.1); font-weight: 700; color: #0f1115; }
         .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 24px); }
-        .lp-deps button { padding: 0 4px; }
+        /* Four chips must share one phone-width row: "Tanpa deposit" + three
+           "Deposit N%" in BM is ~470px of unbreakable text, which pushed the
+           whole sheet sideways. Chips shrink equally and wrap onto two lines. */
+        .lp-seg.lp-deps button { flex: 1 1 0; min-width: 0; height: auto; min-height: 34px; padding: 4px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 13px); }
         .lp-low { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
         .lp-low.lp-with { grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); }
         .lp-contact { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; border: none; border-radius: 10px; background: #F1EFEA; font: inherit; color: #0f1115; text-align: center; cursor: pointer; min-width: 0; }
@@ -317,7 +330,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; }
         .lp-ten tr.lp-t { cursor: pointer; }
         .lp-ten tr.lp-t:hover td { background: rgba(15,17,21,.04); }
-        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: #0f1115; color: #fff; border-top-color: transparent; }
+        /* Vertical gradient so the two cells line up with no seam between them. */
+        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: linear-gradient(180deg, #F0472C 0%, #E8341B 50%, #C42A12 100%); color: #fff; border-top-color: transparent; }
+        .lp-ten tr.lp-def td:last-child { text-shadow: 0 1px 8px rgba(80,10,0,.3); }
         .lp-ten tr.lp-def td:last-child { font-size: clamp(22px, 7cqw, 40px); }
         .lp-ten tr.lp-def td:first-child { border-radius: 8px 0 0 8px; }
         .lp-ten tr.lp-def td:last-child { border-radius: 0 8px 8px 0; }
@@ -325,21 +340,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-work { font-size: clamp(13px, 3.4cqw, 18px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.45; }
         .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
-        .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: #0f1115; color: #fff; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+        .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--lp-grad); color: #fff; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 14px); color: #6b7280; line-height: 1.45; margin: 8px 0 0; }
         .lp-fit { display: flex; flex-direction: column; gap: 10px; }
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
         .lp-in { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-in:focus { outline: none; border-color: #0f1115; }
-        .lp-seg { display: flex; gap: 4px; padding: 4px; background: #F1EFEA; border-radius: 10px; }
+        .lp-seg { display: flex; gap: 4px; padding: 4px; background: rgba(33,31,30,.08); border-radius: 10px; }
         .lp-adjust .lp-seg { grid-column: 1 / -1; }
         .lp-seg button { flex: 1; height: 34px; padding: 0 12px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #4b5563; cursor: pointer; white-space: nowrap; }
         .lp-seg button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
         .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
-        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid rgba(0,0,0,.06); flex-shrink: 0; }
+        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
-        .lp-navbtn.lp-next { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .lp-navbtn.lp-next { background: var(--lp-grad); border-color: transparent; color: #fff; box-shadow: 0 6px 20px rgba(232,52,27,.4); }
         .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
         .lp-money { display: flex; align-items: center; gap: 8px; height: clamp(56px, 15cqw, 80px); padding: 0 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; }
         .lp-money:focus-within { border-color: #0f1115; }
@@ -394,7 +409,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
           .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
           .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
-          .lp-seg button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
+          .lp-seg button, .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
           .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
           .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
           .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
