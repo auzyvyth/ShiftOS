@@ -1177,6 +1177,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
+  Typed in Adjust, never saved to the listing (promos change monthly). Loan =
+  price - rebate - deposit; deposit % chips and the Budget tab use the net price.
+  Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
+  never counted as the buyer's deposit.
 - **Presenter language (EN/BM) is the presenter's OWN switch** (top-bar "EN"/"BM"
   button), not the app's i18n language: a seller may run the dashboard in one and
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the

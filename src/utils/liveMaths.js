@@ -49,7 +49,17 @@ export function maxMonthlyFromPay(net) {
 // already covers are left out: neither is a financing question.
 export const ABOVE_MARGIN = 0.25;
 
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis }) {
+// What the buyer actually pays for the car: asking price minus the rebate the
+// seller typed for it on this live. A rebate is money off the price, nothing
+// else: never a deposit, never shown as a crossed-out "was" price.
+//   rebates: { [listingId]: number | string } — presenter state, never saved
+export function netPrice(car, rebates) {
+  const price = Number(car?.selling_price) || 0;
+  const rebate = Math.min(price, Math.max(0, Number(rebates?.[car?.id]) || 0));
+  return { price, rebate, net: price - rebate };
+}
+
+export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
   const down = Math.max(0, Number(deposit) || 0);
@@ -57,7 +67,7 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
   const fits = [];
   const above = [];
   (listings || []).forEach((car, i) => {
-    const price = Number(car?.selling_price) || 0;
+    const { net: price } = netPrice(car, rebates);
     if (price <= 0 || down >= price) return;
     const monthly = monthlyPayment(price - down, eir, years * 12);
     const row = { n: i + 1, car, price, monthly };

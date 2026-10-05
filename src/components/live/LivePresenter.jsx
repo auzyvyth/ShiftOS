@@ -8,6 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
+  netPrice,
 } from '../../utils/liveMaths';
 import { LIVE_COPY, initialLiveLang, saveLiveLang } from './liveCopy';
 
@@ -78,6 +79,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [eir, setEir] = useState(String(DEFAULT_EIR));
   const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
   const [customDown, setCustomDown] = useState('');
+  // Rebate per car, typed during this live only. Promos change monthly, so it
+  // is not saved to the listing.
+  const [rebates, setRebates] = useState({});
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
@@ -126,7 +130,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const contact = (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
-  const price = Number(car?.selling_price) || 0;
+  // price = asking, net = what the loan is worked from (asking - rebate).
+  const { price, rebate, net } = netPrice(car, rebates);
   const rate = Math.max(0, Number(eir) || 0);
 
   const go = useCallback((d) => {
@@ -230,14 +235,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Typed deposit, 0 included: "no deposit" is the most-asked question on a live.
   const custom = customDown === '' ? null : Math.max(0, Number(customDown) || 0);
   const rows = [
-    ...(custom !== null && custom < price
+    ...(custom !== null && custom < net
       ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : t.noDeposit, down: custom, custom: true }] : []),
-    ...DOWN_ROWS.map((pct) => ({ key: pct, down: price * pct / 100 })),
+    ...DOWN_ROWS.map((pct) => ({ key: pct, down: net * pct / 100 })),
   ];
-  const financeable = price > 0;
+  const financeable = net > 0;
   const highValue = price > HIGH_VALUE_THRESHOLD;
   const rateFor = (y) => eirForTenure(rate, basis, y);
-  const monthlyFor = (down, y) => monthlyPayment(price - down, rateFor(y), y * 12);
+  const monthlyFor = (down, y) => monthlyPayment(net - down, rateFor(y), y * 12);
   const picked = rows.find((r) => r.key === pick.row) || rows.find((r) => r.key === DEFAULT_DOWN);
   const pickYears = TENURES.includes(pick.years) ? pick.years : DEFAULT_TENURE;
   const answer = financeable ? monthlyFor(picked.down, pickYears) : 0;
@@ -251,7 +256,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const amount = Math.max(0, Number(budgetAmount) || 0);
   const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
   const bDown = Math.max(0, Number(budgetDown) || 0);
-  const matches = budgetMatches(listings, { maxMonthly, deposit: bDown, years: budgetYears, rate, basis });
+  const matches = budgetMatches(listings, { maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates });
   const openFromBudget = (m) => {
     setIdx(m.n - 1);
     setImgIdx(0);
@@ -478,6 +483,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </label>
             {mode === 'cars' && (
               <label>
+                {t.rebateThisCar}
+                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[car.id] ?? ''}
+                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [car.id]: v })); }} />
+              </label>
+            )}
+            {mode === 'cars' && (
+              <label>
                 {t.customDeposit}
                 <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder={t.noDepositHint} value={customDown}
                   onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
@@ -522,13 +534,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
             </div>
 
-            {/* The working, line by line: price - deposit = loan, at this rate. */}
+            {/* The working, line by line: price - rebate - deposit = loan, at this rate. */}
             <table className="lp-brk">
               <tbody>
                 <tr><td>{t.price}</td><td>{price > 0 ? `RM ${fmt(price)}` : t.onRequest}</td></tr>
+                {rebate > 0 && <tr><td>{t.rebate}</td><td>- RM {fmt(rebate)}</td></tr>}
                 {financeable && (<>
                   <tr><td>{t.deposit}</td><td>{picked.down > 0 ? `RM ${fmt(picked.down)}` : t.none}</td></tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td>RM {fmt(price - picked.down)}</td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td>RM {fmt(net - picked.down)}</td></tr>
                   <tr><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
                 </>)}
               </tbody>

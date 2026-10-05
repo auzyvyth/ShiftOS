@@ -1,6 +1,6 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches } from '../src/utils/liveMaths.js';
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 
 let pass = 0, fail = 0;
@@ -74,6 +74,12 @@ const many = [{ selling_price: 50000 }, { selling_price: 51000 }, { selling_pric
 const m2 = budgetMatches(many, { maxMonthly: near(49000), years: 7, rate: 3, basis: 'eir' });
 is('budget: at most two just-over cars, cheapest first', m2.above.map((x) => x.n), [1, 2]);
 is('budget: a car far over budget is not "just above"', budgetMatches(many, { maxMonthly: near(100000), years: 7, rate: 3, basis: 'eir' }).above.length, 0);
+
+is('rebate: net is price minus rebate', netPrice({ id: 'a', selling_price: 75000 }, { a: '3000' }), { price: 75000, rebate: 3000, net: 72000 });
+is('rebate: none typed', netPrice({ id: 'a', selling_price: 75000 }, {}).net, 75000);
+is('rebate: capped at the price', netPrice({ id: 'a', selling_price: 5000 }, { a: 9000 }).net, 0);
+const rb = budgetMatches([{ id: 'a', selling_price: 75000 }], { maxMonthly: 100000, deposit: 5000, years: 7, rate: 3, basis: 'eir', rebates: { a: 3000 } });
+is('rebate: budget uses the net price', rb.fits[0].monthly, monthlyPayment(67000, 3, 84));
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
