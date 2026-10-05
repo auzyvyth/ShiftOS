@@ -263,7 +263,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   return createPortal(
     <div className="lp">
-      {/* Near-white glass cards with ink #0f1115 text over the brand-dark stage with a red glow;
+      {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
           one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
           container units so it fits a 375px phone with no scroll.
@@ -273,26 +273,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           thin to read on camera. The desktop block at the end of the styles is
           the only place that layout lives. */}
       <style>{`
-        .lp { --lp-grad: linear-gradient(120deg, #F0472C 0%, #E8341B 45%, #B8240F 100%); position: fixed; inset: 0; z-index: 1000; background: #141312; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
+        .lp { --lp-grad: linear-gradient(120deg, #F0472C 0%, #E8341B 45%, #B8240F 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
         /* Owner, 2026-10-05: the flat beige felt dead on stream. Colour lives in
            the stage BEHIND the cards (the brand's red glow in the corners of
-           brand dark, marketing/brand/brand.md) and in one red gradient; the numbers stay dark on near-white glass so they still
+           brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
+           red and cream only, no dark) and in one red gradient; the numbers stay dark on near-white glass so they still
            read through a phone camera filming a monitor. */
         .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
           background:
-            radial-gradient(75% 45% at 0% 0%, rgba(232,52,27,.42), transparent 70%),
-            radial-gradient(70% 45% at 100% 100%, rgba(232,52,27,.36), transparent 70%),
-            radial-gradient(50% 30% at 100% 10%, rgba(232,52,27,.14), transparent 70%),
-            #211F1E; display: flex; flex-direction: column; container-type: size; }
-        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: rgba(33,31,30,.4); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,.08); flex-shrink: 0; }
-        .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.8); }
-        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.92); color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+            radial-gradient(75% 45% at 0% 0%, rgba(232,52,27,.30), transparent 70%),
+            radial-gradient(70% 45% at 100% 100%, rgba(232,52,27,.28), transparent 70%),
+            radial-gradient(50% 30% at 100% 10%, rgba(232,52,27,.10), transparent 70%),
+            #EBEAE8; display: flex; flex-direction: column; container-type: size; }
+        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
+        .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
+        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(33,31,30,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .lp-lang { font-size: 13px; font-weight: 800; letter-spacing: .04em; font-family: inherit; }
         .lp-iconbtn[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
         .lp-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
-        .lp-card { background: rgba(243,242,240,.98); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(10,6,4,.4), 0 1px 2px rgba(10,6,4,.25); }
+        .lp-card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(120,40,20,.14), 0 1px 2px rgba(33,31,30,.08); }
         /* The quotation sheet (the poster sellers hold up on lives): title, then
            photo | price breakdown, then contact | tenure table, then the comment
            bar. Sized in container units so it fits the stage with no scroll. */
@@ -348,11 +349,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-in:focus { outline: none; border-color: #0f1115; }
         .lp-seg { display: flex; gap: 4px; padding: 4px; background: rgba(33,31,30,.08); border-radius: 10px; }
         .lp-adjust .lp-seg { grid-column: 1 / -1; }
-        .lp-top .lp-seg { background: rgba(243,242,240,.92); } /* sits on the dark bar, not a card */
         .lp-seg button { flex: 1; height: 34px; padding: 0 12px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #4b5563; cursor: pointer; white-space: nowrap; }
         .lp-seg button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
         .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
-        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(33,31,30,.4); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(255,255,255,.08); flex-shrink: 0; }
+        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-navbtn.lp-next { background: var(--lp-grad); border-color: transparent; color: #fff; box-shadow: 0 6px 20px rgba(232,52,27,.4); }
         .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
@@ -377,8 +377,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row.lp-over { opacity: .62; }
         .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
         .lp-report { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
-        .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #fff; margin: 0; }
-        .lp-report > .lp-note { color: rgba(255,255,255,.8); }
+        .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #0f1115; margin: 0; }
         .lp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
