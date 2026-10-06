@@ -70,6 +70,31 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## SL-LIVE: /for-salesmen relaunched around Live presentation — 2026-10-06
+Owner's call: the target audience is salesmen who do finance calculations on
+TikTok / Facebook lives, so the hero now sells Live presentation (Premium, first
+month free) and Lite is the free way in. Same pass fixed every false claim the
+audit found (cars "live the moment you publish", the Mudah/Carlist comparison,
+"drag through stages", "your number" on the page, the PDPA badge, the
+mismatched This-week screenshot). Facts the copy rests on are listed at the top
+of `src/config/salesmanLandingCopy.js`. Still open:
+- [ ] Owner to confirm the buyer names in `public/for-salesmen/*.png` are seeded
+  demo data (timestamps say so: exact :30:00 marks on airymotors, repeated
+  fractional seconds on premiummotors). If any is a real buyer, blur it.
+- [ ] Owner to confirm the 4 public cars on `premiummotors` (the page's example)
+  are real stock. If they are demo cars, they are fake listings shown to buyers.
+- [ ] A real screenshot of the Premium "This week" list for PlanTour (the old
+  `premium-thisweek.png` was Lite's Today's Agenda, so the section was removed).
+- [ ] A real screenshot of Live presentation would beat the hero recreation.
+- [ ] DDL queued for after 22:00: `20261003c_drop_sambung_columns.sql` was never
+  applied (`public_car_listings` still has the five `sambung_*` columns, all
+  empty). Re-read the live view def first: it was written against 2026-10-03.
+- [ ] ANALYTICS-SPOOF: `analytics_insert_v2` on `analytics_events` accepts any
+  `salesman_slug`/`dealer_id` from anyone, rate-limited only on a `session_id`
+  the browser invents. A script can inflate any seller's views and WhatsApp
+  taps. Fix needs a server route with a per-IP limit (like `/api/wa` in
+  `middleware.js`) and the anon INSERT policy dropped. Its own session.
+
 ## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
 Pattern: the console painted raw columns (approval_status, is_active,
 subscription_status) whose meaning had moved. Fixed in this pass: one helper,

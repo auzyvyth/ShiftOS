@@ -62,8 +62,8 @@ ${ORDER.map((slug) => `- [${FEATURES[slug].kicker}](${SITE}/features/${slug}): $
 - Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
 
 ## For salesmen
-- [XDrive for salesmen](${SITE}/for-salesmen): For individual car salesmen and agents in Malaysia. Salesman Lite (free): a page at xdrive.my/s/yourname, up to 10 cars on the marketplace, buyer enquiries direct to WhatsApp and in-app chat, and a lead pipeline with follow-up reminders. Salesman Premium (RM35/month) adds a live presentation for TikTok / Facebook lives that works out monthly instalments (9, 7 and 5 years) for every car, a sorted call list with follow-up messages drafted, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking.
-- [Example salesman page](${SITE}/s/premiummotors): A live Salesman Premium page, showing what a buyer sees when a salesman shares their link.
+- [XDrive for salesmen](${SITE}/for-salesmen): For Malaysian car salesmen who sell on TikTok and Facebook Live. Salesman Premium (RM35/month, first month free) includes Live presentation: an instalment calculator that shows every car numbered, with price, deposit, loan and the monthly over 9, 7 and 5 years, updating when the deposit changes. Premium also adds a sorted call list with follow-up messages drafted, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking. Salesman Lite (free): a page at xdrive.my/s/yourname, up to 10 cars on the marketplace (each checked before it goes public), buyer enquiries by WhatsApp and in-app chat, and a lead pipeline with follow-up reminders.
+- [Example salesman page](${SITE}/s/premiummotors): XDrive's example Salesman Premium page, showing what a buyer sees when a salesman shares their link.
 
 ## Guides & articles
 - [Guides](${SITE}/guides): Practical guides for Malaysian used-car buyers and dealers.
@@ -74,7 +74,7 @@ ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${d
 
 ## Pricing (RM/month, prices in Malaysian Ringgit)
 - Salesman Lite — RM0 (free): up to 10 listings, 1 seat.
-- Salesman Premium — RM35/month: up to 30 listings, 1 seat, plus a TikTok / Facebook Live instalment presenter, a follow-up call list, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking.
+- Salesman Premium — RM35/month, first month free: up to 30 listings, 1 seat, plus a TikTok / Facebook Live instalment presenter, a follow-up call list, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, and commission tracking.
 - Dealer Starter — RM299/month: up to 30 listings, 4 seats. 14-day free trial.
 - Dealer Growth — RM599/month: up to 80 listings, 8 seats.
 - Dealer Pro — RM1,199/month: up to 150 listings, 15 seats.

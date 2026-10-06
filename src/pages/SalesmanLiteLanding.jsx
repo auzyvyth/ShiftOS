@@ -7,18 +7,24 @@ import { trackPageView } from "../utils/analytics";
 import {
   ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
-  Smartphone, Zap, Lock, Eye, ListChecks, Bell, Copy, ExternalLink,
-  Instagram, Facebook,
+  Smartphone, Zap, Lock, Eye, ListChecks, ExternalLink,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
 import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection";
+import LivePosterMock from "../components/salesmanLanding/LivePosterMock";
 import {
   CANON, SEO_TITLE, SEO_DESC, SEO_KEYWORDS, FAQS, SOFTWARE_LD, FAQ_LD,
-  HERO_INTRO, COMPARE_ROWS, STEPS, FEATURE_COPY, LITE_BULLETS, PREMIUM_BULLETS,
-  WEBPAGE_LD, REVIEWED_LABEL, EXAMPLE_PAGE,
+  HERO_EYEBROW, HERO_INTRO, HERO_TRUST, PREMIUM_CTA, LITE_CTA,
+  COMPARE_ROWS, COMPARE_OLD_LABEL, COMPARE_NEW_LABEL, STEPS, FEATURE_COPY,
+  LITE_BULLETS, PREMIUM_BULLETS, WEBPAGE_LD, REVIEWED_LABEL, EXAMPLE_PAGE,
 } from "../config/salesmanLandingCopy";
+
+// Audience (owner, 2026-10-06): agents who work out instalments on TikTok /
+// Facebook lives. The hero sells Live presentation (Premium, first month free);
+// Lite is the free way in, one button over. Every claim on this page must match
+// what the product does — see the fact list at the top of salesmanLandingCopy.js.
 
 // ─── Scroll-reveal (restrained on purpose — see DESIGN.md: no ambient/looping
 // decoration). One-shot fade+rise per section, staggered per grid item, so
@@ -33,28 +39,17 @@ const staggerParent = {
   show: { transition: { staggerChildren: 0.08 } },
 };
 
+const PREMIUM_SIGNUP = "/salesman-onboarding/premium";
+const LITE_SIGNUP = "/salesman-onboarding/lite";
+
 const FEATURE_ICONS = [Globe, Car, MessageCircle, ListChecks, LineChart, Link2, Wallet];
 const FEATURES = FEATURE_COPY.map((f, i) => ({ ...f, Icon: FEATURE_ICONS[i] }));
 
 const WHY = [
-  { Icon: Smartphone, title: "Built for your phone", body: "Add a car, snap photos, publish — all from the phone that's already in your hand at the lot." },
-  { Icon: Zap, title: "Live in minutes", body: "No website, no designer, no waiting. Sign up and your first car is on the marketplace the same day." },
+  { Icon: Smartphone, title: "Built for your phone", body: "Add a car and snap photos from the phone that's already in your hand at the lot." },
+  { Icon: Zap, title: "Set up in minutes", body: "No website, no designer. Sign up, add your cars, and each one goes public once we've checked it." },
   { Icon: Eye, title: "You look established", body: "A proper page beats a folder of screenshots. Buyers trust an agent with a real presence." },
-  { Icon: Lock, title: "Yours to keep", body: "Your page, your link, your leads. Move up to Premium and everything comes with you." },
-];
-
-// Decorative mock of the Salesman panel home screen — fills the empty
-// right-hand space in the hero on desktop. Static sample numbers only.
-const DASH_STATS = [
-  { n: "512", l: "Views" },
-  { n: "187", l: "Page visits", cls: "sll-dash-stat-blue" },
-  { n: "64", l: "WA taps", cls: "sll-dash-stat-green" },
-  { n: "9", l: "Live listings" },
-];
-const DASH_PLATFORMS = [
-  { Icon: Globe, name: "Direct", visits: 96, clicks: 34, pct: 100, color: "rgba(255,255,255,0.4)" },
-  { Icon: Instagram, name: "Instagram", visits: 58, clicks: 19, pct: 60, color: "#ec4899" },
-  { Icon: Facebook, name: "Facebook", visits: 33, clicks: 11, pct: 34, color: "#3b82f6" },
+  { Icon: Lock, title: "Yours to keep", body: "Your page, your link, your leads. Move between Lite and Premium and everything comes with you." },
 ];
 
 const SHOWCASE_CARS = [
@@ -112,67 +107,31 @@ export default function SalesmanLiteLanding() {
       <MarketplaceHeader hideAnnouncement />
 
       <main className="sll">
-        {/* ── Hero ── */}
+        {/* ── Hero: Live presentation ── */}
         <section className="sll-hero">
           <div className="sll-wrap sll-hero-inner">
             <div className="sll-hero-copy">
-              <span className="sll-eyebrow">Salesman Lite · <span className="sll-red">Free forever</span></span>
+              <span className="sll-eyebrow">{HERO_EYEBROW}</span>
               <h1 className="sll-h1">
-                One link.<br />All your cars.<br /><span className="sll-red">Zero ringgit.</span>
+                Monthly berapa?<br />One tap.<br /><span className="sll-red">Every car.</span>
               </h1>
               <p className="sll-lead">{HERO_INTRO}</p>
               <div className="sll-cta-row">
-                <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-                  Sign up free <ArrowRight size={17} />
+                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
+                  {PREMIUM_CTA} <ArrowRight size={17} />
                 </Link>
-                <a href="#how" className="sll-btn sll-btn-ghost">See how it works</a>
+                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-ghost">{LITE_CTA}</Link>
               </div>
               <p className="sll-microtrust">
-                <span className="sll-microtrust-item"><Check size={14} /> Free forever</span>
-                <span className="sll-microtrust-item"><Check size={14} /> No credit card</span>
-                <span className="sll-microtrust-item"><Check size={14} /> Live in minutes</span>
+                {HERO_TRUST.map((t) => (
+                  <span key={t} className="sll-microtrust-item"><Check size={14} /> {t}</span>
+                ))}
               </p>
             </div>
 
-            {/* Mock of the salesman panel home screen — decorative, static numbers */}
-            <div className="sll-dash" aria-hidden="true">
-              <div className="sll-dash-top">
-                <div>
-                  <div className="sll-dash-greet">Good evening, Airy.</div>
-                  <div className="sll-dash-sub">5 leads waiting on a follow-up — don't let a hot one go cold.</div>
-                </div>
-                <span className="sll-dash-overdue"><Bell size={11} /> 5 overdue</span>
-              </div>
-
-              <div className="sll-dash-period"><span className="sll-dash-dot" /> 30 DAYS</div>
-              <div className="sll-dash-stats">
-                {DASH_STATS.map((s) => (
-                  <div key={s.l} className={`sll-dash-stat ${s.cls || ""}`}>
-                    <span className="sll-dash-stat-n">{s.n}</span>
-                    <span className="sll-dash-stat-l">{s.l}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="sll-dash-row">
-                <span className="sll-dash-link"><Link2 size={12} /> xdrive.my/s/airymotors <Copy size={12} style={{ marginLeft: "auto" }} /></span>
-                <span className="sll-dash-btn sll-dash-btn-primary"><ExternalLink size={12} /> View your mini page</span>
-                <span className="sll-dash-btn sll-dash-btn-ghost"><Share2 size={12} /> Share</span>
-              </div>
-
-              <p className="sll-dash-traffic-h">Mini page traffic by platform</p>
-              {DASH_PLATFORMS.map((p) => (
-                <div key={p.name} className="sll-dash-plat">
-                  <div className="sll-dash-plat-top">
-                    <span className="sll-dash-plat-name"><p.Icon size={13} style={{ color: p.color }} /> {p.name}</span>
-                    <span className="sll-dash-plat-meta">{p.visits} visits · {p.clicks} clicks</span>
-                  </div>
-                  <div className="sll-dash-bar">
-                    <div className="sll-dash-bar-fill" style={{ width: `${p.pct}%`, background: p.color }} />
-                  </div>
-                </div>
-              ))}
-              <p className="sll-dash-foot">Direct = organic or untagged visits we couldn't attribute to a platform.</p>
+            {/* The live poster itself — sample car, real formula */}
+            <div className="sll-hero-mock">
+              <LivePosterMock />
             </div>
           </div>
         </section>
@@ -180,41 +139,44 @@ export default function SalesmanLiteLanding() {
         {/* ── Marketplace band ── */}
         <div className="sll-band-line">
           <div className="sll-wrap">
-            Your cars, live on Malaysia's car marketplace — <strong>xdrive.my</strong>
+            Every car you list also goes on the <strong>xdrive.my</strong> marketplace
           </div>
         </div>
 
-        {/* ── What you get with each plan: one real screenshot per tab ── */}
-        <PlanTour />
+        {/* ── Live presentation, point by point ── */}
+        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} />
 
-        {/* ── Pain → comparison ── */}
-        <motion.section className="sll-section" variants={fadeUp} {...reveal}>
+        {/* ── Pain → comparison: the poster by hand vs Live presentation ── */}
+        <motion.section className="sll-section sll-section-alt" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
             <p className="sll-kicker">Sound familiar?</p>
-            <h2 className="sll-h2">Selling cars online shouldn't cost you the lead.</h2>
+            <h2 className="sll-h2">Selling on live shouldn't mean retyping a poster.</h2>
             <div className="sll-compare-list">
               {COMPARE_ROWS.map((r) => (
                 <div key={r.label} className="sll-compare-item">
                   <p className="sll-compare-label">{r.label}</p>
                   <div className="sll-compare-row sll-compare-row-old">
                     <XIcon size={14} className="sll-compare-x" />
-                    <span><strong>Mudah / Carlist:</strong> {r.old}</span>
+                    <span><strong>{COMPARE_OLD_LABEL}:</strong> {r.old}</span>
                   </div>
                   <div className="sll-compare-row sll-compare-row-new">
                     <Check size={14} className="sll-tick" />
-                    <span><strong>Salesman Lite:</strong> {r.lite}</span>
+                    <span><strong>{COMPARE_NEW_LABEL}:</strong> {r.now}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="sll-pain-fix">Salesman Lite fixes all four — for free.</p>
+            <p className="sll-pain-fix">Live presentation fixes all four.</p>
           </div>
         </motion.section>
 
-        {/* ── Features ── */}
+        {/* ── What you get with each plan: one real screenshot per tab ── */}
+        <PlanTour />
+
+        {/* ── Features (free on Lite) ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">What you get</p>
+            <p className="sll-kicker">Free on Lite</p>
             <h2 className="sll-h2">Everything to sell online. Nothing to pay.</h2>
             <motion.div className="sll-grid" variants={staggerParent} {...reveal}>
               {FEATURES.map((f) => (
@@ -236,20 +198,19 @@ export default function SalesmanLiteLanding() {
               <h2 className="sll-h2">Send one link. They see everything.</h2>
               <p className="sll-showcase-lead">
                 No more forwarding photos car by car. Your XDrive page shows your whole
-                stock, your prices and a WhatsApp button on every listing — open on any
+                stock, your prices and a WhatsApp button on every listing, open on any
                 phone, ready to share the second a buyer asks.
               </p>
               <ul className="sll-showcase-list">
-                <li><Check size={16} className="sll-tick" /> Your name and number, front and centre</li>
+                <li><Check size={16} className="sll-tick" /> Your name at the top, every car below</li>
                 <li><Check size={16} className="sll-tick" /> Every car with photos, price and specs</li>
                 <li><Check size={16} className="sll-tick" /> Tap-to-WhatsApp on each listing</li>
               </ul>
-              {/* A real, live Premium page beats any mock-up (EXAMPLE_PAGE). */}
               <Link to={EXAMPLE_PAGE.path} className="sll-example">
-                See a real page: <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
+                See an example page: <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
               </Link>
             </div>
-            <div className="sll-phone">
+            <figure className="sll-phone" aria-label="Sample agent page">
               <div className="sll-phone-top">
                 <span className="sll-phone-url">xdrive.my/s/<strong>ahmad</strong></span>
               </div>
@@ -257,7 +218,7 @@ export default function SalesmanLiteLanding() {
                 <div className="sll-phone-avatar">A</div>
                 <div>
                   <div className="sll-phone-name">Ahmad · Car Agent</div>
-                  <div className="sll-phone-sub">Klang Valley · 24 cars sold</div>
+                  <div className="sll-phone-sub">Klang Valley</div>
                 </div>
               </div>
               {SHOWCASE_CARS.map((c) => (
@@ -270,7 +231,8 @@ export default function SalesmanLiteLanding() {
                   <div className="sll-phone-wa"><MessageCircle size={14} /></div>
                 </div>
               ))}
-            </div>
+              <figcaption className="sll-phone-cap">Sample page</figcaption>
+            </figure>
           </div>
         </motion.section>
 
@@ -289,8 +251,8 @@ export default function SalesmanLiteLanding() {
               ))}
             </motion.div>
             <div className="sll-dark-cta">
-              <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-                Create my free page <ArrowRight size={17} />
+              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
+                {PREMIUM_CTA} <ArrowRight size={17} />
               </Link>
             </div>
           </div>
@@ -319,24 +281,34 @@ export default function SalesmanLiteLanding() {
         <motion.section className="sll-midcta" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-midcta-inner">
             <div>
-              <h3 className="sll-midcta-h">Ready when you are.</h3>
-              <p className="sll-midcta-p">Your free page takes minutes and costs nothing.</p>
+              <h3 className="sll-midcta-h">Ready for your next live?</h3>
+              <p className="sll-midcta-p">The first month of Premium is free. No card, nothing billed automatically.</p>
             </div>
-            <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red">
-              Sign up free <ArrowRight size={17} />
+            <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
+              {PREMIUM_CTA} <ArrowRight size={17} />
             </Link>
           </div>
         </motion.section>
 
-        {/* ── Premium: live selling (the live presentation, recreated) ── */}
-        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} />
-
         {/* ── Lite vs Premium ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">Start free, grow later</p>
-            <h2 className="sll-h2">Lite is free. Premium when you're ready.</h2>
+            <p className="sll-kicker">Pick your plan</p>
+            <h2 className="sll-h2">Premium for live selling. Lite to start free.</h2>
             <div className="sll-plans">
+              <div className="sll-plan sll-plan-alt">
+                <div className="sll-plan-head">
+                  <span className="sll-plan-name">Salesman Premium</span>
+                  <span className="sll-plan-price">RM35<span>/month</span></span>
+                  <span className="sll-plan-note">First month free</span>
+                </div>
+                <ul className="sll-plan-list">
+                  {PREMIUM_BULLETS.map((x) => (
+                    <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
+                  ))}
+                </ul>
+                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">{PREMIUM_CTA}</Link>
+              </div>
               <div className="sll-plan">
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">Salesman Lite</span>
@@ -347,19 +319,7 @@ export default function SalesmanLiteLanding() {
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
-                <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-block">Sign up free</Link>
-              </div>
-              <div className="sll-plan sll-plan-alt">
-                <div className="sll-plan-head">
-                  <span className="sll-plan-name">Salesman Premium</span>
-                  <span className="sll-plan-price">RM35<span>/month</span></span>
-                </div>
-                <ul className="sll-plan-list">
-                  {PREMIUM_BULLETS.map((x) => (
-                    <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
-                  ))}
-                </ul>
-                <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-dark sll-btn-block">Upgrade to Premium</Link>
+                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-dark sll-btn-block">{LITE_CTA}</Link>
               </div>
             </div>
           </div>
@@ -380,17 +340,18 @@ export default function SalesmanLiteLanding() {
         {/* ── Final CTA ── */}
         <motion.section className="sll-final" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
-            <h2 className="sll-final-h">Your free car-sales page<br />is minutes away.</h2>
-            <p className="sll-final-p">Join the Malaysian agents putting their whole stock behind one link.</p>
+            <h2 className="sll-final-h">Your next live,<br />already worked out.</h2>
+            <p className="sll-final-p">Every car you list becomes a screen with its monthlies ready.</p>
             <div className="sll-cta-row sll-cta-center">
-              <Link to="/salesman-onboarding/lite" className="sll-btn sll-btn-red sll-btn-lg">
-                Sign up free <ArrowRight size={18} />
+              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
+                {PREMIUM_CTA} <ArrowRight size={18} />
               </Link>
             </div>
+            <p className="sll-final-alt"><Link to={LITE_SIGNUP}>Or start free on Lite</Link></p>
             <p className="sll-microtrust sll-center">
-              <span className="sll-microtrust-item"><ShieldCheck size={14} /> PDPA 2010 compliant</span>
-              <span className="sll-microtrust-item"><Share2 size={14} /> One shareable link</span>
-              <span className="sll-microtrust-item"><Wallet size={14} /> RM0</span>
+              <span className="sll-microtrust-item"><Wallet size={14} /> First month free</span>
+              <span className="sll-microtrust-item"><ShieldCheck size={14} /> Number hidden until you tap</span>
+              <span className="sll-microtrust-item"><Share2 size={14} /> One link for your bio</span>
             </p>
           </div>
         </motion.section>
@@ -437,34 +398,8 @@ const CSS = `
   .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
   .sll-band-line strong { color: #fff; font-weight: 800; }
 
-  /* Hero dashboard preview — decorative mock, not a live component */
-  .sll-dash { background: #0a0a0a; border-radius: 20px; padding: 22px 20px; box-shadow: 0 30px 70px rgba(10,10,10,0.22); border: 1px solid rgba(255,255,255,0.06); }
-  .sll-dash-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
-  .sll-dash-greet { font-size: 14.5px; font-weight: 800; color: #fff; margin-bottom: 4px; }
-  .sll-dash-sub { font-size: 11px; line-height: 1.5; color: rgba(255,255,255,0.5); max-width: 200px; }
-  .sll-dash-overdue { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: #fca5a5; background: rgba(220,38,38,0.14); border: 1px solid rgba(220,38,38,0.3); padding: 5px 9px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
-  .sll-dash-period { display: flex; align-items: center; justify-content: flex-end; gap: 5px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; color: rgba(255,255,255,0.35); margin-bottom: 8px; }
-  .sll-dash-dot { width: 5px; height: 5px; border-radius: 50%; background: #4ade80; }
-  .sll-dash-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
-  .sll-dash-stat-n { display: block; font-size: 19px; font-weight: 900; color: #fff; letter-spacing: -0.02em; }
-  .sll-dash-stat-l { display: block; font-size: 9px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-top: 2px; }
-  .sll-dash-stat-blue .sll-dash-stat-n { color: #60a5fa; }
-  .sll-dash-stat-green .sll-dash-stat-n { color: #4ade80; }
-  .sll-dash-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 20px; }
-  .sll-dash-link { display: flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); padding: 8px 10px; border-radius: 10px; flex: 1 1 100%; }
-  .sll-dash-link svg:first-child { color: rgba(255,255,255,0.35); flex-shrink: 0; }
-  .sll-dash-btn { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 10.5px; font-weight: 700; padding: 8px 10px; border-radius: 10px; flex: 1; white-space: nowrap; }
-  .sll-dash-btn-primary { background: rgba(220,38,38,0.14); border: 1px solid rgba(220,38,38,0.3); color: #f87171; }
-  .sll-dash-btn-ghost { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.65); }
-  .sll-dash-traffic-h { font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin: 0 0 12px; }
-  .sll-dash-plat { margin-bottom: 12px; }
-  .sll-dash-plat:last-of-type { margin-bottom: 0; }
-  .sll-dash-plat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; font-weight: 700; color: #fff; margin-bottom: 6px; }
-  .sll-dash-plat-name { display: flex; align-items: center; gap: 6px; }
-  .sll-dash-plat-meta { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.4); }
-  .sll-dash-bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
-  .sll-dash-bar-fill { height: 100%; border-radius: 4px; }
-  .sll-dash-foot { font-size: 9.5px; line-height: 1.5; color: rgba(255,255,255,0.3); margin: 14px 0 0; }
+  /* Hero picture: the live poster (LivePosterMock.jsx) */
+  .sll-hero-mock { min-width: 0; }
 
   /* Sections */
   .sll-section { padding: 74px 0; }
@@ -505,7 +440,7 @@ const CSS = `
   .sll-example:hover { text-decoration-color: #0a0a0a; }
   .sll-example strong { font-weight: 800; }
   .sll-showcase-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: #1f2733; padding: 7px 0; }
-  .sll-phone { border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
+  .sll-phone { margin: 0; border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
   .sll-phone-top { text-align: center; padding: 4px 0 12px; }
   .sll-phone-url { font-size: 12px; color: #9ca3af; background: #f3f4f6; padding: 5px 12px; border-radius: 20px; }
   .sll-phone-url strong { color: #0a0a0a; }
@@ -520,6 +455,7 @@ const CSS = `
   .sll-phone-cn { font-size: 12px; font-weight: 700; color: #0a0a0a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sll-phone-cp { font-size: 12px; font-weight: 700; color: #dc2626; }
   .sll-phone-cp span { color: #9ca3af; font-weight: 500; }
+  .sll-phone-cap { font-size: 12px; color: #9ca3af; text-align: center; padding: 10px 0 2px; }
   .sll-phone-wa { width: 30px; height: 30px; border-radius: 8px; background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
   /* Dark how-it-works */
@@ -551,6 +487,7 @@ const CSS = `
   .sll-plan-head { margin-bottom: 22px; }
   .sll-plan-name { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
   .sll-plan-price { font-size: 40px; font-weight: 900; letter-spacing: -0.03em; }
+  .sll-plan-note { display: block; font-size: 13px; font-weight: 700; color: #dc2626; margin-top: 6px; }
   .sll-plan-price span { font-size: 15px; font-weight: 600; color: #9ca3af; letter-spacing: 0; }
   .sll-plan-list { list-style: none; padding: 0; margin: 0 0 24px; flex: 1; }
   .sll-plan-list li { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; color: #1f2733; padding: 7px 0; line-height: 1.4; }
@@ -567,13 +504,16 @@ const CSS = `
   .sll-final { background: #0a0a0a; color: #fff; padding: 88px 0; text-align: center; }
   .sll-final-h { font-size: clamp(30px, 5vw, 52px); font-weight: 900; letter-spacing: -0.03em; line-height: 1.02; margin: 0 0 16px; color: #fff; }
   .sll-final-p { font-size: 16px; color: rgba(255,255,255,0.6); margin: 0 0 30px; }
+  .sll-final-alt { margin: 16px 0 0; font-size: 14px; }
+  .sll-final-alt a { color: rgba(255,255,255,0.75); text-decoration: underline; text-underline-offset: 3px; }
+  .sll-final-alt a:hover { color: #fff; }
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
     .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase, .sll-hero-inner { grid-template-columns: 1fr; }
     .sll-hero { padding: 64px 0 48px; }
     .sll-hero-inner { gap: 36px; }
-    .sll-dash { max-width: 380px; margin: 0 auto; }
+    .sll-hero-mock { max-width: 380px; width: 100%; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
     /* Three items in one wrapped inline row read as clanky on narrow screens

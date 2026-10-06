@@ -109,21 +109,6 @@ const PREMIUM = [
     pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
   },
   {
-    key: "thisweek", tab: "Dashboard",
-    img: "/for-salesmen/premium-thisweek.png", w: 555, h: 468,
-    alt: "Today's Agenda showing missed appointments, test drives and scheduled follow-ups for the day",
-    title: "A call list for this week, already sorted.",
-    pain: "Past buyers, quiet leads and reminders you set all live on different screens, so the calls that bring repeat business never get made.",
-    moment: "Monday morning. One list: two buyers nobody replied to, one lead going quiet, and a past customer whose insurance is due. One row per person, even when there are two reasons to call.",
-    points: [
-      "Buyers never replied to come first",
-      "Leads going quiet and reminders that are due",
-      "Past buyers with a renewal due or a car ready to trade up",
-      "Tap Message and WhatsApp opens with a draft. You press send.",
-    ],
-    pays: "Repeat buyers and referrals are the cheapest deals you will ever close.",
-  },
-  {
     key: "sold", tab: "Sold",
     img: "/for-salesmen/premium-sold.png", w: 435, h: 617,
     alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
@@ -215,7 +200,9 @@ function Shot({ s, shotRef }) {
 
 export default function PlanTour() {
   const reduce = useReducedMotion();
-  const [plan, setPlan] = useState("lite");
+  // Opens on Premium: the page leads with Live presentation (Premium), and
+  // Lite is one tap away on the toggle.
+  const [plan, setPlan] = useState("premium");
   const [geo, setGeo] = useState({ w: 0, h: 0, d: "", pads: [] });
   const [lit, setLit] = useState(0);
   const flowRef = useRef(null);

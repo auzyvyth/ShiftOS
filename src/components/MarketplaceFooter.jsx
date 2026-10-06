@@ -57,7 +57,7 @@ export default function MarketplaceFooter() {
     {
       heading: 'Product',
       links: [
-        { label: 'Salesman Lite (Free)', to: '/for-salesmen' },
+        { label: 'For Salesmen',         to: '/for-salesmen' },
         { label: 'ShiftOS DMS',        to: '/shiftos' },
         { label: 'Smart Inventory',    to: '/features/smart-inventory' },
         { label: 'Leads CRM',          to: '/features/leads-crm' },
