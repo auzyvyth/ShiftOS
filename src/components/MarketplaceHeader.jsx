@@ -430,7 +430,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
               <Link to="/showroom?hot_deals=true" className={`mh-nav-link hot${isHotDeals ? ' active' : ''}`}><Flame size={15} /> Hot Deals</Link>
             )}
             <Link to="/compare" className="mh-nav-link"><GitCompare size={15} /> Compare</Link>
-            <Link to="/for-salesmen" className="mh-nav-link">Salesman Lite</Link>
+            <Link to="/for-salesmen" className="mh-nav-link">For Salesmen</Link>
             <MegaNav id="dealers" label="For Dealers" align="right" items={DEALERS} accent={{ eyebrow:'ShiftOS DMS', title:'Run your dealership', sub:'Listings, leads CRM, F&I and revenue analytics in one system.', to:'/shiftos', cta:'Start free trial' }} />
             <MegaNav id="guides" label="Panduan & Artikel" align="right" items={GUIDES} />
           </nav>
@@ -512,7 +512,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
               who is not a dealership. A plain row, not an accordion: it is one
               destination, and it pairs with For Dealers directly above. */}
           <Link to="/for-salesmen" className="mh-m-link" onClick={() => setMenuOpen(false)}>
-            <span style={{ display:'flex', alignItems:'center', gap:10 }}><User size={17} /> Salesman Lite</span>
+            <span style={{ display:'flex', alignItems:'center', gap:10 }}><User size={17} /> For Salesmen</span>
           </Link>
 
           {/* Guides collapsed to one link instead of its own accordion — the

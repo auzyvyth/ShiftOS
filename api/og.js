@@ -757,21 +757,23 @@ const STATIC_PAGES = {
   "/for-salesmen": () => {
     const li = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
     const body = `  <main>
+    <p>${esc(SL.HERO_EYEBROW)}</p>
     <h1>${esc(SL.HERO_H1)}</h1>
     <p>${esc(SL.HERO_INTRO)}</p>
-    <p><a href="${SITE_URL}/salesman-onboarding/lite">Sign up free</a> · <a href="${SL.EXAMPLE_PAGE.url}">See a real salesman page: ${esc(SL.EXAMPLE_PAGE.label)}</a></p>
-    <h2>Salesman Lite vs Mudah / Carlist</h2>
-    <ul>${SL.COMPARE_ROWS.map((r) => `<li><strong>${esc(r.label)}:</strong> Mudah / Carlist — ${esc(r.old)}. Salesman Lite — ${esc(r.lite)}.</li>`).join("")}</ul>
-    <h2>What you get</h2>
-    ${SL.FEATURE_COPY.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
-    <h2>How it works</h2>
-    <ol>${SL.STEPS.map((st) => `<li><strong>${esc(st.title)}</strong> — ${esc(st.body)}</li>`).join("")}</ol>
+    <p><a href="${SITE_URL}/salesman-onboarding/premium">${esc(SL.PREMIUM_CTA)}</a> · <a href="${SITE_URL}/salesman-onboarding/lite">${esc(SL.LITE_CTA)}</a> · <a href="${SL.EXAMPLE_PAGE.url}">See an example page: ${esc(SL.EXAMPLE_PAGE.label)}</a></p>
     <h2>${esc(SL.LIVE_SELLING.title)}</h2>
     <p>${esc(SL.LIVE_SELLING.lead)}</p>
     <ul>${li(SL.LIVE_SELLING.points)}</ul>
+    <p>${esc(SL.LIVE_SELLING.note)}</p>
+    <h2>${esc(SL.COMPARE_OLD_LABEL)} vs ${esc(SL.COMPARE_NEW_LABEL)}</h2>
+    <ul>${SL.COMPARE_ROWS.map((r) => `<li><strong>${esc(r.label)}:</strong> ${esc(SL.COMPARE_OLD_LABEL)}: ${esc(r.old)}. ${esc(SL.COMPARE_NEW_LABEL)}: ${esc(r.now)}.</li>`).join("")}</ul>
+    <h2>How it works</h2>
+    <ol>${SL.STEPS.map((st) => `<li><strong>${esc(st.title)}</strong>: ${esc(st.body)}</li>`).join("")}</ol>
+    <h2>Free on Salesman Lite</h2>
+    ${SL.FEATURE_COPY.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
     <h2>Pricing</h2>
-    <h3>Salesman Lite — RM0, free forever</h3><ul>${li(SL.LITE_BULLETS)}</ul>
-    <h3>Salesman Premium — RM35/month</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
+    <h3>Salesman Premium: RM35/month, first month free</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
+    <h3>Salesman Lite: RM0, free forever</h3><ul>${li(SL.LITE_BULLETS)}</ul>
     <h2>FAQ</h2>
     ${SL.FAQS.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
     <p>Page last reviewed ${esc(SL.REVIEWED_LABEL)}.</p>
@@ -803,7 +805,7 @@ const STATIC_PAGES = {
     <p>You run a lot and a team. Adds the dealer dashboard, a shared lead pipeline, stock and profit tracking, and seats for your salesmen.</p>
     ${DEALER_PLANS.map(planHtml).join("\n    ")}
     <p>Browsing, saving and messaging sellers are free for buyers and need no plan.</p>
-    <p><a href="${SITE_URL}/for-salesmen">Salesman Lite (free)</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
+    <p><a href="${SITE_URL}/for-salesmen">For salesmen</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
   </main>`,
   }),
   "/terms": () => htmlShell({
