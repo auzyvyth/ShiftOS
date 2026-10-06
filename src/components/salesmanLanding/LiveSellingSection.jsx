@@ -5,7 +5,7 @@ import { Check, ArrowRight, ExternalLink } from "lucide-react";
 import { LIVE_SELLING, EXAMPLE_PAGE, PREMIUM_CTA } from "../../config/salesmanLandingCopy";
 
 // "Live presentation" detail section on /for-salesmen, directly under the hero.
-// The hero already shows the poster (LivePosterMock.jsx), so this section is the
+// The hero already shows the presenter (LiveDemo.jsx), so this section is the
 // point-by-point of what the tool does — showing the same picture twice is
 // filler. Points come from LIVE_SELLING so the crawler render (api/og.js) reads
 // the same list.

@@ -13,7 +13,7 @@ import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
 import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection";
-import LivePosterMock from "../components/salesmanLanding/LivePosterMock";
+import LiveDemo from "../components/salesmanLanding/LiveDemo";
 import {
   CANON, SEO_TITLE, SEO_DESC, SEO_KEYWORDS, FAQS, SOFTWARE_LD, FAQ_LD,
   HERO_EYEBROW, HERO_INTRO, HERO_TRUST, PREMIUM_CTA, LITE_CTA,
@@ -129,9 +129,9 @@ export default function SalesmanLiteLanding() {
               </p>
             </div>
 
-            {/* The live poster itself — sample car, real formula */}
+            {/* The real Live presentation, real cars (LiveDemo.jsx) */}
             <div className="sll-hero-mock">
-              <LivePosterMock />
+              <LiveDemo />
             </div>
           </div>
         </section>
@@ -374,7 +374,7 @@ const CSS = `
 
   /* Hero */
   .sll-hero { padding: 84px 0 60px; border-bottom: 1px solid #eceaea; }
-  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(300px, 380px); gap: 56px; align-items: start; }
+  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(320px, 400px); gap: 56px; align-items: start; }
   .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
   .sll-h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
   .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 580px; margin: 0 0 30px; }
@@ -398,7 +398,7 @@ const CSS = `
   .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
   .sll-band-line strong { color: #fff; font-weight: 800; }
 
-  /* Hero picture: the live poster (LivePosterMock.jsx) */
+  /* Hero picture: the real Live presentation (LiveDemo.jsx) */
   .sll-hero-mock { min-width: 0; }
 
   /* Sections */
@@ -513,7 +513,7 @@ const CSS = `
     .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase, .sll-hero-inner { grid-template-columns: 1fr; }
     .sll-hero { padding: 64px 0 48px; }
     .sll-hero-inner { gap: 36px; }
-    .sll-hero-mock { max-width: 380px; width: 100%; margin: 0 auto; }
+    .sll-hero-mock { max-width: 400px; width: 100%; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
     /* Three items in one wrapped inline row read as clanky on narrow screens

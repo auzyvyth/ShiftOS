@@ -162,7 +162,7 @@ export const PREMIUM_BULLETS = ["Everything in Lite", "Up to 30 active listings"
 
 // Premium "Live selling" detail section (LiveSellingSection.jsx) — what Live
 // presentation (src/components/live/LivePresenter.jsx) does, point by point.
-// The poster picture itself is in the hero (LivePosterMock.jsx).
+// The hero shows the real presenter with real cars (LiveDemo.jsx).
 export const LIVE_SELLING = {
   kicker: "Live presentation",
   title: "Built for the questions viewers actually ask.",
@@ -179,4 +179,11 @@ export const LIVE_SELLING = {
     "The car on screen is pinned on your page as \"Live now\" for viewers who tap your bio",
   ],
   note: "Estimates on the reducing balance (EIR). Subject to bank approval.",
+};
+
+// Hero demo (LiveDemo.jsx): the real Live presentation with a real seller's cars.
+export const LIVE_DEMO = {
+  label: "Live presentation, working demo with real cars",
+  caption: "Real cars from an XDrive seller. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
+  sampleCaption: "Sample car. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
 };
