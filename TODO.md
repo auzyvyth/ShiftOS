@@ -2312,6 +2312,20 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-15: Seller-only "Top salesmen in Malaysia" ranking (2026-10-06)** — owner:
+  a leaderboard only signed-in sellers can see (no buyers), so reps know their
+  rivals and can learn from the top. Blockers/notes: (1) too few to rank today
+  (2026-10-06: 11 salesmen, 4 with a sale in 90 days, 15 cars sold) — a "Top 10"
+  of 4 people is a joke and names the ones at the bottom; wait for scale. (2) Wins
+  are self-reported (a lead moved to `won`), so a ranking on sold count rewards
+  fake wins; rank only on things we MEASURE (`get_agent_reply_time`, platform
+  leads answered, wins tied to a platform lead/chat). (3) Names opt-in (PDPA:
+  their numbers are their personal data; dealers may not want their reps
+  poached) — everyone else sees only their own percentile. (4) The "learn from
+  the top" half is the real value: show WHAT top reps do differently (reply time,
+  follow-up speed, photos per listing) as habits, not just who is #1. Fits the
+  Performance tab (`salesPerformance.js`) rather than a new surface.
+
 - **IDEA-14: "Verified Proton/Perodua sales advisor" tick (2026-10-06)** — owner:
   ask brand SAs on Premium for proof and show a brand-verified badge. Checked:
   no government licence exists for car salespeople in Malaysia; the "licence" is
