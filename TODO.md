@@ -2312,6 +2312,17 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-14: "Verified Proton/Perodua sales advisor" tick (2026-10-06)** — owner:
+  ask brand SAs on Premium for proof and show a brand-verified badge. Checked:
+  no government licence exists for car salespeople in Malaysia; the "licence" is
+  the brand's own staff ID (Perodua: a daily-refreshing QR code). Blocker: a
+  "Verified Proton" tick using the brand name/logo without the brand's OK risks
+  passing off / Trademarks Act 2019 and s.16 Trade Descriptions Act 2011 (false
+  claim of approval by a person). Safe version: badge says XDrive checked the
+  employer ("Works at <dealer>, checked by XDrive"), plain text, no brand logo,
+  re-checked periodically since SAs change dealers. Fits `is_verified` /
+  `verified_by` on profiles (see Agent page trust signals in CLAUDE.md).
+
 - **IDEA-13: Win the new-car SAs who go live with an Excel sheet (2026-10-05)** —
   owner saw Proton, Perodua and Toyota SAs on TikTok Live filming a spreadsheet
   calculator off their laptop, and an Instagram ad (Zweet Data) selling that
