@@ -1548,12 +1548,6 @@ export default function SalesmanLite() {
         return;
       }
 
-      if (profileData.account_status === "pending") {
-        setProfile(profileData);
-        setLoading(false);
-        return;
-      }
-
       // Soft-deleted account (within the 30-day grace) — short-circuit to the
       // reactivate gate instead of loading the panel as an inactive user.
       if (profileData.account_status === "deleted") {
@@ -8227,24 +8221,6 @@ export default function SalesmanLite() {
             animation: "spin 0.8s linear infinite",
           }}
         />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
-  }
-
-  // ── LEGACY PENDING GATE (account_status) ──────────────────────────────────
-  if (profile?.account_status === "pending") {
-    return (
-      <div style={{ minHeight: "100vh", background: "#05070e", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-        <div style={{ maxWidth: 400, textAlign: "center" }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(251,191,36,0.1)", border: "1px solid rgba(251,191,36,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>⏳</div>
-          <h2 style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "1.8rem", letterSpacing: 2, color: "#fff", marginBottom: 8 }}>Pending Approval</h2>
-          <p style={{ fontSize: 14, color: "#6b7280", lineHeight: 1.7, marginBottom: 24 }}>
-            Your account is under review. We verify every agent before they can list cars — usually within 24 hours. You'll get a WhatsApp message once you're approved.
-          </p>
-          <p style={{ fontSize: 12, color: "#4b5563" }}>Questions? WhatsApp us at <a href="https://wa.me/60123456789" style={{ color: "#93c5fd", textDecoration: "none" }}>+60 12-345 6789</a></p>
-          <button onClick={handleLogout} style={{ marginTop: 24, fontSize: 12, color: "#4b5563", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Sign out</button>
-        </div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );

@@ -32,9 +32,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing carId' });
   }
 
+  // Server key first. While this called with the PUBLIC key, the RPC had to be
+  // executable by anon, so anyone could skip this route (and its rate limit)
+  // and call get_listing_call_number directly for every car. Once production
+  // has SUPABASE_SERVICE_ROLE_KEY set, the RPC's anon/authenticated EXECUTE is
+  // revoked (TODO SEC-1) and this route is the only way in.
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL || SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   const { data, error } = await supabase.rpc('get_listing_call_number', {

@@ -90,6 +90,14 @@ serve(async (req) => {
       return jsonResponse({ error: "profile not found" }, 403, origin);
     }
 
+    // Seller-side tool only. A buyer -- including every anonymous guest, who
+    // gets the `authenticated` role the moment they open a chat -- used to pass
+    // here with a quota pool of their own (resolveDealerId falls back to
+    // profile.id). Guests are free to mint, so that was an unbounded AI bill.
+    if (!ROLE_LABELS[profile.role]) {
+      return jsonResponse({ error: "not available for this account" }, 403, origin);
+    }
+
     const dealerId = resolveDealerId(profile);
     if (!dealerId) {
       return jsonResponse({ error: "no dealer scope" }, 403, origin);

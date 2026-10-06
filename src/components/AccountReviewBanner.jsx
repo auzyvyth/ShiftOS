@@ -3,10 +3,14 @@ import { Clock, AlertCircle } from "lucide-react";
 /**
  * Account review status for a self-signup seller.
  *
- * Shown as a BANNER, never a gate. A seller waiting on review can still build
- * listings — they just don't reach the marketplace until approved — so blocking
- * the dashboard would only cost them (and us) the work they'd have done while
- * waiting.
+ * Shown as a BANNER, never a gate. A seller waiting on review uses the whole
+ * dashboard. Their cars go through the per-car review like anyone's (CarForm
+ * needsApproval) -- account approval does NOT hold them back, so this must not
+ * say "goes live the moment you're approved" (it did, and it was false). What
+ * approval gates is answering Find me posts (find_me_reply).
+ *
+ * Rendered by SalesmanLite AND SalesmanPremium. Premium had no copy at all, so
+ * a Premium signup waiting on review was never told.
  *
  * A rejection ALWAYS shows the reason. `rejection_reason` is written by the
  * platform console's reject flow and rendered verbatim here, so the reasons
@@ -45,7 +49,7 @@ export default function AccountReviewBanner({ profile }) {
         <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
           {rejected
             ? "Fix the point below and your account goes straight back into the queue — your listings and details are all still here."
-            : "Keep adding your cars in the meantime. Everything you list is saved and goes live on the marketplace the moment you're approved."}
+            : "Everything works while you wait: add your cars and take leads. Each car is still checked before it goes live, as usual. Once we've confirmed your details you can also answer buyers' Find me posts."}
         </p>
         {rejected && profile?.rejection_reason && (
           <p

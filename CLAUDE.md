@@ -770,12 +770,26 @@ across all sections, one state each).
   (now rendered by SalesmanLite and SalesmanPremium too — they showed nothing
   before, so a suspended standalone seller lost the marketplace with a working
   dashboard and no explanation).
+- **Account lifecycle is guarded by `trg_zy_guard_profile_lifecycle`** (on `profiles`,
+  migration `20261005f`): for any non-platform UPDATE, `onboarding_complete` is one-way,
+  `suspended_at`/`suspension_reason` cannot change, a suspended or deleted account cannot
+  switch itself on, and finishing onboarding switches a seller ON (owner, 2026-10-05:
+  approval is an ID check, not an access gate). It exists because the onboarding branch
+  of `prevent_profile_privilege_escalation` skipped those guards -- a suspended seller
+  could revive themselves. Suspended sellers appeal; they never self-restore.
 - **Prospects (the owner's own sales CRM)** is `ProspectsTab.jsx` on
   `platform_prospects` (superadmin-only RLS). Linking to an account, waitlist
   import, contact stamping and the do-not-contact refusal are DB triggers
   (migration `20260926c`) — never re-do them client-side. Messaging is a human
   `wa.me` send, never a blast or the Cloud API (Meta needs prior opt-in; PDPA
   s.43 makes a "stop" final).
+- **Account state is answered ONCE: `src/utils/accountState.js`** (`accessState`,
+  `reviewState`, `billingState`, `headlineState`, `isPlatformAccount`). Never read
+  `approval_status` / `is_active` / `subscription_status` raw in a console tab and
+  paint it — each has moved meaning (pending is NOT locked out; subscription_status
+  means nothing for a salesman; is_active=false without suspended_at is not a
+  suspension; "active" is not "paid"). Nothing is dimmed or coloured without a word.
+  "Paying" = `billingState(a).paying` everywhere (Home, Billing).
 - Global search lives in the console header and searches accounts, pending
   listings and waitlist out of already-loaded state — no queries. Per-tab search
   boxes are for filtering within a tab, not for finding someone.
@@ -1163,6 +1177,22 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
+  Typed in Adjust, never saved to the listing (promos change monthly). Loan =
+  price - rebate - deposit; deposit % chips and the Budget tab use the net price.
+  Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
+  never counted as the buyer's deposit.
+- **Docs screen = what the bank asks the BUYER for** (top-bar "Docs", list in
+  `liveCopy.js docsList`). One list for new, used and recon: the car does not change
+  it, how the buyer earns does (Employee | Own business). Always says each bank sets
+  its own list, and "never post your IC or payslip in the comments". The top bar must
+  fit three labels + four buttons at 360px in BM; check it after adding a button.
+- **Accent colour is the seller's pick** (Adjust > Colour: 8 presets + any colour,
+  remembered per device, `xd_live_accent`). Every red in the presenter CSS is a
+  variable (`--lp-a`, `--lp-a1`, `--lp-a2`, `--lp-rgb`) set from
+  `accentTheme()` in `src/utils/liveAccent.js`, which darkens a too-light pick until
+  white text passes 3:1 (bold text) at the gradient's light end. Never hardcode a
+  colour back into the presenter CSS, and never skip `accentTheme` for a new pick.
 - **Presenter language (EN/BM) is the presenter's OWN switch** (top-bar "EN"/"BM"
   button), not the app's i18n language: a seller may run the dashboard in one and
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the

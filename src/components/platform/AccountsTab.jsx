@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
+import { accountKind, accessState, reviewState, billingState, headlineState, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
 
 // One accounts table (P5) with an account record (P6).
 //
@@ -23,15 +24,6 @@ const ROLE_FILTERS = [
   { id: "linked", label: "Under a dealer" },
 ];
 
-const STATUS_FILTERS = [
-  { id: "all", label: "Any status" },
-  { id: "active", label: "Active" },
-  { id: "trial", label: "On trial" },
-  { id: "expired", label: "Expired" },
-  { id: "suspended", label: "Suspended" },
-  { id: "deleted", label: "Deleted" },
-];
-
 // Written as something the seller can act on, not a verdict about them — this
 // text is shown to them verbatim in SuspendedBanner and pushed to their phone.
 const SUSPEND_REASONS = [
@@ -49,11 +41,6 @@ function fmtDate(str) {
   return new Date(str).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function daysUntil(str) {
-  if (!str) return null;
-  return Math.ceil((new Date(str) - Date.now()) / 86400000);
-}
-
 function sinceLabel(str) {
   if (!str) return "never";
   const d = Math.floor((Date.now() - new Date(str)) / 86400000);
@@ -64,47 +51,11 @@ function sinceLabel(str) {
   return `${Math.floor(d / 365)} yr ago`;
 }
 
-// A row's kind, stated once. "dealer_id IS NULL means they are their own
-// dealer" is the rule the whole platform turns on, so it is named here rather
-// than re-derived inline every time it is needed.
-function accountKind(a) {
-  if (["dealer", "owner", "superadmin"].includes(a.role)) return "dealer";
-  return a.dealer_id ? "linked" : "solo";
-}
-
 function kindLabel(a) {
   const k = accountKind(a);
   if (k === "dealer") return PLAN_CONFIG[a.plan]?.label || "Dealer";
   if (k === "linked") return "Salesman · under a dealer";
   return a.plan === "salesman_full" ? "Salesman Premium" : "Salesman Lite";
-}
-
-// Deleted rows also carry is_active=false, so 'deleted' must be checked first
-// or a soft-deleted account reads as merely suspended.
-//
-// A brand-new signup (or a rejected one) is ALSO is_active=false — approval
-// never flips it true until decide_user_approval runs — but neither was ever
-// suspended. Only set_account_suspended() stamps suspended_at, so that is the
-// one reliable "actually suspended" signal; approval_status carries the rest.
-// Without this split, every unreviewed seller showed up here as "Suspended"
-// with a "Reinstate" button that would have activated them while skipping the
-// real approval flow entirely (no approved_by/is_verified stamp, no KYC check).
-function statusOf(a) {
-  if (a.account_status === "deleted") {
-    const left = a.deleted_at
-      ? Math.max(0, 30 - Math.floor((Date.now() - new Date(a.deleted_at)) / 86400000))
-      : null;
-    return { id: "deleted", text: left !== null ? `Deleted · purges in ${left}d` : "Deleted", color: "#9ca3af" };
-  }
-  if (a.is_active === false && a.suspended_at) return { id: "suspended", text: "Suspended", color: "#f87171" };
-  if (a.approval_status === "pending") return { id: "pending_review", text: "Pending review", color: "#facc15" };
-  if (a.approval_status === "rejected") return { id: "rejected", text: "Rejected", color: "#f87171" };
-  if (a.subscription_status === "trial") {
-    const left = daysUntil(a.trial_ends_at);
-    return { id: "trial", text: left === null ? "Trial" : left < 0 ? "Trial ended" : `Trial · ${left}d left`, color: "#facc15" };
-  }
-  if (a.subscription_status === "expired") return { id: "expired", text: "Expired", color: "#f87171" };
-  return { id: "active", text: "Active", color: "#4ade80" };
 }
 
 // "They have done their part; nobody has reviewed it yet." — the state an
@@ -211,7 +162,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       .filter(a => {
         if (teamOf && a.dealer_id !== teamOf) return false;
         if (roleFilter !== "all" && accountKind(a) !== roleFilter) return false;
-        if (statusFilter !== "all" && statusOf(a).id !== statusFilter) return false;
+        if (!matchesStatusFilter(a, statusFilter)) return false;
         if (!q) return true;
         return [a.full_name, a.email, a.dealership, a.subdomain, a.slug, a.phone, a.whatsapp_number]
           .some(v => v && String(v).toLowerCase().includes(q));
@@ -473,7 +424,8 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               ) : rows.length === 0 ? (
                 <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No accounts match those filters.</td></tr>
               ) : rows.map(a => {
-                const st = statusOf(a);
+                const st = headlineState(a);
+                const rv = reviewState(a);
                 const s = stats[a.id] || {};
                 // A dead account should read as dead at a glance (A4): no
                 // listings and no leads is the signal, not a missing column.
@@ -486,6 +438,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                         <span style={{ fontWeight: 600, color: "#f0f0f0" }}>{a.dealership || a.full_name || "No name"}</span>
                         {a.is_verified && <Pill color="#4ade80" bg="rgba(74,222,128,0.14)">verified</Pill>}
                         {icSubmitted(a) && <Pill color="#60a5fa" bg="rgba(96,165,250,0.14)">IC submitted</Pill>}
+                        {rv?.id === "pending" && <Pill color="#facc15" bg="rgba(250,204,21,0.12)">needs ID check</Pill>}
                         {saved === a.id && <span style={{ fontSize: 10, color: "#4ade80" }}>✓</span>}
                       </div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>{a.email}</div>
@@ -529,12 +482,28 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
 
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
               <Pill color="#60a5fa" bg="rgba(96,165,250,0.14)">{kindLabel(open)}</Pill>
-              <Pill color={statusOf(open).color} bg="rgba(255,255,255,0.06)">{statusOf(open).text}</Pill>
+              <Pill color={headlineState(open).color} bg="rgba(255,255,255,0.06)">{headlineState(open).text}</Pill>
               {open.is_verified
                 ? <Pill color="#4ade80" bg="rgba(74,222,128,0.14)">verified</Pill>
                 : <Pill color="#f59e0b" bg="rgba(245,158,11,0.12)">not verified</Pill>}
               {icSubmitted(open) && <Pill color="#60a5fa" bg="rgba(96,165,250,0.14)">IC submitted</Pill>}
             </div>
+
+            {(() => {
+              // Three separate answers, in words (src/utils/accountState.js).
+              // A row that only said "Pending review" hid that the seller was
+              // already in and on their free month.
+              const acc = accessState(open), rv = reviewState(open), bill = billingState(open);
+              const why = [acc.why, rv?.why, bill.why].filter(Boolean);
+              return (
+                <div style={{ marginTop: 14, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "4px 12px 8px" }}>
+                  <Field label="Access" value={<span style={{ color: acc.color, fontWeight: 600 }}>{acc.text}</span>} />
+                  {rv && <Field label="ID check" value={<span style={{ color: rv.color, fontWeight: 600 }}>{rv.text}</span>} />}
+                  <Field label="Billing" value={<span style={{ color: bill.color, fontWeight: 600 }}>{bill.text}</span>} />
+                  {why.map(w => <p key={w} style={{ margin: "8px 0 0", fontSize: 11.5, color: "#9ca3af", lineHeight: 1.55 }}>{w}</p>)}
+                </div>
+              );
+            })()}
 
             {open.is_active === false && open.suspension_reason && (
               <p style={{ margin: "14px 0 0", fontSize: 12, color: "#fca5a5", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 8, padding: "9px 11px" }}>
@@ -612,36 +581,45 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
             <SectionTitle>Plan and billing</SectionTitle>
             <Field label="Plan" value={PLAN_CONFIG[open.plan]?.label || open.plan || "—"} />
             <Field label="Price" value={PLAN_CONFIG[open.plan] ? `RM ${PLAN_CONFIG[open.plan].price.toLocaleString()}/mo` : "—"} />
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "5px 0", fontSize: 12.5, borderBottom: "1px solid rgba(255,255,255,0.03)", alignItems: "center" }}>
-              <span style={{ color: "#6b7280" }}>Subscription</span>
-              <select value={open.subscription_status || "trial"} className="adm-select"
-                onChange={e => saveBillingField(open, "subscription_status", e.target.value, "subscription")}>
-                <option value="trial">trial</option>
-                <option value="active">active</option>
-                <option value="expired">expired</option>
-              </select>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "5px 0", fontSize: 12.5, borderBottom: "1px solid rgba(255,255,255,0.03)", alignItems: "center" }}>
-              <span style={{ color: "#6b7280" }}>Trial ends</span>
-              <input type="date" className="adm-input"
-                value={open.trial_ends_at ? new Date(open.trial_ends_at).toISOString().slice(0, 10) : ""}
-                onChange={e => saveBillingField(open, "trial_ends_at", e.target.value ? new Date(e.target.value).toISOString() : null, "trial end date")} />
-            </div>
-            {undo && undo.id === open.id && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 8, padding: "8px 11px" }}>
-                <span style={{ fontSize: 12, color: "#93c5fd", flex: 1 }}>Changed the {undo.label}.</span>
-                <button onClick={async () => {
-                  const ok = await saveField(open, undo.field, undo.prev);
-                  if (ok) setUndo(null);
-                }} style={btn()}>Undo</button>
+            {/* Subscription status and trial dates only drive DEALER access.
+                A standalone salesman runs on plan_expires_at and a salesman
+                under a dealer is not billed at all, so on those records these
+                controls changed a column nothing reads. */}
+            {accountKind(open) === "dealer" && (
+              <>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "5px 0", fontSize: 12.5, borderBottom: "1px solid rgba(255,255,255,0.03)", alignItems: "center" }}>
+                <span style={{ color: "#6b7280" }}>Subscription</span>
+                <select value={open.subscription_status || "trial"} className="adm-select"
+                  onChange={e => saveBillingField(open, "subscription_status", e.target.value, "subscription")}>
+                  <option value="trial">trial</option>
+                  <option value="active">active</option>
+                  <option value="expired">expired</option>
+                </select>
               </div>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 14, padding: "5px 0", fontSize: 12.5, borderBottom: "1px solid rgba(255,255,255,0.03)", alignItems: "center" }}>
+                <span style={{ color: "#6b7280" }}>Trial ends</span>
+                <input type="date" className="adm-input"
+                  value={open.trial_ends_at ? new Date(open.trial_ends_at).toISOString().slice(0, 10) : ""}
+                  onChange={e => saveBillingField(open, "trial_ends_at", e.target.value ? new Date(e.target.value).toISOString() : null, "trial end date")} />
+              </div>
+              {undo && undo.id === open.id && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 8, padding: "8px 11px" }}>
+                  <span style={{ fontSize: 12, color: "#93c5fd", flex: 1 }}>Changed the {undo.label}.</span>
+                  <button onClick={async () => {
+                    const ok = await saveField(open, undo.field, undo.prev);
+                    if (ok) setUndo(null);
+                  }} style={btn()}>Undo</button>
+                </div>
+              )}
+
+              </>
             )}
 
             <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
-              {[7, 14, 30].map(d => (
-                <button key={d} disabled={busy === open.id} onClick={() => extendTrial(open, d)} style={btn()}>+{d} days</button>
+              {accountKind(open) === "dealer" && [7, 14, 30].map(d => (
+                <button key={d} disabled={busy === open.id} onClick={() => extendTrial(open, d)} style={btn()}>+{d} days trial</button>
               ))}
-              {(open.payment_status === "pending" || accountKind(open) === "solo") && (
+              {(accountKind(open) === "solo" || (accountKind(open) === "dealer" && open.payment_status !== "received")) && (
                 <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good")}>
                   {accountKind(open) === "solo" ? "Log RM35 payment (+1 month)" : "Mark payment received"}
                 </button>

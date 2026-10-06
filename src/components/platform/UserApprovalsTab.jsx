@@ -3,7 +3,10 @@ import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
 // XDrive Ops — identity approval queue. Every self-signup seller (dealer / solo
-// salesman) lands here 'pending' and cannot reach their dashboard until approved.
+// salesman) lands here 'pending'. They are NOT locked out while they wait: since
+// 20260912b/c they use their dashboard and list cars (a salesman's car waits in the
+// cars queue; a dealer's is published directly). Approving is the identity check;
+// it unlocks Find me replies.
 // Reads the superadmin-guarded get_pending_approvals RPC (auth.users + owner-only
 // kyc_documents are not client-readable). Premium accounts attach three ID
 // photos, fetched here as short-lived signed URLs from the PRIVATE kyc-docs
@@ -93,8 +96,8 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
   const [rejectFor, setRejectFor] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  // Two queues, one list. A row is either a SIGNUP (account can't reach its
-  // dashboard until approved) or a KYC submission from an already-approved
+  // Two queues, one list. A row is either a SIGNUP (already using its
+  // dashboard, waiting on an identity check) or a KYC submission from an already-approved
   // seller who wants the Verified badge. They share every field the card
   // renders, so they share the card — only the decision RPC differs.
   const load = useCallback(async () => {
@@ -210,7 +213,7 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>User Approvals
-            <InfoHint title="What is this?" text="Three kinds of row. Plain rows are new dealers and solo salesmen who can't reach their dashboard until you approve them. Rows tagged ID CHECK are sellers who are already approved and have submitted their MyKad to earn the public Verified badge — approving one only grants the badge, it changes nothing about their access. Photos are shown as private, expiring links and are permanently deleted the instant you approve or reject. Rows tagged INCOMPLETE started signing up (often a Google sign-in) but never finished the form — there's nothing to approve, only a Send reminder email button to nudge them back." />
+            <InfoHint title="What is this?" text="Three kinds of row. Plain rows are new dealers and solo salesmen waiting on an identity check. They are already in their dashboard while they wait. A salesman's cars still come to you in Cars to approve; a dealer's cars go live straight away. Approving them unlocks answering Find me posts. Rows tagged ID CHECK are sellers who are already approved and have submitted their MyKad to earn the public Verified badge — approving one only grants the badge, it changes nothing about their access. Photos are shown as private, expiring links and are permanently deleted the instant you approve or reject. Rows tagged INCOMPLETE started signing up (often a Google sign-in) but never finished the form — there's nothing to approve, only a Send reminder email button to nudge them back." />
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Account approvals and identity (ID) checks</p>
         </div>

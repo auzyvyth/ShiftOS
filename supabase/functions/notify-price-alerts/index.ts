@@ -9,7 +9,6 @@
  * Secrets needed (set via `supabase secrets set`):
  *   RESEND_API_KEY   — your Resend API key
  *   SITE_URL         — https://xdrive.my  (no trailing slash)
- *   CRON_SECRET      — optional; if set, callers must send Authorization: Bearer <secret>
  *
  * NOTE: this function existed on Supabase for months without ever being
  * committed to the repo (see CLAUDE.md "Edge functions" section). This is
@@ -179,15 +178,16 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
-  // If CRON_SECRET is configured, enforce it. Otherwise allow all calls
-  // (safe because meaningful work only happens when RESEND_API_KEY is set).
-  const cronSecret = Deno.env.get('CRON_SECRET');
-  if (cronSecret) {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-      return new Response('Unauthorized', { status: 401 });
-    }
+  // MANDATORY cron check. This used `if (CRON_SECRET)`, and that secret is not
+  // set on this project, so anyone could trigger alert emails on demand. Only
+  // the pg_cron job (jobid 3) holds the key; cron_key_matches answers yes/no.
+  const bearer = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
+  let authorised = false;
+  if (bearer) {
+    const { data } = await db.rpc('cron_key_matches', { p_key: bearer });
+    authorised = data === true;
   }
+  if (!authorised) return new Response('Unauthorized', { status: 401 });
 
   if (!RESEND_API_KEY) {
     return new Response(JSON.stringify({ error: 'RESEND_API_KEY not set' }), { status: 200 });

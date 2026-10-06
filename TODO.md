@@ -70,6 +70,97 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
+Pattern: the console painted raw columns (approval_status, is_active,
+subscription_status) whose meaning had moved. Fixed in this pass: one helper,
+`src/utils/accountState.js` (access / ID check / billing, each in words, tested by
+`npm run test:accountstate`), used by Accounts, Billing and Home. Home "New sellers"
+no longer claims they can't reach their dashboard; Billing names why a row is quiet
+instead of greying it, "Paying" = payment logged (was a dropdown: RM 2,398 phantom
+MRR), Premium sellers counted, platform account excluded; "Live listings 74" ->
+"Cars for sale" (status available on the public view, 33). Premium now shows
+`AccountReviewBanner`; its false "goes live the moment you're approved" line is gone.
+Owner decisions, 2026-10-05:
+- Seller approval = ID CHECK ONLY. No verified tick means buyers trust you less,
+  not that you are locked out. (Copy already says this.) Finishing onboarding
+  switches every seller on -- in migration 20261005f (see SEC-2).
+- "Fast" + "99test": DELETED (soft delete, 30-day restore window, purge cron hard-deletes).
+- Suspended sellers: no self-revival; they request an APPEAL. Appeal flow not built
+  yet -- [ ] PLAT-APPEAL: "Request review" button on SuspendedBanner -> a row the
+  console's Review queue shows -> platform restores via set_account_suspended.
+
+## SEC: security sweep 2026-10-05 — findings (owner asked "check for security issues, data breach chance")
+Verified live, not from reading code. Probes ran as real anon / guest-buyer roles
+inside self-rolling-back transactions.
+- [x] SEC-0 `expiry-reminders` (no auth at all) and `notify-price-alerts` (`if
+  (CRON_SECRET)`, unset) could be triggered by anyone. Both now require
+  `cron_key_matches` (deployed v14 / v20; no-key and wrong-key = 401, cron key = 200).
+- [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
+  -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
+  role outside the seller set (deployed v23).
+- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (owner confirmed 2026-10-06: the service key IS set in
+  Vercel. Remaining: this branch must reach PRODUCTION first, then revoke -- revoking
+  before that breaks every WhatsApp/Call button on the live site.) (CDP-3 defeated). `/api/wa` + `/api/call-number`
+  called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
+  RPCs are anon-executable and anyone can loop every public car id straight against
+  /rest/v1/rpc, skipping the route's rate limit. Code now prefers
+  SUPABASE_SERVICE_ROLE_KEY. NEXT: confirm that env var is set in Vercel Production,
+  deploy, then `revoke execute on both from public, anon, authenticated`.
+- [x] SEC-2 SUSPENSION BYPASS -- FIXED 2026-10-06 (migration 20261005f, trigger
+  trg_zy_guard_profile_lifecycle). A suspended seller toggling onboarding_complete
+  could switch themselves back on and erase the suspension (and un-delete). Re-probed:
+  stays suspended, reason intact. Same migration: finishing onboarding switches any
+  seller on (owner decision: approval = ID check), and car-images listing is limited
+  to your own folder (guest buyer now lists 0 files, was the whole bucket incl. 23
+  geran/loan-letter scans).
+- [ ] SEC-2b + SEC-4 OWNER RUNS SQL: `supabase/migrations/20261005g_drop_backups_and_workshop_share.sql`
+  (drop the 8 `_bk_airy_*` backup tables of old buyer data + the workshop_jobs
+  shape-check share policy). Owner approved both 2026-10-06; every DROP was cancelled
+  at the session's approval step (3 times), so paste that file into the Supabase SQL
+  editor. Nothing references the tables (checked views, functions, client, edge fns).
+- [ ] SEC-3 (DEFERRED, low residual risk) Car documents live in the PUBLIC car-images
+  bucket (CarForm.jsx:962). Listing is closed (20261005f) and names are random, so a
+  link only reaches people who can read car_documents (seller, team, superadmin).
+  Plan when built: private `car-docs` bucket (owner folder + team + superadmin read),
+  store PATH not public URL in car_documents, signed URLs in CarForm /
+  ListingDetailDrawer / ListingReviewModal, one-off service-role copy of the 23 files.
+- [ ] SEC-5 Leaked password protection needs the Supabase Pro plan (owner, 2026-10-06).
+  Revisit on upgrade.
+- [x] SEC-6 lib/aiGuard.js (api/ai-messages + server twin): profile now read as the
+  caller (was anon -> "profile not found" for everyone), buyers refused, a failed
+  usage record now refuses instead of being logged past.
+- [x] SEC-7 Removed the dead Lite "Pending Approval" screen + its placeholder number.
+- Checked and CLEAN: anon can read only the intended public tables/views; a guest
+  buyer sees only their own profile/chat; no service key in the client bundle;
+  send-push, invites, create-salesman, send-telegram, chat-assist all check the caller;
+  public_dealer_profiles phone/email columns are NULL for every row; hero slide
+  numbers are the dealer's own storefront number (allowed exception).
+
+## PAY-2: Automatic payment confirmation (gateway + webhook) — researched 2026-10-05, PARKED by owner
+Owner: "we don't need this for now". Today a seller pays the static DuitNow QR
+(`public/payment-qr.png`) and the owner presses "Log RM35 payment" in /platform.
+- TNG has no self-serve online API for us: merchant QR = no API; its online
+  gateway is an enterprise sales deal (Lazada/TikTok Shop tier). TNG is reached
+  through a gateway. A dynamic DuitNow QR from a gateway covers TNG AND every bank app.
+- Options: toyyibPay / Billplz (pay-now QR each month, cheapest) or Curlec
+  (only one with TNG auto-debit recurring, official TNG partner since 2024-05).
+- Owner decisions before building: auto-renew vs pay-each-month; SSM registration done?
+Rules when it is built:
+- Legal (verified 2026-10-05): every gateway needs SSM registration. Consumer
+  Protection (Electronic Trade Transactions) Regs 2012: the plans/checkout page must
+  show business name, SSM no., email + phone/address, full price, payment methods,
+  terms (cancellation/refund) — non-compliance is an offence. LHDN e-invoice:
+  exempt below RM3m turnover (from 2026-09-01), recheck if revenue grows.
+  Auto-debit needs the seller's explicit mandate; show the amount + how to cancel.
+  Never touch card numbers ourselves (the gateway's hosted page does), so no PCI scope.
+- Engineering: the webhook (gateway's server -> our `/api` route) MUST verify the
+  gateway's signature, be idempotent on the gateway's payment id (they retry), and
+  credit ONLY through `record_subscription_payment` (referral rewards + paid-until
+  hang off it — never a direct `profiles` update). Amount is checked against
+  `planConfig.js`, never trusted from the browser. Keys live in Vercel env, never
+  the client. Refunds go through `void_subscription_payment`. Keep the manual
+  "Log payment" button as the fallback.
+
 ## LIVE-1: Live presentation on the salesman mini page — 2026-10-03
 - Migration `20261003a_seller_live_state.sql` APPLIED 2026-10-03 22:36 MYT (owner's
   "apply it now"). Checked: one overload each of `set_live_listing` /
@@ -2196,6 +2287,22 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-13: Win the new-car SAs who go live with an Excel sheet (2026-10-05)** —
+  owner saw Proton, Perodua and Toyota SAs on TikTok Live filming a spreadsheet
+  calculator off their laptop, and an Instagram ad (Zweet Data) selling that
+  template for RM199.90 one-off. Proof the LIVE-1 habit exists, and a price anchor
+  (RM199.90 once vs RM35/month Premium). What their sheets have that
+  `LivePresenter.jsx` does not: (1) new-car OTR build-up (selling price +
+  insurance - NCD - rebate = loan), (2) variants side by side in one table,
+  (3) a documents-needed list (MyKad, licence, 3-6 months payslip, EPF, bank
+  statement). What we do better: generated from listings, budget tab, contact
+  off by default. Their sheets all show 2.20-2.30% FLAT (checked: X50 RM926/9y,
+  Emas 5 RM974.63/5y match flat maths) and a phone number on screen.
+  Blockers: our presenter is driven by listings (used cars); a new-car SA has no
+  listing per variant. Decide whether new-car SAs are a target before building.
+  Possible channel: the same Instagram ad slot aimed at SAs.
+  2026-10-05: rebate line and Docs screen SHIPPED in the presenter. Insurance/NCD
+  rows and variants side by side are still open.
 - **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
   FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
   comparison, presses "Send to loan desk", and the buyer's file + documents +
