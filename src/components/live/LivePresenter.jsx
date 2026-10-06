@@ -51,6 +51,12 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // Leaving after a minute or more shows the live report: counts from the
 // seller's own analytics rows in the live window. Counts only, never a buyer's
 // name — the report may still be on stream.
+//
+// `embedded` = the same screen as a live demo inside a page (the /for-salesmen
+// hero). It renders in place instead of full screen, and does nothing a live
+// does: no portal or scroll lock, no keyboard, no wake lock, no exit or report,
+// no contact box, never calls set_live_listing (a seller browsing the page would
+// pin a car on their own mini page), and never saves language or colour.
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 const TENURES = [5, 7, MAX_TENURE_YEARS];
@@ -71,7 +77,7 @@ const fmtPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3)}`;
 };
 
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false }) {
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
@@ -97,9 +103,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Accent colour: the seller's pick, kept readable for white text (liveAccent.js).
   const [accentPick, setAccentPick] = useState(initialLiveAccent);
   const theme = accentTheme(accentPick);
-  const pickAccent = (hex) => { setAccentPick(hex); saveLiveAccent(hex); };
+  const pickAccent = (hex) => { setAccentPick(hex); if (!embedded) saveLiveAccent(hex); };
   const t = LIVE_COPY[lang];
-  const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; saveLiveLang(next); return next; });
+  const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; if (!embedded) saveLiveLang(next); return next; });
   const startedAt = useRef(new Date());
   const touchX = useRef(null);
   const fitRef = useRef(null);
@@ -133,7 +139,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   const car = listings[idx] || null;
   const phoneText = fmtPhone(sellerPhone);
-  const contact = (sellerName || phoneText)
+  const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
   // price = asking, net = what the loan is worked from (asking - rebate).
@@ -175,12 +181,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   // Overlay rules 1+2: portalled, body scroll locked while open.
   useEffect(() => {
+    if (embedded) return undefined;
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
-  }, []);
+  }, [embedded]);
 
   // Keyboard for a laptop running LIVE Studio: arrows swipe, Esc closes.
   useEffect(() => {
+    if (embedded) return undefined;
     const onKey = (e) => {
       if (e.target?.tagName === 'INPUT') return;
       if (report) { if (e.key === 'Escape') onClose(); return; }
@@ -191,10 +199,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, finish, report, mode]);
+  }, [go, onClose, finish, report, mode, embedded]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
+    if (embedded) return undefined;
     let lock = null;
     const acquire = async () => {
       try { lock = await navigator.wakeLock?.request('screen'); } catch { /* unsupported / denied */ }
@@ -206,17 +215,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       document.removeEventListener('visibilitychange', onVis);
       try { lock?.release(); } catch { /* ignore */ }
     };
-  }, []);
+  }, [embedded]);
 
   // Tell the mini page which car is on screen. Debounced so flicking through
   // five cars is one write; heartbeat keeps the 10-minute window open; closing
   // clears it. Errors are ignored on purpose: the presenter must keep working
   // even if the sync is down (or before migration 20261003a is applied).
   // The report screen means the live is over: stop pinning the car right away.
-  const carId = report ? null : (car?.id || null);
+  const carId = report || embedded ? null : (car?.id || null);
   useEffect(() => {
-    if (report) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
-  }, [report]);
+    if (report && !embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
+  }, [report, embedded]);
   useEffect(() => {
     if (!carId) return undefined;
     const push = () => { supabase.rpc('set_live_listing', { p_listing_id: carId }).then(() => {}, () => {}); };
@@ -225,8 +234,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return () => { clearTimeout(t); clearInterval(hb); };
   }, [carId]);
   useEffect(() => () => {
-    supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
-  }, []);
+    if (!embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
+  }, [embedded]);
 
   const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; };
   const onTouchEnd = (e) => {
@@ -272,8 +281,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   };
   const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
 
-  return createPortal(
-    <div className="lp" style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
+  const screen = (
+    <div className={embedded ? 'lp lp-embed' : 'lp'} style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
       {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
           one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
@@ -286,6 +295,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <style>{`
         .lp { --lp-grad: linear-gradient(120deg, var(--lp-a1) 0%, var(--lp-a) 45%, var(--lp-a2) 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+        /* Embedded demo: fills its parent box instead of the viewport. */
+        .lp.lp-embed { position: absolute; z-index: auto; }
+        .lp-embed .lp-stage { width: 100%; }
         /* Owner, 2026-10-05: the flat beige felt dead on stream. Colour lives in
            the stage BEHIND the cards (the brand's red glow in the corners of
            brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
@@ -422,49 +434,49 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            Sizes switch to cqh (stage height) so a 768px laptop and a 1080p
            monitor both fit with no scroll. */
         @media (min-width: 1024px) and (orientation: landscape) and (hover: hover) and (pointer: fine) {
-          .lp-stage { width: min(100%, 1440px, calc(100dvh * 1.7)); }
-          .lp-top { padding: 10px 20px; }
-          .lp-body { padding: 16px 20px; }
+          .lp:not(.lp-embed) .lp-stage { width: min(100%, 1440px, calc(100dvh * 1.7)); }
+          .lp:not(.lp-embed) .lp-top { padding: 10px 20px; }
+          .lp:not(.lp-embed) .lp-body { padding: 16px 20px; }
           /* Spare height on a tall monitor goes above and below the card, not all under it. */
-          .lp-fit:has(.lp-sheet) { margin-block: auto; }
-          .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
+          .lp:not(.lp-embed) .lp-fit:has(.lp-sheet) { margin-block: auto; }
+          .lp:not(.lp-embed) .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
             grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note cta"; align-items: start; }
-          .lp-sheet .lp-title { grid-area: title; }
-          .lp-sheet .lp-pair { display: contents; }
-          .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
-          .lp-sheet .lp-brk { grid-area: brk; }
-          .lp-sheet .lp-deps { grid-area: deps; }
-          .lp-sheet .lp-low { grid-area: low; }
-          .lp-sheet .lp-salary { grid-area: salary; }
-          .lp-sheet .lp-note { grid-area: note; align-self: center; }
-          .lp-sheet .lp-cta { grid-area: cta; align-self: center; }
-          .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
-          .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
-          .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
-          .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
-          .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
-          .lp-seg button, .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
-          .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
-          .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
-          .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
-          .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
-          .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
-          .lp-ten tr.lp-def td:last-child { font-size: clamp(26px, 5cqh, 56px); }
-          .lp-salary { font-size: clamp(13px, 1.9cqh, 21px); }
-          .lp-note { font-size: clamp(12px, 1.6cqh, 17px); }
-          .lp-cta { font-size: clamp(13px, 2cqh, 22px); padding: 10px 14px; }
-          .lp-adjust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .lp-adjust .lp-seg { grid-column: auto; }
+          .lp:not(.lp-embed) .lp-sheet .lp-title { grid-area: title; }
+          .lp:not(.lp-embed) .lp-sheet .lp-pair { display: contents; }
+          .lp:not(.lp-embed) .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
+          .lp:not(.lp-embed) .lp-sheet .lp-brk { grid-area: brk; }
+          .lp:not(.lp-embed) .lp-sheet .lp-deps { grid-area: deps; }
+          .lp:not(.lp-embed) .lp-sheet .lp-low { grid-area: low; }
+          .lp:not(.lp-embed) .lp-sheet .lp-salary { grid-area: salary; }
+          .lp:not(.lp-embed) .lp-sheet .lp-note { grid-area: note; align-self: center; }
+          .lp:not(.lp-embed) .lp-sheet .lp-cta { grid-area: cta; align-self: center; }
+          .lp:not(.lp-embed) .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
+          .lp:not(.lp-embed) .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
+          .lp:not(.lp-embed) .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
+          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
+          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
+          .lp:not(.lp-embed) .lp-seg button, .lp:not(.lp-embed) .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
+          .lp:not(.lp-embed) .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
+          .lp:not(.lp-embed) .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
+          .lp:not(.lp-embed) .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
+          .lp:not(.lp-embed) .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
+          .lp:not(.lp-embed) .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
+          .lp:not(.lp-embed) .lp-ten tr.lp-def td:last-child { font-size: clamp(26px, 5cqh, 56px); }
+          .lp:not(.lp-embed) .lp-salary { font-size: clamp(13px, 1.9cqh, 21px); }
+          .lp:not(.lp-embed) .lp-note { font-size: clamp(12px, 1.6cqh, 17px); }
+          .lp:not(.lp-embed) .lp-cta { font-size: clamp(13px, 2cqh, 22px); padding: 10px 14px; }
+          .lp:not(.lp-embed) .lp-adjust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+          .lp:not(.lp-embed) .lp-adjust .lp-seg { grid-column: auto; }
           /* Budget: the viewer's number on the left, the cars that fit on the right. */
-          .lp-fit:has(.lp-bud) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
-          .lp-fit:has(.lp-bud) > .lp-adjust { grid-column: 1 / -1; }
-          .lp-row img, .lp-row .lp-noimg { width: clamp(64px, 9cqh, 110px); }
-          .lp-row .lp-n { font-size: clamp(24px, 4cqh, 44px); }
-          .lp-row .lp-rn b { font-size: clamp(14px, 2.1cqh, 22px); }
-          .lp-row .lp-m { font-size: clamp(16px, 2.7cqh, 30px); }
-          .lp-nav { justify-content: center; }
-          .lp-navbtn { flex: 0 1 320px; }
-          .lp-report { max-width: 760px; width: 100%; margin: 0 auto; }
+          .lp:not(.lp-embed) .lp-fit:has(.lp-bud) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
+          .lp:not(.lp-embed) .lp-fit:has(.lp-bud) > .lp-adjust { grid-column: 1 / -1; }
+          .lp:not(.lp-embed) .lp-row img, .lp:not(.lp-embed) .lp-row .lp-noimg { width: clamp(64px, 9cqh, 110px); }
+          .lp:not(.lp-embed) .lp-row .lp-n { font-size: clamp(24px, 4cqh, 44px); }
+          .lp:not(.lp-embed) .lp-row .lp-rn b { font-size: clamp(14px, 2.1cqh, 22px); }
+          .lp:not(.lp-embed) .lp-row .lp-m { font-size: clamp(16px, 2.7cqh, 30px); }
+          .lp:not(.lp-embed) .lp-nav { justify-content: center; }
+          .lp:not(.lp-embed) .lp-navbtn { flex: 0 1 320px; }
+          .lp:not(.lp-embed) .lp-report { max-width: 760px; width: 100%; margin: 0 auto; }
         }
       `}</style>
 
@@ -494,7 +506,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <SlidersHorizontal size={17} />
             </button>
           )}
-          <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label={t.exit}><X size={18} /></button>
+          {!embedded && (
+            <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label={t.exit}><X size={18} /></button>
+          )}
         </div>
       </div>
 
@@ -716,9 +730,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       )}
       </>)}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+  return embedded ? screen : createPortal(screen, document.body);
 }
 
 // One budget result. Tapping it opens that car on the Cars screen with the
