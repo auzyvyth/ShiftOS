@@ -70,6 +70,56 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## NEWCAR-1: New-car brand sales advisors (Proton/Perodua) are a target — decided 2026-10-07
+Owner's call: aim at brand SAs first, because they already do live loan maths on
+TikTok (was IDEA-13). First real lead 2026-10-07: one SA, said she will tell her team.
+Evidence: SAs film an Excel calculator on TikTok Live; Zweet Data sells that template
+for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
+2.20-2.30% FLAT; our presenter converts flat to EIR per the HP amendment.
+- [x] DB 2026-10-07: `new_car_models` (price per variant per zone, superadmin-edited),
+  `seller_new_models` (advisor ticks), `profiles.new_car_brand`, seller_type `new_car`,
+  `new_car_price_zone()`, `get_seller_new_models(slug)`, `get_my_new_car_catalogue(brand)`.
+  Migration `20261007a` APPLIED (owner ran it in the SQL editor). Tables are empty.
+- [ ] Console tab to enter official prices (only superadmin writes the table).
+- [ ] Signup: "New car advisor" option + brand pick (`SalesmanOnboarding.jsx:808`).
+- [ ] Settings: "My models" tick list (Lite + Premium), reads `get_my_new_car_catalogue`.
+- [ ] Mini page: "New car prices" section from `get_seller_new_models`.
+- [ ] One public page per model listing the advisors who sell it (the "salesman is the
+  product" page, owner's call 2026-10-07: one card per model, never a card per advisor).
+- [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
+  loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
+- [ ] **Won flips the listing to sold.** `auto_create_customer_on_won` marks the car
+  sold on the first win, so the "Saga" listing (and its #N in the live presenter)
+  disappears while the showroom has 20 more. Do NOT patch it with a per-condition
+  skip in the trigger: sold count / commission read `status='sold'`, so a skip hides
+  every new-car sale (the split-brain CLAUDE.md warns about). Needs a decision:
+  a "model listing" that is not stock (wins counted from leads), or a quantity.
+- [ ] Presenter: new-car OTR build-up (price + insurance - NCD - rebate = loan).
+- [ ] Presenter: variants side by side in one table (Bezza 1.0 G / 1.3 X / AV).
+- [ ] Colours: a new car comes in 5-6 colours; today a listing holds one.
+- [ ] Brand images: SAs will repost Proton/Perodua brochure photos. Check who owns
+  them and whether a reseller may use them BEFORE the form encourages it.
+- Related: IDEA-14 (employer-checked SA badge, never a brand logo).
+- **Price research 2026-10-07: there is no single national price.** Four zones:
+  Peninsular, Sabah/Sarawak (usually +RM2,000), Labuan, Langkawi (duty-free, lower).
+  Bezza 1.0 G MT: RM34,580 Pen / RM33,380 Langkawi / RM36,580 Sabah+Sarawak.
+  Bezza 1.3 X: RM43,980 / 42,980 / 45,980 / Labuan 44,180. Proton X70 and X90: +RM2,000
+  in East Malaysia. Brands quote OTR WITHOUT insurance. Prices move: Perodua cut the
+  Axia by up to RM4,700 in Aug 2026. So a catalogue must be dated and maintained.
+- **Owner proposal 2026-10-07:** third signup option for brand SAs (`SalesmanOnboarding.jsx:808`)
+  + an "Add Proton/Perodua/Toyota models" button in CarForm. Counter-proposal pending owner
+  decision: one platform-maintained price table (per variant, per zone) that feeds the mini
+  page + live presenter, NOT a copy of each variant into `car_listings` (blows Lite cap 10,
+  floods the marketplace with identical cards, prices go stale, sold-on-win still bites).
+  `profiles_seller_type_check` only allows private|broker, so the signup option needs DDL.
+- **Market gap check 2026-10-07 (owner: "no marketplace for these sellers?").** Carlist has a
+  new-cars section, but it is one ad per car, the same shape as our listings. WapCar,
+  Zigwheels, Carbase publish prices and news; none is built around the SA as a person.
+  SAs find buyers on TikTok/FB/IG. Not proven that nothing exists, only that the search found
+  nothing. Owner idea that follows: a "pick the model, see the fixed price for your zone,
+  pick an SA near you" page. Price is the same everywhere, so SAs compete on service:
+  measured reply time, delivery wait, trade-in. XDrive has no new-car surface today.
+
 ## SL-LIVE: /for-salesmen relaunched around Live presentation — 2026-10-06
 Owner's call: the target audience is salesmen who do finance calculations on
 TikTok / Facebook lives, so the hero now sells Live presentation (Premium, first
@@ -2337,22 +2387,6 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   re-checked periodically since SAs change dealers. Fits `is_verified` /
   `verified_by` on profiles (see Agent page trust signals in CLAUDE.md).
 
-- **IDEA-13: Win the new-car SAs who go live with an Excel sheet (2026-10-05)** —
-  owner saw Proton, Perodua and Toyota SAs on TikTok Live filming a spreadsheet
-  calculator off their laptop, and an Instagram ad (Zweet Data) selling that
-  template for RM199.90 one-off. Proof the LIVE-1 habit exists, and a price anchor
-  (RM199.90 once vs RM35/month Premium). What their sheets have that
-  `LivePresenter.jsx` does not: (1) new-car OTR build-up (selling price +
-  insurance - NCD - rebate = loan), (2) variants side by side in one table,
-  (3) a documents-needed list (MyKad, licence, 3-6 months payslip, EPF, bank
-  statement). What we do better: generated from listings, budget tab, contact
-  off by default. Their sheets all show 2.20-2.30% FLAT (checked: X50 RM926/9y,
-  Emas 5 RM974.63/5y match flat maths) and a phone number on screen.
-  Blockers: our presenter is driven by listings (used cars); a new-car SA has no
-  listing per variant. Decide whether new-car SAs are a target before building.
-  Possible channel: the same Instagram ad slot aimed at SAs.
-  2026-10-05: rebate line and Docs screen SHIPPED in the presenter. Insurance/NCD
-  rows and variants side by side are still open.
 - **IDEA-12: Salesman -> dealer loan desk handoff (restructured 2026-10-05)** —
   FOR SALESMEN UNDER A DEALER (owner's call). The rep picks banks on the loan
   comparison, presses "Send to loan desk", and the buyer's file + documents +

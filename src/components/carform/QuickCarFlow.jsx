@@ -283,7 +283,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
     { key: "model", title: "Which model?", required: true, answered: !!form.model, render: renderModel, focus: "fine", onEnter: searchEnter("model") },
     { key: "year", title: "What year?", required: true, answered: !!form.year, render: renderYear },
     { key: "condition", title: "Used, recon or new?", required: true, answered: !!form.condition, render: renderCondition },
-    { key: "mileage", title: "How many km on it?", required: true, answered: hasMileage, render: renderMileage, focus: "always" },
+    { key: "mileage", title: "How many km on it?", skip: form.condition === "new", required: true, answered: hasMileage, render: renderMileage, focus: "always" },
     { key: "colour", title: "What colour?", required: true, answered: !!form.colour, render: renderColour },
     { key: "variant", title: "Which variant?", filled: !!form.variant, render: renderVariant },
     { key: "specs", title: "We filled in the specs", skip: !specsLocked, render: renderSpecs, primaryLabel: "Looks right", primaryIcon: "check" },
