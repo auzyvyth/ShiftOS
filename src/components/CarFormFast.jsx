@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { useProfile } from "../hooks/useProfile";
+import NewCarFormNotice from "./newcar/NewCarFormNotice";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
 import { MY_STATES as STATES } from "../utils/locations";
@@ -21,7 +22,7 @@ const S = {
   err: { fontSize: 12, color: "#f87171", marginTop: 6, textAlign: "center" },
 };
 
-export default function CarFormFast({ onCreate }) {
+export default function CarFormFast({ onCreate, onOpenNewCars }) {
   const { profile } = useProfile();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -102,6 +103,7 @@ export default function CarFormFast({ onCreate }) {
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", color: "#e5e7eb" }}>
+      <NewCarFormNotice profile={profile} onOpenNewCars={onOpenNewCars} dark />
 
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>

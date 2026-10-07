@@ -42,6 +42,7 @@ import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
 import QuickCarFlow from "./carform/QuickCarFlow";
+import NewCarFormNotice from "./newcar/NewCarFormNotice";
 import QuickSteps, { Tile, BigNumber, fmtNum } from "./carform/QuickSteps";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
@@ -777,7 +778,7 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 // inputs are hidden here (values carry over via the `listing` prefill) and their
 // step validations are relaxed. Standalone CarForm (salesman flows, plain edits)
 // still shows everything.
-export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade }) {
+export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade, onOpenNewCars }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
   // VIN decode is a Premium-salesman convenience only. It's gated off for
@@ -4204,6 +4205,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         backgroundSize: "24px 24px",
       }}
     >
+      {!listing && <NewCarFormNotice profile={profile} onOpenNewCars={onOpenNewCars} />}
+
       {/* Draft resume banner */}
       {draftBanner && !listing && (
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, padding: "10px 14px", borderRadius: 9, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", fontFamily: "system-ui,sans-serif" }}>

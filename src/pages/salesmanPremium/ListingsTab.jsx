@@ -76,6 +76,7 @@ const downloadListingImages = async (car) => {
 // this tab opens now lives in src/components/CarDetailPopup.jsx, shared with
 // SalesmanLite.
 export default function ListingsTab({
+ onOpenNewCars,
  myListings, carStatsMap, filterStatus, sortBy, listingCopied, showAddForm, showFastForm,
  statusMenuCarId, actionMenuCarId, confirmDeleteId, cvrHover, profile, isMobile,
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
@@ -178,6 +179,7 @@ export default function ListingsTab({
  isMobile={isMobile}
  >
  <CarFormFast
+ onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
  setShowFastForm(false);
@@ -194,6 +196,7 @@ export default function ListingsTab({
  isMobile={isMobile}
  >
  <CarForm
+ onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
  setShowAddForm(false);
