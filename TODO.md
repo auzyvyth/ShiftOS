@@ -80,12 +80,22 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   `seller_new_models` (advisor ticks), `profiles.new_car_brand`, seller_type `new_car`,
   `new_car_price_zone()`, `get_seller_new_models(slug)`, `get_my_new_car_catalogue(brand)`.
   Migration `20261007a` APPLIED (owner ran it in the SQL editor). Tables are empty.
-- [ ] Console tab to enter official prices (only superadmin writes the table).
-- [ ] Signup: "New car advisor" option + brand pick (`SalesmanOnboarding.jsx:808`).
-- [ ] Settings: "My models" tick list (Lite + Premium), reads `get_my_new_car_catalogue`.
-- [ ] Mini page: "New car prices" section from `get_seller_new_models`.
-- [ ] One public page per model listing the advisors who sell it (the "salesman is the
-  product" page, owner's call 2026-10-07: one card per model, never a card per advisor).
+- [x] Console > Marketplace > New car prices (`src/components/platform/NewCarPricesTab.jsx`).
+- [x] Signup "New car advisor" + brand pick (`SalesmanOnboarding.jsx`).
+- [x] Settings > New cars tick list, Lite + Premium (`src/components/newcar/MyNewModels.jsx`).
+- [x] Mini page "New <brand> prices" section (`SalesmanProfilePage.jsx`).
+- [x] Public model page `/new-cars/:brand/:model` (`src/pages/NewCarModelPage.jsx`) + crawler
+  render (`api/og.js buildNewModelHtml`) + sitemap. Needs migration `20261007b`
+  (`get_new_model_advisors`) -- until it is applied the advisor list says "couldn't load".
+- [x] Security recheck 2026-10-07: RLS read back + Supabase advisor clean for the new objects.
+  Hardening migration `20261007c` (OWNER TO PASTE): trims table grants to match the project
+  (anon had TRUNCATE), lists only approved+active advisors on the public page (cap 50),
+  source_url must be http(s). Scam line ("never pay an advisor's personal account") on the
+  model page + mini page. Live write probes could not run (session cannot write to the DB).
+- [ ] OWNER: enter the official Proton + Perodua prices in the console (tables are empty, so
+  every new-car surface is blank until then).
+- [ ] Live presenter: show the advisor's new models (variants side by side, OTR build-up).
+- [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
 - [ ] **Won flips the listing to sold.** `auto_create_customer_on_won` marks the car

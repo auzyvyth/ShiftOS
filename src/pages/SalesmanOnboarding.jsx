@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { NEW_CAR_BRANDS } from '../utils/newCars';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
@@ -241,6 +242,9 @@ export default function SalesmanOnboarding() {
     // signup (commission-first dashboard, "Agent" badge) — private is an
     // opt-in distinction, not a behavior change for anyone who skips this.
     sellerType: 'broker',
+    // Only for sellerType 'new_car' (NEWCAR-1): which brand's price list their
+    // page shows. Prices come from the platform table, never typed by the seller.
+    newCarBrand: '',
   });
 
   const slugTimer = useRef(null);
@@ -286,7 +290,7 @@ export default function SalesmanOnboarding() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('onboarding_complete, full_name, phone, ic_number, slug, role, seller_type')
+        .select('onboarding_complete, full_name, phone, ic_number, slug, role, seller_type, new_car_brand')
         .eq('id', session.user.id)
         .maybeSingle();
 
@@ -318,6 +322,7 @@ export default function SalesmanOnboarding() {
           phone: profile.phone || p.phone,
           slug: profile.slug || p.slug,
           sellerType: profile.seller_type || p.sellerType,
+          newCarBrand: profile.new_car_brand || p.newCarBrand,
         }));
         setResumeIsBuyer(isBuyer);
         setShowResumeChoice(true);
@@ -437,6 +442,7 @@ export default function SalesmanOnboarding() {
   const saveIdentity = async () => {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
+    if (form.sellerType === 'new_car' && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
     if (!validateIC(form.icNumber)) { setErr('Enter a valid 12-digit IC number (e.g. 901231-10-1234)'); return; }
     // The IC encodes date of birth — verify 18+ from it rather than asking again.
     if (isAdultFromIC(form.icNumber) === false) { setErr('You must be at least 18 years old to sell on XDrive.'); return; }
@@ -448,6 +454,7 @@ export default function SalesmanOnboarding() {
           full_name: form.fullName.trim(),
           role: 'salesman',
           seller_type: form.sellerType,
+          new_car_brand: form.sellerType === 'new_car' ? form.newCarBrand : null,
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -474,6 +481,7 @@ export default function SalesmanOnboarding() {
   const skipIdentity = async () => {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
+    if (form.sellerType === 'new_car' && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
     setLoading(true);
     try {
       if (userId) {
@@ -482,6 +490,7 @@ export default function SalesmanOnboarding() {
           full_name: form.fullName.trim(),
           role: 'salesman',
           seller_type: form.sellerType,
+          new_car_brand: form.sellerType === 'new_car' ? form.newCarBrand : null,
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -580,7 +589,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sellerType: 'broker' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sellerType: 'broker', newCarBrand: '' });
     setStep(0);
   };
 
@@ -803,14 +812,15 @@ export default function SalesmanOnboarding() {
                 </p>
 
                 <label className="eo-label">HOW DO YOU SELL CARS?</label>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   {[
                     { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
+                    { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua or Toyota' },
                     { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
                   ].map((opt) => (
                     <button key={opt.key} type="button" onClick={() => upd('sellerType')(opt.key)}
                       style={{
-                        flex: 1, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
+                        flex: '1 1 140px', minWidth: 0, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
                         background: form.sellerType === opt.key ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
                         border: `1px solid ${form.sellerType === opt.key ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
                         fontFamily: 'inherit',
@@ -820,9 +830,35 @@ export default function SalesmanOnboarding() {
                     </button>
                   ))}
                 </div>
+                {form.sellerType === 'new_car' ? (
+                  <div style={{ marginBottom: 18 }}>
+                    <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {NEW_CAR_BRANDS.map((b) => {
+                        const on = form.newCarBrand === b;
+                        return (
+                          <button key={b} type="button" onClick={() => upd('newCarBrand')(b)}
+                            style={{
+                              flex: 1, minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                              fontSize: 12.5, fontWeight: 700,
+                              background: on ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
+                              border: `1px solid ${on ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
+                              color: on ? '#fca5a5' : '#E8EDF5',
+                            }}>
+                            {b}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="eo-hint" style={{ marginTop: 6 }}>
+                      Your page shows the official {form.newCarBrand || 'brand'} prices for your area, kept up to date by XDrive. You pick which models you sell later.
+                    </p>
+                  </div>
+                ) : (
                 <p className="eo-hint" style={{ marginBottom: 18 }}>
                   Already work at a dealership? Ask them to send you an invite instead — your dealership shows up on your page automatically, verified, no typing it in yourself.
                 </p>
+                )}
 
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}

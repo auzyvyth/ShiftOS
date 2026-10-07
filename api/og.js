@@ -19,6 +19,7 @@ import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
 import { agentName, agentLocation, agentPageTitle, agentPageDescription } from "../src/utils/agentSeo.js";
+import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
 
 export const config = { runtime: "edge" };
 
@@ -258,6 +259,31 @@ function buildHubHtml(hubs, brand, model, cars) {
     jsonLd: [breadcrumbLd(crumbs, SITE_URL), listLd, faqLd(copy.faqs)],
     body,
   });
+}
+
+// NEWCAR-1: /new-cars/:brand/:model. Same copy as NewCarModelPage (newCars.js).
+// Prices and advisor names only; no numbers -- WhatsApp is never linked here.
+function buildNewModelHtml(brand, rows, advisors) {
+  const model = rows[0].model;
+  const copy = newModelCopy(brand, model, rows);
+  const canonical = `${SITE_URL}${newModelPath(brand, model)}`;
+  const head = PRICE_ZONES.map((z) => `<th>${esc(z.label)}</th>`).join("");
+  const trs = rows.map((r) => `<tr><td>${esc(`${brand} ${r.model} ${r.variant}`)}</td>${PRICE_ZONES.map((z) => `<td>${esc(newRm(r[z.col]) || "Ask an advisor")}</td>`).join("")}</tr>`).join("\n      ");
+  const advLis = advisors.map((a) => `<li><a href="${SITE_URL}/s/${encodeURIComponent(a.slug)}">${esc(a.full_name || "Advisor")}</a>${a.city || a.state ? ` (${esc([a.city, a.state].filter(Boolean).join(", "))})` : ""}</li>`).join("");
+  const body = `  <main>
+    <h1>${esc(copy.h1)}</h1>
+    <p>${esc(copy.intro)}</p>
+    <h2>Official price</h2>
+    <table>
+      <tr><th>Variant</th>${head}</tr>
+      ${trs}
+    </table>
+    <p>On the road without insurance, as published by ${esc(brand)}.</p>
+    <h2>Advisors who sell the ${esc(brand)} ${esc(model)}</h2>
+    ${advLis ? `<ul>${advLis}</ul>` : `<p>No advisor lists this model on XDrive yet.</p>`}
+    <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
+  </main>`;
+  return htmlShell({ title: copy.title, description: copy.description, canonical, body });
 }
 
 // ── HTML shell ────────────────────────────────────────────────────────────────
@@ -1002,6 +1028,20 @@ export default async function handler(req) {
     if ((bSlug && !brand) || (mSlug && !model)) return new Response("Not found", { status: 404 });
     const cars = brand ? await getHubCars(brand, model) : [];
     return html(buildHubHtml(hubs, brand, model, cars));
+  }
+
+  // 4b2. New-car model pages (NEWCAR-1) -- marketplace only. A model with no
+  // active price row is not a page (404, never an empty soft-404).
+  const ncMatch = pathname.match(/^\/new-cars\/([^/]+)\/([^/]+)$/);
+  if (ncMatch) {
+    if (subdomain) return new Response("Not found", { status: 404 });
+    const ncBrand = brandFromSlug(decodeURIComponent(ncMatch[1]));
+    if (!ncBrand) return new Response("Not found", { status: 404 });
+    const all = await sbFetch(`new_car_models?brand=eq.${encodeURIComponent(ncBrand)}&is_active=eq.true&select=model,variant,price_peninsular,price_sabah_sarawak,price_labuan,price_langkawi,effective_from,is_active,sort_order&order=sort_order,price_peninsular`);
+    const ncRows = modelRows(all, decodeURIComponent(ncMatch[2]));
+    if (!ncRows.length) return new Response("Not found", { status: 404 });
+    const advisors = await sbRpc("get_new_model_advisors", { p_brand: ncBrand, p_model: ncRows[0].model });
+    return html(buildNewModelHtml(ncBrand, ncRows, advisors.filter((a) => a && a.slug)));
   }
 
   // 4c. Salesman mini page (/s/:slug) — the agent's public storefront. Uses the

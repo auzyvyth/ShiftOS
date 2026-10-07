@@ -31,6 +31,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 // jammed first paint. Sibling CarDetailPage is already lazy for the same reason.
 const CarListingPage  = lazy(() => import("./pages/CarListingPage"));
 const UsedCarsHubPage = lazy(() => import("./pages/UsedCarsHubPage"));
+const NewCarModelPage = lazy(() => import("./pages/NewCarModelPage"));
 
 // Lazy — the dealer subdomain storefront. Only <sub>.xdrive.my visitors render
 // it, so its storefront-only weight (HeroCarousel etc.) must stay OUT of the
@@ -160,6 +161,7 @@ function App() {
           <Route path="/used-cars" element={<UsedCarsHubPage />} />
           <Route path="/used-cars/:brand" element={<UsedCarsHubPage />} />
           <Route path="/used-cars/:brand/:model" element={<UsedCarsHubPage />} />
+          <Route path="/new-cars/:brand/:model" element={<NewCarModelPage />} />
           <Route path="/cars" element={<CarListingPage />} />
           <Route path="/cars/:slug" element={<CarDetailPage />} />
           <Route path="/calculator" element={<CalculatorPage />} />
