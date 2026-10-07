@@ -6,6 +6,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import ReferralCard from "../components/referral/ReferralCard";
+import MyNewModels from "../components/newcar/MyNewModels";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { supabase } from "../supabaseClient";
@@ -99,6 +100,7 @@ import {
  ClipboardList,
   Mail,
  Gift,
+ CarFront,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
@@ -208,6 +210,7 @@ const SETTINGS_GROUPS = [
  { group: "Selling", items: [
  { key: "availability", icon: Clock, label: "Viewing Hours", desc: "When buyers can book you" },
  { key: "terms", icon: DollarSign, label: "Selling Terms", desc: "Deposit policy & your fees" },
+ { key: "newcars", icon: CarFront, label: "New Cars", desc: "Proton, Perodua & Toyota prices" },
  ]},
  { group: "Notifications", items: [
  { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
@@ -5376,6 +5379,7 @@ export default function SalesmanPremium() {
  </>
  )}
  {nav === "refer" && <ReferralCard slug={profile?.slug} />}
+ {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
  {nav === "dealership" && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a

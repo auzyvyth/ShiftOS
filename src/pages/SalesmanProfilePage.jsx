@@ -13,6 +13,7 @@ import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../
 import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
+import { groupByModel, priceBasis, rm } from '../utils/newCars';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -110,6 +111,10 @@ export default function SalesmanProfilePage() {
   const [profile, setProfile] = useState(null);
   const [dealer, setDealer] = useState(null);
   const [listings, setListings] = useState([]);
+  // NEWCAR-1: variants a new-car advisor sells, priced for THEIR zone by the DB
+  // (get_seller_new_models). Not listings: they never sell out and never count
+  // toward "For sale".
+  const [newModels, setNewModels] = useState([]);
   const [soldCount, setSoldCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -226,7 +231,7 @@ export default function SalesmanProfilePage() {
         });
       }
 
-      const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
+      const [ownedRes, assignedRes, featuredRes, soldStatsRes, newModelsRes] = await Promise.all([
         supabase.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
@@ -245,6 +250,7 @@ export default function SalesmanProfilePage() {
         // twice what the card showed for the same seller. The view does a
         // count(DISTINCT listing_id) over the union, so it cannot double-count.
         supabase.from('seller_public_stats').select('sold_count').eq('seller_id', p.id).maybeSingle(),
+        supabase.rpc('get_seller_new_models', { p_slug: slug }),
       ]);
       if (cancelled) return;
 
@@ -265,6 +271,7 @@ export default function SalesmanProfilePage() {
 
       setSoldCount(Number(soldStatsRes.data?.sold_count) || 0);
       setListings(lst);
+      setNewModels(newModelsRes.data || []);
       setLoading(false);
     }
     load();
@@ -437,7 +444,20 @@ export default function SalesmanProfilePage() {
 
   // Identity lines. Eyebrow says what kind of seller this is; the Malay line
   // is the search phrase buyers actually type ("ejen kereta <tempat>").
-  const sellerKind = dealer ? 'Sales agent' : profile.seller_type === 'private' ? 'Private seller' : 'Independent agent';
+  const sellerKind = dealer ? 'Sales agent'
+    : profile.seller_type === 'private' ? 'Private seller'
+    : profile.seller_type === 'new_car' ? 'New car advisor'
+    : 'Independent agent';
+  const newModelGroups = groupByModel(newModels);
+  const newBrand = newModels[0]?.brand || '';
+  const newCarWa = (model) => (hasWa
+    ? sellerWaUrl({ slug: profile.slug, text: `Hi ${firstName}, I'm interested in the new ${newBrand} ${model}. Can you tell me more?` })
+    : null);
+  const trackNewCarWa = (model) => trackEvent(supabase, 'whatsapp_click', {
+    dealer_id: profile.dealer_id || profile.id,
+    salesman_slug: slug,
+    metadata: { source: 'minipage_newcar', model: `${newBrand} ${model}` },
+  });
   const eyebrow = [sellerKind, locationState || locationCity].filter(Boolean).join(' · ');
   const malayLine = profile.seller_type !== 'private' && locationStr ? `Ejen kereta di ${locationStr}` : null;
   const initial = (profile.full_name || 'A')[0].toUpperCase();
@@ -561,6 +581,15 @@ export default function SalesmanProfilePage() {
         .ap-live-ph { position: relative; width: 112px; flex-shrink: 0; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #EDEAE3; }
         .ap-live-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         .ap-live .ap-btn { margin-top: 12px; height: 44px; font-size: 14px; }
+        .ap-nc { display: flex; flex-direction: column; gap: 12px; }
+        .ap-nc-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,.06); }
+        .ap-nc-h b { font-size: 15px; color: #111827; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ap-nc-h a { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,.1); color: #111827; font-size: 13px; font-weight: 600; text-decoration: none; }
+        .ap-nc-h a svg { width: 15px; height: 15px; }
+        .ap-nc-r { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 16px; font-size: 14px; }
+        .ap-nc-r + .ap-nc-r { border-top: 1px solid rgba(0,0,0,.05); }
+        .ap-nc-r span:first-child { color: #374151; min-width: 0; }
+        .ap-nc-r span:last-child { flex-shrink: 0; color: #111827; font-weight: 600; font-variant-numeric: tabular-nums; }
         .ap-sold div { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; font-size: 14px; }
         .ap-sold div + div { border-top: 1px solid rgba(0,0,0,.06); }
         .ap-sold span:first-child { color: #111827; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -766,6 +795,42 @@ export default function SalesmanProfilePage() {
                 </>
               )}
 
+              {/* New-car price list (NEWCAR-1). Official brand prices for the
+                  advisor's zone; a zone with no price says "ask", never the
+                  Peninsular number. No link to the public model page from
+                  here: that page lists every advisor, and this is theirs. */}
+              {newModelGroups.length > 0 && (
+                <>
+                  <div className="ap-sec"><h2>New {newBrand} prices</h2></div>
+                  <p className="ap-docs">{priceBasis(newModels[0]?.price_zone)}</p>
+                  <div className="ap-nc">
+                    {newModelGroups.map((g) => {
+                      const href = newCarWa(g.model);
+                      return (
+                        <div key={g.model} className="ap-card">
+                          <div className="ap-nc-h">
+                            <b>{newBrand} {g.model}</b>
+                            {href && (
+                              <a href={href} target="_blank" rel="noopener noreferrer" onClick={() => trackNewCarWa(g.model)}>
+                                {WA_ICON}<span>Ask</span>
+                              </a>
+                            )}
+                          </div>
+                          {g.variants.map((v) => (
+                            <div key={v.model_id} className="ap-nc-r">
+                              <span>{v.variant}</span>
+                              <span>{rm(v.price) || 'Ask for price'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {!(newModelGroups.length > 0 && listings.length === 0) && (
+              <>
               <div className="ap-sec">
                 <h2>Cars for sale{listings.length > 0 && <> <span>{listings.length}</span></>}</h2>
                 {listings.length > 1 && (
@@ -790,6 +855,8 @@ export default function SalesmanProfilePage() {
                 <div className="ap-card" style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: '#6b7280' }}>
                   No cars for sale right now.
                 </div>
+              )}
+              </>
               )}
 
               {/* Recently sold — car + month only (get_agent_recent_sales). No price. */}

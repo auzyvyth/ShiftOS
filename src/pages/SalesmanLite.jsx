@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import ReferralCard from "../components/referral/ReferralCard";
+import MyNewModels from "../components/newcar/MyNewModels";
 import PremiumUpgradeCard from "../components/premium/PremiumUpgradeCard";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
@@ -765,6 +766,7 @@ const LITE_SETTINGS_NAV = [
   { key: "profile", labelKey: "salesmanLite.settings.navProfile", fallback: "Profile" },
   { key: "contact", labelKey: "salesmanLite.settings.navContact", fallback: "Contact & Location" },
   { key: "selling", labelKey: "salesmanLite.settings.navSelling", fallback: "Selling" },
+  { key: "newcars", labelKey: "salesmanLite.settings.navNewCars", fallback: "New cars" },
   { key: "alerts", labelKey: "salesmanLite.settings.navAlerts", fallback: "Alerts" },
   { key: "premium", labelKey: "salesmanLite.settings.navPremium", fallback: "Premium" },
   { key: "refer", labelKey: "salesmanLite.settings.navRefer", fallback: "Refer a seller" },
@@ -1536,7 +1538,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done")
+        .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done, seller_type, new_car_brand")
         .eq("id", uid)
         .maybeSingle();
 
@@ -7263,6 +7265,7 @@ export default function SalesmanLite() {
             )}
             {snav === "premium" && <PremiumUpgradeCard profile={profile} onRefer={() => setSettingsNav("refer")} />}
             {snav === "refer" && <ReferralCard slug={profile?.slug} />}
+            {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
             {snav === "account" && (
               <>
           {/* Identity verification — earns the public Verified badge. Sits first

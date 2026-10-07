@@ -1125,6 +1125,25 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 - `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 
+## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
+Brand sales advisors (Proton/Perodua/Toyota) sell cars whose price the BRAND sets, per
+variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,
+console > Marketplace > New car prices), and an advisor only ticks variants
+(`seller_new_models`). Never copy a new car into `car_listings`: it blows the listing cap,
+floods the marketplace with identical cards, goes stale when the brand changes a price,
+and the won-trigger marks it sold on the first deal.
+- Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
+  state/city in ONE SQL function, `new_car_price_zone()`, and the price from
+  `new_car_zone_price()`. A zone with no price shows "ask", NEVER the Peninsular number.
+- Reads: `get_seller_new_models(slug)` (mini page), `get_my_new_car_catalogue(brand)`
+  (settings, subject = auth.uid()), `get_new_model_advisors(brand, model)` (public page).
+  No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
+- `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
+  advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
+- Hide a catalogue row, never delete it: delete cascades and unticks every advisor.
+- `profiles.seller_type` now allows `new_car`; `new_car_brand` is the brand.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

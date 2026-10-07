@@ -2,6 +2,7 @@
 import { ORDER as FEATURE_ORDER } from "../src/config/featurePagesCopy.js";
 import { ARTICLE_PAGES } from "../src/config/articlePages.generated.js";
 import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelHubs.js";
+import { newModelPath } from "../src/utils/newCars.js";
 export const config = { runtime: "edge" };
 
 const ROOT_DOMAIN = "xdrive.my";
@@ -210,6 +211,17 @@ export default async function handler(req) {
       for (const b of hubs) {
         staticRoutes.push({ path: b.path, changefreq: "daily", priority: "0.8" });
         for (const m of b.models) staticRoutes.push({ path: m.path, changefreq: "daily", priority: "0.8" });
+      }
+    } catch (_) {}
+    // New-car model pages (NEWCAR-1): one per active brand + model.
+    try {
+      const ncRows = await fetchJson(`${SUPABASE_URL}/rest/v1/new_car_models?is_active=eq.true&select=brand,model`);
+      const seen = new Set();
+      for (const r of Array.isArray(ncRows) ? ncRows : []) {
+        const path = newModelPath(r.brand, r.model);
+        if (seen.has(path)) continue;
+        seen.add(path);
+        staticRoutes.push({ path, changefreq: "weekly", priority: "0.7" });
       }
     } catch (_) {}
   }

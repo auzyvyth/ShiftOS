@@ -18,6 +18,7 @@ import EngagementTab from "../components/platform/EngagementTab";
 import UserApprovalsTab from "../components/platform/UserApprovalsTab";
 import AccountsTab from "../components/platform/AccountsTab";
 import BuyersTab from "../components/platform/BuyersTab";
+import NewCarPricesTab from "../components/platform/NewCarPricesTab";
 import ErrorsTab from "../components/platform/ErrorsTab";
 import BroadcastTab from "../components/platform/BroadcastTab";
 import ActivityLogTab from "../components/platform/ActivityLogTab";
@@ -804,6 +805,9 @@ export default function AdminPage() {
       { id: "funnel",      label: "Funnel" },
       { id: "engagement",  label: "Engagement" },
       { id: "buyers",      label: "Buyers" },
+      // Official new-car prices (NEWCAR-1): the one table every new-car
+      // advisor's page and the public model pages read.
+      { id: "newcars",     label: "New car prices" },
       { id: "broadcast",   label: "Broadcast" },
       { id: "platform",    label: "Volume" },
     ] },
@@ -1273,6 +1277,8 @@ export default function AdminPage() {
             <EngagementTab />
           ) : activeTab === "buyers" ? (
             <BuyersTab />
+          ) : activeTab === "newcars" ? (
+            <NewCarPricesTab />
           ) : activeTab === "broadcast" ? (
             <BroadcastTab dealers={dealers} salesmen={salesmen} />
           ) : activeTab === "activity" ? (
