@@ -1022,7 +1022,11 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
   // The geran is the one document required to publish — either attached, or
   // declared unavailable with a reason the buyer gets to see. Edit mode is
   // exempt so quick fixes to pre-requirement listings aren't blocked.
-  const geranSatisfied = !!docInSlot("registration_card") || !!form.geranReason;
+  // A new car has no geran yet (JPJ registers it at delivery), so "new" is
+  // exempt rather than forced into a "reason unavailable" the buyer would read
+  // as a red flag.
+  const isNewCar = form.condition === "new";
+  const geranSatisfied = isNewCar || !!docInSlot("registration_card") || !!form.geranReason;
 
   // ── Included services state ──────────────────────────────────────────────
   const [servicesOpen, setServicesOpen] = useState(quickMode);
@@ -1866,7 +1870,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (step === 1) return form.images.length > 0;
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
-    if (step === 4) return form.state && form.city && form.basePrice && form.sellingPrice;
+    if (step === 4) return form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice;
     if (step === 5) return listing ? true : geranSatisfied;
     return true;
   };
@@ -1885,7 +1889,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
     if (s === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
     if (s === 4) return [
       [!form.state, "State"], [!form.city, "City"],
-      ...(intakeDone ? [] : [[!form.basePrice, "Base price"], [!form.sellingPrice, "Selling price"]]),
+      ...(intakeDone ? [] : [[!form.basePrice && !isNewCar, "Base price"], [!form.sellingPrice, "Selling price"]]),
     ].filter(([m]) => m).map(([, l]) => l);
     if (s === 5)
       return listing || geranSatisfied
@@ -2103,7 +2107,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           (d) => d.type === "registration_card",
         )
           ? "held"
-          : form.geranReason || null,
+          : isNewCar ? null : form.geranReason || null,
         previous_owners: form.previous_owners
           ? parseInt(form.previous_owners)
           : null,
@@ -2268,7 +2272,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       // so only require what this form still shows.
       case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
       case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
-      case 4: return !!(form.state && form.city) && (intakeDone ? true : !!(form.basePrice && form.sellingPrice));
+      case 4: return !!(form.state && form.city) && (intakeDone ? true : !!((form.basePrice || isNewCar) && form.sellingPrice));
       case 5: return listing ? true : geranSatisfied;
       case 6: return true;
       default: return false;
@@ -3038,7 +3042,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
                         </label>
                       </div>
 
-                      {isGeran && !doc && (
+                      {isGeran && !doc && !isNewCar && (
                         <div className="mt-3 sm:ml-8 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
                           <p className="text-xs font-medium text-gray-700">
                             Can&apos;t attach it? Pick the reason — buyers see this on the listing.
@@ -3267,7 +3271,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       render: ({ pick }) => tiles(BODY_TYPES, form.bodyType, (v) => pick({ bodyType: v })) },
     { key: "fuel_fix", title: "Fuel type?", skip: !!form.fuelType, required: true, answered: !!form.fuelType,
       render: ({ pick }) => tiles(FUEL_TYPES, form.fuelType, (v) => pick({ fuelType: v })) },
-    { key: "damage", title: "Any dents, scratches or rust?", filled: form.conditionDeclared || form.damageMap.length > 0, hideContext: false,
+    { key: "damage", title: "Any dents, scratches or rust?", skip: isNewCar, filled: form.conditionDeclared || form.damageMap.length > 0, hideContext: false,
       render: ({ pick }) => (
         <div className="space-y-3">
           {tiles([
@@ -3279,7 +3283,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           }, "grid-cols-1")}
         </div>
       ) },
-    { key: "damage_map", title: "Mark every defect", skip: !(damageYes || form.damageMap.length > 0),
+    { key: "damage_map", title: "Mark every defect", skip: isNewCar || !(damageYes || form.damageMap.length > 0),
       filled: form.conditionDeclared, primaryLabel: "Continue", render: renderDamage },
     { key: "grade", title: "Auction grade?", skip: !form.isRecon, filled: !!form.auctionGrade,
       render: ({ pick }) => (
@@ -3321,7 +3325,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <p className="text-xs text-gray-500">What buyers see on the listing.</p>
         </div>
       ) },
-    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: true, answered: !!form.basePrice, focus: "always",
+    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: !isNewCar, answered: !!form.basePrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
@@ -3335,7 +3339,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
       ) },
     { key: "payment", title: "Cash or loan?", required: true, answered: true,
       render: ({ pick }) => tiles([{ value: "cash", label: "Cash" }, { value: "loan", label: "Loan" }], form.payment_type || "cash", (v) => pick({ payment_type: v })) },
-    { key: "encumbrance", title: "Is there still a loan on the car?", filled: true,
+    { key: "encumbrance", title: "Is there still a loan on the car?", skip: isNewCar, filled: true,
       render: ({ pick }) => tiles([
         { value: "clear", label: "No, it's clear" },
         { value: "under_hp", label: "Yes, under hire-purchase" },
@@ -3690,7 +3694,10 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
             <PillSelect
               options={CONDITIONS}
               value={form.condition}
-              onChange={(v) => set("condition", v)}
+              onChange={(v) => {
+                set("condition", v);
+                if (v === "new" && !form.mileage) set("mileage", "0");
+              }}
             />
           </Field>
           <Field label="Loan Eligible">
@@ -3979,8 +3986,8 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <>
           <Field
             label="Base Price (RM)"
-            required
-            hint="Your cost / purchase price"
+            required={!isNewCar}
+            hint={isNewCar ? "Optional for a new car. Leave blank if you don't buy the car yourself." : "Your cost / purchase price"}
           >
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-semibold pointer-events-none">
@@ -4366,7 +4373,7 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && form.basePrice && form.sellingPrice)}
+            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
