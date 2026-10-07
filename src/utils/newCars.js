@@ -36,6 +36,17 @@ export function priceBasis(zoneKey, effectiveFrom) {
   return `Official price for ${zoneLabel(zoneKey)}, on the road without insurance${when}.`;
 }
 
+// Perodua has publicly warned about scammers posing as sales advisors and
+// asking for booking fees into personal accounts. Every buyer-facing new-car
+// surface carries this line.
+export function payWarning(brand) {
+  return `Pay a booking fee or deposit only into ${brand || "the brand"}'s official company account or at the showroom counter, never to an advisor's personal account.`;
+}
+
+export function isHttpUrl(u) {
+  return /^https?:\/\//i.test(String(u || ""));
+}
+
 // Rows in, [{ model, variants: [...] }] out, keeping the order the RPC returned.
 export function groupByModel(rows) {
   const out = [];

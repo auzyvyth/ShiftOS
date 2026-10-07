@@ -13,7 +13,7 @@ import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../
 import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
-import { groupByModel, priceBasis, rm } from '../utils/newCars';
+import { groupByModel, priceBasis, rm, payWarning } from '../utils/newCars';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -826,6 +826,7 @@ export default function SalesmanProfilePage() {
                       );
                     })}
                   </div>
+                  <p className="ap-docs" style={{ marginTop: 12 }}>{payWarning(newBrand)}</p>
                 </>
               )}
 

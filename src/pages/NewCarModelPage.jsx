@@ -10,7 +10,7 @@ import { sellerWaUrl } from "../utils/sellerWhatsApp";
 import { replyTimeLabel } from "../utils/agentTrust";
 import { trackEvent } from "../utils/analytics";
 import {
-  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath,
+  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning,
 } from "../utils/newCars";
 
 // /new-cars/:brand/:model -- NEWCAR-1, "the salesman is the product".
@@ -131,6 +131,7 @@ export default function NewCarModelPage() {
                 <p className="ncm-note">
                   On the road without insurance, as published by {brand}{latest ? `, latest change ${fmtDate(latest)}` : ""}. Insurance, accessories and any promotion are quoted by the advisor.
                 </p>
+                <p className="ncm-note">{payWarning(brand)}</p>
               </section>
 
               <section className="ncm-sec">

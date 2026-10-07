@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
-import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath } from "../../utils/newCars";
+import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, isHttpUrl } from "../../utils/newCars";
 
 // NEWCAR-1: the one place official new-car prices are typed in.
 //
@@ -77,6 +77,7 @@ export default function NewCarPricesTab() {
     if (!payload.model || !payload.variant) { setError("Model and variant are required."); return; }
     if (!payload.price_peninsular) { setError("The Peninsular price is required."); return; }
     if (!payload.effective_from) { setError("Pick the date the price took effect."); return; }
+    if (payload.source_url && !isHttpUrl(payload.source_url)) { setError("The source link must start with http:// or https://."); return; }
     setSaving(true);
     setError("");
     const q = form.id
@@ -231,7 +232,7 @@ export default function NewCarPricesTab() {
                           </td>
                         ))}
                         <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
-                          {r.source_url ? <a href={r.source_url} target="_blank" rel="noreferrer" style={{ color: "#f87171", textDecoration: "none" }}>{fmtDate(r.effective_from)}</a> : fmtDate(r.effective_from)}
+                          {isHttpUrl(r.source_url) ? <a href={r.source_url} target="_blank" rel="noreferrer" style={{ color: "#f87171", textDecoration: "none" }}>{fmtDate(r.effective_from)}</a> : fmtDate(r.effective_from)}
                         </td>
                         <td style={{ padding: "9px 14px", whiteSpace: "nowrap", textAlign: "right" }}>
                           <button type="button" onClick={() => edit(r)} style={{ background: "none", border: "none", color: "#cbd5e1", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Edit</button>

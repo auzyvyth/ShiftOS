@@ -87,6 +87,11 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 - [x] Public model page `/new-cars/:brand/:model` (`src/pages/NewCarModelPage.jsx`) + crawler
   render (`api/og.js buildNewModelHtml`) + sitemap. Needs migration `20261007b`
   (`get_new_model_advisors`) -- until it is applied the advisor list says "couldn't load".
+- [x] Security recheck 2026-10-07: RLS read back + Supabase advisor clean for the new objects.
+  Hardening migration `20261007c` (OWNER TO PASTE): trims table grants to match the project
+  (anon had TRUNCATE), lists only approved+active advisors on the public page (cap 50),
+  source_url must be http(s). Scam line ("never pay an advisor's personal account") on the
+  model page + mini page. Live write probes could not run (session cannot write to the DB).
 - [ ] OWNER: enter the official Proton + Perodua prices in the console (tables are empty, so
   every new-car surface is blank until then).
 - [ ] Live presenter: show the advisor's new models (variants side by side, OTR build-up).
