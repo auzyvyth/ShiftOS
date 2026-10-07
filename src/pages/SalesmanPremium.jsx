@@ -6895,6 +6895,7 @@ export default function SalesmanPremium() {
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       onVerifyId={() => openSettings("verify")}
+      onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
      />
     </Suspense>
    )}

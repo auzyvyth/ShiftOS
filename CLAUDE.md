@@ -1122,6 +1122,11 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 - The upgrade door is Lite Settings > Premium (`src/components/premium/PremiumUpgradeCard.jsx`).
   `/plans` -> Premium for an already-onboarded seller goes there
   (`SalesmanOnboarding.jsx`), not back into signup.
+- **A half-finished signup resumes the plan saved on the account** (`user_metadata.tier`,
+  stamped by `signUp()`). Guards send it to the bare `/salesman-onboarding` and the wizard
+  reads the tier from there (2026-10-07). Never hard-code `/salesman-onboarding/lite` in a
+  redirect: `SalesmanLite.jsx` did, and every Premium signup that closed the PWA after the
+  email link came back as Lite.
 - `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 

@@ -1591,7 +1591,10 @@ export default function SalesmanLite() {
       // upstream should already catch this, but this is the last line of defence
       // right at the dashboard door.
       if (profileData.onboarding_complete === false) {
-        navigate("/salesman-onboarding/lite", { replace: true });
+        // No tier in the URL: the wizard resumes the plan saved on the account
+        // (user_metadata.tier). Hard-coding /lite here downgraded every
+        // half-finished Premium signup that reopened the app.
+        navigate("/salesman-onboarding", { replace: true });
         return;
       }
 
@@ -4401,6 +4404,7 @@ export default function SalesmanLite() {
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
               onUpgrade={goPremium}
+              onOpenNewCars={() => { setShowAddForm(false); setSettingsNav("newcars"); setActiveTab("settings"); }}
               onCreate={(car) => {
                 setMyListings((p) => [car, ...p]);
                 setShowAddForm(false);

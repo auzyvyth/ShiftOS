@@ -288,6 +288,16 @@ export default function SalesmanOnboarding() {
       setUserId(session.user.id);
       setUserEmail(session.user.email || '');
 
+      // Resume the plan they picked. signUp() stamps it into user_metadata.tier,
+      // which survives the email-confirm round trip and a closed PWA; the bare
+      // /salesman-onboarding URL (what a reopened app or the dashboard guard
+      // lands on) carries no tier, and defaulting it to Lite silently
+      // downgraded a Premium signup. An explicit /:tier in the URL still wins.
+      const savedTier = session.user?.user_metadata?.tier;
+      if (!tierParam && savedTier === 'premium') {
+        navigate('/salesman-onboarding/premium', { replace: true });
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('onboarding_complete, full_name, phone, ic_number, slug, role, seller_type, new_car_brand')
@@ -693,7 +703,10 @@ export default function SalesmanOnboarding() {
                 <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>
                   {step + 1} / {STEPS.length}
                 </span>
-                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>Change plan</button>
+                {/* The plan is named on every step: the desktop sidebar that
+                    shows it is hidden on phones, which left "Change plan" with
+                    no way to tell which plan was chosen. */}
+                <button type="button" className="eo-changeplan" style={{ margin: 0, padding: '4px 9px' }} onClick={() => setShowPlans(true)}>{cfg.label} &middot; Change</button>
               </div>
             </div>
 

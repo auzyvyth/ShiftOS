@@ -88,6 +88,11 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
   // straight on to the next gap or back to the summary — never a walk through
   // every screen that is already answered.
   const [fromSummary, setFromSummary] = useState(() => !!(landOnSummary && summaryRows?.length && !allRequired));
+  // True only while the seller is changing ONE row they tapped on the summary:
+  // Back then returns to the summary. Landing on a gap is not that -- Back from
+  // there walks to the previous question, or a seller who reopened the form on
+  // stage 2 could never get back to Brand (Back kept bouncing to the summary).
+  const [editingRow, setEditingRow] = useState(false);
   const [query, setQuery] = useState("");
   const [otherOpen, setOtherOpen] = useState(false);
   const rootRef = useRef(null);
@@ -112,7 +117,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const goto = (k, d = "fwd") => {
-    if (k === "summary") setFromSummary(false);
+    if (k === "summary") { setFromSummary(false); setEditingRow(false); }
     setDir(d);
     setKey(k);
   };
@@ -137,7 +142,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
 
   const back = () => {
     if (key === "summary") { onExitBack(); return; }
-    if (fromSummary) { goto("summary", "back"); return; }
+    if (editingRow) { goto("summary", "back"); return; }
     const i = screens.findIndex((s) => s.key === key);
     const p = screens.slice(0, i).reverse().find((s) => !s.skip);
     if (p) goto(p.key, "back"); else onExitBack();
@@ -151,7 +156,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
     timer.current = setTimeout(() => (then ? then() : nextRef.current()), ADVANCE_MS);
   };
 
-  const editFromSummary = (k) => { setFromSummary(true); goto(k); };
+  const editFromSummary = (k) => { setFromSummary(true); setEditingRow(true); goto(k); };
 
   const searchBox = (placeholder) => (
     <div className="relative">
@@ -174,6 +179,8 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
 
   function renderSummary() {
     return (
+      <>
+      <p className="text-xs text-gray-500 mb-2">Tap any row to change it.</p>
       <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
         {summaryRows.filter((r) => !byKey(r.key)?.skip).map((r) => (
           <button key={r.key + r.label} type="button" onClick={() => editFromSummary(r.key)} className="w-full flex items-center gap-3 px-4 py-3 text-left bg-white hover:bg-gray-50">
@@ -183,6 +190,7 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
           </button>
         ))}
       </div>
+      </>
     );
   }
 
