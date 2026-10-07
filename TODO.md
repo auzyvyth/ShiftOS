@@ -76,6 +76,16 @@ TikTok (was IDEA-13). First real lead 2026-10-07: one SA, said she will tell her
 Evidence: SAs film an Excel calculator on TikTok Live; Zweet Data sells that template
 for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 2.20-2.30% FLAT; our presenter converts flat to EIR per the HP amendment.
+- [x] DB 2026-10-07: `new_car_models` (price per variant per zone, superadmin-edited),
+  `seller_new_models` (advisor ticks), `profiles.new_car_brand`, seller_type `new_car`,
+  `new_car_price_zone()`, `get_seller_new_models(slug)`, `get_my_new_car_catalogue(brand)`.
+  Migration `20261007a` APPLIED (owner ran it in the SQL editor). Tables are empty.
+- [ ] Console tab to enter official prices (only superadmin writes the table).
+- [ ] Signup: "New car advisor" option + brand pick (`SalesmanOnboarding.jsx:808`).
+- [ ] Settings: "My models" tick list (Lite + Premium), reads `get_my_new_car_catalogue`.
+- [ ] Mini page: "New car prices" section from `get_seller_new_models`.
+- [ ] One public page per model listing the advisors who sell it (the "salesman is the
+  product" page, owner's call 2026-10-07: one card per model, never a card per advisor).
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
 - [ ] **Won flips the listing to sold.** `auto_create_customer_on_won` marks the car
