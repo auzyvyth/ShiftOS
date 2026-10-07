@@ -90,6 +90,18 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 - [ ] Brand images: SAs will repost Proton/Perodua brochure photos. Check who owns
   them and whether a reseller may use them BEFORE the form encourages it.
 - Related: IDEA-14 (employer-checked SA badge, never a brand logo).
+- **Price research 2026-10-07: there is no single national price.** Four zones:
+  Peninsular, Sabah/Sarawak (usually +RM2,000), Labuan, Langkawi (duty-free, lower).
+  Bezza 1.0 G MT: RM34,580 Pen / RM33,380 Langkawi / RM36,580 Sabah+Sarawak.
+  Bezza 1.3 X: RM43,980 / 42,980 / 45,980 / Labuan 44,180. Proton X70 and X90: +RM2,000
+  in East Malaysia. Brands quote OTR WITHOUT insurance. Prices move: Perodua cut the
+  Axia by up to RM4,700 in Aug 2026. So a catalogue must be dated and maintained.
+- **Owner proposal 2026-10-07:** third signup option for brand SAs (`SalesmanOnboarding.jsx:808`)
+  + an "Add Proton/Perodua/Toyota models" button in CarForm. Counter-proposal pending owner
+  decision: one platform-maintained price table (per variant, per zone) that feeds the mini
+  page + live presenter, NOT a copy of each variant into `car_listings` (blows Lite cap 10,
+  floods the marketplace with identical cards, prices go stale, sold-on-win still bites).
+  `profiles_seller_type_check` only allows private|broker, so the signup option needs DDL.
 
 ## SL-LIVE: /for-salesmen relaunched around Live presentation — 2026-10-06
 Owner's call: the target audience is salesmen who do finance calculations on
