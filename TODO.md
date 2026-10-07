@@ -102,6 +102,13 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   page + live presenter, NOT a copy of each variant into `car_listings` (blows Lite cap 10,
   floods the marketplace with identical cards, prices go stale, sold-on-win still bites).
   `profiles_seller_type_check` only allows private|broker, so the signup option needs DDL.
+- **Market gap check 2026-10-07 (owner: "no marketplace for these sellers?").** Carlist has a
+  new-cars section, but it is one ad per car, the same shape as our listings. WapCar,
+  Zigwheels, Carbase publish prices and news; none is built around the SA as a person.
+  SAs find buyers on TikTok/FB/IG. Not proven that nothing exists, only that the search found
+  nothing. Owner idea that follows: a "pick the model, see the fixed price for your zone,
+  pick an SA near you" page. Price is the same everywhere, so SAs compete on service:
+  measured reply time, delivery wait, trade-in. XDrive has no new-car surface today.
 
 ## SL-LIVE: /for-salesmen relaunched around Live presentation — 2026-10-06
 Owner's call: the target audience is salesmen who do finance calculations on
