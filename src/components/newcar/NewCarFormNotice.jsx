@@ -3,7 +3,8 @@ import React from "react";
 // NEWCAR-1: shown at the top of the add-listing forms for a new-car advisor.
 //
 // New Proton/Perodua/Toyota cars are NOT listings: they come from the platform
-// price list and are ticked in Settings > New cars (MyNewModels). Without this
+// price list: every model of their brand shows on their page and in the live
+// presenter by default (Settings > New cars hides any they don't sell). Without this
 // line an advisor opened the listing form, saw nothing about their brand, and
 // reasonably concluded the setup had not worked. The form stays usable for a
 // used or recon car they also sell.
@@ -21,13 +22,13 @@ export default function NewCarFormNotice({ profile, onOpenNewCars, dark = false 
       <div style={{ flex: "1 1 220px", minWidth: 0 }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: fg }}>Selling new {brand} cars?</p>
         <p style={{ margin: "3px 0 0", fontSize: 12, color: sub, lineHeight: 1.5 }}>
-          You don't list them here. Tick your models in Settings and they show on your page with the official price. Use this form for a used or recon car.
+          You don't list them here: every model already shows on your page and in your live presentation, with the official price. Use this form for a used or recon car.
         </p>
       </div>
       {onOpenNewCars && (
         <button type="button" onClick={onOpenNewCars}
           style={{ flexShrink: 0, padding: "8px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "#dc2626", border: "none", color: "#fff" }}>
-          Pick my {brand === "new" ? "" : `${brand} `}models
+          My {brand === "new" ? "" : `${brand} `}models
         </button>
       )}
     </div>

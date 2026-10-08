@@ -1133,8 +1133,11 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 ## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
 Brand sales advisors (Proton/Perodua/Toyota) sell cars whose price the BRAND sets, per
 variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,
-console > Marketplace > New car prices), and an advisor only ticks variants
-(`seller_new_models`). Never copy a new car into `car_listings`: it blows the listing cap,
+console > Marketplace > New car prices). Every active model of the advisor's brand
+(`profiles.new_car_brand`) shows on their page BY DEFAULT; they only hide what they don't
+sell (`seller_hidden_models`, opt-out since 20261008a, so a variant added later appears
+for everyone). Rebates are NOT stored: promos expire (the ones in the owner's 2026-10-08
+file had); the presenter's per-live rebate box is where a current one goes. Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
@@ -1146,7 +1149,10 @@ and the won-trigger marks it sold on the first deal.
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
-- Hide a catalogue row, never delete it: delete cascades and unticks every advisor.
+- Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
+- Live presenter: priced variants are appended AFTER the seller's listings
+  (`presenterNewCars`, `isNewCar`), and the mini page prints the same `#N` on each variant
+  row. They are never pinned via `set_live_listing` (not a car_listings id).
 - `profiles.seller_type` now allows `new_car`; `new_car_brand` is the brand.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)

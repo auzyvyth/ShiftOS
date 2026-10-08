@@ -92,9 +92,14 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   (anon had TRUNCATE), lists only approved+active advisors on the public page (cap 50),
   source_url must be http(s). Scam line ("never pay an advisor's personal account") on the
   model page + mini page. Live write probes could not run (session cannot write to the DB).
-- [ ] OWNER: enter the official Proton + Perodua prices in the console (tables are empty, so
-  every new-car surface is blank until then).
-- [ ] Live presenter: show the advisor's new models (variants side by side, OTR build-up).
+- [x] 2026-10-08 built (migration `20261008a`, QUEUED for after 22:00 MYT, owner to paste):
+  every brand model shows by default (opt-out, `seller_hidden_models`); 25 Proton variants
+  loaded, Peninsular only (Saga/X50/e.MAS 7 spot-checked, match); `specs` jsonb; new models
+  in the live presenter after the seller's cars, same #N on the mini page; Budget tab covers
+  them too. Persona (range only) and Iriz (unverified price) left out. Expired rebates in the
+  owner's file not loaded. Test row "Perodua Saga Premium" hidden.
+- [ ] OWNER: Perodua price list; Sabah/Sarawak/Labuan/Langkawi prices for Proton.
+- [ ] Mini page "Live now" card for a new-car variant (today it shows nothing for one).
 - [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).

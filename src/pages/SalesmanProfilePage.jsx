@@ -13,7 +13,7 @@ import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../
 import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
-import { groupByModel, priceBasis, rm, payWarning } from '../utils/newCars';
+import { groupByModel, priceBasis, rm, payWarning, presenterNewCars } from '../utils/newCars';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -450,6 +450,12 @@ export default function SalesmanProfilePage() {
     : 'Independent agent';
   const newModelGroups = groupByModel(newModels);
   const newBrand = newModels[0]?.brand || '';
+  // Live presenter deck: the seller's own cars, then their brand's priced
+  // variants. A variant's "#N" below comes from this same array, so a viewer
+  // commenting "#12" means the same car on the live and on this page.
+  const newCarDeck = presenterNewCars(newModels);
+  const deck = [...listings, ...newCarDeck];
+  const newCarNum = new Map(newCarDeck.map((c, i) => [c.modelId, listings.length + i + 1]));
   const newCarWa = (model) => (hasWa
     ? sellerWaUrl({ slug: profile.slug, text: `Hi ${firstName}, I'm interested in the new ${newBrand} ${model}. Can you tell me more?` })
     : null);
@@ -587,6 +593,7 @@ export default function SalesmanProfilePage() {
         .ap-nc-h a { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgba(0,0,0,.1); color: #111827; font-size: 13px; font-weight: 600; text-decoration: none; }
         .ap-nc-h a svg { width: 15px; height: 15px; }
         .ap-nc-r { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 16px; font-size: 14px; }
+        .ap-nc-n { font-style: normal; font-weight: 700; color: #6b7280; margin-right: 8px; font-variant-numeric: tabular-nums; }
         .ap-nc-r + .ap-nc-r { border-top: 1px solid rgba(0,0,0,.05); }
         .ap-nc-r span:first-child { color: #374151; min-width: 0; }
         .ap-nc-r span:last-child { flex-shrink: 0; color: #111827; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -662,7 +669,7 @@ export default function SalesmanProfilePage() {
                 <Link to={viewerHome.to} style={ownerChip}>
                   {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
                 </Link>
-                {isOwner && !viewerHome.lite && listings.length > 0 && (
+                {isOwner && !viewerHome.lite && deck.length > 0 && (
                   <button onClick={() => setPresenting(true)} style={ownerChip}>
                     <Radio size={12} /> Live presentation
                   </button>
@@ -818,7 +825,7 @@ export default function SalesmanProfilePage() {
                           </div>
                           {g.variants.map((v) => (
                             <div key={v.model_id} className="ap-nc-r">
-                              <span>{v.variant}</span>
+                              <span>{newCarNum.has(v.model_id) && <i className="ap-nc-n">#{newCarNum.get(v.model_id)}</i>}{v.variant}</span>
                               <span>{rm(v.price) || 'Ask for price'}</span>
                             </div>
                           ))}
@@ -926,7 +933,7 @@ export default function SalesmanProfilePage() {
 
       {presenting && (
         <Suspense fallback={null}>
-          <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
+          <LivePresenter listings={deck} slug={slug} sellerId={profile?.id}
             sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)} />
         </Suspense>
       )}
