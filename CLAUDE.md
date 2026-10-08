@@ -1154,6 +1154,15 @@ and the won-trigger marks it sold on the first deal.
   (`presenterNewCars`, `isNewCar`), and the mini page prints the same `#N` on each variant
   row. They are never pinned via `set_live_listing` (not a car_listings id).
 - `profiles.seller_type` now allows `new_car`; `new_car_brand` is the brand.
+- **An advisor's CARD is a real listing** (`car_listings.new_car_model_id`, migration
+  20261008b), made in `src/components/newcar/NewCarForm.jsx`, which CarForm and CarFormFast
+  render in place of the used-car form for `seller_type='new_car'` (used form one tap away).
+  One card per variant. Trigger `new_car_card_fill` copies brand/model/variant/price from the
+  catalogue for the advisor's zone (never typed, re-priced on every console edit); cards skip
+  the listing cap and never reserve. **A win on a card INSERTS a sold unit**
+  (`new_car_unit=true`, `new_car_unit_on_won`, BEFORE UPDATE on leads) and moves the lead onto
+  it, so "won = a sold car_listings row" still holds and the card stays up. Undo sale on a
+  unit deletes it and puts the lead back on the card. Never let the client set `new_car_unit`.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,

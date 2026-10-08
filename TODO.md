@@ -100,13 +100,12 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   owner's file not loaded. Test row "Perodua Saga Premium" hidden.
 - [ ] OWNER: Perodua price list; Sabah/Sarawak/Labuan/Langkawi prices for Proton.
 - [ ] Mini page "Live now" card for a new-car variant (today it shows nothing for one).
-- [ ] DECISION PENDING (owner, 2026-10-08): advisor's new-car CARD. Research: Carlist.my =
-  one ordinary ad per variant posted by each SA, dealer-typed price, no official list (3,289
-  new-car ads, duplicates). Autotrader UK / Edmunds / CarDekho = two layers: platform model
-  page from official data + the dealer's own listing linked to it. Proposal: advisor card =
-  a normal listing linked to `new_car_models` (one per MODEL, variants inside), price read
-  from the catalogue, advisor adds photos/copy + an optional dated promo; exempt from cap;
-  won-trigger must not hide it (count sales from leads).
+- [x] 2026-10-08 DECIDED + built: advisor card = normal listing linked to the catalogue, one
+  per variant (`NewCarForm.jsx`, migration `20261008b`, QUEUED after 20261008a). Research:
+  Carlist = SA ads with typed prices; Autotrader/Edmunds/CarDekho = official layer + dealer
+  listing. Not yet clicked through on staging: create a card, mark a lead won on it, undo.
+- [ ] Car page: label a card's price "Official price" (needs new_car_model_id in
+  public_car_listings, a DROP+CREATE-free append).
 - [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).

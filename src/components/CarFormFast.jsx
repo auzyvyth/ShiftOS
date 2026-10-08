@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { useProfile } from "../hooks/useProfile";
-import NewCarFormNotice from "./newcar/NewCarFormNotice";
+import NewCarForm from "./newcar/NewCarForm";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
 import { MY_STATES as STATES } from "../utils/locations";
@@ -22,7 +22,17 @@ const S = {
   err: { fontSize: 12, color: "#f87171", marginTop: 6, textAlign: "center" },
 };
 
-export default function CarFormFast({ onCreate, onOpenNewCars }) {
+// New-car advisors get the new-car form here too (see CarForm.jsx).
+export default function CarFormFast(props) {
+  const { profile } = useProfile();
+  const [usedForm, setUsedForm] = useState(false);
+  if (profile?.seller_type === "new_car" && !usedForm) {
+    return <NewCarForm dark profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars} onUseUsedForm={() => setUsedForm(true)} />;
+  }
+  return <UsedCarFormFast {...props} />;
+}
+
+function UsedCarFormFast({ onCreate }) {
   const { profile } = useProfile();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -103,7 +113,6 @@ export default function CarFormFast({ onCreate, onOpenNewCars }) {
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", color: "#e5e7eb" }}>
-      <NewCarFormNotice profile={profile} onOpenNewCars={onOpenNewCars} dark />
 
       {/* Progress bar */}
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>

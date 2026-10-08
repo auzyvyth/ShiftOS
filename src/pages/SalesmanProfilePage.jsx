@@ -453,9 +453,16 @@ export default function SalesmanProfilePage() {
   // Live presenter deck: the seller's own cars, then their brand's priced
   // variants. A variant's "#N" below comes from this same array, so a viewer
   // commenting "#12" means the same car on the live and on this page.
-  const newCarDeck = presenterNewCars(newModels);
+  // A variant the advisor made a CARD for (a real listing, NewCarForm) is
+  // already in `listings` with its photos: it keeps that #N, and the plain
+  // price-list entry is not added to the deck a second time.
+  const ncKey = (b, m, v) => `${b}|${m}|${v}`.toLowerCase();
+  const cardNum = new Map();
+  listings.forEach((l, i) => { if (l.condition === 'new') cardNum.set(ncKey(l.brand, l.model, l.variant), i + 1); });
+  const newCarDeck = presenterNewCars(newModels.filter((r) => !cardNum.has(ncKey(r.brand, r.model, r.variant))));
   const deck = [...listings, ...newCarDeck];
   const newCarNum = new Map(newCarDeck.map((c, i) => [c.modelId, listings.length + i + 1]));
+  newModels.forEach((r) => { const n = cardNum.get(ncKey(r.brand, r.model, r.variant)); if (n) newCarNum.set(r.model_id, n); });
   const newCarWa = (model) => (hasWa
     ? sellerWaUrl({ slug: profile.slug, text: `Hi ${firstName}, I'm interested in the new ${newBrand} ${model}. Can you tell me more?` })
     : null);

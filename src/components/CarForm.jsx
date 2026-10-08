@@ -42,7 +42,7 @@ import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
 import QuickCarFlow from "./carform/QuickCarFlow";
-import NewCarFormNotice from "./newcar/NewCarFormNotice";
+import NewCarForm from "./newcar/NewCarForm";
 import QuickSteps, { Tile, BigNumber, fmtNum } from "./carform/QuickSteps";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
@@ -778,7 +778,25 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 // inputs are hidden here (values carry over via the `listing` prefill) and their
 // step validations are relaxed. Standalone CarForm (salesman flows, plain edits)
 // still shows everything.
-export default function CarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade, onOpenNewCars }) {
+// A new-car advisor (seller_type 'new_car') gets the new-car form in place of
+// this one: new cars come from the price list, never typed (NEWCAR-1). The
+// used-car form is one tap away for the used or recon car they also sell, and
+// editing one of those opens it directly.
+export default function CarForm(props) {
+  const { profile } = useProfile();
+  const [usedForm, setUsedForm] = useState(false);
+  const { listing } = props;
+  const newCar = profile?.seller_type === "new_car" && !usedForm && (!listing || listing.new_car_model_id);
+  if (newCar) {
+    return (
+      <NewCarForm profile={profile} listing={listing} onCreate={props.onCreate} onUpdate={props.onUpdate}
+        onOpenNewCars={props.onOpenNewCars} onUseUsedForm={listing ? null : () => setUsedForm(true)} />
+    );
+  }
+  return <UsedCarForm {...props} />;
+}
+
+function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
   // VIN decode is a Premium-salesman convenience only. It's gated off for
@@ -4205,7 +4223,6 @@ export default function CarForm({ onCreate, listing, onUpdate, defaultValues, on
         backgroundSize: "24px 24px",
       }}
     >
-      {!listing && <NewCarFormNotice profile={profile} onOpenNewCars={onOpenNewCars} />}
 
       {/* Draft resume banner */}
       {draftBanner && !listing && (
