@@ -11,13 +11,12 @@ import { NEW_CAR_BRANDS, rm, groupByModel, priceBasis } from "../../utils/newCar
 // Sabah advisor sees the Sabah price, and a zone with no price says so instead
 // of quietly showing the Peninsular number.
 //
-// Every model of the advisor's brand shows by DEFAULT (2026-10-08): a tick
-// means "on my page", and unticking writes a seller_hidden_models row. So a
-// new advisor's page is full on day one, and a variant XDrive adds later
-// appears on every page without anyone ticking it.
+// READ-ONLY reference (owner, 2026-10-08): nothing here puts a car on the
+// advisor's page. Their page starts empty like every account and shows only
+// the cards they make from Add car (NewCarForm), one per variant they sell.
 //
 // A seller who signed up as a broker can switch here: picking a brand sets
-// seller_type='new_car'. Changing brand clears the old brand's hidden list.
+// seller_type='new_car'.
 
 const card = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
 const pill = (on) => ({
@@ -53,7 +52,6 @@ export default function MyNewModels({ profile, onProfileChange }) {
 
   const groups = useMemo(() => groupByModel(rows), [rows]);
   const zone = rows[0]?.price_zone || "peninsular";
-  const picked = rows.filter((r) => r.selected).length;
 
   const chooseBrand = async (b) => {
     if (!profile?.id || b === brand) return;
@@ -61,23 +59,9 @@ export default function MyNewModels({ profile, onProfileChange }) {
     setError("");
     const { error: e } = await supabase.from("profiles").update({ seller_type: "new_car", new_car_brand: b }).eq("id", profile.id);
     if (e) { setBusy(null); setError("Couldn't save the brand. Try again."); return; }
-    if (brand) await supabase.from("seller_hidden_models").delete().eq("seller_id", profile.id);
     setBusy(null);
     setBrand(b);
     onProfileChange?.({ seller_type: "new_car", new_car_brand: b });
-  };
-
-  // on = show on my page (delete the hide row), off = hide (insert one).
-  const setPicked = async (ids, on) => {
-    if (!profile?.id || !ids.length) return;
-    setBusy(ids.join(","));
-    setError("");
-    const { error: e } = on
-      ? await supabase.from("seller_hidden_models").delete().eq("seller_id", profile.id).in("model_id", ids)
-      : await supabase.from("seller_hidden_models").upsert(ids.map((model_id) => ({ seller_id: profile.id, model_id })), { onConflict: "seller_id,model_id", ignoreDuplicates: true });
-    setBusy(null);
-    if (e) { setError("Couldn't save. Try again."); return; }
-    setRows((rs) => rs.map((r) => (ids.includes(r.model_id) ? { ...r, selected: on } : r)));
   };
 
   return (
@@ -85,8 +69,8 @@ export default function MyNewModels({ profile, onProfileChange }) {
       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>New cars you sell</p>
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         {profile?.seller_type === "new_car"
-          ? "Every model shows on your page and in your live presentation, with the official price for your area. XDrive keeps the prices up to date. Untick any you don't sell."
-          : "Sell new Proton, Perodua or Toyota? Pick your brand and your page shows the official prices for your area. No listings to type."}
+          ? "Your page shows only the models you add. Go to Add car, pick a model, add your photo, done. The price comes from this list and XDrive keeps it up to date."
+          : "Sell new Proton, Perodua or Toyota? Pick your brand, then add the models you sell from Add car. You never type a price."}
       </p>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -107,39 +91,27 @@ export default function MyNewModels({ profile, onProfileChange }) {
         ) : (
           <>
             <p style={{ margin: "14px 0 8px", fontSize: 11.5, color: "#6b7280" }}>
-              {picked} of {rows.length} on your page. {priceBasis(zone)}
+              Official price list. {priceBasis(zone)}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {groups.map((g) => {
-                const ids = g.variants.map((v) => v.model_id);
-                const all = g.variants.every((v) => v.selected);
                 return (
                   <div key={g.model} style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "9px 12px", background: "rgba(255,255,255,0.02)" }}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", minWidth: 0 }}>{brand} {g.model}</span>
-                      <button type="button" onClick={() => setPicked(ids, !all)} disabled={!!busy}
-                        style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                        {all ? "Hide all" : "Show all"}
-                      </button>
                     </div>
                     {g.variants.map((v) => (
-                      <label key={v.model_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" }}>
-                        <input type="checkbox" checked={!!v.selected} disabled={!!busy} onChange={(e) => setPicked([v.model_id], e.target.checked)} />
+                      <div key={v.model_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
                         <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb" }}>{v.variant}</span>
                         <span style={{ fontSize: 12.5, color: v.price == null ? "#6b7280" : "#e5e7eb", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                           {rm(v.price) || "Not set for your area"}
                         </span>
-                      </label>
+                      </div>
                     ))}
                   </div>
                 );
               })}
             </div>
-            {profile?.slug && (
-              <a href={`/s/${profile.slug}`} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 12, fontSize: 12.5, color: "#fca5a5", textDecoration: "none", fontWeight: 600 }}>
-                See them on your page
-              </a>
-            )}
           </>
         )
       )}

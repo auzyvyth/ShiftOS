@@ -98,14 +98,25 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   in the live presenter after the seller's cars, same #N on the mini page; Budget tab covers
   them too. Persona (range only) and Iriz (unverified price) left out. Expired rebates in the
   owner's file not loaded. Test row "Perodua Saga Premium" hidden.
-- [ ] OWNER: Perodua price list; Sabah/Sarawak/Labuan/Langkawi prices for Proton.
-- [ ] Mini page "Live now" card for a new-car variant (today it shows nothing for one).
+- [x] 2026-10-08 Perodua list live (26 variants, `20261008c`, owner ran it). 6 prices in the
+  owner's file were stale and were replaced by published ones (see the migration header).
+- [ ] OWNER: Sabah/Sarawak/Labuan/Langkawi prices for Proton and Perodua (only Axia has
+  East Malaysia prices). Until then East Malaysia advisors cannot make cards.
+- [x] 2026-10-08 owner: "too much, let them choose". Mini page starts EMPTY, only cards
+  show (no automatic price list); settings tab is a read-only price list; public model page
+  lists advisors with a live card. Car page panel for a card: advisor line, price basis,
+  specs, "how buying new works", the advisor's other cards (`NewCarListingInfo.jsx`).
+  Bug fixed: cards had a NULL slug (car_slug_trigger runs before trg_zz_new_car_card), so
+  the mini page linked to /showroom/null ("no longer available"). Migration `20261008d`
+  QUEUED for after 22:00 MYT (owner to paste); the panel and advisor list need it, the link
+  fix (slug || id) works without it.
+- [ ] Advisor claim is unchecked: anyone can sign up as a "Proton sales advisor". Proposal:
+  staff card / showroom letter checked in the Review queue -> a "Checked by XDrive" line on
+  the card panel (see IDEA-14). Until then the page never says "authorised".
 - [x] 2026-10-08 DECIDED + built: advisor card = normal listing linked to the catalogue, one
   per variant (`NewCarForm.jsx`, migration `20261008b`, QUEUED after 20261008a). Research:
   Carlist = SA ads with typed prices; Autotrader/Edmunds/CarDekho = official layer + dealer
   listing. Not yet clicked through on staging: create a card, mark a lead won on it, undo.
-- [ ] Car page: label a card's price "Official price" (needs new_car_model_id in
-  public_car_listings, a DROP+CREATE-free append).
 - [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
