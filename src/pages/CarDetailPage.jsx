@@ -2454,7 +2454,7 @@ export default function CarDetailPage() {
           {/* Quick stats grid — moved ABOVE the badges */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
             {[
-              { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : '—' },
+              { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : car.condition === 'new' ? '0 km' : '—' },
               { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
               { label:'Transmission', value: car.transmission || '—' },
               { label:'Fuel',         value: car.fuel_type || '—' },
@@ -2594,13 +2594,13 @@ export default function CarDetailPage() {
                       { key:'Previous Owners',   val: car.previous_owners ?? '—' },
                       { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
                       { key:'Financing',         val: fmtFinancing(car) },
-                      { key:'Warranty',          val: car.warranty_months > 0 ? car.warranty_months+' months' : 'None' },
+                      { key:'Warranty',          val: car.warranty_months > 0 ? car.warranty_months+' months' : car.condition === 'new' ? '—' : 'None' },
                       { key:'Deposit to Reserve',val: car.deposit_amount > 0 ? 'RM '+fmt(car.deposit_amount) : '—' },
                       ...(isRecon ? [
                         { key:'Import Country', val: car.import_country || '—' },
                         { key:'Auction House',  val: car.auction_house  || '—' },
                       ] : []),
-                    ].filter(({ val }) => val !== '—').map(({ key, val }) => (
+                    ].filter(({ key, val }) => val !== '—' && !(car.condition === 'new' && key === 'Chassis Status')).map(({ key, val }) => (
                       <div key={key} className="cdp-row">
                         <span style={{ fontSize:'13px', color: th.textSec }}>{key}</span>
                         <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
@@ -3338,7 +3338,7 @@ export default function CarDetailPage() {
               {[
                 {
                   label: "Mileage",
-                  value: car.mileage ? fmt(car.mileage) + " km" : "—",
+                  value: car.mileage ? fmt(car.mileage) + " km" : car.condition === "new" ? "0 km" : "—",
                 },
                 {
                   label: "Engine",
@@ -3580,7 +3580,9 @@ export default function CarDetailPage() {
                           val:
                             car.warranty_months > 0
                               ? car.warranty_months + " months"
-                              : "None",
+                              : car.condition === "new"
+                                ? "—"
+                                : "None",
                         },
                         {
                           key: "Deposit to Reserve",
@@ -3601,7 +3603,7 @@ export default function CarDetailPage() {
                               },
                             ]
                           : []),
-                      ].filter(({ val }) => val !== "—").map(({ key, val }) => (
+                      ].filter(({ key, val }) => val !== "—" && !(car.condition === "new" && key === "Chassis Status")).map(({ key, val }) => (
                         <div key={key} className="cdp-row">
                           <span style={{ fontSize: "13px", color: th.textMuted }}>
                             {key}
