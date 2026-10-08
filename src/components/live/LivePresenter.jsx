@@ -58,10 +58,9 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // no contact box, never calls set_live_listing (a seller browsing the page would
 // pin a car on their own mini page), and never saves language or colour.
 //
-// New-car advisors (NEWCAR-1): their brand's catalogue variants arrive in
-// `listings` after their own cars (newCars.js presenterNewCars, isNewCar).
-// Same sheet and maths; the official price stands in for the asking price,
-// the spec line says "New", and they are never pinned via set_live_listing.
+// New-car advisors (NEWCAR-1): their cards are ordinary listings (condition
+// 'new'), priced from the brand's official list by the DB. `officialNew` says
+// the seller is an advisor, so a new car's note names the price as official.
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 const TENURES = [5, 7, MAX_TENURE_YEARS];
@@ -82,7 +81,7 @@ const fmtPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3)}`;
 };
 
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false }) {
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
@@ -227,8 +226,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // clears it. Errors are ignored on purpose: the presenter must keep working
   // even if the sync is down (or before migration 20261003a is applied).
   // The report screen means the live is over: stop pinning the car right away.
-  // A new-car catalogue variant (isNewCar) is not a listing: nothing to pin.
-  const carId = report || embedded || car?.isNewCar ? null : (car?.id || null);
+  const carId = report || embedded ? null : (car?.id || null);
   useEffect(() => {
     if (report && !embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
   }, [report, embedded]);
@@ -336,9 +334,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #EDEAE3; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
-        .lp-ncph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: var(--lp-grad); color: #fff; text-align: center; padding: 6px; }
-        .lp-ncph span { font-size: clamp(10px, 2.6cqw, 13px); font-weight: 800; letter-spacing: .16em; text-transform: uppercase; opacity: .85; }
-        .lp-ncph b { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(26px, 8cqw, 48px); line-height: 1; letter-spacing: .02em; overflow-wrap: anywhere; }
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
@@ -576,8 +571,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-tt">
               <h2 className="lp-name">{carName(car)}</h2>
               <p className="lp-spec">
-                {(car.isNewCar
-                  ? [t.newTag, car.variant, car.transmission, car.specLine]
+                {(car.condition === 'new'
+                  ? [t.newTag, car.variant, car.transmission]
                   : [car.variant, car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission]
                 ).filter(Boolean).join(' · ') || '\u00a0'}
               </p>
@@ -589,9 +584,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-photo">
               {images[imgIdx]
                 ? <img src={images[imgIdx]} alt={carName(car)} />
-                : car.isNewCar
-                  ? <div className="lp-ncph"><span>{t.newTag}</span><b>{car.model}</b></div>
-                  : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
+                : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
                   <button aria-label={t.prevPhoto} onClick={() => setImgIdx((i) => (i - 1 + images.length) % images.length)}
@@ -659,7 +652,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </p>
             )}
             <p className="lp-note" style={{ margin: 0 }}>
-              {car.isNewCar ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
+              {officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
               {highValue ? t.highValue : t.subjectBank}
             </p>
           </>)}

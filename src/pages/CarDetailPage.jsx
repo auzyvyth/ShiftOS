@@ -48,6 +48,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
 import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
+import NewCarListingInfo from "../components/newcar/NewCarListingInfo";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
@@ -2633,6 +2634,7 @@ export default function CarDetailPage() {
               </>
             );
           })()}
+          {car.condition === 'new' && <NewCarListingInfo listingId={car.id} sellerName={salesmanProfile?.full_name} th={th} />}
           {/* Video */}
           {car.video_url && getEmbedUrl(car.video_url) && (
             <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
@@ -3712,6 +3714,7 @@ export default function CarDetailPage() {
               );
             })()}
 
+            {car.condition === 'new' && <NewCarListingInfo listingId={car.id} sellerName={salesmanProfile?.full_name} th={th} />}
             {/* VIDEO WALKTHROUGH */}
             {car.video_url && getEmbedUrl(car.video_url) && (
               <div style={{ marginTop: 40, paddingTop: 32, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
