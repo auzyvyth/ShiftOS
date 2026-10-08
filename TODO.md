@@ -108,8 +108,8 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   specs, "how buying new works", the advisor's other cards (`NewCarListingInfo.jsx`).
   Bug fixed: cards had a NULL slug (car_slug_trigger runs before trg_zz_new_car_card), so
   the mini page linked to /showroom/null ("no longer available"). Migration `20261008d`
-  QUEUED for after 22:00 MYT (owner to paste); the panel and advisor list need it, the link
-  fix (slug || id) works without it.
+  APPLIED (owner ran it 2026-10-08, verified: card slug set, one copy of each function,
+  panel data returns, anon can call it). Prod PR #450.
 - [ ] Advisor claim is unchecked: anyone can sign up as a "Proton sales advisor". Proposal:
   staff card / showroom letter checked in the Review queue -> a "Checked by XDrive" line on
   the card panel (see IDEA-14). Until then the page never says "authorised".
