@@ -104,23 +104,3 @@ export function newCarSpecLine(specs) {
     s.seats && s.seats !== 5 ? `${s.seats} seats` : null,
   ].filter(Boolean).join(" · ");
 }
-
-// get_seller_new_models rows -> the live presenter's car shape. Only variants
-// with a price for the seller's zone: a monthly table needs a number, and a
-// zone with no price must never borrow the Peninsular one. They go AFTER the
-// seller's listings, so "#N" is the same on the presenter and the mini page.
-// id is prefixed so it can never be mistaken for a car_listings id.
-export function presenterNewCars(rows) {
-  return (rows || []).filter((r) => Number(r.price) > 0).map((r) => ({
-    id: `nc:${r.model_id}`,
-    modelId: r.model_id,
-    isNewCar: true,
-    brand: r.brand,
-    model: r.model,
-    variant: r.variant,
-    transmission: r.transmission,
-    selling_price: Number(r.price),
-    images: [],
-    specLine: newCarSpecLine(r.specs),
-  }));
-}

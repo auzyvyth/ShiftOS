@@ -1133,26 +1133,33 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 ## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
 Brand sales advisors (Proton/Perodua/Toyota) sell cars whose price the BRAND sets, per
 variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,
-console > Marketplace > New car prices). Every active model of the advisor's brand
-(`profiles.new_car_brand`) shows on their page BY DEFAULT; they only hide what they don't
-sell (`seller_hidden_models`, opt-out since 20261008a, so a variant added later appears
-for everyone). Rebates are NOT stored: promos expire (the ones in the owner's 2026-10-08
+console > Marketplace > New car prices). **An advisor's page starts EMPTY like every
+account (owner, 2026-10-08, migration 20261008d):** nothing from the catalogue is listed
+for them; they add a CARD per variant they sell (below), and only cards show. Do not
+bring back an automatic price list on the mini page (it was built twice: opt-in ticks,
+then default-on; the owner rejected both as clutter). Settings > New cars is a brand
+picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored: promos expire (the ones in the owner's 2026-10-08
 file had); the presenter's per-live rebate box is where a current one goes. Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
   state/city in ONE SQL function, `new_car_price_zone()`, and the price from
   `new_car_zone_price()`. A zone with no price shows "ask", NEVER the Peninsular number.
-- Reads: `get_seller_new_models(slug)` (mini page), `get_my_new_car_catalogue(brand)`
-  (settings, subject = auth.uid()), `get_new_model_advisors(brand, model)` (public page).
+- Reads: `get_my_new_car_catalogue(brand)` (settings + NewCarForm, subject = auth.uid()),
+  `get_new_model_advisors(brand, model)` (public page: advisors with a LIVE CARD of the
+  model), `get_new_car_listing_info(listing)` (car page panel
+  `src/components/newcar/NewCarListingInfo.jsx`: specs, price basis, the advisor's other
+  cards). The panel says "sales advisor" (their own claim); only `is_verified` may read
+  "Verified by XDrive". Nothing checks brand employment, so never "authorised"/"official agent".
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
 - Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
-- Live presenter: priced variants are appended AFTER the seller's listings
-  (`presenterNewCars`, `isNewCar`), and the mini page prints the same `#N` on each variant
-  row. They are never pinned via `set_live_listing` (not a car_listings id).
+- Live presenter: cards are ordinary listings; `officialNew` (seller_type new_car) adds
+  the "official price" note to condition-new cars.
+- A card's slug is set in `new_car_card_fill`: `car_slug_trigger` runs first (alphabetical)
+  while brand/model are still empty, so cards had a NULL slug and linked to /showroom/null.
 - `profiles.seller_type` now allows `new_car`; `new_car_brand` is the brand.
 - **An advisor's CARD is a real listing** (`car_listings.new_car_model_id`, migration
   20261008b), made in `src/components/newcar/NewCarForm.jsx`, which CarForm and CarFormFast

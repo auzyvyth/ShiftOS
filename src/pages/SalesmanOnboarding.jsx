@@ -864,7 +864,7 @@ export default function SalesmanOnboarding() {
                       })}
                     </div>
                     <p className="eo-hint" style={{ marginTop: 6 }}>
-                      Your page shows the official {form.newCarBrand || 'brand'} prices for your area, kept up to date by XDrive. You pick which models you sell later.
+                      You add the {form.newCarBrand || 'brand'} models you sell, one by one, with your own photos. The official price for your area fills in by itself.
                     </p>
                   </div>
                 ) : (
