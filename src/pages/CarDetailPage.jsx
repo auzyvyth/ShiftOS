@@ -48,7 +48,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
 import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
-import NewCarListingInfo from "../components/newcar/NewCarListingInfo";
+import NewCarListingInfo, { useNewCarInfo } from "../components/newcar/NewCarListingInfo";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
@@ -127,7 +127,7 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   // renders keeps the DOM stable across that later update; only the numbers
   // and text inside it change.
   const thinRef = useRef({ id: null, thin: null });
-  if (!car?.market_avg_price || !(car.selling_price > 0)) return null;
+  if (!car?.market_avg_price || !(car.selling_price > 0) || car.condition === 'new') return null;
   const avg = Number(car.market_avg_price);
   const price = Number(car.selling_price);
   const n = Number(car.market_sample_count) || 0;
@@ -205,6 +205,28 @@ const fmtFinancing = (car) => {
   if (pt === "loan") return "Loan Available";
   return car.loan_eligible === false ? "Cash Only" : "Loan Available";
 };
+
+/* Quick-stat tiles for a NEW car come partly from the brand's per-variant spec
+   sheet (new_car_models.specs, read by useNewCarInfo): the listing row has no
+   engine, seats or economy for a new car. Used cars are unchanged. */
+const engineTile = (car, newInfo) => {
+  const cc = car.engine_cc || (car.condition === "new" ? newInfo?.specs?.engine_cc : null);
+  return cc ? fmt(cc) + " cc" : "—";
+};
+const newCarTiles = (car, newInfo) => {
+  const s = car.condition === "new" ? newInfo?.specs : null;
+  if (!s) return [];
+  return [
+    s.seats ? { label: "Seats", value: String(s.seats) } : null,
+    !car.fuel_consumption && s.fuel_kml ? { label: "Fuel Economy", value: `${s.fuel_kml} km/L` } : null,
+    s.range_km ? { label: "Range", value: `${s.range_km} km` }
+      : s.ev_range_km ? { label: "EV Range", value: `${s.ev_range_km} km` } : null,
+    s.airbags ? { label: "Airbags", value: String(s.airbags) } : null,
+  ].filter(Boolean);
+};
+// The tile grid is two columns; for a new car, drop the last (least important)
+// extra tile rather than leave a half-empty row.
+const evenForNew = (car) => (t, i, all) => !(car.condition === "new" && all.length % 2 && i === all.length - 1);
 
 /* Spec Highlights — surfaces the dealer's own feature tags as scannable chips
    right under the price. Data-backed (real car.features), capped so it stays a
@@ -990,6 +1012,9 @@ export default function CarDetailPage() {
   };
 
   const [car, setCar] = useState(null);
+  // A new car's listing row carries almost no specs; the brand's per-variant
+  // sheet (new_car_models.specs) does. Same cached read as the new-car panel.
+  const newCarInfo = useNewCarInfo(car?.condition === 'new' ? car.id : null);
   const [dealer, setDealer] = useState(null);
   const ctaCtx = useCTAContext();
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
@@ -1369,7 +1394,9 @@ export default function CarDetailPage() {
       // Fire the mileage-aware market avg in the background.
       // The view already provides a rough bucket avg; this overwrites it
       // with a precise result (year ±1, mileage ±35 000 km, condition-matched).
-      if (carData?.id) {
+      // A new car sells at the brand's own price list; comparing it with other
+      // listings (the RPC falls back to used ones under 3 matches) says nothing true.
+      if (carData?.id && carData.condition !== 'new') {
         supabase
           .rpc('compute_market_avg', { p_car_id: carData.id })
           .then(({ data }) => {
@@ -2455,16 +2482,17 @@ export default function CarDetailPage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : car.condition === 'new' ? '0 km' : '—' },
-              { label:'Engine',       value: car.engine_cc ? fmt(car.engine_cc)+' cc' : '—' },
+              { label:'Engine',       value: engineTile(car, newCarInfo) },
               { label:'Transmission', value: car.transmission || '—' },
               { label:'Fuel',         value: car.fuel_type || '—' },
               { label:'Colour',       value: car.colour || '—' },
               { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
               { label:'Financing',    value: fmtFinancing(car) },
+              ...newCarTiles(car, newCarInfo),
               ...(car.cylinders ? [{ label:'Cylinders', value:`${car.cylinders}-cyl` }] : []),
               ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
-            ].filter(({ value }) => value && value !== '—').map(({ label, value }) => (
+            ].filter(({ value }) => value && value !== '—').filter(evenForNew(car)).map(({ label, value }) => (
               <div key={label} style={{ padding:'14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
                 <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.1em', color: th.textSec, fontWeight:700, marginBottom:5 }}>{label}</p>
                 <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
@@ -3342,7 +3370,7 @@ export default function CarDetailPage() {
                 },
                 {
                   label: "Engine",
-                  value: car.engine_cc ? fmt(car.engine_cc) + " cc" : "—",
+                  value: engineTile(car, newCarInfo),
                 },
                 { label: "Transmission", value: car.transmission || "—" },
                 { label: "Fuel", value: car.fuel_type || "—" },
@@ -3369,9 +3397,10 @@ export default function CarDetailPage() {
                   label: "Financing",
                   value: fmtFinancing(car),
                 },
+                ...newCarTiles(car, newCarInfo),
                 ...(car.cylinders ? [{ label: "Cylinders", value: `${car.cylinders}-cyl` }] : []),
                 ...(car.fuel_consumption ? [{ label: "Fuel Economy", value: `${car.fuel_consumption} km/L` }] : []),
-              ].filter(({ value }) => value && value !== "—").map(({ label, value }) => (
+              ].filter(({ value }) => value && value !== "—").filter(evenForNew(car)).map(({ label, value }) => (
                 <div key={label} className="cdp-stat-cell">
                   <p
                     style={{

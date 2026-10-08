@@ -72,9 +72,10 @@ function specRows(i) {
 const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
 const sourceHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return null; } };
 
-export default function NewCarListingInfo({ listingId, sellerName, th }) {
+// The car page's tiles read the same row (Engine, Seats, Economy for a new car),
+// through the same cached request, so the page and this panel cost one read.
+export function useNewCarInfo(listingId) {
   const [info, setInfo] = useState(null);
-
   useEffect(() => {
     let alive = true;
     setInfo(null);
@@ -82,7 +83,11 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
     loadInfo(listingId).then((d) => { if (alive) setInfo(d); });
     return () => { alive = false; };
   }, [listingId]);
+  return info;
+}
 
+export default function NewCarListingInfo({ listingId, sellerName, th }) {
+  const info = useNewCarInfo(listingId);
   if (!info) return null;
   const first = (sellerName || "").trim().split(/\s+/)[0] || "This advisor";
   const specs = specRows(info);

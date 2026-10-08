@@ -638,7 +638,7 @@ export default function ComparePage() {
                 {
                   sec: 'Pricing', label: 'Market Signal',
                   show: () => cars.some(c => c.market_avg_price),
-                  get: c => (!c.market_avg_price || !c.selling_price) ? null
+                  get: c => (!c.market_avg_price || !c.selling_price || c.condition === 'new') ? null
                     : c.selling_price <= c.market_avg_price * 0.93 ? 'below'
                     : c.selling_price >= c.market_avg_price * 1.07 ? 'above' : 'fair',
                   fmt: v => v || '—',

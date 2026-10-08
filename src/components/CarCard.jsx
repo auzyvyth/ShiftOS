@@ -65,7 +65,8 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
   const discountPct = hasDiscount ? Math.round(((originalPrice - price) / originalPrice) * 100) : null;
   const isHot       = hasDiscount && discountPct >= 3;
   const isNew       = ageDays !== null && ageDays <= 7;
-  const marketAvg   = car.market_avg_price || null;
+  // A new car sells at the brand's list price: no "vs market" verdict for it.
+  const marketAvg   = car.condition === 'new' ? null : (car.market_avg_price || null);
   const marketBand  = (marketAvg && price > 0)
     ? price <= marketAvg * 0.93 ? 'below'
     : price >= marketAvg * 1.07 ? 'above'
