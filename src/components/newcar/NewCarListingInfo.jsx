@@ -34,24 +34,48 @@ function loadInfo(id) {
   return pending.get(id);
 }
 
+// specs = new_car_models.specs (migration 20261008f): per-variant figures from a
+// published spec sheet, with spec_source + specs_checked. Anything a sheet did not
+// state is simply absent, so every row is optional.
+const n = (v) => Number(v).toLocaleString("en-MY");
 function specRows(i) {
   const s = i.specs || {};
+  const dims = s.length_mm && s.width_mm && s.height_mm
+    ? `${n(s.length_mm)} x ${n(s.width_mm)} x ${n(s.height_mm)} mm` : null;
   return [
     ["Body", i.body_type],
     ["Fuel", i.fuel_type],
     ["Gearbox", i.transmission],
-    ["Engine", s.engine],
+    ["Drive", s.drive],
+    ["Engine", s.engine_cc ? `${s.engine || ""} ${s.engine ? "(" : ""}${n(s.engine_cc)} cc${s.engine ? ")" : ""}`.trim() : s.engine],
     ["Power", s.power_ps ? `${s.power_ps} PS` : null],
     ["Torque", s.torque_nm ? `${s.torque_nm} Nm` : null],
+    ["0-100 km/h", s.zero_100_s ? `${s.zero_100_s} s` : null],
+    ["Economy", s.fuel_kml ? `${s.fuel_kml} km/L` : null],
     ["Battery", s.battery_kwh ? `${s.battery_kwh} kWh` : null],
     ["Range", s.range_km ? `${s.range_km} km` : s.ev_range_km ? `${s.ev_range_km} km EV` : null],
+    ["Charging", s.dc_kw ? `${s.ac_kw ? `${s.ac_kw} kW AC, ` : ""}${s.dc_kw} kW DC` : null],
     ["Seats", s.seats ? String(s.seats) : null],
+    ["Airbags", s.airbags ? String(s.airbags) : null],
+    ["Safety rating", s.ncap],
+    ["Size (L x W x H)", dims],
+    ["Wheelbase", s.wheelbase_mm ? `${n(s.wheelbase_mm)} mm` : null],
+    ["Weight", s.weight_kg ? `${n(s.weight_kg)} kg` : null],
+    ["Boot", s.boot_l ? `${s.boot_l} L` : null],
+    ["Fuel tank", s.fuel_tank_l ? `${s.fuel_tank_l} L` : null],
+    ["Wheels", s.wheels],
+    ["Tyres", s.tyres],
+    ["Warranty", s.warranty],
+    ["Battery warranty", s.battery_warranty],
   ].filter(([, v]) => v);
 }
+const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string" && x.trim()) : []);
+const sourceHost = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return null; } };
 
-export default function NewCarListingInfo({ listingId, sellerName, th }) {
+// The car page's tiles read the same row (Engine, Seats, Economy for a new car),
+// through the same cached request, so the page and this panel cost one read.
+export function useNewCarInfo(listingId) {
   const [info, setInfo] = useState(null);
-
   useEffect(() => {
     let alive = true;
     setInfo(null);
@@ -59,10 +83,21 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
     loadInfo(listingId).then((d) => { if (alive) setInfo(d); });
     return () => { alive = false; };
   }, [listingId]);
+  return info;
+}
 
+export default function NewCarListingInfo({ listingId, sellerName, th }) {
+  const info = useNewCarInfo(listingId);
   if (!info) return null;
   const first = (sellerName || "").trim().split(/\s+/)[0] || "This advisor";
   const specs = specRows(info);
+  const safety = list(info.specs?.safety);
+  const equipment = list(info.specs?.features);
+  const colours = list(info.specs?.colours);
+  const srcHost = sourceHost(info.specs?.spec_source);
+  const checked = info.specs?.specs_checked
+    ? new Date(info.specs.specs_checked).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" })
+    : null;
   const others = Array.isArray(info.other_cards) ? info.other_cards : [];
   const label = { fontSize: 10, textTransform: "uppercase", letterSpacing: "0.18em", color: th.textMuted, fontWeight: 700, margin: "0 0 14px" };
   const box = { background: th.card, border: `1px solid ${th.border}`, borderRadius: 12 };
@@ -97,6 +132,28 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
             ))}
           </div>
         </>
+      )}
+
+      {[["Safety and driver assist", safety], ["Equipment", equipment]].map(([title, items]) => items.length > 0 && (
+        <React.Fragment key={title}>
+          <p style={{ ...label, marginTop: 24 }}>{title}</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+            {items.map((t) => (
+              <span key={t} style={{ padding: "5px 12px", border: `1px solid ${th.border}`, borderRadius: 6, fontSize: 12, color: th.textSec, background: th.card2 }}>{t}</span>
+            ))}
+          </div>
+        </React.Fragment>
+      ))}
+      {colours.length > 0 && (
+        <p style={{ margin: "16px 0 0", fontSize: 13, color: th.textSec, lineHeight: 1.6 }}>
+          <strong style={{ color: th.text, fontWeight: 600 }}>Colours for this variant:</strong> {colours.join(", ")}
+        </p>
+      )}
+      {(specs.length > 0 || safety.length > 0) && (
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: th.textMuted, lineHeight: 1.6 }}>
+          {`Specs as published for this variant${srcHost ? ` (source: ${srcHost}${checked ? `, checked ${checked}` : ""})` : ""}.`}
+          {" "}{info.brand} can change equipment, so confirm with {first} before you book.
+        </p>
       )}
 
       <p style={{ ...label, marginTop: 24 }}>How buying new works</p>

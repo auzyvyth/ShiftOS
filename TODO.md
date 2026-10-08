@@ -101,7 +101,22 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 - [x] 2026-10-08 Perodua list live (26 variants, `20261008c`, owner ran it). 6 prices in the
   owner's file were stale and were replaced by published ones (see the migration header).
 - [ ] OWNER: Sabah/Sarawak/Labuan/Langkawi prices for Proton and Perodua (only Axia has
-  East Malaysia prices). Until then East Malaysia advisors cannot make cards.
+  East Malaysia prices). Until then East Malaysia advisors cannot make cards. Lead: paultan
+  research variant pages list all four zones for Perodua, but they lag price cuts (Aruz AV
+  page still shows the pre-September price), so check each against perodua.com.my first.
+- [x] 2026-10-08 Variant spec sheets in `new_car_models.specs` for all 51 variants
+  (`20261008f`, applied as plain data, no API freeze): dimensions, weight, boot, tank,
+  km/L, 0-100, wheels/tyres, airbags, NCAP, safety list, equipment list, colours,
+  warranty, EV charging, `spec_source` per variant. The car page does not show most of
+  it yet (next: new-car layout on CarDetailPage).
+- [ ] Price list vs paultan research pages disagree, owner to confirm: Ativa 1.0 Turbo AV
+  RM73,400 (ours) vs RM72,600; Aruz 1.5 AV RM73,900 (ours, Sep cut) vs RM77,900 (page not
+  updated). e.MAS 7 PHEV Premium Plus EV range 136 km (ours) vs 146 km. X90 Prime X seats
+  6 (ours) vs 7. Axia E reportedly discontinued later in 2026.
+- [x] 2026-10-08 New-car cards said "Financing: Cash Only" (NewCarForm never set
+  payment_type, column default 'cash'). Live rows backfilled to 'loan'; car page shows
+  Loan Available for condition 'new'; used form defaults to Loan. Trigger change
+  `20261008e` QUEUED for after 22:00 MYT.
 - [x] 2026-10-08 owner: "too much, let them choose". Mini page starts EMPTY, only cards
   show (no automatic price list); settings tab is a read-only price list; public model page
   lists advisors with a live card. Car page panel for a card: advisor line, price basis,
