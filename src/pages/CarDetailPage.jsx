@@ -197,6 +197,9 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   );
 };
 const fmtFinancing = (car) => {
+  // A brand-new car is always sold on a loan (owner, 2026-10-08); a stale
+  // 'cash' on a new-car card must never reach the buyer as "Cash Only".
+  if (car.condition === "new") return "Loan Available";
   const pt = car.payment_type || car.financing_type;
   if (pt === "cash") return "Cash Only";
   if (pt === "loan") return "Loan Available";

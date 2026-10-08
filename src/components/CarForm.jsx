@@ -112,7 +112,7 @@ const initialListing = {
   loan_eligible: true,
   warranty_months: "",
   deposit_amount: "",
-  payment_type: "cash",
+  payment_type: "loan",
   // Lives on stock_units, not car_listings — patched after save (see handleSubmit)
   // and prefilled by its own effect below. Defaults to 'unknown', matching the
   // DB default, so a car is never shown as "clear" without someone confirming it.
@@ -1196,7 +1196,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             : "",
         road_tax_expiry: listing.road_tax_expiry || "",
         loan_eligible: listing.loan_eligible !== false,
-        payment_type: listing.payment_type || "cash",
+        payment_type: listing.payment_type || "loan",
         warranty_months:
           listing.warranty_months != null
             ? String(listing.warranty_months)
@@ -2138,7 +2138,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         deposit_amount: form.deposit_amount
           ? parseFloat(form.deposit_amount)
           : null,
-        payment_type: form.payment_type || "cash",
+        payment_type: form.payment_type || "loan",
         // No sambung_* fields: Sambung Bayar is a criminal offence under s.38
         // Hire Purchase Act 1967, and its columns are dropped by migration
         // 20261003c. Naming a dropped column here would fail every save.
@@ -3357,7 +3357,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         </div>
       ) },
     { key: "payment", title: "Cash or loan?", required: true, answered: true,
-      render: ({ pick }) => tiles([{ value: "cash", label: "Cash" }, { value: "loan", label: "Loan" }], form.payment_type || "cash", (v) => pick({ payment_type: v })) },
+      render: ({ pick }) => tiles([{ value: "loan", label: "Loan" }, { value: "cash", label: "Cash" }], form.payment_type || "loan", (v) => pick({ payment_type: v })) },
     { key: "encumbrance", title: "Is there still a loan on the car?", skip: isNewCar, filled: true,
       render: ({ pick }) => tiles([
         { value: "clear", label: "No, it's clear" },
@@ -3389,7 +3389,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   ], [
     { key: "price", label: "Asking price", value: form.sellingPrice ? `RM ${fmtNum(form.sellingPrice)}` : "" },
     { key: "cost", label: "Your cost", value: form.basePrice ? `RM ${fmtNum(form.basePrice)}` : "" },
-    { key: "payment", label: "Payment", value: form.payment_type === "loan" ? "Loan" : "Cash" },
+    { key: "payment", label: "Payment", value: form.payment_type === "cash" ? "Cash" : "Loan" },
     { key: "encumbrance", label: "Loan on car", value: { clear: "Clear", under_hp: "Under hire-purchase", unknown: "Not sure" }[form.encumbranceStatus] || "" },
     { key: "commission", label: "Commission", value: form.commissionAmount ? `RM ${fmtNum(form.commissionAmount)}` : "" },
     { key: "warranty", label: "Warranty", value: form.warranty_months && Number(form.warranty_months) > 0 ? `${form.warranty_months} months` : form.warranty_months === "0" ? "None" : "" },
@@ -3972,11 +3972,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           )}
           <Field label="Payment Type" required>
             <PillSelect
-              options={["Cash", "Loan"]}
+              options={["Loan", "Cash"]}
               value={
                 form.payment_type
                   ? form.payment_type.charAt(0).toUpperCase() + form.payment_type.slice(1)
-                  : "Cash"
+                  : "Loan"
               }
               onChange={(v) => set("payment_type", v.toLowerCase())}
             />
@@ -4174,7 +4174,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             </ReviewSection>
             <ReviewSection title="Pricing" onEdit={() => setStep(4)}>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                <ReviewItem label="Payment" value={(form.payment_type || "cash").charAt(0).toUpperCase() + (form.payment_type || "cash").slice(1)} />
+                <ReviewItem label="Payment" value={(form.payment_type || "loan").charAt(0).toUpperCase() + (form.payment_type || "loan").slice(1)} />
                 <ReviewItem label="Encumbrance" value={form.encumbranceStatus === "clear" ? "Clear" : form.encumbranceStatus === "under_hp" ? "Under Hire-Purchase" : "Unknown"} />
                 <ReviewItem label="Selling price" value={rm(form.sellingPrice)} />
                 <ReviewItem label="Base / cost" value={rm(form.basePrice)} />
