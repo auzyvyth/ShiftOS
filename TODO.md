@@ -110,6 +110,17 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 - [ ] Brand images: SAs will repost Proton/Perodua brochure photos. Check who owns
   them and whether a reseller may use them BEFORE the form encourages it.
 - Related: IDEA-14 (employer-checked SA badge, never a brand logo).
+- **Owner, 2026-10-08: "works, but not practical; make it worth the money."** Plan to raise
+  Premium to RM50/month once there are 100 users. Proposed next (pending owner decision):
+  (1) all of the advisor's brand models show by default (opt OUT, not tick-to-add), so the
+  page is full on day one and new variants appear without anyone ticking;
+  (2) new models in the LIVE PRESENTER (variants side by side, rebate, insurance row): the
+  thing they already do on TikTok and the reason to pay;
+  (3) photos. Owner has Proton/Perodua brochure images. NOT verified safe to host: Copyright
+  Act 1987 (Act 332), the brand or its agency owns them, no published brand guideline found
+  for advisor/third-party use (searched 2026-10-08). Options: written OK from the brand,
+  advisor's own showroom/delivery photos, or no photo. Owner to decide before any upload.
+  The catalogue is still EMPTY: nothing above helps until prices are entered.
 - **Price research 2026-10-07: there is no single national price.** Four zones:
   Peninsular, Sabah/Sarawak (usually +RM2,000), Labuan, Langkawi (duty-free, lower).
   Bezza 1.0 G MT: RM34,580 Pen / RM33,380 Langkawi / RM36,580 Sabah+Sarawak.
