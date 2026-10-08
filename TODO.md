@@ -92,9 +92,20 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   (anon had TRUNCATE), lists only approved+active advisors on the public page (cap 50),
   source_url must be http(s). Scam line ("never pay an advisor's personal account") on the
   model page + mini page. Live write probes could not run (session cannot write to the DB).
-- [ ] OWNER: enter the official Proton + Perodua prices in the console (tables are empty, so
-  every new-car surface is blank until then).
-- [ ] Live presenter: show the advisor's new models (variants side by side, OTR build-up).
+- [x] 2026-10-08 built (migration `20261008a`, QUEUED for after 22:00 MYT, owner to paste):
+  every brand model shows by default (opt-out, `seller_hidden_models`); 25 Proton variants
+  loaded, Peninsular only (Saga/X50/e.MAS 7 spot-checked, match); `specs` jsonb; new models
+  in the live presenter after the seller's cars, same #N on the mini page; Budget tab covers
+  them too. Persona (range only) and Iriz (unverified price) left out. Expired rebates in the
+  owner's file not loaded. Test row "Perodua Saga Premium" hidden.
+- [ ] OWNER: Perodua price list; Sabah/Sarawak/Labuan/Langkawi prices for Proton.
+- [ ] Mini page "Live now" card for a new-car variant (today it shows nothing for one).
+- [x] 2026-10-08 DECIDED + built: advisor card = normal listing linked to the catalogue, one
+  per variant (`NewCarForm.jsx`, migration `20261008b`, QUEUED after 20261008a). Research:
+  Carlist = SA ads with typed prices; Autotrader/Edmunds/CarDekho = official layer + dealer
+  listing. Not yet clicked through on staging: create a card, mark a lead won on it, undo.
+- [ ] Car page: label a card's price "Official price" (needs new_car_model_id in
+  public_car_listings, a DROP+CREATE-free append).
 - [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
@@ -110,6 +121,17 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
 - [ ] Brand images: SAs will repost Proton/Perodua brochure photos. Check who owns
   them and whether a reseller may use them BEFORE the form encourages it.
 - Related: IDEA-14 (employer-checked SA badge, never a brand logo).
+- **Owner, 2026-10-08: "works, but not practical; make it worth the money."** Plan to raise
+  Premium to RM50/month once there are 100 users. Proposed next (pending owner decision):
+  (1) all of the advisor's brand models show by default (opt OUT, not tick-to-add), so the
+  page is full on day one and new variants appear without anyone ticking;
+  (2) new models in the LIVE PRESENTER (variants side by side, rebate, insurance row): the
+  thing they already do on TikTok and the reason to pay;
+  (3) photos. Owner has Proton/Perodua brochure images. NOT verified safe to host: Copyright
+  Act 1987 (Act 332), the brand or its agency owns them, no published brand guideline found
+  for advisor/third-party use (searched 2026-10-08). Options: written OK from the brand,
+  advisor's own showroom/delivery photos, or no photo. Owner to decide before any upload.
+  The catalogue is still EMPTY: nothing above helps until prices are entered.
 - **Price research 2026-10-07: there is no single national price.** Four zones:
   Peninsular, Sabah/Sarawak (usually +RM2,000), Labuan, Langkawi (duty-free, lower).
   Bezza 1.0 G MT: RM34,580 Pen / RM33,380 Langkawi / RM36,580 Sabah+Sarawak.

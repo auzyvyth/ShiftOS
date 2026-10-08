@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../supabaseClient";
 import { NEW_CAR_BRANDS, rm, groupByModel, priceBasis } from "../../utils/newCars";
 
-// NEWCAR-1: a new-car advisor ticks which variants they sell. Rendered by BOTH
+// NEWCAR-1: a new-car advisor's models. Rendered by BOTH
 // Salesman Lite and Premium settings (one implementation, like ReferralCard).
 //
 // Prices are never typed here: they come from new_car_models (platform-run,
@@ -11,9 +11,13 @@ import { NEW_CAR_BRANDS, rm, groupByModel, priceBasis } from "../../utils/newCar
 // Sabah advisor sees the Sabah price, and a zone with no price says so instead
 // of quietly showing the Peninsular number.
 //
+// Every model of the advisor's brand shows by DEFAULT (2026-10-08): a tick
+// means "on my page", and unticking writes a seller_hidden_models row. So a
+// new advisor's page is full on day one, and a variant XDrive adds later
+// appears on every page without anyone ticking it.
+//
 // A seller who signed up as a broker can switch here: picking a brand sets
-// seller_type='new_car'. Changing brand clears the old brand's ticks, since a
-// Proton advisor's page listing Perodua variants would be wrong.
+// seller_type='new_car'. Changing brand clears the old brand's hidden list.
 
 const card = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
 const pill = (on) => ({
@@ -57,19 +61,20 @@ export default function MyNewModels({ profile, onProfileChange }) {
     setError("");
     const { error: e } = await supabase.from("profiles").update({ seller_type: "new_car", new_car_brand: b }).eq("id", profile.id);
     if (e) { setBusy(null); setError("Couldn't save the brand. Try again."); return; }
-    if (brand) await supabase.from("seller_new_models").delete().eq("seller_id", profile.id);
+    if (brand) await supabase.from("seller_hidden_models").delete().eq("seller_id", profile.id);
     setBusy(null);
     setBrand(b);
     onProfileChange?.({ seller_type: "new_car", new_car_brand: b });
   };
 
+  // on = show on my page (delete the hide row), off = hide (insert one).
   const setPicked = async (ids, on) => {
     if (!profile?.id || !ids.length) return;
     setBusy(ids.join(","));
     setError("");
     const { error: e } = on
-      ? await supabase.from("seller_new_models").upsert(ids.map((model_id) => ({ seller_id: profile.id, model_id })), { onConflict: "seller_id,model_id", ignoreDuplicates: true })
-      : await supabase.from("seller_new_models").delete().eq("seller_id", profile.id).in("model_id", ids);
+      ? await supabase.from("seller_hidden_models").delete().eq("seller_id", profile.id).in("model_id", ids)
+      : await supabase.from("seller_hidden_models").upsert(ids.map((model_id) => ({ seller_id: profile.id, model_id })), { onConflict: "seller_id,model_id", ignoreDuplicates: true });
     setBusy(null);
     if (e) { setError("Couldn't save. Try again."); return; }
     setRows((rs) => rs.map((r) => (ids.includes(r.model_id) ? { ...r, selected: on } : r)));
@@ -80,7 +85,7 @@ export default function MyNewModels({ profile, onProfileChange }) {
       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>New cars you sell</p>
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         {profile?.seller_type === "new_car"
-          ? "Tick the models you sell. They show on your page with the official price for your area, and XDrive keeps the prices up to date."
+          ? "Every model shows on your page and in your live presentation, with the official price for your area. XDrive keeps the prices up to date. Untick any you don't sell."
           : "Sell new Proton, Perodua or Toyota? Pick your brand and your page shows the official prices for your area. No listings to type."}
       </p>
 
@@ -89,9 +94,6 @@ export default function MyNewModels({ profile, onProfileChange }) {
           <button key={b} type="button" disabled={busy === "brand"} onClick={() => chooseBrand(b)} style={pill(b === brand)}>{b}</button>
         ))}
       </div>
-      {brand && picked > 0 && (
-        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#6b7280" }}>Changing brand clears the models you ticked.</p>
-      )}
 
       {error && <p role="alert" style={{ margin: "12px 0 0", fontSize: 12, color: "#fbbf24" }}>{error}</p>}
 
@@ -105,7 +107,7 @@ export default function MyNewModels({ profile, onProfileChange }) {
         ) : (
           <>
             <p style={{ margin: "14px 0 8px", fontSize: 11.5, color: "#6b7280" }}>
-              {picked} of {rows.length} selected. {priceBasis(zone)}
+              {picked} of {rows.length} on your page. {priceBasis(zone)}
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {groups.map((g) => {
@@ -117,7 +119,7 @@ export default function MyNewModels({ profile, onProfileChange }) {
                       <span style={{ fontSize: 13, fontWeight: 700, color: "#f1f5f9", minWidth: 0 }}>{brand} {g.model}</span>
                       <button type="button" onClick={() => setPicked(ids, !all)} disabled={!!busy}
                         style={{ background: "none", border: "none", color: "#9ca3af", fontSize: 12, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
-                        {all ? "Untick all" : "Tick all"}
+                        {all ? "Hide all" : "Show all"}
                       </button>
                     </div>
                     {g.variants.map((v) => (

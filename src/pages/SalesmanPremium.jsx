@@ -1259,7 +1259,7 @@ export default function SalesmanPremium() {
  // Must include every column CarForm's edit prefill reads AND every column
  // CarDetailPopup's Paperwork/Mechanical tabs display, or editing/viewing a
  // listing silently blanks those fields (see overlay rule 4).
- const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount";
+ const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id";
  Promise.all([
  supabase
  .from("car_listings")

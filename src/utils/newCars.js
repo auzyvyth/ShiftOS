@@ -91,3 +91,36 @@ export function newModelCopy(brand, model, rows) {
     intro: `${brand} sets the official price, and it is the same in every showroom in your region. What differs is the advisor: how fast they reply, where they are and what they can arrange for you. Compare them below and message one directly.`,
   };
 }
+
+// One short spec line from new_car_models.specs, e.g. "1.5L turbo · 181 PS ·
+// 7 seats" or "60.22 kWh · 410 km range". Display only.
+export function newCarSpecLine(specs) {
+  const s = specs || {};
+  return [
+    s.engine,
+    s.battery_kwh ? `${s.battery_kwh} kWh` : null,
+    s.range_km ? `${s.range_km} km range` : s.ev_range_km ? `${s.ev_range_km} km EV range` : null,
+    s.power_ps ? `${s.power_ps} PS` : null,
+    s.seats && s.seats !== 5 ? `${s.seats} seats` : null,
+  ].filter(Boolean).join(" · ");
+}
+
+// get_seller_new_models rows -> the live presenter's car shape. Only variants
+// with a price for the seller's zone: a monthly table needs a number, and a
+// zone with no price must never borrow the Peninsular one. They go AFTER the
+// seller's listings, so "#N" is the same on the presenter and the mini page.
+// id is prefixed so it can never be mistaken for a car_listings id.
+export function presenterNewCars(rows) {
+  return (rows || []).filter((r) => Number(r.price) > 0).map((r) => ({
+    id: `nc:${r.model_id}`,
+    modelId: r.model_id,
+    isNewCar: true,
+    brand: r.brand,
+    model: r.model,
+    variant: r.variant,
+    transmission: r.transmission,
+    selling_price: Number(r.price),
+    images: [],
+    specLine: newCarSpecLine(r.specs),
+  }));
+}

@@ -6,8 +6,8 @@ import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, i
 //
 // new_car_models is superadmin-write (RLS), and every advisor's mini page and
 // the public model pages read it, so a price fixed here is fixed everywhere.
-// Rows are HIDDEN, never deleted: a delete cascades through seller_new_models
-// and silently unticks the variant for every advisor who sells it.
+// Rows are HIDDEN, never deleted: a delete cascades through seller_hidden_models
+// and drops every advisor's choice to hide it (it would come back on their page if re-added).
 //
 // Only Peninsular is required. A zone left blank shows buyers there "ask the
 // advisor" -- never the Peninsular number, which they cannot get.
