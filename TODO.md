@@ -98,7 +98,10 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   in the live presenter after the seller's cars, same #N on the mini page; Budget tab covers
   them too. Persona (range only) and Iriz (unverified price) left out. Expired rebates in the
   owner's file not loaded. Test row "Perodua Saga Premium" hidden.
-- [ ] OWNER: Perodua price list; Sabah/Sarawak/Labuan/Langkawi prices for Proton.
+- [x] 2026-10-08 Perodua list live (26 variants, `20261008c`, owner ran it). 6 prices in the
+  owner's file were stale and were replaced by published ones (see the migration header).
+- [ ] OWNER: Sabah/Sarawak/Labuan/Langkawi prices for Proton and Perodua (only Axia has
+  East Malaysia prices). Until then East Malaysia advisors cannot make cards.
 - [ ] Mini page "Live now" card for a new-car variant (today it shows nothing for one).
 - [x] 2026-10-08 DECIDED + built: advisor card = normal listing linked to the catalogue, one
   per variant (`NewCarForm.jsx`, migration `20261008b`, QUEUED after 20261008a). Research:
