@@ -508,6 +508,11 @@ instruction — run the intake yourself, do not ask first. Full runbook:
     explicit "apply it now" from the owner overrides this, per migration.
   - **One migration per change, not one per statement.** Each call is one freeze;
     five small migrations froze the API five times on 2026-09-26.
+  - **A migration that DROPs anything needs the owner to confirm it in the tool, and
+    that prompt often never reaches them** (2026-10-09: "cancelled" four times, nothing
+    applied). After ONE cancel, stop retrying: check the live state read-only, then
+    paste the SQL in chat (wrapped in begin/commit) for the owner to run in the
+    Supabase SQL Editor, and verify afterwards with has_*_privilege / column checks.
   - Read-only `execute_sql` (SELECT) does not trigger a reload and is fine any time.
     Anything that creates/alters/drops/grants DOES, even through `execute_sql`.
 - Always update public_car_listings VIEW after adding columns to car_listings

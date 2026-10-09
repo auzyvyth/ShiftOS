@@ -194,17 +194,6 @@ of `src/config/salesmanLandingCopy.js`. Still open:
 - [ ] A real screenshot of the Premium "This week" list for PlanTour (the old
   `premium-thisweek.png` was Lite's Today's Agenda, so the section was removed).
 - [ ] A real screenshot of Live presentation would beat the hero recreation.
-- [ ] DDL queued for after 22:00: `20261003c_drop_sambung_columns.sql` was never
-  applied (`public_car_listings` still has the five `sambung_*` columns, all
-  empty). Re-read the live view def first: it was written against 2026-10-03.
-- [ ] ANALYTICS-SPOOF — CODE DONE 2026-10-09, two steps left, IN ORDER:
-  (1) ship to prod: `trackEvent` (src/utils/analytics.js) now posts to `/api/track`
-  (api/track.js, 120/min per IP in middleware.js; dealer_id taken from the car,
-  shape check in lib/analyticsEvent.js, `npm run test:analytics`).
-  (2) ONLY THEN, after 22:00 MYT, apply `20261009a_analytics_insert_server_only.sql`
-  (drops `analytics_insert_v2`, revokes INSERT). Before step 1 is live it would drop
-  every event. Also fixed: CarDetailPage + HomePage inserted page_view with no
-  session_id, so the old policy had rejected all of them (and they skipped consent).
 
 ## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
 Pattern: the console painted raw columns (approval_status, is_active,
@@ -234,18 +223,6 @@ inside self-rolling-back transactions.
 - [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
   -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
   role outside the seller set (deployed v23).
-- [ ] SEC-1 SELLER NUMBERS HARVESTABLE — UNBLOCKED 2026-10-09, one step left: apply
-  `20261009b_revoke_public_seller_number_rpcs.sql` after 22:00 MYT, then tap a live
-  WhatsApp + Call button. Proven safe from the API logs: prod's /api/wa already calls
-  with the sb_secret_ server key, and no browser code calls either RPC.
-  (History: owner confirmed 2026-10-06: the service key IS set in
-  Vercel. Remaining: this branch must reach PRODUCTION first, then revoke -- revoking
-  before that breaks every WhatsApp/Call button on the live site.) (CDP-3 defeated). `/api/wa` + `/api/call-number`
-  called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
-  RPCs are anon-executable and anyone can loop every public car id straight against
-  /rest/v1/rpc, skipping the route's rate limit. Code now prefers
-  SUPABASE_SERVICE_ROLE_KEY. NEXT: confirm that env var is set in Vercel Production,
-  deploy, then `revoke execute on both from public, anon, authenticated`.
 - [x] SEC-2 SUSPENSION BYPASS -- FIXED 2026-10-06 (migration 20261005f, trigger
   trg_zy_guard_profile_lifecycle). A suspended seller toggling onboarding_complete
   could switch themselves back on and erase the suspension (and un-delete). Re-probed:
@@ -568,21 +545,6 @@ fixes. Nothing in this batch has been built.
     before you have approved them, which is a mild "look, I'm on XDrive"
     laundering vector. Owner-only would also have satisfied the ask. One
     clause in the RPC if you want it tightened.
-
-- [ ] **DB-QUEUE-2026-10-03: ONE migration left — `20261003c_drop_sambung_columns.sql`.**
-  `20261003a` + `20261003b` were APPLIED 2026-10-03 22:20 MYT as one migration
-  (`20261003ab_agent_sitemap_and_trust_signals`) and post-checked: sitemap lists
-  3 agents incl. diara, recent sales + reply time return data, report_seller is
-  authenticated-only. Still to do: `20261003c` (drops the 5 empty sambung_*
-  columns, rebuilds public_car_listings + get_salesman_featured_listings). It
-  contains DROP statements, so the Supabase tool asks the OWNER to confirm; the
-  confirm was cancelled three times (twice unattended, once with the owner
-  present), so do NOT retry it without the owner saying so in that session.
-  Dry-run it first in a self-rolling-back DO block with `set local lock_timeout
-  = '5s'` (a lock wait on car_listings stalls the live site). After: one row
-  for get_salesman_featured_listings in pg_proc,
-  `has_table_privilege('anon','public_car_listings','select')` = true, 77
-  columns, same row count as before (65 on 2026-10-03).
 
 - [ ] **MINI-LIGHT-1 follow-ups** (the light agent page shipped 2026-10-03 per
   `docs/mockups/agent-page-light.html`, in `src/pages/SalesmanProfilePage.jsx`):
