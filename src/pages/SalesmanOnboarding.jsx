@@ -102,6 +102,22 @@ const CSS = `
 }
 `;
 
+// SIGNUP-1: the phone number and page-link steps write nothing until
+// Activate, so a phone that died on step 4 or 5 lost both. They are kept as a
+// DRAFT ON THIS DEVICE (not the database: saving the page link early would let
+// an abandoned signup hold that link forever), keyed by account, along with the
+// step reached, and put back when the person resumes. No password, no IC.
+const DRAFT_FIELDS = ['phone', 'brand', 'slug', 'state', 'city'];
+const draftKey = (uid) => `xd_signup_draft_${uid}`;
+function readDraft(uid) {
+  if (!uid) return null;
+  try { return JSON.parse(localStorage.getItem(draftKey(uid)) || 'null'); } catch { return null; }
+}
+function clearDraft(uid) {
+  if (!uid) return;
+  try { localStorage.removeItem(draftKey(uid)); } catch { /* non-fatal */ }
+}
+
 const STEPS = [
   { label: 'TERMS', sub: 'Required agreement' },
   { label: 'ACCOUNT', sub: 'Email or Google' },
@@ -251,6 +267,33 @@ export default function SalesmanOnboarding() {
   const slugTimer = useRef(null);
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
+
+  // SIGNUP-1: keep what they typed on steps 3-5 on this device as they go.
+  useEffect(() => {
+    if (!userId || done || step < 3) return;
+    const draft = { step };
+    DRAFT_FIELDS.forEach((k) => { draft[k] = form[k]; });
+    try { localStorage.setItem(draftKey(userId), JSON.stringify(draft)); } catch { /* non-fatal */ }
+  }, [userId, done, step, form.phone, form.brand, form.slug, form.state, form.city]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ...and put it back once we know who this is. Only fills blanks, so it never
+  // overwrites anything the saved profile already holds.
+  const draftStep = useRef(null);
+  useEffect(() => {
+    const draft = readDraft(userId);
+    if (!draft) return;
+    draftStep.current = [3, 4, 5].includes(draft.step) ? draft.step : null;
+    setForm((p) => {
+      const next = { ...p };
+      DRAFT_FIELDS.forEach((k) => {
+        const blank = !p[k] || (k === 'phone' && p[k] === '+60');
+        if (blank && typeof draft[k] === 'string' && draft[k]) next[k] = draft[k];
+      });
+      return next;
+    });
+    // The link may have been taken by someone else since; re-check it.
+    if (draft.slug) checkSlug(draft.slug);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mirror Supabase's password policy (8+ chars + one of each class) so users
   // never hit an opaque server-side rejection on sign-up.
@@ -585,6 +628,7 @@ export default function SalesmanOnboarding() {
       sessionStorage.removeItem('ob_agreed');
       sessionStorage.removeItem('ob_plan_slug');
       sessionStorage.removeItem('ob_account_type');
+      clearDraft(userId);
       setDone(true);
       // Premium lands on the premium panel, which shows the payment-pending gate
       // until an admin confirms payment; lite goes straight in.
@@ -597,6 +641,7 @@ export default function SalesmanOnboarding() {
   };
 
   const resetAndStart = async () => {
+    clearDraft(userId);
     await supabase.auth.signOut();
     setShowResumeChoice(false);
     setUserId(null);
@@ -624,7 +669,7 @@ export default function SalesmanOnboarding() {
             {resumeIsBuyer ? 'Your XDrive account is signed in as' : 'You have an incomplete sign-up as'}
           </p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
-          <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : 2); }}>
+          <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : (draftStep.current || 2)); }}>
             {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL' : 'CONTINUE SIGN-UP'}
           </button>
           <button className="eo-ghost" onClick={resetAndStart}>{resumeIsBuyer ? 'USE ANOTHER EMAIL' : 'USE A DIFFERENT ACCOUNT'}</button>

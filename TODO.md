@@ -4632,6 +4632,9 @@ native build.
   stays `<project-ref>.supabase.co/auth/v1/verify?token=...` until a custom auth
   domain (paid Supabase add-on) makes it `auth.xdrive.my`. The template explains
   the unfamiliar domain in the fallback block rather than hiding it.
+  UPDATE 2026-10-09: owner set up custom SMTP through Resend and confirmed a test
+  signup email arrives from "ShiftOS", so (a) is DONE. Still open: paste the template,
+  and (b) the supabase.co link (paid custom auth domain).
 - [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
   migrate auth to PKCE.** The RESET-PAGE RACE FIX that testing this uncovered has
   been SPLIT OUT and shipped to prod on its own — it was a live bug with or
@@ -4882,10 +4885,6 @@ native build.
 > **Owner, 2026-10-09: store work PAUSED until there is revenue** ("everything else
 > needs money, and a technical partner"). Focus is users + revenue. Don't push MOBILE-8..11
 > unprompted; the CLAUDE.md "advance it every session" rule is suspended by this call.
-- [ ] **SIGNUP-1 (LOW): phone + page link are only saved at the last step.**
-  `src/pages/SalesmanOnboarding.jsx` steps 3 and 4 just `setStep()`; nothing is written
-  until Activate. A phone dying on step 4/5 means retyping two fields on return (name,
-  plan and terms ARE kept). Fix if drop-off shows up there: save phone on step 3's Next.
 - [ ] **MOBILE-8 (BUILD): push does not work inside the native app.** Web push needs
   a service worker, which a Capacitor WebView does not run, so every seller alert that
   works on the installed PWA is silent in the store app. Needs `@capacitor/push-notifications`
