@@ -4182,6 +4182,11 @@ FRONTEND load architecture of the main marketplace (xdrive.my).
   resize latency + a `cdnTimedOut` fallback already exists because it sometimes
   stalls. When Supabase Pro lands, switch to native Supabase image transforms
   (same-origin, no 3rd party); until then keep weserv but consider width caps.
+  PROGRESS (2026-10-09): `index.html` now preconnects to wsrv.nl; every car-photo
+  upload path shrinks to 1200px via `compressListingPhoto` (src/utils/compressImage.js)
+  so weserv pulls a small original; the car-page lightbox goes through cdnImg.
+  Still open: the third-party dependency itself (owner decision: Supabase Pro
+  image transforms vs Vercel image optimization vs keep weserv).
 - [ ] **MPERF-4 (LOW): View still runs a LATERAL join + subquery per row.**
   `public_car_listings` LEFT JOIN LATERAL stock_units (puspakom dates) executes
   per row even though the marketplace CAR_FIELDS never selects those columns

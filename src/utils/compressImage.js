@@ -38,3 +38,20 @@ export async function compressImageFile(file, { maxDim = 1600, quality = 0.82 } 
     URL.revokeObjectURL(objectUrl);
   }
 }
+
+// Wrap the blob back into a File with a .jpg name: the upload paths build the
+// storage key from file.name, and a Blob has none.
+export function asJpegFile(original, blob) {
+  if (!blob || blob === original) return original;
+  const base = (original.name || 'photo').replace(/\.[^.]+$/, '');
+  return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+}
+
+// THE preset for every car-photo upload (CarForm, CarFormFast, AddCarForm,
+// NewCarForm). Two of those uploaded the raw camera file, which is why 29
+// car-images objects were over 1MB (max 3.9MB): the image proxy has to pull
+// the whole original before it can resize it, and the onError fallback shows
+// buyers that original. 1200px on the long side is what the pages ever ask for.
+export async function compressListingPhoto(file) {
+  return asJpegFile(file, await compressImageFile(file, { maxDim: 1200, quality: 0.82 }));
+}

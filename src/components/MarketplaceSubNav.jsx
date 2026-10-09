@@ -23,7 +23,7 @@ export default function MarketplaceSubNav() {
         .mp-subnav-inner { max-width:1400px; margin:0 auto; padding:0 clamp(16px,3.5vw,44px); display:flex; align-items:center; gap:4px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
         .mp-subnav-inner::-webkit-scrollbar { display:none; }
         .mp-subnav-link { flex-shrink:0; display:flex; align-items:center; gap:7px; padding:11px 14px; font-size:13px; font-weight:600; color:rgba(255,255,255,0.68); text-decoration:none; border-bottom:2px solid transparent; white-space:nowrap; transition:color .14s,border-color .14s; }
-        .mp-subnav-link:hover { color:#fff; }
+        @media (hover:hover) and (pointer:fine) { .mp-subnav-link:hover { color:#fff; } }
         .mp-subnav-link.active { color:#fff; border-bottom-color:#dc2626; }
         .mp-subnav-badge { font-size:9px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,0.45); background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px; }
       `}</style>

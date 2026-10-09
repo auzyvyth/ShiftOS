@@ -38,6 +38,7 @@ import { getEmbedUrl } from "../utils/videoEmbed";
 import { useProfile, getDealerIdFromProfile } from "../hooks/useProfile";
 import { lookupFullSpec } from "../utils/carSpecs";
 import { apiUrl } from "../utils/apiUrl";
+import { compressImageFile, asJpegFile, compressListingPhoto } from "../utils/compressImage";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import { CAR_DATA } from "../data/carData";
 import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
@@ -960,7 +961,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       // document-scan PDF is almost always well under the cap anyway.
       const upload = file.type === "application/pdf"
         ? file
-        : await compressImage(file, 1800, 0.9);
+        : await compressImage(file, 2400, 0.9);
       if (upload.size > MAX_DOC_BYTES) {
         toast.error(
           file.type === "application/pdf"
@@ -1608,33 +1609,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     } catch {}
   };
 
-  const compressImage = (file, maxWidth = 1200, quality = 0.82) =>
-    new Promise((resolve) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const scale = Math.min(1, maxWidth / img.width);
-        const w = Math.round(img.width * scale);
-        const h = Math.round(img.height * scale);
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        canvas.toBlob(
-          (blob) =>
-            resolve(
-              blob
-                ? new File([blob], (file.name || "photo.jpg").replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
-                : file,
-            ),
-          "image/jpeg",
-          quality,
-        );
-      };
-      img.onerror = () => { URL.revokeObjectURL(objectUrl); resolve(file); };
-      img.src = objectUrl;
-    });
+  // Listing photos use the shared preset; documents pass a larger size so a
+  // geran stays readable (maxDim is the LONG side: 2400 keeps an A4 scan
+  // ~1700px wide, about what the old width-only 1800 limit gave).
+  const compressImage = async (file, maxDim, quality) =>
+    maxDim
+      ? asJpegFile(file, await compressImageFile(file, { maxDim, quality }))
+      : compressListingPhoto(file);
 
   // Upload a single file with retries. Each file gets a unique path and uses
   // upsert:true, so if a client-side timeout fires AFTER the object already

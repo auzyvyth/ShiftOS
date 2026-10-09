@@ -13,6 +13,12 @@
        instantly on a cold load while Outfit swaps in (font-display: swap).
        Flip this one value back to system-ui to revert the whole page. */
     --xd-font-body: 'Outfit', system-ui, sans-serif;
+    /* Motion curves (emil-design-eng skill). The built-in "ease" is too soft
+       to read as a response; these start fast so a hover or press lands the
+       moment the finger or cursor does. ease-out = things responding or
+       entering, ease-in-out = things moving across the screen. */
+    --xd-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --xd-ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -61,6 +67,39 @@
 @layer base {
   * {
     @apply border-border;
+  }
+
+  /* Phone baseline (mobile-native skill). The grey/blue box iOS and Android
+     paint over every tapped element is the loudest "this is a website" tell;
+     press feedback comes from :active below instead. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* No 300ms double-tap-zoom wait before a tap counts. Pinch zoom still works. */
+  button, a, [role="button"], label, summary {
+    touch-action: manipulation;
+  }
+  /* Long-press on a control selects its label. Controls only, never body text. */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* iOS zooms the page into any field under 16px and never zooms back out.
+     !important because almost every field here sets fontSize inline (13-15px).
+     Touch screens only, so desktop keeps the denser sizes. */
+  @media (pointer: coarse) {
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+    /* The tap highlight is gone, so a press needs its own feedback.
+       :where() keeps this at zero specificity so the marketplace's own press
+       rule below (a scale, not a dim) wins wherever it applies. */
+    :where(button:not(:disabled), [role="button"]):active {
+      opacity: 0.82;
+    }
   }
 
   body {
@@ -117,17 +156,21 @@ select:focus-visible {
     transform: skewX(-20deg);
     transition: left 0.55s ease;
   }
-  .shine-btn:hover::before {
-    left: 130%;
+  @media (hover: hover) and (pointer: fine) {
+    .shine-btn:hover::before { left: 130%; }
   }
 
   /* Card hover lift */
   .card-lift {
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
-  .card-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  /* Hover only for a real mouse: a tap leaves :hover stuck on touch, so the
+     card stayed lifted after you came back to the page. */
+  @media (hover: hover) and (pointer: fine) {
+    .card-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
   }
 
   /* Section red underline */
@@ -166,9 +209,9 @@ select:focus-visible {
     margin-top: 2px;
     border-radius: 1px;
   }
-  .nav-link-line:hover::after,
-  .nav-link-line.active::after {
-    width: 100%;
+  .nav-link-line.active::after { width: 100%; }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-link-line:hover::after { width: 100%; }
   }
 
   /* Trust strip border */
@@ -244,6 +287,52 @@ select:focus-visible {
     .search-bar-grid {
       grid-template-columns: 1fr !important;
     }
+  }
+}
+
+/* ── Marketplace motion: cards + primary buttons ── */
+/* ShowroomCard is the car card on both the homepage grid and /showroom. Its
+   hover lived in CarListingPage's own <style>, so the homepage grid had no
+   hover or press at all. One definition here, on DESIGN.md's tokens
+   (lift -3px, hover shadow 0 12px 32px). */
+.sc-root,
+.mp-carrow-item {
+  transition: transform 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .sc-root:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(15,23,42,0.14) !important;
+  }
+}
+/* Press: the card sinks under the finger, so the tap registers before the
+   next page has loaded. Not when the press is on a button inside the card
+   (compare, save) — that button gets its own press instead. */
+.sc-root:active:not(:has(button:active)),
+.mp-carrow-item:active {
+  transform: scale(0.98);
+  transition-duration: 100ms;
+}
+/* Primary marketplace buttons: scale on press instead of the generic dim. */
+.mh-getstarted:active,
+.mh-promo-cta:active,
+.mh-icon-btn:active,
+.mp-agent-cta:active,
+.mp-seg-btn:active,
+.mp-page-btn:active,
+.mp-next-prev:not(:disabled):active,
+.cdp-mobile-bar-book:active,
+.cdp-wa-btn:active,
+.cdp-arrow:active,
+.sc-root button:active {
+  transform: scale(0.97);
+  opacity: 1;
+  transition: transform 100ms var(--xd-ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  .sc-root:hover, .sc-root:active, .mp-carrow-item:hover, .mp-carrow-item:active,
+  .mh-getstarted:hover, .mh-getstarted:active, .mh-promo-cta:hover, .mh-promo-cta:active {
+    transform: none !important;
   }
 }
 
