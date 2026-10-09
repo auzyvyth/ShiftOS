@@ -4879,6 +4879,24 @@ native build.
   `job_title` bug elsewhere in this file: the column existed, nothing ever selected
   it). Added both columns to the select. DashboardPage's own fetch already used
   `select("*")`, so it didn't need the same fix.
+- [ ] **MOBILE-8 (BUILD): push does not work inside the native app.** Web push needs
+  a service worker, which a Capacitor WebView does not run, so every seller alert that
+  works on the installed PWA is silent in the store app. Needs `@capacitor/push-notifications`
+  (FCM for Android, APNs for iOS), the device token saved to `push_subscriptions`, and
+  `send-push` taught to send to those tokens. Found 2026-10-09: no such code exists.
+- [ ] **MOBILE-9 (BUILD): Google sign-in will not work in the app.** Google refuses OAuth
+  inside an embedded WebView (`disallowed_useragent`), and every `signInWithOAuth` passes
+  `redirectTo: window.location.origin` (= `capacitor://localhost` in the app), which never
+  returns to it. Needs a native Google sign-in plugin, or the system browser plus MOBILE-10.
+- [ ] **MOBILE-10 (BUILD): email links open the website, not the app.** Signup confirm,
+  magic link and password reset land in the browser; `android/app/src/main/AndroidManifest.xml`
+  has only the launcher intent-filter and nothing listens for `appUrlOpen`. Needs Android
+  App Links + iOS Universal Links (files served from xdrive.my) and `@capacitor/app`.
+- [ ] **MOBILE-11: store icon + splash are still Capacitor's default blue "X"**
+  (`android/app/src/main/res/mipmap-*/ic_launcher.png`, `ios/App/App/Assets.xcassets/AppIcon.appiconset`).
+  Blocked on PWA-3's icon decision; then generate every size with `@capacitor/assets`.
+- Privacy policy URL for the store listing: ALREADY EXISTS, `xdrive.my/privacy`
+  (src/pages/PrivacyPage.jsx). Re-read it against the stores' data-safety forms before submission.
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

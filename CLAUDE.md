@@ -23,15 +23,14 @@ which case say so rather than picking a path yourself.
   `android/`, `ios/` are scaffolded — see `TODO.md` MOBILE-2 for what's real
   vs. still provisional (`appId` is a placeholder pending an owner call on
   whether the store listing is branded ShiftOS or XDrive). **Current
-  standing blocker: none technical** — MOBILE-4 CORS, MOBILE-6 absolute /api
-  URLs, and MOBILE-7 in-app account deletion (incl. the restore-gate UI on
-  DashboardPage/AccountPage) are all DONE (2026-09-24 —
-  `supabase/functions/_shared/cors.ts`, `src/utils/apiUrl.js` + `lib/cors.js`,
-  `supabase/functions/delete-account`). Next bricks (MOBILE-5
-  subdomain-tenancy decision, store icon/splash assets, Apple
-  Developer + Google Play Console signups, a privacy policy URL, an Android
-  signing keystore) can all proceed independently; pick the next unclaimed
-  one each session. Update this line as each is resolved so it never goes
+  state (re-audited 2026-10-09): NOT just signups left — real build work remains.**
+  Done: MOBILE-4 CORS, MOBILE-6 absolute /api URLs, MOBILE-7 account deletion, and a
+  privacy page already exists at `/privacy` (src/pages/PrivacyPage.jsx). Still to BUILD:
+  MOBILE-8 native push (web push does not run in the app's WebView), MOBILE-9 Google
+  sign-in inside the app, MOBILE-10 deep links for email links, real icon/splash (the
+  native icons are still Capacitor's default), and a first device build. Owner-only:
+  MOBILE-5 tenancy decision, PWA-3 icon call, app name/appId, Apple + Google accounts,
+  a Mac for the iOS build. Update this line as each is resolved so it never goes
   stale.
 
 ## Capturing ideas — do this any time, unprompted
