@@ -10,6 +10,7 @@ import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailAct
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
 import { authErrorMessage, callbackFailureMessage, isWrongCredentials, isEmailNotConfirmed, reportAuthFailure } from "../utils/authErrors";
+import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from "../utils/installPrompt";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -259,6 +260,7 @@ export default function LoginPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isInAppBrowser()) { setError(GOOGLE_IN_APP_MESSAGE); return; }
     // Marketplace buyer links carry ?as=buyer so the OAuth callback materialises a
     // buyer profile -> /account. No visible buyer/seller choice on the page itself.
     if (searchParams.get("as") === "buyer") markBuyerIntent();

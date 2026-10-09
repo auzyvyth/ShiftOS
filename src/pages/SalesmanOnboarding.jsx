@@ -11,6 +11,7 @@ import { emailActionGate, EMAIL_ACTIONS } from '../utils/authThrottle';
 import { advanceOnEnter } from '../utils/onboardingKeys';
 import { PLAN_CONFIG } from '../utils/planConfig';
 import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
+import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -365,6 +366,7 @@ export default function SalesmanOnboarding() {
   };
 
   const signInWithGoogle = async () => {
+    if (isInAppBrowser()) { setErr(GOOGLE_IN_APP_MESSAGE); return; }
     sessionStorage.setItem('ob_plan_slug', tier);
     sessionStorage.setItem('ob_account_type', 'salesman');
     sessionStorage.setItem('ob_agreed', '1');

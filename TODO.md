@@ -4879,6 +4879,13 @@ native build.
   `job_title` bug elsewhere in this file: the column existed, nothing ever selected
   it). Added both columns to the select. DashboardPage's own fetch already used
   `select("*")`, so it didn't need the same fix.
+> **Owner, 2026-10-09: store work PAUSED until there is revenue** ("everything else
+> needs money, and a technical partner"). Focus is users + revenue. Don't push MOBILE-8..11
+> unprompted; the CLAUDE.md "advance it every session" rule is suspended by this call.
+- [ ] **SIGNUP-1 (LOW): phone + page link are only saved at the last step.**
+  `src/pages/SalesmanOnboarding.jsx` steps 3 and 4 just `setStep()`; nothing is written
+  until Activate. A phone dying on step 4/5 means retyping two fields on return (name,
+  plan and terms ARE kept). Fix if drop-off shows up there: save phone on step 3's Next.
 - [ ] **MOBILE-8 (BUILD): push does not work inside the native app.** Web push needs
   a service worker, which a Capacitor WebView does not run, so every seller alert that
   works on the installed PWA is silent in the store app. Needs `@capacitor/push-notifications`

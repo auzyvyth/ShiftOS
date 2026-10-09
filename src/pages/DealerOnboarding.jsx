@@ -9,6 +9,7 @@ import { MY_STATES, cityOptionsFor } from '../utils/locations';
 import DealerPendingApproval from '../components/DealerPendingApproval';
 import useAuthCaptcha from '../hooks/useAuthCaptcha';
 import { advanceOnEnter } from '../utils/onboardingKeys';
+import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -351,6 +352,7 @@ export default function DealerOnboarding() {
   };
 
   const signInWithGoogle = async () => {
+    if (isInAppBrowser()) { setErr(GOOGLE_IN_APP_MESSAGE); return; }
     sessionStorage.setItem('ob_plan_slug', tier);
     sessionStorage.setItem('ob_account_type', 'dealer');
     sessionStorage.setItem('ob_agreed', '1');

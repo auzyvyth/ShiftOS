@@ -140,7 +140,7 @@ export default function PushPromptStrip({
     return () => { cancelled = true; };
   }, [client, userIdProp]);
 
-  const { supported, configured, permission, subscribed, busy, enable } = usePushNotifications(userId, client);
+  const { supported, configured, permission, subscribed, checked, busy, enable } = usePushNotifications(userId, client);
 
   // Retire the confirmation on its own. Cleared on unmount so a panel switched
   // away from mid-countdown does not set state into a dead component.
@@ -183,7 +183,10 @@ export default function PushPromptStrip({
     </>);
   }
 
-  if (!userId || !supported || !configured || subscribed) return null;
+  // `checked`: nothing until the first real check settles. Every panel used to
+  // show this strip for a second or two and then hide it for sellers who were
+  // already on. The hook also remembers the last answer per account.
+  if (!userId || !supported || !configured || subscribed || !checked) return null;
 
   // iOS refuses web push outside an installed PWA, so the button could never
   // succeed there. Say why rather than showing a dead button — or nothing.

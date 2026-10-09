@@ -231,7 +231,8 @@ const SETTINGS_GROUPS = [
 ];
 
 // Which tab each tour step rings, index-matched to TOUR_STEPS (step 0 is the
-// welcome card and rings nothing). One step per sidebar link — exactly the
+// welcome card and rings nothing). SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
+// the sidebar but was introduced 9th, so the ring jumped back up the menu. One step per sidebar link — exactly the
 // 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
 // anymore (see the tourStep effect): it opens the nav (the drawer on
 // mobile, always-visible on desktop) once and rings each link where it
@@ -240,8 +241,8 @@ const SETTINGS_GROUPS = [
 // buried inside page content (sub-tab pills, the invite box).
 
 const TOUR_TABS = [
- null, "dashboard", "listings", "leads", "enquiries", "sold",
- "analytics", "loans", "outreach", "chat", "settings",
+ null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
+ "analytics", "loans", "outreach", "settings",
 ];
 
 
@@ -6164,13 +6165,13 @@ export default function SalesmanPremium() {
  { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "A quick walk down the menu — everything your plan unlocks, one link at a time." },
  { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
  { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop. The Add-ons pill next to Cars is your paid extras catalogue." },
+ { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
  { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
  { icon: MessageSquare, title: "Inbox", body: "Viewing appointments and buyer messages both land here. Bookings — confirm, reschedule, cancel or send a WA reminder. Lead History — everyone who messaged through your listing cards; reply with templates or convert them into pipeline leads in one tap." },
  { icon: ClipboardList, title: "Sold", body: "Everything after a won deal lives here. Handover is the 8-step Malaysian paperwork checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. Customers is everyone who's bought from you, with road tax and insurance expiry tracked so the app tells you who's due for a renewal call or ready to trade up." },
  { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
  { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
  { icon: Megaphone, title: "Outreach", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
- { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
  { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it at the bottom of this page to unlock the full panel — shared stock, team leads, commission tracking and more." },
  ];
 
