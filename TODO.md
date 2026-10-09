@@ -197,11 +197,14 @@ of `src/config/salesmanLandingCopy.js`. Still open:
 - [ ] DDL queued for after 22:00: `20261003c_drop_sambung_columns.sql` was never
   applied (`public_car_listings` still has the five `sambung_*` columns, all
   empty). Re-read the live view def first: it was written against 2026-10-03.
-- [ ] ANALYTICS-SPOOF: `analytics_insert_v2` on `analytics_events` accepts any
-  `salesman_slug`/`dealer_id` from anyone, rate-limited only on a `session_id`
-  the browser invents. A script can inflate any seller's views and WhatsApp
-  taps. Fix needs a server route with a per-IP limit (like `/api/wa` in
-  `middleware.js`) and the anon INSERT policy dropped. Its own session.
+- [ ] ANALYTICS-SPOOF — CODE DONE 2026-10-09, two steps left, IN ORDER:
+  (1) ship to prod: `trackEvent` (src/utils/analytics.js) now posts to `/api/track`
+  (api/track.js, 120/min per IP in middleware.js; dealer_id taken from the car,
+  shape check in lib/analyticsEvent.js, `npm run test:analytics`).
+  (2) ONLY THEN, after 22:00 MYT, apply `20261009a_analytics_insert_server_only.sql`
+  (drops `analytics_insert_v2`, revokes INSERT). Before step 1 is live it would drop
+  every event. Also fixed: CarDetailPage + HomePage inserted page_view with no
+  session_id, so the old policy had rejected all of them (and they skipped consent).
 
 ## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
 Pattern: the console painted raw columns (approval_status, is_active,
@@ -231,7 +234,11 @@ inside self-rolling-back transactions.
 - [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
   -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
   role outside the seller set (deployed v23).
-- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (owner confirmed 2026-10-06: the service key IS set in
+- [ ] SEC-1 SELLER NUMBERS HARVESTABLE — UNBLOCKED 2026-10-09, one step left: apply
+  `20261009b_revoke_public_seller_number_rpcs.sql` after 22:00 MYT, then tap a live
+  WhatsApp + Call button. Proven safe from the API logs: prod's /api/wa already calls
+  with the sb_secret_ server key, and no browser code calls either RPC.
+  (History: owner confirmed 2026-10-06: the service key IS set in
   Vercel. Remaining: this branch must reach PRODUCTION first, then revoke -- revoking
   before that breaks every WhatsApp/Call button on the live site.) (CDP-3 defeated). `/api/wa` + `/api/call-number`
   called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
@@ -2884,8 +2891,16 @@ until these are done:**
 > with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
 > could not be exercised at all with the stub in place.
 
-- [ ] **DEP-1: the "0 vulnerabilities" above is STALE — it is 8 again (checked
-  2026-09-11).** Not a regression in our code; these are new advisories
+- [ ] **DEP-1 — mostly cleared 2026-10-09: 19 -> 11, 0 critical left.**
+  `npm audit fix --package-lock-only` (no xlsx download needed for that step) bumped
+  shell-quote/concurrently, proxy-addr, dompurify (the one that runs in the browser,
+  DashboardPage), sharp, source-map-js, brace-expansion, fast-uri. Lint, build and
+  `npm test` pass. LEFT, all build-time only, none ships to users: the Tailwind 3
+  watcher chain (braces/micromatch/chokidar/fast-glob/postcss-*) — only Tailwind 4
+  clears it, a real migration, not a bump; and `@capacitor/cli` (xcode/uuid) — needs
+  Capacitor 9, do it alongside the next native-build session.
+  Original entry: the "0 vulnerabilities" above is STALE — it is 8 again (checked
+  2026-09-11). Not a regression in our code; these are new advisories
   published against dependencies we already had. GitHub's Dependabot counts 9 on
   the default branch (it counts differently from npm).
   **None is production-reachable, which is why this is a scheduled bump and not
@@ -4617,6 +4632,9 @@ native build.
   stays `<project-ref>.supabase.co/auth/v1/verify?token=...` until a custom auth
   domain (paid Supabase add-on) makes it `auth.xdrive.my`. The template explains
   the unfamiliar domain in the fallback block rather than hiding it.
+  UPDATE 2026-10-09: owner set up custom SMTP through Resend and confirmed a test
+  signup email arrives from "ShiftOS", so (a) is DONE. Still open: paste the template,
+  and (b) the supabase.co link (paid custom auth domain).
 - [ ] **MOBILE-1 (CODE DONE, NOT SHIPPED — blocked on a staging auth test):
   migrate auth to PKCE.** The RESET-PAGE RACE FIX that testing this uncovered has
   been SPLIT OUT and shipped to prod on its own — it was a live bug with or
@@ -4864,6 +4882,27 @@ native build.
   `job_title` bug elsewhere in this file: the column existed, nothing ever selected
   it). Added both columns to the select. DashboardPage's own fetch already used
   `select("*")`, so it didn't need the same fix.
+> **Owner, 2026-10-09: store work PAUSED until there is revenue** ("everything else
+> needs money, and a technical partner"). Focus is users + revenue. Don't push MOBILE-8..11
+> unprompted; the CLAUDE.md "advance it every session" rule is suspended by this call.
+- [ ] **MOBILE-8 (BUILD): push does not work inside the native app.** Web push needs
+  a service worker, which a Capacitor WebView does not run, so every seller alert that
+  works on the installed PWA is silent in the store app. Needs `@capacitor/push-notifications`
+  (FCM for Android, APNs for iOS), the device token saved to `push_subscriptions`, and
+  `send-push` taught to send to those tokens. Found 2026-10-09: no such code exists.
+- [ ] **MOBILE-9 (BUILD): Google sign-in will not work in the app.** Google refuses OAuth
+  inside an embedded WebView (`disallowed_useragent`), and every `signInWithOAuth` passes
+  `redirectTo: window.location.origin` (= `capacitor://localhost` in the app), which never
+  returns to it. Needs a native Google sign-in plugin, or the system browser plus MOBILE-10.
+- [ ] **MOBILE-10 (BUILD): email links open the website, not the app.** Signup confirm,
+  magic link and password reset land in the browser; `android/app/src/main/AndroidManifest.xml`
+  has only the launcher intent-filter and nothing listens for `appUrlOpen`. Needs Android
+  App Links + iOS Universal Links (files served from xdrive.my) and `@capacitor/app`.
+- [ ] **MOBILE-11: store icon + splash are still Capacitor's default blue "X"**
+  (`android/app/src/main/res/mipmap-*/ic_launcher.png`, `ios/App/App/Assets.xcassets/AppIcon.appiconset`).
+  Blocked on PWA-3's icon decision; then generate every size with `@capacitor/assets`.
+- Privacy policy URL for the store listing: ALREADY EXISTS, `xdrive.my/privacy`
+  (src/pages/PrivacyPage.jsx). Re-read it against the stores' data-safety forms before submission.
 - [ ] **MOBILE-5: subdomain tenancy does not map onto a single app bundle.** `useTenant.js`
   resolves the dealer from the hostname (`<sub>.xdrive.my`); a native app has one fixed
   origin and no address bar. Not a bug today — but decide the in-app dealer-switching model

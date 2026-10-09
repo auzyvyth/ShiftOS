@@ -49,6 +49,18 @@ is('unknown role -> /account', r({ role: 'mystery' }), { url: '/account', hard: 
 is('dealer mid-signup resumes dealer wizard, not /plans',
    r({ role: 'dealer', onboarding_complete: false, full_name: 'Ali' }), { url: '/dealer-onboarding', hard: false });
 is('bare dealer stub -> plan chooser', r({ role: 'dealer', onboarding_complete: false }), { url: '/choose-plan', hard: false });
+{
+  const meta = (m) => ({ session: { user: { user_metadata: m } } });
+  is('bare stub that signed up as Premium rep -> Premium wizard',
+    resolvePostAuthRoute({ role: 'dealer', onboarding_complete: false }, meta({ account_type: 'salesman', tier: 'premium' })),
+    { url: '/salesman-onboarding/premium', hard: false });
+  is('bare stub that signed up as Lite rep -> Lite wizard',
+    resolvePostAuthRoute({ role: 'dealer', onboarding_complete: false }, meta({ account_type: 'salesman', tier: 'lite' })),
+    { url: '/salesman-onboarding/lite', hard: false });
+  is('bare stub that signed up as dealer -> dealer wizard at their plan',
+    resolvePostAuthRoute({ role: 'dealer', onboarding_complete: false }, meta({ account_type: 'dealer', tier: 'growth' })),
+    { url: '/dealer-onboarding/growth', hard: false });
+}
 is('premium rep mid-signup keeps premium tier',
    r({ role: 'salesman', plan: 'salesman_full', onboarding_complete: false }), { url: '/salesman-onboarding/premium', hard: false });
 is('premium hint from signup metadata wins over lite plan',

@@ -1,15 +1,7 @@
-import { supabase } from '../supabaseClient';
-import { hasConsent } from '../utils/consent';
-import { shouldSkipTracking } from '../utils/internalTraffic';
+// Ref-slug helpers. Writing an event is src/utils/analytics.js
+// trackEvent, which posts to /api/track; there is no second writer here.
 
-const SESSION_KEY = 'shiftos_session';
-const REF_KEY     = 'shiftos_ref';
-
-export function getSessionId() {
-  let sid = sessionStorage.getItem(SESSION_KEY);
-  if (!sid) { sid = crypto.randomUUID(); sessionStorage.setItem(SESSION_KEY, sid); }
-  return sid;
-}
+const REF_KEY = 'shiftos_ref';
 
 export function setRef(slug) {
   if (slug) sessionStorage.setItem(REF_KEY, slug);
@@ -17,49 +9,4 @@ export function setRef(slug) {
 
 export function getRef() {
   return sessionStorage.getItem(REF_KEY);
-}
-
-/**
- * Track an analytics event. Always includes dealer_id so the RLS policy
- * "dealer_reads_own_events" (dealer_id = auth.uid()) can scope reads correctly.
- *
- * When dealerId is provided (car-context events: car_view, whatsapp_click,
- * call_click) it is used directly.
- *
- * When dealerId is not provided (link_visit — no specific car in view), we
- * resolve it by: slug → salesman profile → dealership name → dealer profile.id
- */
-export async function trackEvent(eventType, { carId = null, carName = null, dealerId = null } = {}) {
-  if (!hasConsent('analytics')) return;
-  if (shouldSkipTracking()) return;
-  const slug = getRef();
-  if (!slug) return;
-
-  let resolvedDealerId = dealerId;
-
-  if (!resolvedDealerId) {
-    // Resolve dealer_id from the salesman's slug via dealership name match
-    const { data: salesman } = await supabase
-      .rpc('get_salesman_by_slug', { p_slug: slug })
-      .maybeSingle();
-
-    if (salesman?.dealership) {
-      const { data: dealer } = await supabase
-        .from('public_dealer_profiles')
-        .select('id')
-        .eq('dealership', salesman.dealership)
-        .limit(1)
-        .maybeSingle();
-      resolvedDealerId = dealer?.id || null;
-    }
-  }
-
-  await supabase.from('analytics_events').insert({
-    salesman_slug: slug,
-    event_type:    eventType,
-    car_id:        carId   || null,
-    car_name:      carName || null,
-    session_id:    getSessionId(),
-    dealer_id:     resolvedDealerId,
-  });
 }

@@ -74,7 +74,6 @@ import MarketplaceFooter from "../components/MarketplaceFooter";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
-import { shouldSkipTracking } from "../utils/internalTraffic";
 import { DEPOSIT_POLICY_COPY } from "../utils/agentTrust";
 
 /* ─── helpers ─── */
@@ -1300,16 +1299,14 @@ export default function CarDetailPage() {
 
       // Fire analytics immediately — no need to block page load on it
       const refSlug = getRef();
-      if (refSlug && carData.dealer_id && !shouldSkipTracking()) {
-        supabase
-          .from("analytics_events")
-          .insert({
-            event_type: "page_view",
-            salesman_slug: refSlug,
-            dealer_id: carData.dealer_id,
-            metadata: { page: window.location.pathname },
-          })
-          .then(() => {});
+      // Through trackEvent: this insert carried no session_id, so the old
+      // policy had rejected every one of these, and it skipped consent.
+      if (refSlug && carData.dealer_id) {
+        trackEvent(supabase, "page_view", {
+          salesman_slug: refSlug,
+          dealer_id: carData.dealer_id,
+          metadata: { page: window.location.pathname },
+        });
       }
 
       const simFields = SIM_FIELDS;

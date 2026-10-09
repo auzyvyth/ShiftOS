@@ -171,6 +171,18 @@ export async function healPushSubscription(userId, client = supabase) {
   }
 }
 
+// Per-account "was on last time" hint (see `subscribed` below). Holds a user id
+// and a 1/0, nothing else. Wrapped: storage can throw in private mode.
+const PUSH_HINT_PREFIX = 'xd_push_on_';
+function readPushHint(userId) {
+  if (!userId || !pushSupported() || Notification.permission !== 'granted') return false;
+  try { return localStorage.getItem(PUSH_HINT_PREFIX + userId) === '1'; } catch { return false; }
+}
+function writePushHint(userId, on) {
+  if (!userId) return;
+  try { localStorage.setItem(PUSH_HINT_PREFIX + userId, on ? '1' : '0'); } catch { /* non-fatal */ }
+}
+
 export function usePushNotifications(userId, client = supabase) {
   const supported = pushSupported();
 
@@ -180,8 +192,19 @@ export function usePushNotifications(userId, client = supabase) {
   const configured = VAPID_PUBLIC_KEY.length > 0;
 
   const [permission, setPermission] = useState(() => (supported ? Notification.permission : 'unsupported'));
-  const [subscribed, setSubscribed] = useState(false);
+  // The last answer for this account on this device, so a seller who is already
+  // on does not watch the "turn on notifications" strip flash for the second or
+  // two the real check below takes. Only a HINT: sync() always re-checks and
+  // overwrites it, and it is ignored once the browser permission is not granted.
+  const [subscribed, setSubscribedState] = useState(() => readPushHint(userId));
+  // False until the first real check settles. Prompts render nothing before
+  // that, so a stale "off" can never flash either (PushPromptStrip).
+  const [checked, setChecked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const setSubscribed = useCallback((on) => {
+    setSubscribedState(on);
+    writePushHint(userId, on);
+  }, [userId]);
 
   // Reflect what is ACTUALLY true — browser subscription and stored row must
   // agree — so the toggle opens in the right position and never claims to be on
@@ -202,13 +225,22 @@ export function usePushNotifications(userId, client = supabase) {
         .maybeSingle();
 
       const ok = Boolean(data) && !error;
-      setSubscribed(ok);
+      // A failed read is not an answer: keep the last known state rather than
+      // flashing the prompt at someone whose device is fine.
+      if (!error) setSubscribed(ok);
       return ok;
     } catch {
-      setSubscribed(false);
       return false;
+    } finally {
+      if (userId) setChecked(true);
     }
-  }, [supported, userId, client]);
+  }, [supported, userId, client, setSubscribed]);
+
+  // A different account on this device: start from that account's own hint.
+  useEffect(() => {
+    setSubscribedState(readPushHint(userId));
+    setChecked(false);
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -251,7 +283,7 @@ export function usePushNotifications(userId, client = supabase) {
     } finally {
       setBusy(false);
     }
-  }, [supported, configured, userId, client]);
+  }, [supported, configured, userId, client, setSubscribed]);
 
   const disable = useCallback(async () => {
     if (!supported || !userId) return { ok: false, reason: 'unsupported' };
@@ -275,7 +307,7 @@ export function usePushNotifications(userId, client = supabase) {
     } finally {
       setBusy(false);
     }
-  }, [supported, userId, client]);
+  }, [supported, userId, client, setSubscribed]);
 
   // Round-trips a real push through the push service, so it proves delivery end
   // to end rather than just that the row saved. send-push forces a logged-in
@@ -314,7 +346,7 @@ export function usePushNotifications(userId, client = supabase) {
     }
   }, [subscribed, sync, client]);
 
-  return { supported, configured, permission, subscribed, busy, enable, disable, sendTest };
+  return { supported, configured, permission, subscribed, checked, busy, enable, disable, sendTest };
 }
 
 export default usePushNotifications;

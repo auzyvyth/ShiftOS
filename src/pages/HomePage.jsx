@@ -64,7 +64,6 @@ import {
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
-import { shouldSkipTracking } from "../utils/internalTraffic";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type";
@@ -311,16 +310,14 @@ const HomePage = () => {
   useEffect(() => {
     if (!tenant?.id) return;
     const slug = getRef();
-    if (slug && !shouldSkipTracking()) {
-      supabase
-        .from("analytics_events")
-        .insert({
-          event_type: "page_view",
-          salesman_slug: slug,
-          dealer_id: tenant.id,
-          metadata: { page: window.location.pathname },
-        })
-        .then(() => {});
+    // Through trackEvent: this insert carried no session_id, so the old
+    // policy had rejected every one of these, and it skipped consent.
+    if (slug) {
+      trackEvent(supabase, "page_view", {
+        salesman_slug: slug,
+        dealer_id: tenant.id,
+        metadata: { page: window.location.pathname },
+      });
     }
   }, [tenant?.id]);
 

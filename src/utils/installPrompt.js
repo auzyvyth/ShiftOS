@@ -141,8 +141,17 @@ export function isStandalone() {
 // showing them instructions they physically cannot follow is pure noise.
 export function isInAppBrowser() {
   if (typeof navigator === 'undefined') return false;
-  return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|TikTok|; wv\)/i.test(navigator.userAgent || '');
+  // musical_ly / Bytedance: TikTok's in-app browser on iPhone never says "TikTok".
+  return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|TikTok|musical_ly|Bytedance|; wv\)/i.test(navigator.userAgent || '');
 }
+
+// Google refuses to sign anyone in from inside an app's built-in browser
+// ("Error 403: disallowed_useragent"), and that is where a TikTok / Instagram
+// bio link opens. Every "Continue with Google" button checks this first and
+// shows this line instead of sending the person into Google's error page.
+// Email + password works fine in those browsers.
+export const GOOGLE_IN_APP_MESSAGE =
+  "Google sign-in doesn't work inside TikTok, Instagram or Facebook. Use your email and password instead, or open this page in Chrome or Safari (tap the ... menu, then Open in browser).";
 
 // iOS has no beforeinstallprompt — add-to-home-screen is a manual Share-sheet
 // action, and ONLY Safari can do it (Chrome/Firefox/Edge on iOS create a plain

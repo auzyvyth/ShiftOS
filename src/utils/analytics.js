@@ -1,6 +1,7 @@
 import { getShareChannel } from "./refTracking";
 import { hasConsent } from "./consent";
 import { shouldSkipTracking } from "./internalTraffic";
+import { apiUrl } from "./apiUrl";
 
 const SESSION_KEY = "xdrive_session_id";
 
@@ -20,8 +21,13 @@ export function getSlugFromURL() {
 /**
  * Fire an analytics event. Always fails silently — analytics must never break a page.
  * Automatically attaches session_id, page_path, referrer, and salesman_slug from URL.
+ *
+ * Writes go through /api/track (rate-limited per IP; the server sets dealer_id
+ * from the car), never straight into analytics_events (ANALYTICS-SPOOF). The
+ * first argument is unused and kept only so the ~20 call sites stay as they are.
  */
-export async function trackEvent(supabase, eventType, payload = {}) {
+// eslint-disable-next-line no-unused-vars
+export async function trackEvent(_supabase, eventType, payload = {}) {
   // Analytics tier of the cookie consent banner. No-op when the visitor has not
   // granted analytics (necessary/security telemetry doesn't route through here).
   if (!hasConsent("analytics")) return;
@@ -40,7 +46,13 @@ export async function trackEvent(supabase, eventType, payload = {}) {
     // analytics dashboard can break clicks down by platform.
     const channel = getShareChannel();
     if (channel) row.metadata = { ...(row.metadata || {}), channel };
-    await supabase.from("analytics_events").insert(row);
+    // keepalive: exit events fire on beforeunload and must outlive the page.
+    await fetch(apiUrl("/api/track"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(row),
+      keepalive: true,
+    });
   } catch (e) {
     console.warn("Analytics error:", e);
   }

@@ -57,7 +57,22 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
     (role === "dealer" || role === "owner") &&
     profile.onboarding_complete === false &&
     !profile.subdomain && !profile.full_name && !profile.ic_number && !profile.dealership;
-  if (bareStub) return { url: "/choose-plan", hard: false };
+  if (bareStub) {
+    // ...unless the account says what they signed up for. signUp() stamps
+    // account_type + tier on the account, so a rep who confirmed their email,
+    // then closed the app before typing a name, logs back in to THEIR wizard
+    // instead of the plans page. AuthCallbackPage already did this inline;
+    // /login and /auth/confirm did not.
+    const meta = session?.user?.user_metadata || {};
+    if (meta.account_type === "salesman") {
+      return { url: `/salesman-onboarding/${meta.tier === "premium" ? "premium" : "lite"}`, hard: false };
+    }
+    if (meta.account_type === "dealer") {
+      const plan = ["starter", "growth", "pro"].includes(meta.tier) ? meta.tier : "starter";
+      return { url: `/dealer-onboarding/${plan}`, hard: false };
+    }
+    return { url: "/choose-plan", hard: false };
+  }
 
   if (role === "dealer" || role === "owner") {
     // A subdomain means onboarding finished, whatever the flag says (flag drift
