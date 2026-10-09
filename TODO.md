@@ -2884,8 +2884,16 @@ until these are done:**
 > with a real dealer PDF and an xlsx before trusting it, since the xlsx half of that page
 > could not be exercised at all with the stub in place.
 
-- [ ] **DEP-1: the "0 vulnerabilities" above is STALE — it is 8 again (checked
-  2026-09-11).** Not a regression in our code; these are new advisories
+- [ ] **DEP-1 — mostly cleared 2026-10-09: 19 -> 11, 0 critical left.**
+  `npm audit fix --package-lock-only` (no xlsx download needed for that step) bumped
+  shell-quote/concurrently, proxy-addr, dompurify (the one that runs in the browser,
+  DashboardPage), sharp, source-map-js, brace-expansion, fast-uri. Lint, build and
+  `npm test` pass. LEFT, all build-time only, none ships to users: the Tailwind 3
+  watcher chain (braces/micromatch/chokidar/fast-glob/postcss-*) — only Tailwind 4
+  clears it, a real migration, not a bump; and `@capacitor/cli` (xcode/uuid) — needs
+  Capacitor 9, do it alongside the next native-build session.
+  Original entry: the "0 vulnerabilities" above is STALE — it is 8 again (checked
+  2026-09-11). Not a regression in our code; these are new advisories
   published against dependencies we already had. GitHub's Dependabot counts 9 on
   the default branch (it counts differently from npm).
   **None is production-reachable, which is why this is a scheduled bump and not
