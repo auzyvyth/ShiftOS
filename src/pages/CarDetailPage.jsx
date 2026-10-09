@@ -4239,9 +4239,15 @@ export default function CarDetailPage() {
             )}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', cursor: lbZoom > 1 ? (lbDrag.current.active ? 'grabbing' : 'grab') : 'default', overflow: 'hidden' }}
               onMouseDown={lbMouseDown} onWheel={lbWheel} onTouchStart={lbTouchStart} onTouchEnd={lbTouchEnd}>
-              <img className="cdp-lb-img" src={images[activeIdx]} alt={carTitle} draggable={false}
+              {/* Was the raw storage file (up to 3.9MB per swipe). Resized WebP
+                  like every other photo; key resets the fallback flag per photo. */}
+              <img key={activeIdx} className="cdp-lb-img" src={disp(images[activeIdx], 1600)} alt={carTitle} draggable={false}
                 style={{ transform: `translate(${lbPan.x}px,${lbPan.y}px) scale(${lbZoom})`, transformOrigin: 'center center', transition: lbDrag.current.active ? 'none' : 'transform 0.08s ease' }}
-                onError={e => { e.target.src = '/placeholder-car.jpg'; }}
+                onError={e => {
+                  const el = e.currentTarget;
+                  if (!el.dataset.fb && images[activeIdx]) { el.dataset.fb = '1'; el.src = images[activeIdx]; }
+                  else if (el.dataset.fb !== 'done') { el.dataset.fb = 'done'; el.src = '/placeholder-car.jpg'; }
+                }}
               />
             </div>
             <div className="cdp-lb-zoom-bar">

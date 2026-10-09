@@ -38,6 +38,12 @@
 		<meta name="twitter:card" content="summary_large_image" />
 		<link rel="preconnect" href="https://lemdkdizdlcirhbzqlos.supabase.co">
 		<link rel="dns-prefetch" href="https://lemdkdizdlcirhbzqlos.supabase.co">
+		<!-- Every car photo is served resized by wsrv.nl (src/utils/img.js cdnImg).
+		     Open that connection now so the first photo doesn't also wait for
+		     DNS + TLS to a new host. No crossorigin: <img> requests are no-cors,
+		     and a crossorigin preconnect would open a socket they can't use. -->
+		<link rel="preconnect" href="https://wsrv.nl">
+		<link rel="dns-prefetch" href="https://wsrv.nl">
 		<link rel="preconnect" href="https://fonts.googleapis.com">
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'">

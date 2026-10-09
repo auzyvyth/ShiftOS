@@ -12,6 +12,7 @@ import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { decodeChassis, isChassisCode, isMalaysianVin } from "../utils/chassisDecode";
 import { color } from "../theme/tokens";
 import AppraisalChecklist, { summarizeAppraisal } from "./AppraisalChecklist";
+import { compressListingPhoto } from "../utils/compressImage";
 
 // Official Malaysian transfer baseline (government rates, before runner markup)
 const JPJ_GOVT_FEE = 100;
@@ -312,9 +313,11 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
     setUploading(true);
     try {
       const urls = [];
-      for (const file of accepted) {
+      for (const raw of accepted) {
+        // Was uploading the raw camera file; same preset as every car photo.
+        const file = await compressListingPhoto(raw);
         const path = `stock/${dealerId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error: upErr } = await supabase.storage.from("car-images").upload(path, file, { cacheControl: '31536000' });
+        const { error: upErr } = await supabase.storage.from("car-images").upload(path, file, { contentType: file.type || "image/jpeg", cacheControl: '31536000' });
         if (upErr) throw upErr;
         urls.push(supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl);
       }

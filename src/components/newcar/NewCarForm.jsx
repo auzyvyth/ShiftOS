@@ -3,6 +3,7 @@ import { Camera, Check, ChevronLeft, ImagePlus, X } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { groupByModel, rm, priceBasis } from "../../utils/newCars";
+import { compressListingPhoto } from "../../utils/compressImage";
 
 // NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota).
 // Rendered by CarForm and CarFormFast in place of the used-car form when
@@ -37,22 +38,6 @@ function saveError(e) {
   if (m.includes("subscription_inactive")) return "Your plan has ended. Activate it to add cards.";
   return "Couldn't save. Try again.";
 }
-
-const compress = (file, maxWidth = 1400, quality = 0.82) => new Promise((resolve) => {
-  const img = new Image();
-  const url = URL.createObjectURL(file);
-  img.onload = () => {
-    URL.revokeObjectURL(url);
-    const scale = Math.min(1, maxWidth / img.width);
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.width * scale);
-    c.height = Math.round(img.height * scale);
-    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-    c.toBlob((b) => resolve(b ? new File([b], "photo.jpg", { type: "image/jpeg" }) : file), "image/jpeg", quality);
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
-  img.src = url;
-});
 
 export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUseUsedForm, onOpenNewCars, dark = false }) {
   const th = dark ? themes.dark : themes.light;
@@ -119,7 +104,7 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
     setUploading((n) => n + list.length);
     await Promise.all(list.map(async (file) => {
       try {
-        const small = await compress(file);
+        const small = await compressListingPhoto(file);
         const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
         const { error: e } = await supabase.storage.from(BUCKET).upload(path, small, { upsert: true, contentType: "image/jpeg", cacheControl: "31536000" });
         if (e) throw e;
