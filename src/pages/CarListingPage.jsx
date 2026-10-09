@@ -136,7 +136,7 @@ function PricePopover({ minPrice, maxPrice, onApply }) {
                 border: 'none', fontSize: '13px', fontWeight: active ? 700 : 500,
                 background: active ? 'rgba(220,38,38,0.08)' : 'transparent',
                 color: disabled ? '#d1d5db' : active ? '#dc2626' : '#374151',
-                transition: 'all 0.1s',
+                transition: 'background-color 100ms var(--xd-ease-out), border-color 100ms var(--xd-ease-out), color 100ms var(--xd-ease-out), box-shadow 100ms var(--xd-ease-out), transform 100ms var(--xd-ease-out), opacity 100ms var(--xd-ease-out)',
               }}
             >{s.label}</button>
           );
@@ -216,7 +216,7 @@ function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
     border:`1px solid ${active ? 'var(--fp-ink)' : 'var(--fp-border)'}`,
     background: active ? 'var(--fp-ink)' : 'var(--fp-input)',
     color: active ? 'var(--fp-ink-text)' : 'var(--fp-text)',
-    fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s',
+    fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)',
     lineHeight:'1.4',
   });
   const sel = {
@@ -233,7 +233,7 @@ function FiltersPanel({ isMarketplace, draft, setDraftParam }) {
     <div style={fpVars}>
       <FG title="Hot Deals">
         <button
-          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: d.hot_deals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${d.hot_deals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:d.hot_deals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'all 0.12s' }}
+          style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', background: d.hot_deals?'rgba(251,146,60,0.06)':'var(--fp-input)', border:`1px solid ${d.hot_deals?'rgba(251,146,60,0.35)':'var(--fp-border)'}`, borderRadius:'10px', padding:'10px 14px', cursor:'pointer', color:d.hot_deals?'#d97706':'var(--fp-text)', fontSize:'13px', fontWeight:'700', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)' }}
           onClick={()=>setDraftParam('hot_deals', d.hot_deals?'':'true')}
         >
           <span style={{ display:'flex', alignItems:'center', gap:'7px' }}><Flame size={13}/> Hot Deals Only</span>
@@ -726,8 +726,6 @@ export default function CarListingPage() {
         @media(min-width:641px) and (max-width:900px) {
           .cl-grid { grid-template-columns:repeat(2,1fr) !important }
         }
-        .sc-root { transition:transform 0.18s ease,box-shadow 0.18s ease; }
-        @media (hover:hover) and (pointer:fine) { .sc-root:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.09) !important; } }
       `}</style>
 
       {isMarketplace ? <MarketplaceHeader /> : <Header />}
@@ -822,7 +820,7 @@ export default function CarListingPage() {
                     edge; inert on desktop where the controls box is content-width. */}
                 <button
                   onClick={()=>setDrawerOpen(true)}
-                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s', whiteSpace:'nowrap' }}
+                  style={{ display:'flex', alignItems:'center', gap:'5px', flexShrink:0, marginLeft:'auto', background:activeChips.length>0?'rgba(220,38,38,0.07)':T.ctrlBg, border:`1px solid ${activeChips.length>0?'rgba(220,38,38,0.3)':T.ctrlBorder}`, borderRadius:'9px', padding:'8px 11px', color:activeChips.length>0?'#dc2626':T.textMuted, fontSize:'13px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
                 >
                   <SlidersHorizontal size={13}/> Filters {activeChips.length>0&&`(${activeChips.length})`}
                 </button>
@@ -842,14 +840,14 @@ export default function CarListingPage() {
           <div style={{ maxWidth:'1380px', margin:'0 auto', padding:'0 20px' }}>
             <div className="cl-chips-scroll" style={{ display:'flex', gap:'7px', overflowX:'auto', paddingBottom:'2px', scrollbarWidth:'none' }}>
               <button
-                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 11px', borderRadius:'6px', border:`1px solid ${hotDeals?T.ink:T.chipBorder}`, background:hotDeals?T.ink:T.chipBg, color:hotDeals?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                style={{ flexShrink:0, display:'flex', alignItems:'center', gap:'5px', padding:'5px 11px', borderRadius:'6px', border:`1px solid ${hotDeals?T.ink:T.chipBorder}`, background:hotDeals?T.ink:T.chipBg, color:hotDeals?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
                 onClick={()=>setParam('hot_deals',hotDeals?'':'true')}
               >
                 <Flame size={11} color={hotDeals ? T.inkText : '#ea580c'}/> Hot Deals
               </button>
               {BODY_TYPES.map(bt=>(
                 <button key={bt}
-                  style={{ flexShrink:0, padding:'5px 11px', borderRadius:'6px', border:`1px solid ${bodyType===bt?T.ink:T.chipBorder}`, background:bodyType===bt?T.ink:T.chipBg, color:bodyType===bt?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'all 0.12s', whiteSpace:'nowrap' }}
+                  style={{ flexShrink:0, padding:'5px 11px', borderRadius:'6px', border:`1px solid ${bodyType===bt?T.ink:T.chipBorder}`, background:bodyType===bt?T.ink:T.chipBg, color:bodyType===bt?T.inkText:T.chipText, fontSize:'12px', fontWeight:'600', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)', whiteSpace:'nowrap' }}
                   onClick={()=>setParam('body_type',bodyType===bt?'':bt)}
                 >
                   {bt}

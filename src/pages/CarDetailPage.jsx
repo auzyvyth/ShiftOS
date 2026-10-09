@@ -2117,7 +2117,7 @@ export default function CarDetailPage() {
         }
         .cdp-mosaic-cell { overflow: hidden; position: relative; cursor: zoom-in; transition: filter 0.3s; width: 100%; height: 100%; }
         @media (hover:hover) and (pointer:fine) { .cdp-mosaic-cell:hover { filter: brightness(1.08); } }
-        .cdp-mosaic-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
+        .cdp-mosaic-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 300ms var(--xd-ease-out); }
         @media (hover:hover) and (pointer:fine) { .cdp-mosaic-cell:hover img { transform: scale(1.03); } }
         .cdp-mosaic-mobile { display: none; position: relative; overflow: hidden; background: #080f18; }
 
@@ -2127,7 +2127,7 @@ export default function CarDetailPage() {
           background: rgba(6,12,20,0.6); border: 1px solid rgba(255,255,255,0.1); color: white;
           width: 38px; height: 38px; border-radius: 50%;
           cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: all 0.2s; z-index: 4;
+          transition: background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out); z-index: 4;
         }
         @media (hover:hover) and (pointer:fine) { .cdp-arrow:hover { background: rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5); } }
         .cdp-arrow-l { left: 14px; }
@@ -2345,7 +2345,7 @@ export default function CarDetailPage() {
             const trackShift = Math.min(0, Math.max(minOffset, rawOffset));
             return (
               <div className="cdp-dots" style={{ zIndex:4 }}>
-                <div style={{ display:'flex', gap:6, transform:`translateX(${trackShift}px)`, transition:'transform 0.35s ease' }}>
+                <div style={{ display:'flex', gap:6, transform:`translateX(${trackShift}px)`, transition:'transform 300ms var(--xd-ease-in-out)' }}>
                   {images.map((_, i) => {
                     const dist = Math.abs(i - activeIdx);
                     return (
@@ -2584,7 +2584,7 @@ export default function CarDetailPage() {
                 <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:`1px solid ${th.border}` }}>
                   {tabs.map(t => (
                     <button key={t.key} onClick={() => setDetailTab(t.key)}
-                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"var(--xd-font-body)", transition:'all .2s', letterSpacing:'0.05em' }}>
+                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"var(--xd-font-body)", transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)', letterSpacing:'0.05em' }}>
                       {t.label}
                     </button>
                   ))}
@@ -3197,7 +3197,7 @@ export default function CarDetailPage() {
                               display: "flex",
                               gap: 6,
                               transform: `translateX(${trackShift}px)`,
-                              transition: "transform 0.35s ease",
+                              transition: "transform 300ms var(--xd-ease-in-out)",
                             }}
                           >
                             {images.map((_, i) => {
@@ -3226,7 +3226,7 @@ export default function CarDetailPage() {
                                           ? "scale(0.9)"
                                           : dist === 2
                                             ? "scale(0.7)"
-                                            : "scale(0)",
+                                            : "scale(0.5)",
                                     pointerEvents: dist > 2 ? "none" : "auto",
                                   }}
                                 />
@@ -4200,7 +4200,7 @@ export default function CarDetailPage() {
                   <p style={{ color: th.textMuted, fontSize: 12, margin: 0 }}>{carTitle}</p>
                 </div>
                 <button onClick={() => setCalcOpen(false)}
-                  style={{ background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: th.textMuted, transition: 'all .2s' }}>
+                  style={{ background: th.inputBg, border: `1px solid ${th.border}`, borderRadius: '50%', width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: th.textMuted, transition: 'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)' }}>
                   <X size={16} />
                 </button>
               </div>
@@ -4509,7 +4509,7 @@ export default function CarDetailPage() {
                       onClick={() => { setBookingConsent(c => ({...c, appear: !c.appear})); clearBookError('consent'); }}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', marginBottom:12, userSelect:'none' }}
                     >
-                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}>
                         {bookingConsent.appear && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
                       <span style={{ fontSize:12, color:th.textSec, fontFamily:"var(--xd-font-body)", lineHeight:1.5 }}>
@@ -4520,7 +4520,7 @@ export default function CarDetailPage() {
                       onClick={() => { setBookingConsent(c => ({...c, whatsapp: !c.whatsapp})); clearBookError('consent'); }}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', userSelect:'none' }}
                     >
-                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'all 0.15s' }}>
+                      <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}>
                         {bookingConsent.whatsapp && <Check size={11} color="white" strokeWidth={3} />}
                       </div>
                       <span style={{ fontSize:12, color:th.textSec, fontFamily:"var(--xd-font-body)", lineHeight:1.5 }}>
@@ -4555,7 +4555,7 @@ export default function CarDetailPage() {
                       opacity: submitting ? 0.6 : 1,
                       fontFamily:"var(--xd-font-body)",
                       letterSpacing:'0.02em',
-                      transition:'all 0.2s',
+                      transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)',
                       boxShadow:'0 4px 20px rgba(220,38,38,0.25)',
                     }}
                   >

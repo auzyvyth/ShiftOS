@@ -328,7 +328,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         /* Hover only for a real mouse: on a touch tablet the tap left :hover
            stuck, so tapping the trigger again to close did nothing. */
         @media (hover:hover) and (pointer:fine) { .mh-nav-item:hover .mh-menu { display:block; } }
-        .mh-mega { background:#fff; border:1px solid #ECEAE3; border-radius:20px; box-shadow:0 26px 70px rgba(15,23,42,.2); padding:14px; display:flex; gap:12px; animation:mhFade .17s ease; }
+        .mh-mega { background:#fff; border:1px solid #ECEAE3; border-radius:20px; box-shadow:0 26px 70px rgba(15,23,42,.2); padding:14px; display:flex; gap:12px; animation:mhFade 180ms var(--xd-ease-out); }
         @keyframes mhFade { from{opacity:0;transform:translateY(-7px);} to{opacity:1;transform:none;} }
         .mh-mega-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:520px; }
         .mh-row { display:flex; align-items:center; gap:13px; padding:13px 14px; border-radius:14px; text-decoration:none; transition:background .13s; position:relative; }

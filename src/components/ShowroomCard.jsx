@@ -409,7 +409,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               if (compareFull) { toast.error('Compare full — remove a car first (max 4)', { duration: 2500 }); return; }
               onCompare && onCompare();
             }}
-            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : c.cmpBg, border: `1px solid ${inCompare ? '#dc2626' : c.cmpBorder}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : c.cmpText, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', flexShrink: 0 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: inCompare ? '#dc2626' : c.cmpBg, border: `1px solid ${inCompare ? '#dc2626' : c.cmpBorder}`, borderRadius: '7px', padding: '4px 9px', color: inCompare ? '#fff' : c.cmpText, fontSize: '11px', fontWeight: '700', cursor: 'pointer', fontFamily: "'Outfit',sans-serif", transition: 'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)', flexShrink: 0 }}
           >
             <ArrowLeftRight size={10} />{inCompare ? 'Added' : 'Compare'}
           </button>
@@ -436,7 +436,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               e.stopPropagation();
               setWaGateOpen(true);
             }}
-            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#25D366', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #1ea952', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'all 0.15s', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '7px 0', background: isSold ? 'rgba(0,0,0,0.03)' : '#25D366', border: isSold ? '1px solid rgba(0,0,0,0.07)' : '1px solid #1ea952', color: isSold ? '#9ca3af' : '#ffffff', borderRadius: '8px', textDecoration: 'none', fontSize: '12px', fontWeight: '700', fontFamily: "'Outfit',sans-serif", transition: 'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)', pointerEvents: isSold ? 'none' : 'auto', boxSizing: 'border-box' }}
           >
             <MessageCircle size={13} /> WhatsApp
           </a>
@@ -458,7 +458,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               title={isSaved(car.id) ? 'Remove from saved' : 'Save this car'}
               aria-label={`${isSaved(car.id) ? 'Remove from saved' : 'Save'} ${[year, brand, model].filter(Boolean).join(' ')}`}
               aria-pressed={isSaved(car.id)}
-              style={{ width: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: isSaved(car.id) ? '1px solid rgba(220,38,38,0.35)' : `1px solid ${c.saveBorder}`, background: isSaved(car.id) ? 'rgba(220,38,38,0.08)' : c.saveBg, cursor: 'pointer', transition: 'all 0.15s', color: isSaved(car.id) ? '#dc2626' : c.saveIcon }}
+              style={{ width: '36px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', border: isSaved(car.id) ? '1px solid rgba(220,38,38,0.35)' : `1px solid ${c.saveBorder}`, background: isSaved(car.id) ? 'rgba(220,38,38,0.08)' : c.saveBg, cursor: 'pointer', transition: 'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)', color: isSaved(car.id) ? '#dc2626' : c.saveIcon }}
             >
               <Heart size={14} fill={isSaved(car.id) ? '#dc2626' : 'none'} stroke="currentColor" strokeWidth={2} />
             </button>

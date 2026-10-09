@@ -122,7 +122,7 @@ export default function AdvancedSearchModal({ open, onClose, heroQ, onApply, cur
               <div style={{ display:'flex', gap:'5px', flexWrap:'wrap' }}>
                 {row.options.map(o => (
                   <button key={o.val} type="button" onClick={() => row.set(row.get === o.val ? '' : o.val)}
-                    style={{ padding:'5px 11px', borderRadius:'6px', border:`1px solid ${row.get===o.val?'#ffffff':'rgba(255,255,255,0.12)'}`, background: row.get===o.val?'#ffffff':'transparent', color: row.get===o.val?'#0f1115':'rgba(255,255,255,0.6)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.12s' }}>
+                    style={{ padding:'5px 11px', borderRadius:'6px', border:`1px solid ${row.get===o.val?'#ffffff':'rgba(255,255,255,0.12)'}`, background: row.get===o.val?'#ffffff':'transparent', color: row.get===o.val?'#0f1115':'rgba(255,255,255,0.6)', fontSize:'11px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 120ms var(--xd-ease-out), border-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out), box-shadow 120ms var(--xd-ease-out), transform 120ms var(--xd-ease-out), opacity 120ms var(--xd-ease-out)' }}>
                     {o.label}
                   </button>
                 ))}

@@ -690,10 +690,6 @@ export default function MarketplacePage() {
         @media (max-width: 900px) { .mp-cars-grid { grid-template-columns: 1fr !important; } }
 
         /* ── Featured cards ── */
-        .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
-        @media (hover:hover) and (pointer:fine) { .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) } }
-        .mp-feat-img  { transition:transform .45s ease;width:100%;height:100%;object-fit:cover;display:block }
-        @media (hover:hover) and (pointer:fine) { .mp-feat-card:hover .mp-feat-img { transform:scale(1.06) } }
 
         /* ── Hero search bar — mobile-first: stacked column so the input gets
               full width for its placeholder instead of being squeezed next to
@@ -836,7 +832,7 @@ export default function MarketplacePage() {
            card language as the showroom grid below, so the hero's tiles and the
            results are recognisably the same object. Car photos are shot on light
            backgrounds; they sit on white far better than on near-black. */
-        .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+        .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
         @media (hover:hover) and (pointer:fine) { .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); } }
         .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
         .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #111827; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(0,0,0,.06); }
@@ -1038,7 +1034,7 @@ export default function MarketplacePage() {
                       fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
                       background: heroTab === id ? '#dc2626' : 'transparent',
                       color: heroTab === id ? '#fff' : '#4b5563',
-                      transition:'all 0.2s', whiteSpace:'nowrap',
+                      transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)', whiteSpace:'nowrap',
                     }}
                   >{label}</button>
                 ))}
@@ -1329,7 +1325,7 @@ export default function MarketplacePage() {
                   {loadPage < 2 ? (
                     <button
                       onClick={() => setLoadPage(p => p + 1)}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}
                       onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#fef2f2'; }}
                       onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
                     >
@@ -1354,7 +1350,7 @@ export default function MarketplacePage() {
                         if (q)            p.set('q', q);
                         navigate(`/showroom?${p.toString()}`);
                       }}
-                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
+                      style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}
                       onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#b91c1c'; }}
                       onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                     >
