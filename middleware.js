@@ -12,6 +12,7 @@ const PROTECTED = new Set([
   '/api/booking',
   '/api/call-number',
   '/api/wa',
+  '/api/track',
   '/api/waitlist',
   '/api/ai-messages',
   '/api/car-specs',
@@ -30,6 +31,10 @@ const LIMITS = {
   // sellers fits easily; walking every listing for numbers does not.
   '/api/wa':           { window: '60 s',  max: 10, prefix: 'rl:wa' },
   '/api/waitlist':     { window: '300 s', max: 3,  prefix: 'rl:waitlist' },
+  // ANALYTICS-SPOOF: one page fires several events (view, card clicks, exit).
+  // Generous because Malaysian mobile carriers put many phones behind one IP;
+  // a script inflating one seller's numbers still hits it fast.
+  '/api/track':        { window: '60 s',  max: 120, prefix: 'rl:track' },
   '/api/ai-messages':  { window: '60 s',  max: 20, prefix: 'rl:ai' },
   '/api/car-specs':    { window: '60 s',  max: 30, prefix: 'rl:carspecs' },
   // SEC-B5: Turnstile is the real gate; this is belt-and-braces for the
@@ -100,5 +105,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
+  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
 };

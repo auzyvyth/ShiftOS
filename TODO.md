@@ -197,11 +197,14 @@ of `src/config/salesmanLandingCopy.js`. Still open:
 - [ ] DDL queued for after 22:00: `20261003c_drop_sambung_columns.sql` was never
   applied (`public_car_listings` still has the five `sambung_*` columns, all
   empty). Re-read the live view def first: it was written against 2026-10-03.
-- [ ] ANALYTICS-SPOOF: `analytics_insert_v2` on `analytics_events` accepts any
-  `salesman_slug`/`dealer_id` from anyone, rate-limited only on a `session_id`
-  the browser invents. A script can inflate any seller's views and WhatsApp
-  taps. Fix needs a server route with a per-IP limit (like `/api/wa` in
-  `middleware.js`) and the anon INSERT policy dropped. Its own session.
+- [ ] ANALYTICS-SPOOF — CODE DONE 2026-10-09, two steps left, IN ORDER:
+  (1) ship to prod: `trackEvent` (src/utils/analytics.js) now posts to `/api/track`
+  (api/track.js, 120/min per IP in middleware.js; dealer_id taken from the car,
+  shape check in lib/analyticsEvent.js, `npm run test:analytics`).
+  (2) ONLY THEN, after 22:00 MYT, apply `20261009a_analytics_insert_server_only.sql`
+  (drops `analytics_insert_v2`, revokes INSERT). Before step 1 is live it would drop
+  every event. Also fixed: CarDetailPage + HomePage inserted page_view with no
+  session_id, so the old policy had rejected all of them (and they skipped consent).
 
 ## PLAT-STATE: /platform says things that aren't true — audited + first pass shipped 2026-10-05
 Pattern: the console painted raw columns (approval_status, is_active,
@@ -231,7 +234,11 @@ inside self-rolling-back transactions.
 - [x] SEC-0b `ai-proxy` let buyers -- including every anonymous guest, free to mint
   -- through with a 400/day AI quota each: unbounded Anthropic bill. Now 403 for any
   role outside the seller set (deployed v23).
-- [ ] SEC-1 SELLER NUMBERS HARVESTABLE (owner confirmed 2026-10-06: the service key IS set in
+- [ ] SEC-1 SELLER NUMBERS HARVESTABLE — UNBLOCKED 2026-10-09, one step left: apply
+  `20261009b_revoke_public_seller_number_rpcs.sql` after 22:00 MYT, then tap a live
+  WhatsApp + Call button. Proven safe from the API logs: prod's /api/wa already calls
+  with the sb_secret_ server key, and no browser code calls either RPC.
+  (History: owner confirmed 2026-10-06: the service key IS set in
   Vercel. Remaining: this branch must reach PRODUCTION first, then revoke -- revoking
   before that breaks every WhatsApp/Call button on the live site.) (CDP-3 defeated). `/api/wa` + `/api/call-number`
   called `get_seller_whatsapp` / `get_listing_call_number` with the PUBLIC key, so both
