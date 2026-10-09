@@ -306,12 +306,15 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         .mh-nav { display:flex; align-items:center; gap:2px; position:relative; }
         .mh-nav-item { position:static; }
         .mh-nav-link, .mh-nav-trigger { display:flex; align-items:center; gap:6px; color:rgba(255,255,255,.72); font-size:14px; font-weight:600; text-decoration:none; padding:9px 13px; border-radius:10px; background:none; border:none; cursor:pointer; font-family:inherit; white-space:nowrap; transition:background .14s,color .14s; }
-        .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger, .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; }
+        .mh-nav-item.mh-open .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; }
+        @media (hover:hover) and (pointer:fine) { .mh-nav-link:hover, .mh-nav-trigger:hover, .mh-nav-item:hover .mh-nav-trigger { background:rgba(255,255,255,.08); color:#ffffff; } }
         /* orange-600 was picked for white; it fails on the near-black bar. */
         .mh-nav-link.hot { color:#fb923c; }
-        .mh-nav-link.hot:hover, .mh-nav-link.hot.active { background:rgba(251,146,60,.14); color:#fdba74; }
+        .mh-nav-link.hot.active { background:rgba(251,146,60,.14); color:#fdba74; }
+        @media (hover:hover) and (pointer:fine) { .mh-nav-link.hot:hover { background:rgba(251,146,60,.14); color:#fdba74; } }
         .mh-chev { transition:transform .2s; }
-        .mh-nav-item:hover .mh-chev, .mh-nav-item.mh-open .mh-chev { transform:rotate(180deg); }
+        .mh-nav-item.mh-open .mh-chev { transform:rotate(180deg); }
+        @media (hover:hover) and (pointer:fine) { .mh-nav-item:hover .mh-chev { transform:rotate(180deg); } }
 
         /* mega */
         .mh-menu { position:absolute; top:100%; left:0; padding-top:13px; display:none; z-index:200; }
@@ -320,45 +323,47 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
         /* Three ways in, not one: hover (mouse), .mh-open (tap/click — the only
            way on a hoverless tablet above the 980px mobile breakpoint), and
            focus-within (keyboard tabbing). */
-        .mh-nav-item:hover .mh-menu,
         .mh-nav-item:focus-within .mh-menu,
         .mh-nav-item.mh-open .mh-menu { display:block; }
+        /* Hover only for a real mouse: on a touch tablet the tap left :hover
+           stuck, so tapping the trigger again to close did nothing. */
+        @media (hover:hover) and (pointer:fine) { .mh-nav-item:hover .mh-menu { display:block; } }
         .mh-mega { background:#fff; border:1px solid #ECEAE3; border-radius:20px; box-shadow:0 26px 70px rgba(15,23,42,.2); padding:14px; display:flex; gap:12px; animation:mhFade .17s ease; }
         @keyframes mhFade { from{opacity:0;transform:translateY(-7px);} to{opacity:1;transform:none;} }
         .mh-mega-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; width:520px; }
         .mh-row { display:flex; align-items:center; gap:13px; padding:13px 14px; border-radius:14px; text-decoration:none; transition:background .13s; position:relative; }
-        .mh-row:hover { background:#F7F5F0; }
+        @media (hover:hover) and (pointer:fine) { .mh-row:hover { background:#F7F5F0; } }
         .mh-row-ico { width:42px; height:42px; border-radius:13px; background:#FEF2F2; color:#dc2626; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:transform .14s,background .14s; }
-        .mh-row:hover .mh-row-ico { background:#dc2626; color:#fff; transform:scale(1.06) rotate(-3deg); }
+        @media (hover:hover) and (pointer:fine) { .mh-row:hover .mh-row-ico { background:#dc2626; color:#fff; transform:scale(1.06) rotate(-3deg); } }
         .mh-row-tt { display:block; color:#0f1115; font-size:14px; font-weight:700; line-height:1.2; }
         .mh-row-ds { display:block; color:#6b7280; font-size:12px; font-weight:500; margin-top:3px; line-height:1.3; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .mh-row-arrow { color:#cbd0d6; margin-left:auto; flex-shrink:0; opacity:0; transform:translate(-4px,4px); transition:opacity .14s,transform .14s; }
-        .mh-row:hover .mh-row-arrow { opacity:1; transform:none; color:#dc2626; }
+        @media (hover:hover) and (pointer:fine) { .mh-row:hover .mh-row-arrow { opacity:1; transform:none; color:#dc2626; } }
         .mh-mega-promo { width:182px; flex-shrink:0; border-radius:16px; padding:15px; background:linear-gradient(150deg,#15171c,#0f1115); display:flex; flex-direction:column; }
         .mh-promo-eyebrow { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#f87171; margin:0 0 7px; }
         .mh-promo-title { font-size:15.5px; font-weight:800; color:#fff; line-height:1.24; margin:0 0 6px; }
         .mh-promo-sub { font-size:11.5px; color:#9ca3af; line-height:1.45; margin:0 0 auto; }
         .mh-promo-cta { display:inline-flex; align-items:center; gap:5px; margin-top:14px; background:#dc2626; color:#fff; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9px; text-decoration:none; align-self:flex-start; transition:background .14s,transform .12s; }
-        .mh-promo-cta:hover { background:#ef4444; transform:translateY(-1px); }
+        @media (hover:hover) and (pointer:fine) { .mh-promo-cta:hover { background:#ef4444; transform:translateY(-1px); } }
 
         /* right cluster */
         .mh-right { display:flex; align-items:center; gap:4px; margin-left:auto; flex-shrink:0; }
         .mh-icon-btn { position:relative; width:42px; height:42px; border-radius:11px; background:none; border:none; cursor:pointer; color:rgba(255,255,255,.72); display:flex; align-items:center; justify-content:center; transition:background .14s,color .14s; }
-        .mh-icon-btn:hover { background:rgba(255,255,255,.08); color:#ffffff; }
+        @media (hover:hover) and (pointer:fine) { .mh-icon-btn:hover { background:rgba(255,255,255,.08); color:#ffffff; } }
         .mh-badge { position:absolute; top:5px; right:5px; background:#dc2626; color:#fff; font-size:9px; font-weight:800; border-radius:20px; min-width:15px; height:15px; display:flex; align-items:center; justify-content:center; padding:0 4px; line-height:1; }
         .mh-vsep { width:1px; height:26px; background:rgba(255,255,255,.14); margin:0 8px; }
         .mh-signin { color:#ffffff; font-size:14px; font-weight:600; text-decoration:none; padding:9px 6px; position:relative; font-family:inherit; }
         .mh-signin::after { content:''; position:absolute; left:6px; right:6px; bottom:3px; height:2px; background:#dc2626; border-radius:2px; transform:scaleX(0); transform-origin:left; transition:transform .2s; }
-        .mh-signin:hover::after { transform:scaleX(1); }
+        @media (hover:hover) and (pointer:fine) { .mh-signin:hover::after { transform:scaleX(1); } }
         .mh-signin-menu { position:absolute; top:calc(100% + 12px); right:0; width:248px; background:#fff; border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 16px 40px rgba(15,23,42,0.16); padding:6px; display:flex; flex-direction:column; gap:2px; z-index:1000; }
         .mh-signin-item { display:flex; align-items:center; gap:11px; padding:10px 11px; border-radius:10px; text-decoration:none; transition:background .14s; }
-        .mh-signin-item:hover { background:#f5f6f8; }
+        @media (hover:hover) and (pointer:fine) { .mh-signin-item:hover { background:#f5f6f8; } }
         .mh-signin-item-t { display:block; font-size:13px; font-weight:700; color:#0f1115; }
         .mh-signin-item-s { display:block; font-size:11px; color:#6b7280; margin-top:1px; }
         /* Was #0f1115, i.e. all-but-invisible against a dark bar. The primary
            action takes the accent instead. */
         .mh-getstarted { display:flex; align-items:center; gap:6px; background:#dc2626; color:#fff; font-size:13.5px; font-weight:700; padding:11px 18px; border-radius:11px; text-decoration:none; white-space:nowrap; transition:background .15s,transform .12s,box-shadow .15s; box-shadow:0 1px 2px rgba(0,0,0,.28); }
-        .mh-getstarted:hover { background:#b91c1c; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.3); }
+        @media (hover:hover) and (pointer:fine) { .mh-getstarted:hover { background:#b91c1c; transform:translateY(-1px); box-shadow:0 8px 22px rgba(220,38,38,.3); } }
 
         /* search drawer */
         .mh-search-drawer { max-height:0; overflow:hidden; transition:max-height .28s ease; border-top:0 solid rgba(255,255,255,.08); }

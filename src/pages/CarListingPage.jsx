@@ -727,7 +727,7 @@ export default function CarListingPage() {
           .cl-grid { grid-template-columns:repeat(2,1fr) !important }
         }
         .sc-root { transition:transform 0.18s ease,box-shadow 0.18s ease; }
-        .sc-root:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.09) !important; }
+        @media (hover:hover) and (pointer:fine) { .sc-root:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,0.09) !important; } }
       `}</style>
 
       {isMarketplace ? <MarketplaceHeader /> : <Header />}

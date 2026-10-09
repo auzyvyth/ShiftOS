@@ -667,12 +667,12 @@ export default function MarketplacePage() {
         /* .mp-brand-grid / .mp-brand-pill / .mp-brand-scroll lived here for a
            brand strip that no longer renders; nothing carried those classes.
            Removed with the footer's dead /showroom#brands link. */
-        .mp-reset-btn:hover   { color:#111827 !important; border-color:rgba(0,0,0,.25) !important }
-        .mp-chip-x:hover      { opacity:.7 }
+        @media (hover:hover) and (pointer:fine) { .mp-reset-btn:hover { color:#111827 !important; border-color:rgba(0,0,0,.25) !important } }
+        @media (hover:hover) and (pointer:fine) { .mp-chip-x:hover { opacity:.7 } }
         .mp-select:focus      { border-color:rgba(220,38,38,.5) !important; box-shadow:0 0 0 3px rgba(220,38,38,.12) }
-        .mp-filter-toggle:hover { background:rgba(0,0,0,.05) !important }
-        .mp-next-prev:hover:not(:disabled) { background:rgba(0,0,0,.05) !important; color:#111827 !important }
-        .mp-page-btn:hover    { background:rgba(0,0,0,.05) !important }
+        @media (hover:hover) and (pointer:fine) { .mp-filter-toggle:hover { background:rgba(0,0,0,.05) !important } }
+        @media (hover:hover) and (pointer:fine) { .mp-next-prev:hover:not(:disabled) { background:rgba(0,0,0,.05) !important; color:#111827 !important } }
+        @media (hover:hover) and (pointer:fine) { .mp-page-btn:hover { background:rgba(0,0,0,.05) !important } }
         .mp-pulse-dot         { width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;flex-shrink:0;animation:mp-pulse-ring 2s ease-in-out infinite }
         .mp-anim-fade         { animation:mp-fade-up .6s cubic-bezier(.22,1,.36,1) both }
         .mp-anim-d1           { animation-delay:.1s }
@@ -691,9 +691,9 @@ export default function MarketplacePage() {
 
         /* ── Featured cards ── */
         .mp-feat-card { transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease }
-        .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) }
+        @media (hover:hover) and (pointer:fine) { .mp-feat-card:hover { transform:translateY(-5px);border-color:rgba(220,38,38,.4) !important;box-shadow:0 16px 40px rgba(0,0,0,.14) } }
         .mp-feat-img  { transition:transform .45s ease;width:100%;height:100%;object-fit:cover;display:block }
-        .mp-feat-card:hover .mp-feat-img { transform:scale(1.06) }
+        @media (hover:hover) and (pointer:fine) { .mp-feat-card:hover .mp-feat-img { transform:scale(1.06) } }
 
         /* ── Hero search bar — mobile-first: stacked column so the input gets
               full width for its placeholder instead of being squeezed next to
@@ -731,7 +731,7 @@ export default function MarketplacePage() {
         .mp-seg { display:inline-flex; background:#fff; border:1px solid #E2DFD6; border-radius:8px; padding:2px; gap:2px; }
         .mp-seg-btn { font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; color:#374151; background:transparent;
           border:none; border-radius:6px; padding:5px 11px; cursor:pointer; white-space:nowrap; transition:background .15s ease, color .15s ease; }
-        .mp-seg-btn:hover { background:#F1EFEA; color:#0f1115; }
+        @media (hover:hover) and (pointer:fine) { .mp-seg-btn:hover { background:#F1EFEA; color:#0f1115; } }
         .mp-seg-btn[aria-pressed="true"] { background:#0f1115; color:#fff; }
         .mp-seg-btn:focus-visible { outline:2px solid #0f1115; outline-offset:1px; }
         @keyframes mp-ring-spin { to { --mp-ring-a: 360deg; } }
@@ -837,7 +837,7 @@ export default function MarketplacePage() {
            results are recognisably the same object. Car photos are shot on light
            backgrounds; they sit on white far better than on near-black. */
         .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
-        .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); }
+        @media (hover:hover) and (pointer:fine) { .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); } }
         .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
         .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #111827; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(0,0,0,.06); }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
@@ -932,7 +932,7 @@ export default function MarketplacePage() {
           padding:13px 32px; border-radius:10px; white-space:nowrap;
           transition:background 0.15s ease;
         }
-        .mp-agent-cta:hover { background:#b91c1c; }
+        @media (hover:hover) and (pointer:fine) { .mp-agent-cta:hover { background:#b91c1c; } }
         .mp-agent-trust {
           display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
           font-family:'Outfit',sans-serif; font-size:12px; color:#6b7280; margin:0;
@@ -1074,7 +1074,7 @@ export default function MarketplacePage() {
                   </div>
                   <button type="button" onClick={() => runHeroSearch(heroQ)}
                     style={{ flexShrink:0, background:'#dc2626', color:'#fff', border:'none', fontSize:'14px', fontWeight:'700', cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', borderRadius:'10px' }}
-                    onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                    onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#b91c1c'; }}
                     onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                   ><Search size={14}/> Find Cars</button>
                 </div>
@@ -1330,7 +1330,7 @@ export default function MarketplacePage() {
                     <button
                       onClick={() => setLoadPage(p => p + 1)}
                       style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#fff', border:'1.5px solid #dc2626', color:'#dc2626', fontSize:'14px', fontWeight:'700', padding:'12px 30px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", transition:'all 0.15s' }}
-                      onMouseEnter={e=>{ e.currentTarget.style.background='#fef2f2'; }}
+                      onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#fef2f2'; }}
                       onMouseLeave={e=>{ e.currentTarget.style.background='#fff'; }}
                     >
                       Load more cars <ChevronDown size={16}/>
@@ -1355,7 +1355,7 @@ export default function MarketplacePage() {
                         navigate(`/showroom?${p.toString()}`);
                       }}
                       style={{ display:'inline-flex', alignItems:'center', gap:'8px', background:'#dc2626', border:'none', color:'#fff', fontSize:'14px', fontWeight:'700', padding:'13px 32px', borderRadius:'10px', cursor:'pointer', fontFamily:"'Outfit',sans-serif", boxShadow:'0 4px 16px rgba(220,38,38,0.3)', transition:'all 0.15s' }}
-                      onMouseEnter={e=>e.currentTarget.style.background='#b91c1c'}
+                      onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background='#b91c1c'; }}
                       onMouseLeave={e=>e.currentTarget.style.background='#dc2626'}
                     >
                       See all {totalCount.toLocaleString()} cars <ArrowRight size={14}/>

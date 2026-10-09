@@ -122,7 +122,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
         <Link
           to={`/showroom?body_type=${bodyType}`}
           style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: '#374151', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0, transition: 'color 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.color = '#DC2626'}
+          onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.color = '#DC2626'; }}
           onMouseLeave={e => e.currentTarget.style.color = '#374151'}
         >
           View All <ArrowRight size={11} />
@@ -138,7 +138,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
             color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
+          onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
           onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = '#374151'; }}
           >
             <ChevronLeft size={16} />
@@ -177,7 +177,7 @@ export default function BodyTypeCarousel({ title, eyebrow, cars, loading, bodyTy
             color: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', transition: 'all 0.15s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
+          onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = '#DC2626'; e.currentTarget.style.borderColor = '#DC2626'; e.currentTarget.style.color = '#fff'; }}
           onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.1)'; e.currentTarget.style.color = '#374151'; }}
           >
             <ChevronRight size={16} />

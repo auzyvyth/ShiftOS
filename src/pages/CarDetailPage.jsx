@@ -2099,7 +2099,7 @@ export default function CarDetailPage() {
         .cdp-hdr-icon.cdp-hdr-ok { color: #16a34a; }
         .cdp-header-scrolled .cdp-hdr-icon { filter: none; }
         .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: rgba(255,255,255,0.72); }
-        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #e2e8f0; }
+        @media (hover:hover) and (pointer:fine) { .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #e2e8f0; } }
         .cdp-back-btn { margin-left: -7px; }
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
@@ -2116,9 +2116,9 @@ export default function CarDetailPage() {
           background: #000; aspect-ratio: 3 / 2; max-height: 560px;
         }
         .cdp-mosaic-cell { overflow: hidden; position: relative; cursor: zoom-in; transition: filter 0.3s; width: 100%; height: 100%; }
-        .cdp-mosaic-cell:hover { filter: brightness(1.08); }
+        @media (hover:hover) and (pointer:fine) { .cdp-mosaic-cell:hover { filter: brightness(1.08); } }
         .cdp-mosaic-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.6s ease; }
-        .cdp-mosaic-cell:hover img { transform: scale(1.03); }
+        @media (hover:hover) and (pointer:fine) { .cdp-mosaic-cell:hover img { transform: scale(1.03); } }
         .cdp-mosaic-mobile { display: none; position: relative; overflow: hidden; background: #080f18; }
 
         /* ── mobile nav arrows (shared with mosaic-mobile) ── */
@@ -2129,7 +2129,7 @@ export default function CarDetailPage() {
           cursor: pointer; display: flex; align-items: center; justify-content: center;
           transition: all 0.2s; z-index: 4;
         }
-        .cdp-arrow:hover { background: rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5); }
+        @media (hover:hover) and (pointer:fine) { .cdp-arrow:hover { background: rgba(220,38,38,0.3); border-color: rgba(220,38,38,0.5); } }
         .cdp-arrow-l { left: 14px; }
         .cdp-arrow-r { right: 14px; }
         .cdp-dots { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); max-width: 54px; overflow: hidden; z-index: 4; padding: 4px 0; }
@@ -2161,7 +2161,7 @@ export default function CarDetailPage() {
           border-radius: 12px; overflow: hidden; margin-bottom: 40px;
         }
         .cdp-stat-cell { padding: 16px 14px; background: #0a1220; border-right: 1px solid rgba(255,255,255,0.04); transition: background 0.2s; }
-        .cdp-stat-cell:hover { background: rgba(220,38,38,0.05); }
+        @media (hover:hover) and (pointer:fine) { .cdp-stat-cell:hover { background: rgba(220,38,38,0.05); } }
         .cdp-stat-cell:last-child { border-right: none; }
 
         /* ── rows ── */
@@ -2170,7 +2170,7 @@ export default function CarDetailPage() {
           display: flex; justify-content: space-between; align-items: center; gap: 12px;
           border-radius: 6px; transition: background .2s;
         }
-        .cdp-row:hover { background: rgba(220,38,38,0.04); }
+        @media (hover:hover) and (pointer:fine) { .cdp-row:hover { background: rgba(220,38,38,0.04); } }
 
         /* ── similar ── */
         .cdp-similar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
@@ -2180,7 +2180,7 @@ export default function CarDetailPage() {
         .cdp-mobile-bar { display: none; }
 
         /* ── CTA button hover ── */
-        .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; }
+        @media (hover:hover) and (pointer:fine) { .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; } }
 
         /* ── header actions ── */
         /* Three bare icons fit every breakpoint, so there is no separate
@@ -2196,14 +2196,14 @@ export default function CarDetailPage() {
         .cdp-lb-overlay { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.96); display: flex; align-items: center; justify-content: center; user-select: none; }
         .cdp-lb-img { max-width: 90vw; max-height: 88vh; object-fit: contain; display: block; transition: transform 0.08s linear; pointer-events: none; }
         .cdp-lb-close { position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.08); border: none; color: white; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 2; }
-        .cdp-lb-close:hover { background: rgba(255,255,255,0.18); }
+        @media (hover:hover) and (pointer:fine) { .cdp-lb-close:hover { background: rgba(255,255,255,0.18); } }
         .cdp-lb-zoom-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 8px 16px; }
         .cdp-lb-zoom-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 2px; transition: color 0.15s; }
-        .cdp-lb-zoom-btn:hover { color: white; }
+        @media (hover:hover) and (pointer:fine) { .cdp-lb-zoom-btn:hover { color: white; } }
         .cdp-lb-zoom-label { font-size: 12px; color: rgba(255,255,255,0.6); font-family: var(--xd-font-body); min-width: 40px; text-align: center; }
         .cdp-lb-counter { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); font-size: 12px; color: rgba(255,255,255,0.5); font-family: var(--xd-font-body); }
         .cdp-lb-arrow { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,0.08); border: none; color: white; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; z-index: 2; }
-        .cdp-lb-arrow:hover { background: rgba(255,255,255,0.18); }
+        @media (hover:hover) and (pointer:fine) { .cdp-lb-arrow:hover { background: rgba(255,255,255,0.18); } }
         .cdp-lb-arrow-l { left: 20px; }
         .cdp-lb-arrow-r { right: 20px; }
 
@@ -2214,11 +2214,14 @@ export default function CarDetailPage() {
         /* ── mobile bar (≤900px) ── */
         @media (max-width: 900px) {
           .cdp-root { padding-bottom: 0; }
-          .cdp-footer-slot { padding-bottom: 74px; }
+          .cdp-footer-slot { padding-bottom: calc(74px + env(safe-area-inset-bottom, 0px)); }
           .cdp-mobile-bar {
             display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
             background: rgba(6,12,20,0.98); backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
             border-top: 1px solid rgba(255,255,255,0.07); padding: 12px 16px; gap: 8px;
+            /* viewport-fit=cover is on, so without this the buttons sit under
+               the iPhone home bar (34px) in the installed app. */
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
           }
           .cdp-mobile-bar-contact { flex: 0 0 auto; width: 116px; }
           .cdp-mobile-bar-book { flex: 1; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: var(--xd-font-body); cursor: pointer; background: #dc2626; color: white; padding: 12px 0; border: none; border-top: 2px solid #b91c1c; box-shadow: 0 2px 12px rgba(220,38,38,0.3); }
@@ -2239,19 +2242,19 @@ export default function CarDetailPage() {
         /* Icons stay white while they sit on the photo, in this theme too —
            they only take the light palette once the header is opaque. */
         .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: #64748b !important; }
-        .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #0F172A !important; }
+        @media (hover:hover) and (pointer:fine) { .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #0F172A !important; } }
         .cdp-header-title { color: #0F172A !important; }
         .cdp-img-shimmer { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 400px 100% !important; }
         .sk { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 600px 100% !important; }
         .cdp-mosaic-grid { background: #e2e6ec !important; }
         .cdp-mosaic-mobile { background: #EEF1F5 !important; }
         .cdp-arrow { background: rgba(246,247,249,0.92) !important; border-color: rgba(15,23,42,0.12) !important; color: #334155 !important; }
-        .cdp-arrow:hover { background: rgba(220,38,38,0.1) !important; border-color: rgba(220,38,38,0.3) !important; color: #dc2626 !important; }
+        @media (hover:hover) and (pointer:fine) { .cdp-arrow:hover { background: rgba(220,38,38,0.1) !important; border-color: rgba(220,38,38,0.3) !important; color: #dc2626 !important; } }
         .cdp-stats-grid { border-color: rgba(15,23,42,0.07) !important; background: rgba(15,23,42,0.06) !important; }
         .cdp-stat-cell { background: #ffffff !important; border-right-color: rgba(15,23,42,0.06) !important; }
-        .cdp-stat-cell:hover { background: rgba(220,38,38,0.035) !important; }
+        @media (hover:hover) and (pointer:fine) { .cdp-stat-cell:hover { background: rgba(220,38,38,0.035) !important; } }
         .cdp-row { border-bottom-color: rgba(15,23,42,0.06) !important; }
-        .cdp-row:hover { background: rgba(220,38,38,0.03) !important; }
+        @media (hover:hover) and (pointer:fine) { .cdp-row:hover { background: rgba(220,38,38,0.03) !important; } }
         /* The floating header's dark scrim assumed a photo under it; on the
            desktop layout the photo is boxed lower down, so it greyed the title
            and left white icons on a light page. The site header replaces it. */
@@ -3124,7 +3127,7 @@ export default function CarDetailPage() {
                       onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
                       aria-label={`View photo ${i + 1}`}
                       style={{ flex: '0 0 auto', width: 84, height: 60, padding: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.6, transition: 'opacity .15s, border-color .15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.opacity = 1; }}
+                      onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.opacity = 1; }}
                       onMouseLeave={e => { e.currentTarget.style.opacity = i === activeIdx ? 1 : 0.6; }}
                     >
                       <img src={disp(src, 200)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
@@ -4097,7 +4100,7 @@ export default function CarDetailPage() {
                   onClick={() => setCalcOpen(true)}
                   aria-label="Open financing calculator"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(220,38,38,0.10)', border: '1px solid rgba(220,38,38,0.35)', borderRadius: 8, color: isXdrive ? '#dc2626' : '#f87171', fontSize: 12.5, fontWeight: 700, padding: '5px 10px', cursor: 'pointer', fontFamily: "var(--xd-font-body)", whiteSpace: 'nowrap', transition: 'background .15s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.18)'; }}
+                  onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = 'rgba(220,38,38,0.18)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(220,38,38,0.10)'; }}
                 >
                   <Calculator size={14} /> Calculate
@@ -4128,7 +4131,7 @@ export default function CarDetailPage() {
             <button
               onClick={handleBookingClick}
               style={{ width: '100%', background: '#dc2626', color: 'white', border: 'none', borderRadius: 10, padding: 14, fontWeight: 700, fontSize: 14, cursor: 'pointer', fontFamily: "var(--xd-font-body)", letterSpacing: '0.02em', boxShadow: '0 1px 2px rgba(15,23,42,0.08)', transition: 'background .15s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#b91c1c'; }}
+              onPointerEnter={e => { if (e.pointerType !== 'mouse') return; e.currentTarget.style.background = '#b91c1c'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = '#dc2626'; }}>
               Book a Viewing
             </button>

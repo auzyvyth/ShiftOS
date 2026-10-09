@@ -175,7 +175,7 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
   };
 
   return (
-    <div style={{ minWidth: 0 }} onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <div style={{ minWidth: 0 }} onPointerEnter={e => { if (e.pointerType !== 'mouse') return; setPaused(true); }} onMouseLeave={() => setPaused(false)}>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 8 }}>
         <div>
           <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#dc2626', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>

@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+	// hover: utilities only apply on devices that can hover, so a tap on a
+	// phone no longer leaves the hover style stuck on.
+	future: { hoverOnlyWhenSupported: true },
 	darkMode: ['class'],
 	content: [
 		'./pages/**/*.{js,jsx}',

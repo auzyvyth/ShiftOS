@@ -63,6 +63,38 @@
     @apply border-border;
   }
 
+  /* Phone baseline (mobile-native skill). The grey/blue box iOS and Android
+     paint over every tapped element is the loudest "this is a website" tell;
+     press feedback comes from :active below instead. */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* No 300ms double-tap-zoom wait before a tap counts. Pinch zoom still works. */
+  button, a, [role="button"], label, summary {
+    touch-action: manipulation;
+  }
+  /* Long-press on a control selects its label. Controls only, never body text. */
+  button, [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* iOS zooms the page into any field under 16px and never zooms back out.
+     !important because almost every field here sets fontSize inline (13-15px).
+     Touch screens only, so desktop keeps the denser sizes. */
+  @media (pointer: coarse) {
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
+    /* The tap highlight is gone, so a press needs its own feedback. */
+    button:not(:disabled):active,
+    [role="button"]:active {
+      opacity: 0.82;
+    }
+  }
+
   body {
     background-color: #080C14 !important;
     color: #f9fafb;
@@ -117,17 +149,21 @@ select:focus-visible {
     transform: skewX(-20deg);
     transition: left 0.55s ease;
   }
-  .shine-btn:hover::before {
-    left: 130%;
+  @media (hover: hover) and (pointer: fine) {
+    .shine-btn:hover::before { left: 130%; }
   }
 
   /* Card hover lift */
   .card-lift {
     transition: transform 0.25s ease, box-shadow 0.25s ease;
   }
-  .card-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  /* Hover only for a real mouse: a tap leaves :hover stuck on touch, so the
+     card stayed lifted after you came back to the page. */
+  @media (hover: hover) and (pointer: fine) {
+    .card-lift:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
   }
 
   /* Section red underline */
@@ -166,9 +202,9 @@ select:focus-visible {
     margin-top: 2px;
     border-radius: 1px;
   }
-  .nav-link-line:hover::after,
-  .nav-link-line.active::after {
-    width: 100%;
+  .nav-link-line.active::after { width: 100%; }
+  @media (hover: hover) and (pointer: fine) {
+    .nav-link-line:hover::after { width: 100%; }
   }
 
   /* Trust strip border */
