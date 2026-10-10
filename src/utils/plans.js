@@ -35,6 +35,7 @@ export const SALESMAN_PREMIUM_FEATURES = [
   'Loan desk: affordability check + bank comparison',
   'Handover checklist + customer list',
   'AI listing captions + AI chat reply drafts',
+  'TikTok poster studio for every car',
   'Commission tracking',
   'Performance: where your deals are lost',
 ];

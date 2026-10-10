@@ -59,6 +59,7 @@ import {
   Phone,
   X,
   Lock,
+  Film,
   LayoutGrid,
   Users,
   MessageSquare,
@@ -4987,13 +4988,22 @@ export default function SalesmanLite() {
                         {actionMenuCarId === car.id && (
                           <div
                             onClick={(e) => e.stopPropagation()}
-                            style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 140, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
+                            style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 190, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
                           >
                             {!isSold && (
                               <>
                                 <button onClick={() => { setQuickBriefCar(car); setBriefCopied(false); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                   Brief
+                                </button>
+                                {/* ShiftOS Studio is Premium. Shown locked here as the upsell;
+                                    the tap goes to the one upgrade screen (goPremium). */}
+                                <button onClick={() => { setActionMenuCarId(null); goPremium(); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: T.size.base, textAlign: "left" }}>
+                                  <Film size={12} />
+                                  <span style={{ flex: 1 }}>TikTok post</span>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.textMuted, background: C.fill, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "1px 6px" }}>
+                                    <Lock size={9} strokeWidth={2.5} /> Premium
+                                  </span>
                                 </button>
                                 <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
                               </>

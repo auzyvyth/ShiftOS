@@ -112,6 +112,8 @@ import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
 const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
 const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
+// ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
+const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -290,6 +292,7 @@ export default function SalesmanPremium() {
  // ordered by last_message_at desc, so the first one seen is the live one.
  chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
  const [chatSheet, setChatSheet] = useState(null);
+ const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
  // invisible unless you happened to open that tab.
@@ -6895,6 +6898,7 @@ export default function SalesmanPremium() {
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
+      openStudio={setStudioCar}
       onVerifyId={() => openSettings("verify")}
       onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
      />
@@ -7745,6 +7749,14 @@ export default function SalesmanPremium() {
  aiUpgrade={!isPremium}
  onClose={() => setChatSheet(null)}
  />
+ </Suspense>
+ )}
+
+ {/* ShiftOS Studio: full-screen, mounted at page level so no parent
+     stacking context can clip it (overlay rule 1). */}
+ {studioCar && (
+ <Suspense fallback={null}>
+ <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} />
  </Suspense>
  )}
 
