@@ -248,11 +248,23 @@ function loadImage(url) {
     IMG_CACHE.set(
       url,
       new Promise((res) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => res(img);
-        img.onerror = () => res(null);
-        img.src = url;
+        // The same photo is usually already on screen as a plain <img> (the car
+        // card thumbnail), loaded WITHOUT CORS. Browsers, Safari especially,
+        // can answer this CORS request from that cached copy, which has no CORS
+        // header, so the load fails and the slide paints with no car. On a
+        // failure, retry once with a cache-busting query so the browser fetches
+        // a fresh, CORS-enabled copy (Supabase storage ignores the extra param).
+        const attempt = (src, isRetry) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => res(img);
+          img.onerror = () => {
+            if (isRetry || src.startsWith("data:") || src.startsWith("blob:")) return res(null);
+            attempt(src + (src.includes("?") ? "&" : "?") + "cors=1", true);
+          };
+          img.src = src;
+        };
+        attempt(url, false);
       }),
     );
   }
@@ -2373,6 +2385,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
       listing?.whatsapp_number || "",
     );
     setSlides(initial);
+    // The layer editor is synced from the slide only when `active` changes, and
+    // `active` is already 0 when these first slides arrive. Without this, the
+    // editor keeps the empty list it mounted with, and the persist effect below
+    // then writes that empty list back over slide 1, deleting the dark gradient
+    // overlay every template is seeded with.
+    setLayers(initial[0]?.layers || []);
     pushHistory(initial);
     ensureFont("dm");
   }, [listing, rawImages, features]);
