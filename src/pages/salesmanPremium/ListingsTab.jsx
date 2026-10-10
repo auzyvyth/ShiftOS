@@ -3,7 +3,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
  BarChart2, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
- Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
+ Film, Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
 } from "lucide-react";
 import CarFormFast from "../../components/CarFormFast";
 import CarForm from "../../components/CarForm";
@@ -83,7 +83,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
- generateAiCaptions, onVerifyId,
+ generateAiCaptions, onVerifyId, openStudio,
 }) {
  const enriched = myListings.map((car) => {
  const stats = carStatsMap[car.id]?? {};
@@ -683,6 +683,11 @@ View
  </button>
  <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
  <Sparkles size={12} /> AI Caption
+ </button>
+ {/* ShiftOS Studio: TikTok poster from this car. Post-list only, and it
+     never writes back to the listing, so the XDrive photos stay clean. */}
+ <button onClick={() => { openStudio(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <Film size={12} /> TikTok post
  </button>
  <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
  </>
