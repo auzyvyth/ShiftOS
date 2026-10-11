@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useSiteProfile } from "../hooks/useSiteProfile";
 import { isSubdomain } from "../hooks/useTenant";
+import { openConsentSettings } from "../utils/consent";
 
 // App version — injected from package.json at build time (see vite.config.js).
 // Falls back to "dev" when running outside a Vite build (e.g. tests).
@@ -292,8 +293,13 @@ const Footer = () => {
             <span style={{ color: "#3F3F46", marginLeft: "8px" }}>v{APP_VERSION}</span>
           </span>
           <span style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-            <Link to="/terms" style={{ color: "#71717A", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
-            <Link to="/privacy" style={{ color: "#71717A", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
+            {/* #A1A1AA, not #71717A: the darker grey was 4.0:1 on this footer,
+                under the 4.5:1 small text needs. */}
+            <Link to="/terms" style={{ color: "#A1A1AA", fontSize: "12px", textDecoration: "none" }}>Terms</Link>
+            <Link to="/privacy" style={{ color: "#A1A1AA", fontSize: "12px", textDecoration: "none" }}>Privacy</Link>
+            {/* The consent banner runs on storefronts too, so the way back into
+                it has to be here as well as in the marketplace footer. */}
+            <button type="button" onClick={openConsentSettings} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#A1A1AA", fontSize: "12px", fontFamily: "inherit" }}>Cookie settings</button>
           </span>
           <span className="ftr-bottom-brand">
             Powered by

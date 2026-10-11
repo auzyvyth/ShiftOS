@@ -1,18 +1,19 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { PRIVACY, DPA, LEGAL_META } from "../legal/legalDocs";
+import { PRIVACY, PRIVACY_MS, DPA, LEGAL_META } from "../legal/legalDocs";
 
 const S = {
-  page: { minHeight: "100vh", background: "#080C14", fontFamily: "system-ui, sans-serif", color: "#e8edf5" },
+  page: { minHeight: "100vh", background: "#080C14", fontFamily: "var(--xd-font-body)", color: "#e8edf5" },
   header: { borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#080C14", zIndex: 10 },
   brand: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
   dot: { width: 28, height: 28, background: "#dc2626", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: "#fff" },
   name: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: 4, color: "#fff" },
-  back: { fontSize: 12, color: "rgba(255,255,255,0.35)", textDecoration: "none", letterSpacing: "0.05em" },
+  back: { fontSize: 12, color: "rgba(255,255,255,0.6)", textDecoration: "none", letterSpacing: "0.05em" },
   wrap: { maxWidth: 740, margin: "0 auto", padding: "48px 24px 80px" },
   badge: { display: "inline-block", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#dc2626", fontWeight: 600, marginBottom: 12 },
   title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, letterSpacing: 2, color: "#fff", marginBottom: 8 },
-  meta: { fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 40, paddingBottom: 32, borderBottom: "1px solid rgba(255,255,255,0.07)" },
+  meta: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 40, paddingBottom: 32, borderBottom: "1px solid rgba(255,255,255,0.07)" },
   section: { marginBottom: 40 },
   docTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2, color: "#fff", margin: "48px 0 20px", paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" },
   h: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 3, color: "#dc2626", marginBottom: 10, paddingTop: 8 },
@@ -20,10 +21,18 @@ const S = {
   notice: { background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 8, padding: "14px 16px", fontSize: 13, color: "rgba(232,237,245,0.6)", lineHeight: 1.7, marginTop: 40 },
   divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "32px 0" },
   footer: { marginTop: 48, padding: "24px 0", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 24, flexWrap: "wrap" },
-  flink: { fontSize: 12, color: "rgba(255,255,255,0.35)", textDecoration: "none" },
+  flink: { fontSize: 12, color: "rgba(255,255,255,0.6)", textDecoration: "none" },
+  langRow: { display: "flex", gap: 8, marginBottom: 32 },
+  langBtn: (on) => ({ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${on ? "#dc2626" : "rgba(255,255,255,0.2)"}`, background: on ? "rgba(220,38,38,0.12)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,0.7)" }),
 };
 
 export default function PrivacyPage() {
+  // PDPA s.7(3): the notice has to exist in Bahasa Malaysia and English. Starts
+  // in the app's language; the DPA below is a B2B contract and stays English.
+  const { i18n } = useTranslation();
+  const [lang, setLang] = useState(i18n.language?.startsWith("ms") ? "ms" : "en");
+  const doc = lang === "ms" ? PRIVACY_MS : PRIVACY;
+
   useEffect(() => {
     document.title = "Privacy Policy · ShiftOS";
     window.scrollTo(0, 0);
@@ -43,18 +52,23 @@ export default function PrivacyPage() {
 
         <div style={S.wrap}>
           <span style={S.badge}>Legal</span>
-          <h1 style={S.title}>Privacy Policy</h1>
+          <h1 style={S.title}>{lang === "ms" ? "Polisi Privasi" : "Privacy Policy"}</h1>
           <p style={S.meta}>
-            Effective Date: {LEGAL_META.effectiveDate} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp; PDPA 2010 compliant &nbsp;·&nbsp;
-            See also: <Link to="/terms" style={{ color: "rgba(255,255,255,0.4)", textDecoration: "underline" }}>Terms of Service</Link>
+            {lang === "ms" ? "Dikemas kini" : "Last updated"}: {LEGAL_META.privacyUpdated} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp;
+            See also: <Link to="/terms" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "underline" }}>Terms of Service</Link>
           </p>
+
+          <div style={S.langRow} role="group" aria-label="Language">
+            <button type="button" style={S.langBtn(lang === "en")} aria-pressed={lang === "en"} onClick={() => setLang("en")}>English</button>
+            <button type="button" style={S.langBtn(lang === "ms")} aria-pressed={lang === "ms"} onClick={() => setLang("ms")}>Bahasa Malaysia</button>
+          </div>
 
           {/* ── PRIVACY POLICY ── */}
           <div style={S.section}>
-            <p style={S.p}>{PRIVACY.intro}</p>
+            <p style={S.p}>{doc.intro}</p>
           </div>
 
-          {PRIVACY.sections.map((sec) => (
+          {doc.sections.map((sec) => (
             <div style={S.section} key={sec.h}>
               <p style={S.h}>{sec.h}</p>
               {sec.p.map((para, i) => <p style={S.p} key={i}>{para}</p>)}

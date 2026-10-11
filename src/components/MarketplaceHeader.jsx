@@ -428,7 +428,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
           {/* LEFT — links + mega dropdowns */}
           <nav className="mh-nav">
-            <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title:'10,000+ cars, one place', sub:'New, used and recon from trusted dealers across Malaysia.', to:'/showroom', cta:'Browse all' }} />
+            <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title: stats.listings ? `${stats.listings.toLocaleString()}+ cars, one place` : 'Every car, one place', sub:'New, used and recon from dealers and agents across Malaysia.', to:'/showroom', cta:'Browse all' }} />
             {hasHotDeals && (
               /* <Link>, not <a href>: an <a> to an in-app route reloads the
                  whole SPA. */

@@ -23,7 +23,7 @@ const BENEFITS = [
   { Icon: Heart,         title: "Save & compare cars",  desc: "Build a shortlist and pick up where you left off on any device." },
   { Icon: Bell,          title: "Price-drop alerts",    desc: "Get notified the moment a saved car drops in price." },
   { Icon: MessageCircle, title: "Faster enquiries",     desc: "Message dealers and book viewings without re-typing your details." },
-  { Icon: Tag,           title: "Sell when you're ready", desc: "List your own car to thousands of buyers in a few taps." },
+  { Icon: Tag,           title: "Sell when you're ready", desc: "List your own car on XDrive in a few taps." },
 ];
 
 function GoogleIcon() {

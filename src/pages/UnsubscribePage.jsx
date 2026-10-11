@@ -15,18 +15,23 @@ import { supabase } from '../supabaseClient';
 export default function UnsubscribePage() {
   const [params] = useSearchParams();
   const token = params.get('t');
+  // kind=alerts: a saved-search (price alert) email. Its token lives on the
+  // alert row, so it goes through its own definer function.
+  const isAlerts = params.get('kind') === 'alerts';
   const [state, setState] = useState('working'); // working | done | bad
 
   useEffect(() => {
     let alive = true;
     (async () => {
       if (!token) { setState('bad'); return; }
-      const { data, error } = await supabase.rpc('email_unsubscribe', { p_token: token });
+      const { data, error } = isAlerts
+        ? await supabase.rpc('price_alert_unsubscribe', { p_token: token })
+        : await supabase.rpc('email_unsubscribe', { p_token: token });
       if (!alive) return;
       setState(!error && data === true ? 'done' : 'bad');
     })();
     return () => { alive = false; };
-  }, [token]);
+  }, [token, isAlerts]);
 
   return (
     <div style={{ minHeight:'100vh', background:'#080C14', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', fontFamily:'system-ui,sans-serif' }}>
@@ -38,8 +43,9 @@ export default function UnsubscribePage() {
           <>
             <p style={{ margin:'0 0 8px', fontSize:17, fontWeight:700, color:'#f3f4f6' }}>Done</p>
             <p style={{ margin:'0 0 20px', fontSize:13.5, lineHeight:1.6, color:'rgba(255,255,255,0.60)' }}>
-              We will not email you about unread messages or waiting leads again.
-              You will still see everything when you open the app.
+              {isAlerts
+                ? 'We will not email you about new cars matching your saved searches again.'
+                : 'We will not email you about unread messages or waiting leads again. You will still see everything when you open the app.'}
             </p>
           </>
         )}
