@@ -2400,6 +2400,22 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-16: "Post once, everywhere" for solo sellers (2026-10-11)** — from a
+  seller's chat: he takes his own photos and wants one place that posts them to
+  Marketplace/socials daily. Half exists: `src/utils/sharePack.js` already turns a
+  listing into per-platform copy, but only the dealer dashboard uses it; Lite and
+  Premium do not. Blockers: Facebook Marketplace and Mudah have no posting API for
+  sellers, and bot-posting breaks Meta's rules, so the honest build is one-tap
+  copy + photos per platform with the seller pressing post (same "human sends"
+  line as AI). Real photos only, never AI-made car images.
+- **IDEA-17: Article "Stop losing commission to another rep" (2026-10-11)** — a
+  real pain from a seller whose sale was taken; the boss said "at least he bought
+  with us". Angle: a timestamped lead record is your receipt (lead created_at,
+  ref link attribution via `resolve_lead_salesman`, chat history). Must not
+  promise XDrive makes a boss pay; it only proves who had the buyer first.
+  Different from the existing `KomisenSalesmanArticle.jsx` (how commission is
+  calculated). Check search demand before writing, do not trust the "low
+  competition" claim from the chat.
 - **IDEA-15: Seller-only "Top salesmen in Malaysia" ranking (2026-10-06)** — owner:
   a leaderboard only signed-in sellers can see (no buyers), so reps know their
   rivals and can learn from the top. Blockers/notes: (1) too few to rank today
