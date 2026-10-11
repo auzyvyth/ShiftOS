@@ -457,7 +457,7 @@ const HomePage = () => {
       },
       {
         title: "We Find the Best Options",
-        desc: "We shortlist verified cars that match.",
+        desc: "We shortlist cars that match.",
       },
       {
         title: "Inspect & Test Drive",
@@ -816,7 +816,7 @@ const HomePage = () => {
         <title>
           {profile
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
-            : "XDrive — Verified Used & Recon Cars in Malaysia"}
+            : "XDrive — Used & Recon Cars for Sale in Malaysia"}
         </title>
         <meta
           name="robots"
@@ -826,8 +826,8 @@ const HomePage = () => {
           name="description"
           content={
             profile
-              ? `Browse verified used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
-              : "Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive."
+              ? `Browse used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
+              : "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on XDrive."
           }
         />
         <meta
@@ -835,7 +835,7 @@ const HomePage = () => {
           content={
             profile
               ? `${profile.site_name || profile.dealership} — Used Cars`
-              : "XDrive — Verified Used & Recon Cars in Malaysia"
+              : "XDrive — Used & Recon Cars for Sale in Malaysia"
           }
         />
         <meta
@@ -855,7 +855,7 @@ const HomePage = () => {
               url: "https://xdrive.my",
               logo: "https://xdrive.my/xdrivelogo.png",
               description:
-                "XDrive is a Malaysian marketplace for verified used, recon and new cars with transparent pricing and full vehicle history, and the maker of ShiftOS, a used-car dealer management system (DMS).",
+                "XDrive is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of ShiftOS, a used-car dealer management system (DMS).",
               areaServed: "MY",
               sameAs: [
                 "https://facebook.com/xdrive.my",
