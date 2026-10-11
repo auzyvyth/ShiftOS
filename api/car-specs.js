@@ -71,7 +71,10 @@ export default async function handler(req, res) {
   }
   const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   const { data: { user }, error: authErr } = await authClient.auth.getUser(token);
-  if (authErr || !user) {
+  // Guest buyers get an anonymous session for chat, and that token passes
+  // getUser too. Only sellers fill in a car form, so a guest has no reason to
+  // spend the API Ninjas quota.
+  if (authErr || !user || user.is_anonymous) {
     return res.status(401).json({ error: 'unauthorized' });
   }
 
@@ -102,6 +105,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ spec });
   } catch (err) {
-    return res.status(500).json({ error: "Fetch failed", detail: err.message });
+    console.error("[api/car-specs]", err?.message);
+    return res.status(500).json({ error: "Fetch failed" });
   }
 }

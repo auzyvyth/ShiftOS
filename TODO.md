@@ -247,6 +247,17 @@ inside self-rolling-back transactions.
   caller (was anon -> "profile not found" for everyone), buyers refused, a failed
   usage record now refuses instead of being logged past.
 - [x] SEC-7 Removed the dead Lite "Pending Approval" screen + its placeholder number.
+- [ ] SEC-8 OWNER RUNS SQL (audit 2026-10-11): `supabase/migrations/20261011a_security_perf_audit.sql`
+  (paste-ready: /mnt/project-files/security/run-tonight-2026-10-11.md). Drops `leads_public_insert`
+  (unlimited fake leads via phone rotation), caps bookings per seller + create_lead_from_booking,
+  stops it overwriting notes, sends the Telegram secret from both enquiry/booking triggers, and
+  only wakes `appointment-reminder` when there is work (~44% of API traffic was our own crons).
+  THEN deploy `telegram-enquiry-notify` (was an open relay for the platform bot), `telegram-notify`
+  and `appointment-reminder` from the repo -- telegram-enquiry-notify strictly AFTER the SQL.
+  Full report: /mnt/project-files/security/audit-2026-10-11.md.
+- [ ] SEC-9 (decide) `login_throttle_fail` / `auth_email_action_gate` are anon-callable by email:
+  anyone can keep a named user's login (or password reset) locked, and Supabase sign-in never
+  reads the table, so it does not stop a real attacker. Consider keying on IP as well.
 - Checked and CLEAN: anon can read only the intended public tables/views; a guest
   buyer sees only their own profile/chat; no service key in the client bundle;
   send-push, invites, create-salesman, send-telegram, chat-assist all check the caller;

@@ -584,7 +584,9 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
   the DB (never exposed to the client), falls back to the platform bot (`TELEGRAM_BOT_TOKEN`
   edge secret) for solo salesmen who have no bot of their own
 - telegram-notify — webhook; auto-posts new listings to the dealer Telegram channel
-- telegram-enquiry-notify — deployed only, not in repo
+- telegram-enquiry-notify — platform-bot Telegram for new enquiries/bookings (DB triggers
+  notify_salesman_new_enquiry / notify_salesman_new_booking). In the repo since 2026-10-11;
+  requires `x-webhook-secret` (vault `telegram_webhook_secret` = edge `WEBHOOK_SECRET`).
 - invites — creates auth user + profile for manager/admin/accountant/fi_officer roles
 - create-salesman — creates salesman accounts + `resend_setup` action
 - send-document — emails issued dealer_documents to the buyer via Resend
