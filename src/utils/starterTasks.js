@@ -1,22 +1,37 @@
 import { supabase } from "../supabaseClient";
 
-// Persist one starter-task flag on the seller's own profile row.
+// Persist starter-task flags on the seller's own profile row.
 //
-// Only tasks that CANNOT be derived from real data live here — today that is
-// just "the owner opened their own mini page". Adding a listing and writing a
-// bio are read straight off car_listings / profiles.bio, because a checklist
-// that can disagree with reality is worse than no checklist.
+// Only tasks that CANNOT be derived from real data live here: "the owner opened
+// their own mini page", "the owner opened the Live presenter", and the two
+// dismissals. Listings, bio, leads and reminders are read straight off the real
+// rows, because a checklist that can disagree with reality is worse than none.
 //
-// The merge is client-side ({...current, [key]: true}) rather than a jsonb
-// `||` concat in SQL. That is safe for this use — these are one-shot flags set
-// by a deliberate click, never concurrently — but if this ever grows into
-// something written from two places at once, move the merge server-side into an
-// RPC so one write cannot clobber the other.
-export async function markStarterTask(userId, key, currentTasks) {
-  if (!userId || !key) return currentTasks || {};
-  const next = { ...(currentTasks || {}), [key]: true };
-  // Already set — nothing to write.
-  if (currentTasks && currentTasks[key]) return currentTasks;
+// `keys` is one key or an array. The merge reads the CURRENT value from the
+// row first instead of trusting the caller's copy: the panels never write a
+// dismissal back into local state (so the "done" screen stays visible), and
+// the mini page has no starter_tasks at all, so merging onto a stale or
+// missing copy would silently wipe flags already set.
+export async function markStarterTask(userId, keys, currentTasks) {
+  const list = (Array.isArray(keys) ? keys : [keys]).filter(Boolean);
+  if (!userId || !list.length) return currentTasks || {};
+  // Already set locally: nothing to write.
+  if (currentTasks && list.every((k) => currentTasks[k])) return currentTasks;
+
+  const { data: row, error: readError } = await supabase
+    .from("profiles")
+    .select("starter_tasks")
+    .eq("id", userId)
+    .maybeSingle();
+  if (readError) {
+    console.error("markStarterTask:", readError);
+    return currentTasks || {};
+  }
+  const stored = row?.starter_tasks || {};
+  if (list.every((k) => stored[k])) return { ...(currentTasks || {}), ...stored };
+  const next = { ...stored };
+  list.forEach((k) => { next[k] = true; });
+
   const { error } = await supabase
     .from("profiles")
     .update({ starter_tasks: next })

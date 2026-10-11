@@ -121,7 +121,7 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 import { markStarterTask } from "../utils/starterTasks";
-import { starterTasksAllDone } from "../components/onboarding/StarterTasks";
+import { starterTasksAllDone, sellTasksAllDone, starterCardRetired, leadForFollowUp } from "../components/onboarding/StarterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
 // Every query that loads a lead uses this. The lead drawer renders the linked
@@ -540,9 +540,11 @@ export default function SalesmanPremium() {
  // nothing written anywhere, so the card returned on every login regardless of
  // what the seller had finished or dismissed. Persisted to
  // profiles.starter_tasks, where minipage_visited already lives.
+ // The hide button only exists once setup is done, so hiding retires both
+ // phases of the card.
  const dismissStarterTasks = () => {
  setStarterHidden(true);
- markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ markStarterTask(userId, ["dismissed", "sell_dismissed"], profile?.starter_tasks);
  };
 
  // Finishing all three retires it for good. Does not write back to local
@@ -554,6 +556,20 @@ export default function SalesmanPremium() {
  if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
  markStarterTask(userId, "dismissed", profile?.starter_tasks);
  }, [userId, listingsLoaded, profile, myListings.length]);
+
+ // Same for phase 2 (lead, reminder, Live presenter).
+ useEffect(() => {
+ if (!userId || leadsLoading) return;
+ if (profile?.starter_tasks?.sell_dismissed) return;
+ if (!sellTasksAllDone({ profile, leads, canGoLive: true })) return;
+ markStarterTask(userId, "sell_dismissed", profile?.starter_tasks);
+ }, [userId, leadsLoading, profile, leads]);
+
+ // The presenter lives on the mini page; `?present=1` opens it straight
+ // away for the owner, and opening it is what ticks the starter task.
+ const openLivePresenter = () => {
+ if (profile?.slug) window.open(`/s/${profile.slug}?present=1`, "_blank", "noopener,noreferrer");
+ };
 
  // Opening your own mini page is the one starter task no other data can prove
  // (analytics_events counts buyer views too), so the click records it.
@@ -6860,8 +6876,16 @@ export default function SalesmanPremium() {
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
  dismissTour={dismissTour} handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
- starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
+ starterTasksReady={listingsLoaded && !starterCardRetired(profile)}
  onStarterDismiss={dismissStarterTasks}
+ leadsLoaded={!leadsLoading}
+ onAddLead={() => { switchTab("leads"); setTimeout(() => setShowAddLead(true), 100); }}
+ onSetFollowUp={() => {
+ const lead = leadForFollowUp(leads);
+ switchTab("leads");
+ if (lead) setTimeout(() => { setFollowUpModalLead(lead); setFollowUpDate(lead.follow_up_at ? lead.follow_up_at.slice(0, 10) : ""); }, 100);
+ }}
+ onGoLive={openLivePresenter}
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);

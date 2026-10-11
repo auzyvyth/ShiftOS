@@ -44,7 +44,7 @@ import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import StarterTasks, { starterTasksAllDone } from "../components/onboarding/StarterTasks";
+import StarterTasks, { starterTasksAllDone, sellTasksAllDone, starterCardRetired, leadForFollowUp } from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
 import { hasUnreadRejection } from "../utils/listingReview";
@@ -1262,9 +1262,11 @@ export default function SalesmanLite() {
   // nothing written anywhere, so the card came back on every single login no
   // matter what the seller had finished or dismissed. It goes in
   // profiles.starter_tasks, the same place `minipage_visited` already lives.
+  // The hide button only exists once setup is done, so hiding retires both
+  // phases of the card.
   const dismissStarterTasks = () => {
     setStarterHidden(true);
-    markStarterTask(userId, "dismissed", profile?.starter_tasks);
+    markStarterTask(userId, ["dismissed", "sell_dismissed"], profile?.starter_tasks);
   };
 
   // Finishing all three retires the card for good. Waits for `listingsLoaded`
@@ -1282,6 +1284,15 @@ export default function SalesmanLite() {
     if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
     markStarterTask(userId, "dismissed", profile?.starter_tasks);
   }, [userId, listingsLoaded, profile, myListings.length]);
+
+  // Same for phase 2 (add a lead, set a reminder). Lite cannot open the Live
+  // presenter, so it is not part of Lite's count.
+  useEffect(() => {
+    if (!userId || leadsLoading) return;
+    if (profile?.starter_tasks?.sell_dismissed) return;
+    if (!sellTasksAllDone({ profile, leads, canGoLive: false })) return;
+    markStarterTask(userId, "sell_dismissed", profile?.starter_tasks);
+  }, [userId, leadsLoading, profile, leads]);
 
   // Opening your own mini page is the one starter task nothing else can prove,
   // so the click that does it is what records it. Used by the starter card AND
@@ -3326,10 +3337,20 @@ export default function SalesmanLite() {
             meant no listings AND no leads — so doing step 1 unmounted the card,
             and the tour (which runs on first landing) set the flag that hid it
             anyway. Shared with Premium now; see StarterTasks for the details. */}
-        {listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed && (
+        {listingsLoaded && !starterHidden && !starterCardRetired(profile) && (
           <StarterTasks
             profile={profile}
             listingCount={myListings.length}
+            leads={leads}
+            leadsLoaded={!leadsLoading}
+            canGoLive={false}
+            onAddLead={() => { switchTab("leads"); setTimeout(() => setShowAddLead(true), 100); }}
+            onSetFollowUp={() => {
+              const lead = leadForFollowUp(leads);
+              switchTab("leads");
+              if (lead) setTimeout(() => { setFollowUpModalLead(lead); setFollowUpDate(lead.follow_up_at ? lead.follow_up_at.slice(0, 10) : ""); }, 100);
+            }}
+            onSeePremium={goPremium}
             t={t}
             palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
             onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}

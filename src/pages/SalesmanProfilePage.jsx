@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { markStarterTask } from '../utils/starterTasks';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
@@ -375,6 +376,23 @@ export default function SalesmanProfilePage() {
     const t = setTimeout(() => setSetupSlideIn(true), 60);
     return () => clearTimeout(t);
   }, [isOwner, nextTodoKey, setupDismissed]);
+  // The panel's "Try Live presentation" starter task opens this page with
+  // ?present=1. Opening the presenter is what ticks that task, whichever way
+  // the owner got here (the chip below counts too).
+  const autoPresent = useRef(false);
+  useEffect(() => {
+    if (autoPresent.current || !isOwner || !viewerHome || viewerHome.lite || !listings.length) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('present') !== '1') return;
+    autoPresent.current = true;
+    params.delete('present');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    setPresenting(true);
+  }, [isOwner, viewerHome, listings.length]);
+  useEffect(() => {
+    if (presenting && isOwner && viewerId) markStarterTask(viewerId, 'live_opened');
+  }, [presenting, isOwner, viewerId]);
   const dismissSetupNudge = () => {
     setSetupSlideIn(false);
     setTimeout(() => {
