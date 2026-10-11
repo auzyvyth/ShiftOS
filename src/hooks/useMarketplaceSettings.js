@@ -12,10 +12,13 @@ export const MARKETPLACE_FALLBACK = {
   social_facebook:      'https://facebook.com/xdrive.my',
   social_tiktok:        null,
   trust_badges: [
-    { text: 'Every listing verified' },
-    { text: 'Full ownership docs' },
-    { text: 'Certified dealers only' },
-    { text: 'Zero phantom listings' },
+    // Only claims something on the platform actually checks. The old defaults
+    // ("Every listing verified", "Certified dealers only") promised checks that
+    // do not exist: a seller can publish without a geran by giving a reason,
+    // and Lite agents are not dealers.
+    { text: 'Geran asked for on used cars' },
+    { text: 'Dealers and agents' },
+    { text: 'Report any listing' },
   ],
   footer_copyright:     '© {year} XDrive Malaysia Sdn Bhd. All rights reserved.',
   shiftos_band_enabled: true,

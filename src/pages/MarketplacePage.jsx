@@ -606,7 +606,7 @@ export default function MarketplacePage() {
 
   const pageDesc = (() => {
     const cnt = stats.listings ? `${stats.listings.toLocaleString()}+ ` : '';
-    if (hotDeals) return `Find the best hot deal cars in Malaysia. Browse ${cnt}discounted used cars from verified dealers. Save thousands on Perodua, Proton, Honda, Toyota and more.`;
+    if (hotDeals) return `Find the best hot deal cars in Malaysia. Browse ${cnt}discounted used cars from dealers and agents. Perodua, Proton, Honda, Toyota and more.`;
     const parts = [];
     if (condition === 'recon') parts.push('recon');
     else if (condition === 'local') parts.push('local');
@@ -614,7 +614,7 @@ export default function MarketplacePage() {
     if (bodyType) parts.push(bodyType.toLowerCase());
     const carType = parts.length ? parts.join(' ') + ' ' : '';
     const loc = state ? `${state}, Malaysia` : 'Malaysia';
-    return `Browse ${cnt}${carType}cars for sale in ${loc}. Verified dealers, best prices on Perodua, Proton, Honda, Toyota and more.`;
+    return `Browse ${cnt}${carType}cars for sale in ${loc} from dealers and agents. Perodua, Proton, Honda, Toyota and more.`;
   })();
 
   return (
@@ -640,7 +640,7 @@ export default function MarketplacePage() {
           "@type": "WebSite",
           "name": "XDrive",
           "url": "https://xdrive.my",
-          "description": "Malaysia's car marketplace. Buy and sell new, used, and recon cars from verified dealers.",
+          "description": "Malaysia's car marketplace. New, used and recon cars from dealers and agents.",
           "potentialAction": {
             "@type": "SearchAction",
             "target": {
@@ -1011,7 +1011,7 @@ export default function MarketplacePage() {
               </h1>
 
               <p style={{ fontSize:'clamp(13px,3.5vw,15px)', color:'#4b5563', margin:'0 0 18px', lineHeight:'1.6', fontFamily:"'Outfit',sans-serif", maxWidth:'420px' }}>
-                New &middot; Used &middot; Recon &mdash; Verified Dealers, Full Docs, Zero Phantom Listings.
+                New &middot; Used &middot; Recon &mdash; from dealers and agents across Malaysia.
               </p>
 
               {/* Tabs — "Browse Hot Deals" is hidden while there are no hot
@@ -1121,7 +1121,7 @@ export default function MarketplacePage() {
           {/* ── Trust strip — bottom of hero. This is the page's entire differentiator
                 (verified/safe marketplace), so it gets real visual weight here instead
                 of living as small type — real stats where we have them (listings,
-                dealers), the two hard guarantees otherwise. No per-card "Verified"
+                sellers), and two things the platform actually enforces. No per-card "Verified"
                 badge — there's no per-listing verification flag in the data yet, and
                 stamping every card identically would be a badge with no information
                 behind it. ── */}
@@ -1129,9 +1129,13 @@ export default function MarketplacePage() {
             <div className="mp-trust-grid">
               {[
                 { icon: Car,         number: stats.listings != null ? stats.listings.toLocaleString() + '+' : '—', label:'Cars listed' },
-                { icon: ShieldCheck, number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Verified dealers' },
-                { icon: FileCheck2,  number:'100%', label:'Docs required' },
-                { icon: Ban,         number:'0', label:'Phantom listings' },
+                { icon: ShieldCheck, number: stats.dealers  != null ? stats.dealers + '+'                  : '—', label:'Dealers & agents' },
+                // Only what the platform enforces: CarForm asks for the geran (a
+                // seller can skip it by giving a reason, so never "100%"), and
+                // every car page has a report link. "0 phantom listings" was a
+                // guarantee nothing checks.
+                { icon: FileCheck2,  number:'Geran', label:'Asked on used cars' },
+                { icon: Ban,         number:'1 tap', label:'Report a listing' },
               ].map(({ icon: Icon, number, label }) => (
                 <div key={label} className="mp-trust-item">
                   <div style={{ width:34, height:34, borderRadius:9, background:'#FEF2F2', border:'1px solid rgba(220,38,38,0.16)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>

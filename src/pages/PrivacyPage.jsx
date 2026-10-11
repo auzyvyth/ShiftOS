@@ -3,16 +3,16 @@ import { Link } from "react-router-dom";
 import { PRIVACY, DPA, LEGAL_META } from "../legal/legalDocs";
 
 const S = {
-  page: { minHeight: "100vh", background: "#080C14", fontFamily: "system-ui, sans-serif", color: "#e8edf5" },
+  page: { minHeight: "100vh", background: "#080C14", fontFamily: "var(--xd-font-body)", color: "#e8edf5" },
   header: { borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "20px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, background: "#080C14", zIndex: 10 },
   brand: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none" },
   dot: { width: 28, height: 28, background: "#dc2626", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 16, color: "#fff" },
   name: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, letterSpacing: 4, color: "#fff" },
-  back: { fontSize: 12, color: "rgba(255,255,255,0.35)", textDecoration: "none", letterSpacing: "0.05em" },
+  back: { fontSize: 12, color: "rgba(255,255,255,0.6)", textDecoration: "none", letterSpacing: "0.05em" },
   wrap: { maxWidth: 740, margin: "0 auto", padding: "48px 24px 80px" },
   badge: { display: "inline-block", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "#dc2626", fontWeight: 600, marginBottom: 12 },
   title: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 42, letterSpacing: 2, color: "#fff", marginBottom: 8 },
-  meta: { fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 40, paddingBottom: 32, borderBottom: "1px solid rgba(255,255,255,0.07)" },
+  meta: { fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 40, paddingBottom: 32, borderBottom: "1px solid rgba(255,255,255,0.07)" },
   section: { marginBottom: 40 },
   docTitle: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 20, letterSpacing: 2, color: "#fff", margin: "48px 0 20px", paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.07)" },
   h: { fontFamily: "'Bebas Neue', sans-serif", fontSize: 13, letterSpacing: 3, color: "#dc2626", marginBottom: 10, paddingTop: 8 },
@@ -20,7 +20,7 @@ const S = {
   notice: { background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)", borderRadius: 8, padding: "14px 16px", fontSize: 13, color: "rgba(232,237,245,0.6)", lineHeight: 1.7, marginTop: 40 },
   divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "32px 0" },
   footer: { marginTop: 48, padding: "24px 0", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 24, flexWrap: "wrap" },
-  flink: { fontSize: 12, color: "rgba(255,255,255,0.35)", textDecoration: "none" },
+  flink: { fontSize: 12, color: "rgba(255,255,255,0.6)", textDecoration: "none" },
 };
 
 export default function PrivacyPage() {
@@ -45,8 +45,8 @@ export default function PrivacyPage() {
           <span style={S.badge}>Legal</span>
           <h1 style={S.title}>Privacy Policy</h1>
           <p style={S.meta}>
-            Effective Date: {LEGAL_META.effectiveDate} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp; PDPA 2010 compliant &nbsp;·&nbsp;
-            See also: <Link to="/terms" style={{ color: "rgba(255,255,255,0.4)", textDecoration: "underline" }}>Terms of Service</Link>
+            Effective Date: {LEGAL_META.effectiveDate} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp;
+            See also: <Link to="/terms" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "underline" }}>Terms of Service</Link>
           </p>
 
           {/* ── PRIVACY POLICY ── */}
