@@ -20,7 +20,7 @@ export const MARKETPLACE_FALLBACK = {
     { text: 'Dealers and agents' },
     { text: 'Report any listing' },
   ],
-  footer_copyright:     '© {year} XDrive Malaysia Sdn Bhd. All rights reserved.',
+  footer_copyright:     '© {year} XDrive. Operated by Airy, sole proprietor. All rights reserved.',
   shiftos_band_enabled: true,
   announcement_enabled: false,
   announcement_text:    null,

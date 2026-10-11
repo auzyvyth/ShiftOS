@@ -100,6 +100,13 @@ function buildEmailHtml(cars: Record<string, unknown>[], alert: Record<string, u
     return `${SITE_URL}/showroom?${p.toString()}`;
   })();
 
+  // One-tap opt-out, no sign-in (price_alert_unsubscribe, migration 20261011a).
+  // "Manage your alerts" used to point at /showroom, where alerts cannot be
+  // managed at all. Until the token column exists the link is just left out.
+  const unsubUrl = alert.unsubscribe_token
+    ? `${SITE_URL}/unsubscribe?kind=alerts&t=${encodeURIComponent(String(alert.unsubscribe_token))}`
+    : null;
+
   const carRows = cars.map(c => {
     const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ');
     const price = c.selling_price ? fmt(Number(c.selling_price)) : 'P.O.R';
@@ -147,7 +154,7 @@ function buildEmailHtml(cars: Record<string, unknown>[], alert: Record<string, u
     <div style="padding:16px 24px;border-top:1px solid #f3f4f6;text-align:center;">
       <p style="font-size:11px;color:#9ca3af;margin:0;">
         You're receiving this because you saved a search on XDrive.<br/>
-        <a href="${SITE_URL}/showroom" style="color:#9ca3af;">Manage your alerts</a>
+        <a href="${SITE_URL}/account" style="color:#9ca3af;">Manage your alerts</a>${unsubUrl ? ` &middot; <a href="${unsubUrl}" style="color:#9ca3af;">Unsubscribe</a>` : ''}
       </p>
     </div>
   </div>

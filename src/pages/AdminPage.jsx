@@ -1843,7 +1843,7 @@ export default function AdminPage() {
                         onChange={e => setMktSettings(s => ({ ...s, footer_copyright: e.target.value }))}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240 }}
-                        placeholder="© {year} XDrive Malaysia Sdn Bhd. All rights reserved."
+                        placeholder="© {year} XDrive. Operated by Airy, sole proprietor. All rights reserved."
                       />
                     </MktField>
                   </MktSection>

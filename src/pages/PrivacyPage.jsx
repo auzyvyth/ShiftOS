@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { PRIVACY, DPA, LEGAL_META } from "../legal/legalDocs";
+import { PRIVACY, PRIVACY_MS, DPA, LEGAL_META } from "../legal/legalDocs";
 
 const S = {
   page: { minHeight: "100vh", background: "#080C14", fontFamily: "var(--xd-font-body)", color: "#e8edf5" },
@@ -21,9 +22,17 @@ const S = {
   divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "32px 0" },
   footer: { marginTop: 48, padding: "24px 0", borderTop: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 24, flexWrap: "wrap" },
   flink: { fontSize: 12, color: "rgba(255,255,255,0.6)", textDecoration: "none" },
+  langRow: { display: "flex", gap: 8, marginBottom: 32 },
+  langBtn: (on) => ({ fontSize: 12, fontWeight: 600, padding: "6px 14px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", border: `1px solid ${on ? "#dc2626" : "rgba(255,255,255,0.2)"}`, background: on ? "rgba(220,38,38,0.12)" : "transparent", color: on ? "#fff" : "rgba(255,255,255,0.7)" }),
 };
 
 export default function PrivacyPage() {
+  // PDPA s.7(3): the notice has to exist in Bahasa Malaysia and English. Starts
+  // in the app's language; the DPA below is a B2B contract and stays English.
+  const { i18n } = useTranslation();
+  const [lang, setLang] = useState(i18n.language?.startsWith("ms") ? "ms" : "en");
+  const doc = lang === "ms" ? PRIVACY_MS : PRIVACY;
+
   useEffect(() => {
     document.title = "Privacy Policy · ShiftOS";
     window.scrollTo(0, 0);
@@ -43,18 +52,23 @@ export default function PrivacyPage() {
 
         <div style={S.wrap}>
           <span style={S.badge}>Legal</span>
-          <h1 style={S.title}>Privacy Policy</h1>
+          <h1 style={S.title}>{lang === "ms" ? "Polisi Privasi" : "Privacy Policy"}</h1>
           <p style={S.meta}>
-            Effective Date: {LEGAL_META.effectiveDate} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp;
+            {lang === "ms" ? "Dikemas kini" : "Last updated"}: {LEGAL_META.privacyUpdated} &nbsp;·&nbsp; {LEGAL_META.brand} &nbsp;·&nbsp;
             See also: <Link to="/terms" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "underline" }}>Terms of Service</Link>
           </p>
 
-          {/* ── PRIVACY POLICY ── */}
-          <div style={S.section}>
-            <p style={S.p}>{PRIVACY.intro}</p>
+          <div style={S.langRow} role="group" aria-label="Language">
+            <button type="button" style={S.langBtn(lang === "en")} aria-pressed={lang === "en"} onClick={() => setLang("en")}>English</button>
+            <button type="button" style={S.langBtn(lang === "ms")} aria-pressed={lang === "ms"} onClick={() => setLang("ms")}>Bahasa Malaysia</button>
           </div>
 
-          {PRIVACY.sections.map((sec) => (
+          {/* ── PRIVACY POLICY ── */}
+          <div style={S.section}>
+            <p style={S.p}>{doc.intro}</p>
+          </div>
+
+          {doc.sections.map((sec) => (
             <div style={S.section} key={sec.h}>
               <p style={S.h}>{sec.h}</p>
               {sec.p.map((para, i) => <p style={S.p} key={i}>{para}</p>)}
