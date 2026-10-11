@@ -296,6 +296,14 @@ const ReconTrust = ({ car, isXdrive }) => {
 };
 
 
+// Enter / Space on a div that acts as a button or checkbox, so a keyboard
+// user can reach what a tap can (role + tabIndex alone do not fire onClick).
+function keyActivate(fn) {
+  return (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fn(); }
+  };
+}
+
 function daysAgo(dateStr) {
   if (!dateStr) return null;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
@@ -1080,7 +1088,9 @@ export default function CarDetailPage() {
   const [booked, setBooked] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showReservedPopup, setShowReservedPopup] = useState(false);
-  const [bookingConsent, setBookingConsent] = useState({ appear: true, whatsapp: true });
+  // Both start UNTICKED: a pre-ticked box is not consent (PDPA), and the
+  // commitment box only means something if the buyer ticks it themselves.
+  const [bookingConsent, setBookingConsent] = useState({ appear: false, whatsapp: false });
   // Per-field booking errors, keyed the same as validateBooking's output.
   const [bookErrors, setBookErrors] = useState({});
   // Clears one field's error as soon as the buyer edits it, so the message
@@ -1597,7 +1607,7 @@ export default function CarDetailPage() {
       phone: (f.phone && f.phone !== "+60" ? f.phone : (saved.phone || buyerProfile?.phone || "+60")),
     }));
     setBooked(false);
-    setBookingConsent({ appear: true, whatsapp: true });
+    setBookingConsent({ appear: false, whatsapp: false });
     setBookErrors({});
     setShowBookingModal(true);
   }
@@ -1801,7 +1811,7 @@ export default function CarDetailPage() {
       });
     setSubmitting(false);
     setBooked(true);
-    setBookingConsent({ appear: true, whatsapp: true });
+    setBookingConsent({ appear: false, whatsapp: false });
   }
 
   /* ── early returns ── */
@@ -2710,7 +2720,7 @@ export default function CarDetailPage() {
                 const isOpen = openDocKey === rk;
                 return (
                   <div key={key} style={{ background: th.card, border:`1px solid ${isOpen && available ? okBorder : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
-                    <div onClick={() => available && toggleDoc(rk)}
+                    <div onClick={() => available && toggleDoc(rk)} {...(available ? { role: 'button', tabIndex: 0, 'aria-expanded': isOpen, onKeyDown: keyActivate(() => toggleDoc(rk)) } : {})}
                       style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor: available ? 'pointer' : 'default' }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
@@ -2744,7 +2754,7 @@ export default function CarDetailPage() {
                 const isOpen = openDocKey === rk;
                 return (
                   <div key={rk} style={{ background: th.card, border:`1px solid ${isOpen ? cfg.color+'40' : th.border}`, borderRadius:9, overflow:'hidden', transition:'border-color 0.2s' }}>
-                    <div onClick={() => toggleDoc(rk)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
+                    <div onClick={() => toggleDoc(rk)} role="button" tabIndex={0} aria-expanded={isOpen} onKeyDown={keyActivate(() => toggleDoc(rk))} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', cursor:'pointer' }}>
                       <p style={{ fontSize:12, color: th.text, fontWeight:500, margin:0 }}>{cfg.label}</p>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
                         <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:10, fontWeight:600, color:cfg.color, whiteSpace:'nowrap' }}><span aria-hidden="true" style={{ width:6, height:6, borderRadius:'50%', background:'currentColor', flexShrink:0 }} />Available</span>
@@ -3791,7 +3801,7 @@ export default function CarDetailPage() {
                   const isOpen = openDocKey === rk;
                   return (
                     <div key={key} style={{ background: th.card, border: `1px solid ${isOpen && available ? okBorder : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-                      <div onClick={() => available && toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
+                      <div onClick={() => available && toggleDoc(rk)} {...(available ? { role: 'button', tabIndex: 0, 'aria-expanded': isOpen, onKeyDown: keyActivate(() => toggleDoc(rk)) } : {})} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: available ? 'pointer' : 'default' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ color: available ? okColor : th.textMuted }}>{icon}</span>
                           <div>
@@ -3826,7 +3836,7 @@ export default function CarDetailPage() {
                   const isOpen = openDocKey === rk;
                   return (
                     <div key={rk} style={{ background: th.card, border: `1px solid ${isOpen ? `${cfg.color}50` : 'rgba(255,255,255,0.05)'}`, borderRadius: 10, overflow: 'hidden', transition: 'border-color 0.2s' }}>
-                      <div onClick={() => toggleDoc(rk)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }}>
+                      <div onClick={() => toggleDoc(rk)} role="button" tabIndex={0} aria-expanded={isOpen} onKeyDown={keyActivate(() => toggleDoc(rk))} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', cursor: 'pointer' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <BadgeCheck size={15} style={{ color: cfg.color }} />
                           <p style={{ fontSize: 13, color: th.textSec, fontWeight: 500, margin: 0 }}>{cfg.label}</p>
@@ -4510,6 +4520,8 @@ export default function CarDetailPage() {
                   <div id="cdp-bk-consent" style={{ borderTop:`1px solid ${th.border}`, paddingTop:16, marginTop:4, marginBottom:16 }}>
                     <label
                       onClick={() => { setBookingConsent(c => ({...c, appear: !c.appear})); clearBookError('consent'); }}
+                      role="checkbox" aria-checked={bookingConsent.appear} tabIndex={0}
+                      onKeyDown={keyActivate(() => { setBookingConsent(c => ({...c, appear: !c.appear})); clearBookError('consent'); })}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', marginBottom:12, userSelect:'none' }}
                     >
                       <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.appear ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.appear ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}>
@@ -4521,6 +4533,8 @@ export default function CarDetailPage() {
                     </label>
                     <label
                       onClick={() => { setBookingConsent(c => ({...c, whatsapp: !c.whatsapp})); clearBookError('consent'); }}
+                      role="checkbox" aria-checked={bookingConsent.whatsapp} tabIndex={0}
+                      onKeyDown={keyActivate(() => { setBookingConsent(c => ({...c, whatsapp: !c.whatsapp})); clearBookError('consent'); })}
                       style={{ display:'flex', alignItems:'flex-start', gap:10, cursor:'pointer', userSelect:'none' }}
                     >
                       <div style={{ width:18, height:18, borderRadius:4, border: bookingConsent.whatsapp ? '2px solid #dc2626' : `2px solid ${bookErrors.consent ? th.errText : th.inputBorder}`, background: bookingConsent.whatsapp ? '#dc2626' : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', marginTop:1, transition:'background-color 150ms var(--xd-ease-out), border-color 150ms var(--xd-ease-out), color 150ms var(--xd-ease-out), box-shadow 150ms var(--xd-ease-out), transform 150ms var(--xd-ease-out), opacity 150ms var(--xd-ease-out)' }}>

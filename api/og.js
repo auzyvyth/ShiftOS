@@ -515,7 +515,7 @@ const BRAND_LD = [
     url: SITE_URL,
     logo: `${SITE_URL}/xdrivelogo.png`,
     description:
-      "XDrive is a Malaysian marketplace for verified used, recon and new cars with transparent pricing and full vehicle history.",
+      "XDrive is a Malaysian marketplace for used, recon and new cars from local dealers and agents.",
     areaServed: "MY",
     sameAs: [
       "https://facebook.com/xdrive.my",
@@ -1027,7 +1027,7 @@ export default async function handler(req) {
       }));
     }
     const META = {
-      "/": { title: "XDrive — Verified Used & Recon Cars in Malaysia", h1: "Verified used & recon cars in Malaysia", desc: "Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive." },
+      "/": { title: "XDrive — Used & Recon Cars for Sale in Malaysia", h1: "Used & recon cars for sale in Malaysia", desc: "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on XDrive." },
       "/marketplace": { title: "Used Car Marketplace Malaysia — Browse & Compare | XDrive", h1: "Used car marketplace Malaysia", desc: "Malaysia's used car marketplace — browse, filter and compare thousands of quality-checked used cars from trusted dealers on XDrive." },
       "/showroom": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
       "/cars": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
@@ -1092,7 +1092,7 @@ export default async function handler(req) {
   if (APP_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return html(htmlShell({
       title: "XDrive",
-      description: "Browse verified used cars for sale in Malaysia on xdrive.my.",
+      description: "Browse used cars for sale in Malaysia on xdrive.my.",
       canonical: `${baseUrl}${pathname}`,
       robots: "noindex, follow",
       body: `  <main><h1>XDrive</h1><p><a href="${SITE_URL}/showroom">Browse all used cars</a></p></main>`,
