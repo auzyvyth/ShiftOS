@@ -34,7 +34,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPA
 // which is exactly how Google-InspectionTool (URL Inspection / Request Indexing)
 // and googleother got stuck, making GSC reject indexing during live testing.
 const BOT_AGENTS =
-  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot|anthropic-ai|cohere-ai|ia_archiver/i;
+  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|perplexity-user|chatgpt|claudebot|claude-searchbot|claude-user|gptbot|anthropic-ai|cohere-ai|meta-externalagent|meta-externalfetcher|duckassistbot|ia_archiver/i;
 
 function isBot(ua) {
   return BOT_AGENTS.test(ua);
@@ -95,7 +95,7 @@ async function getSalesmanData(slug) {
 // 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs,seller_role,salesman_slug&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs,seller_role,salesman_slug,created_at&limit=1`,
   );
   return car ?? null;
 }
@@ -411,7 +411,32 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
   }));
 }
 
-function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null) {
+// "At a glance" facts for a car page. Most sellers write no "About this car"
+// text, so without this every page of the same model reads the same. Every
+// line is a number we hold (listing date, status, the model hub's live
+// count/price range/sold count); nothing estimated, nothing about the car's
+// condition. No "below/above average" line: the hub mixes model years, so a
+// 2025 car would read as overpriced against 2021 ones. Hub numbers only exist on the root domain (a storefront must not
+// quote other dealers' prices), so storefront pages get the first two lines.
+export function carFacts(car, hubModel) {
+  const rm = (n) => `RM ${Math.round(n).toLocaleString("en-MY")}`;
+  const label = [car.brand, hubModel?.model || car.model].filter(Boolean).join(" ");
+  const out = [];
+  if (car.created_at) {
+    out.push(`Listed on XDrive since ${new Date(car.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })}.`);
+  }
+  out.push({ available: "Status: available.", reserved: "Status: reserved.", sold: "Status: sold." }[car.status] || null);
+  if (hubModel && hubModel.count > 1 && hubModel.minPrice != null) {
+    const years = hubModel.minYear && hubModel.maxYear && hubModel.minYear !== hubModel.maxYear ? `, ${hubModel.minYear} to ${hubModel.maxYear} models` : "";
+    out.push(`${hubModel.count} ${label} are listed on XDrive right now${HUB_LIVE.includes(car.status) ? ", including this one" : ""}, asking ${rm(hubModel.minPrice)} to ${rm(hubModel.maxPrice)}${years}.`);
+  } else if (hubModel && hubModel.count === 1 && HUB_LIVE.includes(car.status)) {
+    out.push(`This is the only ${label} listed on XDrive right now.`);
+  }
+  if (hubModel?.sold > 0) out.push(`${hubModel.sold} ${label} ${hubModel.sold === 1 ? "has" : "have"} sold on XDrive.`);
+  return out.filter(Boolean);
+}
+
+function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, hubModel = null) {
   const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
   // Chassis/generation code (e.g. "G82") — enthusiasts search "m4 g82"; surfacing
   // it in the title/H1/description is what lets Google match those queries to us.
@@ -458,6 +483,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null) {
     </ul>
     ${(() => { const t = sellerText(car); return t.length ? `<h2>About this car</h2>\n    ${t.map((l) => `<p>${esc(l)}</p>`).join("\n    ")}` : ""; })()}
     ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
+    ${(() => { const f = carFacts(car, hubModel); return f.length ? `<h2>At a glance</h2>\n    <ul>\n      ${f.map((l) => `<li>${esc(l)}</li>`).join("\n      ")}\n    </ul>` : ""; })()}
     ${dealer?.dealership ? `<p>Sold by ${dealer.url ? `<a href="${esc(dealer.url)}">${esc(dealer.dealership)}</a>` : esc(dealer.dealership)}${dealer.kind === "agent" ? " (car agent)" : ""}.</p>` : ""}
     ${modelHub ? `<p><a href="${SITE_URL}${modelHub.path}">More used ${esc(car.brand)} ${esc(modelHub.name)} for sale</a></p>` : ""}
     <p><a href="${baseUrl}${carBase}">Browse more used cars on xdrive.my</a></p>
@@ -489,7 +515,7 @@ const BRAND_LD = [
     url: SITE_URL,
     logo: `${SITE_URL}/xdrivelogo.png`,
     description:
-      "XDrive is a Malaysian marketplace for verified used, recon and new cars with transparent pricing and full vehicle history.",
+      "XDrive is a Malaysian marketplace for used, recon and new cars from local dealers and agents.",
     areaServed: "MY",
     sameAs: [
       "https://facebook.com/xdrive.my",
@@ -947,7 +973,7 @@ export default async function handler(req) {
       hubSlugOf(cm.matched ? cm.model : car.model),
     );
     const crumbs = hubBrand ? hubCrumbs(hubBrand, hubModel) : null;
-    return html(buildCarHtml(car, dealer, carCanonical(car, dealer), baseUrl, carBase, crumbs));
+    return html(buildCarHtml(car, dealer, carCanonical(car, dealer), baseUrl, carBase, crumbs, hubModel));
   }
 
   // A single Find me post: buyer-typed and short-lived, never indexed.
@@ -1001,7 +1027,7 @@ export default async function handler(req) {
       }));
     }
     const META = {
-      "/": { title: "XDrive — Verified Used & Recon Cars in Malaysia", h1: "Verified used & recon cars in Malaysia", desc: "Buy verified used, recon and new cars in Malaysia with transparent pricing and full vehicle history. Trusted local dealers and easy financing on XDrive." },
+      "/": { title: "XDrive — Used & Recon Cars for Sale in Malaysia", h1: "Used & recon cars for sale in Malaysia", desc: "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on XDrive." },
       "/marketplace": { title: "Used Car Marketplace Malaysia — Browse & Compare | XDrive", h1: "Used car marketplace Malaysia", desc: "Malaysia's used car marketplace — browse, filter and compare thousands of quality-checked used cars from trusted dealers on XDrive." },
       "/showroom": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
       "/cars": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
@@ -1066,7 +1092,7 @@ export default async function handler(req) {
   if (APP_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return html(htmlShell({
       title: "XDrive",
-      description: "Browse verified used cars for sale in Malaysia on xdrive.my.",
+      description: "Browse used cars for sale in Malaysia on xdrive.my.",
       canonical: `${baseUrl}${pathname}`,
       robots: "noindex, follow",
       body: `  <main><h1>XDrive</h1><p><a href="${SITE_URL}/showroom">Browse all used cars</a></p></main>`,

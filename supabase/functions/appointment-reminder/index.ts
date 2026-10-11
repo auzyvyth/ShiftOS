@@ -14,6 +14,17 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  // verify_jwt only proves the caller holds A token, and the public anon key is
+  // one, so anyone could run this on demand. Only the pg_cron job (jobid 7)
+  // holds the cron key; same gate as expiry-reminders / notify-seller-unread.
+  const bearer = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
+  let authorised = false;
+  if (bearer) {
+    const { data } = await supabase.rpc("cron_key_matches", { p_key: bearer });
+    authorised = data === true;
+  }
+  if (!authorised) return new Response("unauthorized", { status: 401, headers: corsHeaders });
+
   let telegramSent = 0;
   let unconfirmedNags = 0;
 

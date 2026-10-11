@@ -2,9 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 serve(async (req) => {
-  // Verify this came from Supabase, not an arbitrary caller
-  const secret = Deno.env.get("WEBHOOK_SECRET");
-  if (secret && req.headers.get("x-webhook-secret") !== secret) {
+  // Verify this came from Supabase, not an arbitrary caller. Fails CLOSED: the
+  // old `if (secret && ...)` let everyone through whenever WEBHOOK_SECRET was
+  // unset, and the body is a caller-supplied listing posted with the dealer's
+  // own bot to the dealer's own channel.
+  const secret = (Deno.env.get("WEBHOOK_SECRET") || "").trim();
+  if (secret.length === 0 || req.headers.get("x-webhook-secret") !== secret) {
     return new Response("unauthorized", { status: 401 });
   }
 

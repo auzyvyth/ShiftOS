@@ -44,7 +44,7 @@ function UsedCarFormFast({ onCreate }) {
 
   const [f, setF] = useState({
     brand: "", model: "", year: String(new Date().getFullYear()),
-    selling_price: "", state: "",
+    selling_price: "", state: "", specs: "",
   });
 
   const cameraRef = useRef(null);
@@ -95,6 +95,9 @@ function UsedCarFormFast({ onCreate }) {
           selling_price: parseFloat(f.selling_price),
           base_price: parseFloat(f.selling_price),
           state: f.state,
+          // Same column as CarForm's "About this car". Most listings have no
+          // text at all, which leaves their public pages reading alike.
+          specs: f.specs.trim() || null,
           condition: "used",
           transmission: "Auto",
           fuel_type: "Petrol",
@@ -216,6 +219,14 @@ function UsedCarFormFast({ onCreate }) {
               <option value="">Select state</option>
               {STATES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
+          </div>
+          <div>
+            <label style={S.label}>About this car (optional)</label>
+            <textarea style={{ ...S.field, resize: "vertical", lineHeight: 1.5 }} rows={3} value={f.specs} onChange={upd("specs")}
+              placeholder={"e.g. One owner, full service record.\nTyres 80%, no accident."} />
+            <p style={{ margin: "5px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1.5 }}>
+              2 or 3 lines in your own words help this car show up on Google.
+            </p>
           </div>
           <p style={{ margin: 0, fontSize: 11, color: "#4b5563", lineHeight: 1.6 }}>
             Listed immediately as <span style={{ color: "#4ade80" }}>available</span>. You can add mileage, colour, and more details after.

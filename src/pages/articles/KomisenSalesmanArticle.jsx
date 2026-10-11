@@ -11,8 +11,8 @@ const ARTICLE = {
   description:
     'Berapa komisen jual kereta di Malaysia? Tiada kadar tetap: ada dealer bayar jumlah tetap setiap unit, ada yang beri peratus untung. Formula, contoh kiraan dan kesilapan biasa.',
   datePublished: '2026-06-22',
-  dateModified: '2026-10-05',
-  readMins: 7,
+  dateModified: '2026-10-11',
+  readMins: 9,
 };
 
 const FAQS = [
@@ -27,6 +27,10 @@ const FAQS = [
   {
     q: 'Boleh ke automasikan rekod komisen salesman?',
     a: 'Boleh. App seperti ShiftOS mencadangkan komisen setiap kereta ikut peraturan yang dealer tetapkan, dan bila deal ditutup komisen itu direkodkan pada salesman yang menutupnya. Tiada lagi kiraan manual hujung bulan.',
+  },
+  {
+    q: 'Salesman lain tutup deal pelanggan saya. Siapa dapat komisen?',
+    a: 'Tiada satu peraturan yang sama untuk semua dealer. Ada dealer bayar kepada salesman yang dapat lead dulu, ada yang bayar kepada yang menutup deal, ada yang bahagi dua. Sebab itu minta polisi komisen secara bertulis sebelum ia berlaku, dan simpan rekod setiap lead dari hari pertama: tarikh, mesej dan temujanji. Bila berlaku pertikaian, rekod yang jelas lebih kuat daripada ingatan.',
   },
   {
     q: 'Berapa kadar komisen salesman kereta biasa di Malaysia?',
@@ -185,6 +189,48 @@ export default function KomisenSalesmanArticle() {
                   ))}
                 </ul>
               </div>
+            </section>
+
+            <section>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Bila Salesman Lain Rampas Lead Anda</h2>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
+                Ini keluhan paling biasa. Anda layan pembeli berminggu-minggu, kemudian dia datang ke showroom pada hari cuti anda dan salesman lain yang tutup deal. Bos kata, "Yang penting dia beli dengan kita." Untuk dealer, jualan tetap masuk. Untuk anda, komisen hilang.
+              </p>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 16 }}>
+                Masalahnya jarang pada bos sahaja. Bila semua lead hanya dalam kepala dan WhatsApp peribadi, susah nak tunjuk siapa jumpa pembeli itu dulu. Bos akan ikut siapa yang ada bukti.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                {[
+                  { label: '1. Minta polisi bertulis sebelum ia berlaku', desc: 'Komisen untuk siapa: salesman yang dapat lead dulu, yang menutup deal, atau dibahagi dua? Berapa lama lead kekal milik anda kalau tiada hubungan? Jawapan bertulis elak gaduh kemudian.' },
+                  { label: '2. Rekod setiap lead pada hari pertama', desc: 'Nama, nombor, kereta yang ditanya dan tarikh. Rekod yang dibuat selepas bergaduh tidak dipercayai.' },
+                  { label: '3. Kongsi kereta dengan link anda sendiri', desc: 'Pembeli yang tanya melalui link anda masuk atas nama anda, bukan ke kolam lead dealer.' },
+                  { label: '4. Bawa bukti, bukan rasa', desc: 'Bila berlaku, tunjuk tarikh lead pertama, mesej dan temujanji. Bukan "saya yang layan dia dulu".' },
+                ].map(({ label, desc }) => (
+                  <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 18px' }}>
+                    <p style={{ fontWeight: 600, color: '#111827', fontSize: 14, margin: '0 0 6px' }}>{label}</p>
+                    <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.65, margin: 0 }}>{desc}</p>
+                  </div>
+                ))}
+              </div>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>
+                Dalam ShiftOS, rekod itu dibuat sendiri:
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[
+                  'Setiap lead direkod dengan tarikh dan masa ia masuk.',
+                  'Pembeli yang tanya melalui link atau mini page anda direkod atas nama anda.',
+                  'Mesej chat dalam app disimpan dan tidak boleh diedit atau dipadam.',
+                  'Dealer boleh kunci kereta kepada seorang salesman, jadi salesman lain tidak boleh jual kereta itu.',
+                ].map((item, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: '#374151' }}>
+                    <CheckCircle size={13} style={{ color: '#16a34a', flexShrink: 0, marginTop: 3 }} />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ color: '#6b7280', fontSize: 14, lineHeight: 1.65, margin: 0 }}>
+                Satu perkara perlu jelas: app tidak menentukan siapa dibayar. Keputusan itu tetap pada dealer dan polisi komisennya. Apa yang app beri ialah rekod yang jelas, supaya keputusan itu dibuat atas fakta.
+              </p>
             </section>
 
             <section>
