@@ -31,6 +31,7 @@ export default function DashboardTab({
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner, dismissTour,
  handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
+ leadsLoaded, onAddLead, onSetFollowUp, onGoLive,
 }) {
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
@@ -508,6 +509,12 @@ export default function DashboardTab({
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  onVisitMinipage={onVisitMinipage}
  onEditBio={onEditBio}
+ leads={leads}
+ leadsLoaded={leadsLoaded}
+ canGoLive
+ onAddLead={onAddLead}
+ onSetFollowUp={onSetFollowUp}
+ onGoLive={onGoLive}
  onDismiss={onStarterDismiss}
  />
  )}
