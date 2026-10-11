@@ -2414,8 +2414,11 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   ref link attribution via `resolve_lead_salesman`, chat history). Must not
   promise XDrive makes a boss pay; it only proves who had the buyer first.
   Different from the existing `KomisenSalesmanArticle.jsx` (how commission is
-  calculated). Check search demand before writing, do not trust the "low
-  competition" claim from the chat.
+  calculated). Search check 2026-10-11 (GSC export 2026-10-05): zero impressions
+  for anything like "losing commission to another rep"; sellers search in Malay
+  ("komisen jual kereta" 46 impr, pos 9.9), and the existing komisen article has
+  360 impr at pos 8.3. So: add this as a section INSIDE that article, not a new
+  page, and use the story itself for social/carousels.
 - **IDEA-15: Seller-only "Top salesmen in Malaysia" ranking (2026-10-06)** — owner:
   a leaderboard only signed-in sellers can see (no buyers), so reps know their
   rivals and can learn from the top. Blockers/notes: (1) too few to rank today
