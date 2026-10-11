@@ -7,7 +7,9 @@ const INTERNAL_PATHS = [
   "/salesman",
   "/manager",
   "/accountant",
-  "/fi",
+  // "$" = exactly /fi. A bare "/fi" is a prefix and also blocked /find-me.
+  "/fi$",
+  "/fi/",
   "/admin",
   "/accounts",
   "/platform",

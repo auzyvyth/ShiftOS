@@ -34,7 +34,7 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPA
 // which is exactly how Google-InspectionTool (URL Inspection / Request Indexing)
 // and googleother got stuck, making GSC reject indexing during live testing.
 const BOT_AGENTS =
-  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|chatgpt|claudebot|gptbot|anthropic-ai|cohere-ai|ia_archiver/i;
+  /bot|crawler|spider|facebookexternalhit|whatsapp|telegrambot|twitterbot|linkedinbot|slackbot|discordbot|googlebot|google-inspectiontool|inspectiontool|googleother|bingbot|applebot|duckduckbot|perplexitybot|perplexity-user|chatgpt|claudebot|claude-searchbot|claude-user|gptbot|anthropic-ai|cohere-ai|meta-externalagent|meta-externalfetcher|duckassistbot|ia_archiver/i;
 
 function isBot(ua) {
   return BOT_AGENTS.test(ua);
