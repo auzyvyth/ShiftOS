@@ -11,6 +11,8 @@ import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/us
 import { checkAccountStatus } from "../utils/authAccountStatus";
 import { authErrorMessage, callbackFailureMessage, isWrongCredentials, isEmailNotConfirmed, reportAuthFailure } from "../utils/authErrors";
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from "../utils/installPrompt";
+import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
+import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -148,8 +150,12 @@ export default function LoginPage() {
     // (so e.g. a superadmin can switch to a dealer account without first having
     // to sign out). We still surface an outstanding 2FA challenge if the current
     // session is mid-step (aal1 with a verified factor), so that flow isn't lost.
+    // A saved session that is the platform admin account is signed out here
+    // instead: it belongs to /platform only, and offering its 2FA step on this
+    // page is what blocked signing into a seller account (utils/platformOnly.js).
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
+      if (await refusePlatformAccount(data.session.user.id)) return;
       await checkMfaAndProceed(data.session.user);
     });
   }, []);
@@ -290,6 +296,13 @@ export default function LoginPage() {
     // A failed read is not "no profile". Falling through would send an
     // existing, fully set-up account into the signup wizard below.
     if (profileError) throw profileError;
+
+    // The platform admin account signs in at /platform only, never here.
+    if (isPlatformRole(profile?.role)) {
+      await evictPlatformSession();
+      setError(PLATFORM_ONLY_MESSAGE);
+      return;
+    }
 
     // No profiles row — auth account exists but sign-up was never completed.
     // Send them back to onboarding instead of falling through to the salesman
@@ -447,6 +460,12 @@ export default function LoginPage() {
     // Successful password — reset the throttle counter for this email.
     throttleClear(cleanEmail);
     try {
+      // Before the 2FA step: the admin account's 2FA belongs on /platform.
+      if (await refusePlatformAccount(data.user?.id)) {
+        setError(PLATFORM_ONLY_MESSAGE);
+        setLoading(false);
+        return;
+      }
       const proceed = await checkMfaAndProceed(data.user);
       if (proceed) await redirectByRole(data.user, data.session);
       else return; // 2FA challenge UI now shown

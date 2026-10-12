@@ -839,6 +839,14 @@ own device. One DB fanout drives both, so they can never disagree.
   whichever dealer happens to be logged in on that browser. `usePushHeal`
   (App.jsx) heals the MAIN client's user only; `AdminPage.jsx` runs its own heal
   for the platform account.
+- **The admin account NEVER signs in on the main client (2026-10-12).** /platform has
+  its own login and never adopts the main session (it used to copy the tokens over,
+  so both clients shared one session and the admin sat in the slot the seller
+  sign-in uses: /login jumped to the admin's 2FA and no salesman could sign in).
+  Every main sign-in path refuses `superadmin` (`src/utils/platformOnly.js`,
+  `src/lib/platformEvict.js`, local-scope sign-out) and `usePlatformSessionGuard`
+  (App.jsx) evicts one that slips through. A seller and the admin can be signed in
+  in one browser at once. Never add a path that hands a session between the two clients.
 
 ## AI trust boundary — AI drafts, a HUMAN sends (hard rule)
 An AI must never message a car buyer unsupervised. Owner's call, 2026-08-23:

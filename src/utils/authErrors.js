@@ -1,5 +1,6 @@
 import { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { logError } from "./logError";
+import { PLATFORM_ONLY_MESSAGE } from "./platformOnly";
 
 // ── One reader for every Supabase auth error the sign-in pages can hit ────────
 // Plain version: supabase-js puts a machine-readable `code` on every auth error
@@ -75,6 +76,8 @@ export function callbackFailureMessage(reason) {
       return "Sign-in didn't finish. If you opened the link on a different device or browser, request a new one here.";
     case "profile":
       return "You're signed in, but we couldn't load your account. Please try again.";
+    case "platform_only":
+      return PLATFORM_ONLY_MESSAGE;
     default:
       return "Sign-in didn't complete. Please try again.";
   }

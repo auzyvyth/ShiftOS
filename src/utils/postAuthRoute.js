@@ -1,5 +1,6 @@
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { handoffSuffix } from "../lib/authHandoff";
+import { isPlatformRole } from "./platformOnly";
 
 // ── THE one answer to "where does this account land after signing in?" ──────
 // Plain version: password login, Google, magic links, the email-confirm link
@@ -43,8 +44,12 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
   const role = profile?.role;
 
   if (role === "buyer") return { url: buyerHome, hard: false };
-  // The platform console, never a dealer dashboard.
-  if (role === "superadmin") return { url: "/platform", hard: false };
+  // The platform admin account never stays signed in on this client: it has
+  // its own login at /platform (utils/platformOnly.js). /login signs the
+  // session back out on arrival and says where admin signs in instead.
+  if (isPlatformRole(role)) {
+    return { url: "/login?error=auth_failed&reason=platform_only", hard: false };
+  }
 
   // A BARE signup stub: the handle_new_user trigger stamps role='dealer' the
   // instant an auth user exists, so someone who only pressed "Continue with

@@ -65,9 +65,14 @@ export function usePushHeal() {
         // account to sign in on this phone claims it (push_register_device).
         // Fresh only: a leftover notice must not make a later DELIBERATE
         // sign-out keep the phone registered.
+        //
+        // Same for 'platform': the admin account being pushed off the MAIN
+        // client (utils/platformOnly.js). This device may be registered to the
+        // console's session, which this sign-out does not touch.
         const notice = readLogoutNotice();
-        const idle = notice?.reason === 'idle' && Date.now() - (notice.at || 0) < 15000;
-        if (event === 'SIGNED_OUT' && !idle) {
+        const keepDevice = (notice?.reason === 'idle' || notice?.reason === 'platform')
+          && Date.now() - (notice.at || 0) < 15000;
+        if (event === 'SIGNED_OUT' && !keepDevice) {
           import('./usePushNotifications')
             .then(({ forgetPushDevice }) => forgetPushDevice())
             .catch(() => { /* never blocks sign-out */ });
