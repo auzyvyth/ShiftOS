@@ -432,6 +432,14 @@ caps each attempt with `withTimeout`, and a failure returns `error`, which
 HomePage/CarListingPage render as "Couldn't load, try again". Only a clean empty
 RPC answer is a miss. Use `publicClient` for any public read that must not wait
 on a login.
+**Never return a promise from an `onAuthStateChange` callback (2026-10-12).**
+supabase-js AWAITS the callback while holding the auth lock (we pass
+`lock: processLock`), so a callback that awaits a `supabase` query deadlocks the
+tab for good on the next background token refresh: every later request never
+leaves the browser. `MarketplaceHeader` did `(_, s) => resolve(s)` and a signed-in
+seller's showroom search sat on skeletons. Write `(_, s) => { resolve(s); }`,
+never `async (_, s) => ...`. The marketplace + showroom grids and
+`useMarketplaceStats` read through `publicClient` so a dead login cannot blank them.
 
 ## Deployment pipeline — 3 stages
 **Vercel builds exactly TWO branches: `main` (prod) and `staging` (the one preview).**
