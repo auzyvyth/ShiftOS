@@ -1292,12 +1292,9 @@
     "done": "Password changed. Other devices have been signed out."
   },
   "sellerId": {
-    "title": "Buyers see your cars after we check your ID",
-    "body": "Two quick steps. Everything else works while you wait.",
-    "stepIc": "IC number",
-    "stepId": "MyKad photos",
-    "ctaIc": "Add IC number",
-    "ctaId": "Upload MyKad",
+    "title": "Get verified",
+    "body": "Verified sellers' cars show to buyers on XDrive. A photo of your MyKad and a selfie, about 2 minutes.",
+    "cta": "Get verified",
     "checkingTitle": "We're checking your ID",
     "checkingBody": "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile."
   }

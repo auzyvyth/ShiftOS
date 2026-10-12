@@ -49,7 +49,7 @@ export default function AccountReviewBanner({ profile }) {
         <p style={{ margin: "4px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
           {rejected
             ? "Fix the point below and your account goes straight back into the queue — your listings and details are all still here."
-            : "Everything works while you wait: add your cars and take leads. Your cars show to buyers once we've checked your ID. Once we've confirmed your details you can also answer buyers' Find me posts."}
+            : "Everything works while you wait. Once we've confirmed your details you can also answer buyers' Find me posts."}
         </p>
         {rejected && profile?.rejection_reason && (
           <p

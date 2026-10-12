@@ -1282,12 +1282,9 @@
     "done": "Kata laluan dah ditukar. Device lain dah di-logout."
   },
   "sellerId": {
-    "title": "Pembeli boleh lihat kereta anda selepas kami semak IC anda",
-    "body": "Dua langkah ringkas. Semua yang lain boleh guna sementara menunggu.",
-    "stepIc": "Nombor IC",
-    "stepId": "Gambar MyKad",
-    "ctaIc": "Masukkan nombor IC",
-    "ctaId": "Muat naik MyKad",
+    "title": "Dapatkan pengesahan",
+    "body": "Kereta penjual yang disahkan dipaparkan kepada pembeli di XDrive. Gambar MyKad dan selfie, lebih kurang 2 minit.",
+    "cta": "Sahkan sekarang",
     "checkingTitle": "Kami sedang semak IC anda",
     "checkingBody": "Kereta anda dipaparkan kepada pembeli sebaik sahaja diluluskan. Teruskan tambah kereta dan layan lead sementara itu."
   },

@@ -6844,7 +6844,6 @@ export default function SalesmanPremium() {
  <SellerIdCard
  profile={profile}
  t={t}
- onAddIc={() => { setIcGateVal(""); setIcGateOpen(true); }}
  onUploadId={() => openSettings("verify")}
  />
 
