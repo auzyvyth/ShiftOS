@@ -218,7 +218,7 @@ const SETTINGS_GROUPS = [
  { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
  ]},
  { group: "Account", items: [
- { key: "verify", icon: ShieldCheck, label: "Verified Badge", desc: "ID & IC verification" },
+ { key: "verify", icon: ShieldCheck, label: "Verify ID", desc: "Required before buyers can see your cars" },
  { key: "refer", icon: Gift, label: "Refer a Seller", desc: "Earn free Premium months" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
  // Premium had no language control anywhere, so a seller who picked Malay in

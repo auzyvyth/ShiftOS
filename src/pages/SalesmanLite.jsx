@@ -36,6 +36,7 @@ import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
+import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
 import AccountReviewBanner from "../components/AccountReviewBanner";
 import IcVerifyBanner from "../components/IcVerifyBanner";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
@@ -7282,9 +7283,8 @@ export default function SalesmanLite() {
             {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
             {snav === "account" && (
               <>
-          {/* Identity verification — earns the public Verified badge. Sits first
-              because it is the one thing here that changes how buyers see every
-              listing. Purely opt-in: skipping it just means no badge. */}
+          {/* Identity verification — buyers only see a seller's cars once it is
+              approved (20261011b), so it sits first. */}
           <VerifyIdentity
             profile={profile}
             userId={userId}
@@ -8759,6 +8759,12 @@ export default function SalesmanLite() {
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
           <AccountReviewBanner profile={profile} />
+          {/* An unchecked seller's cars are hidden from buyers (20261011b);
+              this is the only place Lite tells them why. */}
+          <VerifyBadgePrompt
+            profile={profile}
+            onStart={() => { setSettingsNav("account"); switchTab("settings"); }}
+          />
           <IcVerifyBanner
             profile={profile}
             userId={userId}

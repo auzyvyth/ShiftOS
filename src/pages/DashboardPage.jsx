@@ -1638,7 +1638,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
       { key: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', desc: 'Message templates' },
     ]},
     { group: 'Account', items: [
-      { key: 'verify', icon: ShieldCheck, label: 'Verified Badge', desc: 'Submit your ID to earn the badge' },
+      { key: 'verify', icon: ShieldCheck, label: 'Verify ID', desc: 'Required before buyers can see your cars' },
       { key: 'security', icon: KeyRound, label: 'Security', desc: 'Password & 2-factor auth' },
       { key: 'team', icon: Lock, label: 'Team', desc: 'Staff access & roles' },
       { key: 'plan', icon: CreditCard, label: 'Plan & Billing', desc: 'Current plan & usage' },
