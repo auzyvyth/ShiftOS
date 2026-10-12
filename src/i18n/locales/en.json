@@ -472,7 +472,8 @@
           "title": "Help",
           "body": "Step-by-step guides, sales tips and FAQs. Come back here any time you're stuck."
         }
-      }
+      },
+      "start": "Start"
     },
     "inbox": {
       "enquiries": "Enquiries",
@@ -1289,5 +1290,15 @@
     "mismatch": "The two passwords don't match.",
     "same": "That is already your password.",
     "done": "Password changed. Other devices have been signed out."
+  },
+  "sellerId": {
+    "title": "Buyers see your cars after we check your ID",
+    "body": "Two quick steps. Everything else works while you wait.",
+    "stepIc": "IC number",
+    "stepId": "MyKad photos",
+    "ctaIc": "Add IC number",
+    "ctaId": "Upload MyKad",
+    "checkingTitle": "We're checking your ID",
+    "checkingBody": "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile."
   }
 }

@@ -37,9 +37,7 @@ import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
-import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
-import AccountReviewBanner from "../components/AccountReviewBanner";
-import IcVerifyBanner from "../components/IcVerifyBanner";
+import SellerIdCard from "../components/kyc/SellerIdCard";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
@@ -947,7 +945,7 @@ export default function SalesmanLite() {
   const [icGateVal, setIcGateVal] = useState("");
   const [icGateSaving, setIcGateSaving] = useState(false);
   // 1-week KYC enforcement: 7 days after signup, a salesman with no IC on file
-  // sees the urgent copy on IcVerifyBanner (below) instead of the softer one.
+  // is held at the IC gate when they try to list (SellerIdCard nudges first).
   // This used to force-open icGateOpen on mount, which is what actually made
   // an already-verified seller see the modal: the FIRST FRAME paints from the
   // panelCache seed, which stripped ic_hash to keep raw identity material off
@@ -955,7 +953,7 @@ export default function SalesmanLite() {
   // seller who verified at onboarding, popping the gate open with no way for a
   // later correct fetch to close it back down. Fixed by having the cache keep
   // a boolean instead of dropping the field (panelCache.js redactProfileForCache)
-  // and by never auto-opening the modal at all — IcVerifyBanner nudges instead,
+  // and by never auto-opening the modal at all — SellerIdCard nudges instead,
   // and the modal only opens from an explicit click (Settings, or Add a listing
   // while genuinely unverified).
   const icEnforced = !!(
@@ -8096,7 +8094,9 @@ export default function SalesmanLite() {
       );
     }
 
-    return (
+    // Portalled (overlay rule 1): rendered in place, a transformed or
+    // overflow-clipped ancestor can clip or re-anchor a position:fixed bubble.
+    return createPortal(
       <>
         {/* Highlight ring around the target nav item — soft glow, gentle pulse,
             rounded to match the nav item rather than a hard red box. */}
@@ -8158,7 +8158,14 @@ export default function SalesmanLite() {
           </p>
 
           {/* Welcome step doubles as the language chooser — pick the language the
-              rest of the intro (and the whole panel) runs in. */}
+              rest of the intro (and the whole panel) runs in. Picking one only
+              switches the language; Start moves on. It used to also jump to
+              step 2, which moved the bubble from the middle of the screen down
+              onto the nav in the same tap, so a second tap on "Malay" (the
+              Malay text arrives a beat later, so it looks like nothing
+              happened) landed on the new bubble's Skip / X and ended the tour
+              for good (2026-10-12: the owner's test account had
+              onboarding_tour_done=true minutes after signup). */}
           {isWelcome && (
             <div style={{ marginBottom: 14 }}>
               <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "center" }}>
@@ -8170,11 +8177,12 @@ export default function SalesmanLite() {
                   return (
                     <button
                       key={code}
-                      onClick={() => { i18n.changeLanguage(code); setTourStep(1); }}
+                      onClick={() => i18n.changeLanguage(code)}
                       style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                        background: active ? "#dc2626" : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${active ? "#dc2626" : "rgba(255,255,255,0.12)"}`,
-                        color: active ? "#fff" : "#cbd5e1", transition: "all 0.15s" }}
+                        background: active ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.1)"}`,
+                        color: active ? "#fff" : "#94a3b8", transition: "all 0.15s" }}
+                      aria-pressed={active}
                     >
                       {label}
                     </button>
@@ -8191,8 +8199,8 @@ export default function SalesmanLite() {
             ))}
           </div>
 
-          {/* Buttons — on the welcome step the language buttons above are the
-              primary action, so only a quiet Skip shows here. */}
+          {/* Buttons — on the welcome step Start is the one red button; the
+              language pick above it is a choice, not the way forward. */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
@@ -8203,6 +8211,14 @@ export default function SalesmanLite() {
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
               {t("salesmanLite.tour.skip")}
             </button>
+            {isWelcome && (
+            <button
+              onClick={() => setTourStep(1)}
+              style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            >
+              {t("salesmanLite.tour.start", { defaultValue: "Start" })}
+            </button>
+            )}
             {!isWelcome && (
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
@@ -8213,7 +8229,8 @@ export default function SalesmanLite() {
             )}
           </div>
         </div>
-      </>
+      </>,
+      document.body,
     );
   };
 
@@ -8760,17 +8777,14 @@ export default function SalesmanLite() {
           {/* Suspension used to be invisible here: the seller lost the
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
-          <AccountReviewBanner profile={profile} />
-          {/* An unchecked seller's cars are hidden from buyers (20261011b);
-              this is the only place Lite tells them why. */}
-          <VerifyBadgePrompt
+          {/* Review status, the ID check and the IC number used to be three
+              stacked banners on first landing; SellerIdCard is the one card
+              (with one button to the next missing step) for all of them. */}
+          <SellerIdCard
             profile={profile}
-            onStart={() => { setSettingsNav("account"); switchTab("settings"); }}
-          />
-          <IcVerifyBanner
-            profile={profile}
-            userId={userId}
-            onVerify={() => { setIcGateVal(""); setIcGateOpen(true); }}
+            t={t}
+            onAddIc={() => { setIcGateVal(""); setIcGateOpen(true); }}
+            onUploadId={() => { setSettingsNav("account"); switchTab("settings"); }}
           />
           {/* The "you're approved" moment used to have no announcement at all —
               the under-review banner above just quietly stops rendering once

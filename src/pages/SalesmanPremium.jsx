@@ -19,7 +19,7 @@ import { placeTourCard } from "../utils/tourPlacement";
 import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
-import AccountReviewBanner from "../components/AccountReviewBanner";
+import SellerIdCard from "../components/kyc/SellerIdCard";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
@@ -6839,10 +6839,14 @@ export default function SalesmanPremium() {
  {activeTab !== "chat" && (
  <PushPromptStrip t={PANEL_THEME} audience="seller_home" boxed required />
  )}
- {/* Premium never rendered this, so a Premium signup waiting on review
-     (or rejected, with a reason to fix) was told nothing. Same component
-     as Lite, one copy. */}
- <AccountReviewBanner profile={profile} />
+ {/* Review status + ID check + IC number in ONE card, same component as
+     Lite (it falls back to AccountReviewBanner for a rejection). */}
+ <SellerIdCard
+ profile={profile}
+ t={t}
+ onAddIc={() => { setIcGateVal(""); setIcGateOpen(true); }}
+ onUploadId={() => openSettings("verify")}
+ />
 
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
