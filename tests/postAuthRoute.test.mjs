@@ -43,7 +43,9 @@ is('linked salesman -> /salesman', r({ role: 'salesman', dealer_id: 'd1', plan: 
 for (const [role, url] of [['manager', '/manager'], ['admin', '/admin'], ['accountant', '/accountant'], ['fi_officer', '/fi']]) {
   is(`${role} -> ${url} directly, never /salesman first`, r({ role }), { url, hard: false });
 }
-is('superadmin -> /platform', r({ role: 'superadmin' }), { url: '/platform', hard: false });
+// The admin account has its own login at /platform; the main sign-in refuses it.
+is('superadmin -> refused on /login, never the console', r({ role: 'superadmin' }),
+   { url: '/login?error=auth_failed&reason=platform_only', hard: false });
 is('buyer -> return-to page', r({ role: 'buyer' }, { buyerHome: '/find-me/9' }), { url: '/find-me/9', hard: false });
 is('unknown role -> /account', r({ role: 'mystery' }), { url: '/account', hard: false });
 is('dealer mid-signup resumes dealer wizard, not /plans',

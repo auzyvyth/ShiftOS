@@ -9,6 +9,8 @@ import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailAct
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
 import { authErrorMessage, isWrongCredentials, reportAuthFailure } from "../utils/authErrors";
+import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
+import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -84,6 +86,13 @@ export default function BuyerAuthPage() {
     const { data: profile, error: profileError } = await supabase
       .from("profiles").select(ROUTE_PROFILE_COLUMNS).eq("id", user.id).maybeSingle();
     if (profileError) throw profileError;
+    // The platform admin account signs in at /platform only (utils/platformOnly.js).
+    if (isPlatformRole(profile?.role)) {
+      await evictPlatformSession();
+      setError(PLATFORM_ONLY_MESSAGE);
+      setLoading(false);
+      return;
+    }
     // One shared resolver. A buyer resolves to /account, which is also the
     // fallback for a role this page does not expect, so a mis-typed role can
     // never send a shopper into a seller panel. dealer_id/plan are selected
@@ -227,6 +236,13 @@ export default function BuyerAuthPage() {
     }
     throttleClear(cleanEmail);
     try {
+      // Before ensureBuyerProfile: nothing on this page may write to the
+      // platform admin account's profile. It signs in at /platform only.
+      if (await refusePlatformAccount(data.user?.id)) {
+        setError(PLATFORM_ONLY_MESSAGE);
+        setLoading(false);
+        return;
+      }
       await ensureBuyerProfile(data.user);
       await redirectByRole(data.user);
     } catch (err) {

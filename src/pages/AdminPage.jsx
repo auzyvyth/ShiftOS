@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
 // The platform console runs on an ISOLATED auth client (its own storageKey) so a
 // dealer/salesman/buyer login in another tab can't clobber the superadmin
-// session. Everything in this file queries as that session. `mainClient` is only
-// used once, to adopt an existing superadmin session handed off from the public
-// /login redirect (see checkAuth).
+// session. Everything in this file queries as that session. It never reads or
+// adopts the main client's session: the admin account signs in HERE only
+// (utils/platformOnly.js), so a seller can stay signed in on the main client in
+// the same browser.
 import { platformClient as supabase } from "../lib/platformClient";
 import { markInternalDevice } from "../utils/internalTraffic";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
-import { supabase as mainClient } from "../supabaseClient";
 import { invalidateMarketplaceSettingsCache, MARKETPLACE_FALLBACK } from "../hooks/useMarketplaceSettings";
 import { PLAN_CONFIG } from "../utils/planConfig";
 import { accessState, billingState, isPlatformAccount } from "../utils/accountState";
@@ -388,29 +388,14 @@ export default function AdminPage() {
     };
   }, [meId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Gate the console on the ISOLATED platform session. Resolution order:
-  //   1. An existing platform session (this client's own storageKey).
-  //   2. Otherwise adopt a superadmin session handed off from the public /login
-  //      redirect: the main client has it, we copy it into the platform store so
-  //      from here on the two are independent (other-tab logins can't evict it).
-  //   3. Otherwise show the sign-in gate — a dealer/salesman/buyer session on the
-  //      main client is NEVER adopted, so the console can't run under one.
+  // Gate the console on the ISOLATED platform session only: this client's own
+  // storageKey, else the sign-in gate. It used to also adopt a superadmin
+  // session from the main client by copying its tokens. That left two clients
+  // sharing ONE session, so the admin login sat in the main slot the seller
+  // sign-in uses, and whichever client refreshed first rotated the other's
+  // token out. Removed 2026-10-12; the main client now refuses the admin account.
   async function checkAuth() {
-    let { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      const { data: { session: mainSession } } = await mainClient.auth.getSession();
-      if (mainSession?.user?.id) {
-        const { data: prof } = await mainClient
-          .from("profiles").select("role").eq("id", mainSession.user.id).maybeSingle();
-        if (prof?.role === "superadmin") {
-          await supabase.auth.setSession({
-            access_token: mainSession.access_token,
-            refresh_token: mainSession.refresh_token,
-          });
-          session = mainSession;
-        }
-      }
-    }
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAuthState("login"); return; }
     await verifyAndLoad(session.user.id);
   }

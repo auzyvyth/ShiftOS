@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 import { reportAuthFailure } from '../utils/authErrors';
+import { isPlatformRole } from '../utils/platformOnly';
 import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
@@ -27,6 +28,13 @@ export default function AuthCallbackPage() {
       // A failed read is NOT "no profile": treating it as one sends an existing
       // dealer into the signup wizard. Stop and say so instead.
       if (profileError) throw profileError;
+
+      // The platform admin account signs in at /platform only. Stop before the
+      // buyer branch below can write anything to its profile.
+      if (isPlatformRole(profile?.role)) {
+        goPostAuth(resolvePostAuthRoute(profile), navigate);
+        return;
+      }
 
       // Did this auth flow start as a buyer? (marketplace buyer login/One Tap, or
       // a buyer signup whose user metadata carries account_type=buyer.)
