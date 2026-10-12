@@ -109,7 +109,7 @@ const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
 import ThisWeek from "../components/crm/ThisWeek";
 import { buildThisWeek } from "../utils/thisWeek";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import ServicePackages from "../components/crm/ServicePackages";
+import SoldCustomers, { ComingUp } from "./salesmanPremium/SoldCustomers";
 import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
 const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
@@ -794,8 +794,8 @@ export default function SalesmanPremium() {
  );
  const [customersFetching, setCustomersLoading] = useState(true);
  const customersLoading = customersFetching && !customersCached;
- const [customerSearch, setCustomerSearch] = useState("");
- const [expiryFilter, setExpiryFilter] = useState(null); // 'ins' | 'rt'
+ // Coming up -> Customers: which buyer card to open, and at which stage.
+ const [soldFocus, setSoldFocus] = useState(null);
  // Prepaid service packages + their visits. Owned by useServicePackages so the
  // dealer Customers tab and this one share one implementation — they used to
  // carry two near-identical copies of add-package / log-visit.
@@ -5925,187 +5925,19 @@ export default function SalesmanPremium() {
 
  // CUSTOMERS (post-sale buyer records + prepaid service packages)
 
- const renderCustomers = () => {
- const today = new Date();
- const daysUntil = (date) => date? (new Date(date) - today) / 86400000 : null;
- const isDue = (date) => { const d = daysUntil(date); return d !== null && d <= 30; };
- const isExpired = (date) => { const d = daysUntil(date); return d !== null && d < 0; };
- const dotColor = (date) => { const d = daysUntil(date); return d === null? C.textDim : d < 0? C.dangerText : d <= 30? C.warnText : C.successText; };
- const expiryLabel = (date) => {
- if (!date) return "—";
- const d = daysUntil(date);
- const s = new Date(date).toLocaleDateString("en-MY", { day: "2-digit", month: "short" });
- return d < 0? `${s} · overdue` : d <= 30? `${s} · ${Math.round(d)}d` : s;
- };
-
- // Equity mining (RAPTOR-3). Two signals, both read straight off the customer
- // row. Deliberately NO estimated equity or trade-in figure: `customers` has a
- // selling price but no loan tenure or rate anywhere, so any "you have RM X in
- // equity" number would be invented. This surfaces WHO to call, not what to offer.
- //   ownership age — the classic trade cycle; the signal that matures as the
- //                   platform ages (nobody has owned 3 years yet)
- //   vehicle age   — works today: a 2019 car sold last month still leaves its
- //                   owner running a car that is seven model-years old
- const OWNED_READY_Y = 3;
- const VEHICLE_READY_Y = 5;
- const yearsSince = (date) => date ? (today - new Date(date)) / 31557600000 : null;
- const fmtDuration = (y) => { const m = Math.max(0, Math.round(y * 12)); return m < 12 ? `${m}m` : `${Math.floor(m / 12)}y${m % 12 ? ` ${m % 12}m` : ""}`; };
- const tradeUpFor = (c) => {
- const owned = yearsSince(c.purchase_date);
- const age = c.car_year ? today.getFullYear() - Number(c.car_year) : null;
- const reasons = [];
- if (owned !== null && owned >= OWNED_READY_Y) reasons.push(`Owned ${fmtDuration(owned)}`);
- if (age !== null && age >= VEHICLE_READY_Y) reasons.push(`${c.car_year} car · ${age} yrs`);
- if (!reasons.length) return null;
- return { reasons, score: (owned || 0) * 2 + (age || 0) };
- };
- const repName = (profile?.full_name || "").split(" ")[0];
-
- const rtDue = customers.filter(c => isDue(c.road_tax_expiry)).length;
- const insDue = customers.filter(c => isDue(c.insurance_expiry)).length;
- const tradeUpDue = customers.filter(c => tradeUpFor(c)).length;
- const anyExpired = customers.some(c => isExpired(c.road_tax_expiry) || isExpired(c.insurance_expiry));
-
- const filtered = customers.filter(c => {
- if (customerSearch && !`${c.name || ""} ${c.phone || ""}`.toLowerCase().includes(customerSearch.toLowerCase())) return false;
- if (expiryFilter === "ins" && !isDue(c.insurance_expiry)) return false;
- if (expiryFilter === "rt" && !isDue(c.road_tax_expiry)) return false;
- if (expiryFilter === "trade" && !tradeUpFor(c)) return false;
- return true;
- });
- // Strongest signal first, so the call list is already in order.
- if (expiryFilter === "trade") filtered.sort((x, y) => tradeUpFor(y).score - tradeUpFor(x).score);
-
- // The back control renders in the loading state too — a slow fetch should not
- // be a dead end on desktop, where there is no swipe.
- if (customersLoading) return (
- <p style={{ color: C.textMuted, fontSize: 13 }}>Loading customers…</p>
- );
-
- return (
- <div>
- <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>Everyone who has bought from you — {customers.length} on record. Road tax and insurance expiry are tracked per car.</p>
-
- <div style={{ display: "flex", gap: 7, marginBottom: 14, flexWrap: "wrap" }}>
- {[{ id: null, label: `All · ${customers.length}` }, { id: "ins", label: `Insurance due · ${insDue}` }, { id: "rt", label: `Road tax due · ${rtDue}` }, { id: "trade", label: `Trade-up ready · ${tradeUpDue}` }].map(f => (
- <button key={f.id || "all"} onClick={() => setExpiryFilter(f.id)}
- style={{ borderRadius: R.pill, padding: "5px 12px", fontSize: T.size.sm, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
- background: expiryFilter === f.id? withAlpha(C.accent, 0.12) : "transparent", border: `1px solid ${expiryFilter === f.id? withAlpha(C.accent, 0.25) : C.border}`, color: expiryFilter === f.id? C.dangerText : C.textSec }}>
- {f.label}
- </button>
- ))}
- </div>
-
- {anyExpired && (
- <p style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px", lineHeight: 1.5 }}>
- <AlertCircle size={14} color={C.warnText} style={{ flexShrink: 0, marginTop: 2 }} />
- <span>Some policies have <span style={{ color: C.warnText, fontWeight: 700 }}>expired</span> — worth a call before renewal.</span>
- </p>
- )}
-
- {expiryFilter === "trade" && (
- <p style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: T.size.sm, color: C.textSec, margin: "0 0 14px", lineHeight: 1.5 }}>
- <TrendingUp size={14} color={C.infoText} style={{ flexShrink: 0, marginTop: 2 }} />
- <span>Buyers who have owned {OWNED_READY_Y}+ years, or are running a car {VEHICLE_READY_Y}+ model-years old. It is a list of who to call — XDrive holds no valuation or loan balance, so check the car before you quote any number.</span>
- </p>
- )}
-
- <input value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} placeholder="Search by name or phone…"
- style={{ width: "100%", background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.md, padding: "9px 12px", color: C.text, fontSize: T.size.base, outline: "none", fontFamily: "inherit", marginBottom: 14, boxSizing: "border-box" }} />
-
- {filtered.length === 0? (
- <p style={{ textAlign: "center", color: C.textDim, fontSize: 13, padding: "30px 0" }}>{customers.length === 0 ? "No customers yet — they appear here automatically once a deal is won." : "No customers match this filter."}</p>
- ) : (
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
- {filtered.map(c => {
- const pkgs = packagesMap[c.id] || [];
- const initials = (c.name || "?").split(" ").filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
- const cHandover = c.lead_id ? handover.statusForLead(c.lead_id) : null;
- const isLinked = customerParam === c.id;
- return (
- <div key={c.id} id={`customer-${c.id}`} style={{ ...CARD, padding: 15, ...(isLinked ? { borderColor: withAlpha(C.accent, 0.45) } : null) }}>
- <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
- <div style={{ width: 38, height: 38, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
- <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
- </div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
- <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || "Unknown buyer"}</p>
- {c.phone && (
- <a href={`tel:${c.phone.replace(/\D/g, "")}`} style={{ color: C.textMuted, flexShrink: 0, display: "flex" }}>
- <Phone size={13} />
- </a>
- )}
- </div>
- <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")}{c.car_plate? ` · ${c.car_plate}` : ""}{c.payment_type? ` · ${c.payment_type}` : ""}{c.purchase_date? ` · bought ${new Date(c.purchase_date).toLocaleDateString("en-MY", { month: "short", year: "numeric" })}` : ""}</p>
-
- <div style={{ display: "flex", gap: 16, marginTop: 10, flexWrap: "wrap" }}>
- <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
- <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.road_tax_expiry), flexShrink: 0 }} />
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Road tax {expiryLabel(c.road_tax_expiry)}</p>
- </div>
- <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
- <span style={{ width: 7, height: 7, borderRadius: R.pill, background: dotColor(c.insurance_expiry), flexShrink: 0 }} />
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>Insurance {expiryLabel(c.insurance_expiry)}</p>
- </div>
- </div>
-
- {(() => {
- const tu = tradeUpFor(c);
- if (!tu) return null;
- // Some rows carry junk phone values ("601", "1212112"). A wa.me link built
- // from those just opens a dead chat, so only offer it on a plausible number.
- const digits = (c.phone || "").replace(/\D/g, "");
- const ph = digits.length >= 9 ? digits : "";
- // Opening line only — it names no price, instalment, trade-in value or
- // approval, because nothing here knows any of those.
- const waMsg = `Hi ${c.name || "there"}, ${repName ? `${repName} here` : "reaching out"} from XDrive. You have had the ${[c.car_year, c.car_brand, c.car_model].filter(Boolean).join(" ")} a while now — if you are thinking about changing cars, I can take a look at it and tell you what your options are. No obligation.`;
- return (
- <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", padding: "7px 10px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.18)}` }}>
- <TrendingUp size={13} color={C.infoText} style={{ flexShrink: 0 }} />
- <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec }}>Trade-up ready · <span style={{ color: C.infoText, fontWeight: T.weight.semibold }}>{tu.reasons.join(" · ")}</span></p>
- {ph && (
- <button onClick={() => window.open(`https://wa.me/${ph.startsWith("6") ? ph : "6" + ph}?text=${encodeURIComponent(waMsg)}`, "_blank")}
- style={{ ...SOFT(C.infoText), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "4px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>Message</button>
- )}
- </div>
- );
- })()}
-
- {/* Where this buyer is in the paperwork. Same shared state the Handover
- tab and the pipeline card read, so all three always agree. */}
- {cHandover && (
- <button
- onClick={() => openHandoverFor(c.lead_id, "customers")}
- style={{ marginTop: 10, width: "100%", display: "flex", alignItems: "center", gap: 9, textAlign: "left", padding: "7px 10px", borderRadius: R.md,
- background: cHandover.done ? withAlpha(C.success, 0.07) : C.fill,
- border: `1px solid ${cHandover.done ? withAlpha(C.success, 0.18) : C.border}`, cursor: "pointer", fontFamily: "inherit" }}
- >
- <ClipboardList size={13} color={cHandover.done ? C.successText : C.textMuted} style={{ flexShrink: 0 }} />
- <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {cHandover.done
- ? <>Handover <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>complete</span></>
- : <>Handover <span style={{ color: C.text, fontWeight: T.weight.semibold }}>{cHandover.progress < 0 ? "starting" : `${cHandover.progress}%`}</span>{cHandover.next ? ` · Next: ${cHandover.next.label}` : ""}</>}
- </span>
- <ChevronRight size={13} color={C.textDim} style={{ flexShrink: 0 }} />
- </button>
- )}
-
- {/* Shared with the dealer Customers tab — see components/crm/ServicePackages */}
- <ServicePackages
- customer={c} packages={pkgs} visits={pkgVisits} products={pkgProducts}
- onAdd={addPackage} onLogVisit={logVisit} onUndoVisit={undoVisit} theme="dark"
+ const renderCustomers = () => (
+ <SoldCustomers
+ customers={customers}
+ loading={customersLoading}
+ handover={handover}
+ packagesByCustomer={packagesMap}
+ pkgProps={{ visits: pkgVisits, products: pkgProducts, onAdd: addPackage, onLogVisit: logVisit, onUndoVisit: undoVisit }}
+ focus={soldFocus}
+ customerParam={customerParam}
+ repName={profile?.full_name}
+ onOpenHandover={(leadId) => openHandoverFor(leadId, "customers")}
  />
- </div>
- </div>
- </div>
  );
- })}
- </div>
- )}
- </div>
- );
- };
 
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
@@ -6132,14 +5964,27 @@ export default function SalesmanPremium() {
  const renderSold = () => (
  <div style={{ maxWidth: 640, margin: "0 auto" }}>
  {renderTabBack()}
- <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>Sold</p>
- <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>After the deal is won: the handover checklist, then the buyer.</p>
+ <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>{t("salesmanPremium.tabs.sold", { defaultValue: "Sold" })}</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.subtitle", { defaultValue: "Every buyer after the win: handover, renewals and aftercare." })}</p>
+ {/* Above the pills so both halves see what is due. Tapping a row opens the
+ stage it is about: the handover checklist, or that buyer's renewals /
+ aftercare in place. */}
+ <ComingUp
+ customers={customers}
+ handover={handover}
+ packagesByCustomer={packagesMap}
+ onPick={(it) => {
+ if (it.kind === "handover" && it.leadId) { openHandoverFor(it.leadId, "sold"); return; }
+ setSoldSubTab("customers");
+ setSoldFocus({ id: it.customerId, section: it.kind === "renewal" ? "renewals" : "aftercare", at: Date.now() });
+ }}
+ />
  <SubTabs
  value={soldSubTab}
  onChange={setSoldSubTab}
  items={[
- { key: "handover", label: "Handover", badge: handover.activeCount, tourId: "sold-handover" },
- { key: "customers", label: "Customers", tourId: "sold-customers" },
+ { key: "handover", label: t("salesmanPremium.sold.handover", { defaultValue: "Handover" }), badge: handover.activeCount, tourId: "sold-handover" },
+ { key: "customers", label: t("salesmanPremium.sold.customers", { defaultValue: "Customers" }), tourId: "sold-customers" },
  ]}
  />
  {soldSubTab === "handover" ? renderHandover() : renderCustomers()}

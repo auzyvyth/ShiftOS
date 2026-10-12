@@ -301,9 +301,13 @@ months — both run 12-month terms in Malaysia, editable on the step).
 `src/hooks/useServicePackages.js` + `src/components/crm/ServicePackages.jsx`, rendered by
 BOTH the dealer CustomersTab and Salesman Premium `renderCustomers`. They previously
 carried two near-identical copies of add-package / log-visit — do not fork it again.
-A package is PICKED from `dealer_products` (the catalogue that already existed) rather
-than retyped as free text; a visit is a dated row with an undo, not an integer someone
-increments. A package expiring with visits unused surfaces in "This week"
+In the UI a package is an **aftercare plan** (2026-10-12): presets for what dealers
+actually give (free first service, oil change, periodic service, care visit) plus only the
+`service`/`workshop`/`other` catalogue items. PPF/tint/warranty are one-off add-ons, not
+repeat visits. Visit N is due at `sold_at + N x valid_months/total_visits`
+(`src/utils/aftercare.js nextVisitDue`); the Sold tab's Coming up list and This week's
+`service_due` both read that one date. A visit is a dated row with an undo, not an integer
+someone increments. A package expiring with visits unused surfaces in "This week"
 (`kind: 'package_unused'`) — a customer who already paid and has not come back.
 - Malaysian sequence (fees are official rates, editable): loan settlement → buyer insurance → Puspakom B5 (RM30) → B7 (RM60, financed only, auto-NA if not financed) → JPJ pindah milik (RM100, biometric both parties, buyer within 7 days) → road tax → geran collection → handover
 - Handover processing costs (sum of non-NA step costs) are deducted from per-unit gross in StockTab P&L modal
