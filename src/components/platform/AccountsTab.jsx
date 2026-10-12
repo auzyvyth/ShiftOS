@@ -374,7 +374,9 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
           <button onClick={onRefresh} style={btn()}>↻ Refresh</button>
         </div>
       </div>
-      {creating && <CreateSellerModal onClose={() => setCreating(false)} onCreated={() => onRefresh?.()} />}
+      {/* Silent refresh: a full one swaps this whole tab for "Loading...",
+          which unmounted the modal and threw away the one-time password. */}
+      {creating && <CreateSellerModal onClose={() => setCreating(false)} onCreated={() => onRefresh?.(true)} />}
 
       {error && (
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 10, padding: "10px 12px" }}>
