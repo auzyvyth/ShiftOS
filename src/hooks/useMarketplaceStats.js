@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { publicClient } from '../supabaseClient';
 
 // Marketplace-wide counts: total live listings, distinct dealers, and how many
 // cars actually qualify as a hot deal (>= 3% under list — the is_hot_deal rule
@@ -36,7 +36,7 @@ export default function useMarketplaceStats() {
       return () => { active = false; };
     }
     if (!_promise) {
-      _promise = supabase.rpc('get_marketplace_stats').maybeSingle()
+      _promise = publicClient.rpc('get_marketplace_stats').maybeSingle()
         .then(({ data, error }) => {
           // A failed read must not be cached as "0 hot deals" forever — that
           // would hide the Hot Deals nav for the rest of the session over one

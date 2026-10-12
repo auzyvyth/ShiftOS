@@ -9,7 +9,7 @@ import Header from '../components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
-import { supabase } from '../supabaseClient';
+import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
@@ -504,7 +504,10 @@ export default function CarListingPage() {
     setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
-      let query = supabase
+      // publicClient: a public read must never wait on the login lock. On
+      // `supabase` a stuck lock left this grid on skeletons with the request
+      // never sent (2026-10-12, signed-in seller searching "Ferrari").
+      let query = publicClient
         .from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, { count:'exact' })
         .in('status', ['available', 'reserved']);

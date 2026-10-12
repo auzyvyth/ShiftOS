@@ -166,7 +166,12 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       });
     };
     supabase.auth.getSession().then(({ data }) => resolve(data.session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => resolve(s));
+    // Braces, not `=> resolve(s)`: never RETURN the promise to supabase. It
+    // awaits this callback while holding the auth lock, and resolve() runs a
+    // query that needs that lock -- so on a background token refresh the tab
+    // deadlocked and every later request (showroom search included) never
+    // left the browser. The query runs after the callback returns instead.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, s) => { resolve(s); });
     // One Tap corrects a fresh signup's role AFTER SIGNED_IN fires; it dispatches
     // this once the profile is a real 'buyer' so the link flips from the stale
     // "Dashboard" to "My Account" without a page reload.

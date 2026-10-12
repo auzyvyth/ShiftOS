@@ -10,7 +10,7 @@ import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceSubNav from '../components/MarketplaceSubNav';
 import GoogleOneTapSlot from '../components/GoogleOneTapSlot';
 import { useCTAContext } from '../hooks/useCTAContext';
-import { supabase } from '../supabaseClient';
+import { supabase, publicClient } from '../supabaseClient';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
 import { readCache, writeCache } from '../utils/localCache';
@@ -157,7 +157,7 @@ export default function MarketplacePage() {
         .catch(() => setPool(fromSaved(pick)));
 
     load(
-      supabase.from('public_car_listings')
+      publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
         .order('created_at', { ascending: false })
@@ -166,7 +166,7 @@ export default function MarketplacePage() {
     );
 
     load(
-      supabase.from('public_car_listings')
+      publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
         .eq('body_type', 'MPV')
@@ -183,7 +183,7 @@ export default function MarketplacePage() {
      re-implemented here — the client only sorts. */
   useEffect(() => {
     if (!(stats.hotDeals > 0)) return;
-    supabase.from('public_car_listings')
+    publicClient.from('public_car_listings')
       .select(HERO_ROW_FIELDS)
       .in('status', ['available', 'reserved'])
       .eq('is_hot_deal', true)
@@ -212,7 +212,7 @@ export default function MarketplacePage() {
       const types = ['Hatchback', 'Sedan', 'SUV', 'MPV'];
       Promise.all(
         types.map(type =>
-          supabase
+          publicClient
             .from('public_car_listings')
             .select(CAR_FIELDS)
             .in('status', ['available', 'reserved'])
@@ -250,7 +250,7 @@ export default function MarketplacePage() {
       // COUNT over the aggregate-heavy view, roughly doubling its cost per page;
       // the total result-set size doesn't change between pages, so page 1's
       // count stays valid for the whole scroll.
-      let query = supabase
+      let query = publicClient
         .from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, loadPage === 1 ? { count: 'exact' } : undefined)
         .in('status', ['available', 'reserved']);
