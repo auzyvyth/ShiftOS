@@ -90,6 +90,10 @@ function Row({ label, value }) {
 export default function UserApprovalsTab({ kindFilter = null, embedded = false, refreshKey = 0, onCounts } = {}) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  // Problems with one action (a decision, a reminder) show as a banner over the
+  // queue. `err` is for a failed LOAD and replaces the queue, which hid every
+  // other seller behind one action's warning.
+  const [notice, setNotice] = useState(null);
   const [rows, setRows] = useState([]);
   const [expanded, setExpanded] = useState(null);
   const [urls, setUrls] = useState({});          // userId -> {front,back,selfie}
@@ -179,12 +183,12 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
       row?._kind === "kyc" ? "decide_kyc_verification" : "decide_user_approval",
       { p_user_id: userId, p_approve: approve, p_reason: reason || null },
     );
-    if (error) { setActing(null); setErr(error.message); return; }
+    if (error) { setActing(null); setNotice(error.message); return; }
     // Then delete the ID photos (src/utils/kycPurge.js). After the decision, so
     // a failed decision never leaves a seller in the queue with no photos.
     const purge = await purgeKycFiles(supabase, userId);
     setActing(null);
-    if (!purge.ok) setErr("Decision saved, but the ID photos may not all be deleted. Check the kyc-docs bucket.");
+    if (!purge.ok) setNotice("Decision saved, but the ID photos may not all be deleted. Check the kyc-docs bucket.");
     setRows((p) => p.filter((r) => r.id !== userId));
     setRejectFor(null); setRejectReason("");
   };
@@ -197,7 +201,7 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
       body: { user_id: userId },
     });
     setActing(null);
-    if (error || data?.error) { setErr(data?.error || error.message); return; }
+    if (error || data?.error) { setNotice(data?.error || error.message); return; }
     setRows((p) => p.map((r) => (r.id === userId ? { ...r, signup_reminder_sent_at: new Date().toISOString() } : r)));
   };
 
@@ -218,6 +222,12 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
       </div>
       )}
 
+      {notice && (
+        <div role="alert" style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 12, padding: "9px 12px", borderRadius: 8, background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.25)", color: "#fca5a5", fontSize: 12.5 }}>
+          <span style={{ flex: 1, minWidth: 0 }}>{notice}</span>
+          <button onClick={() => setNotice(null)} style={{ background: "none", border: "none", color: "#9ca3af", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>Dismiss</button>
+        </div>
+      )}
       {loading ? (
         <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Loading queue…</div>
       ) : err ? (

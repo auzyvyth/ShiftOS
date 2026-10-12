@@ -395,9 +395,24 @@ export default function AdminPage() {
   // sharing ONE session, so the admin login sat in the main slot the seller
   // sign-in uses, and whichever client refreshed first rotated the other's
   // token out. Removed 2026-10-12; the main client now refuses the admin account.
+  // True when the session has a verified TOTP factor but has not passed it yet
+  // (aal1 -> aal2). Puts the console on the code prompt.
+  async function needsMfa() {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel !== "aal2" || aal.currentLevel === "aal2") return false;
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const totp = (factors?.totp || []).find((f) => f.status === "verified");
+    if (!totp) return false;
+    setMfaFactorId(totp.id);
+    return true;
+  }
+
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAuthState("login"); return; }
+    // A password-only session saved before the 2FA code was entered must not
+    // open the console on reload: ask for the code again.
+    if (await needsMfa()) { setAuthState("login"); return; }
     await verifyAndLoad(session.user.id);
   }
 
@@ -470,12 +485,7 @@ export default function AdminPage() {
       return;
     }
     throttleClear(cleanEmail, supabase);
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totp = (factors?.totp || []).find((f) => f.status === "verified");
-      if (totp) { setMfaFactorId(totp.id); setLoginBusy(false); return; }
-    }
+    if (await needsMfa()) { setLoginBusy(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     await verifyAndLoad(user.id);
   }
@@ -682,15 +692,17 @@ export default function AdminPage() {
     const calls = [supabase.rpc("approve_listing", { p_listing_id: listing.id })];
     if (alsoVerifySeller) calls.push(supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }));
     const results = await Promise.all(calls);
+    // Approving the seller here decides their ID too, so their MyKad photos go
+    // as soon as THAT call succeeds (src/utils/kycPurge.js), even if the
+    // listing call failed: the seller has left the ID queue either way, and
+    // nothing else would ever delete them.
+    if (alsoVerifySeller && !results[1]?.error) {
+      const purge = await purgeKycFiles(supabase, listing.dealer_id);
+      if (!purge.ok) alert("Seller approved, but their ID photos may not all be deleted. Check the kyc-docs bucket.");
+    }
     const err = results.find(r => r.error)?.error;
     if (err) { alert("Error: " + err.message); }
     else {
-      // Approving the seller here decides their ID too, so their MyKad photos
-      // go now, same as from the ID queue (src/utils/kycPurge.js).
-      if (alsoVerifySeller) {
-        const purge = await purgeKycFiles(supabase, listing.dealer_id);
-        if (!purge.ok) alert("Seller approved, but their ID photos may not all be deleted. Check the kyc-docs bucket.");
-      }
       setPendingListings(p => p.filter(l => l.id !== listing.id));
       setReviewListingId(null);
       // decide_user_approval only touches profiles -- the embedded

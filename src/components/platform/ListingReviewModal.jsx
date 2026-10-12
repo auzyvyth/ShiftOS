@@ -96,7 +96,13 @@ const Row = ({ k, v, mono, color }) =>
     </div>
   );
 
-const isPdf = (d) => /\.pdf($|\?)/i.test(d?.url || "") || d?.name?.toLowerCase().endsWith(".pdf");
+// Every URL here was typed by a seller (car_documents, video_url are writable
+// on their own listing), and this sheet runs in the superadmin's session. A
+// `javascript:` URL in an iframe src or a link runs on our origin and can read
+// the platform login, so anything that is not plain http(s) is dropped.
+// "Is it a PDF" reads the URL only, never the seller-supplied file name.
+const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : null);
+const isPdf = (d) => /\.pdf($|\?)/i.test(safeUrl(d?.url) || "");
 
 export default function ListingReviewModal({
   listing,
@@ -181,7 +187,7 @@ export default function ListingReviewModal({
   const showCondition = damageMarks.length > 0 || !!listing.condition_declared_at;
 
   const current = pane === "photos" ? images[photoIdx] : docs[docIdx];
-  const currentUrl = pane === "photos" ? current : current?.url;
+  const currentUrl = safeUrl(pane === "photos" ? current : current?.url);
   const count = pane === "photos" ? images.length : docs.length;
   const idx = pane === "photos" ? photoIdx : docIdx;
 
@@ -336,7 +342,7 @@ export default function ListingReviewModal({
               {count > 0 && (
                 <div className="plr-strip" style={{ display: "flex", gap: 6, marginTop: 8, overflowX: "auto", paddingBottom: 4 }}>
                   {(pane === "photos" ? images : docs).map((it, i) => {
-                    const src = pane === "photos" ? it : it.url;
+                    const src = safeUrl(pane === "photos" ? it : it.url);
                     const active = i === idx;
                     const pdf = pane === "docs" && isPdf(it);
                     return (
@@ -465,9 +471,9 @@ export default function ListingReviewModal({
                 </Section>
               )}
 
-              {listing.video_url && (
+              {safeUrl(listing.video_url) && (
                 <Section title="Video">
-                  <a href={listing.video_url} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#93c5fd", wordBreak: "break-all" }}>
+                  <a href={safeUrl(listing.video_url)} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#93c5fd", wordBreak: "break-all" }}>
                     {listing.video_url}
                   </a>
                 </Section>

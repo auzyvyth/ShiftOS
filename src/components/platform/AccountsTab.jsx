@@ -356,7 +356,10 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   };
 
   const restore = async (a) => {
-    const patch = { account_status: "active", is_active: true, deleted_at: null };
+    // Undo the delete only. A seller suspended before they deleted stays
+    // suspended: switching is_active on here lifted the suspension with no
+    // notice and left suspended_at set.
+    const patch = { account_status: "active", deleted_at: null, ...(a.suspended_at ? {} : { is_active: true }) };
     await run(a.id, "Restoring", async () => {
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
