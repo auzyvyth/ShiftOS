@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
+import CreateSellerModal from "./CreateSellerModal";
 import { accountKind, accessState, reviewState, billingState, headlineState, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
 
 // One accounts table (P5) with an account record (P6).
@@ -123,6 +124,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   // nothing.
   const [teamOf, setTeamOf] = useState(null);
   const [busy, setBusy] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState(null);
   // A9: billing state used to write straight through on the change event, so a
   // misclick moved a dealer between trial/active/expired silently and there was
@@ -259,6 +261,17 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       return { error: e || null };
     });
 
+  // A page set up from "Set up a seller" holds its setup email until the cars
+  // are in (CreateSellerModal). This sends it, and re-sends an expired link.
+  const sendSetupEmail = (a) =>
+    run(a.id, "Sending setup email", async () => {
+      const { data, error: e } = await supabase.functions.invoke("create-salesman", {
+        body: { action: "resend_setup", email: a.email },
+      });
+      if (!e && !data?.email_sent) return { error: { message: "the email service did not accept it" } };
+      return { error: e || null };
+    });
+
   // Suspend/unsuspend goes through set_account_suspended, which also writes the
   // reason and notifies the seller (A5). Never write is_active here directly.
   const setSuspended = async (a, suspended, reason) => {
@@ -356,8 +369,12 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Accounts</p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Everyone who sells on the platform. Open a row for the full record.</p>
         </div>
-        <button onClick={onRefresh} style={btn()}>↻ Refresh</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setCreating(true)} style={btn("good")}>+ Set up a seller</button>
+          <button onClick={onRefresh} style={btn()}>↻ Refresh</button>
+        </div>
       </div>
+      {creating && <CreateSellerModal onClose={() => setCreating(false)} onCreated={() => onRefresh?.()} />}
 
       {error && (
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: 10, padding: "10px 12px" }}>
@@ -521,6 +538,13 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               </p>
             ) : (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {/* Set up from the console and not taken over yet: every self-serve
+                  seller agrees to the terms at signup, these only on /salesman-setup. */}
+              {open.onboarding_complete && !open.setup_complete && !open.pdpa_consent && open.role === "salesman" && !open.dealer_id && open.account_status !== "deleted" && (
+                <button disabled={busy === open.id} onClick={() => sendSetupEmail(open)} style={btn("warn")}>
+                  Send setup email
+                </button>
+              )}
               {!open.onboarding_complete && open.account_status !== "deleted" && (
                 <button disabled={busy === open.id} onClick={() => sendReminder(open)} style={btn("warn")}>
                   {open.signup_reminder_sent_at ? "Resend reminder email" : "Send reminder email"}

@@ -25,6 +25,10 @@ async function sendSetupEmail(
   email: string,
   fullName: string,
   dealershipName: string,
+  // Standalone seller whose page the platform owner set up for them (console >
+  // Create seller). There is no dealership, so "X has created your salesman
+  // account" would name the seller as their own employer.
+  standalone = false,
 ): Promise<boolean> {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -40,20 +44,28 @@ async function sendSetupEmail(
     const actionLink = linkData?.properties?.action_link;
     if (!actionLink) return false;
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const brand = standalone ? "XDrive" : dealershipName;
+    const heading = standalone ? "Your seller page is ready" : "Welcome to the team";
+    const intro = standalone
+      ? `Hi ${fullName}, XDrive has set up your seller page and added your cars.`
+      : `Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.`;
+    const ask = standalone
+      ? "Set your own password to take it over. You will also be asked for your IC: your cars go live once your ID has been checked."
+      : "Set your password to finish setting up and access your dashboard:";
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
   <div style="background:#111827;padding:28px 32px;color:#fff;">
-    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${dealershipName}</p>
-    <h1 style="margin:0;font-size:22px;font-weight:700;">Welcome to the team</h1>
+    <p style="margin:0 0 4px;font-size:12px;color:#9ca3af;">${brand}</p>
+    <h1 style="margin:0;font-size:22px;font-weight:700;">${heading}</h1>
   </div>
   <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
-    <p style="margin:0 0 16px;">Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.</p>
-    <p style="margin:0 0 24px;">Set your password to finish setting up and access your dashboard:</p>
+    <p style="margin:0 0 16px;">${intro}</p>
+    <p style="margin:0 0 24px;">${ask}</p>
     <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
     <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link is single use and expires. If it no longer works, use &quot;Forgot password&quot; on the ShiftOS login page and we will email you a 6-digit code.</p>
   </div>
   <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${dealershipName} via ShiftOS</p>
+    <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${brand} via ShiftOS</p>
   </div>
 </div></body></html>`;
     const resendRes = await fetch("https://api.resend.com/emails", {
@@ -63,9 +75,9 @@ async function sendSetupEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${dealershipName} <${fromEmail}>`,
+        from: `${brand} <${fromEmail}>`,
         to: [email],
-        subject: `Set up your ${dealershipName} salesman account`,
+        subject: standalone ? "Your XDrive seller page is ready" : `Set up your ${dealershipName} salesman account`,
         html,
       }),
     });
@@ -148,11 +160,16 @@ serve(async (req) => {
         return json({ error: "forbidden" }, 403);
       }
       const dealershipName = target.dealership || callerProfile.dealership || target.full_name || "Your dealership";
-      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName);
+      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id);
       return json({ success: true, email_sent: sent });
     }
 
     const { email, full_name, dealer_id, plan, phone, slug } = body;
+    // false = create the account but hold the setup email, so the platform
+    // owner can add the seller's cars first and send it from the account
+    // record ("Send setup email" -> resend_setup). Default keeps the dealer
+    // Team tab's behaviour: email at once.
+    const sendEmail = body.send_email !== false;
 
     if (!email || !full_name || !plan) {
       return json({ error: "invalid_input" }, 400);
@@ -226,6 +243,13 @@ serve(async (req) => {
           dealership: callerProfile.role !== "superadmin"
             ? undefined  // will be set by the dealer's own dealership value below
             : undefined,
+          // Standalone page set up by the platform: where the seller is based
+          // (new-car price zone, marketplace location) and their trading name.
+          ...(isSuperCaller && !effectiveDealerId ? {
+            state: body.state ?? null,
+            city: body.city ?? null,
+            dealership: body.dealership ?? null,
+          } : {}),
           is_active: true,
           // Dealer-created salesmen are fully provisioned here (tier, name, slug,
           // dealership all set by the dealer), so they must NOT be sent through the
@@ -286,7 +310,9 @@ serve(async (req) => {
     // Email the salesman a one-time link to set their own password, so they don't
     // depend on the dealer relaying the temp password. Non-fatal: if the Resend
     // key is unset or Resend errors, the dealer still gets temp_password to share.
-    const emailSent = await sendSetupEmail(adminClient, email, full_name, dealershipName);
+    const emailSent = sendEmail
+      ? await sendSetupEmail(adminClient, email, full_name, dealershipName, !effectiveDealerId)
+      : false;
 
     const { data: finalProfile } = await adminClient
       .from("profiles")

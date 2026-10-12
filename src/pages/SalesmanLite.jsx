@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ReferralCard from "../components/referral/ReferralCard";
 import MyNewModels from "../components/newcar/MyNewModels";
 import PremiumUpgradeCard from "../components/premium/PremiumUpgradeCard";
+import ChangePasswordCard from "../components/account/ChangePasswordCard";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
 import { useTranslation } from "react-i18next";
@@ -7292,6 +7293,7 @@ export default function SalesmanLite() {
               setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
             }
           />
+          <ChangePasswordCard />
           {/* Language toggle */}
           <div style={cardStyle}>
             <p style={{ ...sectionLabelStyle, marginBottom: 8 }}>{t("salesmanLite.settings.language")}</p>

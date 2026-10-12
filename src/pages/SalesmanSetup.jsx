@@ -55,10 +55,13 @@ export default function SalesmanSetup() {
       setUserId(data.session.user.id);
       const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, dealership, phone, whatsapp_number, ic_number, avatar_url, job_title, bio, city, state')
+        .select('full_name, dealership, dealer_id, phone, whatsapp_number, ic_number, avatar_url, job_title, bio, city, state')
         .eq('id', data.session.user.id)
         .maybeSingle();
-      setDealership(profile?.dealership || '');
+      // A standalone seller (page set up from the platform console) has no
+      // dealer: "Welcome to <their own business name>" reads wrong, so it is
+      // "Welcome to XDrive" there.
+      setDealership(profile?.dealer_id ? (profile?.dealership || '') : 'XDrive');
       setFirstName((profile?.full_name || '').split(' ')[0] || '');
       setWhatsapp(profile?.whatsapp_number || profile?.phone || '+60');
       if (profile?.ic_number) setIc(profile.ic_number);
@@ -125,6 +128,9 @@ export default function SalesmanSetup() {
     setLoading(true);
     const { error: pwErr } = await supabase.auth.updateUser({ password });
     if (pwErr) { setError(pwErr.message); setLoading(false); return; }
+    // Whoever set the account up may still be signed in with the temporary
+    // password; once the seller has their own, nobody else stays in.
+    await supabase.auth.signOut({ scope: 'others' }).catch(() => {});
     const { error: profErr } = await supabase.from('profiles').update({
       avatar_url: avatarUrl,
       job_title: jobTitle.trim(),

@@ -1277,5 +1277,17 @@
     "sendFailed": "Could not send the test notification.",
     "notSubscribed": "Turn notifications on first.",
     "genericError": "Something went wrong. Try again."
+  },
+  "changePassword": {
+    "title": "Password",
+    "hint": "Set a new password. Every other device signed in to this account will be signed out.",
+    "new": "New password",
+    "confirm": "Type it again",
+    "save": "Change password",
+    "saving": "Saving...",
+    "weak": "At least 8 characters, with an uppercase letter, a lowercase letter, a number and a symbol.",
+    "mismatch": "The two passwords don't match.",
+    "same": "That is already your password.",
+    "done": "Password changed. Other devices have been signed out."
   }
 }

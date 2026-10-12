@@ -6,6 +6,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import ReferralCard from "../components/referral/ReferralCard";
+import ChangePasswordCard from "../components/account/ChangePasswordCard";
 import MyNewModels from "../components/newcar/MyNewModels";
 import { claimStoredInvite } from "../utils/invite";
 import { isWonDealBlock, offerUndoSale, relistCar, reopenWonLeads } from "../utils/undoSale";
@@ -101,6 +102,7 @@ import {
   Mail,
  Gift,
  CarFront,
+ Lock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
@@ -219,6 +221,7 @@ const SETTINGS_GROUPS = [
  ]},
  { group: "Account", items: [
  { key: "verify", icon: ShieldCheck, label: "Verify ID", desc: "Required before buyers can see your cars" },
+ { key: "password", icon: Lock, label: "Password", desc: "Change your password" },
  { key: "refer", icon: Gift, label: "Refer a Seller", desc: "Earn free Premium months" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
  // Premium had no language control anywhere, so a seller who picked Malay in
@@ -5382,6 +5385,7 @@ export default function SalesmanPremium() {
  </div>
  </>
  )}
+ {nav === "password" && <ChangePasswordCard />}
  {nav === "refer" && <ReferralCard slug={profile?.slug} />}
  {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
  {nav === "dealership" && (
