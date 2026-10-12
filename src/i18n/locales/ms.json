@@ -1267,5 +1267,17 @@
     "sendFailed": "Tak dapat hantar notifikasi ujian.",
     "notSubscribed": "Hidupkan notifikasi dahulu.",
     "genericError": "Ada masalah. Cuba lagi."
+  },
+  "changePassword": {
+    "title": "Kata laluan",
+    "hint": "Tukar kata laluan anda. Semua device lain yang login akaun ni akan di-logout.",
+    "new": "Kata laluan baru",
+    "confirm": "Taip sekali lagi",
+    "save": "Tukar kata laluan",
+    "saving": "Sedang simpan...",
+    "weak": "Minimum 8 aksara, ada huruf besar, huruf kecil, nombor dan simbol.",
+    "mismatch": "Dua kata laluan tak sama.",
+    "same": "Itu memang kata laluan anda sekarang.",
+    "done": "Kata laluan dah ditukar. Device lain dah di-logout."
   }
 }
