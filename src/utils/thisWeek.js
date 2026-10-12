@@ -25,6 +25,8 @@ const PKG_EXPIRY_DAYS = 60;     // prepaid package expiring with visits unused
 const OWNED_READY_Y = 3;
 const VEHICLE_READY_Y = 5;
 
+import { nextVisitDue, SERVICE_DUE_DAYS } from "./aftercare.js";
+
 const DAY = 86400000;
 const daysAgo = (iso) => (iso ? (Date.now() - new Date(iso).getTime()) / DAY : null);
 const daysUntil = (iso) => (iso ? (new Date(iso).getTime() - Date.now()) / DAY : null);
@@ -118,6 +120,22 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
       const left = (pkg.total_visits || 0) - (pkg.used_visits || 0);
       if (left <= 0) continue;
       const d = daysUntil(pkg.expires_at);
+      // An aftercare visit coming due on its schedule (utils/aftercare, the
+      // same date the Sold tab shows). The reason a seller gives an oil change
+      // or a care visit at all is to get the buyer back in, so this is a call.
+      const due = nextVisitDue(pkg);
+      const dueIn = daysUntil(due);
+      if ((d === null || d >= 0) && dueIn !== null && dueIn <= SERVICE_DUE_DAYS) {
+        const when = new Date(due).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+        items.push({
+          id: `cust-svc-${pkg.id}`, kind: "service_due", rank: 2, age: SERVICE_DUE_DAYS - dueIn,
+          customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
+          why: dueIn <= 0 ? `${pkg.package_name} visit due now` : `${pkg.package_name} visit due ${when}`,
+          sub: car,
+          message: `Hi ${who}, ${signoff(me)}. ${car ? `The ${car}` : "Your car"} is due for its ${pkg.package_name} visit${dueIn <= 0 ? "" : ` around ${when}`}. Want me to book you in?`,
+        });
+        continue;
+      }
       if (d === null || d > PKG_EXPIRY_DAYS) continue;
       const when = new Date(pkg.expires_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
       const gone = d < 0;
@@ -171,5 +189,6 @@ export const KIND_LABEL = {
   reminder: "Your reminders",
   going_quiet: "Going quiet",
   renewal: "Renewals due",
+  service_due: "Aftercare visit due",
   trade_up: "Trade-up ready",
 };
