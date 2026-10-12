@@ -85,8 +85,17 @@ const PALETTE = {
   },
 };
 
-export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "dark" }) {
+// Step by step, and the ONLY place a seller is asked for ID (owner,
+// 2026-10-12: signup, Contact & Location and Account each asked, which read
+// as shady to a new seller). intro -> IC number -> MyKad photos. The photo
+// slots are never the first thing shown. `onIcSaved` lets the panel update
+// its profile copy once set_my_ic has hashed the number.
+export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved, theme = "dark" }) {
   const P = PALETTE[theme] || PALETTE.dark;
+  const [stage, setStage] = useState("intro"); // intro | ic | photos
+  const [icVal, setIcVal] = useState("");
+  const [icSaving, setIcSaving] = useState(false);
+  const icDigits = icVal.replace(/\D/g, "");
   const [files, setFiles] = useState({});      // key -> File
   const [previews, setPreviews] = useState({}); // key -> objectURL
   const [busy, setBusy] = useState(false);
@@ -157,6 +166,22 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "
     setBusy(false);
   };
 
+  const saveIc = async () => {
+    if (icDigits.length !== 12) return;
+    setIcSaving(true);
+    try {
+      // Hashed server side (set_my_ic); the plain number never touches the DB.
+      const { error } = await supabase.rpc("set_my_ic", { p_ic: icDigits });
+      if (error) throw error;
+      setIcVal("");
+      onIcSaved?.();
+      setStage("photos");
+    } catch (err) {
+      toast.error(err?.message === "invalid_ic" ? "Enter a valid 12-digit IC number." : (err?.message || "Could not save. Please try again."));
+    }
+    setIcSaving(false);
+  };
+
   const card = {
     background: P.card,
     border: `1px solid ${P.border}`,
@@ -200,27 +225,91 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "
     );
   }
 
+  const primaryBtn = (disabled) => ({
+    width: "100%", marginTop: 14, fontSize: 13, fontWeight: 700, padding: "11px",
+    borderRadius: 8, background: "#dc2626", border: "none", color: "#fff",
+    cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, fontFamily: "inherit",
+  });
+  const backBtn = (to) => (
+    <button
+      type="button"
+      onClick={() => setStage(to)}
+      style={{ background: "none", border: "none", padding: 0, marginBottom: 10, color: P.faint, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
+    >
+      Back
+    </button>
+  );
+  const stepLabel = (n) => (
+    <p style={{ margin: "0 0 4px", fontSize: 10.5, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: P.faint }}>
+      Step {n} of 2
+    </p>
+  );
+  const rejected = profile?.rejection_reason && (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 14, padding: "9px 11px", borderRadius: 8, background: P.errBg, border: `1px solid ${P.errBorder}` }}>
+      <AlertCircle size={14} style={{ color: P.errIcon, flexShrink: 0, marginTop: 1 }} />
+      <p style={{ margin: 0, fontSize: 12, color: P.errText, lineHeight: 1.5 }}>
+        Last submission wasn't accepted: {profile.rejection_reason}
+      </p>
+    </div>
+  );
+
+  if (stage === "intro") {
+    return (
+      <div style={card}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+          <ShieldCheck size={18} style={{ color: P.askIcon, flexShrink: 0 }} />
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>Get verified</p>
+        </div>
+        <p style={{ margin: 0, fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
+          Verified sellers' cars show to buyers on XDrive, with a Verified badge. Two quick steps:
+          your IC number, then photos of your MyKad. About 2 minutes.
+        </p>
+        {rejected && <div style={{ marginTop: 12 }}>{rejected}</div>}
+        <button onClick={() => setStage(profile?.ic_hash ? "photos" : "ic")} style={primaryBtn(false)}>
+          Get verified
+        </button>
+      </div>
+    );
+  }
+
+  if (stage === "ic") {
+    return (
+      <div style={card}>
+        {backBtn("intro")}
+        {stepLabel(1)}
+        <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: P.text }}>Your IC number</p>
+        <input
+          autoFocus
+          value={icVal}
+          onChange={(e) => setIcVal(e.target.value.replace(/[^\d-]/g, ""))}
+          onKeyDown={(e) => { if (e.key === "Enter") saveIc(); }}
+          placeholder="901231-10-1234"
+          inputMode="numeric"
+          maxLength={14}
+          autoComplete="off"
+          style={{
+            width: "100%", boxSizing: "border-box", background: P.slotBg, border: `1px solid ${P.slotBorder}`,
+            borderRadius: 8, color: P.slotText, fontSize: 15, padding: "11px 13px", outline: "none", fontFamily: "inherit",
+          }}
+        />
+        <p style={{ margin: "7px 0 0", fontSize: 11, color: P.faint, lineHeight: 1.5 }}>
+          12 digits. Stored scrambled (hashed), never shown to buyers.
+        </p>
+        <button onClick={saveIc} disabled={icSaving || icDigits.length !== 12} style={primaryBtn(icSaving || icDigits.length !== 12)}>
+          {icSaving ? "Saving…" : "Next"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={card}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-        <ShieldCheck size={18} style={{ color: P.askIcon, flexShrink: 0 }} />
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
-          Verify your ID to go live
-        </p>
-      </div>
+      {backBtn(profile?.ic_hash ? "intro" : "ic")}
+      {stepLabel(2)}
+      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: P.text }}>Photos of your MyKad</p>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-        Buyers can't see your cars until we've checked your ID. It keeps scammers off XDrive,
-        and your listings get the Verified badge.
+        A person at XDrive checks them. Your cars show to buyers once it's approved.
       </p>
-
-      {profile?.rejection_reason && (
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 14, padding: "9px 11px", borderRadius: 8, background: P.errBg, border: `1px solid ${P.errBorder}` }}>
-          <AlertCircle size={14} style={{ color: P.errIcon, flexShrink: 0, marginTop: 1 }} />
-          <p style={{ margin: 0, fontSize: 12, color: P.errText, lineHeight: 1.5 }}>
-            Last submission wasn't accepted: {profile.rejection_reason}
-          </p>
-        </div>
-      )}
 
       <div style={{ display: "grid", gap: 8 }}>
         {SLOTS.map(({ key, label, hint }) => (

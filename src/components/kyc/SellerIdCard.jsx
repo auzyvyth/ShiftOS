@@ -51,7 +51,7 @@ export default function SellerIdCard({ profile, t, onUploadId }) {
         <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.5 }}>
           {checking
             ? tr("checkingBody", "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile.")
-            : tr("body", "Verified sellers' cars show to buyers on XDrive. A photo of your MyKad and a selfie, about 2 minutes.")}
+            : tr("body", "Verified sellers' cars show to buyers on XDrive. Your IC number and photos of your MyKad, about 2 minutes.")}
         </p>
       </div>
       {!checking && onUploadId && (

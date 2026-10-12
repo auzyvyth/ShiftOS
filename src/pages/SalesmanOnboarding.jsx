@@ -121,7 +121,7 @@ function clearDraft(uid) {
 const STEPS = [
   { label: 'TERMS', sub: 'Required agreement' },
   { label: 'ACCOUNT', sub: 'Email or Google' },
-  { label: 'DETAILS', sub: 'Name · IC optional' },
+  { label: 'DETAILS', sub: 'Your name' },
   { label: 'PHONE', sub: 'Contact number' },
   { label: 'PROFILE', sub: 'Your public page' },
   { label: 'ACTIVATE', sub: 'Go live' },
@@ -157,10 +157,6 @@ function normalizePhone(raw) {
   if (d.startsWith('60')) return '+' + d;
   if (d.startsWith('0')) return '+6' + d;
   return '+60' + d;
-}
-
-function validateIC(ic) {
-  return /^\d{12}$/.test(ic.replace(/-/g, ''));
 }
 
 function StepDot({ state, num }) {
@@ -249,7 +245,6 @@ export default function SalesmanOnboarding() {
   const [slugChecking, setSlugChecking] = useState(false);
 
   const [showPw, setShowPw] = useState(false);
-  const [showIc, setShowIc] = useState(false);
   const [form, setForm] = useState({
     email: '', password: '', confirmPassword: '',
     fullName: '', icNumber: '',
@@ -494,45 +489,11 @@ export default function SalesmanOnboarding() {
     }
   };
 
-  const saveIdentity = async () => {
-    setErr('');
-    if (!form.fullName.trim()) { setErr('Full name is required'); return; }
-    if (form.sellerType === 'new_car' && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
-    if (!validateIC(form.icNumber)) { setErr('Enter a valid 12-digit IC number (e.g. 901231-10-1234)'); return; }
-    // The IC encodes date of birth — verify 18+ from it rather than asking again.
-    if (isAdultFromIC(form.icNumber) === false) { setErr('You must be at least 18 years old to sell on XDrive.'); return; }
-    setLoading(true);
-    try {
-      if (userId) {
-        const { error } = await supabase.from('profiles').upsert({
-          id: userId,
-          full_name: form.fullName.trim(),
-          role: 'salesman',
-          seller_type: form.sellerType,
-          new_car_brand: form.sellerType === 'new_car' ? form.newCarBrand : null,
-          onboarding_complete: false,
-        }, { onConflict: 'id' });
-        if (error) throw error;
-        // Hash + store the IC (never plaintext). The form keeps the raw value; the
-        // profile only ever holds a salted SHA-256 hash + last-4 via set_my_ic.
-        const icDigits = form.icNumber.replace(/\D/g, '');
-        if (icDigits.length === 12) {
-          const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
-          if (icErr) throw icErr;
-        }
-      }
-      setStep(3);
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Defer IC verification — let the salesman reach their live panel and build a
-  // page first (national ID upfront was the biggest cold-signup drop-off). IC is
-  // collected later, before listings go public. Full name is still saved (it's
-  // their display identity, low-sensitivity).
+  // No ID at signup (owner, 2026-10-12): national ID upfront was the biggest
+  // cold-signup drop-off, and asking for it in three places read as shady. The
+  // one place is the step-by-step "Get verified" flow in the panel's Profile
+  // settings (src/components/kyc/GetVerifiedFlow.jsx). Full name is still
+  // saved here (it's their display identity, low-sensitivity).
   const skipIdentity = async () => {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
@@ -616,7 +577,7 @@ export default function SalesmanOnboarding() {
         payment_status: null,
         pdpa_consent: true,
         pdpa_consent_at: new Date().toISOString(),
-        ic_deadline: form.icNumber ? null : new Date(Date.now() + 7 * 86400000).toISOString(),
+        ic_deadline: null,
       }, { onConflict: 'id' });
       if (error) throw error;
       // Hash + persist the IC (never plaintext) once the profile row exists.
@@ -866,9 +827,7 @@ export default function SalesmanOnboarding() {
                 <p className="eo-eyebrow">STEP 3 OF {STEPS.length}</p>
                 <div className="eo-heading">Your Details</div>
                 <p className="eo-sub">
-                  {tier === 'premium'
-                    ? 'Your name is what buyers see. Premium requires IC verification upfront — it keeps every listing accountable, and your first month is free.'
-                    : 'Your name is what buyers see. IC verification keeps the marketplace trusted — add it now, or later before your listings go live. Your choice.'}
+                  Your name is what buyers see. You can get verified later from your profile, in about 2 minutes.
                 </p>
 
                 <label className="eo-label">HOW DO YOU SELL CARS?</label>
@@ -923,38 +882,11 @@ export default function SalesmanOnboarding() {
                 <label className="eo-label">FULL LEGAL NAME (AS PER IC)</label>
                 <input className="eo-inp" type="text" placeholder="Ahmad bin Abdullah" value={form.fullName}
                   onChange={e => upd('fullName')(e.target.value)} autoComplete="name" />
-                <label className="eo-label">IC NUMBER (MYKAD) <span style={{ color: tier === 'premium' ? 'rgba(220,38,38,0.85)' : 'rgba(255,255,255,0.4)', fontWeight: tier === 'premium' ? 600 : 400 }}>{tier === 'premium' ? '— REQUIRED' : '— OPTIONAL FOR NOW'}</span></label>
-                <div style={{ position: 'relative' }}>
-                  <input className="eo-inp" type={showIc ? 'text' : 'password'} inputMode="numeric"
-                    placeholder="901231-10-1234" maxLength={14} value={form.icNumber}
-                    onChange={e => upd('icNumber')(e.target.value.replace(/[^\d-]/g, ''))}
-                    autoComplete="off" style={{ paddingRight: 46 }} />
-                  <button type="button" onClick={() => setShowIc(v => !v)} tabIndex={-1}
-                    aria-label={showIc ? 'Hide IC number' : 'Show IC number'}
-                    style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'rgba(255,255,255,0.45)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
-                    {showIc ? (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
-                    ) : (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                    )}
-                  </button>
-                </div>
-                <p className="eo-hint">
-                  {tier === 'premium'
-                    ? 'Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required to activate your Premium account — your listings then go live immediately, no separate review.'
-                    : 'Format: YYMMDD-NN-XXXX (12 digits). Stored hashed (never as plaintext), used for verification only. Required before your listings appear on xdrive.my — not to use your panel.'}
-                </p>
                 {err && <div className="eo-error">{err}</div>}
-                <button className="eo-btn" onClick={saveIdentity}
-                  disabled={loading || !form.fullName.trim() || !validateIC(form.icNumber)}>
-                  {loading ? 'SAVING…' : 'SAVE & CONTINUE'}
+                <button className="eo-btn" onClick={skipIdentity}
+                  disabled={loading || !form.fullName.trim()}>
+                  {loading ? 'SAVING…' : 'CONTINUE'}
                 </button>
-                {tier !== 'premium' && (
-                  <button className="eo-ghost" onClick={skipIdentity}
-                    disabled={loading || !form.fullName.trim()}>
-                    ADD IC LATER — GET TO MY PANEL
-                  </button>
-                )}
               </>
             )}
 
@@ -1036,7 +968,6 @@ export default function SalesmanOnboarding() {
                     ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
                     ['NAME', form.fullName],
                     ['EMAIL', userEmail],
-                    ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : 'Add later'],
                     ['PHONE', normalizePhone(form.phone)],
                     ['PROFILE URL', 'xdrive.my/s/' + form.slug],
                     ['STATE', form.state || '—'],
