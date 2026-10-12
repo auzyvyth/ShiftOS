@@ -6,13 +6,30 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 // Origin allowlist lives in ../_shared/cors.ts (MOBILE-4) — one list for every function.
 
-function generatePassword(length = 10): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let pw = "";
-  const arr = new Uint8Array(length);
-  crypto.getRandomValues(arr);
-  arr.forEach((b) => (pw += chars[b % chars.length]));
-  return pw;
+// The project's auth policy requires a lowercase letter, an uppercase letter,
+// a digit AND a symbol. The old generator drew letters and digits only, so
+// createUser rejected it ("Password should contain at least one character of
+// each") and no account could be made. Guarantee one of each class, then shuffle.
+function generatePassword(length = 14): string {
+  const classes = [
+    "abcdefghjkmnpqrstuvwxyz",
+    "ABCDEFGHJKLMNPQRSTUVWXYZ",
+    "23456789",
+    "!@#$%^&*-_",
+  ];
+  const all = classes.join("");
+  const rand = (n: number) => {
+    const a = new Uint32Array(1);
+    crypto.getRandomValues(a);
+    return a[0] % n;
+  };
+  const chars = classes.map((c) => c[rand(c.length)]);
+  while (chars.length < length) chars.push(all[rand(all.length)]);
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = rand(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
 }
 
 // Emails the salesman a one-time recovery link to set their own password and
