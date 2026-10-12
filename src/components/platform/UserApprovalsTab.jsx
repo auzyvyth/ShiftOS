@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
+import { purgeKycFiles } from "../../utils/kycPurge";
 
 // XDrive Ops — identity approval queue. Every self-signup seller (dealer / solo
 // salesman) lands here 'pending'. They are NOT locked out while they wait: since
@@ -171,26 +172,19 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
 
   const decide = async (userId, approve, reason) => {
     setActing(userId);
-    // Purge the physical ID images first (the Storage API is the only path that
-    // deletes the real bytes; the DB blocks raw deletes). Best-effort — if it
-    // fails we still record the decision and warn, rather than trapping the
-    // account in the queue.
-    const row = rows.find((r) => r.id === userId);
-    const paths = [row?.front_path, row?.back_path, row?.selfie_path].filter(Boolean);
-    let purgeFailed = false;
-    if (paths.length) {
-      const { error: rmErr } = await supabase.storage.from("kyc-docs").remove(paths);
-      if (rmErr) purgeFailed = true;
-    }
     // A KYC row decides identity only (the badge). A signup row decides account
     // access, and grants the badge too when documents were attached.
+    const row = rows.find((r) => r.id === userId);
     const { error } = await supabase.rpc(
       row?._kind === "kyc" ? "decide_kyc_verification" : "decide_user_approval",
       { p_user_id: userId, p_approve: approve, p_reason: reason || null },
     );
+    if (error) { setActing(null); setErr(error.message); return; }
+    // Then delete the ID photos (src/utils/kycPurge.js). After the decision, so
+    // a failed decision never leaves a seller in the queue with no photos.
+    const purge = await purgeKycFiles(supabase, userId);
     setActing(null);
-    if (error) { setErr(error.message); return; }
-    if (purgeFailed) setErr("Decision saved, but the ID images may not have been fully deleted — check the kyc-docs bucket.");
+    if (!purge.ok) setErr("Decision saved, but the ID photos may not all be deleted. Check the kyc-docs bucket.");
     setRows((p) => p.filter((r) => r.id !== userId));
     setRejectFor(null); setRejectReason("");
   };

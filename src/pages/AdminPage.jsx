@@ -28,6 +28,7 @@ import AlertsTab from "../components/platform/AlertsTab";
 import ReportsTab from "../components/platform/ReportsTab";
 import ProspectsTab from "../components/platform/ProspectsTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
+import { purgeKycFiles } from "../utils/kycPurge";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -684,6 +685,12 @@ export default function AdminPage() {
     const err = results.find(r => r.error)?.error;
     if (err) { alert("Error: " + err.message); }
     else {
+      // Approving the seller here decides their ID too, so their MyKad photos
+      // go now, same as from the ID queue (src/utils/kycPurge.js).
+      if (alsoVerifySeller) {
+        const purge = await purgeKycFiles(supabase, listing.dealer_id);
+        if (!purge.ok) alert("Seller approved, but their ID photos may not all be deleted. Check the kyc-docs bucket.");
+      }
       setPendingListings(p => p.filter(l => l.id !== listing.id));
       setReviewListingId(null);
       // decide_user_approval only touches profiles -- the embedded
