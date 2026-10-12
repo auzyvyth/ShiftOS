@@ -46,6 +46,9 @@ async function sendSetupEmail(
   // Create seller). There is no dealership, so "X has created your salesman
   // account" would name the seller as their own employer.
   standalone = false,
+  // Where the "Set your password" button points. null = the old Supabase
+  // action link (kept for clients deployed before the set-password page).
+  setPasswordBase: string | null = null,
 ): Promise<boolean> {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -58,7 +61,14 @@ async function sendSetupEmail(
       // /salesman-setup welcome page once the recovery session is established.
       options: { redirectTo: "https://xdrive.my/reset-password?flow=setup" },
     });
-    const actionLink = linkData?.properties?.action_link;
+    // The new link carries the hashed token to OUR page, which verifies it
+    // only when the seller presses "Set password". Supabase's own action link
+    // spends the token on the first GET, so a mail scanner or a second tap
+    // burned it and the seller landed on a code screen they had no code for.
+    const hashed = linkData?.properties?.hashed_token;
+    const actionLink = setPasswordBase && hashed
+      ? `${setPasswordBase}/salesman-setup?token_hash=${encodeURIComponent(hashed)}&type=recovery`
+      : linkData?.properties?.action_link;
     if (!actionLink) return false;
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
     const brand = standalone ? "XDrive" : dealershipName;
@@ -67,7 +77,7 @@ async function sendSetupEmail(
       ? `Hi ${fullName}, XDrive has set up your seller page and added your cars.`
       : `Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.`;
     const ask = standalone
-      ? "Set your own password to take it over. You will also be asked for your IC: your cars go live once your ID has been checked."
+      ? "Set your own password to take it over. Your cars go live once XDrive has checked your ID, which you can start from your dashboard."
       : "Set your password to finish setting up and access your dashboard:";
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
@@ -79,7 +89,7 @@ async function sendSetupEmail(
     <p style="margin:0 0 16px;">${intro}</p>
     <p style="margin:0 0 24px;">${ask}</p>
     <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
-    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link is single use and expires. If it no longer works, use &quot;Forgot password&quot; on the ShiftOS login page and we will email you a 6-digit code.</p>
+    <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link works once and expires. If we send you another setup email, only the newest link works. If it no longer works, use &quot;Forgot password&quot; on the sign-in page.</p>
   </div>
   <div style="background:#f9fafb;padding:18px 32px;border-top:1px solid #e5e7eb;text-align:center;">
     <p style="margin:0;font-size:11px;color:#9ca3af;">Sent by ${brand} via ShiftOS</p>
@@ -106,6 +116,14 @@ async function sendSetupEmail(
     console.error("[create-salesman] setup email failed:", e);
     return false;
   }
+}
+
+// The set-password page lives on xdrive.my. A staging preview gets links back
+// to itself so the flow can be tested before it ships; a dealer subdomain does
+// not (the salesman panel is on xdrive.my).
+function setPasswordBaseFor(origin: string | null): string {
+  if (origin && /^https:\/\/shift-[a-z0-9-]+-shift-os\.vercel\.app$/.test(origin)) return origin;
+  return "https://xdrive.my";
 }
 
 serve(async (req) => {
@@ -156,6 +174,9 @@ serve(async (req) => {
 
     // ── Parse body ──────────────────────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
+    // Clients that ship the set-password page say so; older builds still get
+    // the old link, which their /reset-password page understands.
+    const setPasswordBase = body.link === "set_password" ? setPasswordBaseFor(origin) : null;
 
     // ── Resend setup email (no new account) ─────────────────────────────────
     // The dealer's Team tab calls this when a salesman hasn't finished setup and
@@ -176,8 +197,16 @@ serve(async (req) => {
       if (!isSuper && target.dealer_id !== callerProfile.id) {
         return json({ error: "forbidden" }, 403);
       }
+      // Rate limit: every send REPLACES the link, so a double tap (no feedback
+      // on the button, 2026-10-12: three sends in 12 seconds) killed the email
+      // the seller then opened. Within a minute of the last send, keep it.
+      const { data: authTarget } = await adminClient.auth.admin.getUserById(target.id);
+      const lastSent = authTarget?.user?.recovery_sent_at ? Date.parse(authTarget.user.recovery_sent_at) : 0;
+      if (lastSent && Date.now() - lastSent < 60_000) {
+        return json({ success: true, email_sent: true, throttled: true });
+      }
       const dealershipName = target.dealership || callerProfile.dealership || target.full_name || "Your dealership";
-      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id);
+      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id, setPasswordBase);
       return json({ success: true, email_sent: sent });
     }
 
@@ -328,7 +357,7 @@ serve(async (req) => {
     // depend on the dealer relaying the temp password. Non-fatal: if the Resend
     // key is unset or Resend errors, the dealer still gets temp_password to share.
     const emailSent = sendEmail
-      ? await sendSetupEmail(adminClient, email, full_name, dealershipName, !effectiveDealerId)
+      ? await sendSetupEmail(adminClient, email, full_name, dealershipName, !effectiveDealerId, setPasswordBase)
       : false;
 
     const { data: finalProfile } = await adminClient
