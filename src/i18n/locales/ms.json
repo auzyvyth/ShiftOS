@@ -466,7 +466,8 @@
           "title": "Bantuan",
           "body": "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat."
         }
-      }
+      },
+      "start": "Mula"
     },
     "inbox": {
       "enquiries": "Pertanyaan",
@@ -1279,5 +1280,28 @@
     "mismatch": "Dua kata laluan tak sama.",
     "same": "Itu memang kata laluan anda sekarang.",
     "done": "Kata laluan dah ditukar. Device lain dah di-logout."
+  },
+  "sellerId": {
+    "title": "Dapatkan pengesahan",
+    "body": "Kereta penjual yang disahkan dipaparkan kepada pembeli di XDrive. Gambar MyKad dan selfie, lebih kurang 2 minit.",
+    "cta": "Sahkan sekarang",
+    "checkingTitle": "Kami sedang semak IC anda",
+    "checkingBody": "Kereta anda dipaparkan kepada pembeli sebaik sahaja diluluskan. Teruskan tambah kereta dan layan lead sementara itu."
+  },
+  "starterTasks": {
+    "heading": "Mula di sini",
+    "doneHeading": "Dah siap",
+    "listingTitle": "Tambah kereta pertama anda",
+    "listingSub": "Gambar, harga, terbit. Inilah cara pembeli jumpa anda.",
+    "listingCta": "Tambah kereta",
+    "minipageTitle": "Buka mini page anda",
+    "minipageSub": "Kedai online anda. Tengok sendiri apa yang pembeli nampak sebelum kongsi link.",
+    "minipageCta": "Buka page saya",
+    "bioTitle": "Lengkapkan bio mini page",
+    "bioSub": "Beberapa ayat tentang diri anda. Pembeli mesej agent yang mereka percaya, bukan yang paling murah.",
+    "bioCta": "Tulis bio saya",
+    "doneTitle": "Page anda dah sedia untuk dikongsi.",
+    "doneSub": "Kereta dah naik, page dah live, bio dah ada. Hantar link ke group WhatsApp anda.",
+    "hide": "Sembunyi"
   }
 }

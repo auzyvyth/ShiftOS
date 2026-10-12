@@ -37,9 +37,7 @@ import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
-import VerifyBadgePrompt from "../components/kyc/VerifyBadgePrompt";
-import AccountReviewBanner from "../components/AccountReviewBanner";
-import IcVerifyBanner from "../components/IcVerifyBanner";
+import SellerIdCard from "../components/kyc/SellerIdCard";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
@@ -898,15 +896,12 @@ export default function SalesmanLite() {
     setActiveTab(tab);
   }
 
-  // Gate every "add a listing" entry point on IC being on file — a car can't be
-  // listed anonymously. If IC is missing, prompt for it inline instead of opening
-  // the form.
+  // No IC gate here any more (owner, 2026-10-12: less friction while we grow).
+  // Typing an IC number checked nothing, and the real check, the MyKad photos
+  // behind is_verified, already keeps an unchecked seller's cars off the
+  // marketplace (public_car_listings, 20261011b). SellerIdCard invites them
+  // to get verified instead.
   function openAddListing() {
-    if (profile && !profile.ic_hash) {
-      setIcGateVal("");
-      setIcGateOpen(true);
-      return;
-    }
     setShowAddForm(true);
   }
 
@@ -924,9 +919,6 @@ export default function SalesmanLite() {
       // status only, so there's no reason to hold IC digits in the browser.
       setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }));
       setIcGateOpen(false);
-      // Only jump into the add-listing form when the gate was opened from that
-      // flow — the 1-week enforcement gate can fire with no form pending.
-      if (icEnforced) setShowAddForm(false); else setShowAddForm(true);
       toast.success(t("salesmanLite.toast.icVerified"));
     } catch (e) {
       const msg = e.message === "invalid_ic" ? t("salesmanLite.toast.icInvalid") : (e.message || t("salesmanLite.toast.icSaveFailed"));
@@ -946,22 +938,10 @@ export default function SalesmanLite() {
   const [icGateOpen, setIcGateOpen] = useState(false);
   const [icGateVal, setIcGateVal] = useState("");
   const [icGateSaving, setIcGateSaving] = useState(false);
-  // 1-week KYC enforcement: 7 days after signup, a salesman with no IC on file
-  // sees the urgent copy on IcVerifyBanner (below) instead of the softer one.
-  // This used to force-open icGateOpen on mount, which is what actually made
-  // an already-verified seller see the modal: the FIRST FRAME paints from the
-  // panelCache seed, which stripped ic_hash to keep raw identity material off
-  // disk, so `profile.ic_hash` read false for a few hundred ms even for a
-  // seller who verified at onboarding, popping the gate open with no way for a
-  // later correct fetch to close it back down. Fixed by having the cache keep
-  // a boolean instead of dropping the field (panelCache.js redactProfileForCache)
-  // and by never auto-opening the modal at all — IcVerifyBanner nudges instead,
-  // and the modal only opens from an explicit click (Settings, or Add a listing
-  // while genuinely unverified).
-  const icEnforced = !!(
-    profile && !profile.ic_hash && profile.created_at &&
-    (Date.now() - new Date(profile.created_at).getTime()) >= 7 * 86400000
-  );
+  // The IC number is optional now (owner, 2026-10-12): no grace period, no
+  // gate on listing. The modal opens only from Settings. It used to force-open
+  // on mount, and from a cached profile with no ic_hash it popped for sellers
+  // who had already entered one; never auto-open it again.
   useEffect(() => {
     if (!icGateOpen) return;
     document.body.style.overflow = "hidden";
@@ -8096,7 +8076,9 @@ export default function SalesmanLite() {
       );
     }
 
-    return (
+    // Portalled (overlay rule 1): rendered in place, a transformed or
+    // overflow-clipped ancestor can clip or re-anchor a position:fixed bubble.
+    return createPortal(
       <>
         {/* Highlight ring around the target nav item — soft glow, gentle pulse,
             rounded to match the nav item rather than a hard red box. */}
@@ -8158,7 +8140,14 @@ export default function SalesmanLite() {
           </p>
 
           {/* Welcome step doubles as the language chooser — pick the language the
-              rest of the intro (and the whole panel) runs in. */}
+              rest of the intro (and the whole panel) runs in. Picking one only
+              switches the language; Start moves on. It used to also jump to
+              step 2, which moved the bubble from the middle of the screen down
+              onto the nav in the same tap, so a second tap on "Malay" (the
+              Malay text arrives a beat later, so it looks like nothing
+              happened) landed on the new bubble's Skip / X and ended the tour
+              for good (2026-10-12: the owner's test account had
+              onboarding_tour_done=true minutes after signup). */}
           {isWelcome && (
             <div style={{ marginBottom: 14 }}>
               <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textAlign: "center" }}>
@@ -8170,11 +8159,12 @@ export default function SalesmanLite() {
                   return (
                     <button
                       key={code}
-                      onClick={() => { i18n.changeLanguage(code); setTourStep(1); }}
+                      onClick={() => i18n.changeLanguage(code)}
                       style={{ flex: 1, padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer",
-                        background: active ? "#dc2626" : "rgba(255,255,255,0.05)",
-                        border: `1px solid ${active ? "#dc2626" : "rgba(255,255,255,0.12)"}`,
-                        color: active ? "#fff" : "#cbd5e1", transition: "all 0.15s" }}
+                        background: active ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.1)"}`,
+                        color: active ? "#fff" : "#94a3b8", transition: "all 0.15s" }}
+                      aria-pressed={active}
                     >
                       {label}
                     </button>
@@ -8191,8 +8181,8 @@ export default function SalesmanLite() {
             ))}
           </div>
 
-          {/* Buttons — on the welcome step the language buttons above are the
-              primary action, so only a quiet Skip shows here. */}
+          {/* Buttons — on the welcome step Start is the one red button; the
+              language pick above it is a choice, not the way forward. */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {tourStep > 0 && (
               <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
@@ -8203,6 +8193,14 @@ export default function SalesmanLite() {
             <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>
               {t("salesmanLite.tour.skip")}
             </button>
+            {isWelcome && (
+            <button
+              onClick={() => setTourStep(1)}
+              style={{ padding: "7px 16px", borderRadius: 7, background: "#dc2626", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+            >
+              {t("salesmanLite.tour.start", { defaultValue: "Start" })}
+            </button>
+            )}
             {!isWelcome && (
             <button
               onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
@@ -8213,7 +8211,8 @@ export default function SalesmanLite() {
             )}
           </div>
         </div>
-      </>
+      </>,
+      document.body,
     );
   };
 
@@ -8760,17 +8759,13 @@ export default function SalesmanLite() {
           {/* Suspension used to be invisible here: the seller lost the
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
-          <AccountReviewBanner profile={profile} />
-          {/* An unchecked seller's cars are hidden from buyers (20261011b);
-              this is the only place Lite tells them why. */}
-          <VerifyBadgePrompt
+          {/* Review status, the ID check and the IC number used to be three
+              stacked banners on first landing; SellerIdCard is the one card
+              (with one button to the next missing step) for all of them. */}
+          <SellerIdCard
             profile={profile}
-            onStart={() => { setSettingsNav("account"); switchTab("settings"); }}
-          />
-          <IcVerifyBanner
-            profile={profile}
-            userId={userId}
-            onVerify={() => { setIcGateVal(""); setIcGateOpen(true); }}
+            t={t}
+            onUploadId={() => { setSettingsNav("account"); switchTab("settings"); }}
           />
           {/* The "you're approved" moment used to have no announcement at all —
               the under-review banner above just quietly stops rendering once
@@ -8908,11 +8903,11 @@ export default function SalesmanLite() {
         saving={sellerBookingSaving}
       />
 
-      {/* IC gate — required before a car can be listed, and hard-enforced 2 weeks
-          after signup (icEnforced). Stored HASHED (set_my_ic), never plaintext. */}
+      {/* Optional IC number, opened from Settings. Stored HASHED (set_my_ic),
+          never plaintext. */}
       {icGateOpen && (
         <div
-          onClick={() => { if (!icGateSaving && !icEnforced) setIcGateOpen(false); }}
+          onClick={() => { if (!icGateSaving) setIcGateOpen(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
         >
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
@@ -8921,13 +8916,11 @@ export default function SalesmanLite() {
                 <ShieldCheck size={18} style={{ color: "#f87171" }} />
               </div>
               <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
-                {icEnforced ? "Verify your IC to continue" : "Verify your IC to list cars"}
+                Add your IC number
               </p>
             </div>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-              {icEnforced
-                ? "Your 1-week grace period is up. Verify your MyKad IC to keep using your dashboard — it's required for every active seller on xdrive.my."
-                : "Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's required before any car goes live on xdrive.my."}
+              Optional. Never shown to buyers.
             </p>
             <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
             <input
@@ -8946,16 +8939,14 @@ export default function SalesmanLite() {
                 disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
                 style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
               >
-                {icGateSaving ? "Verifying…" : "Verify & continue"}
+                {icGateSaving ? "Saving…" : "Save"}
               </button>
-              {!icEnforced && (
-                <button
-                  onClick={() => !icGateSaving && setIcGateOpen(false)}
-                  style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
-                >
-                  Later
-                </button>
-              )}
+              <button
+                onClick={() => !icGateSaving && setIcGateOpen(false)}
+                style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
+              >
+                Later
+              </button>
             </div>
           </div>
         </div>

@@ -472,7 +472,8 @@
           "title": "Help",
           "body": "Step-by-step guides, sales tips and FAQs. Come back here any time you're stuck."
         }
-      }
+      },
+      "start": "Start"
     },
     "inbox": {
       "enquiries": "Enquiries",
@@ -1289,5 +1290,12 @@
     "mismatch": "The two passwords don't match.",
     "same": "That is already your password.",
     "done": "Password changed. Other devices have been signed out."
+  },
+  "sellerId": {
+    "title": "Get verified",
+    "body": "Verified sellers' cars show to buyers on XDrive. A photo of your MyKad and a selfie, about 2 minutes.",
+    "cta": "Get verified",
+    "checkingTitle": "We're checking your ID",
+    "checkingBody": "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile."
   }
 }

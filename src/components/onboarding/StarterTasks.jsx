@@ -151,11 +151,15 @@ export default function StarterTasks({
           TASKS.map((task, idx) => {
             const isDone = done[task.key];
             const isNext = task.key === nextKey;
+            // Only the next task is spelled out. Later ones are a single dim
+            // line, so a first-time seller reads one ask, not three (owner,
+            // 2026-10-12: the first dashboard was "too many tasks").
+            const isLater = !isDone && !isNext;
             const Icon = task.icon;
             return (
               <div
                 key={task.key}
-                style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : 0, marginTop: idx > 0 ? 14 : 0, borderTop: idx > 0 ? `1px solid ${P.line}` : "none" }}
+                style={{ display: "flex", alignItems: isLater ? "center" : "flex-start", gap: 12, padding: idx > 0 ? (isLater ? "10px 0 0" : "14px 0 0") : 0, marginTop: idx > 0 ? (isLater ? 10 : 14) : 0, borderTop: idx > 0 ? `1px solid ${P.line}` : "none" }}
               >
                 <span
                   aria-hidden
@@ -171,17 +175,17 @@ export default function StarterTasks({
                 </span>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: isDone ? P.textMuted : P.text, textDecoration: isDone ? "line-through" : "none" }}>
+                  <p style={{ margin: 0, fontSize: 13.5, color: isDone || isLater ? P.textMuted : P.text, fontWeight: isLater ? 500 : 600, textDecoration: isDone ? "line-through" : "none" }}>
                     {task.title}
                   </p>
-                  {!isDone && (
+                  {isNext && (
                     <p style={{ margin: "2px 0 0", fontSize: 12.5, color: P.textMuted, lineHeight: 1.5 }}>
                       {task.sub}
                     </p>
                   )}
                 </div>
 
-                {!isDone && task.action && (
+                {isNext && task.action && (
                   <button
                     onClick={task.action}
                     style={{
