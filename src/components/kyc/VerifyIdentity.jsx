@@ -11,9 +11,10 @@ import { supabase } from "../../supabaseClient";
  * CarDetailPage) were both already built, but nothing let a seller actually
  * upload an ID, so kyc_documents had zero rows and the badge was unearnable.
  *
- * Verification is a carrot, never a punishment: a seller who skips this is
- * simply un-badged. Nothing here blocks listing — the dealer's manual approval
- * of each listing remains the only gate.
+ * Since 2026-10-11 this IS a gate for going public: public_car_listings only
+ * shows cars whose seller has profiles.is_verified (migration 20261011b).
+ * A seller can still add cars and take leads without it; buyers just cannot
+ * see the cars until a superadmin approves the ID.
  *
  * Photos go to the PRIVATE kyc-docs bucket under the seller's own uid folder
  * (the storage policy and submit_kyc both require that prefix). submit_kyc is
@@ -173,7 +174,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "
               Identity verified
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              Your listings carry the Verified badge on the marketplace.
+              Your cars are live on XDrive and carry the Verified badge.
             </p>
           </div>
         </div>
@@ -191,7 +192,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "
               ID under review
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              We'll add your Verified badge once it's checked. You can keep listing in the meantime.
+              Your cars show on XDrive as soon as it's approved. You can keep adding cars in the meantime.
             </p>
           </div>
         </div>
@@ -204,12 +205,12 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, theme = "
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
         <ShieldCheck size={18} style={{ color: P.askIcon, flexShrink: 0 }} />
         <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>
-          Get the Verified badge
+          Verify your ID to go live
         </p>
       </div>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-        Verified sellers show a badge on every listing, and buyers are far more willing to
-        message a seller whose identity has been checked. Optional — your listings work either way.
+        Buyers can't see your cars until we've checked your ID. It keeps scammers off XDrive,
+        and your listings get the Verified badge.
       </p>
 
       {profile?.rejection_reason && (
