@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { docTypeCfg } from "../../utils/docTypes";
 import { TRUST_DOCS, geranStatusLabel } from "../../utils/trustDocs";
 import DamageMap from "../DamageMap";
+import { platformClient } from "../../lib/platformClient";
+import { isPrivateDoc, isPdfDoc, resolveDocUrls } from "../../utils/carDocs";
 
 // Full-evidence review sheet for one pending listing.
 //
@@ -100,9 +102,10 @@ const Row = ({ k, v, mono, color }) =>
 // on their own listing), and this sheet runs in the superadmin's session. A
 // `javascript:` URL in an iframe src or a link runs on our origin and can read
 // the platform login, so anything that is not plain http(s) is dropped.
-// "Is it a PDF" reads the URL only, never the seller-supplied file name.
+// "Is it a PDF" reads the stored path/URL only (isPdfDoc), never the
+// seller-supplied file name. Private documents (car-docs bucket) open through
+// a short-lived signed link resolved below.
 const safeUrl = (u) => (typeof u === "string" && /^https?:\/\//i.test(u.trim()) ? u.trim() : null);
-const isPdf = (d) => /\.pdf($|\?)/i.test(safeUrl(d?.url) || "");
 
 export default function ListingReviewModal({
   listing,
@@ -125,9 +128,17 @@ export default function ListingReviewModal({
 
   const images = useMemo(() => (Array.isArray(listing?.images) ? listing.images.filter(Boolean) : []), [listing]);
   const docs = useMemo(
-    () => (Array.isArray(listing?.car_documents) ? listing.car_documents.filter((d) => d?.url) : []),
+    () => (Array.isArray(listing?.car_documents) ? listing.car_documents.filter((d) => d?.url || isPrivateDoc(d)) : []),
     [listing],
   );
+  // One openable URL per entry in `docs` (signed for private files).
+  const [docUrls, setDocUrls] = useState([]);
+  useEffect(() => {
+    let live = true;
+    setDocUrls([]);
+    if (docs.length) resolveDocUrls(platformClient, docs).then((u) => { if (live) setDocUrls(u); });
+    return () => { live = false; };
+  }, [docs]);
 
   // Open on whichever pane actually has evidence — a listing with no photos
   // should not open on an empty photo viewer.
@@ -187,7 +198,7 @@ export default function ListingReviewModal({
   const showCondition = damageMarks.length > 0 || !!listing.condition_declared_at;
 
   const current = pane === "photos" ? images[photoIdx] : docs[docIdx];
-  const currentUrl = safeUrl(pane === "photos" ? current : current?.url);
+  const currentUrl = safeUrl(pane === "photos" ? current : docUrls[docIdx]);
   const count = pane === "photos" ? images.length : docs.length;
   const idx = pane === "photos" ? photoIdx : docIdx;
 
@@ -310,7 +321,7 @@ export default function ListingReviewModal({
                   <p style={{ fontSize: 12.5, color: "#4b5563", padding: 20, textAlign: "center" }}>
                     {pane === "photos" ? "This listing has no photos." : "This listing has no documents attached."}
                   </p>
-                ) : pane === "docs" && isPdf(current) ? (
+                ) : pane === "docs" && isPdfDoc(current) ? (
                   <iframe title={current?.name || "document"} src={currentUrl} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }} />
                 ) : (
                   <img
@@ -342,9 +353,9 @@ export default function ListingReviewModal({
               {count > 0 && (
                 <div className="plr-strip" style={{ display: "flex", gap: 6, marginTop: 8, overflowX: "auto", paddingBottom: 4 }}>
                   {(pane === "photos" ? images : docs).map((it, i) => {
-                    const src = safeUrl(pane === "photos" ? it : it.url);
+                    const src = safeUrl(pane === "photos" ? it : docUrls[i]);
                     const active = i === idx;
-                    const pdf = pane === "docs" && isPdf(it);
+                    const pdf = pane === "docs" && isPdfDoc(it);
                     return (
                       <button
                         key={i}
@@ -386,7 +397,7 @@ export default function ListingReviewModal({
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: 12, color: "#e5e7eb", fontWeight: 600 }}>{cfg.label}</p>
                           <p style={{ margin: 0, fontSize: 10.5, color: "#4b5563", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {d.name || d.url}
+                            {d.name || "Document"}
                           </p>
                         </div>
                         <button

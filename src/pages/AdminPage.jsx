@@ -509,6 +509,14 @@ export default function AdminPage() {
   async function handlePlatformSignOut() {
     // scope:local so signing out of the console does NOT revoke the superadmin's
     // sessions elsewhere — only this isolated store is cleared.
+    // Release this browser's push slot FIRST, while the session still exists:
+    // push_forget_device only drops a superadmin's row for that superadmin
+    // (migration 20261013a), so ops alerts stop reaching a browser you have
+    // signed out of, and a seller on it can claim the slot again.
+    try {
+      const { forgetPushDevice } = await import("../hooks/usePushNotifications");
+      await forgetPushDevice(supabase);
+    } catch { /* never blocks sign-out */ }
     await supabase.auth.signOut({ scope: "local" });
     setDealers([]); setSalesmen([]); setPendingListings([]); setWaitlist([]);
     setLoginEmail(""); setLoginPw(""); setMfaFactorId(null); setMfaCode("");

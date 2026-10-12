@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
+import PublicDocsMover from "./PublicDocsMover";
 
 // Security console — posture dashboard. Reads the superadmin-guarded
 // get_security_posture RPC, which computes live DB checks (RLS coverage, owner-run
@@ -61,6 +62,8 @@ export default function PostureTab() {
           ↻ Re-check
         </button>
       </div>
+
+      <PublicDocsMover />
 
       {loading ? (
         <div style={{ textAlign: "center", padding: 80, color: "#4b5563" }}>Running checks…</div>

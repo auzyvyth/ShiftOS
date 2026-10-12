@@ -24,3 +24,27 @@ export async function purgeKycFiles(client, userId) {
   const n = (removed || []).length;
   return { ok: n === paths.length, removed: n };
 }
+
+// Safety net, run by the console's ID queue after it loads: deletes MyKad
+// photos that no pending ID check points at any more (an account deleted
+// before review, an upload whose submit failed). Only files over an hour old,
+// so a seller part-way through submitting never loses a photo. `pendingIds`
+// is the set of user ids still waiting in the queue. Returns files removed.
+const SWEEP_MIN_AGE_MS = 60 * 60 * 1000;
+export async function sweepOrphanKycFiles(client, pendingIds) {
+  const bucket = client.storage.from("kyc-docs");
+  const { data: folders, error } = await bucket.list("", { limit: 1000 });
+  if (error) return 0;
+  let removed = 0;
+  for (const f of folders || []) {
+    // Folders come back with id null; skip loose files and anyone still pending.
+    if (f.id !== null || !f.name || pendingIds.has(f.name)) continue;
+    const { data: files } = await bucket.list(f.name, { limit: 100 });
+    const old = (files || []).filter((x) => x.name && x.created_at
+      && Date.now() - new Date(x.created_at).getTime() > SWEEP_MIN_AGE_MS);
+    if (!old.length) continue;
+    const { data: gone } = await bucket.remove(old.map((x) => `${f.name}/${x.name}`));
+    removed += (gone || []).length;
+  }
+  return removed;
+}

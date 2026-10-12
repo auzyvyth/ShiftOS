@@ -350,6 +350,12 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     const ok = await run(a.id, "Deleting", async () => {
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
+      // A deleted account is never reviewed, so its MyKad photos go now
+      // (src/utils/kycPurge.js); trg_profile_deleted_drop_kyc clears the row.
+      if (!r.error) {
+        const purge = await purgeKycFiles(supabase, a.id);
+        if (!purge.ok) return { error: { message: "Deleted, but their ID photos may not all be removed. Check the kyc-docs bucket." } };
+      }
       return r;
     }, "Deleted. You can restore it for 30 days.");
     if (ok) setConfirmDelete(null);

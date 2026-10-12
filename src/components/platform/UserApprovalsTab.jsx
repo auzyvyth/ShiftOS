@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
-import { purgeKycFiles } from "../../utils/kycPurge";
+import { purgeKycFiles, sweepOrphanKycFiles } from "../../utils/kycPurge";
 
 // XDrive Ops — identity approval queue. Every self-signup seller (dealer / solo
 // salesman) lands here 'pending'. They are NOT locked out while they wait: since
@@ -132,6 +132,10 @@ export default function UserApprovalsTab({ kindFilter = null, embedded = false, 
     const incompleteRows = (incomplete.data || []).map((r) => ({ ...r, _kind: "incomplete" }));
     setRows([...signupRows, ...kycRows, ...incompleteRows]);
     setLoading(false);
+    // Clean up MyKad photos nobody is waiting on (src/utils/kycPurge.js). In
+    // the background: it never holds up the queue, and failures change nothing.
+    const pendingIds = new Set([...(signup.data || []), ...(kyc.data || [])].map((r) => r.id));
+    sweepOrphanKycFiles(supabase, pendingIds).catch(() => {});
   }, []);
 
   useEffect(() => { load(); }, [load, refreshKey]);

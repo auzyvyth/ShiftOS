@@ -52,6 +52,7 @@ import { decodeVin, isLikelyVin } from "../utils/vinDecode";
 import { decodeChassis, isChassisCode, isMalaysianVin, generationYears, specVariantDiffers, specProbeYear } from "../utils/chassisDecode";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
+import { CAR_DOCS_BUCKET, openDoc, removeDocFile } from "../utils/carDocs";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -980,23 +981,23 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       const rand = globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
       const folder = profile?.id ? `${profile.id}/` : "";
       const path = `${folder}docs/${Date.now()}-${rand}-${(upload.name || "document").replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      // PRIVATE bucket (src/utils/carDocs.js): a geran or loan letter carries
+      // the owner's IC, address and loan balance, so it never gets a public URL.
       const { error } = await supabase.storage
-        .from("car-images")
-        .upload(path, upload, { contentType: upload.type, cacheControl: '31536000' });
+        .from(CAR_DOCS_BUCKET)
+        .upload(path, upload, { contentType: upload.type });
       if (error) throw error;
-      const url = supabase.storage.from("car-images").getPublicUrl(path)
-        .data.publicUrl;
       const type = slotType || docTypeInput;
       setForm((f) => {
         const docs = [...(f.car_documents || [])];
-        const entry = { type, name: upload.name, url, path };
+        const entry = { type, name: upload.name, path, bucket: CAR_DOCS_BUCKET };
         const at = slotType ? docs.findIndex((d) => d.type === slotType) : -1;
         const prev = at >= 0 ? docs[at] : null;
         if (at >= 0) docs[at] = entry;
         else docs.push(entry);
         // The slot's old file is now replaced — its storage object would
         // otherwise sit orphaned forever, same problem removeDocument fixes.
-        if (prev?.path) supabase.storage.from("car-images").remove([prev.path]).catch(() => {});
+        if (prev?.path) removeDocFile(supabase, prev);
         // Attaching the geran clears any "can't provide it" reason — the
         // document is the stronger answer and the two must never both be set.
         return {
@@ -1021,7 +1022,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     }));
     // Old entries (uploaded before the owner-scoped path fix) have no `path`
     // to clean up — nothing to do for those beyond dropping the array entry.
-    if (doc?.path) supabase.storage.from("car-images").remove([doc.path]).catch(() => {});
+    if (doc?.path) removeDocFile(supabase, doc);
   };
 
   // ── Trust documents ──────────────────────────────────────────────────────
@@ -2993,14 +2994,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                           {doc ? (
                             <div className="flex items-center gap-3 mt-1 min-w-0">
                               <span className="text-xs text-gray-600 truncate min-w-0">{doc.name}</span>
-                              <a
-                                href={doc.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={() => openDoc(supabase, doc)}
                                 className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
                               >
                                 View
-                              </a>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => removeDocument(idx)}
@@ -3092,14 +3092,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                             <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                             <p className="text-xs text-gray-500">{dt.label}</p>
                           </div>
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => openDoc(supabase, doc)}
                             className="text-xs text-blue-600 hover:text-blue-700 flex-shrink-0"
                           >
                             View
-                          </a>
+                          </button>
                           <button
                             type="button"
                             onClick={() => removeDocument(idx)}
