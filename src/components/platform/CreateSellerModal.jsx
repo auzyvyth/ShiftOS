@@ -98,7 +98,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
   const sendSetupEmail = async () => {
     setMailState("sending");
     const { data, error: e } = await supabase.functions.invoke("create-salesman", {
-      body: { action: "resend_setup", email: created.email },
+      body: { action: "resend_setup", email: created.email, link: "set_password" },
     });
     setMailState(!e && data?.email_sent ? "sent" : "failed");
   };

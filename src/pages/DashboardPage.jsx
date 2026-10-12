@@ -4777,6 +4777,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
             slug: s,
             dealer_id: dealerId,
             plan: "salesman_full",
+            link: "set_password",
           }),
         });
         const data = await res.json().catch(() => ({}));
@@ -4874,7 +4875,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ action: "resend_setup", email: s.email }),
+        body: JSON.stringify({ action: "resend_setup", email: s.email, link: "set_password" }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.email_sent) toast.success(`Setup email resent to ${s.email}`);

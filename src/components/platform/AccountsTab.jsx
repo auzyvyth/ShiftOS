@@ -88,6 +88,22 @@ function Field({ label, value, mono }) {
   );
 }
 
+// How the last action on an open record ended, said where the operator is
+// looking. role=status/alert so a screen reader hears it too.
+function ResultNote({ result }) {
+  const ok = result.ok;
+  return (
+    <p role={ok ? "status" : "alert"} style={{
+      margin: "10px 0 0", fontSize: 12, lineHeight: 1.5, borderRadius: 8, padding: "8px 11px",
+      color: ok ? "#86efac" : "#fca5a5",
+      background: ok ? "rgba(74,222,128,0.08)" : "rgba(220,38,38,0.08)",
+      border: `1px solid ${ok ? "rgba(74,222,128,0.25)" : "rgba(220,38,38,0.25)"}`,
+    }}>
+      {result.text}
+    </p>
+  );
+}
+
 function SectionTitle({ children }) {
   return (
     <p style={{ margin: "22px 0 8px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>
@@ -96,7 +112,7 @@ function SectionTitle({ children }) {
   );
 }
 
-const btn = (tone = "neutral") => {
+const btn = (tone = "neutral", off = false) => {
   const tones = {
     neutral: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.1)", "#9ca3af"],
     good: ["rgba(74,222,128,0.1)", "rgba(74,222,128,0.3)", "#4ade80"],
@@ -106,7 +122,8 @@ const btn = (tone = "neutral") => {
   const [background, borderColor, color] = tones[tone] || tones.neutral;
   return {
     background, color, border: `1px solid ${borderColor}`, borderRadius: 7,
-    padding: "7px 13px", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit",
+    padding: "7px 13px", fontSize: 12, fontWeight: 600, cursor: off ? "not-allowed" : "pointer", fontFamily: "inherit",
+    opacity: off ? 0.5 : 1, transition: "opacity 120ms",
   };
 };
 
@@ -124,6 +141,13 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   // nothing.
   const [teamOf, setTeamOf] = useState(null);
   const [busy, setBusy] = useState(null);
+  // Which action is running (its label, e.g. "Sending setup email") and how
+  // the last one ended. Both render INSIDE the account record: the tab's
+  // error bar and the row tick sit behind the overlay, so a tap on an action
+  // used to look like nothing happened -- and a setup email tapped three times
+  // sent three links, of which only the newest works.
+  const [pending, setPending] = useState(null);
+  const [result, setResult] = useState(null);
   const [creating, setCreating] = useState(false);
   const [saved, setSaved] = useState(null);
   // A9: billing state used to write straight through on the change event, so a
@@ -205,14 +229,27 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     setTimeout(() => setSaved(s => (s === id ? null : s)), 2000);
   }
 
-  async function run(id, label, fn) {
-    setBusy(id); setError(null);
-    const { error: e } = await fn();
-    setBusy(null);
-    if (e) { setError(`${label} failed: ${e.message}`); return false; }
+  async function run(id, label, fn, doneText) {
+    setBusy(id); setPending(label); setError(null); setResult(null);
+    let e;
+    try { ({ error: e } = await fn()); } catch (err) { e = err; }
+    setBusy(null); setPending(null);
+    if (e) {
+      const text = `${label} failed: ${e.message || "something went wrong"}`;
+      setError(text);
+      setResult({ id, ok: false, text });
+      return false;
+    }
     flash(id);
+    if (doneText) {
+      const token = { id, ok: true, text: doneText };
+      setResult(token);
+      setTimeout(() => setResult(r => (r === token ? null : r)), 8000);
+    }
     return true;
   }
+  // Button label while its own action runs; every other action is disabled.
+  const busyText = (label, idle, working) => (pending === label ? working : idle);
 
   const saveField = (a, field, value) =>
     run(a.id, `Saving ${field}`, async () => {
@@ -245,7 +282,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
       return r;
-    });
+    }, next ? "Marked verified. Their cards now show the verified badge." : "Verified badge removed.");
   };
 
   // Same nudge email Review's Incomplete pill sends (UserApprovalsTab.jsx) --
@@ -259,24 +296,35 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       if (!e && data?.error) return { error: { message: data.error } };
       if (!e) onPatch(a.id, { signup_reminder_sent_at: new Date().toISOString() });
       return { error: e || null };
-    });
+    }, `Reminder email sent to ${a.email}.`);
 
   // A page set up from "Set up a seller" holds its setup email until the cars
   // are in (CreateSellerModal). This sends it, and re-sends an expired link.
-  const sendSetupEmail = (a) =>
-    run(a.id, "Sending setup email", async () => {
+  // The server skips a resend within a minute of the last one (`throttled`):
+  // each send replaces the link, so a double tap would kill the first email.
+  const sendSetupEmail = (a) => {
+    let throttled = false;
+    return run(a.id, "Sending setup email", async () => {
       const { data, error: e } = await supabase.functions.invoke("create-salesman", {
-        body: { action: "resend_setup", email: a.email },
+        body: { action: "resend_setup", email: a.email, link: "set_password" },
       });
       if (!e && !data?.email_sent) return { error: { message: "the email service did not accept it" } };
+      throttled = Boolean(data?.throttled);
       return { error: e || null };
+    }).then(ok => {
+      if (ok) setResult({ id: a.id, ok: true, text: throttled
+        ? `A setup email went to ${a.email} less than a minute ago, so no new one was sent. That email's link still works.`
+        : `Setup email sent to ${a.email}. The link in it opens a set-password screen. Sending again replaces it.` });
+      return ok;
     });
+  };
 
   // Suspend/unsuspend goes through set_account_suspended, which also writes the
   // reason and notifies the seller (A5). Never write is_active here directly.
   const setSuspended = async (a, suspended, reason) => {
     const ok = await run(a.id, suspended ? "Suspending" : "Reinstating", () =>
-      supabase.rpc("set_account_suspended", { p_user_id: a.id, p_suspended: suspended, p_reason: reason || null }));
+      supabase.rpc("set_account_suspended", { p_user_id: a.id, p_suspended: suspended, p_reason: reason || null }),
+      suspended ? "Suspended. They have been told why." : "Reinstated. They can use their account again.");
     if (ok) {
       onPatch(a.id, suspended
         ? { is_active: false, suspension_reason: reason || null, suspended_at: new Date().toISOString() }
@@ -293,7 +341,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
       return r;
-    });
+    }, "Deleted. You can restore it for 30 days.");
     if (ok) setConfirmDelete(null);
   };
 
@@ -303,17 +351,17 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
       return r;
-    });
+    }, "Account restored.");
   };
 
   const extendTrial = (a, days) =>
-    run(a.id, "Extending trial", async () => {
+    run(a.id, `Extending trial by ${days} days`, async () => {
       const trial_ends_at = new Date(Date.now() + days * 86400000).toISOString();
       const r = await supabase.from("profiles")
         .update({ trial_ends_at, subscription_status: "trial" }).eq("id", a.id);
       if (!r.error) onPatch(a.id, { trial_ends_at, subscription_status: "trial" });
       return r;
-    });
+    }, `Trial extended by ${days} days.`);
 
   // One row per payment in subscription_payments (record_subscription_payment).
   // For a standalone seller it moves Premium forward a month instead of
@@ -336,7 +384,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       if (data) onPatch(a.id, data);
       await loadBilling(a.id);
       return r;
-    });
+    }, "Payment logged. Premium moved forward one month.");
 
   // Undo a payment logged by mistake or refunded (void_subscription_payment,
   // migration 20261005a). Takes the months back off, and if the seller drops
@@ -352,7 +400,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       if (data) onPatch(a.id, data);
       await loadBilling(a.id);
       return r;
-    });
+    }, "Payment voided.");
   };
 
   const counts = useMemo(() => ({
@@ -543,32 +591,33 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               {/* Set up from the console and not taken over yet: every self-serve
                   seller agrees to the terms at signup, these only on /salesman-setup. */}
               {open.onboarding_complete && !open.setup_complete && !open.pdpa_consent && open.role === "salesman" && !open.dealer_id && open.account_status !== "deleted" && (
-                <button disabled={busy === open.id} onClick={() => sendSetupEmail(open)} style={btn("warn")}>
-                  Send setup email
+                <button disabled={busy === open.id} onClick={() => sendSetupEmail(open)} style={btn("warn", busy === open.id)}>
+                  {busyText("Sending setup email", "Send setup email", "Sending...")}
                 </button>
               )}
               {!open.onboarding_complete && open.account_status !== "deleted" && (
-                <button disabled={busy === open.id} onClick={() => sendReminder(open)} style={btn("warn")}>
-                  {open.signup_reminder_sent_at ? "Resend reminder email" : "Send reminder email"}
+                <button disabled={busy === open.id} onClick={() => sendReminder(open)} style={btn("warn", busy === open.id)}>
+                  {busyText("Sending reminder", open.signup_reminder_sent_at ? "Resend reminder email" : "Send reminder email", "Sending...")}
                 </button>
               )}
-              <button disabled={busy === open.id} onClick={() => toggleVerified(open)} style={btn(open.is_verified ? "neutral" : "good")}>
-                {open.is_verified ? "Remove verified badge" : "Mark verified"}
+              <button disabled={busy === open.id} onClick={() => toggleVerified(open)} style={btn(open.is_verified ? "neutral" : "good", busy === open.id)}>
+                {pending === "Verifying" ? "Verifying..." : pending === "Removing verification" ? "Removing..." : open.is_verified ? "Remove verified badge" : "Mark verified"}
               </button>
               {open.account_status === "deleted" ? (
-                <button disabled={busy === open.id} onClick={() => restore(open)} style={btn("good")}>Restore account</button>
+                <button disabled={busy === open.id} onClick={() => restore(open)} style={btn("good", busy === open.id)}>{busyText("Restoring", "Restore account", "Restoring...")}</button>
               ) : (
                 <>
                   {open.is_active === false && open.suspended_at ? (
-                    <button disabled={busy === open.id} onClick={() => setSuspended(open, false)} style={btn("good")}>Reinstate</button>
+                    <button disabled={busy === open.id} onClick={() => setSuspended(open, false)} style={btn("good", busy === open.id)}>{busyText("Reinstating", "Reinstate", "Reinstating...")}</button>
                   ) : (
-                    <button disabled={busy === open.id} onClick={() => { setSuspendReason(""); setSuspendFor(open); }} style={btn("warn")}>Suspend…</button>
+                    <button disabled={busy === open.id} onClick={() => { setSuspendReason(""); setSuspendFor(open); }} style={btn("warn", busy === open.id)}>Suspend…</button>
                   )}
-                  <button disabled={busy === open.id} onClick={() => setConfirmDelete(open)} style={btn("bad")}>Delete…</button>
+                  <button disabled={busy === open.id} onClick={() => setConfirmDelete(open)} style={btn("bad", busy === open.id)}>Delete…</button>
                 </>
               )}
             </div>
             )}
+            {result?.id === open.id && !/payment|trial/i.test(result.text) && <ResultNote result={result} />}
 
             <SectionTitle>Activity</SectionTitle>
             {(() => {
@@ -643,14 +692,15 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
 
             <div style={{ display: "flex", gap: 7, marginTop: 10, flexWrap: "wrap" }}>
               {accountKind(open) === "dealer" && [7, 14, 30].map(d => (
-                <button key={d} disabled={busy === open.id} onClick={() => extendTrial(open, d)} style={btn()}>+{d} days trial</button>
+                <button key={d} disabled={busy === open.id} onClick={() => extendTrial(open, d)} style={btn(undefined, busy === open.id)}>{busyText(`Extending trial by ${d} days`, `+${d} days trial`, "Adding...")}</button>
               ))}
               {(accountKind(open) === "solo" || (accountKind(open) === "dealer" && open.payment_status !== "received")) && (
-                <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good")}>
-                  {accountKind(open) === "solo" ? "Log RM35 payment (+1 month)" : "Mark payment received"}
+                <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good", busy === open.id)}>
+                  {busyText("Logging payment", accountKind(open) === "solo" ? "Log RM35 payment (+1 month)" : "Mark payment received", "Logging...")}
                 </button>
               )}
             </div>
+            {result?.id === open.id && /payment|trial/i.test(result.text) && <ResultNote result={result} />}
 
             {accountKind(open) === "solo" && billing?.id === open.id && billing.payments !== null && (
               <>
@@ -677,8 +727,8 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                               <span style={{ fontSize: 11, color: "#6b7280" }}>voided</span>
                             ) : (
                               <button disabled={busy === open.id} onClick={() => voidPayment(open, p)}
-                                style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", font: "inherit", fontSize: 11, padding: 0 }}>
-                                Void
+                                style={{ background: "none", border: "none", color: "#f87171", cursor: busy === open.id ? "not-allowed" : "pointer", opacity: busy === open.id ? 0.5 : 1, font: "inherit", fontSize: 11, padding: 0 }}>
+                                {busyText("Voiding payment", "Void", "Voiding...")}
                               </button>
                             )}
                           </span>
@@ -744,12 +794,13 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
             <textarea value={suspendReason} onChange={e => setSuspendReason(e.target.value)}
               placeholder="Or write your own reason…" rows={3} className="adm-input"
               style={{ width: "100%", resize: "vertical", marginBottom: 14 }} />
+            {result && !result.ok && result.id === suspendFor.id && <ResultNote result={result} />}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setSuspendFor(null)} style={btn()}>Cancel</button>
               <button disabled={!suspendReason.trim() || busy === suspendFor.id}
                 onClick={() => setSuspended(suspendFor, true, suspendReason)}
-                style={{ ...btn("bad"), opacity: suspendReason.trim() ? 1 : 0.45 }}>
-                Suspend
+                style={{ ...btn("bad", busy === suspendFor.id), opacity: suspendReason.trim() && busy !== suspendFor.id ? 1 : 0.45 }}>
+                {busyText("Suspending", "Suspend", "Suspending...")}
               </button>
             </div>
           </div>
@@ -769,9 +820,10 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               <li>You can restore them from this table for 30 days.</li>
               <li>After 30 days the account is purged for good, automatically.</li>
             </ul>
+            {result && !result.ok && result.id === confirmDelete.id && <ResultNote result={result} />}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button onClick={() => setConfirmDelete(null)} style={btn()}>Cancel</button>
-              <button disabled={busy === confirmDelete.id} onClick={() => softDelete(confirmDelete)} style={btn("bad")}>Delete account</button>
+              <button disabled={busy === confirmDelete.id} onClick={() => softDelete(confirmDelete)} style={btn("bad", busy === confirmDelete.id)}>{busyText("Deleting", "Delete account", "Deleting...")}</button>
             </div>
           </div>
         </div>,
