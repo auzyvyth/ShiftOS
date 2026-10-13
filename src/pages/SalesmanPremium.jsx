@@ -5954,6 +5954,7 @@ export default function SalesmanPremium() {
  userId={userId}
  dealerId={profile?.dealer_id || null}
  leads={leads}
+ listings={myListings}
  applications={loanApplications}
  setApplications={setLoanApplications}
  onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}
