@@ -147,6 +147,7 @@ function ErrorFallback({ resetError }) {
 // Vite's own signal when a dynamically imported module fails to preload.
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
+  if (window.__warmingChunks) return; // background warm-up, see src/utils/warmChunks.js
   reloadOnceForChunk();
 });
 
