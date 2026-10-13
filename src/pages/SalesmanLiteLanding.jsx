@@ -5,9 +5,9 @@ import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import {
-  ArrowRight, Check, Globe, Car, MessageCircle, LineChart,
+  ArrowRight, Check, Globe, Car, MessageCircle, Bell,
   Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
-  Smartphone, Zap, Lock, Eye, ListChecks, ExternalLink,
+  Smartphone, Zap, Lock, Eye, ListChecks, ExternalLink, Languages,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
@@ -15,16 +15,27 @@ import PlanTour from "../components/salesmanLanding/PlanTour";
 import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
 import {
-  CANON, SEO_TITLE, SEO_DESC, SEO_KEYWORDS, FAQS, SOFTWARE_LD, FAQ_LD,
-  HERO_EYEBROW, HERO_INTRO, HERO_TRUST, PREMIUM_CTA, LITE_CTA,
-  COMPARE_ROWS, COMPARE_OLD_LABEL, COMPARE_NEW_LABEL, STEPS, FEATURE_COPY,
-  LITE_BULLETS, PREMIUM_BULLETS, WEBPAGE_LD, REVIEWED_LABEL, EXAMPLE_PAGE,
+  CANON, SEO_KEYWORDS, SOFTWARE_LD, FAQ_LD, FAQ_LD_EN, webpageLd, EXAMPLE_PAGE,
+  DEFAULT_LANG, LANG_KEY, LANDING_COPY, landingCopy,
 } from "../config/salesmanLandingCopy";
 
 // Audience (owner, 2026-10-06): agents who work out instalments on TikTok /
 // Facebook lives. The hero sells Live presentation (Premium, first month free);
 // Lite is the free way in, one button over. Every claim on this page must match
 // what the product does — see the fact list at the top of salesmanLandingCopy.js.
+// Malay first (owner, 2026-10-13): every visible string comes from
+// landingCopy(lang); this page's language is its own per-device switch.
+
+function readLang() {
+  try {
+    const v = window.localStorage.getItem(LANG_KEY);
+    if (v && LANDING_COPY[v]) return v;
+  } catch { /* storage blocked: fall back to Malay */ }
+  return DEFAULT_LANG;
+}
+function saveLang(v) {
+  try { window.localStorage.setItem(LANG_KEY, v); } catch { /* not persisted, still switches */ }
+}
 
 // ─── Scroll-reveal (restrained on purpose — see DESIGN.md: no ambient/looping
 // decoration). One-shot fade+rise per section, staggered per grid item, so
@@ -42,21 +53,10 @@ const staggerParent = {
 const PREMIUM_SIGNUP = "/salesman-onboarding/premium";
 const LITE_SIGNUP = "/salesman-onboarding/lite";
 
-const FEATURE_ICONS = [Globe, Car, MessageCircle, ListChecks, LineChart, Link2, Wallet];
-const FEATURES = FEATURE_COPY.map((f, i) => ({ ...f, Icon: FEATURE_ICONS[i] }));
-
-const WHY = [
-  { Icon: Smartphone, title: "Built for your phone", body: "Add a car and snap photos from the phone that's already in your hand at the lot." },
-  { Icon: Zap, title: "Set up in minutes", body: "No website, no designer. Sign up, add your cars, and each one goes public once we've checked it." },
-  { Icon: Eye, title: "You look established", body: "A proper page beats a folder of screenshots. Buyers trust an agent with a real presence." },
-  { Icon: Lock, title: "Yours to keep", body: "Your page, your link, your leads. Move between Lite and Premium and everything comes with you." },
-];
-
-const SHOWCASE_CARS = [
-  { name: "2019 Honda Civic 1.5 TC-P", price: "RM 98,800", tag: "Low mileage" },
-  { name: "2021 Perodua Ativa 1.0 AV", price: "RM 62,500", tag: "Under warranty" },
-  { name: "2018 Toyota Vellfire 2.5", price: "RM 218,000", tag: "1 owner" },
-];
+// Index-matched to copy.features.items / copy.why.items.
+const FEATURE_ICONS = [Globe, Car, MessageCircle, Bell, ListChecks, Link2, Wallet];
+const WHY_ICONS = [Smartphone, Zap, Eye, Lock];
+const FINAL_TRUST_ICONS = [Wallet, ShieldCheck, Share2];
 
 function Faq({ q, a }) {
   const [open, setOpen] = useState(false);
@@ -73,6 +73,9 @@ function Faq({ q, a }) {
 
 export default function SalesmanLiteLanding() {
   const reduceMotion = useReducedMotion();
+  const [lang, setLang] = useState(readLang);
+  const t = landingCopy(lang);
+  const switchLang = () => { const next = t.switchTo; saveLang(next); setLang(next); };
   const reveal = reduceMotion
     ? {}
     : { initial: "hidden", whileInView: "show", viewport: { once: true, amount: 0.2 } };
@@ -82,22 +85,23 @@ export default function SalesmanLiteLanding() {
   return (
     <>
       <Helmet>
-        <title>{SEO_TITLE}</title>
-        <meta name="description" content={SEO_DESC} />
+        <html lang={t.htmlLang} />
+        <title>{t.seoTitle}</title>
+        <meta name="description" content={t.seoDesc} />
         <meta name="keywords" content={SEO_KEYWORDS} />
         <link rel="canonical" href={CANON} />
         <meta property="og:type" content="website" />
-        <meta property="og:title" content={SEO_TITLE} />
-        <meta property="og:description" content={SEO_DESC} />
+        <meta property="og:title" content={t.seoTitle} />
+        <meta property="og:description" content={t.seoDesc} />
         <meta property="og:url" content={CANON} />
         <meta property="og:site_name" content="XDrive" />
         <meta property="og:image" content="https://xdrive.my/og-default.jpg" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={SEO_TITLE} />
-        <meta name="twitter:description" content={SEO_DESC} />
-        <script type="application/ld+json">{JSON.stringify(WEBPAGE_LD)}</script>
+        <meta name="twitter:title" content={t.seoTitle} />
+        <meta name="twitter:description" content={t.seoDesc} />
+        <script type="application/ld+json">{JSON.stringify(webpageLd(lang))}</script>
         <script type="application/ld+json">{JSON.stringify(SOFTWARE_LD)}</script>
-        <script type="application/ld+json">{JSON.stringify(FAQ_LD)}</script>
+        <script type="application/ld+json">{JSON.stringify(lang === "en" ? FAQ_LD_EN : FAQ_LD)}</script>
       </Helmet>
 
       <style>{CSS}</style>
@@ -106,32 +110,45 @@ export default function SalesmanLiteLanding() {
           car, safely...") that's out of place here. */}
       <MarketplaceHeader hideAnnouncement />
 
-      <main className="sll">
+      <main className="sll" lang={t.htmlLang}>
         {/* ── Hero: Live presentation ── */}
         <section className="sll-hero">
+          <div className="sll-wrap sll-langbar">
+            <button type="button" className="sll-lang" onClick={switchLang} lang={t.switchTo}>
+              <Languages size={14} /> {t.switchLabel}
+            </button>
+          </div>
           <div className="sll-wrap sll-hero-inner">
             <div className="sll-hero-copy">
-              <span className="sll-eyebrow">{HERO_EYEBROW}</span>
+              <span className="sll-eyebrow">{t.heroEyebrow}</span>
               <h1 className="sll-h1">
-                Monthly berapa?<br />One tap.<br /><span className="sll-red">Every car.</span>
+                {t.heroH1Lines.map((line, i) => {
+                  const last = i === t.heroH1Lines.length - 1;
+                  return (
+                    <React.Fragment key={line}>
+                      {last ? <span className="sll-red">{line}</span> : line}
+                      {!last && <br />}
+                    </React.Fragment>
+                  );
+                })}
               </h1>
-              <p className="sll-lead">{HERO_INTRO}</p>
+              <p className="sll-lead">{t.heroIntro}</p>
               <div className="sll-cta-row">
                 <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-                  {PREMIUM_CTA} <ArrowRight size={17} />
+                  {t.premiumCta} <ArrowRight size={17} />
                 </Link>
-                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-ghost">{LITE_CTA}</Link>
+                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-ghost">{t.liteCta}</Link>
               </div>
               <p className="sll-microtrust">
-                {HERO_TRUST.map((t) => (
-                  <span key={t} className="sll-microtrust-item"><Check size={14} /> {t}</span>
+                {t.heroTrust.map((x) => (
+                  <span key={x} className="sll-microtrust-item"><Check size={14} /> {x}</span>
                 ))}
               </p>
             </div>
 
             {/* The real Live presentation, real cars (LiveDemo.jsx) */}
             <div className="sll-hero-mock">
-              <LiveDemo />
+              <LiveDemo copy={t.demo} lang={lang} />
             </div>
           </div>
         </section>
@@ -139,53 +156,56 @@ export default function SalesmanLiteLanding() {
         {/* ── Marketplace band ── */}
         <div className="sll-band-line">
           <div className="sll-wrap">
-            Every car you list also goes on the <strong>xdrive.my</strong> marketplace
+            {t.band.before}<strong>{t.band.strong}</strong>{t.band.after}
           </div>
         </div>
 
         {/* ── Live presentation, point by point ── */}
-        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} />
+        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} copy={t.live} cta={t.premiumCta} />
 
         {/* ── Pain → comparison: the poster by hand vs Live presentation ── */}
         <motion.section className="sll-section sll-section-alt" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
-            <p className="sll-kicker">Sound familiar?</p>
-            <h2 className="sll-h2">Selling on live shouldn't mean retyping a poster.</h2>
+            <p className="sll-kicker">{t.compare.kicker}</p>
+            <h2 className="sll-h2">{t.compare.title}</h2>
             <div className="sll-compare-list">
-              {COMPARE_ROWS.map((r) => (
+              {t.compare.rows.map((r) => (
                 <div key={r.label} className="sll-compare-item">
                   <p className="sll-compare-label">{r.label}</p>
                   <div className="sll-compare-row sll-compare-row-old">
                     <XIcon size={14} className="sll-compare-x" />
-                    <span><strong>{COMPARE_OLD_LABEL}:</strong> {r.old}</span>
+                    <span><strong>{t.compare.oldLabel}:</strong> {r.old}</span>
                   </div>
                   <div className="sll-compare-row sll-compare-row-new">
                     <Check size={14} className="sll-tick" />
-                    <span><strong>{COMPARE_NEW_LABEL}:</strong> {r.now}</span>
+                    <span><strong>{t.compare.newLabel}:</strong> {r.now}</span>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="sll-pain-fix">Live presentation fixes all four.</p>
+            <p className="sll-pain-fix">{t.compare.fix}</p>
           </div>
         </motion.section>
 
         {/* ── What you get with each plan: one real screenshot per tab ── */}
-        <PlanTour />
+        <PlanTour copy={t.tour} />
 
         {/* ── Features (free on Lite) ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">Free on Lite</p>
-            <h2 className="sll-h2">Everything to sell online. Nothing to pay.</h2>
+            <p className="sll-kicker">{t.features.kicker}</p>
+            <h2 className="sll-h2">{t.features.title}</h2>
             <motion.div className="sll-grid" variants={staggerParent} {...reveal}>
-              {FEATURES.map((f) => (
-                <motion.div key={f.title} className="sll-card" variants={fadeUp}>
-                  <div className="sll-card-ic"><f.Icon size={20} /></div>
-                  <h3 className="sll-card-t">{f.title}</h3>
-                  <p className="sll-card-b">{f.body}</p>
-                </motion.div>
-              ))}
+              {t.features.items.map((f, i) => {
+                const Icon = FEATURE_ICONS[i] || Check;
+                return (
+                  <motion.div key={f.title} className="sll-card" variants={fadeUp}>
+                    <div className="sll-card-ic"><Icon size={20} /></div>
+                    <h3 className="sll-card-t">{f.title}</h3>
+                    <p className="sll-card-b">{f.body}</p>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           </div>
         </section>
@@ -194,34 +214,30 @@ export default function SalesmanLiteLanding() {
         <motion.section className="sll-section" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-showcase">
             <div className="sll-showcase-copy">
-              <p className="sll-kicker">Your page does the selling</p>
-              <h2 className="sll-h2">Send one link. They see everything.</h2>
-              <p className="sll-showcase-lead">
-                No more forwarding photos car by car. Your XDrive page shows your whole
-                stock, your prices and a WhatsApp button on every listing, open on any
-                phone, ready to share the second a buyer asks.
-              </p>
+              <p className="sll-kicker">{t.showcase.kicker}</p>
+              <h2 className="sll-h2">{t.showcase.title}</h2>
+              <p className="sll-showcase-lead">{t.showcase.lead}</p>
               <ul className="sll-showcase-list">
-                <li><Check size={16} className="sll-tick" /> Your name at the top, every car below</li>
-                <li><Check size={16} className="sll-tick" /> Every car with photos, price and specs</li>
-                <li><Check size={16} className="sll-tick" /> Tap-to-WhatsApp on each listing</li>
+                {t.showcase.list.map((x) => (
+                  <li key={x}><Check size={16} className="sll-tick" /> {x}</li>
+                ))}
               </ul>
               <Link to={EXAMPLE_PAGE.path} className="sll-example">
-                See an example page: <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
+                {t.showcase.example} <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
               </Link>
             </div>
-            <figure className="sll-phone" aria-label="Sample agent page">
+            <figure className="sll-phone" aria-label={t.showcase.phoneAria}>
               <div className="sll-phone-top">
                 <span className="sll-phone-url">xdrive.my/s/<strong>ahmad</strong></span>
               </div>
               <div className="sll-phone-hero">
                 <div className="sll-phone-avatar">A</div>
                 <div>
-                  <div className="sll-phone-name">Ahmad · Car Agent</div>
-                  <div className="sll-phone-sub">Klang Valley</div>
+                  <div className="sll-phone-name">Ahmad · {t.showcase.phoneRole}</div>
+                  <div className="sll-phone-sub">{t.showcase.phoneArea}</div>
                 </div>
               </div>
-              {SHOWCASE_CARS.map((c) => (
+              {t.showcase.cars.map((c) => (
                 <div key={c.name} className="sll-phone-car">
                   <div className="sll-phone-thumb" />
                   <div className="sll-phone-carinfo">
@@ -231,7 +247,7 @@ export default function SalesmanLiteLanding() {
                   <div className="sll-phone-wa"><MessageCircle size={14} /></div>
                 </div>
               ))}
-              <figcaption className="sll-phone-cap">Sample page</figcaption>
+              <figcaption className="sll-phone-cap">{t.showcase.caption}</figcaption>
             </figure>
           </div>
         </motion.section>
@@ -239,10 +255,10 @@ export default function SalesmanLiteLanding() {
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
           <div className="sll-wrap">
-            <p className="sll-kicker sll-kicker-light">How it works</p>
-            <h2 className="sll-h2 sll-h2-light">Live in three steps.</h2>
+            <p className="sll-kicker sll-kicker-light">{t.how.kicker}</p>
+            <h2 className="sll-h2 sll-h2-light">{t.how.title}</h2>
             <motion.div className="sll-steps" variants={staggerParent} {...reveal}>
-              {STEPS.map((s) => (
+              {t.how.steps.map((s) => (
                 <motion.div key={s.n} className="sll-step" variants={fadeUp}>
                   <span className="sll-step-n">{s.n}</span>
                   <h3 className="sll-step-t">{s.title}</h3>
@@ -252,7 +268,7 @@ export default function SalesmanLiteLanding() {
             </motion.div>
             <div className="sll-dark-cta">
               <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-                {PREMIUM_CTA} <ArrowRight size={17} />
+                {t.premiumCta} <ArrowRight size={17} />
               </Link>
             </div>
           </div>
@@ -261,18 +277,21 @@ export default function SalesmanLiteLanding() {
         {/* ── Why it works ── */}
         <section className="sll-section">
           <div className="sll-wrap">
-            <p className="sll-kicker">Built for how you actually sell</p>
-            <h2 className="sll-h2">Made for agents, not office desks.</h2>
+            <p className="sll-kicker">{t.why.kicker}</p>
+            <h2 className="sll-h2">{t.why.title}</h2>
             <motion.div className="sll-why" variants={staggerParent} {...reveal}>
-              {WHY.map((w) => (
-                <motion.div key={w.title} className="sll-why-item" variants={fadeUp}>
-                  <div className="sll-why-ic"><w.Icon size={18} /></div>
-                  <div>
-                    <h3 className="sll-why-t">{w.title}</h3>
-                    <p className="sll-why-b">{w.body}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {t.why.items.map((w, i) => {
+                const Icon = WHY_ICONS[i] || Check;
+                return (
+                  <motion.div key={w.title} className="sll-why-item" variants={fadeUp}>
+                    <div className="sll-why-ic"><Icon size={18} /></div>
+                    <div>
+                      <h3 className="sll-why-t">{w.title}</h3>
+                      <p className="sll-why-b">{w.body}</p>
+                    </div>
+                  </motion.div>
+                );
+              })}
             </motion.div>
           </div>
         </section>
@@ -281,11 +300,11 @@ export default function SalesmanLiteLanding() {
         <motion.section className="sll-midcta" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-midcta-inner">
             <div>
-              <h3 className="sll-midcta-h">Ready for your next live?</h3>
-              <p className="sll-midcta-p">The first month of Premium is free. No card, nothing billed automatically.</p>
+              <h3 className="sll-midcta-h">{t.midcta.title}</h3>
+              <p className="sll-midcta-p">{t.midcta.body}</p>
             </div>
             <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-              {PREMIUM_CTA} <ArrowRight size={17} />
+              {t.premiumCta} <ArrowRight size={17} />
             </Link>
           </div>
         </motion.section>
@@ -293,33 +312,33 @@ export default function SalesmanLiteLanding() {
         {/* ── Lite vs Premium ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">Pick your plan</p>
-            <h2 className="sll-h2">Premium for live selling. Lite to start free.</h2>
+            <p className="sll-kicker">{t.plans.kicker}</p>
+            <h2 className="sll-h2">{t.plans.title}</h2>
             <div className="sll-plans">
               <div className="sll-plan sll-plan-alt">
                 <div className="sll-plan-head">
-                  <span className="sll-plan-name">Salesman Premium</span>
-                  <span className="sll-plan-price">RM35<span>/month</span></span>
-                  <span className="sll-plan-note">First month free</span>
+                  <span className="sll-plan-name">{t.plans.premiumName}</span>
+                  <span className="sll-plan-price">RM35<span>{t.plans.premiumPer}</span></span>
+                  <span className="sll-plan-note">{t.plans.premiumNote}</span>
                 </div>
                 <ul className="sll-plan-list">
-                  {PREMIUM_BULLETS.map((x) => (
+                  {t.plans.premiumBullets.map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
-                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">{PREMIUM_CTA}</Link>
+                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">{t.premiumCta}</Link>
               </div>
               <div className="sll-plan">
                 <div className="sll-plan-head">
-                  <span className="sll-plan-name">Salesman Lite</span>
-                  <span className="sll-plan-price">RM0<span>/forever</span></span>
+                  <span className="sll-plan-name">{t.plans.liteName}</span>
+                  <span className="sll-plan-price">RM0<span>{t.plans.litePer}</span></span>
                 </div>
                 <ul className="sll-plan-list">
-                  {LITE_BULLETS.map((x) => (
+                  {t.plans.liteBullets.map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
-                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-dark sll-btn-block">{LITE_CTA}</Link>
+                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-dark sll-btn-block">{t.liteCta}</Link>
               </div>
             </div>
           </div>
@@ -328,11 +347,11 @@ export default function SalesmanLiteLanding() {
         {/* ── FAQ ── */}
         <motion.section className="sll-section sll-faq-sec" variants={fadeUp} {...reveal}>
           <div className="sll-wrap sll-wrap-narrow">
-            <p className="sll-kicker">Questions</p>
-            <h2 className="sll-h2" style={{ marginBottom: 8 }}>Good to know.</h2>
-            <p className="sll-updated">Page last reviewed {REVIEWED_LABEL}.</p>
+            <p className="sll-kicker">{t.faq.kicker}</p>
+            <h2 className="sll-h2" style={{ marginBottom: 8 }}>{t.faq.title}</h2>
+            <p className="sll-updated">{t.faq.reviewed} {t.faq.reviewedLabel}.</p>
             <div className="sll-faqs">
-              {FAQS.map((f) => <Faq key={f.q} {...f} />)}
+              {t.faq.items.map((f) => <Faq key={f.q} {...f} />)}
             </div>
           </div>
         </motion.section>
@@ -340,18 +359,21 @@ export default function SalesmanLiteLanding() {
         {/* ── Final CTA ── */}
         <motion.section className="sll-final" variants={fadeUp} {...reveal}>
           <div className="sll-wrap">
-            <h2 className="sll-final-h">Your next live,<br />already worked out.</h2>
-            <p className="sll-final-p">Every car you list becomes a screen with its monthlies ready.</p>
+            <h2 className="sll-final-h">
+              {t.final.titleLines[0]}<br />{t.final.titleLines[1]}
+            </h2>
+            <p className="sll-final-p">{t.final.body}</p>
             <div className="sll-cta-row sll-cta-center">
               <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
-                {PREMIUM_CTA} <ArrowRight size={18} />
+                {t.premiumCta} <ArrowRight size={18} />
               </Link>
             </div>
-            <p className="sll-final-alt"><Link to={LITE_SIGNUP}>Or start free on Lite</Link></p>
+            <p className="sll-final-alt"><Link to={LITE_SIGNUP}>{t.final.liteLink}</Link></p>
             <p className="sll-microtrust sll-center">
-              <span className="sll-microtrust-item"><Wallet size={14} /> First month free</span>
-              <span className="sll-microtrust-item"><ShieldCheck size={14} /> Number hidden until you tap</span>
-              <span className="sll-microtrust-item"><Share2 size={14} /> One link for your bio</span>
+              {t.final.trust.map((x, i) => {
+                const Icon = FINAL_TRUST_ICONS[i] || Check;
+                return <span key={x} className="sll-microtrust-item"><Icon size={14} /> {x}</span>;
+              })}
             </p>
           </div>
         </motion.section>
@@ -372,8 +394,14 @@ const CSS = `
   .sll-wrap-narrow { max-width: 760px; }
   .sll-red { color: #dc2626; }
 
+  /* Language switch: page-local (BM first), top of the hero */
+  .sll-langbar { display: flex; justify-content: flex-end; margin-bottom: 28px; }
+  .sll-lang { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 14px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; color: #374151; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: border-color .15s, color .15s; }
+  .sll-lang:hover { border-color: #0a0a0a; color: #0a0a0a; }
+  .sll-lang svg { flex-shrink: 0; }
+
   /* Hero */
-  .sll-hero { padding: 84px 0 60px; border-bottom: 1px solid #eceaea; }
+  .sll-hero { padding: 28px 0 60px; border-bottom: 1px solid #eceaea; }
   .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(320px, 400px); gap: 56px; align-items: start; }
   .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
   .sll-h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
@@ -511,7 +539,8 @@ const CSS = `
 
   @media (max-width: 860px) {
     .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase, .sll-hero-inner { grid-template-columns: 1fr; }
-    .sll-hero { padding: 64px 0 48px; }
+    .sll-hero { padding: 16px 0 48px; }
+    .sll-langbar { margin-bottom: 24px; }
     .sll-hero-inner { gap: 36px; }
     .sll-hero-mock { max-width: 400px; width: 100%; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }

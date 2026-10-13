@@ -13,136 +13,27 @@ import { ArrowRight, Check } from "lucide-react";
 //
 // Copy rule: no invented numbers. Nothing here promises an income figure;
 // the "why it pays" line argues from behaviour (follow-up happens), not RM.
+// Every word comes from `copy` (landingCopy(lang).tour, salesmanLandingCopy.js),
+// both languages in one place; this file only holds the images and the order.
+//
+// Lite shows only Leads (owner, 2026-10-13: Lite is "get found, get the lead";
+// follow-up reminders and Performance are Premium). The old Lite Dashboard and
+// Performance screenshots (/for-salesmen/lite-dashboard.png,
+// lite-performance.png) show those Premium tools, so they are not used here
+// until the Lite dashboard is re-shot.
 
-const LITE = [
-  {
-    key: "dashboard", tab: "Dashboard",
-    img: "/for-salesmen/lite-dashboard.png", w: 569, h: 565,
-    alt: "Follow-up needed list of 28 leads, colour-coded by stage from New to Deposit Taken, with a WhatsApp button on each row",
-    title: "Open the app. Know who needs you today.",
-    pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
-    moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
-    points: [
-      "Overdue follow-ups counted for you, right at the top",
-      "Views, page visits and WhatsApp taps for the last 30 days",
-      "Your page link: copy, share or open it in one tap",
-      "Where visitors came from: Instagram, Facebook or direct",
-    ],
-    pays: "The buyer you remember to call back is the deal you close.",
-  },
-  {
-    key: "performance", tab: "Performance",
-    img: "/for-salesmen/lite-performance.png", w: 567, h: 534,
-    alt: "My Performance over 30 days: 216 views, 136 WhatsApp taps, 63% conversion, with a Top Views tag on the leading cars",
-    title: "See which car pulls buyers, and which one is stuck.",
-    pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
-    moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
-    points: [
-      "Views, WhatsApp taps and conversion rate for every car",
-      "A Rising tag on the cars buyers are warming to",
-      "Views with no taps point to a price or photo problem",
-      "A 30-day window, so you see what works right now",
-    ],
-    pays: "Put your effort behind the cars buyers already want, and fix the stuck ones before they cost you the month.",
-  },
-  {
-    key: "leads", tab: "Leads",
-    img: "/for-salesmen/lite-leads.png", w: 413, h: 444,
-    alt: "Lead pipeline of 37 buyers with source breakdown, stage filters and buyer cards showing warm tags and a WhatsApp button",
-    title: "Every buyer in a stage, not lost in a chat.",
-    pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
-    moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
-    points: [
-      "Stages from New through Contacted, Viewing and Test drive to Won",
-      "Flags buyers nobody has replied to, and how long they have waited",
-      "Move the deal forward or open the chat from the card",
-      "Warm and cold tags, so you call the right person first",
-    ],
-    pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
-  },
-];
+const SHOTS = {
+  liteLeads: { img: "/for-salesmen/lite-leads.png", w: 413, h: 444 },
+  dashboard: { img: "/for-salesmen/premium-dashboard.png", w: 390, h: 437 },
+  carPerformance: { img: "/for-salesmen/premium-performance.png", w: 391, h: 285 },
+  premiumLeads: { img: "/for-salesmen/premium-leads.png", w: 403, h: 496 },
+  sold: { img: "/for-salesmen/premium-sold.png", w: 435, h: 617 },
+  analytics: { img: "/for-salesmen/premium-analytics.png", w: 763, h: 609 },
+};
 
-const PREMIUM = [
-  {
-    key: "p-dashboard", tab: "Dashboard",
-    img: "/for-salesmen/premium-dashboard.png", w: 390, h: 437,
-    alt: "Salesman Premium dashboard showing 4 overdue follow-ups, 30-day views, page visits and WhatsApp taps, and a 7-day traffic chart",
-    title: "Open the app. Know who needs you today.",
-    pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
-    moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
-    points: [
-      "Overdue follow-ups counted for you, right at the top",
-      "Views, page visits and WhatsApp taps for the last 30 days",
-      "Your page link: copy, share or open it in one tap",
-      "Where visitors came from: Instagram, Facebook or direct",
-    ],
-    pays: "The buyer you remember to call back is the deal you close.",
-  },
-  {
-    key: "p-performance", tab: "Dashboard",
-    img: "/for-salesmen/premium-performance.png", w: 391, h: 285,
-    alt: "Per-car performance list showing views, WhatsApp taps and conversion rate, with one car tagged Rising",
-    title: "See which car pulls buyers, and which one is stuck.",
-    pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
-    moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
-    points: [
-      "Views, WhatsApp taps and conversion rate for every car",
-      "A Rising tag on the cars buyers are warming to",
-      "Views with no taps point to a price or photo problem",
-      "A 30-day window, so you see what works right now",
-    ],
-    pays: "Put your effort behind the cars buyers already want, and fix the stuck ones before they cost you the month.",
-  },
-  {
-    key: "p-leads", tab: "Leads",
-    img: "/for-salesmen/premium-leads.png", w: 403, h: 496,
-    alt: "Lead pipeline with stage filters and buyer cards flagged Never contacted with the number of days waiting",
-    title: "Every buyer in a stage, not lost in a chat.",
-    pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
-    moment: "A guest messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
-    points: [
-      "Stages from New through Contacted, Viewing and Test drive to Won",
-      "Flags buyers nobody has replied to, and how long they have waited",
-      "Move the deal forward or open the chat from the card",
-      "Queue a follow-up reminder with the message already drafted",
-    ],
-    pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
-  },
-  {
-    key: "sold", tab: "Sold",
-    img: "/for-salesmen/premium-sold.png", w: 435, h: 617,
-    alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
-    title: "Won is not done. The handover, step by step.",
-    pain: "After the deal comes loan settlement, insurance, Puspakom, the JPJ transfer and road tax. Miss one and the buyer calls you angry instead of recommending you.",
-    moment: "You mark a deal Won. An 8-step handover checklist appears in the right order with the official fees filled in. Tick insurance done and next year's renewal date is saved.",
-    points: [
-      "An 8-step checklist created the moment a deal is won",
-      "Puspakom, JPJ transfer and road tax in the right order",
-      "The buyer saved as a customer with their car and price",
-      "Insurance and road tax dates kept for the renewal reminder",
-    ],
-    pays: "A smooth handover is how one sale turns into the buyer's brother, cousin and colleague.",
-  },
-  {
-    key: "analytics", tab: "Analytics",
-    img: "/for-salesmen/premium-analytics.png", w: 763, h: 609,
-    alt: "Close rate funnel showing where deals stop, with Contacted marked as the weakest step, plus median reply speed",
-    title: "Find out where you are losing deals.",
-    pain: "You know you closed three this month. You do not know whether you lost the rest at the first reply, the viewing or the test drive.",
-    moment: "End of the month. The funnel shows most of your lost buyers dropped after booking a viewing. That is what you fix next month, not your ads.",
-    points: [
-      "The stage each lost deal actually died at",
-      "Close rate with a 30-day trend",
-      "How fast you reply, and why deals were lost",
-      "Which lead sources turn into sales",
-    ],
-    pays: "Fix the one step where you lose the most people and every lead you already get is worth more.",
-  },
-];
-
-const PLANS = {
-  lite: { label: "Lite", price: "Free", sections: LITE, cta: "Sign up free", to: "/salesman-onboarding/lite" },
-  premium: { label: "Premium", price: "RM35/mo", sections: PREMIUM, cta: "Start Premium", to: "/salesman-onboarding/premium" },
+const PLAN_ORDER = {
+  lite: { keys: ["liteLeads"], to: "/salesman-onboarding/lite" },
+  premium: { keys: ["dashboard", "carPerformance", "premiumLeads", "sold", "analytics"], to: "/salesman-onboarding/premium" },
 };
 
 const DESKTOP_MQ = "(min-width: 861px)";
@@ -183,7 +74,7 @@ function padFractions(pts, pads) {
   });
 }
 
-function Shot({ s, shotRef }) {
+function Shot({ s, shotRef, pending }) {
   return (
     <div className="pt-shot" ref={shotRef}>
       {s.img ? (
@@ -191,14 +82,14 @@ function Shot({ s, shotRef }) {
       ) : (
         <div className="pt-shot-empty">
           <span>{s.tab}</span>
-          Screenshot coming
+          {pending}
         </div>
       )}
     </div>
   );
 }
 
-export default function PlanTour() {
+export default function PlanTour({ copy }) {
   const reduce = useReducedMotion();
   // Opens on Premium: the page leads with Live presentation (Premium), and
   // Lite is one tap away on the toggle.
@@ -210,7 +101,12 @@ export default function PlanTour() {
   const shotRefs = useRef([]);
   const pathRef = useRef(null);
   const tipRef = useRef(null);
-  const cfg = PLANS[plan];
+  const order = PLAN_ORDER[plan];
+  const cfg = {
+    ...copy.plans[plan],
+    to: order.to,
+    sections: order.keys.map((key) => ({ key, ...SHOTS[key], ...copy.sections[key] })),
+  };
 
   const measure = useCallback(() => {
     const box = flowRef.current;
@@ -278,10 +174,10 @@ export default function PlanTour() {
     <section className="pt" aria-labelledby="pt-heading">
       <style>{CSS}</style>
       <div className="pt-wrap">
-        <p className="pt-kicker">Inside the app</p>
-        <h2 id="pt-heading" className="pt-h2">What you get with each plan</h2>
-        <div className="pt-toggle" role="group" aria-label="Choose a plan">
-          {Object.entries(PLANS).map(([k, p]) => (
+        <p className="pt-kicker">{copy.kicker}</p>
+        <h2 id="pt-heading" className="pt-h2">{copy.title}</h2>
+        <div className="pt-toggle" role="group" aria-label={copy.toggleAria}>
+          {Object.entries(copy.plans).map(([k, p]) => (
             <button
               key={k}
               type="button"
@@ -295,8 +191,8 @@ export default function PlanTour() {
         </div>
         {plan === "premium" && (
           <p className="pt-plus">
-            Everything in Lite, plus more on every tab.{" "}
-            <button type="button" onClick={() => setPlan("lite")}>See Lite</button>
+            {copy.plus}{" "}
+            <button type="button" onClick={() => setPlan("lite")}>{copy.seeLite}</button>
           </p>
         )}
       </div>
@@ -329,16 +225,16 @@ export default function PlanTour() {
                   <div className="pt-copy">
                     <p className="pt-tab"><span>{String(i + 1).padStart(2, "0")}</span> {s.tab}</p>
                     <h3 className="pt-title">{s.title}</h3>
-                    <p className="pt-label">The problem</p>
+                    <p className="pt-label">{copy.problemLabel}</p>
                     <p className="pt-body">{s.pain}</p>
-                    <p className="pt-label">When you'd use it</p>
+                    <p className="pt-label">{copy.momentLabel}</p>
                     <p className="pt-body">{s.moment}</p>
                     <ul className="pt-points">
                       {s.points.map((x) => <li key={x}><Check size={15} /> {x}</li>)}
                     </ul>
                     <p className="pt-pays">{s.pays}</p>
                   </div>
-                  <Shot s={s} shotRef={(el) => { shotRefs.current[i] = el; }} />
+                  <Shot s={s} pending={copy.shotPending} shotRef={(el) => { shotRefs.current[i] = el; }} />
                 </article>
               ))}
 

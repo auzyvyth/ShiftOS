@@ -1,7 +1,6 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
 import { publicClient } from "../../supabaseClient";
 import { withTimeout } from "../../config/marketplaceConfig";
-import { LIVE_DEMO } from "../../config/salesmanLandingCopy";
 
 // The /for-salesmen hero: the REAL Live presentation (LivePresenter.jsx) in its
 // `embedded` demo mode, fed with real cars, so a visiting seller can tap
@@ -20,7 +19,9 @@ const DEMO_SELLER_ID = "673d0772-871c-4586-bc67-98f4382503a7"; // airymotors
 const COLS = "id,year,brand,model,variant,selling_price,images,mileage,transmission";
 const SAMPLE = [{ id: "sample", year: 2021, brand: "Honda", model: "City", variant: "1.5 V", mileage: 38000, transmission: "Auto", selling_price: 72800, images: [] }];
 
-export default function LiveDemo() {
+// `copy` is landingCopy(lang).demo; `lang` starts the presenter in the page's
+// language (remounted on a switch, so the demo follows the page).
+export default function LiveDemo({ copy, lang }) {
   const [cars, setCars] = useState(null); // null = loading
   const [sample, setSample] = useState(false);
 
@@ -41,16 +42,16 @@ export default function LiveDemo() {
   }, []);
 
   return (
-    <figure className="ld" aria-label={LIVE_DEMO.label}>
+    <figure className="ld" aria-label={copy.label}>
       <style>{CSS}</style>
       <div className="ld-box">
         {cars ? (
           <Suspense fallback={<div className="ld-skel" />}>
-            <LivePresenter listings={cars} embedded onClose={() => {}} />
+            <LivePresenter key={lang} listings={cars} embedded initialLang={lang} onClose={() => {}} />
           </Suspense>
         ) : <div className="ld-skel" />}
       </div>
-      <figcaption className="ld-note">{sample ? LIVE_DEMO.sampleCaption : LIVE_DEMO.caption}</figcaption>
+      <figcaption className="ld-note">{sample ? copy.sampleCaption : copy.caption}</figcaption>
     </figure>
   );
 }

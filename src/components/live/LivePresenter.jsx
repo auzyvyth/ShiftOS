@@ -83,7 +83,7 @@ const fmtPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3)}`;
 };
 
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang }) {
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
@@ -105,7 +105,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
-  const [lang, setLang] = useState(() => initialLiveLang(i18n.language));
+  // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
+  const [lang, setLang] = useState(() => (initialLang === 'ms' || initialLang === 'en' ? initialLang : initialLiveLang(i18n.language)));
   // Accent colour: the seller's pick, kept readable for white text (liveAccent.js).
   const [accentPick, setAccentPick] = useState(initialLiveAccent);
   const theme = accentTheme(accentPick);
