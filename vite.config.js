@@ -164,6 +164,46 @@ export default defineConfig({
 							cacheableResponse: { statuses: [0, 200] },
 						},
 					},
+					// Page code the user has actually opened (marketplace pages, the
+					// dashboards). Without this, those chunks only live in the browser's
+					// HTTP cache, which Android evicts first under storage pressure — so a
+					// rep back after a quiet week re-downloads the whole dashboard. Vite
+					// hashes every chunk name, so a URL's bytes never change: CacheFirst
+					// can never serve stale code. Nothing is fetched ahead of time; only
+					// what a page requests gets kept.
+					//
+					// index-*.js stays OUT, same reason it is not precached (see globIgnores).
+					//
+					// The content-type check is load-bearing: vercel.json's SPA catch-all
+					// answers a MISSING chunk (deleted by a newer deploy) with index.html
+					// and a 200. Cache that under a .js URL and the chunk is broken on this
+					// device forever, since CacheFirst never asks the network again.
+					{
+						urlPattern: ({ url, request }) =>
+							url.origin === self.location.origin &&
+							request.destination === 'script' &&
+							url.pathname.startsWith('/assets/') &&
+							url.pathname.endsWith('.js') &&
+							!url.pathname.startsWith('/assets/index-'),
+						handler: 'CacheFirst',
+						options: {
+							cacheName: 'page-code-v1',
+							expiration: {
+								// A chunk replaced by a deploy is simply never requested again;
+								// LRU and the age cap retire it. 30 days of non-use = re-fetch.
+								maxEntries: 120,
+								maxAgeSeconds: 60 * 60 * 24 * 30,
+								purgeOnQuotaError: true,
+							},
+							cacheableResponse: { statuses: [200] },
+							plugins: [{
+								cacheWillUpdate: async ({ response }) =>
+									(response.headers.get('content-type') || '').includes('javascript')
+										? response
+										: null,
+							}],
+						},
+					},
 				],
 				// offline.html has to be in the precache from the very first SW
 				// install, not fetched on demand — by definition it's only ever
