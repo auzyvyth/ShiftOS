@@ -63,6 +63,8 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // the seller is an advisor, so a new car's note names the price as official.
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
+// Ringgit with the unit set small (.lp-rm) so the digits carry the weight.
+const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const TENURES_DESC = [...TENURES].reverse(); // the poster lists longest first
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
@@ -337,11 +339,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
-        .lp-brk { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-        .lp-brk td { padding: 3px 0; font-size: clamp(12px, 3.4cqw, 19px); color: #4b5563; }
-        .lp-brk td:last-child { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; }
-        .lp-brk tr.lp-loan td { padding-top: 6px; border-top: 1px solid rgba(0,0,0,.1); font-weight: 700; color: #0f1115; }
-        .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 24px); }
+        /* The working, one tinted row per number the viewer asks about, so each
+           reads as its own field on camera (owner, 2026-10-13, from the Excel
+           posters sellers hold up): price neutral, rebate green, deposit blue,
+           loan a dark result tile. Low-saturation tints, never a side bar. The
+           answer (monthly) is the one accent-coloured thing on the sheet. */
+        .lp-brk { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin: -4px 0; font-variant-numeric: tabular-nums; }
+        .lp-brk td { padding: 5px 9px; font-size: clamp(12px, 3.3cqw, 19px); font-weight: 600; color: #4b5563; background: #F4F3F1; }
+        .lp-brk td:first-child { border-radius: 8px 0 0 8px; }
+        .lp-brk td:last-child { border-radius: 0 8px 8px 0; text-align: right; font-weight: 800; color: #0f1115; white-space: nowrap; }
+        .lp-brk tr.lp-r-reb td { background: rgba(16,185,129,.11); color: #047857; }
+        .lp-brk tr.lp-r-reb td:last-child { color: #047857; }
+        .lp-brk tr.lp-r-dep td { background: rgba(59,130,246,.10); color: #1d4ed8; }
+        .lp-brk tr.lp-r-dep td:last-child { color: #1d4ed8; }
+        .lp-brk tr.lp-loan td { padding-block: 8px; background: #0f1115; color: rgba(255,255,255,.72); }
+        .lp-brk tr.lp-loan td:last-child { color: #fff; font-size: clamp(16px, 4.8cqw, 26px); }
+        .lp-brk tr.lp-r-rate td { background: none; padding-block: 1px; font-size: clamp(11px, 2.9cqw, 15px); color: #6b7280; }
+        .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 700; }
+        /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
+        .lp-rm { font-size: .7em; font-weight: 700; opacity: .62; margin-right: .22em; letter-spacing: .02em; }
         /* Four chips must share one phone-width row: "Tanpa deposit" + three
            "Deposit N%" in BM is ~470px of unbreakable text, which pushed the
            whole sheet sideways. Chips shrink equally and wrap onto two lines. */
@@ -355,7 +371,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten th { font-size: clamp(10px, 2.7cqw, 14px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 10px 4px; text-align: right; }
         .lp-ten th:first-child { text-align: left; }
         .lp-ten td { padding: 6px 10px; font-size: clamp(13px, 3.8cqw, 20px); font-weight: 600; color: #4b5563; border-top: 1px solid rgba(0,0,0,.06); }
-        .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; }
+        .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; letter-spacing: -.01em; }
         .lp-ten tr.lp-t { cursor: pointer; }
         .lp-ten tr.lp-t:hover td { background: rgba(15,17,21,.04); }
         /* Vertical gradient so the two cells line up with no seam between them. */
@@ -458,8 +474,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp:not(.lp-embed) .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
           .lp:not(.lp-embed) .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
           .lp:not(.lp-embed) .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
-          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
-          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
+          .lp:not(.lp-embed) .lp-brk { border-spacing: 0 6px; margin: -6px 0; }
+          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.3cqh, 26px); padding: 6px 14px; }
+          .lp:not(.lp-embed) .lp-brk tr.lp-loan td { padding-block: 10px; }
+          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(20px, 3.4cqh, 40px); }
+          .lp:not(.lp-embed) .lp-brk tr.lp-r-rate td { font-size: clamp(12px, 1.7cqh, 18px); padding-block: 2px; }
           .lp:not(.lp-embed) .lp-seg button, .lp:not(.lp-embed) .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
           .lp:not(.lp-embed) .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
           .lp:not(.lp-embed) .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
@@ -601,12 +620,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* The working, line by line: price - rebate - deposit = loan, at this rate. */}
             <table className="lp-brk">
               <tbody>
-                <tr><td>{t.price}</td><td>{price > 0 ? `RM ${fmt(price)}` : t.onRequest}</td></tr>
-                {rebate > 0 && <tr><td>{t.rebate}</td><td>- RM {fmt(rebate)}</td></tr>}
+                <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
+                {rebate > 0 && <tr className="lp-r-reb"><td>{t.rebate}</td><td>- <Money n={rebate} /></td></tr>}
                 {financeable && (<>
-                  <tr><td>{t.deposit}</td><td>{picked.down > 0 ? `RM ${fmt(picked.down)}` : t.none}</td></tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td>RM {fmt(net - picked.down)}</td></tr>
-                  <tr><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
+                  <tr className="lp-r-dep"><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net - picked.down} /></td></tr>
+                  <tr className="lp-r-rate"><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
                 </>)}
               </tbody>
             </table>
@@ -638,7 +657,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                       <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={() => setPick((p) => ({ ...p, years: y }))}
                         role="button" aria-pressed={on}>
                         <td>{t.years(y)}</td>
-                        <td>RM {fmt(monthlyFor(picked.down, y))}</td>
+                        <td><Money n={monthlyFor(picked.down, y)} /></td>
                       </tr>
                     );
                   })}
