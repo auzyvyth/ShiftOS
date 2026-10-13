@@ -642,7 +642,11 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   `/salesman-premium`, `/salesman`, or `/dashboard` per role) unless the caller passes
   an explicit URL. Both trigger functions swallow errors (`exception when others` +
   `raise warning`) so a push failure never blocks the notification row write.
-- **ONE DEVICE, ONE IDENTITY: `push_subscriptions` is UNIQUE on `endpoint`.**
+- **ONE DEVICE, ONE IDENTITY: `push_subscriptions` is UNIQUE on `(endpoint, admin_slot)`.**
+  The single exception (20261013b): a device may also hold ONE superadmin row
+  (`admin_slot = true`), because the owner runs /platform and their own seller
+  account in the same browser. Every other account still gets one slot, last
+  registrant wins. A seller's sign-out never removes the admin row.
   It was UNIQUE (user_id, endpoint), so one phone could be registered under
   several accounts at once and nothing ever removed the stale rows — the only
   cleanup in the system was send-push deleting on a 410. Live when this was
