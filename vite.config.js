@@ -123,7 +123,11 @@ export default defineConfig({
 						handler: 'NetworkOnly',
 						options: {
 							plugins: [{
-								handlerDidError: async () => caches.match('/offline.html'),
+								// ignoreSearch is required: workbox stores a revisioned precache
+								// entry under '/offline.html?__WB_REVISION__=<rev>', so a plain
+								// match missed and every offline navigation got Chrome's
+								// "site can't be reached" page instead of ours.
+								handlerDidError: async () => caches.match('/offline.html', { ignoreSearch: true }),
 							}],
 						},
 					},
