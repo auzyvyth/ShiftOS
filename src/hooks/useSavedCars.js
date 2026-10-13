@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { readCache, writeCache } from '../utils/panelCache';
-import { isRealBuyer, sendBuyerToSignIn } from '../lib/buyerAuth';
+import { isRealBuyer, requestBuyerSignIn } from '../lib/buyerAuth';
 import { isSubdomain } from './useTenant';
 
 const LS_KEY = 'xdrive_saved_cars';
@@ -70,11 +70,13 @@ export function useSavedCars() {
       }));
 
       // Saving needs an account on the marketplace (owner, 2026-10-14, the
-      // Mudah model). The id is parked in the device list first, and
-      // fetchSavedIds merges that list into saved_cars on the first load after
-      // sign-in, so the car is saved by the time the buyer is back. Removing
-      // never needs an account. A dealer subdomain keeps device-only saves:
-      // sign-in lives on xdrive.my and its session cannot reach <sub>.xdrive.my.
+      // Mudah model). The in-page sign-in sheet opens over the page; once
+      // signed in the save goes straight through. The id is also parked in the
+      // device list, so the redirect fallbacks (email, in-app browsers) still
+      // save it: fetchSavedIds merges that list on the first load after
+      // sign-in. Removing never needs an account. A dealer subdomain keeps
+      // device-only saves: sign-in lives on xdrive.my and its session cannot
+      // reach <sub>.xdrive.my.
       // userId is null until the first load lands, so a tap before then reads
       // the session live rather than sending a signed-in buyer to sign in.
       let uid = userId;
@@ -84,7 +86,17 @@ export function useSavedCars() {
       }
       if (!uid && !already && !isSubdomain()) {
         writeLocalIds(nextIds);
-        sendBuyerToSignIn();
+        const ok = await requestBuyerSignIn({ reason: 'save' });
+        // Signed in (or not): reload the list. A sign-in merges the parked id
+        // into saved_cars; a closed sheet leaves it as a device-only save.
+        if (ok) queryClient.invalidateQueries({ queryKey: ['saved-car-ids'] });
+        else {
+          writeLocalIds(nextIds.filter((id) => id !== listingId));
+          queryClient.setQueryData(['saved-car-ids'], (prev) => ({
+            userId: prev?.userId ?? null,
+            ids: (prev?.ids || []).filter((id) => id !== listingId),
+          }));
+        }
         return;
       }
 

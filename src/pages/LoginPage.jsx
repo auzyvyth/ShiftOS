@@ -4,8 +4,8 @@ import { readLogoutNotice, clearLogoutNotice, daysSince } from "../utils/authNot
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Clock } from "lucide-react";
 import { supabase } from "../supabaseClient";
-import { resolvePostAuthRoute, POST_AUTH_COLUMNS } from "../utils/postAuthRoute";
-import { markBuyerIntent, consumePostAuthReturn } from "../lib/buyerAuth";
+import { resolvePostAuthRoute, preferReturn, POST_AUTH_COLUMNS } from "../utils/postAuthRoute";
+import { markBuyerIntent, consumePostAuthReturn, hasPostAuthReturn } from "../lib/buyerAuth";
 import { RESET_AFTER_FAILS, throttleCheck, throttleFail, throttleClear, emailActionGate, EMAIL_ACTIONS } from "../utils/authThrottle";
 import useAuthCaptcha, { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { checkAccountStatus } from "../utils/authAccountStatus";
@@ -328,11 +328,11 @@ export default function LoginPage() {
       const { data: { session: s } } = await supabase.auth.getSession();
       activeSession = s;
     }
-    const { url } = resolvePostAuthRoute(profile, {
+    const { url } = preferReturn(resolvePostAuthRoute(profile, {
       session: activeSession,
       // Buyers go back to the page that sent them here to sign in, if any.
       buyerHome: profile.role === "buyer" ? consumePostAuthReturn() : "/account",
-    });
+    }), hasPostAuthReturn() ? consumePostAuthReturn() : null);
     // Relative targets stay pinned to the apex on prod, as before: sign-in on
     // www.xdrive.my must not strand the new session on the www origin.
     go(url.startsWith("/") ? `${base}${url}` : url);

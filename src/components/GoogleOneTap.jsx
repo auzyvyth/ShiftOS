@@ -4,6 +4,7 @@ import { reportAuthFailure } from '../utils/authErrors';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile, markBuyerIntent } from '../lib/buyerAuth';
 import { isSubdomain } from '../hooks/useTenant';
+import { GOOGLE_CLIENT_ID, isEmbeddedBrowser, loadGsi, makeNonce } from '../lib/googleIdentity';
 
 // Google One Tap sign-in for new, signed-out marketplace visitors.
 //
@@ -19,57 +20,9 @@ import { isSubdomain } from '../hooks/useTenant';
 //   3. Supabase -> Auth -> Providers -> Google -> add the same client ID under
 //      "Authorized Client IDs" so signInWithIdToken accepts the One Tap token.
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const GSI_SRC = 'https://accounts.google.com/gsi/client';
+const CLIENT_ID = GOOGLE_CLIENT_ID;
 const DISMISS_KEY = 'xdrive_onetap_dismissed_at';
 const DISMISS_WINDOW = 24 * 60 * 60 * 1000; // don't nag for 24h after a dismissal
-
-// One Tap's "Authorized JavaScript origins" check runs against whatever origin
-// the embedding browser reports — and in-app browsers (the Google app's own
-// in-app tab, Facebook/Instagram/Line's, etc.) don't reliably report the real
-// page origin the way Chrome does. Google then blocks with a hard "Access
-// blocked: origin_mismatch" page, even when the domain IS on the authorized
-// list. There is no origin fix for that — it's the embedding browser, not the
-// config — so the only real fix is to not show One Tap there at all and let
-// the visitor use the plain "Continue with Google" button instead (a full
-// top-level redirect, which those browsers handle fine).
-function isEmbeddedBrowser() {
-  const ua = navigator.userAgent || '';
-  // GSA = Google Search App's in-app browser (the "other Google app").
-  // FBAN/FBAV = Facebook, Instagram = Instagram's in-app tab, Line = LINE.
-  // ";wv)" is Android's own marker for a plain in-app WebView.
-  return /GSA\/|FBAN|FBAV|Instagram|Line\/|; ?wv\)/i.test(ua);
-}
-
-function loadGsi() {
-  return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) return resolve();
-    const existing = document.getElementById('gsi-client');
-    if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', reject);
-      return;
-    }
-    const s = document.createElement('script');
-    s.src = GSI_SRC;
-    s.id = 'gsi-client';
-    s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = reject;
-    document.head.appendChild(s);
-  });
-}
-
-// Google validates a *hashed* nonce; signInWithIdToken needs the raw one.
-async function makeNonce() {
-  const raw = `${crypto.randomUUID()}${crypto.randomUUID()}`;
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
-  const hashed = Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-  return { raw, hashed };
-}
 
 export default function GoogleOneTap() {
   const started = useRef(false);
@@ -77,7 +30,7 @@ export default function GoogleOneTap() {
   useEffect(() => {
     if (!CLIENT_ID || started.current) return;
     if (isSubdomain()) return; // marketplace only, not dealer storefronts
-    if (isEmbeddedBrowser()) return; // see isEmbeddedBrowser() above
+    if (isEmbeddedBrowser()) return; // see isEmbeddedBrowser() in lib/googleIdentity.js
     started.current = true;
     let cancelled = false;
 
