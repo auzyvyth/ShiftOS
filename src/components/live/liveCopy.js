@@ -60,6 +60,8 @@ const en = {
   highValue: 'Above RM300k banks decide case by case, often with a bigger deposit or shorter tenure, so treat this as a rough guide.',
   subjectBank: 'Subject to bank approval.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
+  ctaLabel: 'Comment line',
+  ctaHint: 'Type # where the car number goes. Leave empty for the standard line.',
   budgetIs: 'Budget is',
   monthlyBudget: 'Monthly budget',
   takeHome: 'Take-home pay',
@@ -147,6 +149,8 @@ const ms = {
   highValue: 'Melebihi RM300k, bank menilai setiap kes, selalunya dengan deposit lebih besar atau tempoh lebih pendek, jadi ini anggaran kasar sahaja.',
   subjectBank: 'Tertakluk kepada kelulusan bank.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
+  ctaLabel: 'Ayat komen',
+  ctaHint: 'Taip # di tempat nombor kereta. Biarkan kosong untuk ayat biasa.',
   budgetIs: 'Bajet ialah',
   monthlyBudget: 'Bajet bulanan',
   takeHome: 'Gaji bersih',
@@ -191,4 +195,27 @@ export function initialLiveLang(appLang) {
 
 export function saveLiveLang(lang) {
   try { window.localStorage.setItem(LIVE_LANG_KEY, lang); } catch { /* storage blocked */ }
+}
+
+// The comment line under each car: the seller's own wording, remembered per
+// device (owner, 2026-10-13). A lone "#" becomes this car's "#N", so one line
+// works for every car. Empty = the default line in the presenter's language.
+export const LIVE_CTA_KEY = 'xd_live_cta';
+export const CTA_MAX = 80;
+
+export function initialLiveCta() {
+  try { return (window.localStorage.getItem(LIVE_CTA_KEY) || '').slice(0, CTA_MAX); } catch { return ''; }
+}
+
+export function saveLiveCta(text) {
+  try {
+    if (text.trim()) window.localStorage.setItem(LIVE_CTA_KEY, text);
+    else window.localStorage.removeItem(LIVE_CTA_KEY);
+  } catch { /* storage blocked */ }
+}
+
+export function ctaLine(custom, n, fallback) {
+  const text = String(custom || '').trim();
+  if (!text) return fallback;
+  return text.replace(/#(?!\d)/g, `#${n}`);
 }
