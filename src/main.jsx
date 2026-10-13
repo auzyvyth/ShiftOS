@@ -81,7 +81,20 @@ function hardReload() {
 
 // One-shot guard: never reload more than once per short window, so a chunk that
 // genuinely cannot load can't trap the page in an infinite reload loop.
+//
+// Offline, a reload cannot succeed: it throws away the working app for the
+// browser's "site can't be reached" page (seen 2026-10-13: Premium > Handover in
+// airplane mode, a tab whose code had never been saved on that phone). So
+// offline we wait, and reload the moment the connection is back.
+let reloadWhenOnline = false;
 function reloadOnceForChunk() {
+  if (navigator.onLine === false) {
+    if (!reloadWhenOnline) {
+      reloadWhenOnline = true;
+      window.addEventListener('online', () => { reloadWhenOnline = false; reloadOnceForChunk(); }, { once: true });
+    }
+    return;
+  }
   const KEY = 'chunk-reload-ts';
   const last = Number(sessionStorage.getItem(KEY) || 0);
   if (Date.now() - last < 10000) return;
@@ -93,7 +106,27 @@ function reloadOnceForChunk() {
 // fallback was a dead end when the auto-reload guard had already fired (the
 // user just saw "Something went wrong" with no way forward). The button does a
 // cache-busting reload that ignores the 10s guard.
-function ErrorFallback() {
+function ErrorFallback({ resetError }) {
+  // Offline, the usual cause is a screen whose code was never saved on this
+  // device. Reload cannot fix that without a connection, so offer the way back
+  // to the screen they came from (already loaded) instead.
+  if (navigator.onLine === false) {
+    const goBack = () => { window.history.back(); setTimeout(() => resetError?.(), 0); };
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 20px', background: '#080C14', color: '#fff', fontFamily: "system-ui, sans-serif", textAlign: 'center' }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>You're offline</h1>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', maxWidth: 320, margin: 0, lineHeight: 1.5 }}>
+          This screen has not been opened on this phone yet, so it needs a connection the first time. It will open by itself when you are back online.
+        </p>
+        <button
+          onClick={goBack}
+          style={{ marginTop: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+        >
+          Go back
+        </button>
+      </div>
+    );
+  }
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 20px', background: '#080C14', color: '#fff', fontFamily: "system-ui, sans-serif", textAlign: 'center' }}>
       <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, color: '#dc2626', letterSpacing: 2, lineHeight: 1, margin: 0 }}>OOPS</p>
@@ -114,6 +147,7 @@ function ErrorFallback() {
 // Vite's own signal when a dynamically imported module fails to preload.
 window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault();
+  if (window.__warmingChunks) return; // background warm-up, see src/utils/warmChunks.js
   reloadOnceForChunk();
 });
 
@@ -203,7 +237,7 @@ captureInvite();
 i18nReady.then(() => {
   ReactDOM.createRoot(document.getElementById('root')).render(
     <Sentry.ErrorBoundary
-      fallback={<ErrorFallback />}
+      fallback={({ resetError }) => <ErrorFallback resetError={resetError} />}
       onError={(error) => {
         // Lazy-route failures are caught here (not as unhandledrejection), so the
         // reload must be triggered from the boundary too.

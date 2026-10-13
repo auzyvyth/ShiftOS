@@ -52,16 +52,18 @@ export default function OfflineBanner() {
       >
         <div
           style={{
-            pointerEvents: 'auto',
+            // Never catches taps: it floats over page headers (it sat on the
+            // Premium menu button), and there is nothing to tap on it.
+            pointerEvents: 'none',
             display: 'flex', alignItems: 'center', gap: 8,
             background: '#111118', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 999, padding: '9px 16px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-            fontFamily: 'system-ui, sans-serif', fontSize: 13, fontWeight: 600,
+            borderRadius: 999, padding: '6px 12px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+            fontFamily: 'system-ui, sans-serif', fontSize: 12, fontWeight: 600,
             color: online ? '#4ade80' : '#f87171', whiteSpace: 'nowrap',
           }}
         >
-          {online ? <Wifi size={15} /> : <WifiOff size={15} />}
-          {online ? 'Back online' : "You're offline — changes won't save until you reconnect"}
+          {online ? <Wifi size={13} /> : <WifiOff size={13} />}
+          {online ? 'Back online' : 'Offline'}
         </div>
       </div>
     </>,

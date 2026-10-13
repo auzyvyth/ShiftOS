@@ -10,7 +10,7 @@ import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
   netPrice,
 } from '../../utils/liveMaths';
-import { LIVE_COPY, initialLiveLang, saveLiveLang } from './liveCopy';
+import { LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX } from './liveCopy';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 
 // Live presentation — the seller's full-screen view of their own cars, built
@@ -63,6 +63,8 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // the seller is an advisor, so a new car's note names the price as official.
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
+// Ringgit with the unit set small (.lp-rm) so the digits carry the weight.
+const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const TENURES_DESC = [...TENURES].reverse(); // the poster lists longest first
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
@@ -108,6 +110,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [accentPick, setAccentPick] = useState(initialLiveAccent);
   const theme = accentTheme(accentPick);
   const pickAccent = (hex) => { setAccentPick(hex); if (!embedded) saveLiveAccent(hex); };
+  // The seller's own comment line, remembered per device (liveCopy.js ctaLine).
+  const [ctaCustom, setCtaCustom] = useState(() => (embedded ? '' : initialLiveCta()));
+  const changeCta = (v) => { const next = v.slice(0, CTA_MAX); setCtaCustom(next); if (!embedded) saveLiveCta(next); };
   const t = LIVE_COPY[lang];
   const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; if (!embedded) saveLiveLang(next); return next; });
   const startedAt = useRef(new Date());
@@ -337,38 +342,53 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
-        .lp-brk { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-        .lp-brk td { padding: 3px 0; font-size: clamp(12px, 3.4cqw, 19px); color: #4b5563; }
-        .lp-brk td:last-child { text-align: right; font-weight: 700; color: #111827; white-space: nowrap; }
-        .lp-brk tr.lp-loan td { padding-top: 6px; border-top: 1px solid rgba(0,0,0,.1); font-weight: 700; color: #0f1115; }
-        .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 24px); }
+        /* The working, one tinted row per number the viewer asks about, so each
+           reads as its own field on camera (owner, 2026-10-13, from the Excel
+           posters sellers hold up): price neutral, rebate green, deposit blue,
+           loan a dark result tile. Low-saturation tints, never a side bar. The
+           answer (monthly) is the one accent-coloured thing on the sheet. */
+        .lp-brk { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin: -4px 0; font-variant-numeric: tabular-nums; }
+        .lp-brk td { padding: 5px 9px; font-size: clamp(12px, 3.3cqw, 19px); font-weight: 600; color: #4b5563; background: #F4F3F1; }
+        .lp-brk td:first-child { border-radius: 8px 0 0 8px; }
+        .lp-brk td:last-child { border-radius: 0 8px 8px 0; text-align: right; font-weight: 800; color: #0f1115; white-space: nowrap; }
+        .lp-brk tr.lp-r-reb td { background: rgba(16,185,129,.11); color: #047857; }
+        .lp-brk tr.lp-r-reb td:last-child { color: #047857; }
+        .lp-brk tr.lp-r-dep td { background: rgba(59,130,246,.10); color: #1d4ed8; }
+        .lp-brk tr.lp-r-dep td:last-child { color: #1d4ed8; }
+        .lp-brk tr.lp-loan td { padding-block: 8px; background: #0f1115; color: rgba(255,255,255,.72); }
+        .lp-brk tr.lp-loan td:last-child { color: #fff; font-size: clamp(16px, 4.8cqw, 26px); }
+        .lp-brk tr.lp-r-rate td { background: none; padding-block: 1px; font-size: clamp(11px, 2.9cqw, 15px); color: #6b7280; }
+        .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 700; }
+        /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
+        .lp-rm { font-size: .7em; font-weight: 700; opacity: .62; margin-right: .22em; letter-spacing: .02em; }
         /* Four chips must share one phone-width row: "Tanpa deposit" + three
            "Deposit N%" in BM is ~470px of unbreakable text, which pushed the
            whole sheet sideways. Chips shrink equally and wrap onto two lines. */
         .lp-seg.lp-deps button { flex: 1 1 0; min-width: 0; height: auto; min-height: 34px; padding: 4px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 13px); }
         .lp-low { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
-        .lp-low.lp-with { grid-template-columns: minmax(0, 38fr) minmax(0, 62fr); }
-        .lp-contact { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px; border: none; border-radius: 10px; background: #F1EFEA; font: inherit; color: #0f1115; text-align: center; cursor: pointer; min-width: 0; }
-        .lp-contact b { font-size: clamp(13px, 3.8cqw, 20px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; overflow-wrap: anywhere; }
-        .lp-contact span { font-size: clamp(14px, 4.2cqw, 22px); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-end { display: flex; flex-direction: column; gap: 6px; }
+        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; background: #F4F3F1; font: inherit; color: #0f1115; text-align: left; cursor: pointer; min-width: 0; }
+        .lp-contact b { min-width: 0; font-size: clamp(12px, 3.4cqw, 19px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-contact span { flex-shrink: 0; font-size: clamp(14px, 4.2cqw, 22px); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-ten { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
         .lp-ten th { font-size: clamp(10px, 2.7cqw, 14px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 10px 4px; text-align: right; }
         .lp-ten th:first-child { text-align: left; }
         .lp-ten td { padding: 6px 10px; font-size: clamp(13px, 3.8cqw, 20px); font-weight: 600; color: #4b5563; border-top: 1px solid rgba(0,0,0,.06); }
-        .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; }
+        .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; letter-spacing: -.01em; }
         .lp-ten tr.lp-t { cursor: pointer; }
         .lp-ten tr.lp-t:hover td { background: rgba(15,17,21,.04); }
-        /* Vertical gradient so the two cells line up with no seam between them. */
-        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: linear-gradient(180deg, var(--lp-a1) 0%, var(--lp-a) 50%, var(--lp-a2) 100%); color: #fff; border-top-color: transparent; }
-        .lp-ten tr.lp-def td:last-child { text-shadow: 0 1px 8px rgba(80,10,0,.3); }
-        .lp-ten tr.lp-def td:last-child { font-size: clamp(22px, 7cqw, 40px); }
+        /* The picked tenure: the seller's colour as a soft tint, same treatment
+           as the rebate row (owner, 2026-10-13: no gradient here). */
+        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); border-top-color: transparent; }
+        .lp-ten tr.lp-def td:first-child { font-weight: 800; }
+        .lp-ten tr.lp-def td:last-child { color: var(--lp-a2); font-size: clamp(22px, 7cqw, 40px); }
         .lp-ten tr.lp-def td:first-child { border-radius: 8px 0 0 8px; }
         .lp-ten tr.lp-def td:last-child { border-radius: 0 8px 8px 0; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 16px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-work { font-size: clamp(13px, 3.4cqw, 18px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.45; }
         .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
-        .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: var(--lp-grad); color: #fff; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+        .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); overflow-wrap: anywhere; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 14px); color: #6b7280; line-height: 1.45; margin: 8px 0 0; }
         .lp-fit { display: flex; flex-direction: column; gap: 10px; }
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -379,6 +399,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjust .lp-seg { grid-column: 1 / -1; }
         .lp-seg button { flex: 1; height: 34px; padding: 0 12px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #4b5563; cursor: pointer; white-space: nowrap; }
         .lp-seg button[aria-pressed="true"] { background: #fff; color: #0f1115; box-shadow: 0 1px 2px rgba(15,23,42,.12); }
+        .lp-adjust .lp-wide { grid-column: 1 / -1; }
+        .lp-adjust .lp-wide .lp-hint { font-weight: 500; }
         .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
         .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
@@ -445,7 +467,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           /* Spare height on a tall monitor goes above and below the card, not all under it. */
           .lp:not(.lp-embed) .lp-fit:has(.lp-sheet) { margin-block: auto; }
           .lp:not(.lp-embed) .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
-            grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note cta"; align-items: start; }
+            grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note end"; align-items: start; }
           .lp:not(.lp-embed) .lp-sheet .lp-title { grid-area: title; }
           .lp:not(.lp-embed) .lp-sheet .lp-pair { display: contents; }
           .lp:not(.lp-embed) .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
@@ -454,12 +476,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp:not(.lp-embed) .lp-sheet .lp-low { grid-area: low; }
           .lp:not(.lp-embed) .lp-sheet .lp-salary { grid-area: salary; }
           .lp:not(.lp-embed) .lp-sheet .lp-note { grid-area: note; align-self: center; }
-          .lp:not(.lp-embed) .lp-sheet .lp-cta { grid-area: cta; align-self: center; }
+          .lp:not(.lp-embed) .lp-sheet .lp-end { grid-area: end; align-self: center; }
           .lp:not(.lp-embed) .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
           .lp:not(.lp-embed) .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
           .lp:not(.lp-embed) .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
-          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.4cqh, 28px); padding: 4px 0; }
-          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(18px, 3.1cqh, 36px); }
+          .lp:not(.lp-embed) .lp-brk { border-spacing: 0 6px; margin: -6px 0; }
+          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.3cqh, 26px); padding: 6px 14px; }
+          .lp:not(.lp-embed) .lp-brk tr.lp-loan td { padding-block: 10px; }
+          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(20px, 3.4cqh, 40px); }
+          .lp:not(.lp-embed) .lp-brk tr.lp-r-rate td { font-size: clamp(12px, 1.7cqh, 18px); padding-block: 2px; }
           .lp:not(.lp-embed) .lp-seg button, .lp:not(.lp-embed) .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
           .lp:not(.lp-embed) .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
           .lp:not(.lp-embed) .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
@@ -544,6 +569,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
               </label>
             )}
+            {mode === 'cars' && (
+              <label className="lp-wide">
+                {t.ctaLabel}
+                <input className="lp-in" type="text" maxLength={CTA_MAX} placeholder={t.cta('')}
+                  value={ctaCustom} onChange={(e) => changeCta(e.target.value)} />
+                <small className="lp-hint">{t.ctaHint}</small>
+              </label>
+            )}
             <div className="lp-colours" role="group" aria-label={t.colour}>
               <span>{t.colour}</span>
               {ACCENT_PRESETS.map((c) => (
@@ -601,12 +634,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* The working, line by line: price - rebate - deposit = loan, at this rate. */}
             <table className="lp-brk">
               <tbody>
-                <tr><td>{t.price}</td><td>{price > 0 ? `RM ${fmt(price)}` : t.onRequest}</td></tr>
-                {rebate > 0 && <tr><td>{t.rebate}</td><td>- RM {fmt(rebate)}</td></tr>}
+                <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
+                {rebate > 0 && <tr className="lp-r-reb"><td>{t.rebate}</td><td>- <Money n={rebate} /></td></tr>}
                 {financeable && (<>
-                  <tr><td>{t.deposit}</td><td>{picked.down > 0 ? `RM ${fmt(picked.down)}` : t.none}</td></tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td>RM {fmt(net - picked.down)}</td></tr>
-                  <tr><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
+                  <tr className="lp-r-dep"><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net - picked.down} /></td></tr>
+                  <tr className="lp-r-rate"><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
                 </>)}
               </tbody>
             </table>
@@ -622,13 +655,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               ))}
             </div>
 
-            <div className={showContact && contact ? 'lp-low lp-with' : 'lp-low'}>
-              {showContact && contact && (
-                <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
-                  {contact.name && <b>{contact.name}</b>}
-                  {contact.phone && <span>{contact.phone}</span>}
-                </button>
-              )}
+            <div className="lp-low">
               <table className="lp-ten">
                 <thead><tr><th>{t.tenure}</th><th>{t.monthly}</th></tr></thead>
                 <tbody>
@@ -638,7 +665,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                       <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={() => setPick((p) => ({ ...p, years: y }))}
                         role="button" aria-pressed={on}>
                         <td>{t.years(y)}</td>
-                        <td>RM {fmt(monthlyFor(picked.down, y))}</td>
+                        <td><Money n={monthlyFor(picked.down, y)} /></td>
                       </tr>
                     );
                   })}
@@ -657,7 +684,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </p>
           </>)}
 
-          <p className="lp-cta">{t.cta(idx + 1)}</p>
+          {/* Contact (tap to hide) sits on the comment bar's line: one slim row
+              in the working's own style, not a box squeezing the tenure table. */}
+          <div className="lp-end">
+            {showContact && contact && (
+              <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
+                {contact.name && <b>{contact.name}</b>}
+                {contact.phone && <span>{contact.phone}</span>}
+              </button>
+            )}
+            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
+          </div>
         </div>
         ) : mode === 'docs' ? (
         /* Docs: what the bank asks the BUYER for. The car (new, used, recon)

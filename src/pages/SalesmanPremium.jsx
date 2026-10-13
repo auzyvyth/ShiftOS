@@ -16,6 +16,7 @@ import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
+import { warmChunks } from "../utils/warmChunks";
 import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
@@ -33,12 +34,16 @@ import BookingWeekCalendar from "../components/bookings/BookingWeekCalendar";
 // Lazy — each of these is a self-contained tab/section that shouldn't ship in
 // the initial SalesmanPremium chunk. See src/pages/salesmanPremium/ for the
 // tab-by-tab split (Dashboard/Listings/Analytics so far).
-const PostSaleBoard = React.lazy(() => import("../components/postsale/PostSaleBoard"));
-const DashboardTab = React.lazy(() => import("./salesmanPremium/DashboardTab"));
-const ListingsTab = React.lazy(() => import("./salesmanPremium/ListingsTab"));
+const loadPostSaleBoard = () => import("../components/postsale/PostSaleBoard");
+const PostSaleBoard = React.lazy(loadPostSaleBoard);
+const loadDashboardTab = () => import("./salesmanPremium/DashboardTab");
+const DashboardTab = React.lazy(loadDashboardTab);
+const loadListingsTab = () => import("./salesmanPremium/ListingsTab");
+const ListingsTab = React.lazy(loadListingsTab);
 // Shared with SalesmanLite — see src/components/CarDetailPopup.jsx.
 const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
-const AnalyticsTab = React.lazy(() => import("./salesmanPremium/AnalyticsTab"));
+const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
+const AnalyticsTab = React.lazy(loadAnalyticsTab);
 import {
  LogOut,
  Copy,
@@ -105,14 +110,16 @@ import {
  Lock,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
-const OutreachHub = React.lazy(() => import("../components/crm/OutreachHub"));
+const loadOutreachHub = () => import("../components/crm/OutreachHub");
+const OutreachHub = React.lazy(loadOutreachHub);
 import ThisWeek from "../components/crm/ThisWeek";
 import { buildThisWeek } from "../utils/thisWeek";
 import NotificationPanel from "../components/notifications/NotificationPanel";
 import SoldCustomers, { ComingUp } from "./salesmanPremium/SoldCustomers";
 import { useServicePackages } from "../hooks/useServicePackages";
 import { useNudges } from "../hooks/useNudges";
-const SellerInbox = React.lazy(() => import("../components/chat/SellerInbox"));
+const loadSellerInbox = () => import("../components/chat/SellerInbox");
+const SellerInbox = React.lazy(loadSellerInbox);
 const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
 // ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
@@ -125,7 +132,15 @@ import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 import { markStarterTask } from "../utils/starterTasks";
 import { starterTasksAllDone } from "../components/onboarding/StarterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
-const LoanDesk = React.lazy(() => import("../components/loans/LoanDesk"));
+const loadLoanDesk = () => import("../components/loans/LoanDesk");
+const LoanDesk = React.lazy(loadLoanDesk);
+// Tab code downloaded in the background once the first screen is up, most-used
+// first, one file at a time (src/utils/warmChunks.js). Same loaders as the
+// React.lazy calls above, so a warmed tab opens with no spinner, and offline.
+const WARM_TABS = [
+ loadDashboardTab, loadListingsTab, loadPostSaleBoard, loadSellerInbox,
+ loadLoanDesk, loadAnalyticsTab, loadOutreachHub,
+];
 // Every query that loads a lead uses this. The lead drawer renders the linked
 // car in full, so the join has to carry the display fields up front (overlay
 // rule 4) — and there are five call sites, which is exactly how many places a
@@ -278,6 +293,9 @@ export default function SalesmanPremium() {
  // later and every access gate below (pending pay / expired trial / wrong role)
  // re-runs against it. Without a cached profile this is the old blocking spinner.
  const [loading, setLoading] = useState(!seed.profile);
+ // Once the first screen and its data are up, fetch the other tabs' code in the
+ // background so their first tap is instant and works offline.
+ useEffect(() => (loading ? undefined : warmChunks(WARM_TABS)), [loading]);
  const [pendingPay, setPendingPay] = useState(false);
  const [trialExpired, setTrialExpired] = useState(false);
  const isPremium = isPremiumSalesman(profile);
@@ -5954,6 +5972,7 @@ export default function SalesmanPremium() {
  userId={userId}
  dealerId={profile?.dealer_id || null}
  leads={leads}
+ listings={myListings}
  applications={loanApplications}
  setApplications={setLoanApplications}
  onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}

@@ -6,6 +6,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import { BANK_RATES, MAX_TENURE_YEARS, RATE_BASIS, rateLabel, monthlyPayment, monthsForPayment, principalForPayment } from "../../utils/financing";
+import { budgetMatches } from "../../utils/liveMaths";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 
 /*
@@ -226,6 +227,14 @@ function DsrMeter({ income, commitments, monthly, loan, rate, tenure, onApplySug
       </p>
     );
   }
+  if (!(loan > 0)) {
+    return (
+      <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
+        Add a car in step 2, or pick one from the cars that fit below, to see their
+        debt service ratio with it.
+      </p>
+    );
+  }
   const ceiling = dsrCeiling(income);
   const dsr = ((commitments + monthly) / income) * 100;
   const over = dsr > ceiling;
@@ -327,6 +336,84 @@ const suggestionSx = {
   fontSize: T.size.sm, fontFamily: "inherit", lineHeight: 1.5,
 };
 
+/* ── Cars that fit — the reverse question ────────────────────────────────── */
+
+// "RM1,200 a month, what can they take?" Same maths as the live presenter's
+// Budget tab (budgetMatches in liveMaths.js), so a car's monthly here matches
+// the one the seller quotes on a live. The cap is the smaller of the DSR room
+// the bank leaves and the buyer's own limit. A guide, never an approval.
+const LOWEST_RATE = Math.min(...BANK_RATES.map((b) => b.rate));
+const carName = (c) => [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+
+function CarsThatFit({ listings, cap, capFrom, deposit, tenure, pickedId, onPick }) {
+  const [showAll, setShowAll] = useState(false);
+  const { fits, above } = useMemo(
+    () => budgetMatches(listings, { maxMonthly: cap, deposit, years: tenure, rate: LOWEST_RATE, basis: RATE_BASIS }),
+    [listings, cap, deposit, tenure],
+  );
+  const shown = showAll ? fits : fits.slice(0, 5);
+
+  const Row = ({ r, tone }) => {
+    const on = r.car.id === pickedId;
+    return (
+      <button onClick={() => onPick(r.car)} style={{
+        display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+        padding: "9px 11px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit",
+        background: on ? withAlpha(C.info, 0.09) : C.fill,
+        border: `1px solid ${on ? withAlpha(C.info, 0.32) : C.border}`,
+      }}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {carName(r.car)}
+          </span>
+          <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 1 }}>{rm(r.price)}</span>
+        </span>
+        <span style={{ textAlign: "right", flexShrink: 0 }}>
+          <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.bold, color: tone }}>{rm(r.monthly)}</span>
+          <span style={{ display: "block", fontSize: T.size.xs, color: C.textDim }}>/month</span>
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+      <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text }}>
+        Cars from your stock that fit
+      </p>
+      <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+        Up to {rm(cap)}/month ({capFrom}), {deposit > 0 ? `${rm(deposit)} down` : "no down payment"}, {tenure} years. Tap one to use it.
+      </p>
+      {fits.length === 0 && above.length === 0 ? (
+        <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim }}>
+          None of your available cars fit this budget. A bigger down payment or a longer tenure widens it.
+        </p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {shown.map((r) => <Row key={r.car.id} r={r} tone={C.successText} />)}
+          {fits.length > 5 && (
+            <button onClick={() => setShowAll((v) => !v)} style={{
+              padding: "6px", background: "none", border: "none", color: C.infoText,
+              fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit",
+            }}>{showAll ? "Show fewer" : `Show all ${fits.length}`}</button>
+          )}
+          {above.length > 0 && (
+            <>
+              <p style={{ margin: "6px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
+                Just above: needs more down payment or a longer tenure
+              </p>
+              {above.map((r) => <Row key={r.car.id} r={r} tone={C.warnText} />)}
+            </>
+          )}
+        </div>
+      )}
+      <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.6 }}>
+        Worked out at the lowest indicative rate on the table ({LOWEST_RATE.toFixed(2)}% EIR). A guide, not an approval.
+      </p>
+    </div>
+  );
+}
+
 /* ── Document checklist ──────────────────────────────────────────────────── */
 
 function DocChecklist({ employment, docs, onToggle, buyerName }) {
@@ -398,10 +485,10 @@ const emptyDraft = {
   lead_id: null, listing_id: null,
   buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
   car_model: "", car_price: "", down_payment: "", loan_tenure: 7,
-  buyer_income: "", existing_commitments: "", notes: "",
+  buyer_income: "", existing_commitments: "", budget_monthly: "", notes: "",
 };
 
-function NewApplication({ userId, dealerId, leads, onCreated }) {
+function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
   const [d, setD] = useState(emptyDraft);
   const [docs, setDocs] = useState({});
   const [picked, setPicked] = useState([]);      // bank names chosen as attempts
@@ -429,6 +516,23 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
   // DSR is shown against the cheapest instalment on the table — the best case.
   // If the best case is already over the ceiling, none of them clear it.
   const dsrBank = rows.find((r) => picked.includes(r.name)) || rows[0];
+
+  // Budget for "cars that fit": the DSR room the bank leaves, capped by what
+  // the buyer said they will pay. Either one alone is enough.
+  const dsrRoom = income > 0 ? income * (dsrCeiling(income) / 100) - commits : 0;
+  const ownLimit = num(d.budget_monthly);
+  const fitCap = dsrRoom > 0 && ownLimit > 0 ? Math.min(dsrRoom, ownLimit) : dsrRoom > 0 ? dsrRoom : ownLimit;
+  const fitCapFrom = ownLimit > 0 && (!(dsrRoom > 0) || ownLimit <= dsrRoom) ? "the buyer's own limit" : "the DSR room left";
+  // Only cars the seller can actually put on a loan today.
+  const sellable = useMemo(
+    () => (listings || []).filter((c) => c.status === "available" && Number(c.selling_price) > 0 && c.loan_eligible !== false),
+    [listings],
+  );
+
+  const pickCar = (car) => {
+    setD((p) => ({ ...p, listing_id: car.id, car_model: carName(car), car_price: String(car.selling_price) }));
+    toast.success("Car filled in. Check the down payment in step 2");
+  };
 
   const pickLead = (lead) => {
     const car = lead.car_listings;
@@ -682,6 +786,9 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
           <Field label="Existing commitments (RM/mo)" hint="Other car, house, PTPTN, cards">
             <input type="number" inputMode="numeric" style={inputSx} value={d.existing_commitments} onChange={(e) => set("existing_commitments")(e.target.value)} placeholder="800" />
           </Field>
+          <Field label="Buyer's own limit (RM/mo)" hint="Optional. What they said they can pay">
+            <input type="number" inputMode="numeric" style={inputSx} value={d.budget_monthly} onChange={(e) => set("budget_monthly")(e.target.value)} placeholder="1200" />
+          </Field>
         </div>
         <DsrMeter
           income={income} commitments={commits}
@@ -689,6 +796,12 @@ function NewApplication({ userId, dealerId, leads, onCreated }) {
           loan={loan} rate={dsrBank ? dsrBank.rate : 0} tenure={tenure}
           onApplySuggestion={applySuggestion}
         />
+        {fitCap > 0 && sellable.length > 0 && (
+          <CarsThatFit
+            listings={sellable} cap={fitCap} capFrom={fitCapFrom}
+            deposit={dp} tenure={tenure} pickedId={d.listing_id} onPick={pickCar}
+          />
+        )}
       </div>
 
       {/* 4 — banks */}
@@ -1011,7 +1124,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
 
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 
-export default function LoanDesk({ userId, dealerId, leads = [], applications = [], setApplications, onLeadSync }) {
+export default function LoanDesk({ userId, dealerId, leads = [], listings = [], applications = [], setApplications, onLeadSync }) {
   const [view, setView] = useState("new");
 
   const open = applications.filter((a) => !["Approved", "Declined"].includes(a.status || rollUp(a.banks))).length;
@@ -1049,7 +1162,7 @@ export default function LoanDesk({ userId, dealerId, leads = [], applications = 
 
       {view === "new" ? (
         <NewApplication
-          userId={userId} dealerId={dealerId} leads={leads}
+          userId={userId} dealerId={dealerId} leads={leads} listings={listings}
           onCreated={(row) => {
             setApplications((p) => [row, ...p]);
             if (row.lead_id) onLeadSync?.(row.lead_id, leadPatchFor(row));
