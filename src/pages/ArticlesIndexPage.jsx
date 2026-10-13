@@ -7,6 +7,20 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 
 const ARTICLES = [
   {
+    slug: 'harga-alphard-recon-malaysia',
+    title: 'Harga Toyota Alphard Recon di Malaysia (2026): 2.5 SC vs 2.5 Z',
+    description: 'Harga diminta ikut tahun, beza generasi AH30 dan AH40, harga rasmi UMW Toyota, dan apa perlu disemak sebelum bayar deposit.',
+    category: 'Panduan Beli',
+    readMins: 7,
+  },
+  {
+    slug: 'harga-harrier-recon-malaysia',
+    title: 'Harga Toyota Harrier Recon di Malaysia (2026): 2.0 Petrol vs Hybrid Rasmi',
+    description: 'Harga Harrier 2.0 G recon, beza gred S, G dan Z, dan perbandingan dengan Harrier 2.5 Hybrid rasmi UMW Toyota.',
+    category: 'Panduan Beli',
+    readMins: 6,
+  },
+  {
     slug: 'apa-itu-puspakom-b5-b7',
     title: 'Puspakom B5 & B7 Untuk Apa? Beza, Kos & Bila Perlu (2026)',
     description: 'B5 untuk tukar nama (RM30), B7 untuk loan kereta terpakai (RM60). Apa yang diperiksa dan bila perlu buat kedua-duanya.',

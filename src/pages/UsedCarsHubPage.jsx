@@ -10,7 +10,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { CAR_FIELDS } from "../config/marketplaceConfig";
 import NotFoundPage from "./NotFoundPage";
 import {
-  HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs, findHub, hubCopy, hubCrumbs,
+  HUB_BASE, HUB_GUIDES, HUB_LIVE, HUB_ROW_COLS, buildHubs, findHub, hubCopy, hubCrumbs,
   hubCarFilter, faqLd, breadcrumbLd,
 } from "../utils/modelHubs";
 
@@ -21,6 +21,8 @@ import {
 // comes from src/utils/modelHubs.js, which api/og.js also renders for crawlers —
 // so the page Google indexes and the page a buyer lands on say the same thing.
 const SITE = "https://xdrive.my";
+const num = (n) => Math.round(n).toLocaleString("en-MY");
+const rm = (n) => `RM ${num(n)}`;
 
 export default function UsedCarsHubPage() {
   const { brand: bSlug, model: mSlug } = useParams();
@@ -146,6 +148,36 @@ export default function UsedCarsHubPage() {
             </div>
           )}
 
+          {/* Price by model year: the hub's range mixes years, so a 2021 and a
+              2025 read as one number. Asking prices from the live rows only. */}
+          {model && model.byYear.length > 1 && (
+            <section className="uch-more">
+              <h2 className="uch-h2">{brand.brand} {model.model} asking prices by year</h2>
+              <table className="uch-years">
+                <thead>
+                  <tr><th>Year</th><th>Asking price</th><th>Mileage</th><th>Cars</th></tr>
+                </thead>
+                <tbody>
+                  {model.byYear.map((y) => (
+                    <tr key={y.year}>
+                      <td>{y.year}</td>
+                      <td>{y.minPrice == null ? "On request" : y.minPrice === y.maxPrice ? rm(y.minPrice) : `${rm(y.minPrice)} – ${rm(y.maxPrice)}`}</td>
+                      <td>{y.minKm == null ? "–" : y.minKm === y.maxKm ? `${num(y.minKm)} km` : `${num(y.minKm)} – ${num(y.maxKm)} km`}</td>
+                      <td>{y.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="uch-note">Prices are what each seller is asking today. Confirm the final price with the seller.</p>
+            </section>
+          )}
+
+          {model && HUB_GUIDES[model.path] && (
+            <p className="uch-note" style={{ fontSize: 14 }}>
+              Buyer's guide: <Link to={HUB_GUIDES[model.path].path}>{HUB_GUIDES[model.path].title}</Link>
+            </p>
+          )}
+
           {model && siblings.length > 0 && (
             <section className="uch-more">
               <h2 className="uch-h2">Other {brand.brand} models</h2>
@@ -211,6 +243,11 @@ const CSS = `
   .uch-faq-item { padding: 16px 0; border-top: 1px solid rgba(0,0,0,0.06); }
   .uch-faq-item h3 { font-size: 15px; font-weight: 600; margin: 0 0 6px; color: #111827; }
   .uch-faq-item p { font-size: 14px; line-height: 1.6; margin: 0; color: #4b5563; }
+  .uch-years { width: 100%; max-width: 760px; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+  .uch-years th { text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; padding: 8px 8px 8px 0; border-bottom: 1px solid rgba(0,0,0,0.12); }
+  .uch-years td { padding: 10px 8px 10px 0; border-bottom: 1px solid rgba(0,0,0,0.06); color: #111827; }
+  .uch-years td:last-child, .uch-years th:last-child { text-align: right; padding-right: 0; }
+  .uch-note { font-size: 12px; color: #6b7280; margin: 10px 0 0; }
   .uch-foot { margin-top: 40px; font-size: 14px; color: #6b7280; }
   .uch-foot a { color: #111827; font-weight: 600; }
 `;

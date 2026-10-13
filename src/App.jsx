@@ -97,6 +97,8 @@ const UrusDealershipArticle = lazy(() => import("./pages/articles/UrusDealership
 const JadiSalesmanKeretaArticle = lazy(() => import("./pages/articles/JadiSalesmanKeretaArticle"));
 const EvTerpakaiArticle = lazy(() => import("./pages/articles/EvTerpakaiArticle"));
 const AktaSewaBeli2026Article = lazy(() => import("./pages/articles/AktaSewaBeli2026Article"));
+const HargaAlphardReconArticle = lazy(() => import("./pages/articles/HargaAlphardReconArticle"));
+const HargaHarrierReconArticle = lazy(() => import("./pages/articles/HargaHarrierReconArticle"));
 
 const COMPARE_PATHS = ["/", "/cars", "/showroom", "/compare"];
 
@@ -193,6 +195,8 @@ function App() {
           <Route path="/articles/cara-urus-dealership-kedai-kereta-terpakai" element={<UrusDealershipArticle />} />
           <Route path="/articles/cara-jadi-salesman-kereta-freelance" element={<JadiSalesmanKeretaArticle />} />
           <Route path="/articles/beli-kereta-ev-terpakai-apa-perlu-semak" element={<EvTerpakaiArticle />} />
+          <Route path="/articles/harga-alphard-recon-malaysia" element={<HargaAlphardReconArticle />} />
+          <Route path="/articles/harga-harrier-recon-malaysia" element={<HargaHarrierReconArticle />} />
           <Route path="/articles/akta-sewa-beli-2026-eir-pinjaman-kereta" element={<AktaSewaBeli2026Article />} />
 
           {/* Auth */}

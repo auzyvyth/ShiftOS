@@ -371,6 +371,202 @@ export const ARTICLE_PAGES = {
     },
     "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>EV Terpakai</span></nav><header><div><span>Panduan Beli</span></div><h1>Beli Kereta EV Terpakai:<br><span>Apa Perlu Semak Sebelum Bayar</span></h1><p>Panduan beli EV terpakai di Malaysia: cara semak kesihatan bateri (State of Health), waranti bateri bila pindah milik, cukai jalan EV 2026, insurans, pengecas di rumah dan susut nilai.</p><div><span>3 Oktober 2026</span><span>8 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Perkara paling penting bila beli EV terpakai ialah bateri</strong>: berapa banyak kapasiti yang tinggal, dan sama ada waranti bateri masih berjalan untuk anda sebagai pemilik baharu. Enjin kereta petrol boleh didengar dan dirasa semasa pandu uji. Bateri EV tidak. Anda perlukan laporan dan dokumen.</p><p>Panduan ini menerangkan apa yang perlu disemak sebelum anda bayar deposit: kesihatan bateri, pindah milik waranti, cukai jalan EV 2026, insurans, pengecas di rumah, dan harga.</p></section><section><h2>Kenapa Lebih Banyak EV Terpakai di Pasaran Sekarang?</h2><p>Jualan EV baharu di Malaysia naik dengan cepat. Menurut data Persatuan Automotif Malaysia (MAA), 30,848 kereta elektrik bateri baharu dijual pada 2025, naik 109% berbanding 2024. Kereta yang dibeli pada 2023 hingga 2025 inilah yang mula ditukar ganti oleh pemilik pertama, jadi pilihan EV berumur satu hingga tiga tahun semakin banyak.</p><p>Satu lagi sebab: pengecualian duti import dan duti eksais untuk EV import penuh (CBU) tamat pada 31 Disember 2025, dan Kementerian Kewangan mengesahkan ia tidak dilanjutkan. Laporan industri mengaitkan lonjakan jualan pada hujung 2025 dengan pembeli yang mengejar insentif ini sebelum tamat. EV pasang siap tempatan (CKD) pula masih menikmati pengecualian sehingga 31 Disember 2027.</p></section><section><h2>Cara Semak Kesihatan Bateri EV Terpakai (State of Health)</h2><p><strong>State of Health (SoH)</strong> ialah baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Bateri dengan SoH lebih rendah menyimpan tenaga lebih sedikit, jadi jarak perjalanan sekali cas juga lebih pendek.</p><p>Angka SoH juga penting untuk waranti. Contohnya, waranti bateri Proton e.MAS 7 selama 8 tahun atau 160,000 km dilaporkan menawarkan penggantian satu-ke-satu jika SoH jatuh bawah 70% dalam tempoh waranti.</p><div><div><p>Minta laporan bateri dari pusat servis sah</p><p>Minta penjual bawa kereta ke pusat servis sah jenama untuk diagnostik bateri, atau minta salinan laporan terkini. Laporan dari bengkel yang tidak dikenali lebih sukar disahkan.</p></div><div><p>Semak rekod servis bercop</p><p>Waranti biasanya bersyarat pada servis berkala di pusat sah. Rekod yang tidak lengkap boleh menjejaskan tuntutan waranti anda nanti.</p></div><div><p>Tanya bagaimana kereta dicas</p><p>Tanya pemilik sama ada kereta kebanyakannya dicas di rumah atau di pengecas laju DC awam, dan untuk apa kereta digunakan (peribadi atau komersial).</p></div><div><p>Pandu uji dengan bateri penuh</p><p>Lihat anggaran jarak di skrin semasa bateri hampir penuh, dan bandingkan dengan spesifikasi asal model tersebut.</p></div></div></section><section><h2>Waranti Bateri EV Bila Pindah Milik: Masih Sah Atau Tidak?</h2><p>Jangan anggap waranti bateri ikut kereta secara automatik. Syaratnya berbeza mengikut jenama, dan ada yang memerlukan anda membuat sesuatu selepas pindah milik.</p><div><p>Proton e.MAS 7</p><p>Bateri dan unit motor elektrik e.MAS 7 dilindungi waranti 8 tahun atau 160,000 km. Buku waranti dan servis rasmi untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang pertukaran alamat/pemilikan di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025). Unit 2026 mungkin berbeza; minta pengedar sahkan berdasarkan nombor casis. Waranti juga bersyarat pada servis berkala yang dicop oleh pengedar sah Proton e.MAS. Menurut laporan media, polisi waranti ini tidak terpakai untuk kenderaan yang digunakan secara komersial.</p></div><p>Untuk jenama lain seperti BYD, Tesla atau Volvo, kami tidak dapat mengesahkan syarat pindah milik waranti bateri daripada dokumen waranti rasmi untuk pasaran Malaysia, jadi kami tidak menyenaraikannya di sini. Jika anda mencari BYD terpakai atau mana-mana jenama lain, berikan nombor casis kepada pengedar rasmi dan minta mereka sahkan secara bertulis: tarikh mula waranti, baki tempoh dan jarak, dan apa yang perlu dibuat selepas pindah milik.</p></section><section><h2>Cukai Jalan EV 2026: Berapa Perlu Bayar?</h2><p>Pengecualian cukai jalan EV sudah tamat. Mulai 1 Januari 2026, kadar fi Lesen Kenderaan Motor (LKM) untuk kenderaan elektrik ditetapkan berdasarkan kuasa motor elektrik, seperti diumumkan oleh Menteri Pengangkutan Anthony Loke. Kadar dibahagi kepada blok kuasa; blok pertama meliputi motor 1 hingga 100,000 watt, dengan kadar minimum RM20 dan maksimum RM70 setahun. Kereta dengan motor lebih berkuasa jatuh dalam blok lebih tinggi dan membayar lebih.</p><p>Jadi sebelum beli, semak kuasa motor (kW) kereta dalam spesifikasi rasmi kereta, kemudian semak jumlah cukai jalan sebenar melalui MyJPJ. Ini lebih tepat daripada senarai di internet.</p></section><section><h2>Insurans Kereta Elektrik Terpakai</h2><p>Sejak pasaran insurans motor diliberalisasikan oleh Bank Negara Malaysia (harga premium komprehensif dan pihak ketiga, kebakaran dan kecurian bebas daripada tarif mulai 1 Julai 2017), premium tidak lagi tetap. Syarikat insurans boleh mengambil kira faktor seperti jenama dan model kereta, ciri keselamatan, pengalaman pemandu, lokasi dan rekod kesalahan trafik.</p><p>Beberapa syarikat insurans di Malaysia kini menawarkan tambahan khusus EV, contohnya perlindungan untuk pengecas dinding di rumah dan kabel pengecas mudah alih. Minta sebut harga daripada beberapa syarikat sebelum tandatangan perjanjian jual beli, kerana premium boleh berbeza mengikut model.</p></section><section><h2>Pengecas Di Rumah: Semak Sebelum Beli</h2><p>Jika anda mahu cas di rumah dengan wallbox, panduan pelanggan TNB menyatakan perkara berikut:</p><div><ul><li>Lantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah termasuk pengecas.</li><li>Pengecas mesti disambung melalui litar khas sendiri dari papan agihan (DB).</li><li>Bekalan satu fasa sesuai untuk penggunaan sehingga 10 kW; melebihi itu, rumah perlu dinaik taraf ke tiga fasa melalui permohonan kepada TNB.</li><li>Kelulusan TNB tidak diperlukan untuk pasang pengecas itu sendiri, kecuali jika perlu naik taraf bekalan.</li></ul></div><p>Tanya juga penjual sama ada pengecas mudah alih atau kabel asal disertakan bersama kereta. Jika tiada, masukkan kosnya dalam bajet anda.</p></section><section><h2>Susut Nilai EV: Bagaimana Nak Tahu Harga Berpatutan</h2><p>Harga EV terpakai bergerak mengikut harga EV baharu. Bila model baharu atau versi yang dikemas kini dilancarkan, atau harga kereta baharu turun, harga unit terpakai biasanya ikut terkesan. Jadi sebelum tawar-menawar:</p><div><ul><li>Jangan bandingkan dengan harga asal masa kereta itu baharu. Bandingkan dengan harga model sama yang dijual baharu hari ini.</li><li>Bandingkan beberapa iklan untuk model, tahun dan varian bateri yang sama.</li><li>Ambil kira baki waranti bateri. Kereta dengan waranti yang sah dan boleh dipindah lebih bernilai.</li><li>Jangan bayar deposit sebelum laporan bateri dan status waranti disahkan.</li></ul></div><p>Anda boleh lihat EV yang sedang dijual di <a href=\"https://xdrive.my/showroom?fuel_type=Electric\">showroom XDrive</a> (pilih jenis bahan api Electric), dan kira anggaran bayaran bulanan dengan <a href=\"https://xdrive.my/calculator\">kalkulator pinjaman kereta</a>. Ingat, XDrive ialah platform jual beli dan tidak memeriksa kesihatan bateri mana-mana kereta. Semakan bateri tetap tanggungjawab anda sebagai pembeli.</p></section><section><h2>Senarai Semak Ringkas Beli EV Terpakai</h2><div><div><span>Laporan State of Health bateri dari pusat servis sah</span></div><div><span>Rekod servis lengkap dan bercop</span></div><div><span>Pengesahan bertulis status dan pindah milik waranti bateri</span></div><div><span>Kuasa motor (kW) dan jumlah cukai jalan 2026</span></div><div><span>Sebut harga insurans, termasuk tambahan EV</span></div><div><span>Kemampuan bekalan elektrik rumah untuk pengecas</span></div></div><p>Sedang pertimbangkan EV import terpakai berbanding unit tempatan? Baca juga <a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\">beza kereta recon dan terpakai</a>.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Adakah waranti bateri EV boleh dipindah kepada pemilik kedua?</p><p>Bergantung pada jenama. Buku waranti rasmi Proton e.MAS untuk pasaran Malaysia menyatakan baki tempoh waranti boleh dipindah kepada pemilik seterusnya dengan mengisi borang di belakang buku servis dan menghantarnya ke alamat yang tertera (edisi 2025; unit 2026 mungkin berbeza). Untuk jenama lain, minta pengedar rasmi sahkan secara bertulis berdasarkan nombor casis kereta tersebut sebelum anda bayar.</p></div><div><p>Berapa cukai jalan kereta elektrik di Malaysia pada 2026?</p><p>Mulai 1 Januari 2026, fi lesen kenderaan motor (cukai jalan) untuk EV dikira berdasarkan kuasa motor elektrik dalam watt, bukan cc. Bagi blok pertama (1 hingga 100,000 watt), kadarnya antara RM20 hingga RM70 setahun. Kereta yang lebih berkuasa membayar lebih. Semak jumlah tepat untuk kereta yang anda mahu beli di MyJPJ atau kaunter JPJ.</p></div><div><p>Apa itu State of Health (SoH) bateri EV?</p><p>State of Health ialah ukuran baki kapasiti bateri berbanding semasa ia baharu, biasanya dalam peratus. Sebagai contoh, waranti bateri Proton e.MAS 7 dilaporkan menawarkan penggantian jika SoH jatuh bawah 70% dalam tempoh waranti. Minta laporan kesihatan bateri dari pusat servis sah jenama sebelum membeli.</p></div><div><p>Perlu ke pasang pengecas di rumah bila beli EV terpakai?</p><p>Tidak wajib, tetapi jika mahu pasang wallbox, panduan TNB menyatakan anda perlu melantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah. Pengecas mesti guna litar khas sendiri dari papan agihan (DB). Jika jumlah beban melebihi 10 kW, bekalan perlu dinaik taraf kepada tiga fasa melalui permohonan kepada TNB.</p></div><div><p>Adakah XDrive memeriksa bateri kereta EV yang dijual?</p><p>Tidak. XDrive ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\"><p>Panduan Beli</p><p>Beza Kereta Recon &amp; Terpakai — Mana Lebih Berbaloi?</p><p>Baca panduan →</p></a></div></section><div><p>Cari EV Terpakai Di XDrive</p><p>Tapis showroom ikut jenis bahan api Electric, kemudian hubungi penjual terus. Minta laporan bateri sebelum anda bayar deposit.</p><a href=\"https://xdrive.my/showroom?fuel_type=Electric\">Lihat EV di showroom</a></div></div>"
   },
+  "harga-alphard-recon-malaysia": {
+    "slug": "harga-alphard-recon-malaysia",
+    "title": "Harga Toyota Alphard Recon di Malaysia (2026): 2.5 SC vs 2.5 Z",
+    "description": "Berapa harga Alphard recon sekarang, beza gred 2.5 SC (AH30) dan 2.5 Z (AH40), harga rasmi UMW Toyota sebagai perbandingan, dan apa perlu disemak sebelum bayar deposit.",
+    "datePublished": "2026-10-13",
+    "dateModified": "2026-10-13",
+    "faqs": [
+      {
+        "q": "Berapa harga Toyota Alphard recon di Malaysia?",
+        "a": "Pada 13 Oktober 2026, harga diminta untuk Alphard di XDrive ialah RM193,000 hingga RM212,000 untuk unit 2.5 SC tahun 2021 hingga 2023, dan RM274,000 hingga RM299,000 untuk unit 2.5 Z tahun 2024 dan 2025. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Alphard XDrive."
+      },
+      {
+        "q": "Apa beza Alphard 2.5 SC dan 2.5 Z?",
+        "a": "Dalam iklan recon, 2.5 SC ialah gred generasi AH30 (kod model AGH30W, enjin petrol 2.5 liter 2AR-FE dengan CVT). 2.5 Z yang dijual hari ini kebanyakannya generasi baharu AH40, yang mula dijual di Jepun pada 21 Jun 2023 (kod model petrol AGH40W). Semak kod model pada laporan lelong atau geran untuk tahu generasi sebenar."
+      },
+      {
+        "q": "Berapa harga Alphard baharu dari UMW Toyota?",
+        "a": "UMW Toyota melancarkan Alphard AH40 di Malaysia pada Oktober 2023 dalam satu varian, Alphard 2.4T Executive Lounge, pada RM538,000 tanpa insurans. Vellfire 2.5 dilancarkan pada masa yang sama pada RM438,000. Harga ini mungkin telah berubah sejak itu."
+      },
+      {
+        "q": "Adakah Alphard recon ada waranti Toyota?",
+        "a": "Alphard recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti panjang yang disebut dalam iklan datang dari dealer atau syarikat waranti pihak ketiga. Minta buku waranti, baca apa yang dilindungi, had tuntutan, dan syarat servis sebelum bayar."
+      },
+      {
+        "q": "Adakah XDrive memeriksa Alphard yang dijual?",
+        "a": "Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Harga Toyota Alphard Recon di Malaysia (2026): 2.5 SC vs 2.5 Z",
+          "description": "Berapa harga Alphard recon sekarang, beza gred 2.5 SC (AH30) dan 2.5 Z (AH40), harga rasmi UMW Toyota sebagai perbandingan, dan apa perlu disemak sebelum bayar deposit.",
+          "datePublished": "2026-10-13",
+          "dateModified": "2026-10-13",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/harga-alphard-recon-malaysia",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Berapa harga Toyota Alphard recon di Malaysia?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pada 13 Oktober 2026, harga diminta untuk Alphard di XDrive ialah RM193,000 hingga RM212,000 untuk unit 2.5 SC tahun 2021 hingga 2023, dan RM274,000 hingga RM299,000 untuk unit 2.5 Z tahun 2024 dan 2025. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Alphard XDrive."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa beza Alphard 2.5 SC dan 2.5 Z?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Dalam iklan recon, 2.5 SC ialah gred generasi AH30 (kod model AGH30W, enjin petrol 2.5 liter 2AR-FE dengan CVT). 2.5 Z yang dijual hari ini kebanyakannya generasi baharu AH40, yang mula dijual di Jepun pada 21 Jun 2023 (kod model petrol AGH40W). Semak kod model pada laporan lelong atau geran untuk tahu generasi sebenar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Berapa harga Alphard baharu dari UMW Toyota?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "UMW Toyota melancarkan Alphard AH40 di Malaysia pada Oktober 2023 dalam satu varian, Alphard 2.4T Executive Lounge, pada RM538,000 tanpa insurans. Vellfire 2.5 dilancarkan pada masa yang sama pada RM438,000. Harga ini mungkin telah berubah sejak itu."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah Alphard recon ada waranti Toyota?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Alphard recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti panjang yang disebut dalam iklan datang dari dealer atau syarikat waranti pihak ketiga. Minta buku waranti, baca apa yang dilindungi, had tuntutan, dan syarat servis sebelum bayar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah XDrive memeriksa Alphard yang dijual?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Harga Alphard Recon</span></nav><header><div><span>Panduan Beli</span></div><h1>Harga Toyota Alphard Recon:<br><span>2.5 SC vs 2.5 Z</span></h1><p>Berapa harga Alphard recon sekarang, beza gred 2.5 SC (AH30) dan 2.5 Z (AH40), harga rasmi UMW Toyota sebagai perbandingan, dan apa perlu disemak sebelum bayar deposit.</p><div><span>13 Oktober 2026</span><span>7 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Jawapan ringkas:</strong> pada 13 Oktober 2026, Alphard recon di XDrive diminta antara <strong>RM193,000 dan RM212,000</strong> untuk gred 2.5 SC (2021 hingga 2023), dan antara <strong>RM274,000 dan RM299,000</strong> untuk gred 2.5 Z (2024 dan 2025). Jurang besar itu kebanyakannya bukan soal tahun, tetapi soal generasi: SC ialah model lama, Z ialah model baharu.</p><p>Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <a href=\"https://xdrive.my/used-cars/toyota/alphard\">semua Toyota Alphard dijual di XDrive</a>.</p></section><section><h2>Harga Alphard Recon Ikut Tahun (13 Oktober 2026)</h2><div><table><thead><tr><th>Tahun</th><th>Gred</th><th>Harga diminta</th><th>Jarak</th></tr></thead><tbody><tr><td>2025</td><td>2.5 Z</td><td>RM295,000 – RM299,000</td><td>1,819 – 2,510 km</td></tr><tr><td>2024</td><td>2.5 Z</td><td>RM274,000 – RM287,000</td><td>3,000 – 17,612 km</td></tr><tr><td>2023</td><td>2.5 SC</td><td>RM212,000</td><td>26,834 km</td></tr><tr><td>2022</td><td>2.5 SC</td><td>RM205,000</td><td>31,670 km</td></tr><tr><td>2021</td><td>2.5 SC</td><td>RM193,000</td><td>30,756 km</td></tr></tbody></table></div><p>Sumber: iklan aktif di XDrive pada 13 Oktober 2026, 9 kereta. Satu unit 2025 diiklankan sebagai terpakai (sudah didaftar di Malaysia), selebihnya recon.</p></section><section><h2>2.5 SC vs 2.5 Z: Dua Generasi Berbeza</h2><div><p>2.5 SC: generasi AH30</p><p>&quot;SC&quot; dalam iklan merujuk gred S &quot;C Package&quot; generasi AH30 (kod model AGH30W). Enjinnya petrol 2.5 liter 2AR-FE dengan gear CVT. Generasi ini dijual di Jepun sehingga model baharu dilancarkan pada pertengahan 2023, jadi unit SC 2021 hingga 2023 ialah antara AH30 yang terakhir.</p></div><div><p>2.5 Z: generasi AH40</p><p>Toyota mula menjual Alphard dan Vellfire generasi baharu di Jepun pada 21 Jun 2023, dalam versi petrol dan hibrid. Dalam spesifikasi rasmi Toyota Jepun, gred petrol membawa kod model AGH40W (dua roda) dan hibrid AAHH40W. Kebanyakan iklan &quot;2.5 Z&quot; tahun 2024 dan 2025 ialah AH40 petrol.</p></div><p><strong>Cara pasti:</strong> jangan bergantung pada nama gred dalam iklan. Minta laporan lelong (auction report) dan semak kod model di situ dan pada geran. AGH30W bermaksud AH30, AGH40W bermaksud AH40. Dua kereta dengan tahun yang sama boleh jadi dari generasi berbeza.</p></section><section><h2>Harga Rasmi UMW Toyota Sebagai Perbandingan</h2><p>UMW Toyota melancarkan Alphard AH40 di Malaysia pada Oktober 2023 dengan satu varian sahaja: <strong>Alphard 2.4T Executive Lounge pada RM538,000</strong> tanpa insurans, import penuh dari Jepun. Vellfire 2.5 dilancarkan bersama pada RM438,000. Harga ini mungkin telah berubah sejak pelancaran.</p><p>Unit rasmi dan unit recon bukan kereta yang sama. Unit rasmi datang dengan waranti pengeluar dan sokongan pengedar rasmi. Unit recon biasanya gred lain (contohnya 2.5 Z petrol, bukan 2.4T Executive Lounge) dan dijual oleh pengimport. Bandingkan gred dengan gred, bukan nama model sahaja.</p></section><section><h2>Apa Perlu Semak Sebelum Bayar Deposit</h2><div><div><p>Laporan lelong asal</p><p>Minta salinan laporan lelong Jepun. Ia menunjukkan gred keadaan, jarak semasa dilelong, kod model dan tanda kerosakan. Bandingkan jarak dalam laporan dengan meter kereta.</p></div><div><p>Kod model dan gred</p><p>Pastikan kod model (AGH30W atau AGH40W) sepadan dengan gred dan harga yang diiklankan.</p></div><div><p>Buku waranti bertulis</p><p>Waranti recon datang dari dealer atau syarikat pihak ketiga, bukan UMW Toyota. Baca apa yang dilindungi, had tuntutan setiap kali, dan syarat servis.</p></div><div><p>Pemeriksaan bebas</p><p>Bawa kereta ke bengkel atau pemeriksa yang anda pilih sendiri, terutamanya pintu gelangsar elektrik, aircond belakang dan kerosakan air.</p></div><div><p>Sebut harga pinjaman</p><p>Mulai 1 Jun 2026, pinjaman sewa beli baharu dikira dengan EIR atas baki berkurangan. Minta sebut harga bertulis daripada bank dan semak bayaran bulanan sendiri.</p></div></div><p>Kira anggaran bayaran bulanan dengan <a href=\"https://xdrive.my/calculator\">kalkulator pinjaman kereta</a>, dan baca <a href=\"https://xdrive.my/articles/akta-sewa-beli-2026-eir-pinjaman-kereta\">apa yang berubah di bawah Akta Sewa Beli 2026</a>. Bank yang menentukan kelulusan dan kadar.</p></section><section><h2>Senarai Semak Ringkas</h2><div><div><span>Laporan lelong asal dengan kod model</span></div><div><span>Jarak dalam laporan sama dengan meter</span></div><div><span>Gred dan harga sepadan dengan generasi</span></div><div><span>Buku waranti dealer, dibaca penuh</span></div><div><span>Pemeriksaan oleh bengkel pilihan sendiri</span></div><div><span>Sebut harga pinjaman bertulis (EIR)</span></div></div></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Berapa harga Toyota Alphard recon di Malaysia?</p><p>Pada 13 Oktober 2026, harga diminta untuk Alphard di XDrive ialah RM193,000 hingga RM212,000 untuk unit 2.5 SC tahun 2021 hingga 2023, dan RM274,000 hingga RM299,000 untuk unit 2.5 Z tahun 2024 dan 2025. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Alphard XDrive.</p></div><div><p>Apa beza Alphard 2.5 SC dan 2.5 Z?</p><p>Dalam iklan recon, 2.5 SC ialah gred generasi AH30 (kod model AGH30W, enjin petrol 2.5 liter 2AR-FE dengan CVT). 2.5 Z yang dijual hari ini kebanyakannya generasi baharu AH40, yang mula dijual di Jepun pada 21 Jun 2023 (kod model petrol AGH40W). Semak kod model pada laporan lelong atau geran untuk tahu generasi sebenar.</p></div><div><p>Berapa harga Alphard baharu dari UMW Toyota?</p><p>UMW Toyota melancarkan Alphard AH40 di Malaysia pada Oktober 2023 dalam satu varian, Alphard 2.4T Executive Lounge, pada RM538,000 tanpa insurans. Vellfire 2.5 dilancarkan pada masa yang sama pada RM438,000. Harga ini mungkin telah berubah sejak itu.</p></div><div><p>Adakah Alphard recon ada waranti Toyota?</p><p>Alphard recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti panjang yang disebut dalam iklan datang dari dealer atau syarikat waranti pihak ketiga. Minta buku waranti, baca apa yang dilindungi, had tuntutan, dan syarat servis sebelum bayar.</p></div><div><p>Adakah XDrive memeriksa Alphard yang dijual?</p><p>Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\"><p>Panduan Beli</p><p>Beza Kereta Recon &amp; Terpakai — Mana Lebih Berbaloi?</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/harga-harrier-recon-malaysia\"><p>Panduan Beli</p><p>Harga Toyota Harrier Recon: 2.0 Petrol vs Hybrid Rasmi</p><p>Baca panduan →</p></a></div></section><div><p>Toyota Alphard Dijual Di XDrive</p><p>Harga diminta ikut tahun, jarak dan lokasi, dikemas kini setiap kali penjual menukar iklan. Hubungi penjual terus.</p><a href=\"https://xdrive.my/used-cars/toyota/alphard\">Lihat Alphard dijual</a></div></div>"
+  },
+  "harga-harrier-recon-malaysia": {
+    "slug": "harga-harrier-recon-malaysia",
+    "title": "Harga Toyota Harrier Recon di Malaysia (2026): 2.0 Petrol vs Hybrid Rasmi",
+    "description": "Berapa harga Harrier recon 2.0 sekarang, beza gred S, G dan Z, harga Harrier 2.5 Hybrid rasmi UMW Toyota, dan apa perlu disemak sebelum bayar deposit.",
+    "datePublished": "2026-10-13",
+    "dateModified": "2026-10-13",
+    "faqs": [
+      {
+        "q": "Berapa harga Toyota Harrier recon di Malaysia?",
+        "a": "Pada 13 Oktober 2026, sembilan Harrier 2.0 G recon tahun 2025 diiklankan di XDrive dengan harga diminta RM182,000 hingga RM185,000, jarak 2,570 hingga 15,624 km. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Harrier XDrive."
+      },
+      {
+        "q": "Apa beza Harrier gred S, G dan Z?",
+        "a": "Untuk Harrier generasi semasa (XU80) yang dilancarkan di Jepun pada 17 Jun 2020, versi petrol 2.0 liter (enjin M20A-FKS dengan Direct Shift-CVT) ditawarkan dalam gred S, G dan Z, dengan pilihan Leather Package untuk G dan Z. S ialah gred asas dan Z yang tertinggi. Semak senarai kelengkapan sebenar kereta, bukan nama gred sahaja."
+      },
+      {
+        "q": "Berapa harga Harrier baharu dari UMW Toyota?",
+        "a": "Pada Mac 2026, UMW Toyota melancarkan Harrier 2.5 Hybrid pada RM289,000 atas jalan, dan ia menggantikan versi petrol 2.0 liter sebagai satu-satunya Harrier rasmi. Harga ini mungkin telah berubah sejak itu."
+      },
+      {
+        "q": "Adakah Harrier recon ada waranti Toyota?",
+        "a": "Harrier recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti dalam iklan datang dari dealer atau syarikat pihak ketiga. Minta buku waranti dan baca apa yang dilindungi sebelum bayar."
+      },
+      {
+        "q": "Adakah XDrive memeriksa Harrier yang dijual?",
+        "a": "Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit."
+      }
+    ],
+    "jsonLd": {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Article",
+          "headline": "Harga Toyota Harrier Recon di Malaysia (2026): 2.0 Petrol vs Hybrid Rasmi",
+          "description": "Berapa harga Harrier recon 2.0 sekarang, beza gred S, G dan Z, harga Harrier 2.5 Hybrid rasmi UMW Toyota, dan apa perlu disemak sebelum bayar deposit.",
+          "datePublished": "2026-10-13",
+          "dateModified": "2026-10-13",
+          "author": {
+            "@type": "Organization",
+            "name": "ShiftOS by XDrive"
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "XDrive Malaysia",
+            "url": "https://xdrive.my"
+          },
+          "url": "https://xdrive.my/articles/harga-harrier-recon-malaysia",
+          "inLanguage": "ms"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Berapa harga Toyota Harrier recon di Malaysia?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pada 13 Oktober 2026, sembilan Harrier 2.0 G recon tahun 2025 diiklankan di XDrive dengan harga diminta RM182,000 hingga RM185,000, jarak 2,570 hingga 15,624 km. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Harrier XDrive."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Apa beza Harrier gred S, G dan Z?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Untuk Harrier generasi semasa (XU80) yang dilancarkan di Jepun pada 17 Jun 2020, versi petrol 2.0 liter (enjin M20A-FKS dengan Direct Shift-CVT) ditawarkan dalam gred S, G dan Z, dengan pilihan Leather Package untuk G dan Z. S ialah gred asas dan Z yang tertinggi. Semak senarai kelengkapan sebenar kereta, bukan nama gred sahaja."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Berapa harga Harrier baharu dari UMW Toyota?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Pada Mac 2026, UMW Toyota melancarkan Harrier 2.5 Hybrid pada RM289,000 atas jalan, dan ia menggantikan versi petrol 2.0 liter sebagai satu-satunya Harrier rasmi. Harga ini mungkin telah berubah sejak itu."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah Harrier recon ada waranti Toyota?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Harrier recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti dalam iklan datang dari dealer atau syarikat pihak ketiga. Minta buku waranti dan baca apa yang dilindungi sebelum bayar."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Adakah XDrive memeriksa Harrier yang dijual?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit."
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "html": "<nav><a href=\"https://xdrive.my/\">Laman Utama</a><a href=\"https://xdrive.my/articles\">Panduan</a><span>Harga Harrier Recon</span></nav><header><div><span>Panduan Beli</span></div><h1>Harga Toyota Harrier Recon:<br><span>2.0 Petrol vs Hybrid Rasmi</span></h1><p>Berapa harga Harrier recon 2.0 sekarang, beza gred S, G dan Z, harga Harrier 2.5 Hybrid rasmi UMW Toyota, dan apa perlu disemak sebelum bayar deposit.</p><div><span>13 Oktober 2026</span><span>6 minit bacaan</span><span>ShiftOS by XDrive</span></div><p>Artikel ini ditulis oleh AI.</p></header><div><section><p><strong>Jawapan ringkas:</strong> pada 13 Oktober 2026, Harrier 2.0 G recon tahun 2025 di XDrive diminta antara <strong>RM182,000 dan RM185,000</strong>. Harrier rasmi UMW Toyota hari ini ialah 2.5 Hybrid pada <strong>RM289,000</strong> atas jalan semasa pelancaran. Jadi soalan sebenar bukan &quot;recon atau rasmi&quot;, tetapi &quot;petrol 2.0 recon atau hibrid 2.5 rasmi&quot;.</p><p>Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <a href=\"https://xdrive.my/used-cars/toyota/harrier\">semua Toyota Harrier dijual di XDrive</a>.</p></section><section><h2>Harga Harrier Recon (13 Oktober 2026)</h2><div><table><thead><tr><th>Tahun</th><th>Gred</th><th>Harga diminta</th><th>Jarak</th></tr></thead><tbody><tr><td>2025</td><td>2.0 G</td><td>RM182,000 – RM185,000</td><td>2,570 – 15,624 km</td></tr></tbody></table></div><p>Sumber: iklan aktif di XDrive pada 13 Oktober 2026, 9 kereta, semuanya recon. Jurang harga yang kecil (RM3,000) antara unit yang sama tahun dan gred bermakna jarak dan keadaan lebih penting daripada harga ketika memilih.</p></section><section><h2>Gred S, G dan Z: Apa Bezanya</h2><p>Toyota melancarkan Harrier generasi semasa (XU80) di Jepun pada 17 Jun 2020. Versi petrolnya menggunakan enjin 2.0 liter Dynamic Force M20A-FKS dengan Direct Shift-CVT, dalam tiga gred:</p><div><div><p>2.0 S</p><p>Gred asas.</p></div><div><p>2.0 G</p><p>Gred tengah, dengan pilihan Leather Package. Ini gred yang paling banyak diiklankan di XDrive sekarang.</p></div><div><p>2.0 Z</p><p>Gred tertinggi, juga dengan pilihan Leather Package.</p></div></div><p>Senarai kelengkapan setiap gred boleh berbeza mengikut tahun dan pilihan kilang, jadi minta senarai kelengkapan atau laporan lelong kereta itu sendiri. Jangan bayar lebih untuk gred yang hanya disebut dalam tajuk iklan.</p></section><section><h2>Recon 2.0 Petrol vs 2.5 Hybrid Rasmi</h2><p>Pada Mac 2026, UMW Toyota melancarkan <strong>Harrier 2.5 Hybrid pada RM289,000</strong> atas jalan, dan ia menggantikan versi petrol 2.0 liter sebagai satu-satunya Harrier rasmi. Harga ini mungkin telah berubah sejak pelancaran.</p><div><ul><li>Recon 2.0 G: harga diminta jauh lebih rendah, tetapi waranti datang dari dealer, bukan Toyota.</li><li>Hibrid rasmi: harga lebih tinggi, dengan waranti pengeluar dan servis di pengedar rasmi.</li><li>Harrier 2.0 petrol yang sudah didaftar di Malaysia (terpakai, bukan recon) boleh jadi unit rasmi UMW yang lama. Tanya penjual dan semak rekod servis.</li></ul></div></section><section><h2>Apa Perlu Semak Sebelum Bayar Deposit</h2><div><div><p>Laporan lelong asal</p><p>Minta salinan laporan lelong Jepun. Ia menunjukkan gred keadaan, jarak semasa dilelong dan tanda kerosakan. Bandingkan jarak dalam laporan dengan meter kereta.</p></div><div><p>Gred dan kelengkapan</p><p>Pastikan gred (S, G atau Z) dan Leather Package dalam laporan sepadan dengan iklan dan harga.</p></div><div><p>Buku waranti bertulis</p><p>Waranti recon datang dari dealer atau syarikat pihak ketiga, bukan UMW Toyota. Baca apa yang dilindungi, had tuntutan setiap kali, dan syarat servis.</p></div><div><p>Pemeriksaan bebas</p><p>Bawa kereta ke bengkel atau pemeriksa yang anda pilih sendiri sebelum bayar.</p></div><div><p>Sebut harga pinjaman</p><p>Mulai 1 Jun 2026, pinjaman sewa beli baharu dikira dengan EIR atas baki berkurangan. Minta sebut harga bertulis daripada bank dan semak bayaran bulanan sendiri.</p></div></div><p>Kira anggaran bayaran bulanan dengan <a href=\"https://xdrive.my/calculator\">kalkulator pinjaman kereta</a>, dan baca <a href=\"https://xdrive.my/articles/akta-sewa-beli-2026-eir-pinjaman-kereta\">apa yang berubah di bawah Akta Sewa Beli 2026</a>. Bank yang menentukan kelulusan dan kadar.</p></section><section><h2>Soalan Lazim (FAQ)</h2><div><div><p>Berapa harga Toyota Harrier recon di Malaysia?</p><p>Pada 13 Oktober 2026, sembilan Harrier 2.0 G recon tahun 2025 diiklankan di XDrive dengan harga diminta RM182,000 hingga RM185,000, jarak 2,570 hingga 15,624 km. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Harrier XDrive.</p></div><div><p>Apa beza Harrier gred S, G dan Z?</p><p>Untuk Harrier generasi semasa (XU80) yang dilancarkan di Jepun pada 17 Jun 2020, versi petrol 2.0 liter (enjin M20A-FKS dengan Direct Shift-CVT) ditawarkan dalam gred S, G dan Z, dengan pilihan Leather Package untuk G dan Z. S ialah gred asas dan Z yang tertinggi. Semak senarai kelengkapan sebenar kereta, bukan nama gred sahaja.</p></div><div><p>Berapa harga Harrier baharu dari UMW Toyota?</p><p>Pada Mac 2026, UMW Toyota melancarkan Harrier 2.5 Hybrid pada RM289,000 atas jalan, dan ia menggantikan versi petrol 2.0 liter sebagai satu-satunya Harrier rasmi. Harga ini mungkin telah berubah sejak itu.</p></div><div><p>Adakah Harrier recon ada waranti Toyota?</p><p>Harrier recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti dalam iklan datang dari dealer atau syarikat pihak ketiga. Minta buku waranti dan baca apa yang dilindungi sebelum bayar.</p></div><div><p>Adakah XDrive memeriksa Harrier yang dijual?</p><p>Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.</p></div></div></section><section><h2>Baca Seterusnya</h2><div><a href=\"https://xdrive.my/articles/beza-kereta-recon-dan-terpakai\"><p>Panduan Beli</p><p>Beza Kereta Recon &amp; Terpakai — Mana Lebih Berbaloi?</p><p>Baca panduan →</p></a><a href=\"https://xdrive.my/articles/harga-alphard-recon-malaysia\"><p>Panduan Beli</p><p>Harga Toyota Alphard Recon: 2.5 SC vs 2.5 Z</p><p>Baca panduan →</p></a></div></section><div><p>Toyota Harrier Dijual Di XDrive</p><p>Harga diminta ikut tahun, jarak dan lokasi, dikemas kini setiap kali penjual menukar iklan. Hubungi penjual terus.</p><a href=\"https://xdrive.my/used-cars/toyota/harrier\">Lihat Harrier dijual</a></div></div>"
+  },
   "cara-jadi-salesman-kereta-freelance": {
     "slug": "cara-jadi-salesman-kereta-freelance",
     "title": "Cara Jadi Salesman Kereta (Termasuk Freelance) di Malaysia 2026",
