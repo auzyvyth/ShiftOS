@@ -152,3 +152,19 @@ export function consumePostAuthReturn(fallback = '/account') {
     return u.origin === window.location.origin ? u.pathname + u.search + u.hash : fallback;
   } catch { return fallback; }
 }
+
+// Chat and saving a car need a real XDrive account (owner, 2026-10-14, the
+// Mudah model). A guest's anonymous session does not count: 13 guests opened
+// chats, sellers answered 9 of them, and with no email or push on file most of
+// those replies never reached anyone.
+export function isRealBuyer(user) {
+  return !!user && !user.is_anonymous;
+}
+
+// Send a signed-out buyer to sign in, and bring them back to `returnUrl`
+// afterwards (all three sign-in paths honour setPostAuthReturn). /buyer-login,
+// not /login: it is the one with the Sign up tab and the PDPA consent tick.
+export function sendBuyerToSignIn(returnUrl = window.location.href) {
+  setPostAuthReturn(returnUrl);
+  window.location.href = '/buyer-login';
+}

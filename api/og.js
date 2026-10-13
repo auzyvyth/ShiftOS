@@ -12,7 +12,7 @@ import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle, featur
 import { SALESMAN_PLANS, DEALER_PLANS } from "../src/utils/plans.js";
 import { TERMS, PRIVACY, DPA, LEGAL_META } from "../src/legal/legalDocs.js";
 import {
-  HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs, hubSlug as hubSlugOf, findHub, hubCopy, hubCrumbs, hubCarFilter, faqLd, breadcrumbLd,
+  HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs, hubSlug as hubSlugOf, findHub, hubCopy, hubCrumbs, hubCarFilter, faqLd, breadcrumbLd, yearLine, HUB_GUIDES,
 } from "../src/utils/modelHubs.js";
 import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
@@ -247,6 +247,8 @@ function buildHubHtml(hubs, brand, model, cars) {
     <h1>${esc(copy.h1)}</h1>
     <p>${esc(copy.intro)}</p>
     ${brand ? `<h2>${esc(copy.h1.replace(/^Used /, "").replace(/ for sale$/, ""))} listings</h2>\n    <ul>\n      ${carItems}\n    </ul>` : ""}
+    ${model && model.byYear.length > 1 ? `<h2>${esc(brand.brand)} ${esc(model.model)} asking prices by year</h2>\n    <ul>${model.byYear.map((y) => `<li>${esc(yearLine(y))}</li>`).join("")}</ul>` : ""}
+    ${model && HUB_GUIDES[model.path] ? `<p>Buyer's guide: <a href="${SITE_URL}${HUB_GUIDES[model.path].path}">${esc(HUB_GUIDES[model.path].title)}</a></p>` : ""}
     ${nav}
     ${copy.faqs.length ? `<h2>FAQ</h2>\n    ${faqHtml(copy.faqs)}` : ""}
     <p><a href="${SITE_URL}/showroom">Browse all used cars</a> · <a href="${SITE_URL}/calculator">Car loan calculator</a> · <a href="${SITE_URL}/guides/buying">Buyer's guide</a></p>

@@ -2,6 +2,8 @@ import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { MessageSquare, MessageCircle, Phone, ChevronRight, ArrowLeft, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useBuyerThread } from '../../hooks/useChat';
+import { isSubdomain } from '../../hooks/useTenant';
+import { sendBuyerToSignIn } from '../../lib/buyerAuth';
 import useVisualViewport from '../../hooks/useVisualViewport';
 
 // Lazy — ChatThread (message list + useChatThread's live realtime channel)
@@ -26,10 +28,27 @@ const ChatThread = lazy(() => import('./ChatThread'));
 // backdrop behind the sheet stays a dark dimmer on both — it's dimming the
 // page, not part of the sheet's own surface.
 //
-// A shopper can chat without making an account: the first message signs them in
-// anonymously, and the seller sees them as "Guest 4F2A". If they register later
-// Supabase keeps the same user id, so the conversation carries over and the
-// seller starts seeing their real name.
+// Chat needs an XDrive account on the marketplace (owner, 2026-10-14, the
+// Mudah model): picking "Chat here" while signed out goes to /buyer-login and
+// comes back to this car with ?contact=chat, which reopens the chat. WhatsApp
+// and Call stay open to everyone. Guests who already have a thread keep it. A
+// dealer's own subdomain still allows guest chat (see useBuyerThread for why).
+
+// The car page renders BuyerChat twice (mobile card + desktop sidebar). The
+// sheet is portalled, so whichever mounts first can own the reopen.
+const RETURN_PARAM = 'contact';
+let returnClaimed = false;
+function claimChatReturn() {
+  if (returnClaimed) return false;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get(RETURN_PARAM) !== 'chat') return false;
+    returnClaimed = true;
+    url.searchParams.delete(RETURN_PARAM);
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    return true;
+  } catch { return false; }
+}
 
 const CONSENT_KEY = 'xdrive_chat_terms_v1';
 
@@ -66,7 +85,22 @@ export default function BuyerChat({
   const [accepted, setAccepted] = useState(hasConsented);
   // active: open — the reattach check only fires once the sheet is opened,
   // not on page load for every visitor. See useChat.js:useBuyerThread.
-  const { threadId, start, starting, needsAnon } = useBuyerThread(listingId, { active: open });
+  const { threadId, start, starting, needsAnon, needsSignIn } = useBuyerThread(listingId, { active: open });
+  const guestChat = isSubdomain();
+
+  // Back from signing in: open straight onto the chat.
+  useEffect(() => {
+    if (claimChatReturn()) { setView('chat'); setOpen(true); if (hasConsented()) start(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // No account yet: sign in, then land back here with the chat open.
+  useEffect(() => {
+    if (!needsSignIn) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set(RETURN_PARAM, 'chat');
+    sendBuyerToSignIn(url.toString());
+  }, [needsSignIn]);
 
   // Overlay rule 2 — lock the page behind the sheet.
   useEffect(() => {
@@ -104,9 +138,11 @@ export default function BuyerChat({
 
   // Picking chat jumps straight into the thread for a returning buyer who has
   // already accepted the terms, and into the gate for a first-timer.
+  // On the marketplace the account check runs first, inside start(), so a
+  // signed-out buyer goes to sign in before reading the terms, not after.
   const chooseChat = () => {
     setView('chat');
-    if (accepted && !threadId) start();
+    if ((accepted || !guestChat) && !threadId) start();
   };
 
   const rowStyle = {
@@ -151,7 +187,7 @@ export default function BuyerChat({
       <ContactRow
         icon={<MessageSquare size={17} style={{ color: c.text }} />}
         title="Chat here in XDrive"
-        sub="No account or phone number needed"
+        sub={guestChat ? 'No account or phone number needed' : 'Sign in with Google or email to chat'}
         onClick={chooseChat} />
       {showCall && onCall && (
         <ContactRow
@@ -167,7 +203,13 @@ export default function BuyerChat({
     </div>
   );
 
-  const chatGate = needsAnon ? (
+  const chatGate = needsSignIn ? (
+    <div style={{ padding: '40px 22px', textAlign: 'center' }}>
+      <Loader2 size={20} style={{ color: c.sub, animation: 'bcspin 1s linear infinite' }} />
+      <p style={{ fontSize: 13, color: c.sub, margin: '12px 0 0' }}>Taking you to sign in…</p>
+      <style>{`@keyframes bcspin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  ) : needsAnon ? (
     <div style={{ padding: '28px 22px', textAlign: 'center' }}>
       <p style={{ fontSize: 13.5, color: c.text, margin: '0 0 8px', fontWeight: 600 }}>Chat isn't available right now</p>
       <p style={{ fontSize: 12.5, color: c.sub, margin: '0 0 16px', lineHeight: 1.6 }}>
@@ -187,9 +229,11 @@ export default function BuyerChat({
         <div>
           <p style={{ margin: '0 0 8px', fontSize: 13.5, fontWeight: 700, color: c.text }}>Before you start</p>
           <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12.5, color: isLight ? 'rgba(15,23,42,0.7)' : 'rgba(255,255,255,0.7)', lineHeight: 1.65 }}>
-            <li style={{ marginBottom: 6 }}>
-              You can chat without an account. The seller will see you as a guest until you sign up.
-            </li>
+            {guestChat && (
+              <li style={{ marginBottom: 6 }}>
+                You can chat without an account. The seller will see you as a guest until you sign up.
+              </li>
+            )}
             <li style={{ marginBottom: 6 }}>
               <strong style={{ color: c.text }}>Don't send private details</strong> — no IC number, bank
               account, card details or copies of documents. Share those in person, once you know who you're dealing with.

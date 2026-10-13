@@ -479,19 +479,19 @@ export default function LoginPage() {
 
   if (mfaRequired) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#0a0a0c", fontFamily: "system-ui, sans-serif" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#fff" }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#F7F6F2", fontFamily: "var(--xd-font-body)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#0f1115" }}>
           <span style={{ width: 30, height: 30, background: "#dc2626", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
-          <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: "auto", display: "block" }} />
+          <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: "auto", display: "block" }} />
         </div>
-        <div style={{ width: "min(420px, 100%)", background: "#111114", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "40px 36px", textAlign: "center", boxShadow: "0 30px 80px rgba(0,0,0,0.45)" }}>
+        <div style={{ width: "min(420px, 100%)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 20, padding: "40px 36px", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}>
           <div style={{ width: 56, height: 56, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.6">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.6">
               <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" />
             </svg>
           </div>
-          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#fff", letterSpacing: 2, marginBottom: 12 }}>TWO-FACTOR AUTH</h2>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", lineHeight: 1.6, marginBottom: 24 }}>
+          <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 28, color: "#0f1115", letterSpacing: 2, marginBottom: 12 }}>TWO-FACTOR AUTH</h2>
+          <p style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 24 }}>
             Enter the 6-digit code from your authenticator app.
           </p>
           <input
@@ -503,9 +503,9 @@ export default function LoginPage() {
             }}
             onKeyDown={(e) => { if (e.key === "Enter") handleMfaVerify(); }}
             placeholder="000000"
-            style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "14px", color: "#fff", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "system-ui, sans-serif" }}
+            style={{ width: "100%", background: "#fff", border: "1px solid #d1d5db", borderRadius: 10, padding: "14px", color: "#111827", fontSize: 24, letterSpacing: "0.4em", textAlign: "center", outline: "none", marginBottom: 16, fontFamily: "inherit" }}
           />
-          {error && <p style={{ fontSize: 12, color: "#f87171", marginBottom: 14 }}>⚠ {error}</p>}
+          {error && <p style={{ fontSize: 12, color: "#b91c1c", marginBottom: 14 }}>⚠ {error}</p>}
           <button
             onClick={handleMfaVerify} disabled={mfaLoading || mfaCode.length < 6}
             style={{ width: "100%", padding: "13px", background: "#dc2626", border: "none", borderRadius: 10, color: "#fff", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 3, cursor: "pointer", opacity: (mfaLoading || mfaCode.length < 6) ? 0.5 : 1, marginBottom: 14 }}>
@@ -513,7 +513,7 @@ export default function LoginPage() {
           </button>
           <button
             onClick={async () => { await supabase.auth.signOut(); setMfaRequired(false); setMfaCode(""); setError(""); setPendingUser(null); }}
-            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: 12, cursor: "pointer" }}>
+            style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
             Cancel and sign out
           </button>
         </div>
@@ -533,8 +533,8 @@ export default function LoginPage() {
           justifyContent: "center",
           gap: 24,
           padding: "24px 16px",
-          background: "#0a0a0c",
-          fontFamily: "system-ui, sans-serif",
+          background: "#F7F6F2",
+          fontFamily: "var(--xd-font-body)",
         }}
       >
         <div
@@ -542,7 +542,7 @@ export default function LoginPage() {
             display: "flex",
             alignItems: "center",
             gap: 10,
-            color: "#fff",
+            color: "#0f1115",
           }}
         >
           <span
@@ -574,12 +574,12 @@ export default function LoginPage() {
         <div
           style={{
             width: "min(420px, 100%)",
-            background: "#111114",
-            border: "1px solid rgba(255,255,255,0.08)",
+            background: "#fff",
+            border: "1px solid #e5e7eb",
             borderRadius: 20,
             padding: "48px 40px",
             textAlign: "center",
-            boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
           }}
         >
           <div
@@ -600,7 +600,7 @@ export default function LoginPage() {
               height="24"
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#fbbf24"
+              stroke="#d97706"
               strokeWidth="1.5"
             >
               <path d="M3 8l7.89 5.26a2 2 0 0 0 2.22 0L21 8M5 19h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2z" />
@@ -610,7 +610,7 @@ export default function LoginPage() {
             style={{
               fontFamily: "'Bebas Neue', sans-serif",
               fontSize: 28,
-              color: "#fff",
+              color: "#0f1115",
               letterSpacing: 2,
               marginBottom: 12,
             }}
@@ -620,7 +620,7 @@ export default function LoginPage() {
           <p
             style={{
               fontSize: 13,
-              color: "rgba(255,255,255,0.45)",
+              color: "#6b7280",
               lineHeight: 1.6,
               marginBottom: 24,
             }}
@@ -629,12 +629,12 @@ export default function LoginPage() {
             confirmation link before signing in.
           </p>
           {resendSent && (
-            <p style={{ fontSize: 12, color: "#4ade80", marginBottom: 16 }}>
+            <p style={{ fontSize: 12, color: "#15803d", marginBottom: 16 }}>
               Confirmation email resent!
             </p>
           )}
           {resendError && (
-            <p style={{ fontSize: 12, color: "#f87171", marginBottom: 16 }}>{resendError}</p>
+            <p style={{ fontSize: 12, color: "#b91c1c", marginBottom: 16 }}>{resendError}</p>
           )}
           {unconfirmedEmail && (
             <button
@@ -669,10 +669,10 @@ export default function LoginPage() {
               style={{
                 width: "100%",
                 padding: "13px",
-                background: "rgba(220,38,38,0.12)",
-                border: "1px solid rgba(220,38,38,0.3)",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
                 borderRadius: 8,
-                color: "#f87171",
+                color: "#b91c1c",
                 fontSize: 13,
                 fontWeight: 600,
                 cursor: resendLoading ? "not-allowed" : "pointer",
@@ -687,7 +687,7 @@ export default function LoginPage() {
             style={{
               background: "none",
               border: "none",
-              color: "rgba(255,255,255,0.3)",
+              color: "#6b7280",
               fontSize: 12,
               cursor: "pointer",
             }}
@@ -705,8 +705,9 @@ export default function LoginPage() {
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* Layout */
-        .lr { min-height: 100vh; display: flex; background: #080C14; font-family: system-ui, sans-serif; }
+        /* Light surface, same tokens as the marketplace (DESIGN.md): warm page
+           ground, white form panel, ink text, one red accent (the submit). */
+        .lr { min-height: 100vh; display: flex; background: #F7F6F2; font-family: var(--xd-font-body); color: #111827; }
 
         /* Left panel — branding */
         .lr-left {
@@ -715,26 +716,10 @@ export default function LoginPage() {
           flex-direction: column;
           justify-content: space-between;
           padding: 48px 52px;
-          background: #080C14;
-          border-right: 1px solid rgba(255,255,255,0.05);
+          background: #F7F6F2;
+          border-right: 1px solid rgba(0,0,0,0.06);
           position: relative;
           overflow: hidden;
-        }
-        .lr-left::before {
-          content: '';
-          position: absolute;
-          top: -120px; left: -120px;
-          width: 480px; height: 480px;
-          background: radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%);
-          pointer-events: none;
-        }
-        .lr-left::after {
-          content: '';
-          position: absolute;
-          bottom: -80px; right: -80px;
-          width: 320px; height: 320px;
-          background: radial-gradient(circle, rgba(220,38,38,0.07) 0%, transparent 70%);
-          pointer-events: none;
         }
 
         /* Right panel — form */
@@ -745,7 +730,7 @@ export default function LoginPage() {
           flex-direction: column;
           justify-content: center;
           padding: 48px 52px;
-          background: #060A12;
+          background: #FFFFFF;
           overflow-y: auto;
         }
 
@@ -757,7 +742,6 @@ export default function LoginPage() {
           border-radius: 9px;
           display: flex; align-items: center; justify-content: center;
           font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff;
-          box-shadow: 0 0 28px rgba(220,38,38,0.45);
         }
         .lr-brand-img { height: 21px; width: auto; display: block; }
 
@@ -765,7 +749,7 @@ export default function LoginPage() {
         .lr-hero { position: relative; z-index: 1; }
         .lr-hero-eyebrow {
           font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
-          color: rgba(220,38,38,0.8); font-weight: 600; margin-bottom: 20px;
+          color: #dc2626; font-weight: 600; margin-bottom: 20px;
           display: flex; align-items: center; gap: 10px;
         }
         .lr-hero-eyebrow::before {
@@ -774,78 +758,79 @@ export default function LoginPage() {
         .lr-hero-title {
           font-family: 'Bebas Neue', sans-serif;
           font-size: clamp(44px, 4.5vw, 64px);
-          color: #fff; letter-spacing: 2px; line-height: 1.05;
+          color: #0f1115; letter-spacing: 2px; line-height: 1.05;
           margin-bottom: 20px;
         }
         .lr-hero-title span { color: #dc2626; }
         .lr-hero-sub {
-          font-size: 14px; color: rgba(255,255,255,0.38); line-height: 1.65;
+          font-size: 14px; color: #6b7280; line-height: 1.65;
           max-width: 380px;
         }
 
         /* Stats row */
         .lr-stats { display: flex; gap: 40px; position: relative; z-index: 1; }
         .lr-stat-num {
-          font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #fff;
+          font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: #0f1115;
           letter-spacing: 1px; line-height: 1;
         }
-        .lr-stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); margin-top: 4px; }
+        .lr-stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #6b7280; margin-top: 4px; }
 
         /* Left footer */
-        .lr-left-footer { font-size: 11px; color: rgba(255,255,255,0.15); position: relative; z-index: 1; }
+        .lr-left-footer { font-size: 11px; color: #9ca3af; position: relative; z-index: 1; }
 
-        .lr-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.35); text-decoration: none; margin-bottom: 22px; width: max-content; }
-        .lr-back:hover { color: rgba(255,255,255,0.6); }
+        .lr-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280; text-decoration: none; margin-bottom: 22px; width: max-content; }
+        .lr-back:hover { color: #111827; }
 
         /* Form area */
-        .lr-form-head { margin-bottom: 32px; }
-        .lr-form-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: rgba(220,38,38,0.8); font-weight: 600; margin-bottom: 8px; }
-        .lr-form-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: #fff; letter-spacing: 2px; line-height: 1; }
-        .lr-form-sub { font-size: 13px; color: rgba(255,255,255,0.3); margin-top: 6px; }
+        .lr-form-head { margin-bottom: 28px; }
+        .lr-form-eyebrow { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #dc2626; font-weight: 600; margin-bottom: 8px; }
+        .lr-form-title { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: #0f1115; letter-spacing: 2px; line-height: 1; }
+        .lr-form-sub { font-size: 14px; color: #6b7280; margin-top: 6px; }
 
-        .lr-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
-        .lr-google:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+        .lr-google { width: 100%; padding: 13px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; color: #111827; font-family: inherit; font-size: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background .18s, border-color .18s; }
+        .lr-google:hover { background: #f9fafb; border-color: #9ca3af; }
 
         .lr-or { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
-        .lr-or-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
-        .lr-or-text { font-size: 11px; color: rgba(255,255,255,0.18); letter-spacing: 0.1em; }
+        .lr-or-line { flex: 1; height: 1px; background: #e5e7eb; }
+        .lr-or-text { font-size: 12px; color: #9ca3af; letter-spacing: 0.1em; }
 
         .lr-field { margin-bottom: 16px; }
         .lr-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
-        .lr-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-weight: 600; }
-        .lr-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: system-ui, sans-serif; }
-        .lr-forgot:hover { color: rgba(255,255,255,0.55); }
-        .lr-forgot.active { color: #dc2626; }
+        .lr-label { font-size: 13px; color: #374151; font-weight: 600; }
+        .lr-forgot { font-size: 13px; color: #dc2626; font-weight: 500; background: none; border: none; cursor: pointer; padding: 0; transition: color .15s; font-family: inherit; }
+        .lr-forgot:hover { color: #b91c1c; }
+        .lr-forgot.active { color: #111827; }
 
         .lr-input-wrap { position: relative; }
-        .lr-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: system-ui, sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; appearance: none; }
-        .lr-input::placeholder { color: rgba(255,255,255,0.1); }
-        .lr-input:focus { border-color: rgba(220,38,38,0.5); background: rgba(220,38,38,0.03); }
+        /* 16px: anything smaller makes iOS Safari zoom the page on focus. */
+        .lr-input { width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px 14px; color: #111827; font-family: inherit; font-size: 16px; outline: none; transition: border-color .2s, box-shadow .2s; appearance: none; }
+        .lr-input::placeholder { color: #9ca3af; }
+        .lr-input:focus { border-color: #0f1115; box-shadow: 0 0 0 3px rgba(15,17,21,0.08); }
         .lr-input.pr { padding-right: 42px; }
-        .lr-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: rgba(255,255,255,0.2); display: flex; transition: color .2s; }
-        .lr-eye:hover { color: rgba(255,255,255,0.5); }
+        .lr-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: #6b7280; display: flex; transition: color .2s; }
+        .lr-eye:hover { color: #111827; }
 
-        .lr-error { background: rgba(220,38,38,0.07); border: 1px solid rgba(220,38,38,0.22); border-radius: 8px; padding: 10px 14px; color: #f87171; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
+        .lr-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; color: #b91c1c; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
         /* Not an error — the account is fine, we closed the session on purpose.
            Neutral/informational, so it does not read as a failed login. */
-        .lr-notice { display: flex; gap: 9px; align-items: flex-start; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 8px; padding: 11px 14px; color: rgba(255,255,255,0.62); font-size: 12px; line-height: 1.55; margin-bottom: 20px; }
+        .lr-notice { display: flex; gap: 9px; align-items: flex-start; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 11px 14px; color: #374151; font-size: 13px; line-height: 1.55; margin-bottom: 20px; }
 
-        .lr-magic { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 14px; margin-bottom: 14px; }
-        .lr-magic-title { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 4px; }
-        .lr-magic-body { font-size: 11.5px; color: rgba(251,191,36,0.55); line-height: 1.55; margin-bottom: 10px; }
-        .lr-magic-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 6px; padding: 9px 12px; color: #fff; font-family: system-ui, sans-serif; font-size: 13px; outline: none; margin-bottom: 8px; }
-        .lr-magic-btn { width: 100%; padding: 10px; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.22); border-radius: 6px; color: #fbbf24; font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: background .15s; }
-        .lr-magic-btn:hover:not(:disabled) { background: rgba(251,191,36,0.18); }
+        .lr-magic { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; margin-bottom: 14px; }
+        .lr-magic-title { font-size: 13px; color: #92400e; font-weight: 600; margin-bottom: 4px; }
+        .lr-magic-body { font-size: 12.5px; color: #a16207; line-height: 1.55; margin-bottom: 10px; }
+        .lr-magic-input { width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; padding: 9px 12px; color: #111827; font-family: inherit; font-size: 16px; outline: none; margin-bottom: 8px; }
+        .lr-magic-btn { width: 100%; padding: 10px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; color: #92400e; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; cursor: pointer; transition: background .15s; }
+        .lr-magic-btn:hover:not(:disabled) { background: #fde68a; }
         .lr-magic-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .lr-reset-panel { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
-        .lr-reset-hint { font-size: 11.5px; color: rgba(255,255,255,0.28); margin-bottom: 10px; line-height: 1.5; }
-        .lr-reset-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.5); font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; transition: border-color .15s, color .15s; }
-        .lr-reset-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.75); }
+        .lr-reset-panel { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+        .lr-reset-hint { font-size: 12.5px; color: #6b7280; margin-bottom: 10px; line-height: 1.5; }
+        .lr-reset-btn { width: 100%; padding: 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; cursor: pointer; transition: border-color .15s; }
+        .lr-reset-btn:hover:not(:disabled) { border-color: #0f1115; }
         .lr-reset-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .lr-submit { width: 100%; padding: 14px; background: #dc2626; border: none; border-radius: 10px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; cursor: pointer; position: relative; overflow: hidden; transition: background .2s, box-shadow .2s; margin-top: 4px; }
-        .lr-submit:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 8px 28px rgba(220,38,38,0.4); }
+        .lr-submit:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 6px 18px rgba(220,38,38,0.22); }
         .lr-submit:active:not(:disabled) { transform: scale(.99); }
         .lr-submit:disabled { opacity: 0.5; cursor: not-allowed; }
         .lr-shimmer { position: absolute; top: 0; left: -100%; width: 60%; height: 100%; background: linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent); animation: shimmer 2.4s infinite; }
@@ -856,12 +841,12 @@ export default function LoginPage() {
         .lr-dots span:nth-child(3) { animation-delay:.4s; }
         @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
 
-        .lr-success { color: #4ade80; font-size: 12px; display: flex; align-items: center; gap: 6px; }
+        .lr-success { color: #15803d; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 
-        .lr-create-row { margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; }
-        .lr-create-text { font-size: 12px; color: rgba(255,255,255,0.25); }
-        .lr-create-link { font-size: 12px; color: #f87171; font-weight: 600; text-decoration: none; transition: color .15s; }
-        .lr-create-link:hover { color: #fca5a5; }
+        .lr-create-row { margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; }
+        .lr-create-text { font-size: 13px; color: #6b7280; }
+        .lr-create-link { font-size: 13px; color: #dc2626; font-weight: 600; text-decoration: none; transition: color .15s; }
+        .lr-create-link:hover { color: #b91c1c; }
 
         /* Fade-in */
         .lr-right { opacity: 0; transform: translateX(12px); transition: opacity .5s ease, transform .5s ease; }
@@ -869,11 +854,11 @@ export default function LoginPage() {
         .lr-left-content { opacity: 0; transform: translateX(-10px); transition: opacity .6s ease .1s, transform .6s ease .1s; }
         .lr-left-content.in { opacity: 1; transform: translateX(0); }
 
-        /* Mobile: single column */
+        /* Mobile: single column, white end to end */
         @media(max-width: 860px) {
-          .lr { flex-direction: column; }
+          .lr { flex-direction: column; background: #FFFFFF; }
           .lr-left { display: none; }
-          .lr-right { width: 100%; padding: 40px 24px; min-height: 100vh; }
+          .lr-right { width: 100%; padding: 32px 20px; min-height: 100vh; justify-content: flex-start; }
         }
       `}</style>
 
@@ -883,7 +868,7 @@ export default function LoginPage() {
           <div className={`lr-left-content${mounted ? ' in' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
             <div className="lr-brand">
               <div className="lr-brand-mark">S</div>
-              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="lr-brand-img" />
+              <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" className="lr-brand-img" />
             </div>
 
             {/* This is now the ONE sign-in door for buyers and sellers alike, so

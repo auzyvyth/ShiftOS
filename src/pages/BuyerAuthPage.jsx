@@ -332,95 +332,100 @@ export default function BuyerAuthPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
-        .ba { min-height: 100vh; display: flex; background: #080C14; font-family: system-ui, sans-serif; }
+        /* Light surface, same tokens as /login and the marketplace (DESIGN.md). */
+        .ba { min-height: 100vh; display: flex; background: #F7F6F2; font-family: var(--xd-font-body); color: #111827; }
 
-        .ba-left { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 48px 52px; background: #080C14; border-right: 1px solid rgba(255,255,255,0.05); position: relative; overflow: hidden; }
-        .ba-left::before { content: ''; position: absolute; top: -120px; left: -120px; width: 480px; height: 480px; background: radial-gradient(circle, rgba(220,38,38,0.12) 0%, transparent 70%); pointer-events: none; }
+        .ba-left { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: 48px 52px; background: #F7F6F2; border-right: 1px solid rgba(0,0,0,0.06); position: relative; overflow: hidden; }
 
         .ba-brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; text-decoration: none; }
-        .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; box-shadow: 0 0 28px rgba(220,38,38,0.45); }
-        .ba-brand-img { height: 20px; width: auto; display: block; }
+        .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; }
+        /* The only XDrive wordmark is white-on-transparent. invert + hue-rotate
+           turns the white to ink and leaves the red bar red. */
+        .ba-brand-img { height: 20px; width: auto; display: block; filter: invert(1) hue-rotate(180deg); }
 
         .ba-hero { position: relative; z-index: 1; }
-        .ba-hero-eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: rgba(220,38,38,0.85); font-weight: 600; margin-bottom: 18px; }
-        .ba-hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(40px, 4.2vw, 58px); color: #fff; letter-spacing: 2px; line-height: 1.05; margin-bottom: 28px; }
+        .ba-hero-eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #dc2626; font-weight: 600; margin-bottom: 18px; }
+        .ba-hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(40px, 4.2vw, 58px); color: #0f1115; letter-spacing: 2px; line-height: 1.05; margin-bottom: 28px; }
         .ba-hero-title span { color: #dc2626; }
 
         .ba-benefits { display: flex; flex-direction: column; gap: 18px; }
         .ba-benefit { display: flex; gap: 14px; align-items: flex-start; }
-        .ba-benefit-ic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.2); display: flex; align-items: center; justify-content: center; color: #f87171; }
-        .ba-benefit-t { font-size: 14px; font-weight: 600; color: #f0f0f0; }
-        .ba-benefit-d { font-size: 12.5px; color: rgba(255,255,255,0.38); line-height: 1.5; margin-top: 2px; }
+        .ba-benefit-ic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; background: #fff; border: 1px solid rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; color: #dc2626; }
+        .ba-benefit-t { font-size: 14px; font-weight: 600; color: #111827; margin: 0; }
+        .ba-benefit-d { font-size: 13px; color: #6b7280; line-height: 1.5; margin: 2px 0 0; }
 
-        .ba-left-footer { font-size: 11px; color: rgba(255,255,255,0.18); position: relative; z-index: 1; }
+        .ba-left-footer { font-size: 11px; color: #9ca3af; position: relative; z-index: 1; }
 
-        .ba-right { width: 480px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; padding: 48px 52px; background: #060A12; overflow-y: auto; }
+        .ba-right { width: 480px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: center; padding: 48px 52px; background: #FFFFFF; overflow-y: auto; }
         .ba-right { opacity: 0; transform: translateX(12px); transition: opacity .5s ease, transform .5s ease; }
         .ba-right.in { opacity: 1; transform: translateX(0); }
 
-        .ba-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: rgba(255,255,255,0.35); text-decoration: none; margin-bottom: 22px; width: max-content; }
-        .ba-back:hover { color: rgba(255,255,255,0.6); }
+        .ba-back { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280; text-decoration: none; margin-bottom: 22px; width: max-content; }
+        .ba-back:hover { color: #111827; }
 
-        .ba-toggle { display: flex; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 4px; margin-bottom: 26px; }
-        .ba-toggle-btn { flex: 1; padding: 9px 0; border-radius: 9px; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 13px; font-weight: 600; background: transparent; color: rgba(255,255,255,0.45); transition: background .15s, color .15s; }
-        .ba-toggle-btn.on { background: #dc2626; color: #fff; }
+        /* Sign in | Sign up as two tabs with an underline, the shape a buyer
+           knows from every marketplace app. */
+        .ba-toggle { display: flex; border-bottom: 1px solid #e5e7eb; margin-bottom: 24px; }
+        .ba-toggle-btn { flex: 1; padding: 12px 0; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; font-family: inherit; font-size: 15px; font-weight: 600; background: transparent; color: #6b7280; transition: color .15s, border-color .15s; }
+        .ba-toggle-btn.on { color: #dc2626; border-bottom-color: #dc2626; }
 
         .ba-head { margin-bottom: 22px; }
-        .ba-head-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: #fff; letter-spacing: 2px; line-height: 1; }
-        .ba-head-sub { font-size: 13px; color: rgba(255,255,255,0.32); margin-top: 6px; }
+        .ba-head-title { font-family: 'Bebas Neue', sans-serif; font-size: 34px; color: #0f1115; letter-spacing: 2px; line-height: 1; margin: 0; }
+        .ba-head-sub { font-size: 14px; color: #6b7280; margin: 6px 0 0; }
 
-        .ba-google { width: 100%; padding: 13px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09); border-radius: 10px; color: #e2e8f0; font-family: system-ui, sans-serif; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: background .18s, border-color .18s; }
-        .ba-google:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.16); }
+        .ba-google { width: 100%; padding: 13px; background: #fff; border: 1px solid #d1d5db; border-radius: 10px; color: #111827; font-family: inherit; font-size: 15px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: background .18s, border-color .18s; }
+        .ba-google:hover { background: #f9fafb; border-color: #9ca3af; }
 
         .ba-or { display: flex; align-items: center; gap: 12px; margin: 18px 0; }
-        .ba-or-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
-        .ba-or-text { font-size: 11px; color: rgba(255,255,255,0.18); letter-spacing: 0.1em; }
+        .ba-or-line { flex: 1; height: 1px; background: #e5e7eb; }
+        .ba-or-text { font-size: 12px; color: #9ca3af; letter-spacing: 0.1em; }
 
         .ba-field { margin-bottom: 14px; }
         .ba-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
-        .ba-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.3); font-weight: 600; }
-        .ba-forgot { font-size: 11px; color: rgba(255,255,255,0.25); background: none; border: none; cursor: pointer; padding: 0; font-family: system-ui, sans-serif; }
-        .ba-forgot:hover { color: rgba(255,255,255,0.55); }
+        .ba-label { font-size: 13px; color: #374151; font-weight: 600; }
+        .ba-forgot { font-size: 13px; color: #dc2626; font-weight: 500; background: none; border: none; cursor: pointer; padding: 0; font-family: inherit; }
+        .ba-forgot:hover { color: #b91c1c; }
         .ba-input-wrap { position: relative; }
-        .ba-input { width: 100%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 12px 14px; color: #fff; font-family: system-ui, sans-serif; font-size: 14px; outline: none; transition: border-color .2s, background .2s; }
-        .ba-input::placeholder { color: rgba(255,255,255,0.12); }
-        .ba-input:focus { border-color: rgba(220,38,38,0.5); background: rgba(220,38,38,0.03); }
+        /* 16px: anything smaller makes iOS Safari zoom the page on focus. */
+        .ba-input { width: 100%; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 12px 14px; color: #111827; font-family: inherit; font-size: 16px; outline: none; transition: border-color .2s, box-shadow .2s; }
+        .ba-input::placeholder { color: #9ca3af; }
+        .ba-input:focus { border-color: #0f1115; box-shadow: 0 0 0 3px rgba(15,17,21,0.08); }
         .ba-input.pr { padding-right: 42px; }
-        .ba-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: rgba(255,255,255,0.25); display: flex; }
-        .ba-eye:hover { color: rgba(255,255,255,0.5); }
+        .ba-eye { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 0; cursor: pointer; color: #6b7280; display: flex; }
+        .ba-eye:hover { color: #111827; }
 
-        .ba-error { background: rgba(220,38,38,0.07); border: 1px solid rgba(220,38,38,0.22); border-radius: 8px; padding: 10px 14px; color: #f87171; font-size: 12px; line-height: 1.5; margin-bottom: 14px; }
-        .ba-note { background: rgba(251,191,36,0.05); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
-        .ba-note-t { font-size: 12px; color: rgba(251,191,36,0.9); font-weight: 600; margin-bottom: 3px; }
-        .ba-note-b { font-size: 11.5px; color: rgba(251,191,36,0.55); line-height: 1.5; }
-        .ba-success { color: #4ade80; font-size: 12px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+        .ba-error { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; color: #b91c1c; font-size: 13px; line-height: 1.5; margin-bottom: 14px; }
+        .ba-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+        .ba-note-t { font-size: 13px; color: #92400e; font-weight: 600; margin: 0 0 3px; }
+        .ba-note-b { font-size: 12.5px; color: #a16207; line-height: 1.5; margin: 0; }
+        .ba-success { color: #15803d; font-size: 13px; display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
 
-        .ba-pwreq { margin: -4px 0 14px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 10px 12px; }
-        .ba-pwreq-head { font-size: 11px; color: rgba(255,255,255,0.4); margin: 0 0 7px; font-weight: 600; }
-        .ba-pwreq-item { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: rgba(255,255,255,0.4); padding: 2px 0; transition: color .15s; }
-        .ba-pwreq-item.ok { color: #4ade80; }
+        .ba-pwreq { margin: -4px 0 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 12px; }
+        .ba-pwreq-head { font-size: 12px; color: #374151; margin: 0 0 7px; font-weight: 600; }
+        .ba-pwreq-item { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #6b7280; padding: 2px 0; transition: color .15s; }
+        .ba-pwreq-item.ok { color: #15803d; }
         .ba-pwreq-ic { width: 14px; height: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .ba-pwreq-dot { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.25); }
+        .ba-pwreq-dot { width: 5px; height: 5px; border-radius: 50%; background: #9ca3af; }
 
-        .ba-reset { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
-        .ba-reset-hint { font-size: 11.5px; color: rgba(255,255,255,0.28); margin-bottom: 10px; line-height: 1.5; }
-        .ba-reset-btn { width: 100%; padding: 10px; background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: rgba(255,255,255,0.5); font-family: 'Bebas Neue', sans-serif; font-size: 14px; letter-spacing: 2px; cursor: pointer; }
-        .ba-reset-btn:hover:not(:disabled) { border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.75); }
+        .ba-reset { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+        .ba-reset-hint { font-size: 12.5px; color: #6b7280; margin: 0 0 10px; line-height: 1.5; }
+        .ba-reset-btn { width: 100%; padding: 10px; background: #fff; border: 1px solid #d1d5db; border-radius: 6px; color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: 15px; letter-spacing: 2px; cursor: pointer; }
+        .ba-reset-btn:hover:not(:disabled) { border-color: #0f1115; }
 
         .ba-submit { width: 100%; padding: 14px; background: #dc2626; border: none; border-radius: 10px; color: #fff; font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 3px; cursor: pointer; transition: background .2s, box-shadow .2s; margin-top: 4px; }
-        .ba-submit:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 8px 28px rgba(220,38,38,0.4); }
+        .ba-submit:hover:not(:disabled) { background: #b91c1c; box-shadow: 0 6px 18px rgba(220,38,38,0.22); }
         .ba-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        .ba-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 13px; color: rgba(255,255,255,0.3); }
-        .ba-foot-link { color: #f87171; font-weight: 600; background: none; border: none; cursor: pointer; font-family: system-ui, sans-serif; font-size: 13px; }
-        .ba-foot-link:hover { color: #fca5a5; }
-        .ba-seller { margin-top: 14px; text-align: center; font-size: 12px; color: rgba(255,255,255,0.22); }
-        .ba-seller a { color: rgba(255,255,255,0.5); text-decoration: underline; }
+        .ba-foot { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280; }
+        .ba-foot-link { color: #dc2626; font-weight: 600; background: none; border: none; cursor: pointer; font-family: inherit; font-size: 14px; }
+        .ba-foot-link:hover { color: #b91c1c; }
+        .ba-seller { margin-top: 14px; text-align: center; font-size: 13px; color: #6b7280; }
+        .ba-seller a { color: #111827; text-decoration: underline; }
 
         @media (max-width: 860px) {
-          .ba { flex-direction: column; }
+          .ba { flex-direction: column; background: #FFFFFF; }
           .ba-left { display: none; }
-          .ba-right { width: 100%; padding: 40px 24px; min-height: 100vh; }
+          .ba-right { width: 100%; padding: 32px 20px; min-height: 100vh; justify-content: flex-start; }
         }
       `}</style>
 
@@ -480,11 +485,11 @@ export default function BuyerAuthPage() {
                 onChange={(e) => setConsent(e.target.checked)}
                 style={{ marginTop: 2, flexShrink: 0, accentColor: "#dc2626", width: 15, height: 15, cursor: "pointer" }}
               />
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.6 }}>
+              <span style={{ fontSize: 13, color: "#4b5563", lineHeight: 1.6 }}>
                 I confirm I am at least 18 years old and agree to the{" "}
-                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
+                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("terms"); }} style={{ background: "none", border: "none", padding: 0, color: "#dc2626", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Terms of Service</button>
                 {" "}and{" "}
-                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#f87171", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.
+                <button type="button" onClick={(e) => { e.preventDefault(); setLegalDoc("privacy"); }} style={{ background: "none", border: "none", padding: 0, color: "#dc2626", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Privacy Policy</button>.
               </span>
             </label>
           )}

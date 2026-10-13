@@ -904,7 +904,18 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   dealer_id/salesman_id from the listing — a buyer cannot attach themselves to a
   seller of their choosing. Posting is capped at 20 messages/minute and you can
   only post as yourself, as the side you actually are.
-- Guest buyers use Supabase anonymous sign-in (needs the project toggle, ACT-13).
+- **Chat and saving a car need a real account on the marketplace (owner, 2026-10-14,
+  the Mudah model).** 13 guests had opened chats, sellers answered 9, and with no
+  email or push on file those replies reached nobody. `isRealBuyer` /
+  `sendBuyerToSignIn` (`src/lib/buyerAuth.js`) are the one check: `useBuyerThread`
+  returns `needsSignIn` and BuyerChat sends the buyer to `/buyer-login`, back to the
+  car with `?contact=chat` (reopens the chat); `toggleSave` parks the id in the
+  device list and the first load after sign-in merges it. WhatsApp and Call stay
+  open. A guest's EXISTING thread keeps working. Dealer subdomains keep guest chat
+  and device-only saves: sign-in lives on xdrive.my and that session cannot reach
+  `<sub>.xdrive.my` (separate storage per origin) - do not gate there without
+  solving that first.
+- Guest buyers (subdomains + legacy threads) use Supabase anonymous sign-in (needs the project toggle, ACT-13).
   `handle_new_user()` forces `role='buyer'` for anonymous users — without that
   branch every guest gets a `role='dealer'` profile. Do not remove it.
 - Frontend: `src/hooks/useChat.js`, `src/components/chat/{ChatThread,SellerInbox,BuyerChat}.jsx`.

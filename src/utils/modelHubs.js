@@ -17,7 +17,15 @@ import { canonicalModel } from "./modelKey.js";
 export const HUB_BASE = "/used-cars";
 export const HUB_LIVE = ["available", "reserved"];
 // Rows the hubs are built from. Small on purpose: the anon view is public.
-export const HUB_ROW_COLS = "brand,model,status,selling_price,year,state";
+export const HUB_ROW_COLS = "brand,model,status,selling_price,year,state,mileage,condition";
+
+// Buyer guides written for a specific model, keyed by hub path. The hub links
+// down to the guide and the guide links back up, so each one lends the other
+// its relevance. Add a line here when a model gets its own article.
+export const HUB_GUIDES = {
+  "/used-cars/toyota/alphard": { path: "/articles/harga-alphard-recon-malaysia", title: "Harga Toyota Alphard Recon: 2.5 SC vs 2.5 Z" },
+  "/used-cars/toyota/harrier": { path: "/articles/harga-harrier-recon-malaysia", title: "Harga Toyota Harrier Recon: 2.0 Petrol vs Hybrid Rasmi" },
+};
 
 export function hubSlug(s) {
   return String(s || "")
@@ -38,6 +46,52 @@ export function hubPath(brand, model) {
 }
 
 const rm = (n) => `RM ${Math.round(n).toLocaleString("en-MY")}`;
+const span = (lo, hi, f) => (lo === hi ? f(lo) : `${f(lo)} to ${f(hi)}`);
+
+// Live cars per model year, newest first: [{ year, count, minPrice, maxPrice,
+// minKm, maxKm }]. A hub mixes years, and "RM 193k to RM 299k" alone says
+// nothing about what a 2024 costs; this is the question a buyer actually asks.
+function yearRows(live) {
+  const by = new Map();
+  for (const r of live) {
+    const y = Number(r.year);
+    if (!y) continue;
+    if (!by.has(y)) by.set(y, []);
+    by.get(y).push(r);
+  }
+  return [...by.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, rs]) => {
+      const p = rs.map((r) => Number(r.selling_price)).filter((n) => n > 0);
+      const m = rs.map((r) => Number(r.mileage)).filter((n) => n > 0);
+      return {
+        year,
+        count: rs.length,
+        minPrice: p.length ? Math.min(...p) : null,
+        maxPrice: p.length ? Math.max(...p) : null,
+        minKm: m.length ? Math.min(...m) : null,
+        maxKm: m.length ? Math.max(...m) : null,
+      };
+    });
+}
+
+// "8 recon, 1 used" — only the condition values a seller actually picked.
+function conditionCounts(live) {
+  const out = {};
+  for (const r of live) {
+    const c = String(r.condition || "").toLowerCase().trim();
+    if (c) out[c] = (out[c] || 0) + 1;
+  }
+  return out;
+}
+
+// One line per year for copy: "2024: RM 274,000 to RM 287,000 (4 cars, 3,000 to 17,612 km)".
+export function yearLine(y) {
+  const price = y.minPrice == null ? "price on request" : span(y.minPrice, y.maxPrice, rm);
+  const n = (v) => Math.round(v).toLocaleString("en-MY");
+  const kms = y.minKm == null ? "" : `, ${span(y.minKm, y.maxKm, n)} km`;
+  return `${y.year}: ${price} (${y.count} ${y.count === 1 ? "car" : "cars"}${kms})`;
+}
 
 function summarise(rows) {
   const live = rows.filter((r) => HUB_LIVE.includes(r.status));
@@ -53,6 +107,8 @@ function summarise(rows) {
     minYear: years.length ? Math.min(...years) : null,
     maxYear: years.length ? Math.max(...years) : null,
     states,
+    byYear: yearRows(live),
+    conditions: conditionCounts(live),
   };
 }
 
@@ -139,6 +195,19 @@ export function hubCopy(brand, model) {
   ];
   if (yearsTxt) {
     faqs.push({ q: `Which years of ${name} are for sale?`, a: `Listings on XDrive cover ${yearsTxt} ${name} models.` });
+  }
+  if (model && h.byYear.length > 1) {
+    faqs.push({
+      q: `How much is a used ${name} by model year?`,
+      a: `Asking prices on XDrive right now: ${h.byYear.map(yearLine).join("; ")}.`,
+    });
+  }
+  const conds = Object.entries(h.conditions).sort((a, b) => b[1] - a[1]);
+  if (conds.length) {
+    faqs.push({
+      q: `Are these ${name} recon or used?`,
+      a: `Of the ${h.count} listed, ${conds.map(([c, n]) => `${n} ${c}`).join(", ")}, as stated by each seller. Ask the seller for the auction report or service record before you pay a deposit.`,
+    });
   }
   faqs.push({ q: `Where are the ${name} for sale located?`, a: `Cars are listed in ${listStates(h.states)}.` });
   if (!model && brand.models.length) {

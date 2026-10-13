@@ -32,12 +32,14 @@ const ARTICLES = [
   ["/articles/cara-jadi-salesman-kereta-freelance", "How to become a car salesman or freelance car agent in Malaysia: pay structures, skills and finding buyers."],
   ["/articles/akta-sewa-beli-2026-eir-pinjaman-kereta", "What the Hire-Purchase (Amendment) Act 2026 changed for car loans: flat rate and Rule of 78 abolished, EIR on reducing balance."],
   ["/articles/beli-kereta-ev-terpakai-apa-perlu-semak", "What to check before buying a used EV in Malaysia: battery health, warranty transfer, 2026 EV road tax, charging."],
+  ["/articles/harga-alphard-recon-malaysia", "Recon Toyota Alphard prices in Malaysia: asking prices by year on XDrive, 2.5 SC (AH30) vs 2.5 Z (AH40), the official UMW Toyota price, and what to check before paying a deposit."],
+  ["/articles/harga-harrier-recon-malaysia", "Recon Toyota Harrier prices in Malaysia: 2.0 G asking prices on XDrive, S/G/Z grades, and the official UMW Toyota Harrier 2.5 Hybrid compared."],
 ];
 
 const CONTENT = `# XDrive
 
 > XDrive is a Malaysian used-car platform with two sides: a public marketplace at
-> xdrive.my where buyers browse verified used cars from local dealers, and ShiftOS,
+> xdrive.my where buyers browse used, recon and new cars from local dealers and agents, and ShiftOS,
 > a used-car dealer management system (DMS) that dealers and salesmen use to run
 > their inventory, leads CRM, sales records, salesman commission and profit analytics.
 
@@ -48,7 +50,7 @@ software is purpose-built for Malaysian workflows: Puspakom B5/B7 inspections, J
 pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 
 ## For car buyers
-- [Marketplace](${SITE}/): Browse verified used cars for sale in Malaysia from trusted dealers.
+- [Marketplace](${SITE}/): Browse used, recon and new cars for sale in Malaysia from local dealers and agents, with asking prices and seller details.
 - [Showroom / all listings](${SITE}/showroom): Full searchable inventory with filters for price, mileage, year, transmission, condition and location.
 - [Used cars by brand and model](${SITE}/used-cars): Every brand and model currently for sale on XDrive, each with its own page (e.g. /used-cars/toyota/alphard) listing live cars, the asking-price range, model years and locations.
 - [Compare cars](${SITE}/compare): Compare up to 4 used cars side by side on price, monthly instalment, mileage, running costs and an overall value score.

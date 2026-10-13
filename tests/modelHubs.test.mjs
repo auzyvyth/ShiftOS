@@ -4,7 +4,7 @@
 // public_car_listings, including the pre-cleanup spellings that were live
 // until 2026-09-25 ("ALPHARD 2.5L", "Rx350", "992 GT3"), so a regression in
 // grouping shows up as a split hub here before it shows up on Google.
-import { buildHubs, findHub, hubCopy, hubPath, hubSlug, hubCarFilter, hubCrumbs } from '../src/utils/modelHubs.js';
+import { buildHubs, findHub, hubCopy, hubPath, hubSlug, hubCarFilter, hubCrumbs, yearLine } from '../src/utils/modelHubs.js';
 
 let pass = 0;
 const fails = [];
@@ -71,6 +71,25 @@ ok(!/\d+(\.\d+)?%/.test(JSON.stringify(c)), 'no percentages / rates anywhere in 
 const bc = hubCopy(toyota);
 ok(bc.faqs.some((q) => q.a.startsWith('Alphard (3), Harrier (1)')), 'brand FAQ lists models with counts');
 eq(hubCrumbs(toyota, alphard).map((x) => x.path), ['/', '/used-cars', '/used-cars/toyota', '/used-cars/toyota/alphard'], 'breadcrumb trail');
+
+// ── price by model year (real rows only) ──
+const yr = buildHubs([
+  { brand: 'Toyota', model: 'Alphard', status: 'available', selling_price: 274000, year: 2024, mileage: 5500, condition: 'recon' },
+  { brand: 'Toyota', model: 'Alphard', status: 'available', selling_price: 287000, year: 2024, mileage: 3000, condition: 'recon' },
+  { brand: 'Toyota', model: 'Alphard', status: 'available', selling_price: 193000, year: 2021, mileage: 30756, condition: 'recon' },
+  { brand: 'Toyota', model: 'Alphard', status: 'available', selling_price: 295000, year: 2025, mileage: 1819, condition: 'used' },
+  { brand: 'Toyota', model: 'Alphard', status: 'sold', selling_price: 999999, year: 2024, mileage: 1, condition: 'recon' },
+]);
+const ya = findHub(yr, 'toyota', 'alphard').model;
+eq(ya.byYear.map((y) => y.year), [2025, 2024, 2021], 'years newest first');
+eq(ya.byYear[1], { year: 2024, count: 2, minPrice: 274000, maxPrice: 287000, minKm: 3000, maxKm: 5500 }, 'sold car excluded from the year row');
+eq(yearLine(ya.byYear[1]), '2024: RM 274,000 to RM 287,000 (2 cars, 3,000 to 5,500 km)', 'year line');
+eq(yearLine(ya.byYear[0]), '2025: RM 295,000 (1 car, 1,819 km)', 'single-car year line');
+eq(ya.conditions, { recon: 3, used: 1 }, 'conditions from live cars only');
+const yc = hubCopy(findHub(yr, 'toyota').brand, ya);
+ok(yc.faqs.some((f) => f.a.startsWith('Asking prices on XDrive right now: 2025: RM 295,000')), 'by-year FAQ quotes real rows');
+ok(yc.faqs.some((f) => f.a.startsWith('Of the 4 listed, 3 recon, 1 used')), 'condition FAQ counts');
+ok(!hubCopy(toyota, alphard).faqs.some((f) => /recon or used/.test(f.q)), 'no condition FAQ when no seller set one');
 
 console.log(`modelHubs: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log(fails.map((x) => `  FAIL ${x}`).join('\n')); process.exit(1); }
