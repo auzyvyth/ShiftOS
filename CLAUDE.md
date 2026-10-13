@@ -6,8 +6,14 @@
 3. After completing an item, delete it from `TODO.md`, commit the updated file, and push.
 4. Do not start work without asking the user which item to tackle.
 
-## App Store / Play Store readiness — standing work item, every session
-The owner wants forward progress toward shipping on the Apple App Store and
+## App Store / Play Store readiness — PAUSED (owner, 2026-10-09)
+**Store work is paused until there is revenue** (`TODO.md` MOBILE section: "everything
+else needs money, and a technical partner"). Do NOT suggest or push MOBILE-8..11
+unprompted, and ignore the "every session" rule below until the owner lifts the pause.
+A session on 2026-10-13 kept nudging MOBILE-8 because this heading still said
+"every session"; the pause note lived only in TODO.md.
+
+(Original rule, suspended:) The owner wants forward progress toward shipping on the Apple App Store and
 Google Play in EVERY session, not only when asked. Treat it as a background
 work stream running alongside whatever else the session is doing: before
 ending a session, check whether an open MOBILE-*/PWA-* item in `TODO.md` was
