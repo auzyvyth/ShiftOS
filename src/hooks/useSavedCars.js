@@ -2,6 +2,8 @@ import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { readCache, writeCache } from '../utils/panelCache';
+import { isRealBuyer, sendBuyerToSignIn } from '../lib/buyerAuth';
+import { isSubdomain } from './useTenant';
 
 const LS_KEY = 'xdrive_saved_cars';
 const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,seller_role,dealer_is_verified,seller_sold_count,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
@@ -20,7 +22,10 @@ function writeLocalIds(ids) {
 
 async function fetchSavedIds() {
   const { data } = await supabase.auth.getSession();
-  const uid = data.session?.user?.id ?? null;
+  // A guest's anonymous session is not an account: their saves stay on the
+  // device until they really sign in, then merge below.
+  const user = data.session?.user;
+  const uid = isRealBuyer(user) ? user.id : null;
 
   if (!uid) return { userId: null, ids: readLocalIds() };
 
@@ -64,11 +69,30 @@ export function useSavedCars() {
         ids: nextIds,
       }));
 
-      if (userId) {
+      // Saving needs an account on the marketplace (owner, 2026-10-14, the
+      // Mudah model). The id is parked in the device list first, and
+      // fetchSavedIds merges that list into saved_cars on the first load after
+      // sign-in, so the car is saved by the time the buyer is back. Removing
+      // never needs an account. A dealer subdomain keeps device-only saves:
+      // sign-in lives on xdrive.my and its session cannot reach <sub>.xdrive.my.
+      // userId is null until the first load lands, so a tap before then reads
+      // the session live rather than sending a signed-in buyer to sign in.
+      let uid = userId;
+      if (!uid) {
+        const { data: s } = await supabase.auth.getSession();
+        if (isRealBuyer(s.session?.user)) uid = s.session.user.id;
+      }
+      if (!uid && !already && !isSubdomain()) {
+        writeLocalIds(nextIds);
+        sendBuyerToSignIn();
+        return;
+      }
+
+      if (uid) {
         if (already) {
-          await supabase.from('saved_cars').delete().eq('user_id', userId).eq('listing_id', listingId);
+          await supabase.from('saved_cars').delete().eq('user_id', uid).eq('listing_id', listingId);
         } else {
-          await supabase.from('saved_cars').insert({ user_id: userId, listing_id: listingId });
+          await supabase.from('saved_cars').insert({ user_id: uid, listing_id: listingId });
         }
       } else {
         writeLocalIds(nextIds);

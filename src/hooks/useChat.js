@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { usePersistentState } from './usePersistentState';
 import useAuthCaptcha from './useAuthCaptcha';
+import { isRealBuyer } from '../lib/buyerAuth';
+import { isSubdomain } from './useTenant';
 
 // In-app buyer <-> seller chat.
 //
@@ -202,22 +204,22 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
   return { threads, loading, totalUnread, reload: load };
 }
 
-// Buyer side: find or open this buyer's thread for one car. Signs the buyer in
-// anonymously if they have no session, so a shopper can chat without making an
-// account. Supabase keeps the same user id if they register later, so the
-// history carries over.
+// Buyer side: find or open this buyer's thread for one car.
+//
+// Needs a real account on the marketplace (isRealBuyer): a signed-out or
+// anonymous buyer gets needsSignIn instead of a new thread. A guest who
+// already has a thread on this car keeps it, so nobody's conversation is
+// stranded by the switch. A dealer's own subdomain still signs guests in
+// anonymously, because sign-in lives on xdrive.my and its session cannot
+// reach <sub>.xdrive.my (separate storage per origin).
 export function useBuyerThread(listingId, { autoStart = false, active = true } = {}) {
-  // AUTH-6, and this is the one that matters most. signInAnonymously() goes
-  // through /auth/v1/signup — the endpoint the Supabase captcha guards — and
-  // Supabase explicitly recommends a captcha on it. Without a token here,
-  // switching the project captcha on kills EVERY guest buyer conversation
-  // silently: no chat opens, the seller simply stops receiving messages.
-  // There is no widget to put on a form because there is no form; the hook
-  // runs Turnstile invisibly and only shows anything if Cloudflare asks.
+  // AUTH-6: signInAnonymously() goes through /auth/v1/signup, which the
+  // Supabase captcha guards. Only the subdomain path below still calls it.
   const { getToken } = useAuthCaptcha();
   const [threadId, setThreadId] = useState(null);
   const [starting, setStarting] = useState(false);
   const [needsAnon, setNeedsAnon] = useState(false);
+  const [needsSignIn, setNeedsSignIn] = useState(false);
   const checkedRef = useRef(false);
 
   const start = useCallback(async () => {
@@ -225,6 +227,15 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
     setStarting(true);
     try {
       let { data: { user } } = await supabase.auth.getUser();
+      if (!isRealBuyer(user) && !isSubdomain()) {
+        if (user) {
+          const { data } = await supabase.from('chat_threads').select('id')
+            .eq('listing_id', listingId).eq('buyer_id', user.id).maybeSingle();
+          if (data?.id) { setThreadId(data.id); return data.id; }
+        }
+        setNeedsSignIn(true);
+        return null;
+      }
       if (!user) {
         const captchaToken = await getToken();
         const { data, error } = await supabase.auth.signInAnonymously({ options: { captchaToken } });
@@ -274,7 +285,7 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingId, active]);
 
-  return { threadId, start, starting, needsAnon };
+  return { threadId, start, starting, needsAnon, needsSignIn };
 }
 
 // Buyer inbox: every conversation this buyer has started, newest first.
