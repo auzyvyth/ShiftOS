@@ -175,6 +175,26 @@ const STAT = { fontWeight: T.weight.bold, color: C.text, letterSpacing: T.track.
 // Soft tinted control (WA button, badge, pill) in a given state hue.
 const SOFT = (hue) => ({ background: withAlpha(hue, 0.1), border: `1px solid ${withAlpha(hue, 0.2)}`, color: hue });
 
+// Lite is "get found, get the lead"; working the lead is Premium (owner,
+// 2026-10-13). Where a Premium tool used to sit in Lite, this one quiet row
+// says what it is and opens the single upgrade screen (goPremium). One row,
+// no modal, no second upgrade surface.
+function PremiumRow({ title, sub, onClick, cta }) {
+  return (
+    <button type="button" onClick={onClick}
+      style={{ ...CARD, display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.accent, 0.1), color: C.dangerText, flexShrink: 0 }}>
+        <Lock size={14} strokeWidth={2.5} />
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{title}</span>
+        {sub && <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{sub}</span>}
+      </span>
+      <span style={{ flexShrink: 0, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.dangerText, whiteSpace: "nowrap" }}>{cta}</span>
+    </button>
+  );
+}
+
 function useWindowSize() {
   const [w, setW] = useState(window.innerWidth);
   useEffect(() => {
@@ -411,55 +431,6 @@ function CarFormModal({ title, subtitle, onClose, children }) {
           </button>
         </div>
         <div className="overflow-y-auto flex-1 p-5">{children}</div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-// Previous-month commission popup — standalone component (not a plain function
-// called mid-render) because it needs its own useEffect for the body-scroll
-// lock; renderDashboard() below is only invoked when the dashboard tab is
-// active, so a hook inside it would violate the Rules of Hooks. Own overlay-
-// click / × close, so per the app's overlay rules it does NOT register
-// useModalHistory — that's reserved for primary drawers.
-function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct, trendLabel }) {
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "system-ui,sans-serif" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
-            <X size={16} />
-          </button>
-        </div>
-        <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
-        <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>
-          RM {commission.toLocaleString("en-MY")}
-        </p>
-        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{count} car{count !== 1 ? "s" : ""} sold</p>
-        {trendPct !== null ? (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, background: trendPct >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)" }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: trendPct >= 0 ? "#4ade80" : "#f87171" }}>{trendPct >= 0 ? "↑" : "↓"} {Math.abs(trendPct)}%</span>
-            <span style={{ fontSize: 11, color: "#6b7280" }}>vs {trendLabel}</span>
-          </div>
-        ) : (
-          <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>No data from {trendLabel} to compare against.</p>
-        )}
       </div>
     </div>,
     document.body,
@@ -1048,7 +1019,6 @@ export default function SalesmanLite() {
   const [goal, setGoal] = useState({ target: 0, focusCarId: null, earningsTarget: 0 });
   const [goalEditing, setGoalEditing] = useState(false);
   const [goalDraft, setGoalDraft] = useState(0);
-  const [showPrevMonth, setShowPrevMonth] = useState(false);
   const saveGoal = (patch) => {
     const next = { ...goal, ...patch };
     setGoal(next);
@@ -1225,7 +1195,7 @@ export default function SalesmanLite() {
   useEffect(() => {
     if (!userId || !listingsLoaded) return;
     if (profile?.starter_tasks?.dismissed) return;
-    if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+    if (!starterTasksAllDone({ profile, listingCount: myListings.length, noBio: true })) return;
     markStarterTask(userId, "dismissed", profile?.starter_tasks);
   }, [userId, listingsLoaded, profile, myListings.length]);
 
@@ -1347,13 +1317,6 @@ export default function SalesmanLite() {
   // quick brief
   const [quickBriefCar, setQuickBriefCar] = useState(null);
   const [briefCopied, setBriefCopied] = useState(false);
-
-  // loan calculator
-  const [loanCalcLead, setLoanCalcLead] = useState(null);
-  const [loanPrice, setLoanPrice] = useState("");
-  const [loanDown, setLoanDown] = useState("10");
-  const [loanRate, setLoanRate] = useState("3.5");
-  const [loanYears, setLoanYears] = useState("7");
 
   // enquiry expand
   const [expandedEnqId, setExpandedEnqId] = useState(null);
@@ -3086,15 +3049,11 @@ export default function SalesmanLite() {
   // ── Profile completeness score ───────────────────────────────────────────
   const profileScore = () => {
     const checks = [
-      { pts: 25, ok: !!(avatarUrl), label: "Add a profile photo", field: "avatar" },
-      { pts: 25, ok: !!(profile?.whatsapp_number), label: "Add your WhatsApp number", field: "whatsapp_number" },
-      { pts: 20, ok: !!(profile?.full_name), label: "Add your name", field: "full_name" },
-      // `bio`, not `about_text`: about_text is the dealer-storefront "About us"
-      // block, which a standalone Lite seller has no editor for — so this check
-      // could never be satisfied from inside Lite. The mini page and Premium
-      // both read `bio`, and Settings now writes it.
-      { pts: 15, ok: !!String(profile?.bio || "").trim(), label: "Write a short bio", field: "bio" },
-      { pts: 15, ok: !!(profile?.instagram || profile?.tiktok), label: "Link Instagram or TikTok", field: "instagram" },
+      { pts: 35, ok: !!(avatarUrl), label: "Add a profile photo", field: "avatar" },
+      { pts: 35, ok: !!(profile?.whatsapp_number), label: "Add your WhatsApp number", field: "whatsapp_number" },
+      { pts: 30, ok: !!(profile?.full_name), label: "Add your name", field: "full_name" },
+      // Bio + social links left the score with the basic page (2026-10-13):
+      // Lite has no field for them and the page would not show them.
     ];
     const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
     return { pct: earned, missing: checks.filter(c => !c.ok) };
@@ -3153,93 +3112,9 @@ export default function SalesmanLite() {
       else { switchTab("enquiries"); setInboxSubTab("bookings"); }
     };
 
-    // Goal panel data — commission earned this month (sum of commission_amount on sold listings)
-    const soldThisMonth = myListings
-      .filter(c => {
-        if (c.status !== "sold" || !c.sold_at) return false;
-        const d = new Date(c.sold_at);
-        const now = new Date();
-        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-      })
-      .reduce((sum, c) => sum + (Number(c.commission_amount) || 0), 0);
-    const soldCountThisMonth = myListings.filter(c => {
-      if (c.status !== "sold" || !c.sold_at) return false;
-      const d = new Date(c.sold_at);
-      const now = new Date();
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    }).length;
-
-    // Previous-month commission — the Monthly Goal card only ever shows THIS
-    // calendar month (by design — it resets with the month, same as the "Xd
-    // left in <month>" label), which reads as a bug the moment a sale lands
-    // near a month boundary. This feeds the "Previous month" popup so that
-    // history is one tap away instead of just disappearing.
-    const soldInMonth = (year, month) => myListings.filter(c => {
-      if (c.status !== "sold" || !c.sold_at) return false;
-      const d = new Date(c.sold_at);
-      return d.getFullYear() === year && d.getMonth() === month;
-    });
-    const prevMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
-    const twoMonthsAgoDate = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1);
-    const prevMonthSold = soldInMonth(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
-    const twoMonthsAgoSold = soldInMonth(twoMonthsAgoDate.getFullYear(), twoMonthsAgoDate.getMonth());
-    const prevMonthCommission = prevMonthSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
-    const twoMonthsAgoCommission = twoMonthsAgoSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
-    const prevMonthTrendPct = twoMonthsAgoCommission > 0
-      ? Math.round(((prevMonthCommission - twoMonthsAgoCommission) / twoMonthsAgoCommission) * 100)
-      : (prevMonthCommission > 0 ? 100 : null);
-
-    // Sales Overview sparkline — commission earned per day, trailing 14 days,
-    // compared against the 14 days before that (rolling window, not calendar
-    // month, so the trend line and % delta stay meaningful on day 1 of a month).
-    const DAY_MS = 86400000;
-    const todayMidnight = new Date();
-    todayMidnight.setHours(0, 0, 0, 0);
-    // Local calendar date on both sides of the comparison. sold_at is a UTC
-    // timestamp; deriving the day-key via `local midnight -> toISOString()`
-    // converts back to UTC and silently shifts the date back a day for any
-    // timezone ahead of UTC (e.g. MYT, UTC+8) — a same-day sale then never
-    // matches its own key, the running total stays 0, and the whole card
-    // (gated on trendTotal > 0) disappears. Using getFullYear/Month/Date on
-    // both the generated key and the parsed sold_at keeps them in the same
-    // (local) calendar, regardless of timezone.
-    const toLocalDateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const soldWithCommission = myListings.filter(c => c.status === "sold" && c.sold_at);
-    const commissionOnDay = (dateKey) => soldWithCommission
-      .filter(c => toLocalDateKey(new Date(c.sold_at)) === dateKey)
-      .reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
-    // Per-day commission (NOT cumulative). A cumulative line only ever climbs and
-    // then sits flat at the top forever once a deal lands, which read as broken
-    // ("stays flat on top"). Daily values spike on the day a deal is won and drop
-    // back to baseline after — the line actually moves. trendTotal is summed
-    // separately below so the ↑/↓ delta badge still reflects the 14-day total.
-    const commissionTrend = Array.from({ length: 14 }, (_, i) => {
-      const key = toLocalDateKey(new Date(todayMidnight.getTime() - (13 - i) * DAY_MS));
-      return { d: key, val: commissionOnDay(key) };
-    });
-    const trendTotal = commissionTrend.reduce((s, p) => s + p.val, 0);
-    const prevTrendTotal = Array.from({ length: 14 }, (_, i) =>
-      commissionOnDay(toLocalDateKey(new Date(todayMidnight.getTime() - (27 - i) * DAY_MS))),
-    ).reduce((s, v) => s + v, 0);
-    const trendDelta = prevTrendTotal > 0
-      ? Math.round(((trendTotal - prevTrendTotal) / prevTrendTotal) * 100)
-      : (trendTotal > 0 ? 100 : null);
+    // Commission, monthly goal and the "best car to push" card left Lite with
+    // the 2026-10-13 trim (Premium has them); only the live-car list stays.
     const available = myListings.filter(c => c.status === "available");
-    const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
-    const pct = goal.target > 0 ? Math.min((soldThisMonth / goal.target) * 100, 100) : 0;
-    // One source for the goal's state colour — the % badge, the progress bar and
-    // the "smashed" line all read from it, so they can never disagree.
-    const goalHue = pct >= 100 ? C.success : pct >= 60 ? C.info : C.danger;
-    const goalHueText = pct >= 100 ? C.successText : pct >= 60 ? C.infoText : C.dangerText;
-    const focusCar = goal.focusCarId ? myListings.find(c => c.id === goal.focusCarId && c.status === "available") : null;
-    const scoreCar = (c) => {
-      const s = carStatsMap[c?.id] || {};
-      return (s.views || 0) * 2 + (s.enquiries || 0) * 5;
-    };
-    const autoFocus = !focusCar && available.length > 0
-      ? available.reduce((best, c) => (scoreCar(c) > scoreCar(best) ? c : best), available[0])
-      : null;
-    const highlighted = focusCar || autoFocus;
 
     const greetingWord = (() => {
       const h = new Date().getHours();
@@ -3280,12 +3155,7 @@ export default function SalesmanLite() {
             palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
             onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
             onVisitMinipage={openMyMinipage}
-            onEditBio={() => {
-              // Bio sits in the Contact & Location card, not the default section.
-              setSettingsNav("contact");
-              switchTab("settings");
-              setTimeout(() => document.getElementById("lite-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
-            }}
+            noBio
             onDismiss={dismissStarterTasks}
           />
         )}
@@ -3467,59 +3337,16 @@ export default function SalesmanLite() {
             moving them in source; the KPI strip spans both columns. */}
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
 
-        {/* ── Follow-up Needed ── */}
+        {/* ── Follow-up Needed ── Premium since 2026-10-13: Lite still sees
+            the count (KPI strip, hero pill); the call list itself, the reminders
+            and "WhatsApp all" are what Premium sells. */}
         {staleLeads.length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted, flexShrink: 0 }}>
-                  <Bell size={12} strokeWidth={2.5} />
-                </span>
-                <span>{t("salesmanLite.dash.followUpNeeded")}</span>
-                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: R.pill, background: C.fillStrong, color: C.text, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "0 5px" }}>{staleLeads.length}</span>
-              </div>
-              {staleLeads.some(l => l.phone) && (
-                <button onClick={() => { setBatchWALeads(staleLeads.filter(l => l.phone)); setBatchWAIdx(0); }}
-                  style={{ background: "transparent", border: `1px solid ${C.borderStrong}`, color: C.text, fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}>
-                  {t("salesmanLite.dash.waAll")}
-                </button>
-              )}
-            </div>
-            <div>
-              {staleLeads.slice(0, 8).map((lead, i, arr) => {
-                const reason = followUpStatus(lead).reason;
-                return (
-                  <FollowUpRow
-                    key={lead.id}
-                    lead={lead}
-                    stageText={stageLabel(lead.stage || "new").replace(/^./, (c) => c.toUpperCase())}
-                    carText={lead.car_listings ? `${lead.car_listings.brand} ${lead.car_listings.model}` : t("salesmanLite.dash.noCar")}
-                    reasonText={reason ? t(`salesmanLite.dash.followUpReason.${reason}`, { defaultValue: FOLLOW_UP_REASON[reason].label }) : undefined}
-                    onOpen={() => { setActiveTab("leads"); setMobileLeadStage(lead.stage); triggerGlow([lead.id]); }}
-                    onWA={() => pingWA(lead)}
-                    last={i === arr.length - 1}
-                  />
-                );
-              })}
-              {staleLeads.length > 8 && (
-                <button
-                  onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
-                  style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textSec, background: C.fillSubtle, border: "none", borderTop: `1px solid ${C.line}`, cursor: "pointer", fontFamily: "inherit" }}
-                >
-                  {t("salesmanLite.dash.viewAllFollowUps", { defaultValue: `+${staleLeads.length - 8} more in pipeline`, count: staleLeads.length - 8 })}
-                </button>
-              )}
-            </div>
-            {!notifBannerDismissed && browserNotifPerm === 'default' && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: `1px solid ${C.line}`, background: C.fillSubtle }}>
-                <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flex: 1 }}>{t("salesmanLite.dash.notifyColdLeads")}</p>
-                {/* Was indigo (#818cf8) — a fifth saturated hue on this screen that
-                    carried no meaning of its own. Uses the shared info blue now. */}
-                <button onClick={requestBrowserNotif} style={{ ...SOFT(C.infoText), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>{t("salesmanLite.dash.enable")}</button>
-                <button onClick={dismissNotifBanner} style={{ fontSize: T.size.lg, padding: "0 4px", background: "none", border: "none", color: C.textDim, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
-              </div>
-            )}
-          </div>
+          <PremiumRow
+            onClick={goPremium}
+            cta={t("salesmanLite.premiumRow.cta")}
+            title={t("salesmanLite.premiumRow.followUpTitle", { count: staleLeads.length })}
+            sub={t("salesmanLite.premiumRow.followUpSub")}
+          />
         )}
 
         {/* ── Today's Agenda ── */}
@@ -3650,154 +3477,14 @@ export default function SalesmanLite() {
           ))}
         </div>
 
-        {/* ── Goal ── */}
-        <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.dash.monthlyGoal")}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
-                <button
-                  onClick={() => setShowPrevMonth(true)}
-                  title="This card only tracks the current month — see history"
-                  style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "3px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}
-                >
-                  Previous month
-                </button>
-              </div>
-            </div>
-            <div style={{ padding: 18 }}>
-              {goalEditing ? (
-                <div>
-                  <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.goal.setTarget", { month: new Date().toLocaleDateString(i18n.language === "ms" ? "ms-MY" : "en-MY", { month: "long" }) })}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: T.size.base, color: C.textSec, fontWeight: T.weight.semibold }}>RM</span>
-                    <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
-                      style={{ width: 100, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "6px 10px", color: C.text, fontSize: T.size.lg, fontWeight: T.weight.bold, fontFamily: "inherit" }} autoFocus />
-                    <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: T.size.base, padding: "6px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>{t("salesmanLite.goal.save")}</button>
-                    <button onClick={() => setGoalEditing(false)} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.cancel")}</button>
-                  </div>
-                  <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>{t("salesmanLite.goal.perCarHint")}</p>
-                </div>
-              ) : goal.target > 0 ? (
-                <div>
-                  {/* Commission earned + compact % badge (replaced the big ring) */}
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ ...EYEBROW, margin: "0 0 2px" }}>{t("salesmanLite.goal.commissionEarned")}</p>
-                      <p style={{ ...STAT, margin: "0 0 2px", fontSize: T.size.hero }}>
-                        RM {soldThisMonth.toLocaleString("en-MY")}
-                      </p>
-                      <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.goal.ofGoal", { target: goal.target.toLocaleString("en-MY"), count: soldCountThisMonth })}</p>
-                    </div>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: R.pill, fontSize: T.size.sm, fontWeight: T.weight.bold, flexShrink: 0,
-                      background: withAlpha(goalHue, 0.12), color: goalHueText }}>
-                      {Math.round(pct)}% {t("salesmanLite.goal.done")}
-                    </span>
-                  </div>
-                  {/* Thin progress bar — the small "percentage to goal" visual that
-                      replaced the oversized ring. */}
-                  <div style={{ height: 5, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden", margin: "10px 0 8px" }}>
-                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: R.pill, background: goalHue, transition: "width 0.6s ease" }} />
-                  </div>
-                  {pct >= 100
-                    ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>{t("salesmanLite.goal.smashed")}</p>
-                    : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.goal.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY"), left: daysLeft > 0 ? t("salesmanLite.goal.daysLeft", { count: daysLeft }) : t("salesmanLite.goal.lastDay") })}</p>
-                  }
-                  {/* Commission trendline — merged in from the old Sales Overview
-                      card. Daily (per-day) values so it rises on a won day and drops
-                      back after, instead of a cumulative line pinned to the top. */}
-                  {trendTotal > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
-                        <p style={{ ...EYEBROW, margin: 0 }}>Commission — last 14 days</p>
-                        {trendDelta !== null && (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: R.pill, fontSize: T.size.xs, fontWeight: T.weight.bold,
-                            background: withAlpha(trendDelta >= 0 ? C.success : C.danger, 0.12),
-                            color: trendDelta >= 0 ? C.successText : C.dangerText }}>
-                            {trendDelta >= 0 ? "↑" : "↓"} {Math.abs(trendDelta)}%
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ height: 70, margin: "4px -8px -6px" }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={commissionTrend} margin={{ top: 6, right: 8, bottom: 0, left: 8 }}>
-                            <defs>
-                              <linearGradient id="sliteCommissionFill" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stopColor={C.accent} stopOpacity={0.35} />
-                                <stop offset="100%" stopColor={C.accent} stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <XAxis dataKey="d" hide />
-                            <RTooltip
-                              cursor={{ stroke: C.borderStrong }}
-                              contentStyle={{ background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, fontSize: T.size.sm }}
-                              labelStyle={{ color: C.textSec }}
-                              itemStyle={{ color: C.dangerText }}
-                              labelFormatter={(v) => {
-                                const [y, m, day] = v.split("-").map(Number);
-                                return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
-                              }}
-                              formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
-                            />
-                            <Area type="monotone" dataKey="val" stroke={C.dangerText} strokeWidth={2} fill="url(#sliteCommissionFill)" dot={false} activeDot={{ r: 4, fill: C.dangerText }} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  )}
-                  <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: T.size.xs, padding: "3px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.editTarget")}</button>
-                </div>
-              ) : (
-                <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: R.md, background: withAlpha(C.accent, 0.06), border: `1px dashed ${withAlpha(C.accent, 0.2)}`, color: C.danger, fontSize: T.size.base, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}>
-                  {t("salesmanLite.goal.setGoalCta")}
-                </button>
-              )}
-
-              {/* Focus car */}
-              {highlighted && (
-                <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.line}` }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <p style={{ ...EYEBROW, margin: 0 }}>
-                      {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanLite.goal.pinned")}</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanLite.goal.bestToPush")}</>}
-                    </p>
-                    {focusCar && (
-                      <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.unpin")}</button>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {highlighted.images?.[0] ? (
-                      <img src={highlighted.images[0]} alt="" style={{ width: 52, height: 40, objectFit: "cover", borderRadius: R.md, flexShrink: 0, border: `1px solid ${C.line}` }} />
-                    ) : (
-                      <div style={{ width: 52, height: 40, borderRadius: R.md, background: C.fill, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={18} color={C.textDim} /></div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {[highlighted.year, highlighted.brand, highlighted.model].filter(Boolean).join(" ")}
-                      </p>
-                      <p style={{ margin: "1px 0 0", fontSize: T.size.sm, color: C.textSec, fontWeight: T.weight.semibold }}>
-                        {highlighted.selling_price ? `RM ${Number(highlighted.selling_price).toLocaleString("en-MY")}` : "—"}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-                      <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", fontWeight: T.weight.semibold }}>WA</button>
-                      {!focusCar && (
-                        <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.goal.pin")}</button>
-                      )}
-                    </div>
-                  </div>
-                  {available.length > 1 && (
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 8 }}>
-                      {available.filter(c => c.id !== highlighted.id).slice(0, 4).map(c => (
-                        <button key={c.id} onClick={() => saveGoal({ focusCarId: c.id })} style={{ fontSize: T.size.xs, padding: "3px 9px", borderRadius: R.sm, background: C.fillSubtle, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit", maxWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {c.brand} {c.model}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+        {/* ── Goal ── commission + monthly goal are Premium (2026-10-13).
+            "Commission tracking" was sold as Premium while Lite had it. */}
+        <PremiumRow
+          onClick={goPremium}
+          cta={t("salesmanLite.premiumRow.cta")}
+          title={t("salesmanLite.premiumRow.commissionTitle")}
+          sub={t("salesmanLite.premiumRow.commissionSub")}
+        />
 
         {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
 
@@ -3807,420 +3494,12 @@ export default function SalesmanLite() {
 
         </div>
 
-        <PrevMonthModal
-          open={showPrevMonth}
-          onClose={() => setShowPrevMonth(false)}
-          monthLabel={prevMonthDate.toLocaleDateString("en-MY", { month: "long", year: "numeric" })}
-          commission={prevMonthCommission}
-          count={prevMonthSold.length}
-          trendPct={prevMonthTrendPct}
-          trendLabel={twoMonthsAgoDate.toLocaleDateString("en-MY", { month: "short" })}
-        />
 
       </div>
     );
   };
 
   // ── RENDER PERFORMANCE ────────────────────────────────────────────────────
-
-  const renderPerformance = () => {
-    const now = Date.now();
-    const weekAgo = now - 7 * 86400000;
-    const monthAgo = now - 30 * 86400000;
-
-    // Stage classification
-    const ACTIVE_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
-    const WON_STAGES = ["won","closed_won"];
-    const LOST_STAGES = ["lost","closed_lost"];
-    const FUNNEL_STAGES = ["new","contacted","viewing_booked","test_drive","negotiating","deposit_taken"];
-    const FUNNEL_LABELS = { new: stageLabel("new"), contacted: stageLabel("contacted"), viewing_booked: stageLabel("viewing_booked"), test_drive: stageLabel("test_drive"), negotiating: stageLabel("negotiating"), deposit_taken: stageLabel("deposit_taken") };
-
-    const allLeads = leads;
-    const activeLeads = allLeads.filter(l => ACTIVE_STAGES.includes(l.stage));
-    const wonLeads = allLeads.filter(l => WON_STAGES.includes(l.stage));
-    const lostLeads = allLeads.filter(l => LOST_STAGES.includes(l.stage));
-    const closedLeads = [...wonLeads, ...lostLeads];
-
-    // Close rate
-    const closeRate = closedLeads.length > 0 ? Math.round((wonLeads.length / closedLeads.length) * 100) : null;
-    const overallRate = allLeads.length > 0 ? Math.round((wonLeads.length / allLeads.length) * 100) : null;
-
-    // This month
-    const monthWon = wonLeads.filter(l => new Date(l.updated_at) >= new Date(now - 30 * 86400000));
-    const monthLeads = allLeads.filter(l => new Date(l.created_at) >= new Date(now - 30 * 86400000));
-    const monthCloseRate = monthLeads.length > 0 ? Math.round((monthWon.length / monthLeads.length) * 100) : null;
-
-    // This week
-    const weekLeads = allLeads.filter(l => new Date(l.created_at).getTime() >= weekAgo);
-    const weekWon = wonLeads.filter(l => new Date(l.updated_at).getTime() >= weekAgo);
-
-    // Stale / follow-up
-    const staleCount = staleLeads.length;
-    const leadsFollowedUpThisWeek = activeLeads.filter(l => l.follow_up_at && new Date(l.follow_up_at).getTime() >= weekAgo).length;
-    const leadsWithNoFollowUp = activeLeads.filter(l => !l.follow_up_at).length;
-
-    // Avg days to close (won leads only, from created to updated)
-    const closingTimes = wonLeads
-      .filter(l => l.created_at && l.updated_at)
-      .map(l => (new Date(l.updated_at) - new Date(l.created_at)) / 86400000);
-    const avgDaysToClose = closingTimes.length > 0
-      ? Math.round(closingTimes.reduce((a, b) => a + b, 0) / closingTimes.length)
-      : null;
-
-    // Lead source breakdown
-    const sourceMap = {};
-    allLeads.forEach(l => {
-      const src = l.lead_source || "manual";
-      if (!sourceMap[src]) sourceMap[src] = { total: 0, won: 0 };
-      sourceMap[src].total++;
-      if (WON_STAGES.includes(l.stage)) sourceMap[src].won++;
-    });
-    const sources = Object.entries(sourceMap).sort((a, b) => b[1].total - a[1].total);
-
-    // Pipeline funnel counts
-    const funnelCounts = FUNNEL_STAGES.map(s => ({
-      stage: s,
-      label: FUNNEL_LABELS[s],
-      count: allLeads.filter(l => l.stage === s).length,
-    }));
-    const funnelMax = Math.max(...funnelCounts.map(f => f.count), 1);
-
-    // Lead aging — active leads by days in pipeline
-    const leadAging = activeLeads.map(l => ({
-      id: l.id,
-      name: l.buyer_name || "—",
-      stage: l.stage,
-      days: Math.floor((now - new Date(l.created_at).getTime()) / 86400000),
-      car: l.car_listings,
-    })).sort((a, b) => b.days - a.days);
-
-    // WA activity proxy — leads updated in last 7 days (indicates contact)
-    const contactedThisWeek = activeLeads.filter(l =>
-      new Date(l.updated_at).getTime() >= weekAgo
-    ).length;
-
-    // Coaching nudges — rule-based
-    const nudges = [];
-    if (staleCount > 0) nudges.push({
-      key: "stale",
-      type: "warn",
-      icon: <Clock size={14} />,
-      title: t("salesmanLite.perf.nudgeStaleTitle", { count: staleCount }),
-      body: t("salesmanLite.perf.nudgeStaleBody", { count: staleCount }),
-      cta: t("salesmanLite.perf.nudgeGoToLeads"),
-      ctaAction: () => setActiveTab("leads"),
-    });
-    if (leadsWithNoFollowUp > 2) nudges.push({
-      key: "no_followup",
-      type: "warn",
-      icon: <Target size={14} />,
-      title: t("salesmanLite.perf.nudgeNoFollowupTitle", { count: leadsWithNoFollowUp }),
-      body: t("salesmanLite.perf.nudgeNoFollowupBody"),
-      cta: t("salesmanLite.perf.nudgeSetFollowups"),
-      ctaAction: () => setActiveTab("leads"),
-    });
-    if (contactedThisWeek === 0 && activeLeads.length > 0) nudges.push({
-      key: "no_contact",
-      type: "warn",
-      icon: <Zap size={14} />,
-      title: t("salesmanLite.perf.nudgeNoContactTitle"),
-      body: t("salesmanLite.perf.nudgeNoContactBody", { count: activeLeads.length }),
-      cta: t("salesmanLite.perf.nudgeContactLeads"),
-      ctaAction: () => setActiveTab("leads"),
-    });
-    if (closeRate !== null && closeRate < 20 && closedLeads.length >= 3) nudges.push({
-      key: "low_close",
-      type: "tip",
-      icon: <TrendingUp size={14} />,
-      title: t("salesmanLite.perf.nudgeLowCloseTitle", { rate: closeRate }),
-      body: t("salesmanLite.perf.nudgeLowCloseBody"),
-      cta: null,
-    });
-    if (avgDaysToClose !== null && avgDaysToClose > 21) nudges.push({
-      key: "slow_close",
-      type: "tip",
-      icon: <Clock size={14} />,
-      title: t("salesmanLite.perf.nudgeSlowCloseTitle", { days: avgDaysToClose }),
-      body: t("salesmanLite.perf.nudgeSlowCloseBody"),
-      cta: null,
-    });
-    if (nudges.length === 0 && wonLeads.length > 0) nudges.push({
-      key: "on_track",
-      type: "good",
-      icon: <Award size={14} />,
-      title: t("salesmanLite.perf.nudgeOnTrackTitle"),
-      body: t("salesmanLite.perf.nudgeOnTrackBody", { count: wonLeads.length, won: wonLeads.length, active: activeLeads.length }),
-      cta: null,
-    });
-
-    const CARD = { background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, overflow: "hidden" };
-    const CARD_HEADER = {
-      padding: "13px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-      fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "#475569", fontWeight: 700,
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-    };
-    const nudgeColor = { warn: { bg: "rgba(239,68,68,0.07)", border: "rgba(239,68,68,0.18)", icon: "#ef4444", title: "#f87171" }, tip: { bg: "rgba(59,130,246,0.07)", border: "rgba(59,130,246,0.18)", icon: "#3b82f6", title: "#93c5fd" }, good: { bg: "rgba(34,197,94,0.07)", border: "rgba(34,197,94,0.18)", icon: "#22c55e", title: "#86efac" } };
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-        {/* ── Header ── */}
-        <div>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#f1f5f9", letterSpacing: "-0.3px" }}>{t("salesmanLite.perf.header")}</p>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.headerSub")}</p>
-        </div>
-
-        {/* ── Coaching nudges (collapsed by default — tap a row to reveal) ── */}
-        {nudges.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {nudges.map((n) => {
-              const c = nudgeColor[n.type];
-              const open = openNudgeKeys.has(n.key);
-              return (
-                <div key={n.key} style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 12, overflow: "hidden" }}>
-                  <button
-                    onClick={() => toggleNudge(n.key)}
-                    aria-expanded={open}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
-                  >
-                    <span style={{ color: c.icon, flexShrink: 0, display: "flex" }}>{n.icon}</span>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: c.title, flex: 1, minWidth: 0 }}>{n.title}</p>
-                    {open
-                      ? <ChevronUp size={16} style={{ color: c.icon, flexShrink: 0 }} />
-                      : <ChevronDown size={16} style={{ color: c.icon, flexShrink: 0 }} />}
-                  </button>
-                  {open && (
-                    <div className="slite-nudge-reveal" style={{ padding: "0 14px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#6b7280", lineHeight: 1.6 }}>{n.body}</p>
-                      {n.cta && (
-                        <button onClick={n.ctaAction} style={{ fontSize: 11, padding: "5px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>{n.cta} →</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── Close Rate ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>{t("salesmanLite.perf.closeRate")}</span>
-            <span>{t("salesmanLite.perf.allTime")}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
-            {[
-              { label: t("salesmanLite.perf.totalLeads"), value: allLeads.length, note: t("salesmanLite.perf.everCreated") },
-              { label: t("salesmanLite.perf.closedWon"), value: wonLeads.length, note: t("salesmanLite.perf.dealsDone"), color: "#22c55e" },
-              { label: t("salesmanLite.perf.closedLost"), value: lostLeads.length, note: t("salesmanLite.perf.didntConvert"), color: "#ef4444" },
-              { label: t("salesmanLite.perf.closeRate"), value: closeRate !== null ? `${closeRate}%` : "—", note: t("salesmanLite.perf.closeRateFormula"), color: closeRate === null ? "#475569" : closeRate >= 40 ? "#22c55e" : closeRate >= 20 ? "#eab308" : "#ef4444" },
-            ].map(({ label, value, note, color }, i, arr) => (
-              <div key={label} style={{
-                padding: "18px 20px",
-                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                borderBottom: isMobile && i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
-              }}>
-                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color: color || "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value ?? "—"}</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
-              </div>
-            ))}
-          </div>
-          {/* This month strip */}
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700 }}>{t("salesmanLite.perf.thisMonth")}</span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.newLeadsCount", { count: monthLeads.length })}</span>
-            <span style={{ fontSize: 12, color: "#22c55e", fontWeight: 600 }}>{t("salesmanLite.perf.wonCount", { count: monthWon.length })}</span>
-            {monthCloseRate !== null && <span style={{ fontSize: 12, color: monthCloseRate >= 30 ? "#22c55e" : "#eab308", fontWeight: 700 }}>{t("salesmanLite.perf.closeRatePct", { count: monthCloseRate })}</span>}
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{t("salesmanLite.perf.leadsThisWeek", { count: weekLeads.length })}</span>
-          </div>
-        </div>
-
-        {/* ── Pipeline Funnel ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>{t("salesmanLite.perf.pipelineFunnel")}</span>
-            <span>{t("salesmanLite.perf.activeCount", { count: activeLeads.length })}</span>
-          </div>
-          <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {funnelCounts.map(({ stage, label, count }) => {
-              const pct = funnelMax > 0 ? (count / funnelMax) * 100 : 0;
-              const stageColors = { new: "#3b82f6", contacted: "#eab308", viewing_booked: "#a78bfa", test_drive: "#34d399", negotiating: "#fb923c", deposit_taken: "#22c55e" };
-              const color = stageColors[stage] || "#94a3b8";
-              return (
-                <div key={stage} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>{label}</p>
-                  <div style={{ flex: 1, height: 22, background: "rgba(255,255,255,0.04)", borderRadius: 6, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${Math.max(pct, count > 0 ? 4 : 0)}%`, background: color, borderRadius: 6, opacity: 0.8, transition: "width 0.4s ease" }} />
-                  </div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: count > 0 ? "#f1f5f9" : "#374151", width: 24, textAlign: "right", flexShrink: 0 }}>{count}</p>
-                </div>
-              );
-            })}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 4, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#475569", width: isMobile ? 76 : 100, flexShrink: 0, textAlign: "right" }}>{t("salesmanLite.perf.won")}</p>
-              <div style={{ flex: 1, height: 22, background: "rgba(34,197,94,0.08)", borderRadius: 6, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${Math.min((wonLeads.length / funnelMax) * 100, 100)}%`, background: "#22c55e", borderRadius: 6, transition: "width 0.4s ease" }} />
-              </div>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#22c55e", width: 24, textAlign: "right", flexShrink: 0 }}>{wonLeads.length}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Follow-up Habit ── */}
-        <div style={CARD}>
-          <div style={CARD_HEADER}>
-            <span>{t("salesmanLite.perf.followUpHabits")}</span>
-            <span>{t("salesmanLite.perf.days7")}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)" }}>
-            {[
-              { label: t("salesmanLite.perf.activeLeads"), value: activeLeads.length, note: t("salesmanLite.perf.inPipelineNow") },
-              { label: t("salesmanLite.perf.contactedThisWeek"), value: contactedThisWeek, note: t("salesmanLite.perf.leadsUpdated"), color: contactedThisWeek > 0 ? "#22c55e" : "#ef4444" },
-              { label: t("salesmanLite.perf.noFollowUpSet"), value: leadsWithNoFollowUp, note: t("salesmanLite.perf.noDateScheduled"), color: leadsWithNoFollowUp > 0 ? "#ef4444" : "#22c55e" },
-              { label: t("salesmanLite.perf.overdue"), value: staleCount, note: t("salesmanLite.perf.noContact48"), color: staleCount > 0 ? "#ef4444" : "#22c55e" },
-            ].map(({ label, value, note, color }, i, arr) => (
-              <div key={label} style={{
-                padding: "16px 20px",
-                borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-                borderBottom: isMobile && i < 2 ? "1px solid rgba(255,255,255,0.05)" : "none",
-              }}>
-                <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color: color || "#f1f5f9", letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
-              </div>
-            ))}
-          </div>
-          {activeLeads.length > 0 && contactedThisWeek === 0 && (
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(239,68,68,0.04)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>{t("salesmanLite.perf.habitNone", { count: activeLeads.length })}</p>
-            </div>
-          )}
-          {activeLeads.length > 0 && contactedThisWeek > 0 && contactedThisWeek < activeLeads.length && (
-            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 18px", background: "rgba(234,179,8,0.03)" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#eab308" }}>{t("salesmanLite.perf.habitSome", { done: contactedThisWeek, total: activeLeads.length })}</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Speed to Close ── */}
-        {(avgDaysToClose !== null || wonLeads.length > 0) && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.perf.speedConversion")}</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(3,1fr)" }}>
-              {[
-                { label: t("salesmanLite.perf.avgDaysToClose"), value: avgDaysToClose !== null ? `${avgDaysToClose}d` : "—", note: avgDaysToClose !== null ? (avgDaysToClose <= 14 ? t("salesmanLite.perf.fastClose") : avgDaysToClose <= 30 ? t("salesmanLite.perf.normalPace") : t("salesmanLite.perf.urgencyTactics")) : t("salesmanLite.perf.closeMoreToSee"), color: avgDaysToClose === null ? "#475569" : avgDaysToClose <= 14 ? "#22c55e" : avgDaysToClose <= 30 ? "#eab308" : "#ef4444" },
-                { label: t("salesmanLite.perf.dealsClosedTotal"), value: wonLeads.length, note: t("salesmanLite.perf.allTime"), color: wonLeads.length > 0 ? "#22c55e" : "#475569" },
-                { label: t("salesmanLite.perf.activePipeline"), value: activeLeads.length, note: t("salesmanLite.perf.lostAllTime", { count: lostLeads.length }), color: "#3b82f6" },
-              ].map(({ label, value, note, color }, i, arr) => (
-                <div key={label} style={{ padding: "18px 20px", borderRight: !isMobile && i < arr.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", borderBottom: isMobile && i < 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-                  <p style={{ margin: "0 0 3px", fontSize: 26, fontWeight: 700, color, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</p>
-                  <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{note}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Lead Source ── */}
-        {sources.length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.perf.leadSources")}</span>
-              <span>{t("salesmanLite.perf.whereFrom")}</span>
-            </div>
-            <div style={{ padding: "0" }}>
-              {sources.map(([src, { total, won }], i) => {
-                const srcRate = total > 0 ? Math.round((won / total) * 100) : 0;
-                const srcLabels = { enquiry: t("salesmanLite.leads.srcEnquiry"), manual: t("salesmanLite.perf.srcManualAdd"), whatsapp: "WhatsApp", facebook: "Facebook", tiktok: "TikTok", referral: t("salesmanLite.leads.srcReferral"), other: t("salesmanLite.perf.srcOther") };
-                return (
-                  <div key={src} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i < sources.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", background: i % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{srcLabels[src] || src}</p>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 99, overflow: "hidden", maxWidth: 120 }}>
-                          <div style={{ height: "100%", width: `${srcRate}%`, background: srcRate >= 30 ? "#22c55e" : srcRate >= 15 ? "#eab308" : "#3b82f6", borderRadius: 99 }} />
-                        </div>
-                        <p style={{ margin: 0, fontSize: 11, color: "#475569" }}>{t("salesmanLite.perf.closeRatePct", { count: srcRate })}</p>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{total}</p>
-                      <p style={{ margin: 0, fontSize: 10, color: "#22c55e" }}>{t("salesmanLite.perf.wonCount", { count: won })}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Traffic by platform (share-channel attribution) ── */}
-        {Object.keys(channelMap).length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.perf.trafficSources")}</span>
-              <span>{t("salesmanLite.perf.whichPlatform")}</span>
-            </div>
-            <div style={{ padding: "16px 18px" }}>
-              <ChannelBreakdown rows={Object.values(channelMap).flat()} metric="views" title="" />
-            </div>
-          </div>
-        )}
-
-        {/* ── Lead Aging ── */}
-        {leadAging.length > 0 && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.perf.leadAging")}</span>
-              <span>{t("salesmanLite.perf.oldestFirst")}</span>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "8px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              {[t("salesmanLite.perf.colLead"), t("salesmanLite.perf.colStage"), t("salesmanLite.perf.colInPipeline"), t("salesmanLite.perf.colAction")].map((h, i) => (
-                <p key={h} style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: i > 0 ? "center" : "left" }}>{h}</p>
-              ))}
-            </div>
-            {leadAging.slice(0, 8).map((l, idx) => {
-              const stageC = STAGE_COLOR[l.stage] || { bg: "rgba(148,163,184,0.1)", border: "rgba(148,163,184,0.2)", tx: "#94a3b8" };
-              const ageColor = l.days > 21 ? "#ef4444" : l.days > 10 ? "#eab308" : "#94a3b8";
-              return (
-                <div key={idx} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "grid", gridTemplateColumns: "1fr 80px 70px 60px", padding: "11px 18px", alignItems: "center", borderBottom: idx < Math.min(leadAging.length, 8) - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", background: idx % 2 === 1 ? "rgba(255,255,255,0.015)" : "transparent", cursor: "pointer" }}>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.name}</p>
-                    {l.car && <p style={{ margin: 0, fontSize: 10, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.car.brand} {l.car.model}</p>}
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 5, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>{stageLabel(l.stage || "new")}</span>
-                  </div>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: ageColor, textAlign: "center" }}>{l.days}d</p>
-                  <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: 10, color: "#475569" }}>→ {t("salesmanLite.tabs.leads")}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ── Empty state ── */}
-        {allLeads.length === 0 && (
-          <div style={{ textAlign: "center", padding: "48px 24px" }}>
-            <BarChart2 size={32} strokeWidth={1.5} style={{ color: "#475569", margin: "0 auto 8px", display: "block" }} />
-            <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.perf.noDataYet")}</p>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#475569" }}>{t("salesmanLite.perf.noDataSub")}</p>
-            <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, padding: "8px 18px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontWeight: 700, fontFamily: "inherit" }}>{t("salesmanLite.perf.goToListings")}</button>
-          </div>
-        )}
-
-      </div>
-    );
-  };
-
-  // ── RENDER LISTINGS ───────────────────────────────────────────────────────
 
   const renderListings = () => {
     const enriched = myListings.map((car) => {
@@ -5763,18 +5042,13 @@ export default function SalesmanLite() {
                     )}
                   </div>
 
-                  {/* Tool row 1 */}
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { const price = pl.car_listings?.selling_price || ""; setLoanPrice(String(price)); setLoanCalcLead(pl); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <DollarSign size={12} /> {t("salesmanLite.drawer.loanCalc")}
-                    </button>
-                    <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <PhoneCall size={12} /> {t("salesmanLite.drawer.logCall")}
-                    </button>
-                    <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at ? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: pl.follow_up_at ? withAlpha(C.warn, 0.12) : C.fill, border: pl.follow_up_at ? `1px solid ${withAlpha(C.warn, 0.3)}` : `1px solid ${C.border}`, color: pl.follow_up_at ? C.warnText : C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
-                      <Clock size={12} /> {t("salesmanLite.drawer.setReminder")}
-                    </button>
-                  </div>
+                  {/* Tool row 1: reminders + call log are Premium (2026-10-13). The
+                      flat-rate loan calculator that sat here is gone: the HP Act
+                      2026 ended flat rates, and it sent the buyer an instalment
+                      ~9% too low. Premium's loan desk uses financing.js. */}
+                  <button type="button" onClick={goPremium} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", alignSelf: "flex-start" }}>
+                    <Lock size={12} /> {t("salesmanLite.premiumRow.leadTools")}
+                  </button>
 
                   {/* Tool row 2 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -6408,10 +5682,9 @@ export default function SalesmanLite() {
                   setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
                   setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
                 }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
-                <button style={secBtn} onClick={() => {
-                  if (!profile?.telegram_chat_id) { setTelegramSetupModal(true); return; }
-                  setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
-                }}><Bell size={13} color={apt.remind_at ? "#fbbf24" : undefined} /> {t("salesmanLite.inbox.setReminder")}</button>
+                {/* Telegram booking reminders are Premium (2026-10-13); the
+                    appointment-reminder cron also skips Lite sellers. */}
+                <button style={secBtn} onClick={goPremium}><Lock size={13} /> {t("salesmanLite.inbox.setReminder")}</button>
                 <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
               </div>
             )}
@@ -6978,22 +6251,16 @@ export default function SalesmanLite() {
             </button>
           </div>
         </div>
-        {/* Cover photo — banner shown behind your profile photo on your public XDrive page */}
-        <div style={{ marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanLite.settings.coverPhoto")}</p>
-          <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>{t("salesmanLite.settings.coverSubtext")}</p>
-          <div
-            onClick={() => !coverUploading && coverInputRef.current?.click()}
-            style={{ position: "relative", width: "100%", height: 90, borderRadius: 8, overflow: "hidden", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : "linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: coverUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)" }}>
-              {coverUploading
-                ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? t("salesmanLite.settings.changeCover") : t("salesmanLite.settings.addCover")}</span>
-              }
-            </div>
-            <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
-          </div>
+        {/* Banner, bio and social links are the Premium page (2026-10-13).
+            get_salesman_by_slug returns them NULL for a Lite seller, so a field
+            here would save something the page never shows. */}
+        <div style={{ marginBottom: 24 }}>
+          <PremiumRow
+            onClick={goPremium}
+            cta={t("salesmanLite.premiumRow.cta")}
+            title={t("salesmanLite.premiumRow.pageTitle")}
+            sub={t("salesmanLite.premiumRow.pageSub")}
+          />
         </div>
           {/* Profile basics */}
           <div style={cardStyle}>
@@ -7064,52 +6331,6 @@ export default function SalesmanLite() {
               <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.address")}</label>
               <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder={t("salesmanLite.settings.addressPlaceholder")} style={inputStyle} />
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.addressHint")}</p>
-            </div>
-            {/* Bio — the one thing on the mini page that is about the PERSON.
-                Lite scored the seller on having one but shipped no field to
-                write it in, so the score could never reach 100. */}
-            <div id="lite-bio-field" style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>
-                {t("salesmanLite.settings.bio", { defaultValue: "Bio" })}
-              </label>
-              <textarea
-                value={settingsForm.bio}
-                onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
-                rows={3}
-                maxLength={500}
-                placeholder={t("salesmanLite.settings.bioPlaceholder", { defaultValue: "e.g. 6 years selling used cars around Klang Valley. Honest pricing, full service records on every unit." })}
-                style={{ ...inputStyle, resize: "vertical", lineHeight: 1.6 }}
-              />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>
-                {t("salesmanLite.settings.bioHint", { defaultValue: "Shown on your public mini page. Buyers message the agent they trust." })}
-              </p>
-            </div>
-          </div>
-          {/* Social links */}
-          <div style={cardStyle}>
-            <p style={sectionLabelStyle}>{t("salesmanLite.settings.socialSection")}</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
-                { key: "tiktok",    label: "TikTok",    placeholder: "@yourusername", prefix: "tiktok.com/@" },
-                { key: "facebook",  label: "Facebook",  placeholder: "username or page name", prefix: "facebook.com/" },
-                { key: "website",   label: "Website",   placeholder: "https://yoursite.com", prefix: null },
-              ].map(({ key, label, placeholder, prefix }) => (
-                <div key={key}>
-                  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{label}</label>
-                  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
-                    {prefix && (
-                      <span style={{ padding: "10px 10px", fontSize: 11, color: "#4b5563", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>{prefix}</span>
-                    )}
-                    <input
-                      value={settingsForm[key]}
-                      onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))}
-                      placeholder={placeholder}
-                      style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }}
-                    />
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
             {saveBtn}
@@ -7574,164 +6795,6 @@ export default function SalesmanLite() {
 
   // ── LOG CALL MODAL ────────────────────────────────────────────────────────
 
-  const renderLogCallModal = () => logCallLeadId && (() => {
-    const lead = leads.find((l) => l.id === logCallLeadId);
-    const OUTCOMES = [
-      { key: "answered", label: t("salesmanLite.logCall.answered"), icon: CheckCircle, color: "#4ade80" },
-      { key: "no_answer", label: t("salesmanLite.logCall.noAnswer"), icon: PhoneOff, color: "#f87171" },
-      { key: "callback_requested", label: t("salesmanLite.logCall.callbackRequested"), icon: RefreshCw, color: "#fbbf24" },
-      { key: "voicemail", label: t("salesmanLite.logCall.voicemail"), icon: Voicemail, color: "#94a3b8" },
-    ];
-    return (
-      <div onClick={() => setLogCallLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-        <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.logCall.title")}</p>
-          <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{lead?.buyer_name || "—"} · {lead?.phone || "—"}</p>
-          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.logCall.outcome")}</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-            {OUTCOMES.map((o) => (
-              <button key={o.key} onClick={() => setCallOutcome(o.key)} style={{ padding: "10px 12px", borderRadius: 9, fontSize: 12, fontWeight: 600, textAlign: "left", cursor: "pointer", background: callOutcome === o.key ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)", border: callOutcome === o.key ? `1px solid ${o.color}40` : "1px solid rgba(255,255,255,0.07)", color: callOutcome === o.key ? o.color : "#6b7280", display: "flex", alignItems: "center", gap: 7 }}>
-                <o.icon size={14} style={{ flexShrink: 0 }} /> {o.label}
-              </button>
-            ))}
-          </div>
-          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.logCall.noteOptional")}</p>
-          <input value={callNote} onChange={(e) => setCallNote(e.target.value)} placeholder={t("salesmanLite.logCall.notePlaceholder")} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: 14 }} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setLogCallLeadId(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.logCall.cancel")}</button>
-            <button onClick={logCall} disabled={callSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: callSaving ? "not-allowed" : "pointer", opacity: callSaving ? 0.6 : 1 }}>
-              {callSaving ? t("salesmanLite.logCall.saving") : t("salesmanLite.logCall.title")}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  })();
-
-  // ── BATCH WA MODAL ─────────────────────────────────────────────────────────
-
-  // Auto-populate the blast message when the current lead changes.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!batchWALeads) return;
-    const current = batchWALeads[batchWAIdx];
-    if (!current) return;
-    const car = current.car_listings;
-    const carName = car ? `${car.brand} ${car.model}` : 'kereta tu';
-    // Same shared rule as the pipeline badge, so the urgency this message
-    // claims ("someone else is asking") matches what the board is showing.
-    const isStale = isLeadStale(current);
-    setBatchWAMsg(isStale
-      ? `Hi ${current.buyer_name || 'kawan'}! Ada orang lain tengah tanya pasal ${carName} ni — kalau you still interested, jom lock dulu sebelum terlambat 🔒`
-      : `Hi ${current.buyer_name || 'kawan'}! Macam mana, still interested dalam ${carName} tu? Jom kita discuss lagi 😊`
-    );
-  }, [batchWALeads, batchWAIdx]);
-
-  const renderBatchWAModal = () => {
-    if (!batchWALeads || batchWALeads.length === 0) return null;
-    const current = batchWALeads[batchWAIdx];
-    if (!current) return null;
-    const car = current.car_listings;
-    const waPhone = (current.phone || '').replace(/\D/g, '');
-    const waNum = waPhone.startsWith('6') ? waPhone : '6' + waPhone;
-    const advance = () => {
-      if (batchWAIdx < batchWALeads.length - 1) setBatchWAIdx(i => i + 1);
-      else setBatchWALeads(null);
-    };
-    return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-        <div style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.batchWa.title")}</p>
-            <span style={{ fontSize: 12, color: "#4b5563" }}>{batchWAIdx + 1} / {batchWALeads.length}</span>
-          </div>
-          {/* Progress dots */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-            {batchWALeads.map((_, i) => (
-              <div key={i} style={{ flex: 1, height: 3, borderRadius: 99, background: i < batchWAIdx ? "#4ade80" : i === batchWAIdx ? "#fbbf24" : "rgba(255,255,255,0.08)" }} />
-            ))}
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "12px 14px", marginBottom: 14 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "#f1f5f9" }}>{current.buyer_name || "—"}</p>
-            <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>
-              {car ? `${car.brand} ${car.model}` : t("salesmanLite.batchWa.noCarLinked")} · {t("salesmanLite.batchWa.lastContact", { time: timeAgo(current.updated_at) })}
-            </p>
-          </div>
-          {/* Editable message */}
-          <textarea
-            value={batchWAMsg}
-            onChange={e => setBatchWAMsg(e.target.value)}
-            rows={4}
-            style={{ width: "100%", boxSizing: "border-box", resize: "vertical", fontSize: 12, color: "#d1d5db", lineHeight: 1.6, padding: "10px 12px", background: "rgba(255,255,255,0.04)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", outline: "none", fontFamily: "inherit", marginBottom: 14 }}
-          />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => { window.open(`https://wa.me/${waNum}?text=${encodeURIComponent(batchWAMsg)}`, "_blank"); advance(); }}
-              style={{ flex: 2, padding: "11px", borderRadius: 9, background: "#25D366", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              {t("salesmanLite.batchWa.waLead", { name: current.buyer_name?.split(' ')[0] || t("salesmanLite.loanCalc.leadFallback") })}
-            </button>
-            <button
-              onClick={advance}
-              style={{ flex: 1, padding: "11px", borderRadius: 9, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
-            >
-              {t("salesmanLite.batchWa.skip")}
-            </button>
-          </div>
-          <button onClick={() => setBatchWALeads(null)} style={{ width: "100%", marginTop: 10, padding: "8px", background: "none", border: "none", color: "#374151", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>
-            {t("salesmanLite.batchWa.stop")}
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  // ── FOLLOW-UP MODAL ────────────────────────────────────────────────────────
-
-  const renderFollowUpModal = () => followUpModalLead && (
-    <div onClick={() => setFollowUpModalLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanLite.followUp.title")}</p>
-        <p style={{ margin: "0 0 16px", fontSize: 12, color: "#4b5563" }}>{followUpModalLead.buyer_name || "—"}</p>
-        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.followUp.remindOn")}</p>
-        <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-          {[
-            { label: t("salesmanLite.followUp.tomorrow"), days: 1 },
-            { label: t("salesmanLite.followUp.in2days"), days: 2 },
-            { label: t("salesmanLite.followUp.in3days"), days: 3 },
-            { label: t("salesmanLite.followUp.nextWeek"), days: 7 },
-          ].map(({ label, days }) => {
-            const val = localDateKey(days);
-            return (
-              <button key={label} onClick={() => setFollowUpDate(val)} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 20, cursor: "pointer", background: followUpDate === val ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.04)", border: followUpDate === val ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)", color: followUpDate === val ? "#fbbf24" : "#6b7280", fontWeight: followUpDate === val ? 600 : 400 }}>
-                {label}
-              </button>
-            );
-          })}
-        </div>
-        <input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 9, color: "#e5e7eb", fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", marginBottom: followUpDate ? 6 : 14 }} />
-        {/* Native date inputs render per browser locale (can show mm/dd/yyyy). Echo the
-            chosen date in Malaysian dd/mm/yyyy so it's never misread. */}
-        {followUpDate && (
-          <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
-            {t("salesmanLite.followUp.reminderSetFor")} <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
-          </p>
-        )}
-        <div style={{ display: "flex", gap: 8 }}>
-          {followUpModalLead.follow_up_at && (
-            <button onClick={() => saveFollowUp(followUpModalLead.id, null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.followUp.clear")}</button>
-          )}
-          <button onClick={() => setFollowUpModalLead(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>{t("salesmanLite.followUp.cancel")}</button>
-          <button onClick={() => followUpDate && saveFollowUp(followUpModalLead.id, followUpDate)} disabled={!followUpDate || followUpSaving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}>
-            {followUpSaving ? t("salesmanLite.followUp.saving") : t("salesmanLite.followUp.setReminder")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  // ── WA MESSAGE MODAL ──────────────────────────────────────────────────────
-
   const renderWAModal = () =>
     waModalLead && (
       <div
@@ -7821,11 +6884,9 @@ export default function SalesmanLite() {
               if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
               setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
-              const savedLeadId = waModalLead.id;
               setWaModalLead(null);
               toast(t("salesmanLite.toast.waSent"), {
                 description: t("salesmanLite.toast.waSentDesc"),
-                action: { label: t("salesmanLite.toast.waSentAction"), onClick: () => { setLogCallLeadId(savedLeadId); setCallOutcome("answered"); setCallNote(""); } },
                 duration: 5000,
               });
               const phone = (waModalLead.phone || "").replace(/\D/g, "");
@@ -7926,6 +6987,38 @@ export default function SalesmanLite() {
           style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, padding: "11px 22px", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
         >
           <Plus size={16} /> {t("salesmanLite.locked.cta")}
+        </button>
+      </div>
+    );
+  };
+
+  // Performance and Add-ons are Premium (2026-10-13). The tabs stay reachable
+  // (the tour walks through them) and say what Premium adds here, with the one
+  // door to the upgrade screen. Per-car views + WhatsApp taps stay free on the
+  // dashboard ("My Performance").
+  const renderPremiumPanel = (kind) => {
+    const cfg = {
+      performance: { Icon: BarChart2, title: t("salesmanLite.premiumPanel.perfTitle"), sub: t("salesmanLite.premiumPanel.perfSub") },
+      services:    { Icon: Package,   title: t("salesmanLite.premiumPanel.servicesTitle"), sub: t("salesmanLite.premiumPanel.servicesSub") },
+    }[kind];
+    const Icon = cfg.Icon;
+    return (
+      <div style={{ maxWidth: 420, margin: "0 auto", textAlign: "center", padding: isMobile ? "56px 20px" : "72px 24px" }}>
+        <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 18px" }}>
+          <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={26} strokeWidth={1.5} style={{ color: "#475569" }} />
+          </div>
+          <div style={{ position: "absolute", right: -6, bottom: -6, width: 26, height: 26, borderRadius: 9, background: "#dc2626", border: "3px solid #080a12", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Lock size={12} strokeWidth={2.5} style={{ color: "#fff" }} />
+          </div>
+        </div>
+        <p style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>{cfg.title}</p>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>{cfg.sub}</p>
+        <button
+          onClick={goPremium}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, padding: "11px 22px", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+        >
+          <Sparkles size={15} /> {t("salesmanLite.premiumPanel.cta")}
         </button>
       </div>
     );
@@ -8746,7 +7839,7 @@ export default function SalesmanLite() {
           {activeTab === "dashboard" && renderDashboard()}
           {activeTab === "listings" && renderListings()}
           {activeTab === "leads" && (gatedLocked ? renderLockedPanel("leads") : renderLeads())}
-          {activeTab === "performance" && (gatedLocked ? renderLockedPanel("performance") : renderPerformance())}
+          {activeTab === "performance" && renderPremiumPanel("performance")}
           {activeTab === "enquiries" && (gatedLocked ? renderLockedPanel("enquiries") : (
             <div>
               {/* Sub-tab switcher */}
@@ -8792,9 +7885,7 @@ export default function SalesmanLite() {
               bottomInset={isMobile ? 80 : 24}
             />
           ))}
-          {activeTab === "services" && (
-            <ServicesAddonsTab dealerId={getDealerIdFromProfile(profile)} />
-          )}
+          {activeTab === "services" && renderPremiumPanel("services")}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
         </div>
@@ -8828,8 +7919,6 @@ export default function SalesmanLite() {
 
       {renderAddLeadModal()}
       {renderWAModal()}
-      {renderLogCallModal()}
-      {renderBatchWAModal()}
       {renderDeleteModal()}
       <LogoutConfirmModal
         open={logoutConfirmOpen}
@@ -8977,7 +8066,6 @@ export default function SalesmanLite() {
         slug={profile?.slug}
       />
 
-      {renderFollowUpModal()}
       {renderNotifPanel()}
       {selectedCar && (
         <CarDetailPopup
@@ -9135,80 +8223,6 @@ export default function SalesmanLite() {
         );
       })()}
 
-      {/* ── Loan Calculator Modal ── */}
-      {loanCalcLead && (() => {
-        const car = loanCalcLead.car_listings;
-        const p = parseFloat(loanPrice) || 0;
-        const downAmt = p * (parseFloat(loanDown) / 100);
-        const principal = p - downAmt;
-        const r = parseFloat(loanRate) / 100;
-        const y = parseFloat(loanYears);
-        const monthly = principal > 0 && y > 0 ? Math.round(principal * (1 + r * y) / (y * 12)) : null;
-        const tenures = [5, 7, 9];
-        return (
-          <div onClick={() => setLoanCalcLead(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div onClick={e => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 24, paddingBottom: 36 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.loanCalc.title")}</p>
-                <button onClick={() => setLoanCalcLead(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
-              </div>
-              {car && <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{loanCalcLead.buyer_name || t("salesmanLite.loanCalc.leadFallback")} · {car.year} {car.brand} {car.model}</p>}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-                {[
-                  { label: t("salesmanLite.loanCalc.price"), value: loanPrice, set: setLoanPrice, placeholder: "e.g. 85000" },
-                  { label: t("salesmanLite.loanCalc.downPayment"), value: loanDown, set: setLoanDown, placeholder: "e.g. 10" },
-                  { label: t("salesmanLite.loanCalc.interestRate"), value: loanRate, set: setLoanRate, placeholder: "e.g. 3.5" },
-                  { label: t("salesmanLite.loanCalc.tenure"), value: loanYears, set: setLoanYears, placeholder: "e.g. 7" },
-                ].map(({ label, value, set, placeholder }) => (
-                  <div key={label}>
-                    <p style={{ margin: "0 0 4px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</p>
-                    <input
-                      type="number"
-                      value={value}
-                      onChange={e => set(e.target.value)}
-                      placeholder={placeholder}
-                      style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#f1f5f9", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box" }}
-                    />
-                  </div>
-                ))}
-              </div>
-              {monthly !== null && (
-                <>
-                  <div style={{ background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 10, padding: "12px 16px", marginBottom: 10, textAlign: "center" }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.loanCalc.estMonthly")}</p>
-                    <p style={{ margin: 0, fontFamily: "'Bebas Neue', sans-serif", fontSize: 32, color: "#fbbf24", letterSpacing: 1 }}>RM {monthly.toLocaleString()}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{loanYears}{t("salesmanLite.loanCalc.yrs")} · {loanRate}% · {loanDown}% {t("salesmanLite.loanCalc.down")}</p>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                    {tenures.map(yr => {
-                      const m = Math.round(principal * (1 + r * yr) / (yr * 12));
-                      return (
-                        <div key={yr} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 10px", textAlign: "center" }}>
-                          <p style={{ margin: "0 0 2px", fontSize: 9, color: "#4b5563", textTransform: "uppercase" }}>{yr} {t("salesmanLite.loanCalc.yrs")}</p>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#e5e7eb" }}>RM {m.toLocaleString()}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={() => {
-                      const car = loanCalcLead.car_listings;
-                      const carName = car ? `${car.year} ${car.brand} ${car.model}` : "the car";
-                      const msg = `Hi ${loanCalcLead.buyer_name || ""}! Based on ${carName} at RM ${Number(loanPrice).toLocaleString()}, here's your rough monthly:\n\n${tenures.map(t => `• ${t} tahun: RM ${Math.round(principal*(1+r*t)/(t*12)).toLocaleString()}/bulan`).join("\n")}\n\n(${loanDown}% down, ${loanRate}% interest rate)\n\nBoleh kita discuss further? 😊`;
-                      setWaModalMessage(msg);
-                      setWaModalLead(loanCalcLead);
-                      setLoanCalcLead(null);
-                    }}
-                    style={{ marginTop: 12, width: "100%", padding: "11px 0", borderRadius: 10, fontSize: 13, fontWeight: 700, background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.35)", color: "#fbbf24", cursor: "pointer" }}
-                  >
-                    {t("salesmanLite.loanCalc.sendViaWhatsapp")}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Deposit Receipt Modal ── */}
       {depositModal && (() => {

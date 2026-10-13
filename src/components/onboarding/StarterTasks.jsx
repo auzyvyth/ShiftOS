@@ -40,8 +40,12 @@ export const starterTaskState = ({ profile, listingCount }) => ({
   bio: hasBio(profile),
 });
 
+// Lite's page is the basic page (no bio, 2026-10-13), so Lite passes
+// noBio and the list is two tasks there.
+const keysFor = (noBio) => (noBio ? STARTER_TASK_KEYS.filter((k) => k !== "bio") : STARTER_TASK_KEYS);
+
 export const starterTasksAllDone = (args) =>
-  STARTER_TASK_KEYS.every((k) => starterTaskState(args)[k]);
+  keysFor(args?.noBio).every((k) => starterTaskState(args)[k]);
 
 export default function StarterTasks({
   profile,
@@ -50,6 +54,7 @@ export default function StarterTasks({
   onVisitMinipage,
   onEditBio,
   onDismiss,
+  noBio = false,
   t,
   // Both seller panels are dark surfaces, but they own different token sets, so
   // the palette comes in rather than being hardcoded to either one's.
@@ -72,8 +77,9 @@ export default function StarterTasks({
     () => starterTaskState({ profile, listingCount }),
     [profile, listingCount],
   );
-  const doneCount = STARTER_TASK_KEYS.filter((k) => done[k]).length;
-  const allDone = doneCount === STARTER_TASK_KEYS.length;
+  const keys = keysFor(noBio);
+  const doneCount = keys.filter((k) => done[k]).length;
+  const allDone = doneCount === keys.length;
 
   // Translation is optional so either page can pass its own `t` (both have
   // one) without this component owning a namespace neither uses.
@@ -82,7 +88,7 @@ export default function StarterTasks({
     return out === `starterTasks.${key}` ? fallback : out;
   };
 
-  const TASKS = [
+  const ALL_TASKS = [
     {
       key: "listing",
       icon: Plus,
@@ -108,6 +114,7 @@ export default function StarterTasks({
       action: onEditBio,
     },
   ];
+  const TASKS = ALL_TASKS.filter((task) => keys.includes(task.key));
 
   // The first unfinished task is the one being asked for. Everything else is
   // either already ticked or waiting its turn, so only one CTA is ever the
@@ -123,7 +130,7 @@ export default function StarterTasks({
         {/* Progress as a count, not a bar — three items don't need a bar, and
             "2 of 3" says the same thing in less space. */}
         <span style={{ fontSize: 11, fontWeight: 600, color: allDone ? P.success : P.textDim, flexShrink: 0 }}>
-          {doneCount}/{STARTER_TASK_KEYS.length}
+          {doneCount}/{keys.length}
         </span>
       </div>
 

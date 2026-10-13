@@ -430,7 +430,7 @@ export default function AccountPage() {
           <div style={{ flex: 1, minWidth: 220 }}>
             <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on XDrive?</p>
             <p style={{ margin: '5px 0 0', fontSize: 13.5, color: '#6b7280', lineHeight: 1.5 }}>
-              Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong> — list up to 10 cars, get leads and a personal showroom. No card needed.
+              Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong>: list up to 5 cars, get buyer enquiries and a page of your own. No card needed.
             </p>
           </div>
           <Link to="/salesman-onboarding/lite" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: '#dc2626', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 700, padding: '11px 20px', borderRadius: 10, whiteSpace: 'nowrap' }}>

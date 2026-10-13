@@ -424,7 +424,7 @@
         },
         "dashboard": {
           "title": "Papan Pemuka",
-          "body": "Pusat kawalan anda — KPI, amaran susulan tertunggak, prestasi iklan, dan aktiviti terkini semuanya dalam satu paparan."
+          "body": "Pusat kawalan anda: KPI, booking hari ini, prestasi setiap kereta dan trafik page anda, semua dalam satu paparan."
         },
         "listings": {
           "title": "Iklan Saya",
@@ -444,7 +444,7 @@
         },
         "performance": {
           "title": "Prestasi",
-          "body": "Statistik jualan anda — komisen diperoleh, unit terjual, dan prestasi setiap iklan dari semasa ke semasa. Tahu apa yang berkesan."
+          "body": "Di Premium: close rate anda, di mana buyer tarik diri dan berapa cepat anda balas. Views dan tap WhatsApp setiap kereta kekal percuma di dashboard."
         },
         "chat": {
           "title": "Chat",
@@ -452,7 +452,7 @@
         },
         "services": {
           "title": "Tambahan",
-          "body": "Bina katalog tambahan anda sendiri — tint, waranti, insurans dan lain-lain. Lampirkan pada iklan atau deal untuk tambah margin di atas jualan kereta."
+          "body": "Di Premium: katalog add-on anda sendiri seperti tint, warranty dan pakej servis, dilampirkan pada kereta untuk untung lebih setiap jualan."
         },
         "merge": {
           "title": "Sertai Pengedar",
@@ -460,7 +460,7 @@
         },
         "settings": {
           "title": "Tetapan",
-          "body": "Kemas kini nombor WhatsApp, foto profil, lokasi dan pautan media sosial. Nombor WhatsApp penting — di situlah pembeli menghubungi anda."
+          "body": "Kemas kini nombor WhatsApp, foto profil dan lokasi. Nombor WhatsApp paling penting: di situlah pembeli hubungi anda."
         },
         "help": {
           "title": "Bantuan",
@@ -972,6 +972,23 @@
       "perfTitle": "Prestasi dikunci",
       "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — paparan, kadar tutup dan kesihatan pipeline semuanya terbina daripada listing anda.",
       "cta": "Tambah kenderaan"
+    },
+    "premiumRow": {
+      "cta": "Lihat Premium",
+      "followUpTitle_other": "{{count}} lead dah senyap",
+      "followUpSub": "Premium senaraikan siapa nak call hari ini, set reminder follow up dan boleh WhatsApp semua sekali gus.",
+      "commissionTitle": "Komisen dan target bulanan",
+      "commissionSub": "Jejak berapa komisen setiap jualan dan berapa dekat anda dengan target bulan ini. Di Premium.",
+      "leadTools": "Reminder dan log call: Premium",
+      "pageTitle": "Banner, bio dan link sosial di page anda",
+      "pageSub": "Page percuma anda tunjuk kereta, nama, cara hubungi anda dan maklumat kepercayaan. Premium tambah banner, bio dan Instagram, TikTok serta Facebook anda."
+    },
+    "premiumPanel": {
+      "perfTitle": "Tengok di mana deal anda hilang",
+      "perfSub": "Premium tunjuk close rate anda, peringkat mana buyer tarik diri dan berapa cepat anda balas. Views dan tap WhatsApp setiap kereta kekal percuma di dashboard.",
+      "servicesTitle": "Jual add-on dengan setiap kereta",
+      "servicesSub": "Premium simpan katalog anda sendiri untuk tint, coating, warranty dan pakej servis, dan tunjuk berapa setiap satu bawa untung.",
+      "cta": "Lihat Premium"
     }
   },
   "salesmanPremium": {
