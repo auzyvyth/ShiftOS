@@ -905,48 +905,12 @@ export default function SalesmanLite() {
     setShowAddForm(true);
   }
 
-  async function saveIcAndList() {
-    const digits = (icGateVal || "").replace(/\D/g, "");
-    if (digits.length !== 12) { toast.error(t("salesmanLite.toast.icInvalid")); return; }
-    setIcGateSaving(true);
-    try {
-      // Hash + store server-side (set_my_ic): the IC is never persisted in
-      // plaintext, only a per-user-salted SHA-256 hash. We ignore the returned
-      // last-4 — the badge shows verified status only, no digits.
-      const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
-      if (error) throw error;
-      // Don't stash the last-4 in client state — the badge shows verified
-      // status only, so there's no reason to hold IC digits in the browser.
-      setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }));
-      setIcGateOpen(false);
-      toast.success(t("salesmanLite.toast.icVerified"));
-    } catch (e) {
-      const msg = e.message === "invalid_ic" ? t("salesmanLite.toast.icInvalid") : (e.message || t("salesmanLite.toast.icSaveFailed"));
-      toast.error(msg);
-    } finally {
-      setIcGateSaving(false);
-    }
-  }
-
   // listings
   const [myListings, setMyListings] = useState(seed.listings);
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
-  // IC gate — no anonymous selling: a car can't be listed until the seller's IC
-  // is on file. IC is optional at signup (1-week grace) but this blocks the
-  // actual listing action until verified.
-  const [icGateOpen, setIcGateOpen] = useState(false);
-  const [icGateVal, setIcGateVal] = useState("");
-  const [icGateSaving, setIcGateSaving] = useState(false);
-  // The IC number is optional now (owner, 2026-10-12): no grace period, no
-  // gate on listing. The modal opens only from Settings. It used to force-open
-  // on mount, and from a cached profile with no ic_hash it popped for sellers
-  // who had already entered one; never auto-open it again.
-  useEffect(() => {
-    if (!icGateOpen) return;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
-  }, [icGateOpen]);
+  // The IC number and MyKad photos are asked for in ONE place: the step-by-step
+  // VerifyIdentity flow at the top of Settings > Profile (owner, 2026-10-12).
 
   // leads
   const [leads, setLeads] = useState(seed.leads || []);
@@ -6968,6 +6932,19 @@ export default function SalesmanLite() {
           <div style={{ flex: 1, minWidth: 0, width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
             {snav === "profile" && (
               <>
+          {/* The ONE place a seller is asked for ID (owner, 2026-10-12), step by
+              step: Get verified -> IC number -> MyKad photos. Buyers only see a
+              seller's cars once it is approved (20261011b), so it sits first. */}
+          <div style={{ marginBottom: 16 }}>
+          <VerifyIdentity
+            profile={profile}
+            userId={userId}
+            onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }))}
+            onSubmitted={() =>
+              setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
+            }
+          />
+          </div>
         {/* Avatar */}
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
           <div
@@ -7064,7 +7041,7 @@ export default function SalesmanLite() {
             )}
             {snav === "contact" && (
               <>
-          {/* Location + IC */}
+          {/* Location */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.locationSection")}</p>
             <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
@@ -7106,27 +7083,6 @@ export default function SalesmanLite() {
               <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>
                 {t("salesmanLite.settings.bioHint", { defaultValue: "Shown on your public mini page. Buyers message the agent they trust." })}
               </p>
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.icNumber")} <span style={{ color: "#4b5563" }}>{t("salesmanLite.settings.icPrivate")}</span></label>
-              {/* IC is verify-only: stored hashed via set_my_ic, never editable as
-                  plaintext, and never read back to the client. Verified rows
-                  show a status badge only (no digits); unverified show a button
-                  that opens the hashing gate. */}
-              {profile?.ic_hash ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
-                  <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>{t("salesmanLite.settings.icVerified")}</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
-                  style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}
-                >
-                  <ShieldCheck size={15} style={{ flexShrink: 0 }} /> {t("salesmanLite.settings.icVerifyBtn")}
-                </button>
-              )}
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.icHint")}</p>
             </div>
           </div>
           {/* Social links */}
@@ -7264,15 +7220,6 @@ export default function SalesmanLite() {
             {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
             {snav === "account" && (
               <>
-          {/* Identity verification — buyers only see a seller's cars once it is
-              approved (20261011b), so it sits first. */}
-          <VerifyIdentity
-            profile={profile}
-            userId={userId}
-            onSubmitted={() =>
-              setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
-            }
-          />
           <ChangePasswordCard />
           {/* Language toggle */}
           <div style={cardStyle}>
@@ -8762,11 +8709,14 @@ export default function SalesmanLite() {
           {/* Review status, the ID check and the IC number used to be three
               stacked banners on first landing; SellerIdCard is the one card
               (with one button to the next missing step) for all of them. */}
-          <SellerIdCard
+          {/* Not on Settings: Profile there opens with the full Get verified
+              flow, and two identical asks on one screen is the clutter this
+              card exists to remove. */}
+          {activeTab !== "settings" && <SellerIdCard
             profile={profile}
             t={t}
-            onUploadId={() => { setSettingsNav("account"); switchTab("settings"); }}
-          />
+            onUploadId={() => { setSettingsNav("profile"); switchTab("settings"); }}
+          />}
           {/* The "you're approved" moment used to have no announcement at all —
               the under-review banner above just quietly stops rendering once
               approval_status flips, so a seller had to notice its absence.
@@ -8902,55 +8852,6 @@ export default function SalesmanLite() {
         onConfirm={confirmSellerBooking}
         saving={sellerBookingSaving}
       />
-
-      {/* Optional IC number, opened from Settings. Stored HASHED (set_my_ic),
-          never plaintext. */}
-      {icGateOpen && (
-        <div
-          onClick={() => { if (!icGateSaving) setIcGateOpen(false); }}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
-        >
-          <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <ShieldCheck size={18} style={{ color: "#f87171" }} />
-              </div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>
-                Add your IC number
-              </p>
-            </div>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
-              Optional. Never shown to buyers.
-            </p>
-            <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
-            <input
-              autoFocus
-              value={icGateVal}
-              onChange={(e) => setIcGateVal(e.target.value.replace(/[^\d-]/g, ""))}
-              placeholder="901231-10-1234"
-              maxLength={14}
-              onKeyDown={(e) => { if (e.key === "Enter") saveIcAndList(); }}
-              style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
-            />
-            <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored hashed (never in plaintext), verification only.</p>
-            <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <button
-                onClick={saveIcAndList}
-                disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
-                style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
-              >
-                {icGateSaving ? "Saving…" : "Save"}
-              </button>
-              <button
-                onClick={() => !icGateSaving && setIcGateOpen(false)}
-                style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
-              >
-                Later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Test Drive outcome confirmation ── */}
       {testDriveConfirm && (() => {

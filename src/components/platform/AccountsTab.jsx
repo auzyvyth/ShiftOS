@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 import CreateSellerModal from "./CreateSellerModal";
+import { purgeKycFiles } from "../../utils/kycPurge";
 import { accountKind, accessState, reviewState, billingState, headlineState, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
 
 // One accounts table (P5) with an account record (P6).
@@ -279,8 +280,17 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       ? { is_verified: true, verified_at: new Date().toISOString(), verified_by: user?.id ?? null }
       : { is_verified: false, verified_at: null, verified_by: null };
     await run(a.id, next ? "Verifying" : "Removing verification", async () => {
-      const r = await supabase.from("profiles").update(patch).eq("id", a.id);
+      // Verifying is the same ID decision the Review queue makes, so it goes
+      // through decide_kyc_verification: it clears any pending ID check from
+      // the queue and tells the seller. Then their MyKad photos are deleted.
+      const r = next
+        ? await supabase.rpc("decide_kyc_verification", { p_user_id: a.id, p_approve: true, p_reason: null })
+        : await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
+      if (!r.error && next) {
+        const purge = await purgeKycFiles(supabase, a.id);
+        if (!purge.ok) return { error: { message: "Marked verified, but their ID photos may not all be deleted. Check the kyc-docs bucket." } };
+      }
       return r;
     }, next ? "Marked verified. Their cards now show the verified badge." : "Verified badge removed.");
   };
@@ -340,13 +350,22 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
     const ok = await run(a.id, "Deleting", async () => {
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);
+      // A deleted account is never reviewed, so its MyKad photos go now
+      // (src/utils/kycPurge.js); trg_profile_deleted_drop_kyc clears the row.
+      if (!r.error) {
+        const purge = await purgeKycFiles(supabase, a.id);
+        if (!purge.ok) return { error: { message: "Deleted, but their ID photos may not all be removed. Check the kyc-docs bucket." } };
+      }
       return r;
     }, "Deleted. You can restore it for 30 days.");
     if (ok) setConfirmDelete(null);
   };
 
   const restore = async (a) => {
-    const patch = { account_status: "active", is_active: true, deleted_at: null };
+    // Undo the delete only. A seller suspended before they deleted stays
+    // suspended: switching is_active on here lifted the suspension with no
+    // notice and left suspended_at set.
+    const patch = { account_status: "active", deleted_at: null, ...(a.suspended_at ? {} : { is_active: true }) };
     await run(a.id, "Restoring", async () => {
       const r = await supabase.from("profiles").update(patch).eq("id", a.id);
       if (!r.error) onPatch(a.id, patch);

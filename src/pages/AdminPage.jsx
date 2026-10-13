@@ -28,6 +28,7 @@ import AlertsTab from "../components/platform/AlertsTab";
 import ReportsTab from "../components/platform/ReportsTab";
 import ProspectsTab from "../components/platform/ProspectsTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
+import { purgeKycFiles } from "../utils/kycPurge";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -394,9 +395,24 @@ export default function AdminPage() {
   // sharing ONE session, so the admin login sat in the main slot the seller
   // sign-in uses, and whichever client refreshed first rotated the other's
   // token out. Removed 2026-10-12; the main client now refuses the admin account.
+  // True when the session has a verified TOTP factor but has not passed it yet
+  // (aal1 -> aal2). Puts the console on the code prompt.
+  async function needsMfa() {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal?.nextLevel !== "aal2" || aal.currentLevel === "aal2") return false;
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const totp = (factors?.totp || []).find((f) => f.status === "verified");
+    if (!totp) return false;
+    setMfaFactorId(totp.id);
+    return true;
+  }
+
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user?.id) { setAuthState("login"); return; }
+    // A password-only session saved before the 2FA code was entered must not
+    // open the console on reload: ask for the code again.
+    if (await needsMfa()) { setAuthState("login"); return; }
     await verifyAndLoad(session.user.id);
   }
 
@@ -469,12 +485,7 @@ export default function AdminPage() {
       return;
     }
     throttleClear(cleanEmail, supabase);
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aal?.nextLevel === "aal2" && aal.nextLevel !== aal.currentLevel) {
-      const { data: factors } = await supabase.auth.mfa.listFactors();
-      const totp = (factors?.totp || []).find((f) => f.status === "verified");
-      if (totp) { setMfaFactorId(totp.id); setLoginBusy(false); return; }
-    }
+    if (await needsMfa()) { setLoginBusy(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     await verifyAndLoad(user.id);
   }
@@ -498,6 +509,14 @@ export default function AdminPage() {
   async function handlePlatformSignOut() {
     // scope:local so signing out of the console does NOT revoke the superadmin's
     // sessions elsewhere — only this isolated store is cleared.
+    // Release this browser's push slot FIRST, while the session still exists:
+    // push_forget_device only drops a superadmin's row for that superadmin
+    // (migration 20261013a), so ops alerts stop reaching a browser you have
+    // signed out of, and a seller on it can claim the slot again.
+    try {
+      const { forgetPushDevice } = await import("../hooks/usePushNotifications");
+      await forgetPushDevice(supabase);
+    } catch { /* never blocks sign-out */ }
     await supabase.auth.signOut({ scope: "local" });
     setDealers([]); setSalesmen([]); setPendingListings([]); setWaitlist([]);
     setLoginEmail(""); setLoginPw(""); setMfaFactorId(null); setMfaCode("");
@@ -681,6 +700,14 @@ export default function AdminPage() {
     const calls = [supabase.rpc("approve_listing", { p_listing_id: listing.id })];
     if (alsoVerifySeller) calls.push(supabase.rpc("decide_user_approval", { p_user_id: listing.dealer_id, p_approve: true }));
     const results = await Promise.all(calls);
+    // Approving the seller here decides their ID too, so their MyKad photos go
+    // as soon as THAT call succeeds (src/utils/kycPurge.js), even if the
+    // listing call failed: the seller has left the ID queue either way, and
+    // nothing else would ever delete them.
+    if (alsoVerifySeller && !results[1]?.error) {
+      const purge = await purgeKycFiles(supabase, listing.dealer_id);
+      if (!purge.ok) alert("Seller approved, but their ID photos may not all be deleted. Check the kyc-docs bucket.");
+    }
     const err = results.find(r => r.error)?.error;
     if (err) { alert("Error: " + err.message); }
     else {

@@ -86,11 +86,18 @@ export default function ErrorsTab() {
     const currentlyBlocked = e.user_active === false;
     const active = currentlyBlocked;
     setBlocking(e.user_id);
-    const { error } = await supabase.from("profiles").update({ is_active: active }).eq("id", e.user_id);
+    // Through set_account_suspended, like the account record: it stamps the
+    // reason + suspended_at the seller sees and notifies them. A raw is_active
+    // write left a block no other screen recognised as a suspension, and an
+    // unblock could switch on a suspended or deleted account.
+    const { error } = await supabase.rpc("set_account_suspended", {
+      p_user_id: e.user_id,
+      p_suspended: !active,
+      p_reason: active ? null : "Blocked from error monitoring",
+    });
     setBlocking(null);
-    if (!error) {
-      setLogs(prev => prev.map(x => x.user_id === e.user_id ? { ...x, user_active: active } : x));
-    }
+    if (error) { alert("Could not change this account: " + error.message); return; }
+    setLogs(prev => prev.map(x => x.user_id === e.user_id ? { ...x, user_active: active } : x));
   }
 
   return (

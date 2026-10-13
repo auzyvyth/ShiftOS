@@ -208,7 +208,7 @@ const TAB_ALIASES = {
 // the same screen with different fields.
 const SETTINGS_GROUPS = [
  { group: "Profile", items: [
- { key: "profile", icon: User, label: "Public Profile", desc: "Photo, name, bio & tags" },
+ { key: "profile", icon: User, label: "Public Profile", desc: "Get verified, photo, bio & tags" },
  { key: "contact", icon: Phone, label: "Contact & Location", desc: "WhatsApp, address & socials" },
  ]},
  { group: "Selling", items: [
@@ -220,7 +220,6 @@ const SETTINGS_GROUPS = [
  { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
  ]},
  { group: "Account", items: [
- { key: "verify", icon: ShieldCheck, label: "Verify ID", desc: "Required before buyers can see your cars" },
  { key: "password", icon: Lock, label: "Password", desc: "Change your password" },
  { key: "refer", icon: Gift, label: "Refer a Seller", desc: "Earn free Premium months" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
@@ -591,31 +590,6 @@ export default function SalesmanPremium() {
  const [settingsSaving, setSettingsSaving] = useState(false);
  const [tgTesting, setTgTesting] = useState(false);
  const [tagInput, setTagInput] = useState("");
- // IC verify — voluntary from Settings, matching Lite. Lite also hard-blocks
- // new listings until verified (icEnforced, 7 days after signup); that
- // enforcement is a separate business-rule change and deliberately not
- // ported here, only the verify UI itself.
- const [icGateOpen, setIcGateOpen] = useState(false);
- const [icGateVal, setIcGateVal] = useState("");
- const [icGateSaving, setIcGateSaving] = useState(false);
- async function saveIcAndCloseGate() {
- const digits = (icGateVal || "").replace(/\D/g, "");
- if (digits.length !== 12) { toast.error("Enter a valid 12-digit IC number"); return; }
- setIcGateSaving(true);
- try {
- // Hash + store server-side (set_my_ic): the IC is never persisted in
- // plaintext, only a per-user-salted SHA-256 hash.
- const { error } = await supabase.rpc("set_my_ic", { p_ic: digits });
- if (error) throw error;
- setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }));
- setIcGateOpen(false);
- toast.success("IC verified");
- } catch (e) {
- toast.error(e.message === "invalid_ic" ? "Enter a valid 12-digit IC number" : (e.message || "Could not save"));
- } finally {
- setIcGateSaving(false);
- }
- }
  const [avatarUrl, setAvatarUrl] = useState("");
  const [avatarUploading, setAvatarUploading] = useState(false);
  const avatarInputRef = useRef(null);
@@ -5077,7 +5051,8 @@ export default function SalesmanPremium() {
  // centred column with every field in the product stacked down it: verify,
  // push, avatar, cover, viewing hours, twelve profile fields, socials, selling
  // terms and the tour, one after another with nothing dividing them.
- const nav = settingsNav || "profile";
+ // "verify" was its own section until 2026-10-12; old deep links land on Profile.
+ const nav = (settingsNav === "verify" ? "profile" : settingsNav) || "profile";
  const navItem = SETTINGS_GROUPS.flatMap((g) => g.items).find((i) => i.key === nav);
 
  // ONE save writes the whole profile row, so every section that owns a field in
@@ -5110,6 +5085,14 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 560 }}>
  {nav === "profile" && (
  <>
+ {/* The ONE place a seller is asked for ID (owner, 2026-10-12), step by
+     step: Get verified -> IC number -> MyKad photos. Same component as Lite. */}
+ <VerifyIdentity
+ profile={profile}
+ userId={profile?.id}
+ onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }))}
+ onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
+ />
  <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>
  {avatarUrl
@@ -5355,35 +5338,6 @@ export default function SalesmanPremium() {
  ))}
  </div>
  </div>
- )}
- {nav === "verify" && (
- <>
- {/* Identity verification — earns the public Verified badge, the one thing
-     in Settings that changes how buyers see every listing. Premium had no
-     upload step at all before this, so the badge was unearnable. */}
- <div>
- <VerifyIdentity
- profile={profile}
- userId={profile?.id}
- onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
- />
- </div>
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>IC Number <span style={{ color: "#4b5563" }}>(private, verify only)</span></label>
- {profile?.ic_hash ? (
- <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 13px", borderRadius: 8, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)" }}>
- <ShieldCheck size={15} style={{ color: "#22c55e", flexShrink: 0 }} />
- <span style={{ fontSize: 13, color: "#e5e7eb", fontWeight: 600 }}>Verified</span>
- </div>
- ) : (
- <button onClick={() => { setIcGateVal(""); setIcGateOpen(true); }}
- style={{ display: "flex", alignItems: "center", gap: 7, padding: "11px 13px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", width: "100%" }}>
- <ShieldCheck size={15} style={{ flexShrink: 0 }} /> Verify your MyKad IC
- </button>
- )}
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Stored hashed, never shown in plaintext. Buyers see a verified badge only.</p>
- </div>
- </>
  )}
  {nav === "password" && <ChangePasswordCard />}
  {nav === "refer" && <ReferralCard slug={profile?.slug} />}
@@ -6686,11 +6640,11 @@ export default function SalesmanPremium() {
  )}
  {/* Review status + ID check + IC number in ONE card, same component as
      Lite (it falls back to AccountReviewBanner for a rejection). */}
- <SellerIdCard
+ {activeTab !== "settings" && <SellerIdCard
  profile={profile}
  t={t}
- onUploadId={() => openSettings("verify")}
- />
+ onUploadId={() => openSettings("profile")}
+ />}
 
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>
@@ -6751,7 +6705,7 @@ export default function SalesmanPremium() {
       handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
-      onVerifyId={() => openSettings("verify")}
+      onVerifyId={() => openSettings("profile")}
       onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
      />
     </Suspense>
@@ -7144,53 +7098,6 @@ export default function SalesmanPremium() {
  style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
  >
  {wonSaving? "Saving…" : "Yes, mark won"}
- </button>
- </div>
- </div>
- </div>
- )}
-
- {/* IC verify — voluntary, opened from Settings. Stored HASHED (set_my_ic),
- never plaintext. Unlike Lite this is never force-opened; always dismissable. */}
- {icGateOpen && (
- <div
- onClick={() => !icGateSaving && setIcGateOpen(false)}
- style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 16px" }}
- >
- <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 12, width: "90%", maxWidth: 420, padding: 24 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
- <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(220,38,38,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
- <ShieldCheck size={18} style={{ color: "#f87171" }} />
- </div>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Verify your IC</p>
- </div>
- <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
- Buyers need to know they're dealing with a real, accountable seller. Enter your MyKad IC once — it's shown as a verified badge on your public page, never as digits.
- </p>
- <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>IC Number (MyKad)</label>
- <input
- autoFocus
- value={icGateVal}
- onChange={(e) => setIcGateVal(e.target.value.replace(/[^\d-]/g, ""))}
- placeholder="901231-10-1234"
- maxLength={14}
- onKeyDown={(e) => { if (e.key === "Enter") saveIcAndCloseGate(); }}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 15, padding: "11px 13px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
- />
- <p style={{ margin: "7px 0 0", fontSize: 11, color: "#6b7280" }}>12 digits · stored hashed (never in plaintext), verification only.</p>
- <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
- <button
- onClick={saveIcAndCloseGate}
- disabled={icGateSaving || icGateVal.replace(/\D/g, "").length !== 12}
- style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", opacity: icGateSaving || icGateVal.replace(/\D/g, "").length !== 12 ? 0.5 : 1 }}
- >
- {icGateSaving ? "Verifying…" : "Verify & continue"}
- </button>
- <button
- onClick={() => !icGateSaving && setIcGateOpen(false)}
- style={{ fontSize: 13, fontWeight: 600, padding: "11px 16px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}
- >
- Later
  </button>
  </div>
  </div>

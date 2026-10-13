@@ -98,6 +98,22 @@ serve(async (req) => {
       return json({ error: "delete_failed" }, 500, origin);
     }
 
+    // ── MyKad photos go now, not at the 30-day purge ──────────────────────────
+    // An ID photo is kept only until someone at XDrive has looked at it, and a
+    // deleted account will never be reviewed. The DB trigger
+    // trg_profile_deleted_drop_kyc clears the kyc_documents row; the image bytes
+    // can only be removed through the Storage API. Best-effort: the account is
+    // already deleted, so a failure is logged, not returned.
+    const kyc = adminClient.storage.from("kyc-docs");
+    const { data: files } = await kyc.list(user.id, { limit: 100 });
+    const paths = (files || []).filter((f) => f.name).map((f) => `${user.id}/${f.name}`);
+    if (paths.length) {
+      const { data: removed, error: rmErr } = await kyc.remove(paths);
+      if (rmErr || (removed || []).length !== paths.length) {
+        console.error("[delete-account] kyc purge incomplete:", rmErr?.message, (removed || []).length, "of", paths.length);
+      }
+    }
+
     return json({ success: true }, 200, origin);
   } catch (e) {
     console.error("[delete-account] error:", e);
