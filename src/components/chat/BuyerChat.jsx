@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { MessageSquare, MessageCircle, Phone, ChevronRight, ArrowLeft, X, ShieldCheck, Loader2 } from 'lucide-react';
 import { useBuyerThread } from '../../hooks/useChat';
 import { isSubdomain } from '../../hooks/useTenant';
-import { sendBuyerToSignIn } from '../../lib/buyerAuth';
+import { requestBuyerSignIn } from '../../lib/buyerAuth';
 import useVisualViewport from '../../hooks/useVisualViewport';
 
 // Lazy — ChatThread (message list + useChatThread's live realtime channel)
@@ -29,8 +29,11 @@ const ChatThread = lazy(() => import('./ChatThread'));
 // page, not part of the sheet's own surface.
 //
 // Chat needs an XDrive account on the marketplace (owner, 2026-10-14, the
-// Mudah model): picking "Chat here" while signed out goes to /buyer-login and
-// comes back to this car with ?contact=chat, which reopens the chat. WhatsApp
+// Mudah model): picking "Chat here" while signed out opens the in-page sign-in
+// sheet (components/auth/SignInSheet.jsx) on top of this one; once signed in,
+// the chat starts without the buyer ever leaving the car. The redirect
+// fallbacks (email, in-app browsers) come back with ?contact=chat, which
+// reopens the chat. WhatsApp
 // and Call stay open to everyone. Guests who already have a thread keep it. A
 // dealer's own subdomain still allows guest chat (see useBuyerThread for why).
 
@@ -94,12 +97,20 @@ export default function BuyerChat({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // No account yet: sign in, then land back here with the chat open.
+  // No account yet: sign in over this sheet, then carry on into the chat.
+  // Closing the sign-in sheet goes back to the contact options.
   useEffect(() => {
     if (!needsSignIn) return;
     const url = new URL(window.location.href);
     url.searchParams.set(RETURN_PARAM, 'chat');
-    sendBuyerToSignIn(url.toString());
+    let alive = true;
+    requestBuyerSignIn({ reason: 'chat', returnUrl: url.toString() }).then((ok) => {
+      if (!alive) return;
+      if (ok) start();
+      else setView('choose');
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsSignIn]);
 
   // Overlay rule 2 — lock the page behind the sheet.
@@ -206,7 +217,7 @@ export default function BuyerChat({
   const chatGate = needsSignIn ? (
     <div style={{ padding: '40px 22px', textAlign: 'center' }}>
       <Loader2 size={20} style={{ color: c.sub, animation: 'bcspin 1s linear infinite' }} />
-      <p style={{ fontSize: 13, color: c.sub, margin: '12px 0 0' }}>Taking you to sign in…</p>
+      <p style={{ fontSize: 13, color: c.sub, margin: '12px 0 0' }}>Sign in to start the chat…</p>
       <style>{`@keyframes bcspin{to{transform:rotate(360deg)}}`}</style>
     </div>
   ) : needsAnon ? (

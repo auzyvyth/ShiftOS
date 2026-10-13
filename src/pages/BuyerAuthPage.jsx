@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../supabaseClient";
-import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from "../lib/buyerAuth";
+import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile, consumePostAuthReturn, hasPostAuthReturn } from "../lib/buyerAuth";
 import { routeForProfile, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
 import { Heart, Bell, MessageCircle, Tag, Check, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import LegalModal from "../components/LegalModal";
@@ -97,8 +97,10 @@ export default function BuyerAuthPage() {
     // fallback for a role this page does not expect, so a mis-typed role can
     // never send a shopper into a seller panel. dealer_id/plan are selected
     // because a standalone salesman's home is Lite or Premium, not /salesman.
+    // A seller account that came here from "Chat here" / the heart goes back
+    // to that car too (utils/postAuthRoute.js preferReturn), not its panel.
     const home = routeForProfile(profile);
-    window.location.href = `${base}${home === "/account" ? consumePostAuthReturn() : home}`;
+    window.location.href = `${base}${home === "/account" || hasPostAuthReturn() ? consumePostAuthReturn(home) : home}`;
   };
 
   // Tick the visible lockout down. Same shape as LoginPage's.

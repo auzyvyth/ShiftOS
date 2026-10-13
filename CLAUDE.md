@@ -907,10 +907,16 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
 - **Chat and saving a car need a real account on the marketplace (owner, 2026-10-14,
   the Mudah model).** 13 guests had opened chats, sellers answered 9, and with no
   email or push on file those replies reached nobody. `isRealBuyer` /
-  `sendBuyerToSignIn` (`src/lib/buyerAuth.js`) are the one check: `useBuyerThread`
-  returns `needsSignIn` and BuyerChat sends the buyer to `/buyer-login`, back to the
-  car with `?contact=chat` (reopens the chat); `toggleSave` parks the id in the
-  device list and the first load after sign-in merges it. WhatsApp and Call stay
+  `requestBuyerSignIn` (`src/lib/buyerAuth.js`) are the one check. **Signing in never
+  leaves the page (owner, 2026-10-14):** `requestBuyerSignIn` opens
+  `src/components/auth/SignInSheet.jsx` (mounted once by `SignInSheetHost` in App.jsx)
+  over the car; Google's button signs in with an ID token in a popup, like One Tap
+  (`src/lib/googleIdentity.js`, shared with GoogleOneTap), and the chat / save carries
+  on. Only the fallbacks (email, in-app browsers, a rejected token) redirect, and they
+  come back to the car with `?contact=chat`. After ANY redirect sign-in a stashed
+  return beats the account's home for sellers too (`preferReturn`,
+  `src/utils/postAuthRoute.js`): a seller testing chat landed on their dashboard.
+  `toggleSave` parks the id in the device list so a redirect still saves it. WhatsApp and Call stay
   open. A guest's EXISTING thread keeps working. Dealer subdomains keep guest chat
   and device-only saves: sign-in lives on xdrive.my and that session cannot reach
   `<sub>.xdrive.my` (separate storage per origin) - do not gate there without

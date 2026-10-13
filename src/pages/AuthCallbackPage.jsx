@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
+import { resolvePostAuthRoute, goPostAuth, preferReturn, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 import { reportAuthFailure } from '../utils/authErrors';
 import { isPlatformRole } from '../utils/platformOnly';
-import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile, consumePostAuthReturn } from '../lib/buyerAuth';
+import { consumeBuyerIntent, consumeBuyerConsent, ensureBuyerProfile, consumePostAuthReturn, hasPostAuthReturn } from '../lib/buyerAuth';
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate();
@@ -128,11 +128,12 @@ export default function AuthCallbackPage() {
       // stub to /choose-plan. This page's own copy sent every standalone rep to
       // /salesman-lite (Premium was forwarded a second later) and hardcoded
       // https://xdrive.my, so a Google sign-in on staging landed on production.
-      goPostAuth(resolvePostAuthRoute(profile, {
+      const route = resolvePostAuthRoute(profile, {
         session,
         buyerHome: role === 'buyer' ? buyerDest() : '/account',
         premiumHint: session.user?.user_metadata?.tier === 'premium',
-      }), navigate);
+      });
+      goPostAuth(preferReturn(route, hasPostAuthReturn() ? consumePostAuthReturn() : null), navigate);
     };
 
     // Bail out immediately if Supabase already signalled an error in the URL

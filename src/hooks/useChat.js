@@ -225,6 +225,7 @@ export function useBuyerThread(listingId, { autoStart = false, active = true } =
   const start = useCallback(async () => {
     if (!listingId || starting) return null;
     setStarting(true);
+    setNeedsSignIn(false);
     try {
       let { data: { user } } = await supabase.auth.getUser();
       if (!isRealBuyer(user) && !isSubdomain()) {

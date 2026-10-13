@@ -116,6 +116,17 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
 }
 
 /** Go there: a full page load when leaving the SPA, else a router replace. */
+// A marketplace action that sent this tab to sign in (chat with a seller, save
+// a car, a Find me post) wins over the account's own home, for SELLER accounts
+// too: a seller who taps "Chat here" on another seller's car was landing on
+// their dashboard after Google and had to find the car again (2026-10-14).
+// Account setup still comes first, and a refused sign-in stays refused.
+export function preferReturn(route, returnUrl) {
+  if (!returnUrl) return route;
+  if (/^\/(salesman-onboarding|dealer-onboarding|choose-plan|login)/.test(route.url)) return route;
+  return { url: returnUrl, hard: false };
+}
+
 export function goPostAuth({ url, hard }, navigate) {
   if (hard || !navigate) window.location.replace(url);
   else navigate(url, { replace: true });

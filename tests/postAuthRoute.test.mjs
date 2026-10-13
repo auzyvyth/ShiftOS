@@ -17,7 +17,7 @@ const out = await build({
   }],
 });
 const mod = await import('data:text/javascript;base64,' + Buffer.from(out.outputFiles[0].text).toString('base64'));
-const { resolvePostAuthRoute } = mod;
+const { resolvePostAuthRoute, preferReturn } = mod;
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -75,6 +75,15 @@ is('prod: dealer subdomain gets the session handoff',
    r({ role: 'dealer', subdomain: 'acme' }), { url: 'https://acme.xdrive.my/dashboard#_at=AT&_rt=RT', hard: true });
 is('prod: premium rep lands on premium on the apex with the session',
    r({ role: 'salesman', plan: 'salesman_full', payment_status: 'received' }), { url: 'https://xdrive.my/salesman-premium#_at=AT&_rt=RT', hard: true });
+
+// A chat / save that sent the tab to sign in wins over the account's home.
+const CAR = '/showroom/toyota-alphard-2024?contact=chat';
+is('return: seller dashboard gives way to the car', preferReturn({ url: '/dashboard', hard: false }, CAR), { url: CAR, hard: false });
+is('return: subdomain hand-off gives way too', preferReturn({ url: 'https://acme.xdrive.my/dashboard#_at=AT', hard: true }, CAR), { url: CAR, hard: false });
+is('return: unfinished salesman setup still comes first', preferReturn({ url: '/salesman-onboarding/lite', hard: false }, CAR), { url: '/salesman-onboarding/lite', hard: false });
+is('return: plan choice still comes first', preferReturn({ url: '/choose-plan', hard: false }, CAR), { url: '/choose-plan', hard: false });
+is('return: refused platform sign-in stays refused', preferReturn({ url: '/login?error=auth_failed&reason=platform_only', hard: false }, CAR).url.startsWith('/login'), true);
+is('return: nothing stashed = home', preferReturn({ url: '/dashboard', hard: false }, null), { url: '/dashboard', hard: false });
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

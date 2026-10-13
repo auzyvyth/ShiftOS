@@ -168,3 +168,24 @@ export function sendBuyerToSignIn(returnUrl = window.location.href) {
   setPostAuthReturn(returnUrl);
   window.location.href = '/buyer-login';
 }
+
+// True while a marketplace action is waiting for this tab to sign in (see
+// setPostAuthReturn). The post-sign-in routers use it to send ANY account,
+// seller accounts included, back to the car it was looking at instead of
+// its dashboard.
+export function hasPostAuthReturn() {
+  try { return !!sessionStorage.getItem(RETURN_KEY); } catch { return false; }
+}
+
+// Sign in WITHOUT leaving the page: opens SignInSheet (mounted once in App.jsx
+// by SignInSheetHost) over whatever the buyer is doing. Resolves true once a
+// real account is signed in, false if they close the sheet. `returnUrl` is
+// where the redirect fallbacks (email, in-app browsers) bring them back to.
+// No host on the page -> the old full-page sign-in.
+export function requestBuyerSignIn({ reason = 'chat', returnUrl = window.location.href } = {}) {
+  return new Promise((resolve) => {
+    const detail = { reason, returnUrl, resolve, handled: false };
+    window.dispatchEvent(new CustomEvent('xdrive:request-signin', { detail }));
+    if (!detail.handled) { sendBuyerToSignIn(returnUrl); resolve(false); }
+  });
+}

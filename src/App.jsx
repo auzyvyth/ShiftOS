@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import { Route, Routes, BrowserRouter as Router, useLocation, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
+import SignInSheetHost from "./components/auth/SignInSheetHost";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import * as Sentry from "@sentry/react";
@@ -150,6 +151,8 @@ function App() {
           },
         }}
       />
+      {/* In-page sign-in for chat / save (lib/buyerAuth.js requestBuyerSignIn) */}
+      <SignInSheetHost />
       <CompareBarGate />
       <ConsentBanner />
       <InstallPrompt />
