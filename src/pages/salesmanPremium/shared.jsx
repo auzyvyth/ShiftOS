@@ -8,6 +8,18 @@ import { createPortal } from "react-dom";
 import { X, Flame, TrendingUp, Snowflake } from "lucide-react";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../../utils/financing";
+import i18n from "../../i18n/config";
+
+// Module-scope strings read through i18n.t at the moment they are used, so a
+// language switch repaints them on the next render (PREM-I18N-2). A getter
+// object keeps every existing `LABELS[key]` call site working unchanged.
+export const tp = (key, opts) => i18n.t(`salesmanPremium.${key}`, opts);
+const translatedMap = (prefix, keys) =>
+ Object.defineProperties({}, Object.fromEntries(keys.map((k) => [k, { enumerable: true, get: () => tp(`${prefix}.${k}`) }])));
+// Pipeline stage name for display. Unknown stages fall back to the raw key
+// with underscores spaced out, which is what every call site did before.
+export const stageLabel = (stage) =>
+ stage ? tp(`stages.${stage}`, { defaultValue: String(stage).replace(/_/g, " ") }) : "";
 
 // Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
 // same size/color; scale the price figure up for higher tiers so the card
@@ -93,7 +105,7 @@ export function ListingFormModal({ open, onClose, title, subtitle, isMobile, chi
  </div>
  <button
  onClick={onClose}
- aria-label="Close"
+ aria-label={tp("common.close")}
  style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: 4, display: "flex", flexShrink: 0 }}
  >
  <X size={20} />
@@ -130,18 +142,18 @@ export function PrevMonthModal({ open, onClose, monthLabel, commission, count, t
  <X size={16} />
  </button>
  </div>
- <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>Commission earned</p>
+ <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{tp("prevMonth.commissionEarned")}</p>
  <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>
  RM {commission.toLocaleString("en-MY")}
  </p>
- <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{count} car{count !== 1 ? "s" : ""} sold</p>
+ <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{tp("prevMonth.carsSold", { count })}</p>
  {trendPct !== null ? (
  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, background: trendPct >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)" }}>
  <span style={{ fontSize: 12, fontWeight: 700, color: trendPct >= 0 ? "#4ade80" : "#f87171" }}>{trendPct >= 0 ? "↑" : "↓"} {Math.abs(trendPct)}%</span>
- <span style={{ fontSize: 11, color: "#6b7280" }}>vs {trendLabel}</span>
+ <span style={{ fontSize: 11, color: "#6b7280" }}>{tp("prevMonth.vs", { label: trendLabel })}</span>
  </div>
  ) : (
- <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>No data from {trendLabel} to compare against.</p>
+ <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{tp("prevMonth.noData", { label: trendLabel })}</p>
  )}
  </div>
  </div>,
@@ -154,10 +166,10 @@ export const timeAgo = (iso) => {
  const d = new Date(iso);
  if (isNaN(d.getTime())) return "—";
  const s = Math.floor((Date.now() - d) / 1000);
- if (s < 60) return `${s}s ago`;
- if (s < 3600) return `${Math.floor(s / 60)}m ago`;
- if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
- return `${Math.floor(s / 86400)}d ago`;
+ if (s < 60) return tp("time.sAgo", { n: s });
+ if (s < 3600) return tp("time.mAgo", { n: Math.floor(s / 60) });
+ if (s < 86400) return tp("time.hAgo", { n: Math.floor(s / 3600) });
+ return tp("time.dAgo", { n: Math.floor(s / 86400) });
 };
 
 // Minute-level relative time, never days — "just now", "12m ago", "1h 05m ago".
@@ -189,11 +201,11 @@ export const preciseUntil = (iso, now = Date.now(), L = {}) => {
  const m = totalMin % 60;
  return `${inW} ${h}h ${String(m).padStart(2, "0")}m`;
 };
-export const timeLabels = { ago: "ago", justNow: "just now", in: "in", now: "now" };
+export const timeLabels = translatedMap("time", ["ago", "justNow", "in", "now"]);
 // One neutral chip for a lead whose stage doesn't map to a known hue.
 export const STAGE_NEUTRAL = { bg: "rgba(255,255,255,0.06)", border: "rgba(255,255,255,0.12)", tx: "#cbd5e1" };
 // Booking status labels for the Bookings tab.
-export const STATUS_LABEL = { pending: "Pending", confirmed: "Confirmed", rescheduled: "Rescheduled", cancelled: "Cancelled", completed: "Completed", no_show: "No-show" };
+export const STATUS_LABEL = translatedMap("bookingStatus", ["pending", "confirmed", "rescheduled", "cancelled", "completed", "no_show"]);
 
 export const LEAD_STAGES = [
  "new",

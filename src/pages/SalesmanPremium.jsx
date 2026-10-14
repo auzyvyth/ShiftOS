@@ -175,7 +175,7 @@ import {
  priceStyle, SOFT, CARD, CARD_HEADER, ROW_LINE, EYEBROW, STAT, PrevMonthModal,
  timeAgo, preciseAgo, preciseUntil, timeLabels, STAGE_NEUTRAL, STATUS_LABEL,
  LEAD_STAGES, STAGE_COLOR, STAGE_WEIGHT, getHeatScore, LOST_REASONS, SubTabs,
- ListingFormModal,
+ ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
@@ -183,9 +183,10 @@ const PANEL_CACHE_KEY = "sp";
 
 // Shared fallback for every lazy-loaded tab/section below — keeps the loading
 // state visually consistent instead of each Suspense boundary inventing its own.
-const TabLoadingFallback = () => (
- <div style={{ padding: 40, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading…</div>
-);
+const TabLoadingFallback = () => {
+ const { t } = useTranslation();
+ return <div style={{ padding: 40, textAlign: "center", color: "#6b7280", fontSize: 13 }}>{t("salesmanPremium.common.loading")}</div>;
+};
 
 function useWindowSize() {
  const [w, setW] = useState(window.innerWidth);
@@ -274,6 +275,9 @@ export default function SalesmanPremium() {
  // here. The nav and the switcher are translated; the rest of the file is still
  // hardcoded English (PREM-I18N-2).
  const { t, i18n } = useTranslation();
+ // Seller-facing dates follow the panel language. Buyer-facing message
+ // templates keep their own wording and locale.
+ const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
  const isMobile = useWindowSize() < 768;
 
  // First-frame cache seed. Everything below initialises from what this device
@@ -492,16 +496,16 @@ export default function SalesmanPremium() {
  .select("id, sold_price, product_id, dealer_products(name, category)")
  .single();
  setAttachingAddon(false);
- if (error) { console.error("handleAttachAddon:", error); toast.error("Couldn't attach that add-on"); return; }
+ if (error) { console.error("handleAttachAddon:", error); toast.error(t("salesmanPremium.addons.attachFailed")); return; }
  if (data) setDealAddons((p) => [...p, data]);
  setAddonForm({ product_id: "", sold_price: "" });
  setShowAttachAddon(false);
- toast.success("Add-on attached");
+ toast.success(t("salesmanPremium.addons.attached"));
  setLeadIdsWithAddons((p) => new Set(p).add(drawerLeadId));
  };
  const handleRemoveAddon = async (id) => {
  const { error } = await supabase.from("deal_products").delete().eq("id", id);
- if (error) { console.error("handleRemoveAddon:", error); toast.error("Couldn't remove that add-on"); return; }
+ if (error) { console.error("handleRemoveAddon:", error); toast.error(t("salesmanPremium.addons.removeFailed")); return; }
  setDealAddons((p) => {
  const next = p.filter((a) => a.id!== id);
  // Last add-on on this lead just went — drop the pipeline badge too.
@@ -824,7 +828,7 @@ export default function SalesmanPremium() {
  // Sold now owns a nav slot, so it is no longer a dead end. The back control
  // only appears when the user was sent here from somewhere specific (a Pipeline
  // card's handover chip, a Dashboard tile) and has a place to go back to.
- const TAB_BACK_LABELS = { dashboard: "Dashboard", leads: "Pipeline" };
+ const TAB_BACK_LABELS = { dashboard: t("salesmanPremium.tabs.dashboard"), leads: t("salesmanPremium.common.pipeline") };
  const fromParam = searchParams.get("from");
  const backTab = TAB_BACK_LABELS[fromParam] ? fromParam : null;
  const renderTabBack = () => backTab && (
@@ -878,7 +882,7 @@ export default function SalesmanPremium() {
  .from("car_listings").select("commission_amount, brand, model, year, sold_at")
  .or(`assigned_to.eq.${sid},and(dealer_id.eq.${sid},assigned_to.is.null)`)
  .eq("status", "sold");
- if (cErr) { console.error("refreshSales:", cErr); toast.error("Could not load your commission"); return; }
+ if (cErr) { console.error("refreshSales:", cErr); toast.error(i18n.t("salesmanPremium.errors.loadCommission")); return; }
  const rows = data || [];
  setSoldCount(rows.length);
  setCommission(rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0));
@@ -1186,8 +1190,8 @@ export default function SalesmanPremium() {
  (payload) => {
  if (payload.eventType === "INSERT") {
  setEnquiries((p) => (p.some((e) => e.id === payload.new.id)? p : [payload.new, ...p]));
- toast("New enquiry!", {
- description: payload.new.buyer_name || "Someone enquired",
+ toast(i18n.t("salesmanPremium.rt.newEnquiry"), {
+ description: payload.new.buyer_name || i18n.t("salesmanPremium.rt.someoneEnquired"),
  });
  }
  if (payload.eventType === "UPDATE")
@@ -1209,8 +1213,8 @@ export default function SalesmanPremium() {
  (payload) => {
  if (payload.eventType === "INSERT") {
  setAppointments((p) => (p.some((a) => a.id === payload.new.id)? p : [payload.new, ...p]));
- toast("New booking!", {
- description: payload.new.buyer_name || "New appointment",
+ toast(i18n.t("salesmanPremium.rt.newBooking"), {
+ description: payload.new.buyer_name || i18n.t("salesmanPremium.rt.newAppointment"),
  });
  }
  if (payload.eventType === "UPDATE")
@@ -1238,7 +1242,7 @@ export default function SalesmanPremium() {
  supabase.from("loan_applications").select("*").eq("salesman_id", uid)
  .order("created_at", { ascending: false })
  .then(({ data, error }) => {
- if (error) { console.error("fetchLoanApplications:", error); toast.error("Could not load loan applications"); }
+ if (error) { console.error("fetchLoanApplications:", error); toast.error(i18n.t("salesmanPremium.errors.loadLoans")); }
  setLoanApplications(data || []);
  });
 
@@ -1248,7 +1252,7 @@ export default function SalesmanPremium() {
  supabase.from("customers").select("*").eq("dealer_id", custDealerId)
  .order("created_at", { ascending: false })
  .then(async ({ data, error }) => {
- if (error) { console.error("fetchCustomers:", error); toast.error("Could not load your customers"); }
+ if (error) { console.error("fetchCustomers:", error); toast.error(i18n.t("salesmanPremium.errors.loadCustomers")); }
  const list = data || [];
  setCustomers(list);
  setCustomersLoading(false);
@@ -1269,7 +1273,7 @@ export default function SalesmanPremium() {
  .select(LISTING_SELECT)
  .eq("dealer_id", uid),
  ]).then(([r1, r2]) => {
- if (r1.error || r2.error) { console.error("fetchListings:", r1.error || r2.error); toast.error("Could not load your listings"); }
+ if (r1.error || r2.error) { console.error("fetchListings:", r1.error || r2.error); toast.error(i18n.t("salesmanPremium.errors.loadListings")); }
  const seen = new Set();
  const merged = [...(r1.data || []), ...(r2.data || [])]
  .filter((c) => {
@@ -1362,7 +1366,7 @@ export default function SalesmanPremium() {
  .eq("is_deleted", false)
  .order("updated_at", { ascending: false })
  .then(async ({ data: lds, error: ldsErr }) => {
- if (ldsErr) { console.error("fetchLeads:", ldsErr); toast.error("Could not load your leads"); }
+ if (ldsErr) { console.error("fetchLeads:", ldsErr); toast.error(i18n.t("salesmanPremium.errors.loadLeads")); }
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);
@@ -1451,7 +1455,7 @@ export default function SalesmanPremium() {
  .eq("salesman_id", uid)
  .order("appointment_date", { ascending: false })
  .then(({ data: apts, error: aptsErr }) => {
- if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error("Could not load bookings"); return; }
+ if (aptsErr) { console.error("fetchAppointments:", aptsErr); toast.error(i18n.t("salesmanPremium.errors.loadBookings")); return; }
  setAppointments(apts || []);
  writeCache(`sp_appts_${uid}`, apts || []);
  });
@@ -1551,7 +1555,7 @@ export default function SalesmanPremium() {
  const { data, error } = await supabase.functions.invoke("delete-account");
  if (error || (data && data.error)) {
  console.error("delete-account:", error || data?.error);
- toast.error("Couldn't delete your account. Please try again.");
+ toast.error(t("salesmanPremium.errors.deleteAccount"));
  setDeleting(false);
  return;
  }
@@ -1560,7 +1564,7 @@ export default function SalesmanPremium() {
  window.location.href = "https://xdrive.my/login";
  } catch (e) {
  console.error("delete-account:", e);
- toast.error("Couldn't delete your account. Please try again.");
+ toast.error(t("salesmanPremium.errors.deleteAccount"));
  setDeleting(false);
  }
  };
@@ -1579,7 +1583,7 @@ export default function SalesmanPremium() {
  setStageSavingId(null);
  if (stageErr) {
  console.error("updateLeadStage:", stageErr);
- toast.error("Failed to update lead stage");
+ toast.error(t("salesmanPremium.errors.updateStage"));
  return;
  }
  const { error: actErr } = await supabase.from("lead_activities").insert({
@@ -1623,7 +1627,7 @@ export default function SalesmanPremium() {
  }
  const oldStage = lead.stage;
  const leadId = lead.id;
- const buyerName = lead.buyer_name || "Lead";
+ const buyerName = lead.buyer_name || t("salesmanPremium.common.lead");
  if (pendingStageRef.current[leadId]) {
  clearTimeout(pendingStageRef.current[leadId].timer);
  }
@@ -1633,9 +1637,9 @@ export default function SalesmanPremium() {
  updateLeadStage(leadId, newStage);
  }, 4500);
  pendingStageRef.current[leadId] = { timer, oldStage };
- toast(`${buyerName} → ${newStage.replace(/_/g, " ")}`, {
+ toast(`${buyerName} → ${stageLabel(newStage)}`, {
  action: {
- label: "Undo",
+ label: t("salesmanPremium.common.undo"),
  onClick: () => {
  clearTimeout(pendingStageRef.current[leadId]?.timer);
  delete pendingStageRef.current[leadId];
@@ -1667,8 +1671,8 @@ export default function SalesmanPremium() {
  const last = Number(localStorage.getItem('sp_last_followup_notif') || 0);
  if (Date.now() - last < THROTTLE_MS) return;
  localStorage.setItem('sp_last_followup_notif', String(Date.now()));
- const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
- const title = `${staleLeads.length} lead${staleLeads.length!== 1? 's' : ''} need follow-up`;
+ const names = staleLeads.slice(0, 3).map(l => l.buyer_name || i18n.t('salesmanPremium.common.unknown')).join(', ');
+ const title = i18n.t('salesmanPremium.leads.needFollowUpNotif', { count: staleLeads.length });
  const options = { body: names, tag: 'sp-followup', icon: '/shiftos-notif-icon.png', badge: '/shiftos-notif-badge.png' };
  try {
  // Pages controlled by a service worker (PWA) can't use `new Notification` —
@@ -1699,7 +1703,7 @@ export default function SalesmanPremium() {
  setNotesSavingId(leadId);
  const { error } = await supabase.from("leads").update({ notes: editNoteVal, updated_at: new Date().toISOString() }).eq("id", leadId);
  setNotesSavingId(null);
- if (error) { console.error("saveLeadNote:", error); toast.error("Failed to save note"); return; }
+ if (error) { console.error("saveLeadNote:", error); toast.error(t("salesmanPremium.errors.saveNote")); return; }
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, notes: editNoteVal } : l));
  setEditingNoteId(null);
  };
@@ -1711,7 +1715,7 @@ export default function SalesmanPremium() {
  // the "This week" call list runs on and saving a number is not a call.
  const saveLeadPhone = async (leadId) => {
  const digits = editPhoneVal.replace(/\D/g, "");
- if (digits.length < 9) { toast.error("That does not look like a full phone number"); return; }
+ if (digits.length < 9) { toast.error(t("salesmanPremium.errors.phoneShort")); return; }
  setPhoneSavingId(leadId);
  // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write,
  // so read the row back rather than trusting what was typed — every de-dup
@@ -1723,11 +1727,11 @@ export default function SalesmanPremium() {
  .select("phone")
  .maybeSingle();
  setPhoneSavingId(null);
- if (error) { console.error("saveLeadPhone:", error); toast.error("Failed to save phone number"); return; }
+ if (error) { console.error("saveLeadPhone:", error); toast.error(t("salesmanPremium.errors.savePhone")); return; }
  const stored = data?.phone || editPhoneVal.trim();
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, phone: stored } : l)));
  setEditPhoneLeadId(null);
- toast.success("Phone number saved");
+ toast.success(t("salesmanPremium.leads.phoneSaved"));
  };
 
  const fetchLeadActivities = async (leadId) => {
@@ -1756,7 +1760,7 @@ export default function SalesmanPremium() {
  created_by: userId,
  dealer_id: lead?.dealer_id?? null,
  });
- if (error) { console.error("logCall:", error); toast.error("Failed to log call"); setCallSaving(false); return; }
+ if (error) { console.error("logCall:", error); toast.error(t("salesmanPremium.errors.logCall")); setCallSaving(false); return; }
  // Stamp last_contacted_at, not just updated_at. Logging a call IS contact,
  // and every "gone quiet" surface (This week, OutreachHub) measures from this
  // column — without it a lead you just phoned keeps being served back to you
@@ -1765,7 +1769,7 @@ export default function SalesmanPremium() {
  await supabase.from("leads").update({ updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome }).eq("id", logCallLeadId);
  setLeads((p) => p.map((l) => l.id === logCallLeadId? { ...l, updated_at: callTs, last_contacted_at: callTs, last_call_outcome: callOutcome } : l));
  setLeadActivities((p) => { const n = { ...p }; delete n[logCallLeadId]; return n; });
- toast.success("Call logged");
+ toast.success(t("salesmanPremium.leads.callLogged"));
  setCallSaving(false);
  setLogCallLeadId(null);
  setCallNote("");
@@ -1776,10 +1780,10 @@ export default function SalesmanPremium() {
  setFollowUpSaving(true);
  const { error } = await supabase.from("leads").update({ follow_up_at: date || null, updated_at: new Date().toISOString() }).eq("id", leadId);
  setFollowUpSaving(false);
- if (error) { console.error("saveFollowUp:", error); toast.error("Failed to save reminder"); return; }
+ if (error) { console.error("saveFollowUp:", error); toast.error(t("salesmanPremium.errors.saveReminder")); return; }
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, follow_up_at: date || null } : l));
  setFollowUpModalLead(null);
- toast.success(date? "Follow-up reminder set" : "Reminder cleared");
+ toast.success(date? t("salesmanPremium.leads.reminderSet") : t("salesmanPremium.leads.reminderCleared"));
  };
 
  const handleDeleteLead = async (leadId) => {
@@ -1788,7 +1792,7 @@ export default function SalesmanPremium() {
  setDeletingLeadId(null);
  if (delErr) {
  console.error("handleDeleteLead:", delErr);
- toast.error("Failed to delete lead");
+ toast.error(t("salesmanPremium.errors.deleteLead"));
  return;
  }
  setLeads((p) => p.filter((l) => l.id!== leadId));
@@ -1802,7 +1806,7 @@ export default function SalesmanPremium() {
  .eq("id", leadId);
  if (linkErr) {
  console.error("handleLinkCar:", linkErr);
- toast.error("Failed to link car");
+ toast.error(t("salesmanPremium.errors.linkCar"));
  return;
  }
  const car = myListings.find((c) => c.id === carId);
@@ -1817,7 +1821,7 @@ export default function SalesmanPremium() {
  ));
  setLinkCarLeadId(null);
  setLinkCarQuery("");
- toast.success("Car linked to lead");
+ toast.success(t("salesmanPremium.leads.carLinked"));
  };
 
  const handleLostReason = async (leadId, reason) => {
@@ -1832,7 +1836,7 @@ export default function SalesmanPremium() {
  setLostSavingId(null);
  if (lostErr) {
  console.error("handleLostReason:", lostErr);
- toast.error("Failed to mark lead as lost");
+ toast.error(t("salesmanPremium.errors.markLost"));
  return;
  }
  const { error: lostActErr } = await supabase.from("lead_activities").insert({
@@ -1881,7 +1885,7 @@ export default function SalesmanPremium() {
  switch (n.type) {
  case "chat_message":
  // ref_id IS the thread id, so the sheet opens without a lookup.
- setChatSheet({ threadId: n.ref_id, buyerName: n.title || "Buyer" });
+ setChatSheet({ threadId: n.ref_id, buyerName: n.title || t("salesmanPremium.common.buyer") });
  break;
  case "new_booking":
  case "booking_unconfirmed":
@@ -1952,7 +1956,7 @@ export default function SalesmanPremium() {
 
  const updateApptStatus = async (apptId, status) => {
  const { error } = await supabase.from("appointments").update({ status }).eq("id", apptId);
- if (error) { console.error("updateApptStatus:", error); toast.error("Could not update booking"); return; }
+ if (error) { console.error("updateApptStatus:", error); toast.error(t("salesmanPremium.errors.updateBooking")); return; }
  setAppointments((p) =>
  p.map((a) => (a.id === apptId? { ...a, status } : a)),
  );
@@ -2009,7 +2013,7 @@ export default function SalesmanPremium() {
  const { error: updErr } = await supabase.from("leads")
  .update({ stage: "viewing_booked", updated_at: new Date().toISOString(), ...(attachCar ? { car_listing_id: attachCar } : {}) })
  .eq("id", existing.id);
- if (updErr) { console.error("autoUpsertLeadFromAppt advance:", updErr); toast.error("Could not move the lead"); return; }
+ if (updErr) { console.error("autoUpsertLeadFromAppt advance:", updErr); toast.error(t("salesmanPremium.errors.moveLead")); return; }
  setLeads((p) => p.some((l) => l.id === existing.id)
  ? p.map((l) => l.id === existing.id ? { ...l, stage: "viewing_booked", ...(attachCar ? { car_listing_id: attachCar } : {}) } : l)
  : p);
@@ -2022,7 +2026,7 @@ export default function SalesmanPremium() {
  .eq("id", existing.id).single();
  if (full) setLeads((p) => p.some((l) => l.id === full.id)? p.map((l) => l.id === full.id? full : l) : [full, ...p]);
  }
- toast.success("Moved to Viewing Booked");
+ toast.success(t("salesmanPremium.bookings.movedToViewing"));
  }
  } else {
  const { data: newLead, error: insErr } = await supabase.from("leads").insert({
@@ -2031,10 +2035,10 @@ export default function SalesmanPremium() {
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
  }).select(LEAD_SELECT).single();
- if (insErr) { console.error("autoUpsertLeadFromAppt insert:", insErr); toast.error("Could not create the lead"); return; }
+ if (insErr) { console.error("autoUpsertLeadFromAppt insert:", insErr); toast.error(t("salesmanPremium.errors.createLead")); return; }
  if (newLead) {
  setLeads((p) => p.some((l) => l.id === newLead.id)? p.map((l) => l.id === newLead.id? newLead : l) : [newLead, ...p]);
- toast.success("Added to pipeline at Viewing Booked");
+ toast.success(t("salesmanPremium.bookings.addedAtViewing"));
  if (!apt.lead_id) {
  await supabase.from("appointments").update({ lead_id: newLead.id }).eq("id", apt.id);
  setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, lead_id: newLead.id } : a));
@@ -2075,7 +2079,7 @@ export default function SalesmanPremium() {
  await updateApptStatus(apt.id, "confirmed");
  await autoUpsertLeadFromAppt(apt);
  scheduleAptReminder(apt);
- toast.success("Booking confirmed");
+ toast.success(t("salesmanPremium.bookings.confirmed"));
  window.location.href = waUrl;
  };
 
@@ -2089,7 +2093,7 @@ export default function SalesmanPremium() {
  await updateApptStatus(apt.id, "confirmed");
  await autoUpsertLeadFromAppt(apt);
  scheduleAptReminder(apt);
- toast.success("Booking confirmed");
+ toast.success(t("salesmanPremium.bookings.confirmed"));
  };
 
  // Default seller-booking slot: tomorrow 11:00, formatted for datetime-local.
@@ -2105,7 +2109,7 @@ export default function SalesmanPremium() {
  const lead = sellerBookingLead;
  if (!lead ||!sellerBookingDate) return;
  const dt = new Date(sellerBookingDate);
- if (isNaN(dt.getTime())) { toast.error("Pick a valid date and time"); return; }
+ if (isNaN(dt.getTime())) { toast.error(t("salesmanPremium.errors.pickDate")); return; }
  setSellerBookingSaving(true);
  await updateLeadStage(lead.id, "viewing_booked");
  const remindAt = new Date(dt.getTime() - 60 * 60 * 1000).toISOString();
@@ -2127,11 +2131,11 @@ export default function SalesmanPremium() {
  .select("id, lead_id, buyer_name, buyer_phone, appointment_date, status, notes, car_listing_id, created_at, remind_at, remind_sent, duration_minutes, car_listings(id, brand, model, year, variant, selling_price, images, vin_number, plate_number, mileage, transmission, slug)")
  .single();
  setSellerBookingSaving(false);
- if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error("Could not create the booking"); return; }
+ if (apptErr) { console.error("confirmSellerBooking:", apptErr); toast.error(t("salesmanPremium.errors.createBooking")); return; }
  if (apptRow) setAppointments((p) => p.find((a) => a.id === apptRow.id)? p : [apptRow, ...p]);
  setSellerBookingLead(null);
  setSellerBookingDate("");
- toast.success(`Booking confirmed for ${dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} ${dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ toast.success(t("salesmanPremium.bookings.confirmedFor", { when: `${dt.toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" })} ${dt.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}` }));
  };
 
  const autoCreateLeadFromEnq = async (enq) => {
@@ -2146,7 +2150,7 @@ export default function SalesmanPremium() {
  notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
  stage: "new", lead_source: "enquiry", is_deleted: false,
  }).select(LEAD_SELECT).single();
- if (newLead) { setLeads((p) => [newLead, ...p]); toast.success("Added to pipeline"); }
+ if (newLead) { setLeads((p) => [newLead, ...p]); toast.success(t("salesmanPremium.bookings.addedToPipeline")); }
  }
  };
 
@@ -2187,7 +2191,7 @@ export default function SalesmanPremium() {
  .eq("id", leadId);
  if (leadErr) {
  console.error("handleMarkWon lead:", leadErr);
- toast.error("Could not mark this deal as won");
+ toast.error(t("salesmanPremium.errors.markWon"));
  setWonSaving(false);
  return;
  }
@@ -2209,7 +2213,7 @@ export default function SalesmanPremium() {
  .eq("id", lead.car_listing_id);
  if (carErr) {
  console.error("handleMarkWon car listing:", carErr);
- toast.error("Deal won, but the car could not be marked sold");
+ toast.error(t("salesmanPremium.errors.wonCarNotSold"));
  } else {
  // Mark sold in place rather than filtering the row out — sold counts read
  // myListings for status 'sold' + sold_at this month.
@@ -2245,10 +2249,10 @@ export default function SalesmanPremium() {
 
  const car = lead.car_listings;
  const carLabel = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
- const buyerLabel = lead.buyer_name || "The buyer";
- toast.success(carLabel? `Deal won — ${carLabel} marked sold` : "Deal won", {
- description: `${buyerLabel} is now in Handover and on your Customers list.`,
- action: { label: "Open handover", onClick: () => openHandoverFor(leadId, "leads") },
+ const buyerLabel = lead.buyer_name || t("salesmanPremium.won.theBuyer");
+ toast.success(carLabel? t("salesmanPremium.won.toastCar", { car: carLabel }) : t("salesmanPremium.won.toast"), {
+ description: t("salesmanPremium.won.toastDesc", { buyer: buyerLabel }),
+ action: { label: t("salesmanPremium.won.openHandover"), onClick: () => openHandoverFor(leadId, "leads") },
  duration: 8000,
  });
  };
@@ -2276,7 +2280,7 @@ export default function SalesmanPremium() {
  })
  .select(LEAD_SELECT)
  .single();
- if (addErr) { console.error("handleAddLead:", addErr); toast.error("Could not add the lead"); }
+ if (addErr) { console.error("handleAddLead:", addErr); toast.error(t("salesmanPremium.errors.addLead")); }
  if (data) setLeads((p) => [data, ...p]);
  setAddLeadSaving(false);
  setShowAddLead(false);
@@ -2306,7 +2310,7 @@ export default function SalesmanPremium() {
 
  if (!invite || !invite.dealer_id) {
  setMergeStatus("error");
- setMergeMsg("Invalid or expired invite code.");
+ setMergeMsg(t("salesmanPremium.merge.invalid"));
  return;
  }
 
@@ -2320,12 +2324,12 @@ export default function SalesmanPremium() {
  });
  if (mergeErr) {
  setMergeStatus("error");
- setMergeMsg("Invalid or expired invite code.");
+ setMergeMsg(t("salesmanPremium.merge.invalid"));
  return;
  }
 
  setMergeStatus("success");
- setMergeMsg("Merged! Redirecting to full dashboard...");
+ setMergeMsg(t("salesmanPremium.merge.success"));
  setTimeout(() => navigate("/salesman"), 2500);
  };
 
@@ -2353,14 +2357,14 @@ export default function SalesmanPremium() {
  // agree on what "finish this listing" means.
  const listingScore = (car) => {
  const checks = [
- { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: `${Math.max(0, 3 - (car.images?.length || 0))} more photo${Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""}` },
- { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: "add a photo" },
- { pts: 15, ok: !!car.selling_price, hint: "set a price" },
- { pts: 10, ok: !!car.mileage, hint: "add mileage" },
- { pts: 10, ok: !!car.colour, hint: "add colour" },
- { pts: 10, ok: !!car.variant, hint: "add variant" },
- { pts: 10, ok: !!car.state, hint: "add location" },
- { pts: 5, ok: !!car.condition, hint: "add condition" },
+ { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: t("salesmanPremium.score.morePhotos", { count: Math.max(0, 3 - (car.images?.length || 0)) }) },
+ { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: t("salesmanPremium.score.addPhoto") },
+ { pts: 15, ok: !!car.selling_price, hint: t("salesmanPremium.score.setPrice") },
+ { pts: 10, ok: !!car.mileage, hint: t("salesmanPremium.score.addMileage") },
+ { pts: 10, ok: !!car.colour, hint: t("salesmanPremium.score.addColour") },
+ { pts: 10, ok: !!car.variant, hint: t("salesmanPremium.score.addVariant") },
+ { pts: 10, ok: !!car.state, hint: t("salesmanPremium.score.addLocation") },
+ { pts: 5, ok: !!car.condition, hint: t("salesmanPremium.score.addCondition") },
  ];
  const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
  const total = checks.reduce((s, c) => s + c.pts, 0);
@@ -2397,7 +2401,7 @@ export default function SalesmanPremium() {
  refreshSales();
  });
  } else {
- toast.error("Failed to update status");
+ toast.error(t("salesmanPremium.errors.updateStatus"));
  }
  return;
  }
@@ -2417,12 +2421,12 @@ export default function SalesmanPremium() {
  .eq("dealer_id", userId);
  if (error) {
  console.error("handleDeleteListing:", error);
- toast.error("Failed to delete listing");
+ toast.error(t("salesmanPremium.errors.deleteListing"));
  return;
  }
  setMyListings((p) => p.filter((c) => c.id !== carId));
  setConfirmDeleteId(null);
- toast.success("Listing deleted");
+ toast.success(t("salesmanPremium.listings.deleted"));
  };
 
  const AI_CAPTION_PLATFORMS = ["whatsapp", "tiktok", "instagram", "facebook", "general"];
@@ -2473,7 +2477,7 @@ export default function SalesmanPremium() {
  await supabase.from("ai_caption_logs").insert({ salesman_id: userId, car_id: car.id, platform, caption: text }).then(null, () => {});
  await logAiUsage("caption");
  } catch {
- setAiCaptions((p) => ({ ...p, [cacheKey]: "Couldn't generate caption. Please try again." }));
+ setAiCaptions((p) => ({ ...p, [cacheKey]: t("salesmanPremium.ai.captionFailed") }));
  } finally {
  setAiCaptionLoading(false);
  }
@@ -2493,7 +2497,7 @@ export default function SalesmanPremium() {
  await supabase.from("ai_wa_reply_logs").insert({ salesman_id: userId, lead_id: lead.id, reply: text }).then(null, () => {});
  await logAiUsage("wa_reply");
  } catch {
- setAiWaReplies((p) => ({ ...p, [lead.id]: "Couldn't generate reply. Try again." }));
+ setAiWaReplies((p) => ({ ...p, [lead.id]: t("salesmanPremium.ai.replyFailed") }));
  } finally {
  setWaReplyLoading((p) => ({ ...p, [lead.id]: false }));
  }
@@ -2695,14 +2699,14 @@ export default function SalesmanPremium() {
  <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
  <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
- <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? "Premium Panel" : "Lite Panel"}</p>
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
  </div>
- <button onClick={() => setMobileNavOpen(false)} aria-label="Close navigation"
+ <button onClick={() => setMobileNavOpen(false)} aria-label={t("salesmanPremium.nav.closeNav")}
  style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
  <X size={18} />
  </button>
  </div>
- <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>Main</p>
+ <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>{t("salesmanPremium.nav.main")}</p>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
@@ -2733,7 +2737,7 @@ export default function SalesmanPremium() {
  color: "#6b7280", fontSize: 13, fontWeight: 500, textAlign: "left",
  }}
  >
- <LogOut size={15} /> Log out
+ <LogOut size={15} /> {t("salesmanPremium.nav.logout")}
  </button>
  </nav>
  </div>,
@@ -2756,7 +2760,7 @@ export default function SalesmanPremium() {
  .eq("id", item.leadId);
  if (error) {
  console.error("handleThisWeekContacted:", error);
- toast.error("Could not save that as contacted");
+ toast.error(t("salesmanPremium.errors.saveContacted"));
  setLeads((p) => p.map((l) => (l.id === item.leadId ? { ...l, last_contacted_at: null } : l)));
  }
  };
@@ -2786,9 +2790,9 @@ export default function SalesmanPremium() {
  const srcTotal = leads.length;
  const srcCfg = [
  { key: "enquiry", label: "WhatsApp", color: "#4ade80" },
- { key: "booking", label: "Booking", color: "#60a5fa" },
+ { key: "booking", label: t("salesmanPremium.leads.srcBooking"), color: "#60a5fa" },
  { key: "xdrive", label: "XDrive", color: "#f87171" },
- { key: "manual", label: "Manual", color: "#6b7280" },
+ { key: "manual", label: t("salesmanPremium.leads.srcManual"), color: "#6b7280" },
  ].filter(s => srcMap[s.key] > 0);
 
  // pre-compute heat scores once
@@ -2881,8 +2885,8 @@ export default function SalesmanPremium() {
  </p>
  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
  {leadIdsWithAddons.has(lead.id) && (
- <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
- <Package size={9} /> Add-on
+ <span title={t("salesmanPremium.leads.addonTitle")} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <Package size={9} /> {t("salesmanPremium.leads.addonBadge")}
  </span>
  )}
  {/* A loan application on this lead. leads.loan_* is kept in step with
@@ -2890,24 +2894,24 @@ export default function SalesmanPremium() {
      up whichever surface submitted the loan. */}
  {lead.loan_status && lead.loan_status !== "none" && (() => {
  const ls = {
- approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: "Loan ok" },
- rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: "Loan no" },
- cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: "Loan off" },
- }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: "Loan in" };
+ approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: t("salesmanPremium.leads.loanOk") },
+ rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: t("salesmanPremium.leads.loanNo") },
+ cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: t("salesmanPremium.leads.loanOff") },
+ }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: t("salesmanPremium.leads.loanIn") };
  return (
- <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || "Loan application on this deal"}
+ <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || t("salesmanPremium.leads.loanTitle")}
  style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
  <Banknote size={9} /> {ls.label}
  </span>
  );
  })()}
  <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
- {heat.label}
+ {t(`salesmanPremium.heat.${heat.label}`)}
  </span>
  {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
  const score = lead.ai_score || leadScores[lead.id]?.score;
  const c = score === "hot"? {bg:"#dc2626",tx:"#fff"} : score === "warm"? {bg:"#f59e0b",tx:"#000"} : {bg:"#52525b",tx:"#fff"};
- return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{score.toUpperCase()}</span>;
+ return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{t(`salesmanPremium.heat.${score}`, { defaultValue: score }).toUpperCase()}</span>;
  })()}
  </div>
  </div>
@@ -2924,12 +2928,12 @@ export default function SalesmanPremium() {
  const lt = lastTouch(lead);
  if (!lt.at) return null;
  return (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.label}: {timeAgo(lt.at)}
+ <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")}: {timeAgo(lt.at)}
  </p>
  );
  })()}
  {lead.last_call_outcome && (() => {
- const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: "#4ade80" }, no_answer: { icon: PhoneOff, label: "No Answer", color: "#f87171" }, callback_requested: { icon: RefreshCw, label: "Callback", color: "#fbbf24" }, voicemail: { icon: Voicemail, label: "Voicemail", color: "#94a3b8" } };
+ const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanPremium.call.answered"), color: "#4ade80" }, no_answer: { icon: PhoneOff, label: t("salesmanPremium.call.noAnswer"), color: "#f87171" }, callback_requested: { icon: RefreshCw, label: t("salesmanPremium.call.callback"), color: "#fbbf24" }, voicemail: { icon: Voicemail, label: t("salesmanPremium.call.voicemail"), color: "#94a3b8" } };
  const o = OUTCOME[lead.last_call_outcome];
  if (!o) return null;
  return (
@@ -2948,7 +2952,7 @@ export default function SalesmanPremium() {
  <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx? "#9ca3af" : i === currentProgressIdx? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
  ))}
  </div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Stage: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{(normalizedStage || "new").replace(/_/g, " ")}</span>
+ <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{t("salesmanPremium.leads.stage")}: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{stageLabel(normalizedStage || "new")}</span>
  {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
  </p>
  </div>
@@ -2958,8 +2962,8 @@ export default function SalesmanPremium() {
  {followUpOverdue && (
  <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
  {followUp.reason === 'reminder_due'
- ? `Reminder due ${timeAgo(lead.follow_up_at)}`
- : `${followUp.label} · ${Math.max(1, Math.round(followUp.sinceHours / 24))}d`}
+ ? t("salesmanPremium.followUp.reminderDueAgo", { ago: timeAgo(lead.follow_up_at) })
+ : t("salesmanPremium.followUp.waiting", { reason: t(`salesmanPremium.followUp.${followUp.reason}`, { defaultValue: followUp.label }), n: Math.max(1, Math.round(followUp.sinceHours / 24)) })}
  </div>
  )}
 
@@ -2970,10 +2974,10 @@ export default function SalesmanPremium() {
  const tint = done ? "34,197,94" : "148,163,184";
  const fg = done ? "#4ade80" : "#cbd5e1";
  const detail = done
- ? "Handover complete"
+ ? t("salesmanPremium.handover.complete")
  : pct === undefined || pct === null || pct < 0
- ? "Handover checklist started"
- : `Handover ${pct}%${handoverStatus?.next ? ` · Next: ${handoverStatus.next.label}` : ""}`;
+ ? t("salesmanPremium.handover.started")
+ : handoverStatus?.next ? t("salesmanPremium.handover.pctNext", { pct, step: handoverStatus.next.label }) : t("salesmanPremium.handover.pct", { pct });
  return (
  <button
  onClick={() => openHandoverFor(lead.id, "leads")}
@@ -2981,7 +2985,7 @@ export default function SalesmanPremium() {
  >
  <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
  <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- Buyer moved to handover · <span style={{ color: "#9ca3af" }}>{detail}</span>
+ {t("salesmanPremium.handover.buyerMoved")} · <span style={{ color: "#9ca3af" }}>{detail}</span>
  </span>
  <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
  </button>
@@ -2996,14 +3000,14 @@ export default function SalesmanPremium() {
  onClick={() => advanceLeadStage(lead, nextStage)}
  style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
  >
- → {(nextStage || "won").replace(/_/g, " ")}
+ → {stageLabel(nextStage || "won")}
  </button>
  )}
  {lead.phone && (
  <a
  href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
- title="Call"
- aria-label="Call lead"
+ title={t("salesmanPremium.common.call")}
+ aria-label={t("salesmanPremium.leads.callLead")}
  style={{ flexShrink: 0, fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
  >
  <Phone size={13} />
@@ -3015,11 +3019,11 @@ export default function SalesmanPremium() {
      three buttons, and WhatsApp stays one tap away in the detail panel. */}
  {leadThread? (
  <button
- onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || "Buyer", carLabel: carName })}
- title="Open the in-app chat with this buyer"
+ onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || t("salesmanPremium.common.buyer"), carLabel: carName })}
+ title={t("salesmanPremium.leads.openChatTitle")}
  style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
  >
- <MessageSquare size={12} />Chat
+ <MessageSquare size={12} />{t("salesmanPremium.tabs.chat")}
  {leadThread.seller_unread > 0 && (
  <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
  {leadThread.seller_unread}
@@ -3044,7 +3048,7 @@ export default function SalesmanPremium() {
  <button
  onClick={() => setLinkCarLeadId(lead.id)}
  style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
- >Link Car
+ >{t("salesmanPremium.leads.linkCar")}
  </button>
  ) : null}
  <button
@@ -3075,7 +3079,7 @@ export default function SalesmanPremium() {
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >Lead Pipeline ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
+ >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
  <button
  onClick={() => setShowAddLead(true)}
@@ -3093,7 +3097,7 @@ export default function SalesmanPremium() {
  cursor: "pointer",
  }}
  >
- <Plus size={13} />Add Lead
+ <Plus size={13} />{t("salesmanPremium.leads.addLead")}
  </button>
  </div>
 
@@ -3121,7 +3125,7 @@ export default function SalesmanPremium() {
  <input
  value={leadSearch}
  onChange={(e) => setLeadSearch(e.target.value)}
- placeholder="Search by name or phone..."
+ placeholder={t("salesmanPremium.leads.searchPh")}
  style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
  />
  {leadSearch && (
@@ -3176,7 +3180,7 @@ export default function SalesmanPremium() {
   width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: solid,
   boxShadow: isActive ? `0 0 0 3px ${solid}26` : "none",
  }} />
- {stage.replace(/_/g, " ")}
+ {stageLabel(stage)}
  <span style={{
  fontSize: 10,
  fontWeight: 700,
@@ -3208,7 +3212,7 @@ export default function SalesmanPremium() {
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
  <span style={{ fontSize: 11.5, color: "#4b5563", textTransform: "capitalize" }}>
- Nothing in {activeLeadStage.replace(/_/g, " ")} yet
+ {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
  );
@@ -3252,8 +3256,8 @@ export default function SalesmanPremium() {
      number the way the mini page's stat block does. */}
  <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "4px 6px 14px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 12 }}>
   <div style={{ minWidth: 0 }}>
-   <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>Pipeline</p>
-   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>Pick a stage</p>
+   <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>{t("salesmanPremium.common.pipeline")}</p>
+   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>{t("salesmanPremium.leads.pickStage")}</p>
   </div>
   <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, letterSpacing: "-0.01em" }}>
    {activeStages.reduce((n, st) => n + searchedLeads.filter((l) => l.stage === st).length, 0)}
@@ -3308,7 +3312,7 @@ export default function SalesmanPremium() {
  overflow: "hidden", textOverflow: "ellipsis",
  letterSpacing: isActive ? "0.005em" : 0,
  }}>
- {stage.replace(/_/g, " ")}
+ {stageLabel(stage)}
  </span>
  <span style={{
  flexShrink: 0, fontSize: 11, fontWeight: 700, lineHeight: 1.7,
@@ -3353,7 +3357,7 @@ export default function SalesmanPremium() {
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
  <span style={{ fontSize: 12, color: "#4b5563", textTransform: "capitalize" }}>
- Nothing in {activeLeadStage.replace(/_/g, " ")} yet
+ {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
  ) : (
@@ -3403,7 +3407,7 @@ export default function SalesmanPremium() {
  letterSpacing: "0.08em",
  textTransform: "uppercase",
  }}
- >Lost ({lostLeads.length})
+ >{t("salesmanPremium.stages.lost")} ({lostLeads.length})
  </span>
  <span style={{ fontSize: 12, color: "#374151" }}>
  {lostOpen? "" : ""}
@@ -3472,12 +3476,12 @@ export default function SalesmanPremium() {
  whiteSpace: "nowrap",
  }}
  >
- {lead.loss_reason}
+ {t(`salesmanPremium.lostReasons.${lead.loss_reason}`, { defaultValue: lead.loss_reason })}
  </span>
  )}
  <button
  onClick={() => setDeleteConfirmId(lead.id)}
- title="Delete lead"
+ title={t("salesmanPremium.leads.deleteLead")}
  style={{
  background: "transparent",
  border: "none",
@@ -3517,7 +3521,7 @@ export default function SalesmanPremium() {
  color: "#f87171",
  fontWeight: 600,
  }}
- >Delete?
+ >{t("salesmanPremium.common.deleteQ")}
  </span>
  <button
  onClick={() => handleDeleteLead(lead.id)}
@@ -3531,7 +3535,7 @@ export default function SalesmanPremium() {
  cursor: "pointer",
  fontWeight: 600,
  }}
- >Yes
+ >{t("salesmanPremium.common.yes")}
  </button>
  <button
  onClick={() => setDeleteConfirmId(null)}
@@ -3544,7 +3548,7 @@ export default function SalesmanPremium() {
  color: "#6b7280",
  cursor: "pointer",
  }}
- >No
+ >{t("salesmanPremium.common.no")}
  </button>
  </div>
  )}
@@ -3575,9 +3579,9 @@ export default function SalesmanPremium() {
  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: isMobile ? "88vh" : "78vh", display: "flex", flexDirection: "column", background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, fontFamily: "system-ui, sans-serif", overflow: "hidden" }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>Link a car</p>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.linkCar.title")}</p>
  <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- to {target?.buyer_name || "this lead"}
+ {t("salesmanPremium.linkCar.to", { name: target?.buyer_name || t("salesmanPremium.common.thisLead") })}
  </p>
  </div>
  <button onClick={closeLink} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex", flexShrink: 0 }}>
@@ -3587,14 +3591,14 @@ export default function SalesmanPremium() {
 
  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
  <Search size={13} color="#4b5563" style={{ flexShrink: 0 }} />
- <input autoFocus value={linkCarQuery} onChange={(e) => setLinkCarQuery(e.target.value)} placeholder="Search your inventory…"
+ <input autoFocus value={linkCarQuery} onChange={(e) => setLinkCarQuery(e.target.value)} placeholder={t("salesmanPremium.linkCar.searchPh")}
  style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#e5e7eb", fontSize: 13, fontFamily: "inherit" }} />
  </div>
 
  <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
  {options.length === 0 ? (
  <p style={{ margin: 0, padding: "28px 16px", fontSize: 12.5, color: "#4b5563", textAlign: "center" }}>
- {myListings.length === 0 ? "You have no cars yet. Add one from Listings first." : "No car matches that search."}
+ {myListings.length === 0 ? t("salesmanPremium.linkCar.noCars") : t("salesmanPremium.linkCar.noMatch")}
  </p>
  ) : options.map((c) => {
  const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
@@ -3618,16 +3622,16 @@ export default function SalesmanPremium() {
  {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ")}
  </p>
  <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280" }}>
- {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : "No price"}
+ {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : t("salesmanPremium.common.noPrice")}
  {c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : ""}
  </p>
  </div>
  {isLinked ? (
  <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.15)", color: "#93c5fd" }}>
- <Check size={10} /> Linked
+ <Check size={10} /> {t("salesmanPremium.linkCar.linked")}
  </span>
  ) : c.status === "sold" ? (
- <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280" }}>Sold</span>
+ <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280" }}>{t("salesmanPremium.common.sold")}</span>
  ) : null}
  </button>
  );
@@ -3668,18 +3672,18 @@ export default function SalesmanPremium() {
  return (
  <div onClick={closeFollowUp} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
  <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, padding: "18px 18px 24px", boxSizing: "border-box" }}>
- <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>Set a follow-up reminder</p>
+ <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.followUpModal.title")}</p>
  <p style={{ margin: "0 0 16px", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {fl.buyer_name || "this lead"}
+ {fl.buyer_name || t("salesmanPremium.common.thisLead")}
  </p>
 
- <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Remind me on</p>
+ <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.followUpModal.remindOn")}</p>
  <div style={{ display: "flex", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
  {[
- { label: "Tomorrow", days: 1 },
- { label: "In 2 days", days: 2 },
- { label: "In 3 days", days: 3 },
- { label: "Next week", days: 7 },
+ { label: t("salesmanPremium.followUpModal.tomorrow"), days: 1 },
+ { label: t("salesmanPremium.followUpModal.inDays", { n: 2 }), days: 2 },
+ { label: t("salesmanPremium.followUpModal.inDays", { n: 3 }), days: 3 },
+ { label: t("salesmanPremium.followUpModal.nextWeek"), days: 7 },
  ].map(({ label, days }) => {
  const val = localDay(days);
  const on = followUpDate === val;
@@ -3702,21 +3706,21 @@ export default function SalesmanPremium() {
      never set a month out because the field was read the US way. */}
  {followUpDate && (
  <p style={{ margin: "0 0 14px", fontSize: 11, color: "#9ca3af" }}>
- Reminder set for <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
+ {t("salesmanPremium.followUpModal.setFor")} <span style={{ color: "#e5e7eb", fontWeight: 600 }}>{followUpDate.split("-").reverse().join("/")}</span>
  </p>
  )}
 
  <div style={{ display: "flex", gap: 8 }}>
  {fl.follow_up_at && (
- <button onClick={() => saveFollowUp(fl.id, null)} disabled={followUpSaving} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: followUpSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: followUpSaving ? 0.5 : 1 }}>Clear</button>
+ <button onClick={() => saveFollowUp(fl.id, null)} disabled={followUpSaving} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: followUpSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: followUpSaving ? 0.5 : 1 }}>{t("salesmanPremium.common.clear")}</button>
  )}
- <button onClick={closeFollowUp} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button onClick={closeFollowUp} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  <button
  onClick={() => followUpDate && saveFollowUp(fl.id, followUpDate)}
  disabled={!followUpDate || followUpSaving}
  style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}
  >
- {followUpSaving ? "Saving…" : "Set reminder"}
+ {followUpSaving ? t("salesmanPremium.common.saving") : t("salesmanPremium.followUpModal.set")}
  </button>
  </div>
  </div>
@@ -3741,13 +3745,14 @@ export default function SalesmanPremium() {
  const plIsPromptingLost = lostPromptId === pl.id;
  const plIsConfirmingDelete = deleteConfirmId === pl.id;
  const pbCar = pl.car_listings;
- const pbCarName = pbCar? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : "this car";
+ const pbCarName = pbCar? `${pbCar.year || ""} ${pbCar.brand} ${pbCar.model}`.trim() : t("salesmanPremium.scripts.thisCar");
  const pbStage = pl.stage;
+ const sl = (k, o) => t(`salesmanPremium.scripts.${k}`, o);
  const scripts = {
- price: { label: "Price too high", color: "#f87171", lines: [`"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM ${pbCar?.selling_price? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X"}/mo. That's less than a phone plan upgrade."`, `"What's your target price? Let me see what I can work out — I want to make this happen for you."`, `"This is already ${pbCar?.original_price && pbCar.original_price > pbCar.selling_price? `RM ${(pbCar.original_price - pbCar.selling_price).toLocaleString()} below asking` : "market price"}. The value is there."`] },
- mileage: { label: "High mileage concern", color: "#fb923c", lines: [`"Mileage matters less than service history. A well-maintained ${pbCarName} at ${pbCar?.mileage? Number(pbCar.mileage).toLocaleString() + "km" : "this mileage"} beats a low-km car that's been neglected."`, `"These engines are built to go 300k+ km with regular service. The price already reflects the mileage."`, `"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through."`] },
- timing: { label: "Not ready yet", color: "#fbbf24", lines: [`"Totally understand — what would need to change for you to feel ready? Is it financing, or something else?"`, `"I can hold this for you with a small refundable deposit while you sort things out. No pressure."`, `"Just so you know — cars at this price point move fast. I'd hate for you to miss it and find something worse for more money."`] },
- trust: { label: "Not sure / need to think", color: "#f87171", lines: [`"What specific questions can I answer right now? Let's remove all the uncertainty together."`, `"I'm not here to rush you — but I want to make sure you have everything you need to decide confidently."`, `"Can I send you a full brief on this car — specs, loan estimate, everything — so you have it all in one place?"`] },
+ price: { label: sl("price.label"), color: "#f87171", lines: [sl("price.l1", { monthly: pbCar?.selling_price? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X" }), sl("price.l2"), sl("price.l3", { below: pbCar?.original_price && pbCar.original_price > pbCar.selling_price? sl("price.belowAsking", { amount: (pbCar.original_price - pbCar.selling_price).toLocaleString() }) : sl("price.marketPrice") })] },
+ mileage: { label: sl("mileage.label"), color: "#fb923c", lines: [sl("mileage.l1", { car: pbCarName, km: pbCar?.mileage? Number(pbCar.mileage).toLocaleString() + "km" : sl("mileage.thisMileage") }), sl("mileage.l2"), sl("mileage.l3")] },
+ timing: { label: sl("timing.label"), color: "#fbbf24", lines: [sl("timing.l1"), sl("timing.l2"), sl("timing.l3")] },
+ trust: { label: sl("trust.label"), color: "#f87171", lines: [sl("trust.l1"), sl("trust.l2"), sl("trust.l3")] },
  };
  const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
  return (
@@ -3763,12 +3768,12 @@ export default function SalesmanPremium() {
  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
  <div style={{ minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
- <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || "No car linked"}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanPremium.drawer.noCarLinked")}</p>
  </div>
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
- <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
- <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{pl.stage?.replace(/_/g," ")}</span>
+ <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{t(`salesmanPremium.heat.${plHeat.label}`)}</span>
+ <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
  <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
  <X size={16} />
  </button>
@@ -3782,9 +3787,9 @@ export default function SalesmanPremium() {
      used to reduce to a single grey line under the buyer's name. */}
  <div>
  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Car</p>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.car")}</p>
  <button onClick={() => setLinkCarLeadId(pl.id)} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 9px", borderRadius: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.28)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
- {plCar ? "Change" : <><Plus size={11} /> Link a car</>}
+ {plCar ? t("salesmanPremium.drawer.change") : <><Plus size={11} /> {t("salesmanPremium.linkCar.title")}</>}
  </button>
  </div>
  {plCar ? (
@@ -3802,30 +3807,30 @@ export default function SalesmanPremium() {
  </p>
  {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>}
  <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || "No specs on file"}
+ {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
  ) : (
  <p style={{ margin: 0, padding: "12px 10px", borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.1)", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
- No car linked yet — a loan started from this lead will have nothing to finance.
+ {t("salesmanPremium.drawer.noCarYet")}
  </p>
  )}
  </div>
 
  {/* CONTACT + STATUS — everything the card shows, which this panel did not. */}
  <div>
- <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Contact</p>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.contact")}</p>
  <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: 9, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
  {/* The in-app conversation, when there is one. For a guest buyer this is
      the ONLY way to reach them, so it sits above the phone row. */}
  {plThread && (
  <button
- onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || "Buyer", carLabel: plCarName })}
+ onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || t("salesmanPremium.common.buyer"), carLabel: plCarName })}
  style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)", border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
  >
  <MessageSquare size={12} color="#6b7280" style={{ flexShrink: 0 }} />
- <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb" }}>In-app chat</span>
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb" }}>{t("salesmanPremium.drawer.inAppChat")}</span>
  {plThread.seller_unread > 0 && (
  <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
  {plThread.seller_unread}
@@ -3850,15 +3855,15 @@ export default function SalesmanPremium() {
  onChange={(e) => setEditPhoneVal(e.target.value)}
  onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
  placeholder="012 345 6789"
- aria-label="Buyer phone number"
+ aria-label={t("salesmanPremium.drawer.buyerPhone")}
  style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 12.5, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
  />
  <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
  style={{ flexShrink: 0, fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
- {phoneSavingId === pl.id? "\u2026" : "Save"}
+ {phoneSavingId === pl.id? "\u2026" : t("salesmanPremium.common.save")}
  </button>
  <button onClick={() => setEditPhoneLeadId(null)}
- style={{ flexShrink: 0, background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2, display: "flex" }} aria-label="Cancel">
+ style={{ flexShrink: 0, background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.common.cancel")}>
  <X size={13} />
  </button>
  </>
@@ -3866,7 +3871,7 @@ export default function SalesmanPremium() {
  <>
  <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
  <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }}
- style={{ flexShrink: 0, background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex" }} aria-label="Edit phone number">
+ style={{ flexShrink: 0, background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.drawer.editPhone")}>
  <Pencil size={11} />
  </button>
  {String(pl.phone).replace(/\D/g, "").length >= 9 && (
@@ -3879,7 +3884,7 @@ export default function SalesmanPremium() {
  ) : (
  <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(""); }}
  style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: "#6b7280", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
- <Plus size={11} />{plThread? "Add their number when they share it" : "Add phone number"}
+ <Plus size={11} />{plThread? t("salesmanPremium.drawer.addNumberChat") : t("salesmanPremium.drawer.addNumber")}
  </button>
  )}
  </div>
@@ -3893,23 +3898,23 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
  <Calendar size={12} color="#6b7280" style={{ flexShrink: 0 }} />
  <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: new Date(pl.follow_up_at).getTime() <= Date.now() ? "#fb923c" : "#e5e7eb" }}>
- Follow up {timeAgo(pl.follow_up_at)}
+ {t("salesmanPremium.drawer.followUpAgo", { ago: timeAgo(pl.follow_up_at) })}
  </span>
  </div>
  )}
  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "rgba(255,255,255,0.02)", flexWrap: "wrap" }}>
  {pl.lead_source && (
  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>
- {String(pl.lead_source).replace(/_/g, " ")}
+ {t(`salesmanPremium.source.${pl.lead_source}`, { defaultValue: String(pl.lead_source).replace(/_/g, " ") })}
  </span>
  )}
  {/* Same loan badge as the pipeline card - kept in step by trg_sync_lead_loan. */}
  {pl.loan_status && pl.loan_status !== "none" && (() => {
  const ls = {
- approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: "Loan approved" },
- rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: "Loan declined" },
- cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: "Loan cancelled" },
- }[pl.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: "Loan submitted" };
+ approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: t("salesmanPremium.drawer.loanApproved") },
+ rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: t("salesmanPremium.drawer.loanDeclined") },
+ cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: t("salesmanPremium.drawer.loanCancelled") },
+ }[pl.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: t("salesmanPremium.drawer.loanSubmitted") };
  return (
  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg }}>
  <Banknote size={10} /> {ls.label}
@@ -3918,7 +3923,7 @@ export default function SalesmanPremium() {
  );
  })()}
  {pl.updated_at && (
- <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>{lastTouch(pl).label} {timeAgo(lastTouch(pl).at)}</span>
+ <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>{lastTouch(pl).contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")} {timeAgo(lastTouch(pl).at)}</span>
  )}
  </div>
  </div>
@@ -3926,13 +3931,13 @@ export default function SalesmanPremium() {
 
  {/* Notes */}
  <div>
- <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>Notes</p>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.notes")}</p>
  {editingNoteId === pl.id? (
  <div>
  <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
- <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : "Save"}</button>
- <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>Cancel</button>
+ <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : t("salesmanPremium.common.save")}</button>
+ <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  </div>
  ) : pl.notes? (
@@ -3941,7 +3946,7 @@ export default function SalesmanPremium() {
  </p>
  ) : (
  <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
- <Pencil size={12} />Add note…
+ <Pencil size={12} />{t("salesmanPremium.drawer.addNote")}
  </button>
  )}
  </div>
@@ -3949,29 +3954,29 @@ export default function SalesmanPremium() {
  {/* Tool row 1 */}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
  <button onClick={() => switchTab("loans")} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- <DollarSign size={12} />Loan calc
+ <DollarSign size={12} />{t("salesmanPremium.drawer.loanCalc")}
  </button>
  <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- <PhoneCall size={12} />Log call
+ <PhoneCall size={12} />{t("salesmanPremium.drawer.logCall")}
  </button>
  <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- <Clock size={12} />Set reminder
+ <Clock size={12} />{t("salesmanPremium.followUpModal.set")}
  </button>
  </div>
 
  {/* Tool row 2 */}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id? "#c084fc" : "#9ca3af" }}>Scripts
+ <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id? "#c084fc" : "#9ca3af" }}>{t("salesmanPremium.drawer.scripts")}
  </button>
  <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id? "#93c5fd" : "#9ca3af" }}>
- <History size={12} />History
+ <History size={12} />{t("salesmanPremium.drawer.history")}
  </button>
  <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- {pl.car_listing_id? "Change Car" : "Link Car"}
+ {pl.car_listing_id? t("salesmanPremium.drawer.changeCar") : t("salesmanPremium.leads.linkCar")}
  </button>
  {isPremium && (
  <button onClick={() => rescoreLead(pl)} style={{fontSize:12,padding:"7px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"inherit"}}>
- {leadScores[pl.id]?.loading? "Scoring..." : "Re-score"}
+ {leadScores[pl.id]?.loading? t("salesmanPremium.drawer.scoring") : t("salesmanPremium.drawer.rescore")}
  </button>
  )}
  </div>
@@ -3979,11 +3984,11 @@ export default function SalesmanPremium() {
  {/* Activity timeline */}
  {expandedActivityLeadId === pl.id && (
  <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
- <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>Activity History</p>
+ <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.activityHistory")}</p>
  {activitiesLoadingId === pl.id? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>Loading…</p>
+ <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
  ) : (leadActivities[pl.id] || []).length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>No activity yet.</p>
+ <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanPremium.drawer.noActivity")}</p>
  ) : (
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {(leadActivities[pl.id] || []).map((act, i) => {
@@ -3992,7 +3997,7 @@ export default function SalesmanPremium() {
  <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
  <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed"? `${act.from_stage || "?"} → ${act.to_stage || "?"}` : act.note || act.activity_type}</p>
+ <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed"? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
  <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
  </div>
  </div>
@@ -4006,7 +4011,7 @@ export default function SalesmanPremium() {
  {/* Objection Scripts */}
  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
  <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
- <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>Objection Scripts</p>
+ <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.objectionScripts")}</p>
  {Object.entries(scripts).map(([key, s]) => (
  <div key={key} style={{ marginBottom: 10 }}>
  <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
@@ -4030,18 +4035,18 @@ export default function SalesmanPremium() {
  {/* AI WA Reply */}
  {isPremium && pl.buyer_name && pl.phone && (
  <div style={{marginTop:12,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:12}}>
- <p style={{margin:"0 0 6px",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em"}}>AI WA Reply</p>
+ <p style={{margin:"0 0 6px",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em"}}>{t("salesmanPremium.drawer.aiWaReply")}</p>
  {!aiWaReplies[pl.id]? (
  <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{fontSize:11,padding:"6px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer"}}>
- {waReplyLoading[pl.id]? "Generating..." : "Generate AI Reply"}
+ {waReplyLoading[pl.id]? t("salesmanPremium.drawer.generating") : t("salesmanPremium.drawer.generateReply")}
  </button>
  ) : (
  <div>
  <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,color:"#e5e7eb",fontSize:12,padding:"8px 10px",resize:"none",boxSizing:"border-box"}}/>
  <div style={{display:"flex",gap:6,marginTop:6}}>
- <button onClick={() => {navigator.clipboard.writeText(aiWaReplies[pl.id]);setWaReplyCopied(p=>({...p,[pl.id]:true}));setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500);}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#9ca3af",cursor:"pointer"}}>{waReplyCopied[pl.id]?"Copied!":"Copy"}</button>
- {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(37,211,102,0.1)",border:"1px solid rgba(37,211,102,0.2)",color:"#4ade80",cursor:"pointer"}}>Send via WA</button>}
- <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#6b7280",cursor:"pointer"}}>Regenerate</button>
+ <button onClick={() => {navigator.clipboard.writeText(aiWaReplies[pl.id]);setWaReplyCopied(p=>({...p,[pl.id]:true}));setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500);}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#9ca3af",cursor:"pointer"}}>{waReplyCopied[pl.id]?t("salesmanPremium.common.copied"):t("salesmanPremium.common.copy")}</button>
+ {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(37,211,102,0.1)",border:"1px solid rgba(37,211,102,0.2)",color:"#4ade80",cursor:"pointer"}}>{t("salesmanPremium.drawer.sendViaWa")}</button>}
+ <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#6b7280",cursor:"pointer"}}>{t("salesmanPremium.drawer.regenerate")}</button>
  </div>
  </div>
  )}
@@ -4057,7 +4062,7 @@ export default function SalesmanPremium() {
      included_services. */}
  <div>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
- <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>Add-ons</p>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanPremium.drawer.addons")}</p>
  {dealAddons.length > 0 && (
  <span style={{ fontSize: 12, fontWeight: 700, color: "#93c5fd" }}>
  RM {dealAddons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0).toLocaleString("en-MY")}
@@ -4065,26 +4070,26 @@ export default function SalesmanPremium() {
  )}
  </div>
  {addonsLoading? (
- <p style={{ fontSize: 12, color: "#4b5563", margin: 0 }}>Loading…</p>
+ <p style={{ fontSize: 12, color: "#4b5563", margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
  ) : (
  <>
  {dealAddons.map((a) => (
  <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8 }}>
  <span style={{ fontSize: 12, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
  <span style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", flexShrink: 0 }}>RM {Number(a.sold_price || 0).toLocaleString("en-MY")}</span>
- <button onClick={() => handleRemoveAddon(a.id)} title="Remove this add-on" style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+ <button onClick={() => handleRemoveAddon(a.id)} title={t("salesmanPremium.drawer.removeAddon")} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
  <X size={13} />
  </button>
  </div>
  ))}
  {!showAttachAddon? (
  <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
- <Plus size={12} /> Attach an add-on
+ <Plus size={12} /> {t("salesmanPremium.drawer.attachAddon")}
  </button>
  ) : (
  <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: 12 }}>
  {addonCatalogue.length === 0? (
- <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px", lineHeight: 1.5 }}>No products in your catalogue yet. Add them under Listings → Add-ons, then attach them to a deal here.</p>
+ <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px", lineHeight: 1.5 }}>{t("salesmanPremium.drawer.noCatalogue")}</p>
  ) : (
  <>
  <select
@@ -4092,7 +4097,7 @@ export default function SalesmanPremium() {
  onChange={(e) => { const sel = addonCatalogue.find((pr) => pr.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel? String(sel.selling_price) : f.sold_price })); }}
  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
  >
- <option value="">Select a product…</option>
+ <option value="">{t("salesmanPremium.drawer.selectProduct")}</option>
  {addonCatalogue.map((pr) => (
  <option key={pr.id} value={pr.id}>{pr.name} — RM {Number(pr.selling_price || 0).toLocaleString("en-MY")}</option>
  ))}
@@ -4102,16 +4107,16 @@ export default function SalesmanPremium() {
  min="0"
  value={addonForm.sold_price}
  onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
- placeholder="Price actually sold at (RM)"
+ placeholder={t("salesmanPremium.drawer.soldAtPh")}
  style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
  />
  </>
  )}
  <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  {addonCatalogue.length > 0 && (
  <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
- {attachingAddon? "Attaching…" : "Attach"}
+ {attachingAddon? t("salesmanPremium.drawer.attaching") : t("salesmanPremium.drawer.attach")}
  </button>
  )}
  </div>
@@ -4127,28 +4132,28 @@ export default function SalesmanPremium() {
  {/* Lost / Delete zone */}
  {plIsPromptingLost? (
  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
- <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>Why lost?</span>
+ <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>{t("salesmanPremium.drawer.whyLost")}</span>
  {LOST_REASONS.map(r => (
  <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>
- {lostSavingId === pl.id? "…" : r}
+ {lostSavingId === pl.id? "…" : t(`salesmanPremium.lostReasons.${r}`, { defaultValue: r })}
  </button>
  ))}
  <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}></button>
  </div>
  ) : plIsConfirmingDelete? (
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>Delete this lead?</span>
- <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : "Yes, delete"}</button>
- <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>No</button>
+ <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>{t("salesmanPremium.drawer.deleteThisLead")}</span>
+ <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : t("salesmanPremium.common.yesDelete")}</button>
+ <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.no")}</button>
  </div>
  ) : (
  <div style={{ display: "flex", gap: 8 }}>
  {pl.stage!== "won" && pl.stage!== "closed_won" && (
- <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>Mark as lost
+ <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>{t("salesmanPremium.drawer.markLost")}
  </button>
  )}
  <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- <Trash2 size={13} />Delete
+ <Trash2 size={13} />{t("salesmanPremium.common.delete")}
  </button>
  </div>
  )}
@@ -4195,15 +4200,15 @@ export default function SalesmanPremium() {
  return (
  <div>
  <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
- Lead History ({historyItems.length})
+ {t("salesmanPremium.inbox.leadHistory")} ({historyItems.length})
  </p>
  {historyItems.length === 0 && (
  <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>No lead history yet.</p>
- <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Enquiries and leads appear here as your listings get shared.</p>
+ <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanPremium.inbox.noLeadHistory")}</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanPremium.inbox.noLeadHistorySub")}</p>
  <button onClick={() => switchTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
- Go to Listings →
+ {t("salesmanPremium.inbox.goToListings")}
  </button>
  </div>
  )}
@@ -4235,15 +4240,15 @@ export default function SalesmanPremium() {
  </p>
  {isNew? (
  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
- New
+ {t("salesmanPremium.stages.new")}
  </span>
  ) : liveStage? (
  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
- {liveStage.replace(/_/g, " ")}
+ {stageLabel(liveStage)}
  </span>
  ) : (
  <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
- Converted → Lead
+ {t("salesmanPremium.inbox.converted")}
  </span>
  )}
  </div>
@@ -4297,7 +4302,7 @@ export default function SalesmanPremium() {
  }}
  style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
  >
- WA Reply
+ {t("salesmanPremium.inbox.waReply")}
  </button>
  )}
  {enq.buyer_phone && (
@@ -4305,7 +4310,7 @@ export default function SalesmanPremium() {
  onClick={() => setOpenTemplateId(openTemplateId === enq.id? null : enq.id)}
  style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id? "#f87171" : "#6b7280", cursor: "pointer" }}
  >
- Templates ▾
+ {t("salesmanPremium.inbox.templates")} ▾
  </button>
  )}
  </div>
@@ -4314,10 +4319,10 @@ export default function SalesmanPremium() {
  {isNew && openTemplateId === enq.id && (
  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
  {[
- { key: "chat", label: "Let's Chat", color: "#4ade80" },
- { key: "test_drive", label: "Book Test Drive", color: "#60a5fa" },
- { key: "budget", label: "What's Budget?", color: "#fbbf24" },
- { key: "deposit", label: "Deposit to Hold", color: "#f87171" },
+ { key: "chat", label: t("salesmanPremium.inbox.tplChat"), color: "#4ade80" },
+ { key: "test_drive", label: t("salesmanPremium.inbox.tplTestDrive"), color: "#60a5fa" },
+ { key: "budget", label: t("salesmanPremium.inbox.tplBudget"), color: "#fbbf24" },
+ { key: "deposit", label: t("salesmanPremium.inbox.tplDeposit"), color: "#f87171" },
  ].map(({ key, label, color }) => {
  const toastKey = enq.id + "_" + key;
  return (
@@ -4327,7 +4332,7 @@ export default function SalesmanPremium() {
  style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
  >
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
- {templateToast === toastKey? "✓ Sent!" : label}
+ {templateToast === toastKey? `✓ ${t("salesmanPremium.inbox.sent")}` : label}
  </button>
  );
  })}
@@ -4362,7 +4367,7 @@ export default function SalesmanPremium() {
 
  const setAptStatus = async (apt, status) => {
  const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
- if (error) { toast.error("Failed to update booking"); return; }
+ if (error) { toast.error(t("salesmanPremium.errors.updateBooking")); return; }
  setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, status } : a));
  };
 
@@ -4378,8 +4383,8 @@ export default function SalesmanPremium() {
  const d = new Date(iso);
  if (isNaN(d)) return { dateStr: "—", timeStr: "" };
  return {
- dateStr: d.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" }),
- timeStr: d.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }),
+ dateStr: d.toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" }),
+ timeStr: d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }),
  };
  };
 
@@ -4421,11 +4426,11 @@ export default function SalesmanPremium() {
  setReminderSaving(true);
  const { error } = await supabase.from("appointments").update({ remind_at: remindAt.toISOString(), remind_sent: false }).eq("id", apt.id);
  setReminderSaving(false);
- if (error) { toast.error("Couldn't set the reminder. Try again."); return; }
+ if (error) { toast.error(t("salesmanPremium.errors.setReminder")); return; }
  setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, remind_at: remindAt.toISOString(), remind_sent: false } : a));
  setReminderPickerAptId(null);
  setSelectedRemindAt(null);
- toast.success(`Reminder set — fires ${remindAt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}`);
+ toast.success(t("salesmanPremium.bookings.reminderFires", { time: remindAt.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) }));
  };
 
  const clearReminder = async (apt) => {
@@ -4439,7 +4444,7 @@ export default function SalesmanPremium() {
  const sc = statusColors[apt.status] || statusColors.pending;
  const isRescheduled = apt.status === "rescheduled";
  const isFuture = apt.appointment_date && new Date(apt.appointment_date) > new Date(nowTick);
- const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : t("salesmanPremium.drawer.noCarLinked");
  const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
  const initials = (apt.buyer_name || "?").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
  const phone = (apt.buyer_phone || "").replace(/\D/g, "");
@@ -4455,9 +4460,9 @@ export default function SalesmanPremium() {
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
  {aptIsNew(apt.created_at) && (
- <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>NEW</span>
+ <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>{t("salesmanPremium.bookings.newBadge")}</span>
  )}
  </div>
  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
@@ -4489,15 +4494,15 @@ export default function SalesmanPremium() {
  {/* Action row — primary CTA + call + ··· details */}
  <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
  {canConfirm && apt.buyer_phone && (
- <button onClick={() => openConfirmBookingModal(apt)} title="Confirm this booking and message the buyer on WhatsApp"
+ <button onClick={() => openConfirmBookingModal(apt)} title={t("salesmanPremium.bookings.confirmTitle")}
  style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
- <Check size={13} /> Confirm Booking
+ <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
  )}
  {canConfirm &&!apt.buyer_phone && (
- <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title="Mark appointment as confirmed"
+ <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title={t("salesmanPremium.bookings.markConfirmedTitle")}
  style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
- <Check size={13} /> Confirm Booking
+ <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
  )}
  {apt.status === "confirmed" && apt.buyer_phone && (
@@ -4505,18 +4510,18 @@ export default function SalesmanPremium() {
  const p = apt.buyer_phone.replace(/\D/g, "");
  const msg = buildReminderMessage(apt);
  window.location.href = `https://wa.me/${p.startsWith("6")? p : "6" + p}?text=${encodeURIComponent(msg)}`;
- }} title="Send WhatsApp reminder message to buyer"
+ }} title={t("salesmanPremium.bookings.sendReminderTitle")}
  style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
- <MessageCircle size={13} /> Message
+ <MessageCircle size={13} /> {t("salesmanPremium.bookings.message")}
  </button>
  )}
  {phone && (
- <a href={`tel:${phone}`} title="Call" aria-label="Call buyer"
+ <a href={`tel:${phone}`} title={t("salesmanPremium.common.call")} aria-label={t("salesmanPremium.bookings.callBuyer")}
  style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
  <Phone size={13} />
  </a>
  )}
- <button onClick={() => setBookingDetailId(apt.id)} title="Booking details" aria-label="Booking details"
+ <button onClick={() => setBookingDetailId(apt.id)} title={t("salesmanPremium.bookings.details")} aria-label={t("salesmanPremium.bookings.details")}
  style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}>
  ···
  </button>
@@ -4542,7 +4547,7 @@ export default function SalesmanPremium() {
  const notCancelled = apt.status!== "cancelled" && apt.status!== "completed";
  const anyExpander = isRescheduling || isReminderPicking || isCancelConfirm;
  const carImg = Array.isArray(car?.images)? car.images[0] : null;
- const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "No car linked";
+ const carTitle = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : t("salesmanPremium.drawer.noCarLinked");
  const carVariant = car?.variant || "";
  const carVin = car?.vin_number || car?.plate_number || "";
  const carPrice = car?.selling_price? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : null;
@@ -4556,7 +4561,7 @@ export default function SalesmanPremium() {
  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
  {STATUS_LABEL[apt.status] || apt.status}
  </span>
- <button onClick={close} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <button onClick={close} aria-label={t("salesmanPremium.common.close")} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
  <X size={16} />
  </button>
  </div>
@@ -4579,13 +4584,13 @@ export default function SalesmanPremium() {
  <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(241,245,249,0.3)" }}>{carTitle}</p>
  {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
  {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
- {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : "Plate "}{carVin}</p>}
+ {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : `${t("salesmanPremium.bookings.plate")} `}{carVin}</p>}
  </div>
  </div>
 
  {/* Buyer */}
  <div style={{ marginBottom: 14 }}>
- <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || "Unknown Buyer"}</p>
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
  {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
  {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
  </div>
@@ -4602,12 +4607,12 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
  <Bell size={12} color="#4ade80" />
  <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
- Reminder: {new Date(apt.remind_at).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" })}
+ {t("salesmanPremium.bookings.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}
  </span>
  <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
  </div>
  ) : apt.remind_sent? (
- <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> Reminder sent</p>
+ <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> {t("salesmanPremium.bookings.reminderSent")}</p>
  ) : null}
 
  {/* Secondary actions */}
@@ -4618,12 +4623,12 @@ export default function SalesmanPremium() {
  const pad = (n) => String(n).padStart(2, "0");
  setRescheduleDate(`${existing.getFullYear()}-${pad(existing.getMonth() + 1)}-${pad(existing.getDate())}T${pad(existing.getHours())}:${pad(existing.getMinutes())}`);
  setReschedulingAptId(apt.id); setCancelConfirmId(null); setReminderPickerAptId(null);
- }}><RefreshCw size={13} /> Move</button>
+ }}><RefreshCw size={13} /> {t("salesmanPremium.bookings.move")}</button>
  <button style={secBtn} onClick={() => {
- if (!profile?.telegram_chat_id) { toast.error("Connect Telegram in Settings first"); return; }
+ if (!profile?.telegram_chat_id) { toast.error(t("salesmanPremium.bookings.connectTelegram")); return; }
  setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
- }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> Set reminder</button>
- <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> Cancel</button>
+ }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> {t("salesmanPremium.followUpModal.set")}</button>
+ <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanPremium.common.cancel")}</button>
  </div>
  )}
 
@@ -4631,8 +4636,8 @@ export default function SalesmanPremium() {
  {isRescheduling && (
  <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>Choose new date & time</p>
- <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanPremium.bookings.chooseNew")}</p>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
  <X size={14} />
  </button>
  </div>
@@ -4642,7 +4647,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  <button onClick={async () => {
  if (!rescheduleDate) return;
@@ -4652,10 +4657,10 @@ export default function SalesmanPremium() {
  setAppointments((p) => p.map((a) => a.id === apt.id? { ...a, appointment_date: newDate.toISOString(), status: "rescheduled", remind_at: remindAt, remind_sent: false } : a));
  setReschedulingAptId(null);
  setRescheduleDate("");
- toast.success("Appointment rescheduled!");
+ toast.success(t("salesmanPremium.bookings.rescheduled"));
  }}
  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
- Save New Time
+ {t("salesmanPremium.bookings.saveNewTime")}
  </button>
  </div>
  </div>
@@ -4665,17 +4670,17 @@ export default function SalesmanPremium() {
  {isReminderPicking && (
  <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
- <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>Schedule reminder</p>
- <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title="Cancel" style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanPremium.bookings.scheduleReminder")}</p>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
  <X size={14} />
  </button>
  </div>
  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 8 }}>
  {[
- { key: "1h", label: "1h before" },
- { key: "2h", label: "2h before" },
- { key: "day_before", label: "Day before 9am" },
- { key: "two_days", label: "2 days before" },
+ { key: "1h", label: t("salesmanPremium.bookings.r1h") },
+ { key: "2h", label: t("salesmanPremium.bookings.r2h") },
+ { key: "day_before", label: t("salesmanPremium.bookings.rDayBefore") },
+ { key: "two_days", label: t("salesmanPremium.bookings.rTwoDays") },
  ].map(({ key, label }) => {
  const rt = calcRemindAt(apt, key);
  const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
@@ -4698,7 +4703,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
  disabled={!selectedRemindAt || reminderSaving}
@@ -4708,7 +4713,7 @@ export default function SalesmanPremium() {
  color: selectedRemindAt? "#4ade80" : "#374151",
  cursor: selectedRemindAt? "pointer" : "not-allowed",
  opacity: reminderSaving? 0.6 : 1 }}>
- {reminderSaving? "Saving…" : "Set reminder"}
+ {reminderSaving? t("salesmanPremium.common.saving") : t("salesmanPremium.followUpModal.set")}
  </button>
  </div>
  </div>
@@ -4717,15 +4722,15 @@ export default function SalesmanPremium() {
  {/* Expand: cancel confirmation */}
  {isCancelConfirm && (
  <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
- <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>Cancel this appointment?</p>
+ <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanPremium.bookings.cancelQ")}</p>
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => setCancelConfirmId(null)}
  style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
- Keep it
+ {t("salesmanPremium.bookings.keepIt")}
  </button>
  <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
  style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
- Yes, cancel appt
+ {t("salesmanPremium.bookings.yesCancel")}
  </button>
  </div>
  </div>
@@ -4739,8 +4744,8 @@ export default function SalesmanPremium() {
  // Week | List. Same rows, same detail sheet, same actions; the week view
  // (BookingWeekCalendar) is a layout, it never writes on its own.
  const viewToggle = (
- <div role="group" aria-label="Bookings layout" style={{ display: "flex", gap: 2, padding: 3, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 8 }}>
- {[["week", "Week"], ["list", "List"]].map(([k, label]) => (
+ <div role="group" aria-label={t("salesmanPremium.bookings.layout")} style={{ display: "flex", gap: 2, padding: 3, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 8 }}>
+ {[["week", t("salesmanPremium.bookings.week")], ["list", t("salesmanPremium.bookings.list")]].map(([k, label]) => (
  <button key={k} type="button" aria-pressed={bookingView === k} onClick={() => setBookingView(k)}
  style={{ padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: bookingView === k ? C.surfaceRaised : "transparent", color: bookingView === k ? C.text : C.textSec }}>
  {label}
@@ -4778,17 +4783,17 @@ export default function SalesmanPremium() {
  {renderBookingDetailModal()}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 16px" }}>
  <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
- Bookings ({confirmedApts.length})
+ {t("salesmanPremium.inbox.bookings")} ({confirmedApts.length})
  </p>
  {viewToggle}
  </div>
  {appointments.length === 0 && (
  <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
  <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>No bookings yet.</p>
- <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>Bookings appear when customers book a test drive from your listing.</p>
+ <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanPremium.bookings.none")}</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanPremium.bookings.noneSub")}</p>
  <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
- Share a Listing →
+ {t("salesmanPremium.bookings.shareListing")}
  </button>
  </div>
  )}
@@ -4796,7 +4801,7 @@ export default function SalesmanPremium() {
  {pendingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Clock size={11} color="#fbbf24" /> Awaiting Confirmation ({pendingApts.length})
+ <Clock size={11} color="#fbbf24" /> {t("salesmanPremium.bookings.awaiting")} ({pendingApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {pendingApts.map(renderApptCard)}
@@ -4807,7 +4812,7 @@ export default function SalesmanPremium() {
  {todayApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#fbbf24" /> Today ({todayApts.length})
+ <Calendar size={11} color="#fbbf24" /> {t("salesmanPremium.bookings.today")} ({todayApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {todayApts.map(renderApptCard)}
@@ -4818,7 +4823,7 @@ export default function SalesmanPremium() {
  {upcomingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Check size={11} color="#4ade80" /> Confirmed Upcoming ({upcomingApts.length})
+ <Check size={11} color="#4ade80" /> {t("salesmanPremium.bookings.upcoming")} ({upcomingApts.length})
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {upcomingApts.map(renderApptCard)}
@@ -4833,7 +4838,7 @@ export default function SalesmanPremium() {
  style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
  >
  <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
- Past ({pastApts.length})
+ {t("salesmanPremium.bookings.past")} ({pastApts.length})
  </span>
  <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen? "▲" : "▼"}</span>
  </button>
@@ -4880,13 +4885,13 @@ export default function SalesmanPremium() {
  onClick={() => setAptStatus(apt, "completed")}
  style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
  >
- Mark Completed
+ {t("salesmanPremium.bookings.markCompleted")}
  </button>
  <button
  onClick={() => setAptStatus(apt, "no_show")}
  style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
  >
- No-show
+ {t("salesmanPremium.bookingStatus.no_show")}
  </button>
  </div>
  )}
@@ -4922,12 +4927,12 @@ export default function SalesmanPremium() {
  const handleAvatarUpload = async (e) => {
  const file = e.target.files?.[0];
  if (!file) return;
- if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+ if (!file.type.startsWith("image/")) { toast.error(t("salesmanPremium.settings.selectImage")); return; }
  setAvatarUploading(true);
  const compressed = await compressImageFile(file, { maxDim: 800 });
  const path = `${userId}/avatar.jpg`;
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
- if (upErr) { toast.error("Upload failed: " + upErr.message); setAvatarUploading(false); return; }
+ if (upErr) { toast.error(t("salesmanPremium.settings.uploadFailed", { msg: upErr.message })); setAvatarUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  // Persist the busted URL, not the bare one — avatar.jpg is a fixed storage
  // path, so without a changing query string every future reader keeps
@@ -4937,23 +4942,23 @@ export default function SalesmanPremium() {
  setAvatarUploading(false);
  if (avatarProfileErr) {
  console.error("handleAvatarUpload profile update:", avatarProfileErr);
- toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+ toast.error(t("salesmanPremium.settings.photoNotSaved"));
  return;
  }
  setAvatarUrl(bustedUrl);
  setProfile((p) => ({ ...p, avatar_url: bustedUrl }));
- toast.success("Profile photo updated");
+ toast.success(t("salesmanPremium.settings.photoUpdated"));
  };
 
  const handleCoverUpload = async (e) => {
  const file = e.target.files?.[0];
  if (!file) return;
- if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+ if (!file.type.startsWith("image/")) { toast.error(t("salesmanPremium.settings.selectImage")); return; }
  setCoverUploading(true);
  const compressed = await compressImageFile(file, { maxDim: 1600 });
  const path = `${userId}/cover.jpg`;
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
- if (upErr) { toast.error("Upload failed: " + upErr.message); setCoverUploading(false); return; }
+ if (upErr) { toast.error(t("salesmanPremium.settings.uploadFailed", { msg: upErr.message })); setCoverUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  // Persist the busted URL (see handleAvatarUpload) so re-uploads aren't
  // served stale from a browser/CDN cache keyed on the fixed storage path.
@@ -4962,12 +4967,12 @@ export default function SalesmanPremium() {
  setCoverUploading(false);
  if (coverProfileErr) {
  console.error("handleCoverUpload profile update:", coverProfileErr);
- toast.error("Photo uploaded but couldn't be saved to your profile — try again.");
+ toast.error(t("salesmanPremium.settings.photoNotSaved"));
  return;
  }
  setCoverUrl(bustedUrl);
  setProfile((p) => ({ ...p, cover_url: bustedUrl }));
- toast.success("Cover photo updated");
+ toast.success(t("salesmanPremium.settings.coverUpdated"));
  };
 
  const handleSave = async () => {
@@ -4997,13 +5002,13 @@ export default function SalesmanPremium() {
  setSettingsSaving(false);
  if (saveErr) {
  console.error("handleSave profile update:", saveErr);
- toast.error("Couldn't save your profile - " + saveErr.message);
+ toast.error(t("salesmanPremium.settings.saveFailed", { msg: saveErr.message }));
  return;
  }
  setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone, specializations }));
  setTagInput("");
- toast.success("Profile updated");
+ toast.success(t("salesmanPremium.settings.profileUpdated"));
  };
 
  const removeTag = (i) =>
@@ -5029,11 +5034,11 @@ export default function SalesmanPremium() {
  // Saves it first so a test that works is a test of what gets persisted.
  const testTelegramConnection = async () => {
  const chatId = (settingsForm.telegram_chat_id || "").trim();
- if (!chatId) { toast.error("Enter a chat ID first"); return; }
+ if (!chatId) { toast.error(t("salesmanPremium.tg.enterId")); return; }
  setTgTesting(true);
  try {
  const { error: chatIdErr } = await supabase.from("profiles").update({ telegram_chat_id: chatId }).eq("id", userId);
- if (chatIdErr) { toast.error("Could not save chat ID"); return; }
+ if (chatIdErr) { toast.error(t("salesmanPremium.tg.saveFailed")); return; }
  const { data: { session } } = await supabase.auth.getSession();
  const { data } = await supabase.functions.invoke("send-telegram", {
  body: {
@@ -5045,17 +5050,17 @@ export default function SalesmanPremium() {
  });
  if (data?.ok) {
  setProfile((p) => ({ ...p, telegram_chat_id: chatId }));
- toast.success("Test message sent — check Telegram");
+ toast.success(t("salesmanPremium.tg.sent"));
  } else if (data?.error === "not_started") {
- toast.error(`Message @${data.bot_username || "the bot"} first, then try again`);
+ toast.error(t("salesmanPremium.tg.notStarted", { bot: data.bot_username ? `@${data.bot_username}` : t("salesmanPremium.tg.theBot") }));
  } else if (data?.error === "no_token") {
- toast.error("Telegram isn't set up on this account yet");
+ toast.error(t("salesmanPremium.tg.noToken"));
  } else {
- toast.error(data?.description || "Test failed");
+ toast.error(data?.description || t("salesmanPremium.tg.failed"));
  }
  } catch (err) {
  console.error("testTelegramConnection:", err);
- toast.error("Network error");
+ toast.error(t("salesmanPremium.errors.network"));
  } finally {
  setTgTesting(false);
  }
@@ -5094,7 +5099,7 @@ export default function SalesmanPremium() {
  opacity: settingsSaving ? 0.6 : 1,
  }}
  >
- {settingsSaving ? "Saving..." : "Save Changes"}
+ {settingsSaving ? t("salesmanPremium.common.saving") : t("salesmanPremium.settings.saveChanges")}
  </button>
  </div>
  );
@@ -5114,7 +5119,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>
  {avatarUrl
-? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
+? <img src={avatarUrl} alt={t("salesmanPremium.settings.profileAlt")} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
  : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>{initials}</div>
  }
  <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
@@ -5127,16 +5132,16 @@ export default function SalesmanPremium() {
  <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
  </div>
  <div>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || "Your Name"}</p>
- <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>Shown on your listings & profile page</p>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || t("salesmanPremium.settings.yourName")}</p>
+ <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>{t("salesmanPremium.settings.photoHint")}</p>
  <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
- {avatarUploading? "Uploading…" : "Change photo"}
+ {avatarUploading? t("salesmanPremium.settings.uploading") : t("salesmanPremium.settings.changePhoto")}
  </button>
  </div>
  </div>
  <div style={{ padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
- <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>Cover Photo</p>
- <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>Shown as the banner at the top of your public page</p>
+ <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanPremium.settings.coverPhoto")}</p>
+ <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>{t("salesmanPremium.settings.coverHint")}</p>
  <div
  onClick={() => !coverUploading && coverInputRef.current?.click()}
  style={{ position: "relative", width: "100%", height: 90, borderRadius: 8, overflow: "hidden", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : "linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
@@ -5144,33 +5149,33 @@ export default function SalesmanPremium() {
  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: coverUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)" }}>
  {coverUploading
 ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
- : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? "Change cover photo" : "Add a cover photo"}</span>
+ : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover")}</span>
  }
  </div>
  <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
  </div>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Name</label>
- <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder="Your full name" style={inputStyle} />
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.fullName")}</label>
+ <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder={t("salesmanPremium.settings.fullNamePh")} style={inputStyle} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Job Title</label>
- <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder="e.g. Senior Sales Advisor" maxLength={60} style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown under your name on your public page. Leave blank to hide.</p>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.jobTitle")}</label>
+ <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder={t("salesmanPremium.settings.jobTitlePh")} maxLength={60} style={inputStyle} />
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.jobTitleHint")}</p>
  </div>
  {/* Public-profile extras — Premium's own bio/specializations block, not
  offered to Lite yet. Shown on the public agent page with a Read-more
  toggle and pill tags, same as the linked-salesman panel. */}
  <div id="sp-bio-field">
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Bio</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.bio")}</label>
  <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
- placeholder="e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley" rows={4}
+ placeholder={t("salesmanPremium.settings.bioPh")} rows={4}
  style={{ ...inputStyle, resize: "vertical" }} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown below your name on your public page, with a "Read more" toggle.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.bioHint")}</p>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Specializations</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.specializations")}</label>
  {settingsForm.specializations.length > 0 && (
  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
  {settingsForm.specializations.map((tag, i) => (
@@ -5184,13 +5189,13 @@ export default function SalesmanPremium() {
  </div>
  )}
  <div style={{ display: "flex", gap: 8 }}>
- <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder="e.g. Recon imports" style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
+ <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder={t("salesmanPremium.settings.tagPh")} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
  <button type="button" onClick={addTag} disabled={!tagInput.trim()}
  style={{ flexShrink: 0, padding: "0 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: tagInput.trim() ? "#e5e7eb" : "#4b5563", fontSize: 12, fontWeight: 600, cursor: tagInput.trim() ? "pointer" : "default" }}>
- Add
+ {t("salesmanPremium.common.add")}
  </button>
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Enter or Add for each tag. Shown as pills on your public profile.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.tagHint")}</p>
  </div>
  {/* Live Google result preview — reads the unsaved form, so the effect of
  a name or bio edit shows before saving. Same code as api/og.js. */}
@@ -5200,9 +5205,9 @@ export default function SalesmanPremium() {
  carCount={myListings.filter((l) => l.status === "available" || l.status === "reserved").length}
  />
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Username / Slug</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.slug")}</label>
  <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Contact support to change your username.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.slugHint")}</p>
  </div>
  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
  {saveBtn}
@@ -5211,23 +5216,23 @@ export default function SalesmanPremium() {
  {nav === "contact" && (
  <>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>WhatsApp Number</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.whatsapp")}</label>
  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
  <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
  <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789"
  style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Malaysia country code pre-applied. Enter digits only.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.whatsappHint")}</p>
  </div>
  <div style={{ display: "flex", gap: 10 }}>
  <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>City</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.city")}</label>
  <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
  </div>
  <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>State</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.state")}</label>
  <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
- <option value="">Select state</option>
+ <option value="">{t("salesmanPremium.settings.selectState")}</option>
  {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
  <option key={s} value={s}>{s}</option>
  ))}
@@ -5235,16 +5240,16 @@ export default function SalesmanPremium() {
  </div>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Full Address (for map)</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.address")}</label>
  <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown as a map on your public page so buyers can find you.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.addressHint")}</p>
  </div>
  {/* Social links */}
  {[
  { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
  { key: "tiktok", label: "TikTok", placeholder: "@yourusername", prefix: "tiktok.com/@" },
- { key: "facebook", label: "Facebook", placeholder: "username or page name", prefix: "facebook.com/" },
- { key: "website", label: "Website", placeholder: "https://yoursite.com", prefix: null },
+ { key: "facebook", label: "Facebook", placeholder: t("salesmanPremium.settings.fbPh"), prefix: "facebook.com/" },
+ { key: "website", label: t("salesmanPremium.settings.website"), placeholder: "https://yoursite.com", prefix: null },
  ].map(({ key, label, placeholder, prefix }) => (
  <div key={key}>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
@@ -5271,27 +5276,27 @@ export default function SalesmanPremium() {
  {/* Selling terms — you own these listings, so the buyer's questions (is my
  deposit safe, what else do I pay) land on you, not on a dealer. */}
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Deposit Policy</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.depositPolicy")}</label>
  <select value={settingsForm.deposit_policy} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
- <option value="">Not stated — buyers are told to ask</option>
- <option value="refundable">Refundable if the buyer pulls out</option>
- <option value="refundable_on_loan_rejection">Refundable only if the loan is rejected</option>
- <option value="non_refundable">Non-refundable once paid</option>
+ <option value="">{t("salesmanPremium.settings.depNone")}</option>
+ <option value="refundable">{t("salesmanPremium.settings.depRefundable")}</option>
+ <option value="refundable_on_loan_rejection">{t("salesmanPremium.settings.depLoan")}</option>
+ <option value="non_refundable">{t("salesmanPremium.settings.depNon")}</option>
  </select>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Shown at the deposit ask on every car you list.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.depHint")}</p>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Deposit Details (optional)</label>
- <input value={settingsForm.deposit_terms} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))} placeholder="e.g. Car reserved for 7 days." style={inputStyle} />
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.depDetails")}</label>
+ <input value={settingsForm.deposit_terms} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))} placeholder={t("salesmanPremium.settings.depDetailsPh")} style={inputStyle} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>Handling / Runner Fee</label>
+ <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.fee")}</label>
  <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
  <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>RM</span>
- <input value={settingsForm.processing_fee} onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder="e.g. 300" inputMode="decimal"
+ <input value={settingsForm.processing_fee} onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder={t("salesmanPremium.settings.feePh")} inputMode="decimal"
  style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.feeHint")}</p>
  </div>
  {saveBtn}
  </>
@@ -5308,16 +5313,16 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
  <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
  {profile?.telegram_chat_id
- ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />Connected</span>
- : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />Not set</span>
+ ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanPremium.settings.connected")}</span>
+ : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanPremium.settings.notSet")}</span>
  }
  </div>
- <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder="Your Telegram chat ID" style={inputStyle} />
+ <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder={t("salesmanPremium.tg.idPh")} style={inputStyle} />
  <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
  style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
- <Send size={13} /> {tgTesting ? "Testing…" : "Send test message"}
+ <Send size={13} /> {tgTesting ? t("salesmanPremium.tg.testing") : t("salesmanPremium.tg.sendTest")}
  </button>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>Message <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> on Telegram, send /start, and paste the Id number here.</p>
+ <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>{t("salesmanPremium.tg.howBefore")} <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> {t("salesmanPremium.tg.howAfter")}</p>
  </div>
  {saveBtn}
  </>
@@ -5333,7 +5338,7 @@ export default function SalesmanPremium() {
  {/* Same control and the same i18n instance as Lite's, so the choice
      follows the seller between panels rather than being per-panel. */}
  <div style={{ display: "flex", gap: 8 }}>
- {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
+ {[{ code: "en", label: "English" }, { code: "ms", label: "Bahasa Melayu" }].map(({ code, label }) => (
  <button
  key={code}
  type="button"
@@ -5377,15 +5382,13 @@ export default function SalesmanPremium() {
      skipped it on day one to find out what the other tabs do. */}
  <div>
  <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
- Walks you through every tab — Dashboard, Listings, Leads, Bookings, Lead History,
- Analytics, Loans, Outreach, Chat, Customers, Handover and Settings — opening each one
- as it goes, and putting you back where you started at the end.
+ {t("salesmanPremium.settings.tourDesc")}
  </p>
  <button
  onClick={startTour}
  style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
  >
- <Sparkles size={14} /> Replay the tour
+ <Sparkles size={14} /> {t("salesmanPremium.settings.replayTour")}
  </button>
  </div>
  </>
@@ -5393,18 +5396,16 @@ export default function SalesmanPremium() {
  {nav === "danger" && (
  <div style={{ padding: "16px", background: "rgba(248,113,113,0.03)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 12 }}>
  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
- Danger Zone
+ {t("salesmanPremium.settings.dangerZone")}
  </p>
  <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, maxWidth: 460 }}>
- Deleting your account hides your public page and listings immediately. Nothing
- is destroyed for 30 days — logging back in within that window restores everything.
- After that it's permanent.
+ {t("salesmanPremium.settings.dangerDesc")}
  </p>
  <button
  onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
  style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
  >
- Delete my account
+ {t("salesmanPremium.settings.deleteMyAccount")}
  </button>
  </div>
  )}
@@ -5421,7 +5422,7 @@ export default function SalesmanPremium() {
  <div style={{ paddingBottom: 8 }}>
  {SETTINGS_GROUPS.map(({ group, items }) => (
  <div key={group} style={{ marginBottom: 18 }}>
- <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4b5563", margin: "0 0 6px", paddingLeft: 4 }}>{group}</p>
+ <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4b5563", margin: "0 0 6px", paddingLeft: 4 }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
  {items.map(({ key, icon: Icon, label, desc }, idx) => (
  <button
@@ -5438,8 +5439,8 @@ export default function SalesmanPremium() {
  <Icon size={14} style={{ color: "#93c5fd" }} />
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{label}</p>
- <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{desc}</p>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{t(`salesmanPremium.settingsNav.${key}.label`, { defaultValue: label })}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{t(`salesmanPremium.settingsNav.${key}.desc`, { defaultValue: desc })}</p>
  </div>
  <ChevronRight size={14} style={{ color: "#374151", flexShrink: 0 }} />
  </button>
@@ -5455,10 +5456,10 @@ export default function SalesmanPremium() {
  onClick={() => setSettingsNav(null)}
  style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, fontWeight: 500, padding: 0, fontFamily: "inherit" }}
  >
- <ChevronLeft size={15} /> Settings
+ <ChevronLeft size={15} /> {t("salesmanPremium.tabs.settings")}
  </button>
  <ChevronRight size={13} style={{ color: "#374151" }} />
- <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{navItem?.label}</span>
+ <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.label`, { defaultValue: navItem.label })}</span>
  </div>
  {sectionContent}
  </div>
@@ -5470,7 +5471,7 @@ export default function SalesmanPremium() {
  <nav style={{ width: 190, flexShrink: 0, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 8px" }}>
  {SETTINGS_GROUPS.map(({ group, items }, gi) => (
  <div key={group} style={{ marginBottom: gi < SETTINGS_GROUPS.length - 1 ? 16 : 0 }}>
- <p style={{ fontSize: 10, letterSpacing: "0.1em", color: "#374151", fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{group}</p>
+ <p style={{ fontSize: 10, letterSpacing: "0.1em", color: "#374151", fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
  {items.map(({ key, icon: Icon, label }) => {
  const active = nav === key;
  return (
@@ -5487,7 +5488,7 @@ export default function SalesmanPremium() {
  fontSize: 13, fontWeight: 500,
  }}
  >
- <Icon size={14} style={{ flexShrink: 0 }} /> {label}
+ <Icon size={14} style={{ flexShrink: 0 }} /> {t(`salesmanPremium.settingsNav.${key}.label`, { defaultValue: label })}
  </button>
  );
  })}
@@ -5495,8 +5496,8 @@ export default function SalesmanPremium() {
  ))}
  </nav>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: "0 0 3px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>{navItem?.label}</p>
- <p style={{ margin: "0 0 18px", fontSize: 12, color: "#4b5563" }}>{navItem?.desc}</p>
+ <p style={{ margin: "0 0 3px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.label`, { defaultValue: navItem.label })}</p>
+ <p style={{ margin: "0 0 18px", fontSize: 12, color: "#4b5563" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.desc`, { defaultValue: navItem.desc })}</p>
  {sectionContent}
  </div>
  </div>
@@ -5517,7 +5518,7 @@ export default function SalesmanPremium() {
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >Join a Dealership
+ >{t("salesmanPremium.settingsNav.dealership.label")}
  </p>
  <p
  style={{
@@ -5526,15 +5527,14 @@ export default function SalesmanPremium() {
  color: "#4b5563",
  lineHeight: 1.6,
  }}
- >Got an invite code from your dealer? Enter it below to merge your
- account into their ShiftOS system.
+ >{t("salesmanPremium.merge.intro")}
  </p>
 
  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
  <input
  value={mergeCode}
  onChange={(e) => setMergeCode(e.target.value.toUpperCase())}
- placeholder="Enter invite code e.g. DEALER-XXXX"
+ placeholder={t("salesmanPremium.merge.codePh")}
  disabled={mergeStatus === "pending" || mergeStatus === "success"}
  style={{
  width: "100%",
@@ -5569,10 +5569,10 @@ export default function SalesmanPremium() {
  }}
  >
  {mergeStatus === "pending"
-? "Verifying..."
+? t("salesmanPremium.merge.verifying")
  : mergeStatus === "success"
-? "Merged!"
- : "Request Merge"}
+? t("salesmanPremium.merge.merged")
+ : t("salesmanPremium.merge.request")}
  </button>
  </div>
 
@@ -5623,8 +5623,7 @@ export default function SalesmanPremium() {
  color: "#374151",
  lineHeight: 1.6,
  }}
- >Don't have a code? Ask your dealer to generate one from their ShiftOS
- Settings panel.
+ >{t("salesmanPremium.merge.noCode")}
  </p>
  </div>
  );
@@ -5672,7 +5671,7 @@ export default function SalesmanPremium() {
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >Add Lead
+ >{t("salesmanPremium.leads.addLead")}
  </p>
  <button
  onClick={() => setShowAddLead(false)}
@@ -5688,13 +5687,13 @@ export default function SalesmanPremium() {
  </div>
  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
  {[
- { key: "buyer_name", label: "Name", placeholder: "Buyer name" },
+ { key: "buyer_name", label: t("salesmanPremium.addLead.name"), placeholder: t("salesmanPremium.addLead.namePh") },
  {
  key: "phone",
- label: "Phone",
- placeholder: "e.g. 0123456789",
+ label: t("salesmanPremium.addLead.phone"),
+ placeholder: t("salesmanPremium.addLead.phonePh"),
  },
- { key: "notes", label: "Notes", placeholder: "Any notes..." },
+ { key: "notes", label: t("salesmanPremium.drawer.notes"), placeholder: t("salesmanPremium.addLead.notesPh") },
  ].map(({ key, label, placeholder }) => (
  <div key={key}>
  <label
@@ -5746,7 +5745,7 @@ export default function SalesmanPremium() {
  opacity:!addLeadForm.buyer_name || addLeadSaving? 0.6 : 1,
  }}
  >
- {addLeadSaving? "Saving..." : "Add Lead"}
+ {addLeadSaving? t("salesmanPremium.common.saving") : t("salesmanPremium.leads.addLead")}
  </button>
  </div>
  </div>
@@ -5796,7 +5795,7 @@ export default function SalesmanPremium() {
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >Send WA Message
+ >{t("salesmanPremium.waModal.title")}
  </p>
  <button
  onClick={() => setWaModalLead(null)}
@@ -5877,7 +5876,7 @@ export default function SalesmanPremium() {
  : "pointer",
  opacity:!waModalMsg.trim() ||!waModalLead.phone? 0.6 : 1,
  }}
- >Send
+ >{t("salesmanPremium.waModal.send")}
  </button>
  {!waModalLead.phone && (
  <p
@@ -5887,7 +5886,7 @@ export default function SalesmanPremium() {
  color: "#f87171",
  textAlign: "center",
  }}
- >No phone number on this lead.
+ >{t("salesmanPremium.waModal.noPhone")}
  </p>
  )}
  </div>
@@ -5914,7 +5913,7 @@ export default function SalesmanPremium() {
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
  <div>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>Paperwork and delivery for your won deals — loan settlement through to keys.</p>
+ <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.handoverIntro")}</p>
  <Suspense fallback={<TabLoadingFallback />}>
  <PostSaleBoard
  dealerId={getDealerIdFromProfile(profile)}
@@ -5987,17 +5986,17 @@ export default function SalesmanPremium() {
  // the welcome card. Titles match the nav labels exactly (TABS_DESKTOP)
  // since the ring and the bubble now always describe the same thing.
  const TOUR_STEPS = [
- { icon: Sparkles, title: "Welcome to ShiftOS Premium", body: "A quick walk down the menu — everything your plan unlocks, one link at a time." },
- { icon: BarChart2, title: "Dashboard", body: "Your command centre — KPIs, stale follow-up nudges, listing performance, and recent activity all in one view." },
- { icon: Car, title: "My Listings", body: "Add your cars here. Each card shows views, WA taps, and a CVR bar. Hot = buyers are clicking. Cold = needs a refresh or price drop. The Add-ons pill next to Cars is your paid extras catalogue." },
- { icon: MessageCircle, title: "Chat", body: "Buyers who message you from a listing land here instead of WhatsApp. You see their name, the car, and read receipts — and phone numbers stay masked until you tap them." },
- { icon: Users, title: "Leads", body: "Track every buyer: New → Contacted → Test Drive → Won. Heat scores show who needs attention. Ping stale leads straight to WhatsApp." },
- { icon: MessageSquare, title: "Inbox", body: "Viewing appointments and buyer messages both land here. Bookings — confirm, reschedule, cancel or send a WA reminder. Lead History — everyone who messaged through your listing cards; reply with templates or convert them into pipeline leads in one tap." },
- { icon: ClipboardList, title: "Sold", body: "Everything after a won deal lives here. Handover is the 8-step Malaysian paperwork checklist — loan settlement, insurance, Puspakom, JPJ pindah milik, road tax, geran, keys. Customers is everyone who's bought from you, with road tax and insurance expiry tracked so the app tells you who's due for a renewal call or ready to trade up." },
- { icon: TrendingUp, title: "Analytics", body: "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view." },
- { icon: Banknote, title: "Loans", body: "Compare bank rates for a buyer, submit their loan application, and track approval status — a Premium-only feature." },
- { icon: Megaphone, title: "Outreach", body: "See which leads have gone cold, then work through them with a guided WhatsApp campaign — one tap per contact. Premium-only." },
- { icon: Settings, title: "Settings", body: "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it at the bottom of this page to unlock the full panel — shared stock, team leads, commission tracking and more." },
+ { icon: Sparkles, title: t("salesmanPremium.tour.welcome.title"), body: t("salesmanPremium.tour.welcome.body") },
+ { icon: BarChart2, title: t("salesmanPremium.tour.dashboard.title"), body: t("salesmanPremium.tour.dashboard.body") },
+ { icon: Car, title: t("salesmanPremium.tour.listings.title"), body: t("salesmanPremium.tour.listings.body") },
+ { icon: MessageCircle, title: t("salesmanPremium.tour.chat.title"), body: t("salesmanPremium.tour.chat.body") },
+ { icon: Users, title: t("salesmanPremium.tour.leads.title"), body: t("salesmanPremium.tour.leads.body") },
+ { icon: MessageSquare, title: t("salesmanPremium.tour.inbox.title"), body: t("salesmanPremium.tour.inbox.body") },
+ { icon: ClipboardList, title: t("salesmanPremium.tour.sold.title"), body: t("salesmanPremium.tour.sold.body") },
+ { icon: TrendingUp, title: t("salesmanPremium.tour.analytics.title"), body: t("salesmanPremium.tour.analytics.body") },
+ { icon: Banknote, title: t("salesmanPremium.tour.loans.title"), body: t("salesmanPremium.tour.loans.body") },
+ { icon: Megaphone, title: t("salesmanPremium.tour.outreach.title"), body: t("salesmanPremium.tour.outreach.body") },
+ { icon: Settings, title: t("salesmanPremium.tour.settings.title"), body: t("salesmanPremium.tour.settings.body") },
  ];
 
  const dismissTour = () => {
@@ -6149,17 +6148,17 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
  {tourStep > 0 && (
  <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
- ← Back
+ ← {t("salesmanPremium.tour.back")}
  </button>
  )}
  <div style={{ flex: 1 }} />
- <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>Skip
+ <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>{t("salesmanPremium.tour.skip")}
  </button>
  <button
  onClick={() => isLast? dismissTour() : setTourStep((s) => s + 1)}
  style={{ padding: "7px 16px", borderRadius: 7, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
  >
- {isLast? "Got it " : "Next →"}
+ {isLast? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
  </button>
  </div>
  </div>
@@ -6301,7 +6300,7 @@ export default function SalesmanPremium() {
  marginBottom: 0,
  }}
  >
- · {isPremium? "Premium Panel" : "Lite Panel"}
+ · {isPremium? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
  </div>
  </div>
@@ -6317,7 +6316,7 @@ export default function SalesmanPremium() {
  fontWeight: 600,
  margin: 0,
  }}
- >Main
+ >{t("salesmanPremium.nav.main")}
  </p>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
@@ -6405,9 +6404,9 @@ export default function SalesmanPremium() {
  whiteSpace: "nowrap",
  }}
  >
- {profile?.full_name || profile?.slug || "Salesman"}
+ {profile?.full_name || profile?.slug || t("salesmanPremium.nav.salesman")}
  </p>
- <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>lite</p>
+ <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>{isPremium ? "Premium" : "Lite"}</p>
  </div>
  <button
  onClick={() => setLogoutConfirmOpen(true)}
@@ -6469,7 +6468,7 @@ export default function SalesmanPremium() {
  {isMobile && (
  <button
  onClick={() => setMobileNavOpen(true)}
- aria-label="Open navigation"
+ aria-label={t("salesmanPremium.nav.openNav")}
  style={{
  background: "rgba(255,255,255,0.04)",
  border: "1px solid rgba(255,255,255,0.08)",
@@ -6550,12 +6549,12 @@ export default function SalesmanPremium() {
  {(() => {
  const h = new Date().getHours();
  return h < 12
-? "Good morning"
+? t("salesmanPremium.greet.morning")
  : h < 17
-? "Good afternoon"
- : "Good evening";
+? t("salesmanPremium.greet.afternoon")
+ : t("salesmanPremium.greet.evening");
  })()}
- , {profile?.full_name?.split(" ")[0] || "there"} 
+ , {profile?.full_name?.split(" ")[0] || t("salesmanPremium.greet.there")} 
  </p>
  <p
  style={{
@@ -6565,12 +6564,12 @@ export default function SalesmanPremium() {
  marginTop: 2,
  }}
  >
- {new Date().toLocaleDateString("en-MY", {
+ {new Date().toLocaleDateString(dateLocale, {
  weekday: "long",
  day: "numeric",
  month: "long",
  })}{" "}
- · {isPremium? "Premium Panel" : "Lite Panel"}
+ · {isPremium? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
  </div>
  <button
@@ -6619,7 +6618,7 @@ export default function SalesmanPremium() {
  cursor: "pointer",
  }}
  >
- <Plus size={14} />Add Lead
+ <Plus size={14} />{t("salesmanPremium.leads.addLead")}
  </button>
  </>
  )}
@@ -6700,8 +6699,8 @@ export default function SalesmanPremium() {
     value={listingsSubTab}
     onChange={setListingsSubTab}
     items={[
-     { key: "cars", label: "Cars", badge: myListings.length },
-     { key: "addons", label: "Add-ons" },
+     { key: "cars", label: t("salesmanPremium.listings.cars"), badge: myListings.length },
+     { key: "addons", label: t("salesmanPremium.drawer.addons") },
     ]}
    />
    {listingsSubTab === "addons" ? (
@@ -6742,8 +6741,8 @@ export default function SalesmanPremium() {
     value={inboxSubTab}
     onChange={setInboxSubTab}
     items={[
-     { key: "bookings", label: "Bookings", badge: pendingBookingsCount, tourId: "bookings" },
-     { key: "enquiries", label: "Lead History", badge: newEnquiriesCount, tourId: "leadhistory" },
+     { key: "bookings", label: t("salesmanPremium.inbox.bookings"), badge: pendingBookingsCount, tourId: "bookings" },
+     { key: "enquiries", label: t("salesmanPremium.inbox.leadHistory"), badge: newEnquiriesCount, tourId: "leadhistory" },
     ]}
    />
    {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
@@ -6828,7 +6827,7 @@ export default function SalesmanPremium() {
  // Closes the popup BEFORE opening the edit sheet — two overlays must
  // never be open at once (overlay rule 3).
  key: "edit",
- label: (<><Pencil size={13} style={{ flexShrink: 0 }} />Edit</>),
+ label: (<><Pencil size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.edit")}</>),
  color: C.infoText,
  bg: "rgba(59,130,246,0.08)",
  border: "rgba(59,130,246,0.25)",
@@ -6836,7 +6835,7 @@ export default function SalesmanPremium() {
  },
  {
  key: "link",
- label: (<><Copy size={13} style={{ flexShrink: 0 }} />Copy Link</>),
+ label: (<><Copy size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.copyLink")}</>),
  color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
  bg: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
  border: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
@@ -6844,7 +6843,7 @@ export default function SalesmanPremium() {
  },
  {
  key: "wa",
- label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} />WA Caption</>),
+ label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.waCaption")}</>),
  color: "#4ade80",
  bg: "rgba(37,211,102,0.06)",
  border: "rgba(37,211,102,0.2)",
@@ -6852,7 +6851,7 @@ export default function SalesmanPremium() {
  },
  {
  key: "ai",
- label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />AI Caption{AI_FEATURES_ENABLED ? "" : " (soon)"}</>),
+ label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.aiCaption")}{AI_FEATURES_ENABLED ? "" : ` ${t("salesmanPremium.carActions.soon")}`}</>),
  color: "#c084fc",
  bg: "rgba(168,85,247,0.08)",
  border: "rgba(168,85,247,0.25)",
@@ -6860,7 +6859,7 @@ export default function SalesmanPremium() {
  },
  {
  key: "broadcast",
- label: (<><Bell size={13} style={{ flexShrink: 0 }} />Broadcast</>),
+ label: (<><Bell size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.broadcast")}</>),
  color: "#fb923c",
  bg: "rgba(249,115,22,0.08)",
  border: "rgba(249,115,22,0.25)",
@@ -6881,22 +6880,22 @@ export default function SalesmanPremium() {
  style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
  >
  <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 340, padding: 22, border: "1px solid rgba(255,255,255,0.08)" }}>
- <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Log out?</p>
+ <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.logout.title")}</p>
  <p style={{ margin: "0 0 20px", fontSize: 13, color: "#6b7280" }}>
- You'll need to sign in again to get back to your dashboard.
+ {t("salesmanPremium.logout.body")}
  </p>
  <div style={{ display: "flex", gap: 8 }}>
  <button
  onClick={() => setLogoutConfirmOpen(false)}
  style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
  >
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  <button
  onClick={() => { setLogoutConfirmOpen(false); handleLogout(); }}
  style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", cursor: "pointer", fontFamily: "inherit" }}
  >
- Log out
+ {t("salesmanPremium.nav.logout")}
  </button>
  </div>
  </div>
@@ -6910,13 +6909,12 @@ export default function SalesmanPremium() {
  style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
  >
  <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 400, padding: 22, border: "1px solid rgba(255,255,255,0.08)" }}>
- <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Delete your account?</p>
+ <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.deleteAcct.title")}</p>
  <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
- Your public page and listings disappear immediately. Everything is kept for 30
- days — logging back in restores it. After that it's permanent and cannot be undone.
+ {t("salesmanPremium.deleteAcct.body")}
  </p>
  <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
- Type DELETE to confirm
+ {t("salesmanPremium.deleteAcct.typeToConfirm")}
  </label>
  <input
  value={deleteConfirmText}
@@ -6931,14 +6929,14 @@ export default function SalesmanPremium() {
  disabled={deleting}
  style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
  >
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  <button
  onClick={handleDeleteAccount}
  disabled={deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
  style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
  >
- {deleting ? "Deleting…" : "Delete my account"}
+ {deleting ? t("salesmanPremium.deleteAcct.deleting") : t("salesmanPremium.deleteAcct.confirm")}
  </button>
  </div>
  </div>
@@ -6959,9 +6957,9 @@ export default function SalesmanPremium() {
  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
  <Car size={22} style={{ color: "#93c5fd" }} />
  </div>
- <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>How did the test drive go?</p>
+ <p style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.testDrive.title")}</p>
  <p style={{ margin: "0 0 24px", fontSize: 13, color: "#6b7280" }}>
- {tdLead.buyer_name || "Buyer"} · {carName || "no car linked"}
+ {tdLead.buyer_name || t("salesmanPremium.common.buyer")} · {carName || t("salesmanPremium.testDrive.noCar")}
  </p>
  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  <button
@@ -6970,8 +6968,8 @@ export default function SalesmanPremium() {
  >
  <ThumbsUp size={20} style={{ flexShrink: 0, color: "#f87171" }} />
  <div>
- <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>They're interested — move forward</p>
- <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>Advance to {(tdNext || "").replace(/_/g, " ")}</p>
+ <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.testDrive.interested")}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{t("salesmanPremium.testDrive.advanceTo", { stage: stageLabel(tdNext) })}</p>
  </div>
  </button>
  <button
@@ -6980,12 +6978,12 @@ export default function SalesmanPremium() {
  >
  <ThumbsDown size={20} style={{ flexShrink: 0, color: "#9ca3af" }} />
  <div>
- <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>Not interested</p>
- <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>Mark as lost</p>
+ <p style={{ margin: 0, fontWeight: 700, color: "#9ca3af" }}>{t("salesmanPremium.testDrive.notInterested")}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12, color: "#4b5563" }}>{t("salesmanPremium.testDrive.markLost")}</p>
  </div>
  </button>
  <button onClick={dismiss} style={{ width: "100%", padding: "10px", borderRadius: 10, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  </div>
  </div>
@@ -7002,13 +7000,13 @@ export default function SalesmanPremium() {
  >
  <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 440, padding: 22, maxHeight: "90vh", overflowY: "auto" }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Confirm booking</p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.confirmBooking.title")}</p>
  <button onClick={() => { setConfirmBookingApt(null); setConfirmBookingMsg(""); }} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2 }}><X size={18} /></button>
  </div>
  <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
- Confirms the viewing, adds {confirmBookingApt.buyer_name || "this buyer"} to your pipeline at Viewing Booked, and sets a Telegram reminder 1 hour before.
+ {t("salesmanPremium.confirmBooking.body", { name: confirmBookingApt.buyer_name || t("salesmanPremium.common.thisBuyer") })}
  </p>
- <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Message to buyer</label>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>{t("salesmanPremium.confirmBooking.message")}</label>
  <textarea
  value={confirmBookingMsg}
  onChange={(e) => setConfirmBookingMsg(e.target.value)}
@@ -7020,14 +7018,14 @@ export default function SalesmanPremium() {
  onClick={moveConfirmBookingToPipeline}
  style={{ flex: 1, fontSize: 12, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
  >
- Confirm only
+ {t("salesmanPremium.confirmBooking.only")}
  </button>
  <button
  onClick={sendConfirmBooking}
  disabled={!confirmBookingApt.buyer_phone}
  style={{ flex: 2, fontSize: 12, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: confirmBookingApt.buyer_phone? "pointer" : "not-allowed", opacity: confirmBookingApt.buyer_phone? 1 : 0.45, fontFamily: "inherit", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
  >
- <Send size={13} /> Confirm + send WhatsApp
+ <Send size={13} /> {t("salesmanPremium.confirmBooking.andSend")}
  </button>
  </div>
  </div>
@@ -7046,12 +7044,12 @@ export default function SalesmanPremium() {
  <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(96,165,250,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
  <Calendar size={17} style={{ color: "#93c5fd" }} />
  </div>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Book a viewing</p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.sellerBooking.title")}</p>
  </div>
  <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
- Pick the slot you agreed with {sellerBookingLead.buyer_name || "this buyer"}. It goes straight into Confirmed Upcoming with a reminder 1 hour before.
+ {t("salesmanPremium.sellerBooking.body", { name: sellerBookingLead.buyer_name || t("salesmanPremium.common.thisBuyer") })}
  </p>
- <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>Date &amp; time</label>
+ <label style={{ display: "block", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 7 }}>{t("salesmanPremium.sellerBooking.dateTime")}</label>
  <input
  type="datetime-local"
  value={sellerBookingDate}
@@ -7064,14 +7062,14 @@ export default function SalesmanPremium() {
  disabled={sellerBookingSaving}
  style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
  >
- Cancel
+ {t("salesmanPremium.common.cancel")}
  </button>
  <button
  onClick={confirmSellerBooking}
  disabled={sellerBookingSaving ||!sellerBookingDate}
  style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", cursor: (sellerBookingSaving ||!sellerBookingDate)? "not-allowed" : "pointer", opacity: (sellerBookingSaving ||!sellerBookingDate)? 0.5 : 1, fontFamily: "inherit" }}
  >
- {sellerBookingSaving? "Booking…" : "Confirm booking"}
+ {sellerBookingSaving? t("salesmanPremium.sellerBooking.booking") : t("salesmanPremium.confirmBooking.title")}
  </button>
  </div>
  </div>
@@ -7090,18 +7088,18 @@ export default function SalesmanPremium() {
  <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
  <CheckCircle2 size={18} style={{ color: "#4ade80" }} />
  </div>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>Mark this deal won?</p>
+ <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.wonPrompt.title")}</p>
  </div>
  <p style={{ margin: "0 0 6px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
- <strong style={{ color: "#f1f5f9" }}>{wonPrompt.lead.buyer_name || "This buyer"}</strong>
+ <strong style={{ color: "#f1f5f9" }}>{wonPrompt.lead.buyer_name || t("salesmanPremium.wonPrompt.thisBuyer")}</strong>
  {wonPrompt.lead.car_listings
  ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
  : null}
  </p>
  <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
- ? "The car is marked sold and removed from the marketplace, your sold count and commission update, the buyer is added to Customers, and the 8-step handover checklist starts."
- : "No car is linked to this lead, so nothing will be marked sold — only the lead closes."}
+ ? t("salesmanPremium.wonPrompt.withCar")
+ : t("salesmanPremium.wonPrompt.noCar")}
  </p>
  <div style={{ display: "flex", gap: 8 }}>
  <button
@@ -7109,14 +7107,14 @@ export default function SalesmanPremium() {
  disabled={wonSaving}
  style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
  >
- Not yet
+ {t("salesmanPremium.wonPrompt.notYet")}
  </button>
  <button
  onClick={handleMarkWon}
  disabled={wonSaving}
  style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
  >
- {wonSaving? "Saving…" : "Yes, mark won"}
+ {wonSaving? t("salesmanPremium.common.saving") : t("salesmanPremium.wonPrompt.yes")}
  </button>
  </div>
  </div>
@@ -7169,7 +7167,7 @@ export default function SalesmanPremium() {
  <div className="flex items-center justify-between mb-1">
  <div className="flex items-center gap-2">
  <Send className="w-4 h-4 text-orange-400" />
- <p className="text-white font-semibold text-sm">Broadcast to Leads
+ <p className="text-white font-semibold text-sm">{t("salesmanPremium.broadcast.title")}
  </p>
  </div>
  {(!broadcastProgress || broadcastDone) && (
@@ -7193,10 +7191,10 @@ export default function SalesmanPremium() {
  <AlertCircle className="w-3.5 h-3.5 text-orange-400 mt-0.5 flex-shrink-0" />
  <p className="text-xs text-orange-300">
  {eligible.length === 0
-? "No active leads with a phone number to broadcast to."
+? t("salesmanPremium.broadcast.none")
  : eligible.length > 10
-? `This will open ${capped.length} WhatsApp tabs (capped from ${eligible.length} — only first 10 will be contacted).`
- : `This will open ${capped.length} WhatsApp tab${capped.length!== 1? "s" : ""}.`}
+? t("salesmanPremium.broadcast.capped", { count: capped.length, total: eligible.length })
+ : t("salesmanPremium.broadcast.willOpen", { count: capped.length })}
  </p>
  </div>
 
@@ -7208,8 +7206,7 @@ export default function SalesmanPremium() {
  color: "#9ca3af",
  }}
  >
- {eligible.length} eligible lead
- {eligible.length!== 1? "s" : ""} (not won/lost)
+ {t("salesmanPremium.broadcast.eligible", { count: eligible.length })}
  </span>
  </div>
 
@@ -7237,13 +7234,12 @@ export default function SalesmanPremium() {
  {broadcastDone? (
  <div className="flex items-center gap-2 justify-center py-2">
  <CheckCircle2 className="w-4 h-4 text-green-400" />
- <p className="text-green-400 text-sm font-medium">All {capped.length} tabs opened!
+ <p className="text-green-400 text-sm font-medium">{t("salesmanPremium.broadcast.done", { count: capped.length })}
  </p>
  </div>
  ) : broadcastProgress? (
  <div className="text-center py-2">
- <p className="text-orange-300 text-sm font-medium">Opening {broadcastProgress.current} of{" "}
- {broadcastProgress.total}…
+ <p className="text-orange-300 text-sm font-medium">{t("salesmanPremium.broadcast.progress", { current: broadcastProgress.current, total: broadcastProgress.total })}
  </p>
  <div
  className="mt-2 rounded-full overflow-hidden"
@@ -7291,7 +7287,7 @@ export default function SalesmanPremium() {
  gap: 8,
  }}
  >
- <Send className="w-4 h-4" />Open WA for each lead
+ <Send className="w-4 h-4" />{t("salesmanPremium.broadcast.run")}
  </button>
  )}
  </div>
@@ -7327,7 +7323,7 @@ export default function SalesmanPremium() {
  {/* Header */}
  <div className="flex items-center justify-between mb-4">
  <div>
- <p className="text-white font-semibold text-sm">AI Caption Writer
+ <p className="text-white font-semibold text-sm">{t("salesmanPremium.aiCaption.title")}
  </p>
  <p className="text-gray-400 text-xs mt-0.5">
  {[aiCaptionCar.year, aiCaptionCar.brand, aiCaptionCar.model]
@@ -7350,16 +7346,16 @@ export default function SalesmanPremium() {
 
  {!AI_FEATURES_ENABLED ? (
  <p style={{ fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6, margin: "0 0 4px" }}>
- AI Caption Writer is coming soon.
+ {t("salesmanPremium.aiCaption.soon")}
  </p>
  ) : !isPremium? (
- <UpgradeBanner feature="AI Caption Writer" />
+ <UpgradeBanner feature={t("salesmanPremium.aiCaption.title")} />
  ) : (
  <>
  {/* Platform tabs */}
  <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>
  {AI_CAPTION_PLATFORMS.map((platform) => {
- const labels = { whatsapp: "WhatsApp", tiktok: "TikTok", instagram: "Instagram", facebook: "Facebook", general: "General" };
+ const labels = { whatsapp: "WhatsApp", tiktok: "TikTok", instagram: "Instagram", facebook: "Facebook", general: t("salesmanPremium.aiCaption.general") };
  const isActive = captionPlatform === platform;
  return (
  <button
@@ -7391,10 +7387,10 @@ export default function SalesmanPremium() {
  </div>
 
  {!captionQuotaOk? (
- <p style={{ fontSize: 12, color: "#f87171", margin: "0 0 12px" }}>Daily caption quota reached. Try again tomorrow.
+ <p style={{ fontSize: 12, color: "#f87171", margin: "0 0 12px" }}>{t("salesmanPremium.aiCaption.quota")}
  </p>
  ) : aiCaptionLoading? (
- <AiLoadingState text="AI sedang tulis caption..." />
+ <AiLoadingState text={t("salesmanPremium.aiCaption.loading")} />
  ) : (
  <textarea
  value={aiCaptions[`${aiCaptionCar.id}_${captionPlatform}`]?? ""}
@@ -7455,7 +7451,7 @@ export default function SalesmanPremium() {
  ) : (
  <Copy className="w-3.5 h-3.5" />
  )}
- {captionCopied? "Copied!" : "Copy"}
+ {captionCopied? t("salesmanPremium.common.copied") : t("salesmanPremium.common.copy")}
  </button>
  <button
  onClick={() => {
@@ -7484,7 +7480,7 @@ export default function SalesmanPremium() {
  gap: 6,
  }}
  >
- <Sparkles className="w-3.5 h-3.5" />Regenerate
+ <Sparkles className="w-3.5 h-3.5" />{t("salesmanPremium.aiCaption.regenerate")}
  </button>
  </div>
  </>
@@ -7496,7 +7492,7 @@ export default function SalesmanPremium() {
  <ListingFormModal
  open={!!editListing}
  onClose={() => setEditListing(null)}
- title="Edit Listing"
+ title={t("salesmanPremium.carActions.editListing")}
  subtitle={editListing ? `${editListing.brand} ${editListing.model} ${editListing.variant || ""}`.trim() : ""}
  isMobile={isMobile}
  >

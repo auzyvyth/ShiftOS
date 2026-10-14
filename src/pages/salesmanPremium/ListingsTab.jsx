@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
@@ -9,7 +10,7 @@ import CarFormFast from "../../components/CarFormFast";
 import CarForm from "../../components/CarForm";
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
-import { priceStyle, SOFT, ListingFormModal } from "./shared";
+import { priceStyle, SOFT, ListingFormModal, tp } from "./shared";
 
 // Lazy-load JSZip from CDN once, only when a salesman actually downloads photos.
 let _jszipPromise = null;
@@ -28,7 +29,7 @@ function loadJSZip() {
 
 const downloadListingImages = async (car) => {
  const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
- if (imgs.length === 0) { toast.error("No images on this listing"); return; }
+ if (imgs.length === 0) { toast.error(tp("lst.noImages")); return; }
  const base = [car.year, car.brand, car.model].filter(Boolean).join("-").replace(/\s+/g, "-") || "car";
  if (imgs.length === 1) {
  try {
@@ -40,11 +41,11 @@ const downloadListingImages = async (car) => {
  a.href = url; a.download = `${base}.${ext}`;
  document.body.appendChild(a); a.click(); a.remove();
  URL.revokeObjectURL(url);
- toast.success("Saved photo");
- } catch { toast.error("Couldn't download image"); }
+ toast.success(tp("lst.savedPhoto"));
+ } catch { toast.error(tp("lst.downloadFail")); }
  return;
  }
- const tId = toast.loading(`Zipping ${imgs.length} photos…`);
+ const tId = toast.loading(tp("lst.zipping", { n: imgs.length }));
  try {
  const JSZip = await loadJSZip();
  const zip = new JSZip();
@@ -58,16 +59,16 @@ const downloadListingImages = async (car) => {
  ok++;
  } catch { /* skip a failed image */ }
  }));
- if (ok === 0) { toast.error("Couldn't download images", { id: tId }); return; }
+ if (ok === 0) { toast.error(tp("lst.downloadFail"), { id: tId }); return; }
  const out = await zip.generateAsync({ type: "blob" });
  const url = URL.createObjectURL(out);
  const a = document.createElement("a");
  a.href = url; a.download = `${base}-photos.zip`;
  document.body.appendChild(a); a.click(); a.remove();
  URL.revokeObjectURL(url);
- toast.success(`Saved ${ok} photo${ok > 1 ? "s" : ""} as zip`, { id: tId });
+ toast.success(tp("lst.savedZip", { count: ok }), { id: tId });
  } catch {
- toast.error("Couldn't build zip", { id: tId });
+ toast.error(tp("lst.zipFail"), { id: tId });
  }
 };
 
@@ -85,6 +86,9 @@ export default function ListingsTab({
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
  generateAiCaptions, onVerifyId, openStudio,
 }) {
+ const { t, i18n } = useTranslation();
+ const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
+ const statusLabel = (st) => t(`salesmanPremium.lst.status.${st}`, { defaultValue: st });
  const enriched = myListings.map((car) => {
  const stats = carStatsMap[car.id]?? {};
  const views = stats.views || 0;
@@ -153,20 +157,20 @@ export default function ListingsTab({
  fontWeight: 600,
  color: "#f1f5f9",
  }}
- >My Listings ({myListings.length})
+ >{t("salesmanPremium.lst.title", { n: myListings.length })}
  </p>
  <div style={{ display: "flex", gap: 7 }}>
  <button
  onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
  style={{ display: "flex", alignItems: "center", gap: 5, background: "#dc2626", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
  >
- Fast
+ {t("salesmanPremium.lst.fast")}
  </button>
  <button
  onClick={() => { setShowAddForm(true); setShowFastForm(false); }}
  style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
  >
- <Plus size={13} /> Full Form
+ <Plus size={13} /> {t("salesmanPremium.lst.fullForm")}
  </button>
  </div>
  </div>
@@ -174,8 +178,8 @@ export default function ListingsTab({
  <ListingFormModal
  open={showFastForm}
  onClose={() => setShowFastForm(false)}
- title="Fast List"
- subtitle="2 steps, live in 30 seconds"
+ title={t("salesmanPremium.lst.fastTitle")}
+ subtitle={t("salesmanPremium.lst.fastSub")}
  isMobile={isMobile}
  >
  <CarFormFast
@@ -183,7 +187,7 @@ export default function ListingsTab({
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
  setShowFastForm(false);
- toast.success("Listed! Add more details anytime.");
+ toast.success(t("salesmanPremium.lst.listedFast"));
  }}
  />
  </ListingFormModal>
@@ -191,8 +195,8 @@ export default function ListingsTab({
  <ListingFormModal
  open={showAddForm}
  onClose={() => setShowAddForm(false)}
- title="New Listing"
- subtitle="Full form — every spec, photo and price field"
+ title={t("salesmanPremium.lst.newTitle")}
+ subtitle={t("salesmanPremium.lst.newSub")}
  isMobile={isMobile}
  >
  <CarForm
@@ -200,7 +204,7 @@ export default function ListingsTab({
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
  setShowAddForm(false);
- toast.success("Listing published!");
+ toast.success(t("salesmanPremium.lst.published"));
  }}
  />
  </ListingFormModal>
@@ -210,13 +214,13 @@ export default function ListingsTab({
  <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.04), border: `1px solid ${withAlpha(C.success, 0.13)}` }}>
  <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
  <span style={{ fontSize: T.size.xs, color: C.textMuted, flex: 1 }}>
- Your listings are <strong style={{ color: C.success }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
+ {t("salesmanPremium.lst.liveBarPre")} <strong style={{ color: C.success }}>{t("salesmanPremium.lst.liveBarStrong")}</strong> {t("salesmanPremium.lst.liveBarPost", { url: `xdrive.my/s/${profile.slug}` })}
  </span>
  <button
- onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanPremium.dash.linkCopied")); }}
  style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, whiteSpace: "nowrap", fontFamily: "inherit" }}
  >
- Copy Link
+ {t("salesmanPremium.carActions.copyLink")}
  </button>
  </div>
  )}
@@ -229,7 +233,7 @@ export default function ListingsTab({
  return (
  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: R.md, background: withAlpha(C.warn, 0.04), border: `1px solid ${withAlpha(C.warn, 0.15)}` }}>
  <BarChart2 size={13} style={{ flexShrink: 0, color: C.warnText }} />
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, flex: 1 }}>Your listings average <strong style={{ color: C.warnText }}>{avg}% quality</strong>. Complete listings get 3× more views.</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, flex: 1 }}>{t("salesmanPremium.lst.avgPre")} <strong style={{ color: C.warnText }}>{t("salesmanPremium.lst.avgStrong", { n: avg })}</strong>. {t("salesmanPremium.lst.avgPost")}</p>
  </div>
  );
  })()}
@@ -240,11 +244,11 @@ export default function ListingsTab({
  <div style={{ borderBottom: `1px solid ${C.border}`, marginBottom: 0 }}>
  <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
  {[
- { key: "pending_approval", label: "Pending", count: myListings.filter((c) => c.status === "pending_approval").length },
- { key: "rejected", label: "Rejected", count: myListings.filter((c) => c.status === "rejected").length },
- { key: "available", label: "Available", count: myListings.filter((c) => (c.status || "available") === "available").length },
- { key: "reserved", label: "Reserved", count: myListings.filter((c) => c.status === "reserved").length },
- { key: "sold", label: "Sold", count: myListings.filter((c) => c.status === "sold").length },
+ { key: "pending_approval", label: t("salesmanPremium.lst.tabPending"), count: myListings.filter((c) => c.status === "pending_approval").length },
+ { key: "rejected", label: statusLabel("rejected"), count: myListings.filter((c) => c.status === "rejected").length },
+ { key: "available", label: statusLabel("available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
+ { key: "reserved", label: statusLabel("reserved"), count: myListings.filter((c) => c.status === "reserved").length },
+ { key: "sold", label: statusLabel("sold"), count: myListings.filter((c) => c.status === "sold").length },
  ].map(({ key, label, count }) => (
  <button
  key={key}
@@ -275,15 +279,15 @@ export default function ListingsTab({
 
  {/* Sort row */}
  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 0 14px" }}>
- <span style={{ fontSize: T.size.sm, color: C.textDim, marginRight: 2 }}>Sort:</span>
- <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>Newest</button>
- <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>Price ↓</button>
- <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>Price ↑</button>
+ <span style={{ fontSize: T.size.sm, color: C.textDim, marginRight: 2 }}>{t("salesmanPremium.lst.sort")}</span>
+ <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanPremium.lst.newest")}</button>
+ <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanPremium.lst.price")} ↓</button>
+ <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanPremium.lst.price")} ↑</button>
  {hotCount > 0 && (
- <span style={{ fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold, marginLeft: "auto" }}>{hotCount} hot</span>
+ <span style={{ fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold, marginLeft: "auto" }}>{t("salesmanPremium.lst.nHot", { n: hotCount })}</span>
  )}
  {staleCount > 0 && (
- <span style={{ fontSize: T.size.sm, color: C.textMuted, fontWeight: T.weight.medium }}>{staleCount} stale</span>
+ <span style={{ fontSize: T.size.sm, color: C.textMuted, fontWeight: T.weight.medium }}>{t("salesmanPremium.lst.nStale", { n: staleCount })}</span>
  )}
  </div>
  </>
@@ -324,7 +328,7 @@ export default function ListingsTab({
  fontWeight: 600,
  color: "#4b5563",
  }}
- >No listings yet
+ >{t("salesmanPremium.lst.emptyTitle")}
  </p>
  <p
  style={{
@@ -335,7 +339,7 @@ export default function ListingsTab({
  maxWidth: 260,
  lineHeight: 1.6,
  }}
- >Add your first car using the button above.
+ >{t("salesmanPremium.lst.emptyBody")}
  </p>
  </div>
  ) : sorted.length === 0? (
@@ -346,7 +350,7 @@ export default function ListingsTab({
  color: "#374151",
  fontSize: 13,
  }}
- >No {filterStatus} listings.
+ >{t("salesmanPremium.lst.noneInStatus", { status: statusLabel(filterStatus).toLowerCase() })}
  </div>
  ) : (
  <div
@@ -369,7 +373,7 @@ export default function ListingsTab({
  const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
  const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
  const disambiguator = nameCounts[name] > 1
- ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
+ ? [car.colour, car.plate_number ? t("salesmanPremium.lst.plate", { last: car.plate_number.slice(-4) }) : null].filter(Boolean).join(" · ")
  : null;
  const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
  const isHovering = cvrHover === car.id;
@@ -401,13 +405,13 @@ export default function ListingsTab({
  <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.dangerText, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.dangerText }}>Not approved</span>
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.dangerText }}>{t("salesmanPremium.lst.notApproved")}</span>
  </div>
  <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
- {car.rejection_reason || "No reason was given. Check the details and photos, then resubmit."}
+ {car.rejection_reason || t("salesmanPremium.lst.noReason")}
  </p>
  <button onClick={() => setEditListing(car)} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
- <Pencil size={13} /> Edit & Resubmit
+ <Pencil size={13} /> {t("salesmanPremium.lst.editResubmit")}
  </button>
  </div>
  )}
@@ -435,14 +439,14 @@ export default function ListingsTab({
  }}>
  <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isRejected ? C.dangerText : isSold ? C.textMuted : C.warnText }} />
  <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: isRejected ? C.dangerText : isSold ? C.textSec : C.warnText }}>
- {isSold ? "Sold" : isReserved ? "Reserved" : isPending ? "Pending approval" : "Rejected"}
+ {isSold ? statusLabel("sold") : isReserved ? statusLabel("reserved") : isPending ? statusLabel("pending_approval") : statusLabel("rejected")}
  </span>
  {isSold && car.sold_at && (
  <span style={{ fontSize: T.size.xs, color: C.textDim }}>
- · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
+ · {new Date(car.sold_at).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
  </span>
  )}
- {isPending && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· not visible to buyers yet</span>}
+ {isPending && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· {t("salesmanPremium.lst.notVisible")}</span>}
  </div>
  )}
 
@@ -450,8 +454,8 @@ export default function ListingsTab({
  {!isSold &&!isReserved &&!isPending &&!isRejected && (
  <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "5px 14px", display: "flex", alignItems: "center", gap: 6 }}>
  <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
- <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
+ <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>{t("salesmanPremium.lst.liveOnXdrive")}</span>
+ <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? t("salesmanPremium.dash.nViews", { count: views }) : t("salesmanPremium.lst.accepting")}</span>
  </div>
  )}
 
@@ -479,7 +483,7 @@ export default function ListingsTab({
  return (
  <button
  onClick={(e) => { e.stopPropagation(); if (locked) return; setStatusMenuCarId(open ? null : car.id); }}
- title={locked ? undefined : "Change listing status"}
+ title={locked ? undefined : t("salesmanPremium.lst.changeStatus")}
  style={{
  display: "flex", alignItems: "center", gap: 6, padding: "4px 6px 4px 9px", borderRadius: R.sm,
  background: open ? C.fillStrong : C.line, border: `1px solid ${open ? C.borderStrong : C.border}`,
@@ -487,7 +491,7 @@ export default function ListingsTab({
  }}
  >
  <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{car.status || "available"}</span>
+ <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{statusLabel(car.status || "available")}</span>
  {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
  </button>
  );
@@ -497,11 +501,11 @@ export default function ListingsTab({
  onClick={(e) => e.stopPropagation()}
  style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 146, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
  >
- <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>Set this listing to</p>
+ <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>{t("salesmanPremium.lst.setTo")}</p>
  {[
- { key: "available", label: "Available", color: C.successText, hint: "Live for buyers" },
- { key: "reserved", label: "Reserved", color: C.warnText, hint: "Deposit / on hold" },
- { key: "sold", label: "Sold", color: C.textSec, hint: "Deal closed" },
+ { key: "available", label: statusLabel("available"), color: C.successText, hint: t("salesmanPremium.lst.hintAvailable") },
+ { key: "reserved", label: statusLabel("reserved"), color: C.warnText, hint: t("salesmanPremium.lst.hintReserved") },
+ { key: "sold", label: statusLabel("sold"), color: C.textSec, hint: t("salesmanPremium.lst.hintSold") },
  ].map(({ key, label, color, hint }) => {
  const active = normStatus(car.status || "available") === key;
  return (
@@ -539,7 +543,7 @@ export default function ListingsTab({
  const margin = hasBoth? sell - base : null;
  return (
  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
- <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My margin:</span>
+ <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>{t("salesmanPremium.lst.myMargin")}</span>
  <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: margin == null? C.textMuted : margin >= 0? C.successText : C.dangerText }}>
  {margin == null? "—" : `RM ${margin.toLocaleString()}`}
  </span>
@@ -561,7 +565,7 @@ export default function ListingsTab({
  </p>
  {addOns.length > 0 && (
  <span
- title={`Included: ${addOns.map(a => a?.name).filter(Boolean).join(", ")}`}
+ title={t("salesmanPremium.lst.included", { list: addOns.map(a => a?.name).filter(Boolean).join(", ") })}
  style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: R.pill, background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.22)}`, color: C.infoText, fontSize: T.size.xs, fontWeight: T.weight.semibold, lineHeight: 1.4 }}
  >
  <Sparkles size={9} style={{ flexShrink: 0 }} />{addOns.length}
@@ -575,9 +579,9 @@ export default function ListingsTab({
  if (pct >= 90) return null;
  const barColor = pct >= 70? C.warnText : C.dangerText;
  return (
- <div style={{ marginBottom: 8 }} title={missing.length? `Improve: ${missing.join(", ")}` : ""}>
+ <div style={{ marginBottom: 8 }} title={missing.length? t("salesmanPremium.lst.improve", { list: missing.join(", ") }) : ""}>
  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
- <span style={{ fontSize: T.size.xs, color: C.textDim }}>Listing quality</span>
+ <span style={{ fontSize: T.size.xs, color: C.textDim }}>{t("salesmanPremium.lst.quality")}</span>
  <span style={{ fontSize: T.size.xs, color: barColor, fontWeight: T.weight.semibold }}>{pct}%</span>
  </div>
  <div style={{ height: 3, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden" }}>
@@ -593,17 +597,17 @@ export default function ListingsTab({
  <div style={{ marginBottom: 10, position: "relative" }} onMouseEnter={() => setCvrHover(car.id)} onMouseLeave={() => setCvrHover(null)}>
  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
  <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
- <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> views · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enquiries}</span> enquiries
+ <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> {t("salesmanPremium.lst.viewsLower")} · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enquiries}</span> {t("salesmanPremium.lst.enquiriesLower")}
  </span>
- {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold }}><Flame size={12} /> Hot</span>}
- {isStale &&!isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.textSec }}><Clock size={12} /> Stale</span>}
+ {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold }}><Flame size={12} /> {t("salesmanPremium.lst.hot")}</span>}
+ {isStale &&!isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.textSec }}><Clock size={12} /> {t("salesmanPremium.lst.stale")}</span>}
  </div>
  <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, overflow: "visible" }}>
  <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot? C.danger : C.textDim, borderRadius: R.pill, transition: "width 0.3s" }} />
  </div>
  {isHovering && (
  <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "5px 10px", fontSize: T.size.sm, color: C.text, whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
- {views} views · {enquiries} enquiries ·{" "}
+ {views} {t("salesmanPremium.lst.viewsLower")} · {enquiries} {t("salesmanPremium.lst.enquiriesLower")} ·{" "}
  <span style={{ color: isHot? C.danger : C.infoText, fontWeight: T.weight.semibold }}>{cvrLabel}% CVR</span>
  </div>
  )}
@@ -615,49 +619,49 @@ export default function ListingsTab({
  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: R.sm, background: withAlpha(C.warn, 0.05), border: `1px solid ${withAlpha(C.warn, 0.14)}` }}>
  <Camera size={11} style={{ flexShrink: 0, color: C.warn }} />
  <span style={{ fontSize: T.size.xs, color: C.warn, flex: 1 }}>
- Add {Math.max(0, 3 - (car.images?.length || 0))} more photo{Math.max(0, 3 - (car.images?.length || 0))!== 1? "s" : ""} — listings with 3+ photos get 3× more views
+ {t("salesmanPremium.lst.addPhotos", { count: Math.max(0, 3 - (car.images?.length || 0)) })}
  </span>
- <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.bold, whiteSpace: "nowrap", fontFamily: "inherit" }}>Fix</button>
+ <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.bold, whiteSpace: "nowrap", fontFamily: "inherit" }}>{t("salesmanPremium.lst.fix")}</button>
  </div>
  )}
 
  {/* Action bar */}
  <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${C.line}`, paddingTop: 10, marginTop: "auto" }}>
  {isSold ? (
- <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>View</button>
+ <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.lst.view")}</button>
  ) : isPending ? (
  <>
- <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>View</button>
+ <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.lst.view")}</button>
  <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
- <Pencil size={10} /> Edit
+ <Pencil size={10} /> {t("salesmanPremium.carActions.edit")}
  </button>
  </>
  ) : isRejected ? (
 <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
-View
+{t("salesmanPremium.lst.view")}
 </button>
 ) : (
  <>
  <button
  onClick={() => handleListingCopy(car, "link")}
- title="Copy link"
+ title={t("salesmanPremium.lst.copyLinkTitle")}
  style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link"? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link"? C.successText : C.textSec }}
  >
  <LinkIcon size={11} />
- {listingCopied[car.id] === "link"? "Copied" : "Link"}
+ {listingCopied[car.id] === "link"? t("salesmanPremium.lst.copied") : t("salesmanPremium.lst.link")}
  </button>
  <button
  onClick={() => handleListingCopy(car, "wa")}
- title="Copy caption"
+ title={t("salesmanPremium.lst.copyCaptionTitle")}
  style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa"? withAlpha(C.success, 0.12) : withAlpha(C.success, 0.06), border: `1px solid ${withAlpha(C.success, 0.15)}`, color: listingCopied[car.id] === "wa"? C.successText : C.success }}
  >
- {listingCopied[car.id] === "wa"? "Copied" : "Caption"}
+ {listingCopied[car.id] === "wa"? t("salesmanPremium.lst.copied") : t("salesmanPremium.lst.caption")}
  </button>
  <button
  onClick={() => setEditListing(car)}
  style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
  >
- <Pencil size={10} /> Edit
+ <Pencil size={10} /> {t("salesmanPremium.carActions.edit")}
  </button>
  </>
  )}
@@ -666,7 +670,7 @@ View
  <div style={{ position: "relative", flexShrink: 0 }}>
  <button
  onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id? null : car.id); setConfirmDeleteId(null); }}
- title="More actions" aria-label="More actions"
+ title={t("salesmanPremium.lst.moreActions")} aria-label={t("salesmanPremium.lst.moreActions")}
  style={{ width: 30, height: 30, borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, letterSpacing: 1 }}
  >
  ···
@@ -679,15 +683,15 @@ View
  {!isSold && (
  <>
  <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Megaphone size={12} /> Broadcast
+ <Megaphone size={12} /> {t("salesmanPremium.carActions.broadcast")}
  </button>
  <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Sparkles size={12} /> AI Caption
+ <Sparkles size={12} /> {t("salesmanPremium.carActions.aiCaption")}
  </button>
  {/* ShiftOS Studio: TikTok poster from this car. Post-list only, and it
      never writes back to the listing, so the XDrive photos stay clean. */}
  <button onClick={() => { openStudio(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Film size={12} /> TikTok post
+ <Film size={12} /> {t("salesmanPremium.lst.tiktokPost")}
  </button>
  <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
  </>
@@ -695,19 +699,19 @@ View
  {Array.isArray(car.images) && car.images.length > 0 && (
  <>
  <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Download size={12} /> Download photos
+ <Download size={12} /> {t("salesmanPremium.lst.downloadPhotos")}
  </button>
  <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
  </>
  )}
  {confirmDeleteId === car.id ? (
  <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
- <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>Delete</button>
- <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>Cancel</button>
+ <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>{t("salesmanPremium.common.delete")}</button>
+ <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  ) : (
  <button onClick={() => setConfirmDeleteId(car.id)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: T.size.base, textAlign: "left" }}>
- <Trash2 size={12} /> Delete
+ <Trash2 size={12} /> {t("salesmanPremium.common.delete")}
  </button>
  )}
  </div>
