@@ -30,12 +30,12 @@ const CONTENT = {
   en: {
     overview: {
       title: 'What is Salesman Lite?',
-      body: `Salesman Lite is a free personal CRM and marketplace tool built for independent car salesmen in Malaysia. It gives you a public profile on XDrive, a lead pipeline, and a listings manager — all in one place, at no cost.`,
+      body: `Salesman Lite is the free way for independent car salesmen in Malaysia to get found and get the lead: your own page on XDrive, up to 5 live cars on the marketplace, and every buyer enquiry in one list. Following up and closing (reminders, call log, commission, performance) is Salesman Premium.`,
       items: [
         { label: 'Your public storefront', desc: 'Every listing you publish appears on xdrive.my and on your personal profile link (xdrive.my/s/your-slug). Buyers can WhatsApp you directly from any listing.' },
-        { label: 'Lead pipeline', desc: 'Track every buyer from first contact to won deal. Add notes, follow-up dates, and appointments.' },
+        { label: 'Lead list', desc: 'Every buyer who contacts you lands here. Move them through the stages, add notes, and mark the deal won when the car sells.' },
         { label: 'Inbox', desc: 'XDrive buyers who tap WhatsApp on your listing appear as Enquiries. Appointment requests show under Bookings.' },
-        { label: 'Performance stats', desc: 'See your close rate, funnel drop-off, and weekly activity so you know where to focus.' },
+        { label: 'Views and WhatsApp taps', desc: 'See how many buyers viewed each car and tapped WhatsApp. Close rate and where deals are lost are on Premium.' },
         { label: 'Join a dealership', desc: 'If you work with a dealer on ShiftOS, enter their invite code to merge your account. Your listings and leads carry over.' },
       ],
     },
@@ -43,11 +43,10 @@ const CONTENT = {
       title: 'Dashboard',
       body: 'The Dashboard is the first thing you see after logging in. It shows your key numbers at a glance and flags anything that needs attention today.',
       items: [
-        { label: 'KPI cards', desc: 'Pipeline — active leads not yet won or lost. Live Listings — cars currently published as Available. Follow-ups — leads with a follow-up date set to today. Appointments — viewings/test drives scheduled for today. Closed — leads marked won or lost this month.' },
+        { label: 'KPI cards', desc: 'Pipeline — active leads not yet won or lost. Live Listings — cars currently published as Available. Follow-ups — leads that have gone quiet. Appointments — viewings/test drives scheduled for today. Closed — leads marked won or lost this month.' },
         { label: "Today's Agenda", desc: "Cards showing today's appointments, due follow-ups, and stale leads (no contact in 5+ days). Tap any item to open the lead directly." },
-        { label: 'Monthly goal', desc: 'Set a unit or revenue target for the month. The progress bar updates as you close deals.' },
-        { label: 'Performance snapshot', desc: 'Your top-performing listing by views and WhatsApp taps, plus overall conversion rate across all listings.' },
-        { label: 'Get Started checklist', desc: 'Shown for new accounts until dismissed. Three steps: add your first listing, share the link, track your leads.' },
+                { label: 'Performance snapshot', desc: 'Your top-performing listing by views and WhatsApp taps, plus overall conversion rate across all listings.' },
+        { label: 'Get Started checklist', desc: 'Shown for new accounts until dismissed. Two steps: add your first listing, then open your page to see what buyers see.' },
       ],
     },
     listings: {
@@ -58,8 +57,7 @@ const CONTENT = {
         { label: 'Quick List', desc: 'For a fast publish, use Quick List. Fill in brand, model, year, and price — the listing goes live immediately as a draft you can complete later.' },
         { label: 'Status', desc: 'Available — visible on XDrive. Reserved — hidden from search, visible by direct link (use for deposit taken). Sold — archived from listings, marked as closed.' },
         { label: 'Sharing your listing', desc: 'Each listing has a Share button that copies a direct link. Paste it in WhatsApp groups, Facebook posts, or your TikTok bio to drive traffic.' },
-        { label: 'Commission field', desc: 'You can record a commission amount per listing. This is private and only visible to you.' },
-        { label: 'Boost (coming soon)', desc: 'Boost pins your listing to the top of XDrive search for 7 days. Join the waitlist from the listing card.' },
+                { label: 'Boost (coming soon)', desc: 'Boost pins your listing to the top of XDrive search for 7 days. Join the waitlist from the listing card.' },
       ],
     },
     leads: {
@@ -68,9 +66,8 @@ const CONTENT = {
       items: [
         { label: 'Adding a lead', desc: 'Tap "Add Lead" in the header or the + button on mobile. Enter the buyer\'s name and phone. You can optionally link a listing, add their IC, email, and address.' },
         { label: 'Lead stages', desc: 'New → Contacted → Viewing Booked → Test Drive → Negotiating → Deposit Taken → Won / Lost. Drag or tap a lead to update its stage. Won and Lost leads are archived from the active pipeline.' },
-        { label: 'Lead drawer', desc: 'Tap any lead card to open the detail drawer. Inside: buyer details, notes log, follow-up date picker, appointment scheduler, and deal history.' },
-        { label: 'Follow-up dates', desc: 'Set a follow-up date on any lead. It appears in your Dashboard Agenda on the due day so you never forget a follow-up.' },
-        { label: 'Stale leads alert', desc: 'Leads with no activity in 5 or more days are flagged as stale. They appear as a warning card on your Dashboard and in the Leads tab.' },
+        { label: 'Lead drawer', desc: 'Tap any lead card to open the detail drawer. Inside: buyer details, notes and deal history. Follow-up reminders and the call log are on Premium.' },
+        { label: 'Stale leads alert', desc: 'Leads with no activity in 5 or more days are flagged as stale. They are counted on your Dashboard. Premium lists them as a call list you can WhatsApp in one go.' },
         { label: 'Linking a car', desc: 'Open the lead drawer and search for a listing to link. The car name then appears on the lead card and is included when generating a deal sheet.' },
       ],
     },
@@ -86,7 +83,7 @@ const CONTENT = {
     },
     performance: {
       title: 'Performance',
-      body: 'The Performance tab shows your sales funnel and activity metrics so you can spot where deals are dropping off.',
+      body: 'Performance is on Salesman Premium: your close rate, where buyers drop off and how fast you reply. On Lite, views and WhatsApp taps for each car are on your Dashboard.',
       items: [
         { label: 'Close rate', desc: 'Won leads ÷ all closed leads (won + lost). A healthy close rate for car sales is 20–40%. Below 20% usually means follow-up cadence needs work.' },
         { label: 'Funnel breakdown', desc: 'Bar chart showing how many leads are at each stage. A large drop between Viewing and Test Drive usually means the car presentation needs work. A drop between Test Drive and Negotiating usually means a pricing or trust issue.' },
@@ -123,7 +120,7 @@ const CONTENT = {
       { q: 'What happens to my data if I join a dealership?', a: 'Your listings and leads carry over to the dealer\'s system. The dealer\'s owner and managers can see your leads and pipeline. Nothing is deleted — it just becomes shared within the team.' },
       { q: 'Can I have more than one account?', a: 'No — one account per email address. If you need to switch between a solo account and a dealership, use the Join Dealership flow.' },
       { q: 'How do I get my public profile link?', a: 'Your link is xdrive.my/s/[your-slug]. Your slug is shown in the Settings tab under "Username / Slug". Copy and share it anywhere.' },
-      { q: 'How many listings can I have?', a: 'Up to 10 active (Available status) listings on Salesman Lite. Listings in Reserved or Sold status don\'t count towards the limit.' },
+      { q: 'How many listings can I have?', a: 'Up to 5 live cars on Salesman Lite (Available or Reserved). Sold cars don\'t count towards the limit. Salesman Premium allows 30.' },
       { q: 'I got an enquiry — what do I do?', a: 'Go to Inbox → Enquiries. Open the enquiry, tap the WhatsApp button to reply to the buyer, then tap "Add to Leads" to track the deal in your pipeline.' },
       { q: 'What does stale lead mean?', a: 'A lead is stale if no activity (note, stage change, follow-up, appointment) has been logged in 5 or more days. It\'s a reminder that the buyer may be going cold. Follow up immediately.' },
       { q: 'Can buyers book test drives through XDrive?', a: 'Yes. Listings on XDrive have a booking button. Requests come into your Inbox → Bookings tab. You accept, reschedule, or cancel from there.' },
@@ -134,12 +131,12 @@ const CONTENT = {
   ms: {
     overview: {
       title: 'Apa itu Salesman Lite?',
-      body: 'Salesman Lite adalah CRM peribadi dan alat marketplace percuma yang dibina khas untuk jurujual kereta bebas di Malaysia. Ia memberikan anda profil awam di XDrive, saluran lead, dan pengurus listing — semuanya dalam satu tempat, tanpa sebarang kos.',
+      body: 'Salesman Lite ialah cara percuma untuk salesman kereta bebas di Malaysia dijumpai dan dapat lead: page sendiri di XDrive, sehingga 5 kereta aktif di marketplace, dan setiap pertanyaan pembeli dalam satu senarai. Follow up dan tutup deal (reminder, log call, komisen, prestasi) ada di Salesman Premium.',
       items: [
         { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di xdrive.my dan pada pautan profil peribadi anda (xdrive.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
-        { label: 'Saluran lead', desc: 'Jejaki setiap lead dari hubungan pertama hingga deal menang. Tambah nota, tarikh susulan, dan temujanji.' },
+        { label: 'Senarai lead', desc: 'Setiap pembeli yang hubungi anda masuk di sini. Gerakkan mereka ikut peringkat, tambah nota, dan tanda deal menang bila kereta terjual.' },
         { label: 'Peti Masuk', desc: 'Pembeli XDrive yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
-        { label: 'Statistik prestasi', desc: 'Lihat kadar tutup anda, kejatuhan corong, dan aktiviti mingguan supaya anda tahu di mana hendak fokus.' },
+        { label: 'Views dan tap WhatsApp', desc: 'Lihat berapa ramai pembeli tengok setiap kereta dan tekan WhatsApp. Close rate dan di mana deal hilang ada di Premium.' },
         { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di ShiftOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },
       ],
     },
@@ -147,11 +144,10 @@ const CONTENT = {
       title: 'Papan Pemuka',
       body: 'Papan Pemuka adalah perkara pertama yang anda lihat selepas log masuk. Ia menunjukkan nombor utama anda secara sepintas lalu dan menanda apa sahaja yang memerlukan perhatian hari ini.',
       items: [
-        { label: 'Kad KPI', desc: 'Pipeline — lead aktif yang belum menang atau kalah. Listing Aktif — kereta yang kini diterbitkan sebagai Tersedia. Follow-up — lead dengan tarikh susulan hari ini. Temujanji — lawatan/ujian pandu yang dijadualkan hari ini. Ditutup — lead yang ditanda menang atau kalah bulan ini.' },
+        { label: 'Kad KPI', desc: 'Pipeline — lead aktif yang belum menang atau kalah. Listing Aktif — kereta yang kini diterbitkan sebagai Tersedia. Follow-up — lead yang dah senyap. Temujanji — lawatan/ujian pandu yang dijadualkan hari ini. Ditutup — lead yang ditanda menang atau kalah bulan ini.' },
         { label: 'Agenda Hari Ini', desc: 'Kad yang menunjukkan temujanji hari ini, susulan yang perlu dibuat, dan lead basi (tiada hubungan dalam 5+ hari). Ketik mana-mana item untuk membuka lead secara terus.' },
-        { label: 'Sasaran bulanan', desc: 'Tetapkan sasaran unit atau pendapatan untuk bulan ini. Bar kemajuan dikemas kini apabila anda menutup deal.' },
         { label: 'Petikan prestasi', desc: 'Listing terbaik anda mengikut paparan dan ketukan WhatsApp, serta kadar penukaran keseluruhan untuk semua listing.' },
-        { label: 'Senarai semak Mula', desc: 'Ditunjukkan untuk akaun baru sehingga ditolak. Tiga langkah: tambah listing pertama anda, kongsi pautan, jejaki lead anda.' },
+        { label: 'Senarai semak Mula', desc: 'Ditunjukkan untuk akaun baru sehingga ditolak. Dua langkah: tambah listing pertama, kemudian buka page anda untuk tengok apa yang pembeli nampak.' },
       ],
     },
     listings: {
@@ -162,7 +158,6 @@ const CONTENT = {
         { label: 'Senarai Pantas', desc: 'Untuk penerbitan cepat, gunakan Senarai Pantas. Isi jenama, model, tahun, dan harga — listing akan langsung hidup sebagai draf yang boleh anda lengkapkan kemudian.' },
         { label: 'Status', desc: 'Tersedia — kelihatan di XDrive. Ditempah — tersembunyi dari carian, kelihatan melalui pautan terus (gunakan apabila deposit telah diambil). Dijual — diarkibkan dari listing, ditanda sebagai ditutup.' },
         { label: 'Berkongsi listing anda', desc: 'Setiap listing mempunyai butang Kongsi yang menyalin pautan terus. Tampalkannya dalam kumpulan WhatsApp, posting Facebook, atau bio TikTok anda untuk menarik trafik.' },
-        { label: 'Medan komisen', desc: 'Anda boleh merekod jumlah komisen bagi setiap listing. Ini adalah peribadi dan hanya kelihatan kepada anda.' },
         { label: 'Boost (akan datang)', desc: 'Boost meletakkan listing anda di bahagian teratas carian XDrive selama 7 hari. Sertai senarai menunggu dari kad listing.' },
       ],
     },
@@ -172,9 +167,8 @@ const CONTENT = {
       items: [
         { label: 'Menambah lead', desc: 'Ketik "Tambah Lead" di header atau butang + pada mudah alih. Masukkan nama dan nombor telefon pembeli. Anda boleh memilih untuk mengaitkan listing, menambah IC, e-mel, dan alamat mereka.' },
         { label: 'Peringkat lead', desc: 'Baru → Dihubungi → Lawatan Ditempah → Ujian Pandu → Berunding → Deposit Diambil → Menang / Kalah. Seret atau ketik lead untuk mengemas kini peringkatnya. Lead Menang dan Kalah diarkibkan dari saluran aktif.' },
-        { label: 'Laci lead', desc: 'Ketik mana-mana kad lead untuk membuka laci butiran. Di dalamnya: butiran pembeli, log nota, pemilih tarikh susulan, penjadual temujanji, dan sejarah deal.' },
-        { label: 'Tarikh susulan', desc: 'Tetapkan tarikh susulan pada mana-mana lead. Ia akan muncul dalam Agenda Papan Pemuka anda pada hari yang sepatutnya supaya anda tidak pernah lupa susulan.' },
-        { label: 'Amaran lead basi', desc: 'Lead tanpa sebarang aktiviti dalam 5 hari atau lebih akan ditanda sebagai basi. Ia muncul sebagai kad amaran pada Papan Pemuka anda dan dalam tab Lead.' },
+        { label: 'Laci lead', desc: 'Ketik mana-mana kad lead untuk membuka laci butiran. Di dalamnya: butiran pembeli, nota dan sejarah deal. Reminder follow up dan log call ada di Premium.' },
+        { label: 'Amaran lead basi', desc: 'Lead tanpa sebarang aktiviti dalam 5 hari atau lebih akan ditanda sebagai basi. Jumlahnya ditunjuk pada Papan Pemuka. Premium senaraikan mereka sebagai senarai call yang boleh di-WhatsApp sekali gus.' },
         { label: 'Mengaitkan kereta', desc: 'Buka laci lead dan cari listing untuk dikaitkan. Nama kereta kemudiannya muncul pada kad lead dan disertakan apabila menjana helaian deal.' },
       ],
     },
@@ -190,7 +184,7 @@ const CONTENT = {
     },
     performance: {
       title: 'Prestasi',
-      body: 'Tab Prestasi menunjukkan corong jualan anda dan metrik aktiviti supaya anda dapat mengesan di mana deal jatuh.',
+      body: 'Prestasi ada di Salesman Premium: close rate anda, di mana pembeli tarik diri dan berapa cepat anda balas. Di Lite, views dan tap WhatsApp setiap kereta ada di Papan Pemuka.',
       items: [
         { label: 'Kadar tutup', desc: 'Lead menang ÷ semua lead tertutup (menang + kalah). Kadar tutup yang sihat untuk jualan kereta adalah 20–40%. Di bawah 20% biasanya bermakna kadens susulan perlu dipertingkatkan.' },
         { label: 'Pecahan corong', desc: 'Carta bar yang menunjukkan berapa banyak lead berada di setiap peringkat. Kejatuhan besar antara Lawatan dan Ujian Pandu biasanya bermakna persembahan kereta perlu diperbaiki. Kejatuhan antara Ujian Pandu dan Rundingan biasanya bermakna isu harga atau kepercayaan.' },
@@ -227,7 +221,7 @@ const CONTENT = {
       { q: 'Apa yang berlaku pada data saya jika saya menyertai pengedar?', a: 'Listing dan lead anda dibawa ke sistem pengedar. Pemilik dan pengurus pengedar boleh melihat lead dan saluran anda. Tiada yang dipadam — ia hanya menjadi dikongsi dalam pasukan.' },
       { q: 'Bolehkah saya mempunyai lebih dari satu akaun?', a: 'Tidak — satu akaun bagi setiap alamat e-mel. Jika anda perlu bertukar antara akaun solo dan pengedar, gunakan aliran Sertai Pengedar.' },
       { q: 'Bagaimana saya mendapatkan pautan profil awam saya?', a: 'Pautan anda adalah xdrive.my/s/[slug-anda]. Slug anda ditunjukkan dalam tab Tetapan di bawah "Nama Pengguna / Slug". Salin dan kongsi di mana sahaja.' },
-      { q: 'Berapa banyak listing yang boleh saya ada?', a: 'Sehingga 10 listing aktif (status Tersedia) pada Salesman Lite. Listing dalam status Ditempah atau Dijual tidak dikira ke had.' },
+      { q: 'Berapa banyak listing yang boleh saya ada?', a: 'Sehingga 5 kereta aktif pada Salesman Lite (Tersedia atau Ditempah). Kereta Dijual tidak dikira. Salesman Premium membenarkan 30.' },
       { q: 'Saya mendapat pertanyaan — apa yang perlu saya lakukan?', a: 'Pergi ke Peti Masuk → Pertanyaan. Buka pertanyaan, ketik butang WhatsApp untuk membalas pembeli, kemudian ketik "Tambah ke Lead" untuk menjejaki deal dalam saluran anda.' },
       { q: 'Apa maksud lead basi?', a: 'Lead adalah basi jika tiada aktiviti (nota, perubahan peringkat, susulan, temujanji) telah dilog dalam 5 hari atau lebih. Ia adalah peringatan bahawa pembeli mungkin semakin sejuk. Susulan dengan segera.' },
       { q: 'Bolehkah pembeli menempah ujian pandu melalui XDrive?', a: 'Ya. Listing di XDrive mempunyai butang tempahan. Permintaan masuk ke tab Peti Masuk → Tempahan anda. Anda terima, jadual semula, atau batal dari sana.' },

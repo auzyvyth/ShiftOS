@@ -430,7 +430,7 @@
         },
         "dashboard": {
           "title": "Dashboard",
-          "body": "Your control centre — KPIs, overdue follow-up alerts, ad performance, and recent activity all in one view."
+          "body": "Your control centre: KPIs, today's bookings, how each car is doing and your page's traffic, all in one view."
         },
         "listings": {
           "title": "My Listings",
@@ -450,7 +450,7 @@
         },
         "performance": {
           "title": "Performance",
-          "body": "Your sales stats — commission earned, units sold, and ad performance over time. Know what's working."
+          "body": "On Premium: your close rate, where buyers drop off and how fast you reply. Views and WhatsApp taps for each car stay free on your dashboard."
         },
         "chat": {
           "title": "Chat",
@@ -458,7 +458,7 @@
         },
         "services": {
           "title": "Add-ons",
-          "body": "Build your own catalogue of extras — tint, warranty, insurance and more. Attach them to a listing or a deal to add margin on top of the car sale."
+          "body": "On Premium: your own catalogue of extras like tint, warranty and service packages, attached to a car to earn more on each sale."
         },
         "merge": {
           "title": "Join Dealership",
@@ -466,7 +466,7 @@
         },
         "settings": {
           "title": "Settings",
-          "body": "Update your WhatsApp number, profile photo, location and social links. Your WhatsApp number matters most — that's how buyers reach you."
+          "body": "Update your WhatsApp number, profile photo and location. Your WhatsApp number matters most: that's how buyers reach you."
         },
         "help": {
           "title": "Help",
@@ -982,6 +982,24 @@
       "perfTitle": "Performance locked",
       "perfSub": "Add a vehicle to see your performance data — views, close rate and pipeline health all build from your listings.",
       "cta": "Add a vehicle"
+    },
+    "premiumRow": {
+      "cta": "See Premium",
+      "followUpTitle_one": "{{count}} lead has gone quiet",
+      "followUpTitle_other": "{{count}} leads have gone quiet",
+      "followUpSub": "Premium lists who to call today, sets follow-up reminders and lets you WhatsApp them all in one go.",
+      "commissionTitle": "Commission and monthly goal",
+      "commissionSub": "Track what each sale earned you and how close you are to this month's target. On Premium.",
+      "leadTools": "Reminders and call log: Premium",
+      "pageTitle": "Banner, bio and social links on your page",
+      "pageSub": "Your free page shows your cars, your name, how to reach you and your trust details. Premium adds a banner, a bio and your Instagram, TikTok and Facebook."
+    },
+    "premiumPanel": {
+      "perfTitle": "See where your deals are lost",
+      "perfSub": "Premium shows your close rate, the stage where buyers drop off and how fast you reply. Views and WhatsApp taps for each car stay free on your dashboard.",
+      "servicesTitle": "Sell add-ons with every car",
+      "servicesSub": "Premium keeps your own catalogue of tint, coating, warranty and service packages, and shows what each one earns you.",
+      "cta": "See Premium"
     }
   },
   "salesmanPremium": {

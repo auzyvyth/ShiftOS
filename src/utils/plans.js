@@ -29,24 +29,44 @@ import { PLAN_CONFIG } from './planConfig.js';
 // all three for months and neither existed (nothing ranks by plan; no
 // standalone salesman has a subdomain). A paid feature we describe but do not
 // ship is a false claim to the person paying for it.
-export const SALESMAN_PREMIUM_FEATURES = [
-  'Live presentation for TikTok / FB lives',
-  '"This week" call list + drafted follow-ups',
-  'Loan desk: affordability check + bank comparison',
-  'Handover checklist + customer list',
-  'AI listing captions + AI chat reply drafts',
-  'TikTok poster studio for every car',
-  'Commission tracking',
-  'Performance: where your deals are lost',
+// Each line carries its Bahasa Melayu twin so the Malay-first /for-salesmen
+// page reads the SAME list (SALESMAN_PREMIUM_FEATURES_MS) instead of a
+// hand-kept translation that drifts. Lite is "get found, get the lead";
+// working the lead is Premium (owner, 2026-10-13), which is why follow-up
+// reminders, call logging, bulk WhatsApp, Telegram booking reminders, the
+// services catalogue and page customisation are listed here and not on Lite.
+// PremiumUpgradeCard drops every line matching /\bAI\b/ (English side), so
+// keep "AI" spelled out in the AI lines.
+const SALESMAN_PREMIUM_FEATURE_LINES = [
+  { en: 'Live presentation for TikTok / FB lives', ms: 'Live presentation untuk live TikTok / FB' },
+  { en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
+  { en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
+  { en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
+  { en: 'Loan desk: affordability check + bank comparison', ms: 'Loan desk: semak kemampuan + banding bank' },
+  { en: 'Handover checklist + customer list', ms: 'Senarai semak handover + senarai customer' },
+  { en: 'AI listing captions + AI chat reply drafts', ms: 'Caption iklan AI + draf balasan chat AI' },
+  { en: 'TikTok poster studio for every car', ms: 'Studio poster TikTok untuk setiap kereta' },
+  { en: 'Commission tracking', ms: 'Jejak komisen' },
+  { en: 'Performance: close rate + where deals are lost', ms: 'Performance: close rate + di mana deal terlepas' },
+  { en: 'Telegram booking reminders', ms: 'Reminder booking di Telegram' },
+  { en: 'Services and add-ons catalogue', ms: 'Katalog servis dan add-on' },
+  { en: 'Customise your page: bio + social links', ms: 'Ubah suai page anda: bio + link media sosial' },
 ];
+export const SALESMAN_PREMIUM_FEATURES = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.en);
+export const SALESMAN_PREMIUM_FEATURES_MS = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.ms);
 
 const PRESENTATION = {
   salesman_lite: {
     tier: 'lite', route: '/salesman-onboarding/lite',
+    // Lite = get found, get the lead (owner, 2026-10-13). The listing cap is
+    // added by buildCard from PLAN_CONFIG, never typed here.
     features: [
-      'Auto-published to xdrive.my',
-      'Direct WhatsApp enquiries',
-      'Basic performance analytics',
+      'Your own page at xdrive.my/s/yourname',
+      'Cars listed on the XDrive marketplace',
+      'Buyers reach you by WhatsApp, chat + booking',
+      'Alerts on new leads',
+      'Simple lead list with stages',
+      'Views + WhatsApp taps for each car',
       'No credit card required',
     ],
   },

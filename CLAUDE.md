@@ -1184,6 +1184,23 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 - `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 
+## Lite vs Premium split (owner, 2026-10-13) -- "get found" vs "work the lead"
+Lite (free) = get found and get the lead: up to 5 live cars (`plan_config`, was 10), a
+BASIC page, marketplace listing, every buyer channel (WhatsApp, chat, bookings), lead
+alerts, a lead list with stages, per-car views + WhatsApp taps. Never gate a buyer's way
+to reach a Lite seller. Premium = working the lead: reminders + call log, "WhatsApp all"
+quiet leads, Performance, commission + monthly goal, Telegram booking reminders, add-ons
+catalogue, and the full page (banner, bio, social links, job title, specialisations).
+- In `SalesmanLite.jsx` a Premium tool is replaced by `PremiumRow` / `renderPremiumPanel`,
+  both opening `goPremium` (the one upgrade screen). Do not add a second upgrade surface.
+- The basic page is enforced in the DB: `get_salesman_by_slug` / `get_salesman_by_id`
+  return those fields NULL unless `salesman_has_full_page(id)` (definer-only helper;
+  dealer-linked salesmen always count as full), plus `page_basic`. Nothing is deleted:
+  upgrading brings it all back. Telegram reminders: `trg_zz_lite_no_booking_reminder`
+  nulls `remind_at` for Lite sellers. Migration `20261014a_lite_cap_five.sql`.
+- The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
+  calculator back into Lite without `src/utils/financing.js`.
+
 ## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
 Brand sales advisors (Proton/Perodua/Toyota) sell cars whose price the BRAND sets, per
 variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,

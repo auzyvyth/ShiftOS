@@ -806,38 +806,42 @@ const STATIC_PAGES = {
       body,
     });
   },
-  // Salesman Lite landing. Same copy as the SPA (shared config) — without this
+  // Salesman landing. Same copy as the SPA (shared config) — without this
   // entry crawlers got the generic buyer fallback ("Quality used cars").
+  // Malay first (owner, 2026-10-13): crawlers get the BM copy, lang="ms", and
+  // the BM FAQ JSON-LD, matching what the SPA shows by default.
   "/for-salesmen": () => {
+    const c = SL.landingCopy("ms");
     const li = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
     const body = `  <main>
-    <p>${esc(SL.HERO_EYEBROW)}</p>
-    <h1>${esc(SL.HERO_H1)}</h1>
-    <p>${esc(SL.HERO_INTRO)}</p>
-    <p><a href="${SITE_URL}/salesman-onboarding/premium">${esc(SL.PREMIUM_CTA)}</a> · <a href="${SITE_URL}/salesman-onboarding/lite">${esc(SL.LITE_CTA)}</a> · <a href="${SL.EXAMPLE_PAGE.url}">See an example page: ${esc(SL.EXAMPLE_PAGE.label)}</a></p>
-    <h2>${esc(SL.LIVE_SELLING.title)}</h2>
-    <p>${esc(SL.LIVE_SELLING.lead)}</p>
-    <ul>${li(SL.LIVE_SELLING.points)}</ul>
-    <p>${esc(SL.LIVE_SELLING.note)}</p>
-    <h2>${esc(SL.COMPARE_OLD_LABEL)} vs ${esc(SL.COMPARE_NEW_LABEL)}</h2>
-    <ul>${SL.COMPARE_ROWS.map((r) => `<li><strong>${esc(r.label)}:</strong> ${esc(SL.COMPARE_OLD_LABEL)}: ${esc(r.old)}. ${esc(SL.COMPARE_NEW_LABEL)}: ${esc(r.now)}.</li>`).join("")}</ul>
-    <h2>How it works</h2>
-    <ol>${SL.STEPS.map((st) => `<li><strong>${esc(st.title)}</strong>: ${esc(st.body)}</li>`).join("")}</ol>
-    <h2>Free on Salesman Lite</h2>
-    ${SL.FEATURE_COPY.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
-    <h2>Pricing</h2>
-    <h3>Salesman Premium: RM35/month, first month free</h3><ul>${li(SL.PREMIUM_BULLETS)}</ul>
-    <h3>Salesman Lite: RM0, free forever</h3><ul>${li(SL.LITE_BULLETS)}</ul>
-    <h2>FAQ</h2>
-    ${SL.FAQS.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
-    <p>Page last reviewed ${esc(SL.REVIEWED_LABEL)}.</p>
-    <p><a href="${SITE_URL}/showroom">Browse cars on XDrive</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/shiftos">ShiftOS for dealers</a></p>
+    <p>${esc(c.heroEyebrow)}</p>
+    <h1>${esc(c.heroH1Lines.join(" "))}</h1>
+    <p>${esc(c.heroIntro)}</p>
+    <p><a href="${SITE_URL}/salesman-onboarding/premium">${esc(c.premiumCta)}</a> · <a href="${SITE_URL}/salesman-onboarding/lite">${esc(c.liteCta)}</a> · <a href="${SL.EXAMPLE_PAGE.url}">${esc(c.showcase.example)} ${esc(SL.EXAMPLE_PAGE.label)}</a></p>
+    <h2>${esc(c.live.title)}</h2>
+    <p>${esc(c.live.lead)}</p>
+    <ul>${li(c.live.points)}</ul>
+    <p>${esc(c.live.note)}</p>
+    <h2>${esc(c.compare.title)}</h2>
+    <ul>${c.compare.rows.map((r) => `<li><strong>${esc(r.label)}:</strong> ${esc(c.compare.oldLabel)}: ${esc(r.old)}. ${esc(c.compare.newLabel)}: ${esc(r.now)}.</li>`).join("")}</ul>
+    <h2>${esc(c.how.kicker)}</h2>
+    <ol>${c.how.steps.map((st) => `<li><strong>${esc(st.title)}</strong>: ${esc(st.body)}</li>`).join("")}</ol>
+    <h2>${esc(c.features.kicker)}: ${esc(c.features.title)}</h2>
+    ${c.features.items.map((f) => `<h3>${esc(f.title)}</h3><p>${esc(f.body)}</p>`).join("\n    ")}
+    <h2>${esc(c.crawler.pricing)}</h2>
+    <h3>${esc(c.crawler.premiumPrice)}</h3><ul>${li(c.plans.premiumBullets)}</ul>
+    <h3>${esc(c.crawler.litePrice)}</h3><ul>${li(c.plans.liteBullets)}</ul>
+    <h2>${esc(c.crawler.faq)}</h2>
+    ${c.faq.items.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    <p>${esc(c.faq.reviewed)} ${esc(c.faq.reviewedLabel)}.</p>
+    <p><a href="${SITE_URL}/showroom">${esc(c.crawler.browse)}</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/shiftos">${esc(c.crawler.dealers)}</a></p>
   </main>`;
     return htmlShell({
-      title: SL.SEO_TITLE,
-      description: SL.SEO_DESC,
+      lang: "ms",
+      title: c.seoTitle,
+      description: c.seoDesc,
       canonical: SL.CANON,
-      jsonLd: [SL.WEBPAGE_LD, SL.SOFTWARE_LD, SL.FAQ_LD],
+      jsonLd: [SL.webpageLd("ms"), SL.SOFTWARE_LD, SL.FAQ_LD],
       body,
     });
   },
