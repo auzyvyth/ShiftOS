@@ -1185,7 +1185,7 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 
 ## Lite vs Premium split (owner, 2026-10-13) -- "get found" vs "work the lead"
-Lite (free) = get found and get the lead: up to 5 live cars (`plan_config`, was 10), a
+Lite (free) = get found and get the lead: up to 10 live cars (`plan_config`; cut to 5, then back to 10 on 2026-10-14), a
 BASIC page, marketplace listing, every buyer channel (WhatsApp, chat, bookings), lead
 alerts, a lead list with stages, per-car views + WhatsApp taps. Never gate a buyer's way
 to reach a Lite seller. Premium = working the lead: reminders + call log, "WhatsApp all"
@@ -1197,7 +1197,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   return those fields NULL unless `salesman_has_full_page(id)` (definer-only helper;
   dealer-linked salesmen always count as full), plus `page_basic`. Nothing is deleted:
   upgrading brings it all back. Telegram reminders: `trg_zz_lite_no_booking_reminder`
-  nulls `remind_at` for Lite sellers. Migration `20261014a_lite_cap_five.sql`.
+  nulls `remind_at` for Lite sellers. Migrations `20261014a_lite_cap_five.sql` + `20261014b_lite_cap_ten.sql`.
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 
