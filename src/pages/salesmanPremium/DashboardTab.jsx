@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
  Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap,
@@ -13,7 +14,7 @@ import ThisWeek from "../../components/crm/ThisWeek";
 import FollowUpRow from "../../components/crm/FollowUpRow";
 import StarterTasks from "../../components/onboarding/StarterTasks";
 import {
- CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal,
+ CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal, stageLabel,
 } from "./shared";
 
 // Dashboard tab — split out of SalesmanPremium.jsx (was `renderDashboard`) so
@@ -32,6 +33,8 @@ export default function DashboardTab({
  requestBrowserNotif, dismissNotifBanner, dismissTour,
  handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
 }) {
+ const { t, i18n } = useTranslation();
+ const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
  const activeLeads = leads.filter(
  (l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won" && l.stage !== "won",
  );
@@ -55,12 +58,11 @@ export default function DashboardTab({
  const due = (d) => d && (new Date(d) - Date.now()) / 86400000 <= 30;
  return due(c.road_tax_expiry) || due(c.insurance_expiry);
  }).length;
- const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
  const soldSummary = [
- handoverActive > 0 ? `${plural(handoverActive, "handover")} in progress${handoverNext ? ` · next: ${handoverNext}` : ""}` : null,
- renewalsDue > 0 ? `${plural(renewalsDue, "renewal")} due` : null,
+ handoverActive > 0 ? `${t("salesmanPremium.dash.handoversInProgress", { count: handoverActive })}${handoverNext ? ` · ${t("salesmanPremium.dash.next", { step: handoverNext })}` : ""}` : null,
+ renewalsDue > 0 ? t("salesmanPremium.dash.renewalsDue", { count: renewalsDue }) : null,
  ].filter(Boolean).join(" · ")
- || (customers.length ? `${plural(customers.length, "buyer")} on record · nothing due` : "Handover checklist and past buyers");
+ || (customers.length ? t("salesmanPremium.dash.buyersOnRecord", { count: customers.length }) : t("salesmanPremium.dash.soldEmpty"));
 
  const listingStats = myListings.map((car) => {
  const s = carStatsMap[car.id] ?? {};
@@ -91,21 +93,21 @@ export default function DashboardTab({
  const waTrend = sumDaily("waDaily");
  const visitsTrend = Array(7).fill(0).map((_, i) => Number(minipageStats.daily?.[i]) || 0);
  // d0 = 6 days ago … d6 = today, so the axis labels count backwards from now.
- const DAY_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+ const dayFmt = new Intl.DateTimeFormat(dateLocale, { weekday: "short" });
  const trafficTrend = Array(7).fill(0).map((_, i) => {
  const d = new Date();
  d.setDate(d.getDate() - (6 - i));
  return {
- day: i === 6 ? "Today" : DAY_LABEL[d.getDay()],
+ day: i === 6 ? t("salesmanPremium.dash.today") : dayFmt.format(d),
  views: viewsTrend[i],
  visits: visitsTrend[i],
  waTaps: waTrend[i],
  };
  });
  const TRAFFIC_SERIES = [
- { key: "views", label: "Views", hue: C.info },
- { key: "visits", label: "Page Visits", hue: "#a78bfa" },
- { key: "waTaps", label: "WA Taps", hue: C.success },
+ { key: "views", label: t("salesmanPremium.dash.views"), hue: C.info },
+ { key: "visits", label: t("salesmanPremium.dash.pageVisits"), hue: "#a78bfa" },
+ { key: "waTaps", label: t("salesmanPremium.dash.waTaps"), hue: C.success },
  ];
  const hasTrafficTrend = trafficTrend.some((r) => r.views > 0 || r.visits > 0 || r.waTaps > 0);
  const overallCVR = totalViews > 0 ? ((totalWATaps / totalViews) * 100).toFixed(1) : null;
@@ -125,9 +127,6 @@ export default function DashboardTab({
  };
  };
 
- // Pipeline-stage accent hues + labels — colour-code the Follow-up rows so
- // you can see at a glance where each cold lead sits in the funnel.
- const stageLabel = (s) => (s || "new").replace(/_/g, " ");
 
  // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
  // UTC) so an early-morning appointment isn't bucketed into the wrong day.
@@ -220,13 +219,13 @@ export default function DashboardTab({
  // would have been counting from this time yesterday. Live Listings is a count,
  // not a time series, so it has no daily figure and shows no badge.
  const TRAFFIC_STATS = [
- { label: "Views (30d)", value: totalViews || 0, today: viewsTrend[6] || 0, Icon: Eye, hue: C.info },
- { label: "Page visits (all time)", value: minipageStats.visits || 0, today: visitsTrend[6] || 0, Icon: LinkIcon, hue: "#a78bfa" },
+ { label: t("salesmanPremium.dash.views30"), value: totalViews || 0, today: viewsTrend[6] || 0, Icon: Eye, hue: C.info },
+ { label: t("salesmanPremium.dash.visitsAll"), value: minipageStats.visits || 0, today: visitsTrend[6] || 0, Icon: LinkIcon, hue: "#a78bfa" },
  // Counts WhatsApp AND call taps, deduped per visitor, over a ROLLING 30 days
  // (get_salesman_analytics p_cutoff). It falls as old taps age out -- a seller
  // read 90 -> 88 as "upgrading lost my taps". Say both facts on the tile.
- { label: "WhatsApp + call taps (30d)", value: totalWATaps || 0, today: waTrend[6] || 0, Icon: MessageCircle, hue: C.success },
- { label: "Live Listings", value: available.length, today: null, Icon: Car, hue: null },
+ { label: t("salesmanPremium.dash.taps30"), value: totalWATaps || 0, today: waTrend[6] || 0, Icon: MessageCircle, hue: C.success },
+ { label: t("salesmanPremium.dash.liveListings"), value: available.length, today: null, Icon: Car, hue: null },
  ];
  const todayTotal = (viewsTrend[6] || 0) + (visitsTrend[6] || 0) + (waTrend[6] || 0);
  const daysLeft = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() - new Date().getDate();
@@ -251,21 +250,21 @@ export default function DashboardTab({
 
  const greetingWord = (() => {
  const h = new Date().getHours();
- return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+ return t(`salesmanPremium.greet.${h < 12 ? "morning" : h < 17 ? "afternoon" : "evening"}`);
  })();
  const personalizedLine = isNewUser
- ? "Add your first car to start building your portfolio."
+ ? t("salesmanPremium.dash.lineNew")
  : isReturning
  ? (staleLeads.length > 0
- ? `Welcome back! ${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} ready to reconnect.`
- : "Welcome back! Your pipeline is clear — good time to reach out to old buyers.")
+ ? t("salesmanPremium.dash.lineBackStale", { count: staleLeads.length })
+ : t("salesmanPremium.dash.lineBackClear"))
  : staleLeads.length > 0
- ? `${staleLeads.length} lead${staleLeads.length !== 1 ? "s" : ""} waiting for follow-up — don't let a hot one go cold.`
+ ? t("salesmanPremium.dash.lineStale", { count: staleLeads.length })
  : todayAppts > 0
- ? `You have ${todayAppts} appointment${todayAppts !== 1 ? "s" : ""} today. Make it count.`
+ ? t("salesmanPremium.dash.lineAppts", { count: todayAppts })
  : activeLeads.length > 0
- ? `${activeLeads.length} deal${activeLeads.length !== 1 ? "s" : ""} in motion right now.`
- : "Pipeline is clear — good time to feature a car or reach out to old buyers.";
+ ? t("salesmanPremium.dash.lineDeals", { count: activeLeads.length })
+ : t("salesmanPremium.dash.lineClear");
 
  return (
  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -294,7 +293,7 @@ export default function DashboardTab({
  <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
  <div>
  <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text, letterSpacing: "-0.3px" }}>
- {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
+ {greetingWord}, {profile?.full_name?.split(" ")[0] || t("salesmanPremium.greet.there")}.
  </p>
  <p style={{ margin: "5px 0 0", fontSize: T.size.base, color: C.textSec, maxWidth: 440 }}>
  {personalizedLine}
@@ -312,7 +311,7 @@ export default function DashboardTab({
  style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: R.pill, background: withAlpha(C.danger, 0.08), border: `1px solid ${withAlpha(C.danger, 0.18)}`, flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
  >
  <Bell size={11} color={C.danger} strokeWidth={2.5} />
- <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText }}>{staleLeads.length} overdue</span>
+ <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText }}>{t("salesmanPremium.dash.overdue", { count: staleLeads.length })}</span>
  </button>
  )}
  </div>
@@ -326,10 +325,10 @@ export default function DashboardTab({
  "add a listing" ask and tracks whether it is done. */
  <div style={{ minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold, color: C.text }}>
- List your stocks to get results
+ {t("salesmanPremium.dash.emptyTitle")}
  </p>
  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
- Your mini page is live and ready to share — it just needs cars on it.
+ {t("salesmanPremium.dash.emptyBody")}
  </p>
  </div>
  ) : (
@@ -349,7 +348,7 @@ export default function DashboardTab({
  {/* Only when something actually happened today. A "+0" on every tile
  every morning trains people to stop reading the row. */}
  {today > 0 && (
- <span title={`${today} today`} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText, lineHeight: 1, whiteSpace: "nowrap" }}>
+ <span title={t("salesmanPremium.dash.nToday", { n: today })} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText, lineHeight: 1, whiteSpace: "nowrap" }}>
  +{today}
  </span>
  )}
@@ -362,9 +361,9 @@ export default function DashboardTab({
  twice. Silent on a quiet day rather than announcing a zero. */}
  <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 12, fontWeight: T.weight.normal }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
- 30 days
+ {t("salesmanPremium.dash.days30")}
  {todayTotal > 0 && (
- <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>· green = today</span>
+ <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>· {t("salesmanPremium.dash.greenToday")}</span>
  )}
  </span>
 
@@ -377,7 +376,7 @@ export default function DashboardTab({
  {hasTrafficTrend && (
  <div style={{ marginTop: 14 }}>
  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
- <span style={EYEBROW}>Traffic — last 7 days</span>
+ <span style={EYEBROW}>{t("salesmanPremium.dash.traffic7")}</span>
  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
  {TRAFFIC_SERIES.map((sr) => (
  <span key={sr.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: T.size.sm, color: C.textMuted }}>
@@ -420,12 +419,12 @@ export default function DashboardTab({
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
  <button
- onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Link copied!"); }}
+ onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanPremium.dash.linkCopied")); }}
  style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontWeight: T.weight.medium, fontFamily: "inherit" }}
  >
  <LinkIcon size={11} />
  <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
- <span style={{ fontSize: T.size.xs, color: C.textMuted, flexShrink: 0 }}>Copy</span>
+ <span style={{ fontSize: T.size.xs, color: C.textMuted, flexShrink: 0 }}>{t("salesmanPremium.common.copy")}</span>
  </button>
  <a
  href={`/s/${profile.slug}`}
@@ -434,22 +433,22 @@ export default function DashboardTab({
  // Counts as the "visit your mini page" starter task — same click,
  // same meaning as the card's own button.
  onClick={(e) => { if (onVisitMinipage) { e.preventDefault(); onVisitMinipage(); } }}
- title="Open your mini-page in a new tab"
+ title={t("salesmanPremium.dash.openMiniTitle")}
  style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.2)}`, color: C.infoText, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
  >
  <ExternalLink size={11} />
- <span style={{ flex: 1 }}>View your mini-page</span>
+ <span style={{ flex: 1 }}>{t("salesmanPremium.dash.viewMini")}</span>
  <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
  </a>
  <a
  href="/"
  target="_blank"
  rel="noopener noreferrer"
- title="Open the XDrive marketplace in a new tab"
+ title={t("salesmanPremium.dash.openMarketTitle")}
  style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, textDecoration: "none", fontWeight: T.weight.medium, fontFamily: "inherit" }}
  >
  <Store size={11} />
- <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>View XDrive marketplace</span>
+ <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanPremium.dash.viewMarket")}</span>
  <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
  </a>
  <ShareMenu
@@ -457,7 +456,7 @@ export default function DashboardTab({
  refSlug={profile.slug}
  waCaption={(url) => `Check out my car listings on XDrive:\n${url}`}
  dark
- label="Share"
+ label={t("salesmanPremium.dash.share")}
  style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: T.size.sm }}
  />
  </div>
@@ -467,9 +466,9 @@ export default function DashboardTab({
  <ChannelBreakdown
  rows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
  metric="views"
- title="Mini-page traffic by platform"
- viewsLabel="visits"
- enquiriesLabel="clicks"
+ title={t("salesmanPremium.dash.miniByPlatform")}
+ viewsLabel={t("salesmanPremium.dash.visitsLower")}
+ enquiriesLabel={t("salesmanPremium.dash.clicksLower")}
  compact
  />
  </div>
@@ -489,7 +488,7 @@ export default function DashboardTab({
  >
  <ClipboardList size={18} color={C.accent} style={{ flexShrink: 0 }} />
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold }}>Sold</p>
+ <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.semibold }}>{t("salesmanPremium.tabs.sold")}</p>
  <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {soldSummary}
  </p>
@@ -523,7 +522,7 @@ export default function DashboardTab({
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: R.sm, background: C.fillStrong, color: C.textMuted, flexShrink: 0 }}>
  <Bell size={12} strokeWidth={2.5} />
  </span>
- <span>Follow-up Needed</span>
+ <span>{t("salesmanPremium.dash.followUpNeeded")}</span>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, borderRadius: R.pill, background: C.fillStrong, color: C.text, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "0 5px" }}>{staleLeads.length}</span>
  </div>
  </div>
@@ -532,8 +531,8 @@ export default function DashboardTab({
  <FollowUpRow
  key={lead.id}
  lead={lead}
- stageText={stageLabel(lead.stage || "new").replace(/^./, (c) => c.toUpperCase())}
- carText={lead.car_listings ? `${lead.car_listings.brand} ${lead.car_listings.model}` : "No car"}
+ stageText={stageLabel(lead.stage || "new")}
+ carText={lead.car_listings ? `${lead.car_listings.brand} ${lead.car_listings.model}` : t("salesmanPremium.dash.noCar")}
  onOpen={() => { setActiveTab("leads"); setActiveLeadStage(lead.stage); triggerGlow([lead.id]); }}
  onWA={() => pingWA(lead)}
  last={i === arr.length - 1}
@@ -544,14 +543,14 @@ export default function DashboardTab({
  onClick={() => { setActiveTab("leads"); triggerGlow(staleLeads.map((l) => l.id)); }}
  style={{ display: "block", width: "100%", textAlign: "center", padding: "10px 18px", fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textSec, background: C.fillSubtle, border: "none", borderTop: `1px solid ${C.line}`, cursor: "pointer", fontFamily: "inherit" }}
  >
- +{staleLeads.length - 8} more in pipeline
+ {t("salesmanPremium.dash.moreInPipeline", { n: staleLeads.length - 8 })}
  </button>
  )}
  </div>
  {!notifBannerDismissed && browserNotifPerm === 'default' && (
  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: `1px solid ${C.line}`, background: C.fillSubtle }}>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flex: 1 }}>Get notified when leads go cold</p>
- <button onClick={requestBrowserNotif} style={{ ...SOFT(C.infoText), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>Enable</button>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted, flex: 1 }}>{t("salesmanPremium.dash.notifyCold")}</p>
+ <button onClick={requestBrowserNotif} style={{ ...SOFT(C.infoText), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>{t("salesmanPremium.dash.enable")}</button>
  <button onClick={dismissNotifBanner} style={{ fontSize: T.size.lg, padding: "0 4px", background: "none", border: "none", color: C.textDim, cursor: "pointer", lineHeight: 1, flexShrink: 0 }}>×</button>
  </div>
  )}
@@ -562,8 +561,8 @@ export default function DashboardTab({
  {hasAgenda && (
  <div className="sp-insight-card">
  <div style={CARD_HEADER}>
- <span>Today's Agenda</span>
- <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
+ <span>{t("salesmanPremium.dash.agenda")}</span>
+ <span>{new Date().toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" })}</span>
  </div>
  <div style={{ padding: "6px 0" }}>
  {missedAppts.map((a) => (
@@ -573,9 +572,9 @@ export default function DashboardTab({
  </span>
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.dangerText }}>Missed appointment{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.dangerText }}>{t("salesmanPremium.dash.missedAppt")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
  </div>
- <span style={{ fontSize: T.size.sm, color: C.dangerText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—"}</span>
+ <span style={{ fontSize: T.size.sm, color: C.dangerText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString(dateLocale, { day: "numeric", month: "short" }) : "—"}</span>
  </div>
  ))}
  {agendaAppts.map((a) => (
@@ -585,9 +584,9 @@ export default function DashboardTab({
  </span>
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>Test drive{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.stages.test_drive")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
  </div>
- <span style={{ fontSize: T.size.sm, color: C.infoText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
+ <span style={{ fontSize: T.size.sm, color: C.infoText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
  </div>
  ))}
  {agendaFollowUps.map((l) => (
@@ -597,9 +596,9 @@ export default function DashboardTab({
  </span>
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>Scheduled follow-up · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : "No car"}</p>
+ <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.dash.scheduledFu")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanPremium.dash.noCar")}</p>
  </div>
- <span style={{ fontSize: T.size.sm, color: C.warnText, fontWeight: T.weight.semibold, flexShrink: 0 }}>Today</span>
+ <span style={{ fontSize: T.size.sm, color: C.warnText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{t("salesmanPremium.dash.today")}</span>
  </div>
  ))}
  </div>
@@ -609,13 +608,13 @@ export default function DashboardTab({
  {/* My Performance */}
  <div className="sp-insight-card" style={{ order: -1 }}>
  <div style={CARD_HEADER}>
- <span>My Performance</span>
- <span>30 days</span>
+ <span>{t("salesmanPremium.dash.myPerformance")}</span>
+ <span>{t("salesmanPremium.dash.days30")}</span>
  </div>
  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: `1px solid ${C.line}` }}>
  {[
- { label: "Views", value: totalViews || 0, today: viewsTrend[6] || 0 },
- { label: "WhatsApp + call taps", value: totalWATaps || 0, today: waTrend[6] || 0 },
+ { label: t("salesmanPremium.dash.views"), value: totalViews || 0, today: viewsTrend[6] || 0 },
+ { label: t("salesmanPremium.dash.taps"), value: totalWATaps || 0, today: waTrend[6] || 0 },
  { label: "CVR", value: overallCVR !== null ? `${overallCVR}%` : "—", today: 0 },
  ].map(({ label, value, today }, i, arr) => (
  <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
@@ -623,7 +622,7 @@ export default function DashboardTab({
  <p style={{ ...STAT, margin: 0, fontSize: T.size.stat, display: "flex", alignItems: "baseline", gap: 5 }}>
  {value}
  {today > 0 && (
- <span title={`${today} today`} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText }}>+{today}</span>
+ <span title={t("salesmanPremium.dash.nToday", { n: today })} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText }}>+{today}</span>
  )}
  </p>
  </div>
@@ -647,9 +646,9 @@ export default function DashboardTab({
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
  <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>
- {views} view{views !== 1 ? "s" : ""}
+ {t("salesmanPremium.dash.nViews", { count: views })}
  {viewsToday > 0 && <span style={{ color: C.successText, fontWeight: T.weight.semibold }}> +{viewsToday}</span>}
- {" · "}{waTaps} WA tap{waTaps !== 1 ? "s" : ""}
+ {" · "}{t("salesmanPremium.dash.nWaTaps", { count: waTaps })}
  {waToday > 0 && <span style={{ color: C.successText, fontWeight: T.weight.semibold }}> +{waToday}</span>}
  </p>
  </div>
@@ -657,8 +656,8 @@ export default function DashboardTab({
  <p style={{ margin: "0 0 3px", fontSize: T.size.base, fontWeight: T.weight.bold, color: cvr !== null ? cvrColor(cvr) : C.textDim }}>
  {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
  </p>
- {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ ...SOFT(C.successText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>TOP VIEWS</span>}
- {isWarm && <span title="Views and click-through picking up" style={{ ...SOFT(C.warnText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>RISING</span>}
+ {isHot && <span title={t("salesmanPremium.dash.hotTitle")} style={{ ...SOFT(C.successText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>{t("salesmanPremium.dash.topViews")}</span>}
+ {isWarm && <span title={t("salesmanPremium.dash.warmTitle")} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>{t("salesmanPremium.dash.rising")}</span>}
  </div>
  </div>
  );
@@ -666,18 +665,18 @@ export default function DashboardTab({
  </div>
  )}
  {listingStats.length === 0 && (
- <p style={{ margin: 0, padding: "16px 18px", fontSize: T.size.base, color: C.textMuted }}>No listing data yet — publish a car to start tracking.</p>
+ <p style={{ margin: 0, padding: "16px 18px", fontSize: T.size.base, color: C.textMuted }}>{t("salesmanPremium.dash.noListingData")}</p>
  )}
  </div>
 
  {/* KPI strip — spans full grid width, top */}
  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -3, gridColumn: "1 / -1" }}>
  {[
- { label: "Pipeline", value: activeLeads.length, accent: C.info, Icon: Users },
- { label: "Live Listings", value: myListings.filter(c => c.status === "available").length, accent: C.success, Icon: Car },
- { label: "Follow-ups", value: staleLeads.length, accent: staleLeads.length > 0 ? C.danger : C.textDim, Icon: Bell },
- { label: "Today's Appts", value: todayAppts, accent: C.info, Icon: Calendar },
- { label: "Closed", value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
+ { label: t("salesmanPremium.common.pipeline"), value: activeLeads.length, accent: C.info, Icon: Users },
+ { label: t("salesmanPremium.dash.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: C.success, Icon: Car },
+ { label: t("salesmanPremium.dash.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? C.danger : C.textDim, Icon: Bell },
+ { label: t("salesmanPremium.dash.todayAppts"), value: todayAppts, accent: C.info, Icon: Calendar },
+ { label: t("salesmanPremium.dash.closed"), value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
  ].map(({ label, value, accent, Icon }) => (
  <div key={label} className="sp-insight-card" style={{ padding: "16px 14px 14px", display: "flex", flexDirection: "column", gap: 9 }}>
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.md, background: withAlpha(accent, 0.12), color: accent }}>
@@ -701,34 +700,34 @@ export default function DashboardTab({
  {/* Goal */}
  <div className="sp-insight-card">
  <div style={CARD_HEADER}>
- <span>Monthly Goal</span>
+ <span>{t("salesmanPremium.dash.monthlyGoal")}</span>
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span>{daysLeft}d left in {new Date().toLocaleDateString("en-MY",{month:"short"})}</span>
+ <span>{t("salesmanPremium.dash.daysLeftIn", { n: daysLeft, month: new Date().toLocaleDateString(dateLocale, { month: "short" }) })}</span>
  <button
  onClick={() => setShowPrevMonth(true)}
- title="This card only tracks the current month — see history"
+ title={t("salesmanPremium.dash.prevMonthTitle")}
  style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "3px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit", textTransform: "none", letterSpacing: 0 }}
  >
- Previous month
+ {t("salesmanPremium.dash.prevMonth")}
  </button>
  </div>
  </div>
  <div style={{ padding: 18 }}>
  {goalEditing ? (
  <div>
- <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>Set your commission target for {new Date().toLocaleDateString("en-MY", { month: "long" })}:</p>
+ <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.dash.setTarget", { month: new Date().toLocaleDateString(dateLocale, { month: "long" }) })}</p>
  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
  <span style={{ fontSize: T.size.base, color: C.textSec, fontWeight: T.weight.semibold }}>RM</span>
  <input type="number" min="0" step="500" value={goalDraft} onChange={e => setGoalDraft(Number(e.target.value))}
  style={{ width: 100, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "6px 10px", color: C.text, fontSize: T.size.lg, fontWeight: T.weight.bold, fontFamily: "inherit" }} autoFocus />
- <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: T.size.base, padding: "6px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>Save</button>
- <button onClick={() => setGoalEditing(false)} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Cancel</button>
+ <button onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }} style={{ fontSize: T.size.base, padding: "6px 14px", borderRadius: R.sm, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit" }}>{t("salesmanPremium.common.save")}</button>
+ <button onClick={() => setGoalEditing(false)} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
- <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>Commission is your margin (selling price minus base price) on each sold car — it's automatic. Sold cars count toward this goal.</p>
+ <p style={{ margin: "8px 0 0", fontSize: T.size.xs, color: C.textDim }}>{t("salesmanPremium.dash.commissionExplain")}</p>
  </div>
  ) : goal.target > 0 ? (
  <div>
- <p style={{ ...EYEBROW, margin: "0 0 2px" }}>Commission earned</p>
+ <p style={{ ...EYEBROW, margin: "0 0 2px" }}>{t("salesmanPremium.dash.commissionEarned")}</p>
  <div style={{ position: "relative", margin: "2px 0 4px" }}>
  <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(C.accent, 0.22)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
  <svg width="100%" height="176" viewBox="0 0 240 176" style={{ position: "relative" }}>
@@ -740,19 +739,19 @@ export default function DashboardTab({
  RM {soldThisMonth.toLocaleString("en-MY")}
  </text>
  <text x={gaugeCx} y={gaugeCy + 10} textAnchor="middle" fontFamily="system-ui" fontSize="12" fontWeight="600" fill={C.textMuted}>
- of RM {goal.target.toLocaleString("en-MY")} goal &middot; {Math.round(pct)}% done
+ {t("salesmanPremium.dash.ofGoal", { target: goal.target.toLocaleString("en-MY"), pct: Math.round(pct) })}
  </text>
  </svg>
  </div>
- <p style={{ margin: "0 0 4px", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>{soldCountThisMonth} car{soldCountThisMonth !== 1 ? "s" : ""} sold this month</p>
+ <p style={{ margin: "0 0 4px", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>{t("salesmanPremium.dash.carsSoldMonth", { count: soldCountThisMonth })}</p>
  {pct >= 100
- ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>Goal smashed!</p>
- : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>RM {(goal.target - soldThisMonth).toLocaleString("en-MY")} to go · {daysLeft > 0 ? `${daysLeft}d left` : "last day!"}</p>
+ ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>{t("salesmanPremium.dash.goalSmashed")}</p>
+ : <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.dash.toGo", { amount: (goal.target - soldThisMonth).toLocaleString("en-MY") })} · {daysLeft > 0 ? t("salesmanPremium.dash.daysLeft", { n: daysLeft }) : t("salesmanPremium.dash.lastDay")}</p>
  }
  {trendTotal > 0 && (
  <div style={{ marginBottom: 10 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
- <p style={{ ...EYEBROW, margin: 0 }}>Commission — last 14 days</p>
+ <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.dash.commission14")}</p>
  {trendDelta !== null && (
  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: R.pill, fontSize: T.size.xs, fontWeight: T.weight.bold,
  background: withAlpha(trendDelta >= 0 ? C.success : C.danger, 0.12),
@@ -778,9 +777,9 @@ export default function DashboardTab({
  itemStyle={{ color: C.dangerText }}
  labelFormatter={(v) => {
  const [y, m, day] = v.split("-").map(Number);
- return new Date(y, m - 1, day).toLocaleDateString("en-MY", { day: "numeric", month: "short" });
+ return new Date(y, m - 1, day).toLocaleDateString(dateLocale, { day: "numeric", month: "short" });
  }}
- formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, "Commission"]}
+ formatter={(v) => [`RM ${Number(v).toLocaleString("en-MY")}`, t("salesmanPremium.dash.commission")]}
  />
  <Area type="monotone" dataKey="val" stroke={C.accent} strokeWidth={2.5} fill="url(#spCommissionFill)" dot={false} activeDot={{ r: 5, fill: C.accent }} />
  </AreaChart>
@@ -788,11 +787,11 @@ export default function DashboardTab({
  </div>
  </div>
  )}
- <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: T.size.xs, padding: "3px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Edit target</button>
+ <button onClick={() => { setGoalDraft(goal.target); setGoalEditing(true); }} style={{ fontSize: T.size.xs, padding: "3px 10px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.dash.editTarget")}</button>
  </div>
  ) : (
  <button onClick={() => { setGoalDraft(5000); setGoalEditing(true); }} style={{ width: "100%", padding: "14px", borderRadius: R.md, background: withAlpha(C.accent, 0.06), border: `1px dashed ${withAlpha(C.accent, 0.2)}`, color: C.danger, fontSize: T.size.base, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}>
- + Set a monthly commission goal
+ {t("salesmanPremium.dash.setGoal")}
  </button>
  )}
 
@@ -800,10 +799,10 @@ export default function DashboardTab({
  <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.line}` }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
  <p style={{ ...EYEBROW, margin: 0 }}>
- {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Pinned</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />Best to push</>}
+ {focusCar ? <><Pin size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanPremium.dash.pinned")}</> : <><Zap size={9} style={{ display:'inline', verticalAlign:'middle', marginRight:3 }} />{t("salesmanPremium.dash.bestToPush")}</>}
  </p>
  {focusCar && (
- <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Unpin</button>
+ <button onClick={() => saveGoal({ focusCarId: null })} style={{ fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.dash.unpin")}</button>
  )}
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -823,7 +822,7 @@ export default function DashboardTab({
  <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
  <button onClick={() => handleListingCopy(highlighted, "wa")} style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", fontWeight: T.weight.semibold }}>WA</button>
  {!focusCar && (
- <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>Pin</button>
+ <button onClick={() => saveGoal({ focusCarId: highlighted.id })} style={{ fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.dash.pin")}</button>
  )}
  </div>
  </div>
@@ -844,13 +843,13 @@ export default function DashboardTab({
  {/* Onboarding */}
  {isNewUser && !localStorage.getItem("sp_tour_done") && (
  <div className="sp-insight-card" style={{ border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
- <div style={CARD_HEADER}><span>Get Started</span></div>
+ <div style={CARD_HEADER}><span>{t("salesmanPremium.dash.getStarted")}</span></div>
  <div style={{ padding: 18 }}>
- <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>Here's how to make your first sale:</p>
+ <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{t("salesmanPremium.dash.howFirstSale")}</p>
  {[
- { num: 1, done: myListings.length > 0, title: "Add your first listing", sub: "Upload photos, set price, publish to XDrive marketplace.", ctaLabel: "Add Listing →", ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
- { num: 2, done: myListings.length > 0, title: "Share your listing link", sub: "Blast it on WhatsApp groups, Facebook, TikTok.", ctaLabel: "Go to Listings →", ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
- { num: 3, done: leads.length > 0, title: "Track your leads", sub: "Every enquiry auto-converts to a lead.", ctaLabel: "View Pipeline →", ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
+ { num: 1, done: myListings.length > 0, title: t("salesmanPremium.dash.step1Title"), sub: t("salesmanPremium.dash.step1Sub"), ctaLabel: t("salesmanPremium.dash.step1Cta"), ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
+ { num: 2, done: myListings.length > 0, title: t("salesmanPremium.dash.step2Title"), sub: t("salesmanPremium.dash.step2Sub"), ctaLabel: t("salesmanPremium.dash.step2Cta"), ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
+ { num: 3, done: leads.length > 0, title: t("salesmanPremium.dash.step3Title"), sub: t("salesmanPremium.dash.step3Sub"), ctaLabel: t("salesmanPremium.dash.step3Cta"), ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
  ].map((step, idx) => (
  <div key={step.num}>
  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
@@ -860,14 +859,14 @@ export default function DashboardTab({
  <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{step.sub}</p>
  </div>
  {step.locked
- ? <span style={{ fontSize: T.size.xs, color: C.textDim, flexShrink: 0, paddingTop: 3 }}>Step 1 first</span>
+ ? <span style={{ fontSize: T.size.xs, color: C.textDim, flexShrink: 0, paddingTop: 3 }}>{t("salesmanPremium.dash.step1First")}</span>
  : <button onClick={step.ctaAction} style={{ ...SOFT(C.accent), color: C.danger, fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
  }
  </div>
  {idx < 2 && <div style={{ height: 1, background: C.line, margin: "14px 0 0" }} />}
  </div>
  ))}
- <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: C.textDim, fontSize: T.size.xs, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>Dismiss</button>
+ <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: C.textDim, fontSize: T.size.xs, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{t("salesmanPremium.dash.dismiss")}</button>
  </div>
  </div>
  )}
@@ -876,11 +875,11 @@ export default function DashboardTab({
  <PrevMonthModal
  open={showPrevMonth}
  onClose={() => setShowPrevMonth(false)}
- monthLabel={prevMonthDate.toLocaleDateString("en-MY", { month: "long", year: "numeric" })}
+ monthLabel={prevMonthDate.toLocaleDateString(dateLocale, { month: "long", year: "numeric" })}
  commission={prevMonthCommission}
  count={prevMonthSold.length}
  trendPct={prevMonthTrendPct}
- trendLabel={twoMonthsAgoDate.toLocaleDateString("en-MY", { month: "short" })}
+ trendLabel={twoMonthsAgoDate.toLocaleDateString(dateLocale, { month: "short" })}
  />
 
  </div>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, MessageCircle, ChevronDown } from "lucide-react";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { buildThisWeek, waLink } from "../../utils/thisWeek";
@@ -26,10 +27,18 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
   // shouldn't have to scroll past it to reach the rest of the dashboard.
   const [collapsed, setCollapsed] = useState(false);
   const [done, setDone] = useState(() => new Set());
+  const { t, i18n } = useTranslation();
+  const lang = i18n.language;
 
   const items = useMemo(
-    () => buildThisWeek({ leads, customers, nudges, packages, repName }),
-    [leads, customers, nudges, packages, repName],
+    () => buildThisWeek({
+      leads, customers, nudges, packages, repName,
+      locale: lang?.startsWith("ms") ? "ms-MY" : "en-MY",
+      tr: (id, vars, english) => t(`crm.thisWeek.why.${id}`, { ...vars, defaultValue: english }),
+    }),
+    // t changes identity with the language; lang is the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [leads, customers, nudges, packages, repName, lang],
   );
   const open = items.filter((i) => !done.has(i.id));
   const shown = showAll ? open : open.slice(0, PREVIEW);
@@ -53,29 +62,28 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
       <button
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
-        title={collapsed ? "Show this week's call list" : "Hide this week's call list"}
+        title={collapsed ? t("crm.thisWeek.showList") : t("crm.thisWeek.hideList")}
         style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: collapsed ? 0 : 4, padding: 0, background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
           <ChevronDown size={15} color={C.textMuted} style={{ flexShrink: 0, transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s" }} />
-          <span style={{ fontSize: 17, fontWeight: T.weight.bold, color: C.text }}>This week</span>
+          <span style={{ fontSize: 17, fontWeight: T.weight.bold, color: C.text }}>{t("crm.thisWeek.title")}</span>
         </span>
         {open.length > 0 && (
           <span style={{ fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>
-            <span style={{ color: C.dangerText, fontWeight: T.weight.bold }}>{open.length}</span> to contact
+            <span style={{ color: C.dangerText, fontWeight: T.weight.bold }}>{open.length}</span> {t("crm.thisWeek.toContact")}
           </span>
         )}
       </button>
 
       {collapsed ? null : open.length === 0 ? (
         <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
-          Nothing waiting — you are on top of everyone. New enquiries show up here the moment
-          they come in, and past buyers reappear when their road tax or insurance is close.
+          {t("crm.thisWeek.empty")}
         </p>
       ) : (
         <>
           <p style={{ margin: "0 0 12px", fontSize: T.size.sm, color: C.textMuted }}>
-            Most urgent first. Tap Message to open WhatsApp with the text ready.
+            {t("crm.thisWeek.intro")}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -100,13 +108,13 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {canSend && (
-                      <button onClick={() => sendAndMark(item)} title="Open WhatsApp with the message ready"
+                      <button onClick={() => sendAndMark(item)} title={t("crm.thisWeek.messageTitle")}
                         style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "6px 10px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}>
-                        <MessageCircle size={12} /> Message
+                        <MessageCircle size={12} /> {t("crm.thisWeek.message")}
                       </button>
                     )}
-                    <button onClick={() => markDone(item)} title="Already handled — hide this"
-                      aria-label={`Mark ${item.name} as handled`}
+                    <button onClick={() => markDone(item)} title={t("crm.thisWeek.handledTitle")}
+                      aria-label={t("crm.thisWeek.markHandled", { name: item.name })}
                       style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>
                       <Check size={13} />
                     </button>
@@ -120,7 +128,7 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
             <button onClick={() => setShowAll((v) => !v)}
               style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 5, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textSec, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
               <ChevronDown size={13} style={{ transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
-              {showAll ? "Show fewer" : `Show all ${open.length}`}
+              {showAll ? t("crm.thisWeek.showFewer") : t("crm.thisWeek.showAll", { n: open.length })}
             </button>
           )}
         </>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { followUpStatus } from "../../lib/leadsHelpers";
 
@@ -17,10 +18,14 @@ import { followUpStatus } from "../../lib/leadsHelpers";
 // created_at), the same clock the list uses. It used to read updated_at, which
 // moves on any edit, so a buyer nobody had called could read "0d ago".
 export default function FollowUpRow({ lead, stageText, carText, reasonText, onOpen, onWA, last }) {
+  const { t } = useTranslation();
   const status = followUpStatus(lead);
   const urgent = status.reason === "never_contacted";
   const h = status.sinceHours;
-  const age = h < 1 ? "just now" : h < 24 ? `${Math.floor(h)}h` : `${Math.floor(h / 24)}d`;
+  const age = h < 1 ? t("crm.followUpRow.justNow")
+    : h < 24 ? t("crm.followUpRow.hours", { n: Math.floor(h) })
+    : t("crm.followUpRow.days", { n: Math.floor(h / 24) });
+  const reasonLabel = reasonText || t(`crm.followUpRow.reason.${status.reason}`, { defaultValue: status.label });
 
   return (
     <div
@@ -42,7 +47,7 @@ export default function FollowUpRow({ lead, stageText, carText, reasonText, onOp
                 fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 7px", borderRadius: R.sm, whiteSpace: "nowrap", flexShrink: 0,
               }}
             >
-              {reasonText || status.label} · {age}
+              {reasonLabel} · {age}
             </span>
           )}
           <span style={{ fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>

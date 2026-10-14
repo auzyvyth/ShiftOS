@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart2, Plus, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Target,
 } from "lucide-react";
@@ -53,6 +54,32 @@ export default function AnalyticsTab({
   const leadIds = leads.map((l) => l.id);
   const { rows: stageRows, loading: historyLoading, error: historyError } = useStageHistory(leadIds);
   const perf = buildSalesPerformance(leads, stageRows);
+  const speed0 = perf.speed;
+  const { t, i18n } = useTranslation();
+  const isMs = i18n.language?.startsWith("ms");
+  // Units on durations ("2h", "3d") follow the panel language: BM uses j(am)
+  // and h(ari).
+  const fmtDur = (mins) => {
+    const out = formatDuration(mins);
+    return isMs ? out.replace(/h$/, "j").replace(/d$/, "h") : out;
+  };
+  const srcLabel = (src) => t(`salesmanPremium.perf.src.${src}`, { defaultValue: sourceLabel(src) });
+  const reasonLabel = (r) => (r === "Not recorded"
+    ? t("salesmanPremium.perf.notRecorded")
+    : t(`salesmanPremium.lostReasons.${r}`, { defaultValue: r }));
+  // Insight copy lives in salesPerformance.js in English (the tests read it);
+  // its `i18n` block carries the raw numbers so it can be said in BM too.
+  const insText = (ins, part) => {
+    if (!ins.i18n) return ins[part];
+    const v = { ...ins.i18n.vars };
+    if (v.stage) v.stage = t(`salesmanPremium.stages.${v.stage}`);
+    if (v.reason) { v.reason = reasonLabel(v.reason); v.reasonLower = v.reason.toLowerCase(); }
+    if (v.best) v.best = srcLabel(v.best);
+    if (v.worst) v.worst = srcLabel(v.worst);
+    if (ins.i18n.id === "reply_speed") v.median = fmtDur(speed0.medianMins);
+    return t(`salesmanPremium.perf.ins.${ins.i18n.id}.${part}`, { ...v, defaultValue: ins[part] });
+  };
+  const ctaText = (ins) => (ins.cta ? t("salesmanPremium.perf.openPipeline") : null);
 
   // Area chart with a gradient fill, same shape as the Dashboard tab's traffic
   // and commission charts, so the two tabs read as one product. The old version
@@ -141,9 +168,9 @@ export default function AnalyticsTab({
     enquiries: Number(r.card_clicks) || 0,
   }));
   const TRAFFIC_VIEWS = [
-    { key: "all", label: "All" },
-    { key: "cars", label: "Car pages" },
-    { key: "minipage", label: "Mini page" },
+    { key: "all", label: t("salesmanPremium.perf.all") },
+    { key: "cars", label: t("salesmanPremium.perf.carPages") },
+    { key: "minipage", label: t("salesmanPremium.perf.miniPage") },
   ];
   // ChannelBreakdown already sums duplicate channels, so "All" is a plain
   // concat — no need to merge by hand.
@@ -194,10 +221,10 @@ export default function AnalyticsTab({
         <div style={{ ...CARD, padding: "22px 20px", textAlign: "center" }}>
           <Target size={20} color={C.textMuted} style={{ marginBottom: 8 }} />
           <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
-            No leads to analyse yet
+            {t("salesmanPremium.perf.noLeadsTitle")}
           </p>
           <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
-            Once buyers start coming in, this page shows where in your process deals are being lost — and what to change.
+            {t("salesmanPremium.perf.noLeadsBody")}
           </p>
         </div>
       );
@@ -215,23 +242,23 @@ export default function AnalyticsTab({
             and the next two sit underneath, collapsed. ── */}
         <div style={CARD}>
           <div style={{ padding: isMobile ? "16px" : "18px 20px" }}>
-            <p style={{ ...EYEBROW, margin: 0 }}>{focus.tone === "good" ? "Where you stand" : "Fix this first"}</p>
+            <p style={{ ...EYEBROW, margin: 0 }}>{focus.tone === "good" ? t("salesmanPremium.perf.whereStand") : t("salesmanPremium.perf.fixFirst")}</p>
             <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
-              {focus.title}
+              {insText(focus, "title")}
             </p>
-            <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{focus.body}</p>
+            <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{insText(focus, "body")}</p>
             {focus.cta && onOpenTab && (
               <button
                 onClick={() => onOpenTab(focus.ctaTab)}
                 style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
               >
-                {focus.cta} <ChevronRight size={14} />
+                {ctaText(focus)} <ChevronRight size={14} />
               </button>
             )}
           </div>
           {others.length > 0 && (
             <div style={{ borderTop: `1px solid ${C.line}` }}>
-              <p style={{ ...EYEBROW, margin: 0, padding: "12px 18px 4px" }}>Also worth a look</p>
+              <p style={{ ...EYEBROW, margin: 0, padding: "12px 18px 4px" }}>{t("salesmanPremium.perf.alsoLook")}</p>
               {others.map((ins, i) => {
                 const open = openInsights.has(ins.key);
                 return (
@@ -241,20 +268,20 @@ export default function AnalyticsTab({
                       aria-expanded={open}
                       style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
                     >
-                      <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{ins.title}</span>
+                      <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{insText(ins, "title")}</span>
                       {open
                         ? <ChevronUp size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
                         : <ChevronDown size={15} style={{ color: C.textMuted, flexShrink: 0 }} />}
                     </button>
                     {open && (
                       <div style={{ padding: "0 18px 13px" }}>
-                        <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{ins.body}</p>
+                        <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{insText(ins, "body")}</p>
                         {ins.cta && onOpenTab && (
                           <button
                             onClick={() => onOpenTab(ins.ctaTab)}
                             style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}
                           >
-                            {ins.cta}
+                            {ctaText(ins)}
                           </button>
                         )}
                       </div>
@@ -270,9 +297,9 @@ export default function AnalyticsTab({
             on one line. It used to be four equal tiles, each in its own colour. ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Close rate</span>
+            <span>{t("salesmanPremium.perf.closeRate")}</span>
             <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
-              All time
+              {t("salesmanPremium.perf.allTime")}
             </span>
           </div>
           <div style={{ padding: "16px 18px" }}>
@@ -282,13 +309,13 @@ export default function AnalyticsTab({
               </span>
               {closeRate.trend !== null && (
                 <span style={{ ...NUM, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: closeRate.trend >= 0 ? C.successText : C.dangerText }}>
-                  {closeRate.trend >= 0 ? "+" : "−"}{Math.abs(closeRate.trend)} pts
-                  <span style={{ fontWeight: T.weight.normal, color: C.textMuted }}> last 30 days ({closeRate.current}% vs {closeRate.previous}%)</span>
+                  {closeRate.trend >= 0 ? "+" : "−"}{t("salesmanPremium.perf.pts", { n: Math.abs(closeRate.trend) })}
+                  <span style={{ fontWeight: T.weight.normal, color: C.textMuted }}> {t("salesmanPremium.perf.last30vs", { current: closeRate.current, previous: closeRate.previous })}</span>
                 </span>
               )}
             </div>
             <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
-              {closeRate.won} won · {closeRate.lost} lost · {closeRate.total} leads in total. Only won and lost deals count, so open leads do not drag it down.
+              {t("salesmanPremium.perf.closeCounts", { won: closeRate.won, lost: closeRate.lost, total: closeRate.total })}
             </p>
           </div>
         </div>
@@ -296,14 +323,14 @@ export default function AnalyticsTab({
         {/* ── 3. Funnel. Grey bars; the weakest step is the only red thing. ── */}
         <div style={CARD}>
           <div style={CARD_HEADER}>
-            <span>Where deals stop</span>
+            <span>{t("salesmanPremium.perf.whereStop")}</span>
             <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
-              Furthest stage reached
+              {t("salesmanPremium.perf.furthest")}
             </span>
           </div>
           {historyError ? (
             <NotYet>
-              Could not load stage history, so this funnel would blame the wrong step. Reload the tab to try again.
+              {t("salesmanPremium.perf.historyError")}
             </NotYet>
           ) : (
             <div style={{ padding: "6px 18px 14px" }}>
@@ -314,10 +341,10 @@ export default function AnalyticsTab({
                   <div key={row.stage} style={{ padding: "8px 0" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
                       <span style={{ fontSize: T.size.base, color: C.text, fontWeight: isWeak ? T.weight.semibold : T.weight.normal, minWidth: 0 }}>
-                        {row.label}
+                        {t(`salesmanPremium.stages.${row.stage}`, { defaultValue: row.label })}
                         {isWeak && (
                           <span style={{ marginLeft: 8, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.dangerText, textTransform: "uppercase", letterSpacing: T.track.label }}>
-                            Weakest
+                            {t("salesmanPremium.perf.weakest")}
                           </span>
                         )}
                       </span>
@@ -328,7 +355,7 @@ export default function AnalyticsTab({
                     <Bar pct={pct} hue={isWeak ? C.danger : BAR} />
                     {row.dropOffPct !== null && row.lostHere > 0 && (
                       <p style={{ ...NUM, margin: "5px 0 0", fontSize: T.size.sm, color: isWeak ? C.dangerText : C.textMuted }}>
-                        {row.lostHere} stopped here ({row.dropOffPct}%)
+                        {t("salesmanPremium.perf.stoppedHere", { n: row.lostHere, pct: row.dropOffPct })}
                       </p>
                     )}
                   </div>
@@ -336,8 +363,8 @@ export default function AnalyticsTab({
               })}
               <p style={{ margin: "8px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
                 {historyLoading
-                  ? "Loading stage history…"
-                  : "A lost deal counts at the stage it actually reached, not where it ended up."}
+                  ? t("salesmanPremium.perf.loadingHistory")
+                  : t("salesmanPremium.perf.funnelNote")}
               </p>
             </div>
           )}
@@ -352,8 +379,8 @@ export default function AnalyticsTab({
           style={{ ...CARD, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "13px 18px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>More detail</span>
-            <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted }}>Reply speed, why deals are lost, lead sources</span>
+            <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{t("salesmanPremium.perf.moreDetail")}</span>
+            <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.perf.moreDetailSub")}</span>
           </span>
           {showDetail ? <ChevronUp size={16} color={C.textMuted} /> : <ChevronDown size={16} color={C.textMuted} />}
         </button>
@@ -361,28 +388,28 @@ export default function AnalyticsTab({
         {showDetail && (
           <>
             <div style={CARD}>
-              <div style={CARD_HEADER}><span>Reply speed</span></div>
+              <div style={CARD_HEADER}><span>{t("salesmanPremium.perf.replySpeed")}</span></div>
               {speed.tracked === 0 ? (
                 <NotYet>
-                  No first-reply times recorded yet. Messaging a buyer from inside the app — the WhatsApp button on a lead, or a logged call — stamps when you first got back to them, and this card then shows what replying faster is worth.
+                  {t("salesmanPremium.perf.noReplyTimes")}
                 </NotYet>
               ) : (
                 <>
-                  <Row label="Typical first reply" detail={`Median across ${speed.tracked} leads`} value={formatDuration(speed.medianMins)} />
+                  <Row label={t("salesmanPremium.perf.typicalReply")} detail={t("salesmanPremium.perf.medianAcross", { n: speed.tracked })} value={fmtDur(speed.medianMins)} />
                   <Row
-                    label="Answered within 1 hour"
-                    detail={speed.fast.settled ? `Closed ${speed.fast.won} of ${speed.fast.settled}` : "None settled yet"}
+                    label={t("salesmanPremium.perf.within1h")}
+                    detail={speed.fast.settled ? t("salesmanPremium.perf.closedOf", { won: speed.fast.won, settled: speed.fast.settled }) : t("salesmanPremium.perf.noneSettled")}
                     value={speed.fast.closeRate !== null ? `${speed.fast.closeRate}%` : "—"}
                   />
                   <Row
-                    label="Answered later"
-                    detail={speed.slow.settled ? `Closed ${speed.slow.won} of ${speed.slow.settled}` : "None settled yet"}
+                    label={t("salesmanPremium.perf.later")}
+                    detail={speed.slow.settled ? t("salesmanPremium.perf.closedOf", { won: speed.slow.won, settled: speed.slow.settled }) : t("salesmanPremium.perf.noneSettled")}
                     value={speed.slow.closeRate !== null ? `${speed.slow.closeRate}%` : "—"}
                     last={speed.coverage >= 100}
                   />
                   {speed.coverage < 100 && (
                     <p style={{ margin: 0, padding: "10px 18px", fontSize: T.size.sm, color: C.textDim }}>
-                      Based on the {speed.coverage}% of your leads that have a first reply recorded.
+                      {t("salesmanPremium.perf.basedOn", { pct: speed.coverage })}
                     </p>
                   )}
                 </>
@@ -390,15 +417,15 @@ export default function AnalyticsTab({
             </div>
 
             <div style={CARD}>
-              <div style={CARD_HEADER}><span>Why deals are lost</span></div>
+              <div style={CARD_HEADER}><span>{t("salesmanPremium.perf.whyLost")}</span></div>
               {loss.lostTotal === 0 ? (
-                <NotYet>Nothing marked lost yet. Closing dead leads as lost — with a reason — is what fills this in.</NotYet>
+                <NotYet>{t("salesmanPremium.perf.noLost")}</NotYet>
               ) : (
                 <div style={{ padding: "6px 18px 14px" }}>
                   {loss.rows.map((row) => (
                     <div key={row.reason} style={{ padding: "8px 0" }}>
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-                        <span style={{ fontSize: T.size.base, color: row.recorded ? C.text : C.textDim, minWidth: 0 }}>{row.reason}</span>
+                        <span style={{ fontSize: T.size.base, color: row.recorded ? C.text : C.textDim, minWidth: 0 }}>{reasonLabel(row.reason)}</span>
                         <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
                           {row.count} <span style={{ fontSize: T.size.sm, fontWeight: T.weight.normal, color: C.textMuted }}>({row.pct}%)</span>
                         </span>
@@ -412,23 +439,23 @@ export default function AnalyticsTab({
 
             <div style={CARD}>
               <div style={CARD_HEADER}>
-                <span>Lead sources</span>
+                <span>{t("salesmanPremium.perf.leadSources")}</span>
                 <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
-                  Close rate
+                  {t("salesmanPremium.perf.closeRate")}
                 </span>
               </div>
               {sources.rows.map((row, idx) => (
                 <Row
                   key={row.source}
-                  label={sourceLabel(row.source)}
-                  detail={`${row.total} lead${row.total === 1 ? "" : "s"}${row.valueWon ? ` · ${money(row.valueWon)} won` : ""}`}
+                  label={srcLabel(row.source)}
+                  detail={`${t("salesmanPremium.perf.nLeads", { count: row.total })}${row.valueWon ? ` · ${t("salesmanPremium.perf.moneyWon", { amount: money(row.valueWon) })}` : ""}`}
                   value={row.closeRate !== null ? `${row.closeRate}%` : "—"}
                   valueColor={row.closeRate === null ? C.textDim : undefined}
                   last={idx === sources.rows.length - 1}
                 />
               ))}
               <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
-                Close rate counts settled deals only, so a source with leads still open is not punished for them.
+                {t("salesmanPremium.perf.sourceNote")}
               </p>
             </div>
           </>
@@ -445,19 +472,19 @@ export default function AnalyticsTab({
             to a rolling `now() - 30 days` cutoff and the caller passes none, so
             the numbers have always been last-30-days. The channel breakdown
             below IS all-time, which is why the two never reconciled. */}
-        <Metric label="Listing views" value={totalViews} sub="Last 30 days" data={viewsD} id="views" />
-        <Metric label="WhatsApp taps" value={totalWA} sub="Last 30 days" />
+        <Metric label={t("salesmanPremium.perf.listingViews")} value={totalViews} sub={t("salesmanPremium.perf.last30")} data={viewsD} id="views" />
+        <Metric label={t("salesmanPremium.perf.waTaps")} value={totalWA} sub={t("salesmanPremium.perf.last30")} />
         <Metric
-          label="Tap-through"
+          label={t("salesmanPremium.perf.tapThrough")}
           value={cvr !== null ? `${cvr}%` : "—"}
-          sub="Taps per view"
+          sub={t("salesmanPremium.perf.tapsPerView")}
           badge={cvrLow && (
             <span style={{ ...SOFT(C.danger), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "2px 7px", borderRadius: R.pill }}>
-              Low
+              {t("salesmanPremium.perf.low")}
             </span>
           )}
         />
-        <Metric label="Enquiries" value={enquiries.length} sub="All messages" data={enqD} id="enq" />
+        <Metric label={t("salesmanPremium.perf.enquiries")} value={enquiries.length} sub={t("salesmanPremium.perf.allMessages")} data={enqD} id="enq" />
       </div>
 
       {/* Nothing listed yet — every number above is a zero and no chart can
@@ -466,17 +493,17 @@ export default function AnalyticsTab({
         <div style={{ ...CARD, padding: "22px 20px", marginBottom: 12, textAlign: "center" }}>
           <TrendingUp size={20} color={C.textMuted} style={{ marginBottom: 8 }} />
           <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
-            No traffic to report yet
+            {t("salesmanPremium.perf.noTrafficTitle")}
           </p>
           <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
-            List your stock and this page fills in on its own — views, tap-through and where buyers came from.
+            {t("salesmanPremium.perf.noTrafficBody")}
           </p>
           {onAddListing && (
             <button
               onClick={onAddListing}
               style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
             >
-              <Plus size={14} /> Add a listing
+              <Plus size={14} /> {t("salesmanPremium.perf.addListing")}
             </button>
           )}
         </div>
@@ -486,12 +513,12 @@ export default function AnalyticsTab({
         <div style={{ ...CARD, marginBottom: 12 }}>
           <div style={CARD_HEADER}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-              <BarChart2 size={13} /> Tap-through by car
+              <BarChart2 size={13} /> {t("salesmanPremium.perf.tapByCar")}
             </span>
             {/* Same rolling window as the tiles above — this table reads the
                 same carStatsMap, so it was mislabelled for the same reason. */}
             <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
-              Last 30 days
+              {t("salesmanPremium.perf.last30")}
             </span>
           </div>
           {/* Most-viewed first. Rows, not a 4-column grid, so a phone never
@@ -508,7 +535,7 @@ export default function AnalyticsTab({
                 <Row
                   key={car.id}
                   label={[car.year, car.brand, car.model].filter(Boolean).join(" ")}
-                  detail={`${v} view${v === 1 ? "" : "s"} · ${w} WhatsApp tap${w === 1 ? "" : "s"}`}
+                  detail={`${t("salesmanPremium.dash.nViews", { count: v })} · ${t("salesmanPremium.perf.nWaTaps", { count: w })}`}
                   value={rate !== null ? `${rate.toFixed(1)}%` : "—"}
                   valueColor={low ? C.dangerText : rate === null ? C.textDim : undefined}
                   last={idx === arr.length - 1}
@@ -527,7 +554,7 @@ export default function AnalyticsTab({
       {(carChannelRows.length > 0 || miniChannelRows.length > 0) && (
         <div style={{ ...CARD, padding: 16, marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-            <span style={EYEBROW}>Traffic by platform</span>
+            <span style={EYEBROW}>{t("salesmanPremium.perf.trafficByPlatform")}</span>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {TRAFFIC_VIEWS.map(({ key, label }) => {
                 const on = trafficView === key;
@@ -553,23 +580,23 @@ export default function AnalyticsTab({
             rows={trafficRows}
             metric="views"
             title=""
-            viewsLabel={trafficView === "minipage" ? "visits" : "views"}
-            enquiriesLabel={trafficView === "minipage" ? "clicks" : "WA"}
+            viewsLabel={trafficView === "minipage" ? t("salesmanPremium.dash.visitsLower") : t("salesmanPremium.perf.viewsLower")}
+            enquiriesLabel={trafficView === "minipage" ? t("salesmanPremium.dash.clicksLower") : "WA"}
             emptyHint={
               trafficView === "minipage"
-                ? "No mini-page visits attributed yet — share your profile link with the buttons in Listings to tag them."
-                : "No attributed traffic yet — share a listing with the share menu to start tracking."
+                ? t("salesmanPremium.perf.emptyMini")
+                : t("salesmanPremium.perf.emptyCars")
             }
           />
           <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
-            A platform only shows up when the visit arrived through a tagged share link. Everything else counts as Direct.
+            {t("salesmanPremium.perf.platformNote")}
           </p>
         </div>
       )}
 
       {commissionDetails.length > 0 && (
         <div style={CARD}>
-          <div style={CARD_HEADER}><span>Recent sales</span></div>
+          <div style={CARD_HEADER}><span>{t("salesmanPremium.perf.recentSales")}</span></div>
           {commissionDetails.map((c, i) => (
             <div
               key={i}
@@ -592,10 +619,10 @@ export default function AnalyticsTab({
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
         <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text, letterSpacing: T.track.tight }}>
-          Performance
+          {t("salesmanPremium.perf.title")}
         </p>
         <span style={{ fontSize: T.size.sm, color: C.textMuted }}>
-          {sub === "selling" ? "Based on every lead you have worked" : "Charts show the last 7 days"}
+          {sub === "selling" ? t("salesmanPremium.perf.subSelling") : t("salesmanPremium.perf.subListings")}
         </span>
       </div>
 
@@ -608,34 +635,34 @@ export default function AnalyticsTab({
       <div style={{ ...CARD, padding: isMobile ? "16px" : "18px 20px", marginBottom: 12, fontVariantNumeric: "tabular-nums" }}>
         {isMobile ? (
           <>
-            <p style={{ ...EYEBROW, margin: 0 }}>Commission, all time</p>
+            <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.commissionAll")}</p>
             <p style={{ ...STAT, margin: "6px 0 0", fontSize: T.size.hero }}>
               {commission !== null ? money(commission) : "—"}
             </p>
             <p style={{ margin: "8px 0 0", fontSize: T.size.base, color: C.textSec }}>
-              <b style={{ color: C.text }}>{thisMonthSales}</b> sold this month · <b style={{ color: C.text }}>{soldCount}</b> all time
+              <b style={{ color: C.text }}>{thisMonthSales}</b> {t("salesmanPremium.perf.soldThisMonth")} · <b style={{ color: C.text }}>{soldCount}</b> {t("salesmanPremium.perf.allTimeLower")}
             </p>
           </>
         ) : (
           <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>
             <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>Commission, all time</p>
+              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.commissionAll")}</p>
               <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
                 {commission !== null ? money(commission) : "—"}
               </p>
             </div>
             <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>This month</p>
+              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.thisMonth")}</p>
               <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
                 {thisMonthSales}
-                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>sold</span>
+                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>{t("salesmanPremium.perf.soldLower")}</span>
               </p>
             </div>
             <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>All time</p>
+              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.allTime")}</p>
               <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
                 {soldCount}
-                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>cars</span>
+                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>{t("salesmanPremium.perf.carsLower")}</span>
               </p>
             </div>
           </div>
@@ -646,8 +673,8 @@ export default function AnalyticsTab({
         value={sub}
         onChange={setSub}
         items={[
-          { key: "selling", label: "Selling" },
-          { key: "listings", label: "Listings" },
+          { key: "selling", label: t("salesmanPremium.perf.selling") },
+          { key: "listings", label: t("salesmanPremium.perf.listings") },
         ]}
       />
 

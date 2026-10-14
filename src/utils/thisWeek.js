@@ -48,8 +48,13 @@ const firstName = (full) => String(full || "").trim().split(" ")[0] || "";
 const signoff = (repName) => (repName ? `${repName} here from XDrive` : "reaching out from XDrive");
 const round = (n) => Math.max(1, Math.round(n));
 
-export function buildThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "" } = {}) {
+// `tr(id, vars, english)` translates the seller-facing `why` line (the panel
+// language); without it the English is used. The buyer-facing `message` is a
+// WhatsApp draft and stays as written, like every other buyer template.
+export function buildThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", tr, locale = "en-MY" } = {}) {
   const me = firstName(repName);
+  const W = (id, vars, english) => (tr ? tr(id, vars, english) : english);
+  const localDay = (d) => new Date(d).toLocaleDateString(locale, { day: "numeric", month: "short" });
   const items = [];
 
   for (const l of leads) {
@@ -64,7 +69,7 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
       items.push({
         id: `lead-new-${l.id}`, kind: "never_replied", rank: 0, age,
         leadId: l.id, name: l.buyer_name || "Unknown buyer", phone: l.phone,
-        why: `Never replied · ${round(age)}d ago`, sub: car,
+        why: W("neverReplied", { n: round(age) }, `Never replied · ${round(age)}d ago`), sub: car,
         message: `Hi ${who}, ${signoff(me)}.${car ? ` You asked about the ${car}.` : ""} Sorry for the slow reply — is it still something you are looking at? Happy to answer any questions.`,
       });
       continue;
@@ -76,7 +81,7 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
       items.push({
         id: `lead-quiet-${l.id}`, kind: "going_quiet", rank: 2, age: since,
         leadId: l.id, name: l.buyer_name || "Unknown buyer", phone: l.phone,
-        why: `No contact for ${round(since)}d`, sub: car,
+        why: W("noContact", { n: round(since) }, `No contact for ${round(since)}d`), sub: car,
         message: `Hi ${who}, ${signoff(me)}. Just checking in${car ? ` on the ${car}` : ""} — are you still considering it, or has something changed? Either way is fine, I just did not want to leave you hanging.`,
       });
     }
@@ -89,7 +94,7 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
     items.push({
       id: `nudge-${n.id}`, kind: "reminder", rank: 1, age: daysAgo(n.scheduled_for) || 0,
       nudgeId: n.id, leadId: n.lead_id, name: l.buyer_name || "Unknown buyer", phone: l.phone,
-      why: n.reason ? `Your reminder · ${n.reason}` : "Your reminder is due", sub: carName(l.car_listing),
+      why: n.reason ? W("reminder", { reason: n.reason }, `Your reminder · ${n.reason}`) : W("reminderDue", {}, "Your reminder is due"), sub: carName(l.car_listing),
       message: n.draft_message || "",
     });
   }
@@ -107,7 +112,9 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
       items.push({
         id: `cust-${field}-${c.id}`, kind: "renewal", rank: 2, age: EXPIRY_DAYS - d,
         customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
-        why: gone ? `${label} expired ${when}` : `${label} due ${when} · ${round(d)}d`, sub: car,
+        why: gone
+          ? W(`${field}Expired`, { when: localDay(c[field]) }, `${label} expired ${when}`)
+          : W(`${field}Due`, { when: localDay(c[field]), n: round(d) }, `${label} due ${when} · ${round(d)}d`), sub: car,
         message: `Hi ${who}, ${signoff(me)}. Your ${label.toLowerCase()} on the ${car || "car"}${plate} ${gone ? `expired on ${when}` : `is due ${when}`}. Want me to help you sort the renewal?`,
       });
     }
@@ -130,7 +137,9 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
         items.push({
           id: `cust-svc-${pkg.id}`, kind: "service_due", rank: 2, age: SERVICE_DUE_DAYS - dueIn,
           customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
-          why: dueIn <= 0 ? `${pkg.package_name} visit due now` : `${pkg.package_name} visit due ${when}`,
+          why: dueIn <= 0
+            ? W("visitDueNow", { name: pkg.package_name }, `${pkg.package_name} visit due now`)
+            : W("visitDue", { name: pkg.package_name, when: localDay(due) }, `${pkg.package_name} visit due ${when}`),
           sub: car,
           message: `Hi ${who}, ${signoff(me)}. ${car ? `The ${car}` : "Your car"} is due for its ${pkg.package_name} visit${dueIn <= 0 ? "" : ` around ${when}`}. Want me to book you in?`,
         });
@@ -143,8 +152,8 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
         id: `cust-pkg-${pkg.id}`, kind: "package_unused", rank: 2, age: PKG_EXPIRY_DAYS - d,
         customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
         why: gone
-          ? `${pkg.package_name} expired ${when} · ${left} visit${left === 1 ? "" : "s"} unused`
-          : `${pkg.package_name} · ${left} visit${left === 1 ? "" : "s"} left, expires ${when}`,
+          ? W("pkgExpired", { name: pkg.package_name, when: localDay(pkg.expires_at), count: left }, `${pkg.package_name} expired ${when} · ${left} visit${left === 1 ? "" : "s"} unused`)
+          : W("pkgLeft", { name: pkg.package_name, when: localDay(pkg.expires_at), count: left }, `${pkg.package_name} · ${left} visit${left === 1 ? "" : "s"} left, expires ${when}`),
         sub: car,
         // No price, no offer — it states what they already bought and asks them in.
         message: `Hi ${who}, ${signoff(me)}. You still have ${left} visit${left === 1 ? "" : "s"} left on your ${pkg.package_name}${gone ? `, which expired on ${when}` : `, valid until ${when}`}. Want to book ${car ? `the ${car}` : "your car"} in?`,
@@ -156,13 +165,13 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
     const owned = c.purchase_date ? daysAgo(c.purchase_date) / 365.25 : null;
     const vAge = c.car_year ? new Date().getFullYear() - Number(c.car_year) : null;
     const reasons = [];
-    if (owned !== null && owned >= OWNED_READY_Y) reasons.push(`owned ${Math.floor(owned)}y`);
-    if (vAge !== null && vAge >= VEHICLE_READY_Y) reasons.push(`${c.car_year} car · ${vAge} yrs`);
+    if (owned !== null && owned >= OWNED_READY_Y) reasons.push(W("owned", { n: Math.floor(owned) }, `owned ${Math.floor(owned)}y`));
+    if (vAge !== null && vAge >= VEHICLE_READY_Y) reasons.push(W("carAge", { year: c.car_year, n: vAge }, `${c.car_year} car · ${vAge} yrs`));
     if (reasons.length) {
       items.push({
         id: `cust-trade-${c.id}`, kind: "trade_up", rank: 3, age: (owned || 0) * 2 + (vAge || 0),
         customerId: c.id, name: c.name || "Unknown buyer", phone: c.phone,
-        why: `Trade-up ready · ${reasons.join(" · ")}`, sub: car,
+        why: W("tradeUp", { reasons: reasons.join(" · ") }, `Trade-up ready · ${reasons.join(" · ")}`), sub: car,
         message: `Hi ${who}, ${signoff(me)}. You have had ${car ? `the ${car}` : "your car"} a while now — if you are thinking about changing, I can take a look at it and tell you what your options are. No obligation.`,
       });
     }

@@ -259,6 +259,10 @@ export function formatDuration(mins) {
 
 // Ranked coaching insights.
 //
+// title/body are the English copy (the tests read them). `i18n` carries the
+// same numbers as raw values so the tab can render the copy in the panel's
+// language; stage/source/reason stay as codes and are labelled at render.
+//
 // Rules that keep this from turning into horoscope text:
 //   - every insight quotes a real number the rep can go and verify
 //   - every insight has a minimum sample size; below it the card says
@@ -287,6 +291,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
         : `${w.lostHere} of the ${w.reached} leads that reached ${w.label} never got past it. That is the single step costing you the most deals — worth looking at what you say and do there before changing anything else.`,
       cta: "Open pipeline",
       ctaTab: "leads",
+      i18n: { id: atTop ? "weak_new" : "weak_stage", vars: { pct: w.dropOffPct, lost: w.lostHere, reached: w.reached, stage: w.stage } },
     });
   }
 
@@ -300,6 +305,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: `Replying within the hour closes ${speed.fast.closeRate}% vs ${speed.slow.closeRate}%`,
       body: `Leads you answered inside an hour closed at ${speed.fast.closeRate}%. The ones that waited longer closed at ${speed.slow.closeRate}%. Your typical first reply takes ${formatDuration(speed.medianMins)}.`,
       cta: null,
+      i18n: { id: "reply_speed", vars: { fast: speed.fast.closeRate, slow: speed.slow.closeRate, median: formatDuration(speed.medianMins) } },
     });
   } else if (speed.coverage < 50 && closeRate.total >= 8) {
     out.push({
@@ -309,6 +315,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: "Reply speed is only tracked on some leads",
       body: `First-reply time is recorded on ${speed.coverage}% of your leads. Replying from inside the app — the WhatsApp button or a logged call — stamps it, and once most leads carry it this page can tell you what answering faster is actually worth.`,
       cta: null,
+      i18n: { id: "speed_untracked", vars: { coverage: speed.coverage } },
     });
   }
 
@@ -321,6 +328,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       body: `${stuck.stuck} of ${stuck.active} open leads have had no movement in ${stuck.thresholdDays}+ days. Either they need a nudge or they need closing as lost — leaving them open makes every rate on this page look better than it is.`,
       cta: "Open pipeline",
       ctaTab: "leads",
+      i18n: { id: "frozen_pipeline", vars: { pct: stuck.pct, stuck: stuck.stuck, active: stuck.active, days: stuck.thresholdDays } },
     });
   }
 
@@ -332,6 +340,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: `${loss.top.reason} is your most common reason for losing`,
       body: `${loss.top.count} of the ${loss.recorded} losses you gave a reason for came down to ${loss.top.reason.toLowerCase()}. That is the objection to have an answer ready for.`,
       cta: null,
+      i18n: { id: "loss_reason", vars: { reason: loss.top.reason, count: loss.top.count, recorded: loss.recorded } },
     });
   } else if (loss.lostTotal >= 4 && loss.recorded < loss.lostTotal / 2) {
     out.push({
@@ -341,6 +350,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: "Most lost deals have no reason recorded",
       body: `${loss.lostTotal - loss.recorded} of ${loss.lostTotal} lost deals were closed without a reason. Picking one when you mark a deal lost is what turns this into a pattern you can fix.`,
       cta: null,
+      i18n: { id: "loss_untracked", vars: { missing: loss.lostTotal - loss.recorded, total: loss.lostTotal } },
     });
   }
 
@@ -352,6 +362,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: `${sourceLabel(sources.best.source)} leads close ${sources.best.closeRate}% — ${sourceLabel(sources.worst.source)} close ${sources.worst.closeRate}%`,
       body: `Not every lead is worth the same hour. ${sourceLabel(sources.best.source)} converted ${sources.best.won} of ${sources.best.settled} settled deals; ${sourceLabel(sources.worst.source)} converted ${sources.worst.won} of ${sources.worst.settled}.`,
       cta: null,
+      i18n: { id: "source_gap", vars: { best: sources.best.source, bestRate: sources.best.closeRate, bestWon: sources.best.won, bestSettled: sources.best.settled, worst: sources.worst.source, worstRate: sources.worst.closeRate, worstWon: sources.worst.won, worstSettled: sources.worst.settled } },
     });
   }
 
@@ -364,6 +375,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
       title: `Your close rate ${up ? "rose" : "fell"} ${Math.abs(closeRate.trend)} points this month`,
       body: `${closeRate.current}% of the deals you settled in the last 30 days were won, against ${closeRate.previous}% the 30 days before.`,
       cta: null,
+      i18n: { id: up ? "close_up" : "close_down", vars: { points: Math.abs(closeRate.trend), current: closeRate.current, previous: closeRate.previous } },
     });
   }
 
@@ -378,6 +390,7 @@ export function buildInsights({ funnel, speed, loss, sources, closeRate, stuck }
         ? `${closeRate.won} won and ${closeRate.lost} lost, a ${closeRate.rate}% close rate, and no single stage is shedding more than its share. Keep the pipeline moving.`
         : `This page gets sharper the more deals you close out. You have settled ${closeRate.settled} so far — mark deals won or lost as they finish and the funnel, reply-speed and loss-reason numbers below start telling you where to focus.`,
       cta: null,
+      i18n: { id: enough ? "on_track" : "need_data", vars: { won: closeRate.won, lost: closeRate.lost, rate: closeRate.rate, settled: closeRate.settled } },
     });
   }
 
