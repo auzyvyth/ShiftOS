@@ -1043,11 +1043,11 @@
       "jobTitlePh": "e.g. Senior Sales Advisor",
       "jobTitleHint": "Shown under your name on your public page. Leave blank to hide.",
       "bio": "Bio",
-      "bioPh": "e.g. Specializing in Perodua & Honda, 5 years experience in Klang Valley",
+      "bioPh": "e.g. Specialising in Perodua & Honda, 5 years experience in Klang Valley",
       "bioHint": "Shown below your name on your public page, with a \"Read more\" toggle.",
-      "specializations": "Specializations",
+      "specializations": "Specialisations",
       "tagPh": "e.g. Recon imports",
-      "tagHint": "Enter or Add for each tag. Shown as pills on your public profile.",
+      "tagHint": "Press Enter or tap Add after each tag. Shown as pills on your public profile.",
       "slug": "Username / Slug",
       "slugHint": "Contact support to change your username.",
       "whatsapp": "WhatsApp Number",
@@ -1072,7 +1072,7 @@
       "feeHint": "Your own fee on top of the official JPJ and Puspakom charges. Enter 0 if you charge none.",
       "connected": "Connected",
       "notSet": "Not set",
-      "tourDesc": "Walks you through every tab — Dashboard, Listings, Leads, Bookings, Lead History, Analytics, Loans, Outreach, Chat, Customers, Handover and Settings — opening each one as it goes, and putting you back where you started at the end.",
+      "tourDesc": "Walks you through every tab (Dashboard, My Listings, Chat, Leads, Inbox, Sold, Analytics, Loans, Outreach and Settings), opening each one as it goes, and puts you back where you started at the end.",
       "replayTour": "Replay the tour",
       "dangerZone": "Danger Zone",
       "dangerDesc": "Deleting your account hides your public page and listings immediately. Nothing is destroyed for 30 days — logging back in within that window restores everything. After that it's permanent.",
@@ -1356,7 +1356,7 @@
       "rTwoDays": "2 days before",
       "cancelQ": "Cancel this appointment?",
       "keepIt": "Keep it",
-      "yesCancel": "Yes, cancel appt",
+      "yesCancel": "Yes, cancel it",
       "layout": "Bookings layout",
       "week": "Week",
       "list": "List",
@@ -1417,7 +1417,7 @@
     "call": {
       "answered": "Answered",
       "noAnswer": "No Answer",
-      "callback": "Callback",
+      "callback": "Call back",
       "voicemail": "Voicemail"
     },
     "followUp": {
@@ -1461,7 +1461,7 @@
       "thisCar": "this car",
       "price": {
         "label": "Price too high",
-        "l1": "\"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM {{monthly}}/mo. That's less than a phone plan upgrade.\"",
+        "l1": "\"Let's look at what you're actually paying monthly — at 90% loan over 7 years, that's roughly RM {{monthly}} a month.\"",
         "l2": "\"What's your target price? Let me see what I can work out — I want to make this happen for you.\"",
         "l3": "\"This is already {{below}}. The value is there.\"",
         "belowAsking": "RM {{amount}} below asking",
@@ -1470,8 +1470,8 @@
       "mileage": {
         "label": "High mileage concern",
         "l1": "\"Mileage matters less than service history. A well-maintained {{car}} at {{km}} beats a low-km car that's been neglected.\"",
-        "l2": "\"These engines are built to go 300k+ km with regular service. The price already reflects the mileage.\"",
-        "l3": "\"I can help you run a CARFAX/JPJ check so you can see exactly what this car's been through.\"",
+        "l2": "\"With regular servicing, a well-kept engine goes a long way. The price already reflects the mileage.\"",
+        "l3": "\"I can help you check the JPJ ownership record and the service history, so you can see exactly what this car has been through.\"",
         "thisMileage": "this mileage"
       },
       "timing": {
@@ -1621,7 +1621,7 @@
       },
       "analytics": {
         "title": "Analytics",
-        "body": "Views, WhatsApp taps and conversion rate per listing, plus your total commission and cars sold — all in one view."
+        "body": "Where you lose deals (funnel, reply speed, loss reasons), plus views and WhatsApp taps per listing and your total commission."
       },
       "loans": {
         "title": "Loans",
@@ -1633,7 +1633,7 @@
       },
       "settings": {
         "title": "Settings",
-        "body": "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it at the bottom of this page to unlock the full panel — shared stock, team leads, commission tracking and more."
+        "body": "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it under Join a Dealership to unlock the full panel — shared stock, team leads, commission tracking and more."
       }
     },
     "greet": {
@@ -1742,7 +1742,7 @@
       "lineDeals_other": "{{count}} deals in motion right now.",
       "lineClear": "Pipeline is clear, a good time to feature a car or reach out to old buyers.",
       "overdue": "{{count}} overdue",
-      "emptyTitle": "List your stocks to get results",
+      "emptyTitle": "List your stock to get results",
       "emptyBody": "Your mini page is live and ready to share. It just needs cars on it.",
       "nToday": "{{n}} today",
       "days30": "30 days",
@@ -1803,7 +1803,7 @@
       "getStarted": "Get Started",
       "howFirstSale": "Here's how to make your first sale:",
       "step1Title": "Add your first listing",
-      "step1Sub": "Upload photos, set price, publish to XDrive marketplace.",
+      "step1Sub": "Upload photos, set a price, publish to the XDrive marketplace.",
       "step1Cta": "Add Listing →",
       "step2Title": "Share your listing link",
       "step2Sub": "Blast it on WhatsApp groups, Facebook, TikTok.",

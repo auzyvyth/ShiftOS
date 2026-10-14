@@ -993,15 +993,15 @@
   },
   "salesmanPremium": {
     "tabs": {
-      "dashboard": "Papan Pemuka",
+      "dashboard": "Dashboard",
       "listings": "Listing Saya",
-      "chat": "Sembang",
+      "chat": "Chat",
       "leads": "Lead",
       "inbox": "Peti Masuk",
       "sold": "Terjual",
       "analytics": "Analitik",
       "loans": "Pinjaman",
-      "outreach": "Jangkauan",
+      "outreach": "Outreach",
       "settings": "Tetapan"
     },
     "settings": {
@@ -1011,7 +1011,7 @@
       "languageSubtext": "Pilih bahasa yang digunakan di seluruh panel anda.",
       "selectImage": "Sila pilih fail gambar",
       "uploadFailed": "Upload gagal: {{msg}}",
-      "photoNotSaved": "Foto dah upload tapi tak dapat simpan ke profil — cuba lagi.",
+      "photoNotSaved": "Foto dah diupload tapi tak dapat disimpan ke profil — cuba lagi.",
       "photoUpdated": "Foto profil dikemas kini",
       "coverUpdated": "Foto cover dikemas kini",
       "saveFailed": "Tak dapat simpan profil - {{msg}}",
@@ -1033,10 +1033,10 @@
       "jobTitleHint": "Dipaparkan bawah nama anda di page awam. Biar kosong untuk sembunyi.",
       "bio": "Bio",
       "bioPh": "cth. Pakar Perodua & Honda, 5 tahun pengalaman di Lembah Klang",
-      "bioHint": "Dipaparkan bawah nama anda di page awam, dengan butang \"Baca lagi\".",
+      "bioHint": "Dipaparkan bawah nama anda di page awam, dengan butang \"Read more\".",
       "specializations": "Kepakaran",
       "tagPh": "cth. Kereta recon",
-      "tagHint": "Tekan Enter atau Tambah untuk setiap tag. Dipaparkan sebagai pil di profil awam anda.",
+      "tagHint": "Tekan Enter atau Tambah selepas setiap tag. Dipaparkan sebagai tag di profil awam anda.",
       "slug": "Username / Slug",
       "slugHint": "Hubungi support untuk tukar username.",
       "whatsapp": "Nombor WhatsApp",
@@ -1059,32 +1059,32 @@
       "fee": "Caj Pengurusan / Runner",
       "feePh": "cth. 300",
       "feeHint": "Caj anda sendiri selain caj rasmi JPJ dan Puspakom. Masukkan 0 kalau tiada caj.",
-      "connected": "Disambung",
+      "connected": "Dah disambung",
       "notSet": "Belum diset",
-      "tourDesc": "Bawa anda melalui setiap tab — Dashboard, Listing, Lead, Booking, Sejarah Lead, Analitik, Loan, Outreach, Chat, Pelanggan, Handover dan Tetapan — dan bawa anda balik ke tempat asal bila habis.",
-      "replayTour": "Main semula lawatan",
+      "tourDesc": "Bawa anda melalui setiap tab (Dashboard, Listing Saya, Chat, Lead, Peti Masuk, Terjual, Analitik, Pinjaman, Outreach dan Tetapan), buka satu-satu, dan bawa anda balik ke tempat asal bila habis.",
+      "replayTour": "Ulang panduan",
       "dangerZone": "Zon Bahaya",
-      "dangerDesc": "Padam akaun akan sembunyikan page awam dan listing anda serta-merta. Takde apa yang dimusnahkan selama 30 hari — log masuk semula dalam tempoh tu akan pulihkan semuanya. Selepas tu, ia kekal.",
+      "dangerDesc": "Padam akaun akan sembunyikan page awam dan listing anda serta-merta. Tiada apa yang dibuang selama 30 hari — log masuk semula dalam tempoh tu akan pulihkan semuanya. Selepas tu, ia kekal.",
       "deleteMyAccount": "Padam akaun saya"
     },
     "sold": {
-      "subtitle": "Setiap buyer selepas deal: serahan, pembaharuan dan servis selepas jualan.",
-      "handover": "Serahan",
+      "subtitle": "Setiap buyer selepas deal: handover, pembaharuan dan servis selepas jualan.",
+      "handover": "Handover",
       "customers": "Pelanggan",
       "comingUp": "Akan datang",
       "allClear": "Tiada apa yang perlu dibuat. Semua buyer dah terurus.",
       "more": "+{{n}} lagi",
       "showAll": "Tunjuk semua {{n}}",
-      "showLess": "Tunjuk sikit",
-      "cuHandoverNext": "Serahan {{p}}% · seterusnya: {{step}}",
-      "cuHandover": "Serahan {{p}}%",
+      "showLess": "Tunjuk kurang",
+      "cuHandoverNext": "Handover {{p}}% · seterusnya: {{step}}",
+      "cuHandover": "Handover {{p}}%",
       "cuExpired": "{{what}} tamat {{date}}",
       "cuDue": "{{what}} tamat {{date}} · {{n}} hari",
       "cuServiceNow": "{{plan}}: lawatan dah sampai masa",
       "cuService": "{{plan}}: lawatan {{date}}",
       "cuPlanEnding": "{{plan}} tamat {{date}} · {{n}} belum guna",
       "insurance": "Insurans",
-      "roadTax": "Cukai jalan",
+      "roadTax": "Road tax",
       "unknownBuyer": "Buyer tanpa nama",
       "noChecklist": "Tiada senarai semak",
       "done": "Selesai",
@@ -1105,8 +1105,8 @@
       "expiredOn": "Tamat {{date}}",
       "expiresOn": "Tamat {{date}}",
       "remind": "Ingatkan",
-      "fromHandover": "Tarikh akan masuk sendiri bila anda tanda langkah insurans dan cukai jalan dalam serahan.",
-      "openHandover": "Buka serahan",
+      "fromHandover": "Tarikh akan masuk sendiri bila anda tanda langkah insurans dan road tax dalam handover.",
+      "openHandover": "Buka handover",
       "tradeUp": "Sedia tukar kereta",
       "carAge": "kereta {{n}} tahun",
       "ownedYears": "dipakai {{n}} tahun",
@@ -1115,11 +1115,11 @@
       "search": "Cari buyer",
       "noCustomers": "Belum ada buyer. Mereka muncul di sini sendiri bila deal dimenangi.",
       "noMatch": "Tiada buyer yang sepadan.",
-      "setAtHandover": "Diisi masa serahan",
+      "setAtHandover": "Diisi masa handover",
       "handoverIntro": "Dokumen dan penyerahan untuk deal yang menang — dari settle loan sampai serah kunci."
     },
     "common": {
-      "loading": "Loading…",
+      "loading": "Memuatkan…",
       "pipeline": "Pipeline",
       "close": "Tutup",
       "lead": "Lead",
@@ -1158,7 +1158,7 @@
       },
       "profile": {
         "label": "Profil Awam",
-        "desc": "Get verified, foto, bio & tag"
+        "desc": "Pengesahan, foto, bio & tag"
       },
       "contact": {
         "label": "Hubungi & Lokasi",
@@ -1177,7 +1177,7 @@
         "desc": "Harga Proton, Perodua & Toyota"
       },
       "alerts": {
-        "label": "Notifikasi",
+        "label": "Makluman",
         "desc": "Push & Telegram"
       },
       "password": {
@@ -1197,8 +1197,8 @@
         "desc": "Bahasa paparan panel"
       },
       "help": {
-        "label": "Lawatan Produk",
-        "desc": "Main semula panduan"
+        "label": "Panduan Produk",
+        "desc": "Ulang panduan"
       },
       "danger": {
         "label": "Padam Akaun",
@@ -1224,7 +1224,7 @@
       "markLost": "Gagal tanda lead sebagai terlepas",
       "updateBooking": "Tak dapat update booking",
       "moveLead": "Tak dapat pindah lead",
-      "createLead": "Tak dapat cipta lead",
+      "createLead": "Tak dapat tambah lead",
       "pickDate": "Pilih tarikh dan masa yang betul",
       "createBooking": "Tak dapat cipta booking",
       "markWon": "Tak dapat tanda deal ni sebagai menang",
@@ -1250,10 +1250,10 @@
       "noData": "Tiada data dari {{label}} untuk dibandingkan."
     },
     "time": {
-      "sAgo": "{{n}}s lalu",
-      "mAgo": "{{n}}m lalu",
-      "hAgo": "{{n}}j lalu",
-      "dAgo": "{{n}}h lalu",
+      "sAgo": "{{n}} saat lalu",
+      "mAgo": "{{n}} minit lalu",
+      "hAgo": "{{n}} jam lalu",
+      "dAgo": "{{n}} hari lalu",
       "ago": "lalu",
       "justNow": "baru tadi",
       "in": "dalam",
@@ -1297,8 +1297,8 @@
       "addonTitle": "Deal ni ada add-on berbayar",
       "addonBadge": "Add-on",
       "loanOk": "Loan lulus",
-      "loanNo": "Loan tolak",
-      "loanOff": "Loan batal",
+      "loanNo": "Loan ditolak",
+      "loanOff": "Loan dibatal",
       "loanIn": "Loan dihantar",
       "loanTitle": "Ada permohonan loan untuk deal ni",
       "lastContact": "Kali terakhir dihubungi",
@@ -1315,13 +1315,13 @@
       "deleteLead": "Padam lead"
     },
     "bookings": {
-      "movedToViewing": "Dipindah ke Viewing Ditempah",
-      "addedAtViewing": "Masuk pipeline di Viewing Ditempah",
+      "movedToViewing": "Dipindah ke Viewing ditempah",
+      "addedAtViewing": "Masuk pipeline di Viewing ditempah",
       "confirmed": "Booking disahkan",
       "confirmedFor": "Booking disahkan untuk {{when}}",
       "addedToPipeline": "Masuk pipeline",
       "reminderFires": "Reminder diset — akan dihantar {{time}}",
-      "unknownBuyer": "Buyer Tak Dikenali",
+      "unknownBuyer": "Buyer tanpa nama",
       "newBadge": "BARU",
       "confirmTitle": "Sahkan booking ni dan mesej buyer di WhatsApp",
       "confirmBooking": "Sahkan Booking",
@@ -1333,12 +1333,12 @@
       "plate": "Plat",
       "reminderLabel": "Reminder",
       "reminderSent": "Reminder dah dihantar",
-      "move": "Ubah",
+      "move": "Tukar masa",
       "connectTelegram": "Sambung Telegram di Tetapan dulu",
       "chooseNew": "Pilih tarikh & masa baru",
       "rescheduled": "Temujanji dijadual semula!",
       "saveNewTime": "Simpan Masa Baru",
-      "scheduleReminder": "Jadual reminder",
+      "scheduleReminder": "Jadualkan reminder",
       "r1h": "1j sebelum",
       "r2h": "2j sebelum",
       "rDayBefore": "Sehari sebelum, 9pg",
@@ -1354,8 +1354,8 @@
       "shareListing": "Kongsi Listing →",
       "awaiting": "Menunggu Pengesahan",
       "today": "Hari Ini",
-      "upcoming": "Disahkan Akan Datang",
-      "past": "Lepas",
+      "upcoming": "Akan Datang (Disahkan)",
+      "past": "Dah Lepas",
       "markCompleted": "Tanda Selesai"
     },
     "won": {
@@ -1367,7 +1367,7 @@
     },
     "merge": {
       "invalid": "Kod jemputan tak sah atau dah tamat.",
-      "success": "Dah bergabung! Bawa anda ke dashboard penuh...",
+      "success": "Dah bergabung! Membawa anda ke dashboard penuh...",
       "intro": "Ada kod jemputan dari dealer anda? Masukkan di bawah untuk gabungkan akaun anda ke sistem ShiftOS mereka.",
       "codePh": "Masukkan kod jemputan cth. DEALER-XXXX",
       "verifying": "Sedang semak...",
@@ -1411,7 +1411,7 @@
     },
     "followUp": {
       "reminderDueAgo": "Reminder dah sampai {{ago}}",
-      "waiting": "{{reason}} · {{n}}h",
+      "waiting": "{{reason}} · {{n}} hari",
       "never_contacted": "Belum dihubungi",
       "reminder_due": "Reminder dah sampai",
       "gone_quiet": "Senyap"
@@ -1431,7 +1431,7 @@
     },
     "linkCar": {
       "title": "Link kereta",
-      "to": "untuk {{name}}",
+      "to": "kepada {{name}}",
       "searchPh": "Cari stok anda…",
       "noCars": "Anda belum ada kereta. Tambah dulu dari Listing.",
       "noMatch": "Tiada kereta yang padan.",
@@ -1450,8 +1450,8 @@
       "thisCar": "kereta ni",
       "price": {
         "label": "Harga terlalu tinggi",
-        "l1": "\"Jom tengok berapa sebenarnya bayaran bulanan — loan 90% untuk 7 tahun, lebih kurang RM {{monthly}} sebulan. Lebih murah dari upgrade plan phone.\"",
-        "l2": "\"Berapa harga yang anda target? Saya cuba tengok apa yang boleh buat — saya memang nak tolong jadikan.\"",
+        "l1": "\"Jom tengok berapa sebenarnya bayaran bulanan — loan 90% untuk 7 tahun, lebih kurang RM {{monthly}} sebulan.\"",
+        "l2": "\"Berapa harga yang anda target? Saya cuba tengok apa yang boleh buat — saya memang nak deal ni jadi untuk anda.\"",
         "l3": "\"Harga ni dah {{below}}. Memang berbaloi.\"",
         "belowAsking": "RM {{amount}} bawah harga asal",
         "marketPrice": "harga pasaran"
@@ -1459,8 +1459,8 @@
       "mileage": {
         "label": "Risau mileage tinggi",
         "l1": "\"Rekod servis lagi penting dari mileage. {{car}} yang dijaga elok dengan {{km}} lagi bagus dari kereta km rendah yang tak dijaga.\"",
-        "l2": "\"Enjin macam ni boleh tahan 300k+ km kalau servis ikut jadual. Harga pun dah ambil kira mileage.\"",
-        "l3": "\"Saya boleh tolong buat semakan CARFAX/JPJ supaya anda nampak sejarah kereta ni.\"",
+        "l2": "\"Kalau servis ikut jadual, enjin yang dijaga elok boleh tahan lama. Harga pun dah ambil kira mileage.\"",
+        "l3": "\"Saya boleh tolong semak rekod pemilikan JPJ dan sejarah servis, supaya anda nampak apa yang kereta ni dah lalui.\"",
         "thisMileage": "mileage ni"
       },
       "timing": {
@@ -1481,7 +1481,7 @@
       "car": "Kereta",
       "change": "Tukar",
       "noSpecs": "Tiada spec direkod",
-      "noCarYet": "Belum ada kereta dilink — loan yang dimula dari lead ni takde kereta untuk dibiayai.",
+      "noCarYet": "Belum ada kereta dilink — loan yang dimulakan dari lead ni takde kereta untuk dibiayai.",
       "contact": "Hubungi",
       "inAppChat": "Chat dalam app",
       "buyerPhone": "Nombor telefon buyer",
@@ -1582,18 +1582,18 @@
       "next": "Seterusnya",
       "welcome": {
         "title": "Selamat datang ke ShiftOS Premium",
-        "body": "Lawatan ringkas menu — semua yang plan anda buka, satu link demi satu."
+        "body": "Jom tengok menu sekejap — semua yang plan anda buka, satu demi satu."
       },
       "dashboard": {
-        "title": "Papan Pemuka",
+        "title": "Dashboard",
         "body": "Pusat kawalan anda — KPI, peringatan follow-up, prestasi listing dan aktiviti terkini, semua dalam satu paparan."
       },
       "listings": {
         "title": "Listing Saya",
-        "body": "Tambah kereta anda di sini. Setiap kad tunjuk views, tap WA dan bar CVR. Panas = buyer tengah klik. Sejuk = perlu refresh atau turun harga. Pil Add-on sebelah Kereta ialah katalog extra berbayar anda."
+        "body": "Tambah kereta anda di sini. Setiap kad tunjuk tontonan, tap WA dan bar CVR. Panas = buyer tengah klik. Sejuk = perlu refresh atau turun harga. Tab Add-on sebelah Kereta ialah katalog extra berbayar anda."
       },
       "chat": {
-        "title": "Sembang",
+        "title": "Chat",
         "body": "Buyer yang mesej anda dari listing masuk di sini, bukan WhatsApp. Anda nampak nama, kereta dan tanda dibaca — nombor telefon disorok sampai anda tekan."
       },
       "leads": {
@@ -1610,14 +1610,14 @@
       },
       "analytics": {
         "title": "Analitik",
-        "body": "Views, tap WhatsApp dan kadar penukaran setiap listing, serta jumlah komisen dan kereta terjual — semua dalam satu paparan."
+        "body": "Di mana deal anda terlepas (funnel, kelajuan balas, sebab terlepas), serta tontonan dan tap WhatsApp setiap listing dan jumlah komisen anda."
       },
       "loans": {
         "title": "Pinjaman",
         "body": "Banding kadar bank untuk buyer, hantar permohonan loan dan jejak status kelulusan — khas untuk Premium."
       },
       "outreach": {
-        "title": "Jangkauan",
+        "title": "Outreach",
         "body": "Tengok lead mana yang dah sejuk, lepas tu follow up satu-satu dengan kempen WhatsApp berpandu — satu tap setiap kontak. Khas Premium."
       },
       "settings": {
@@ -1653,7 +1653,7 @@
     },
     "testDrive": {
       "title": "Test drive macam mana?",
-      "noCar": "tiada kereta dipautkan",
+      "noCar": "tiada kereta dilink",
       "interested": "Dia berminat, teruskan",
       "advanceTo": "Naik ke {{stage}}",
       "notInterested": "Tak berminat",
@@ -1661,22 +1661,22 @@
     },
     "confirmBooking": {
       "title": "Sahkan booking",
-      "body": "Sahkan viewing, masukkan {{name}} ke pipeline anda di Viewing Booked, dan set peringatan Telegram 1 jam sebelum.",
+      "body": "Sahkan viewing, masukkan {{name}} ke pipeline anda di Viewing ditempah, dan set reminder Telegram 1 jam sebelum.",
       "message": "Mesej kepada buyer",
       "only": "Sahkan sahaja",
       "andSend": "Sahkan + hantar WhatsApp"
     },
     "sellerBooking": {
       "title": "Book viewing",
-      "body": "Pilih slot yang anda dah setuju dengan {{name}}. Ia terus masuk ke Confirmed Upcoming dengan peringatan 1 jam sebelum.",
+      "body": "Pilih slot yang anda dah setuju dengan {{name}}. Ia terus masuk ke Akan Datang (Disahkan) dengan reminder 1 jam sebelum.",
       "dateTime": "Tarikh & masa",
       "booking": "Sedang book…"
     },
     "wonPrompt": {
       "title": "Tanda deal ni menang?",
       "thisBuyer": "Buyer ni",
-      "withCar": "Kereta ditanda terjual dan dikeluarkan dari marketplace, kiraan jualan dan komisen anda dikemas kini, buyer dimasukkan ke Customers, dan senarai semak handover 8 langkah bermula.",
-      "noCar": "Tiada kereta dipautkan pada lead ni, jadi tiada apa ditanda terjual. Lead je yang ditutup.",
+      "withCar": "Kereta ditanda terjual dan dikeluarkan dari marketplace, kiraan jualan dan komisen anda dikemas kini, buyer dimasukkan ke Pelanggan, dan senarai semak handover 8 langkah bermula.",
+      "noCar": "Tiada kereta dilink pada lead ni, jadi tiada apa ditanda terjual. Lead je yang ditutup.",
       "notYet": "Belum lagi",
       "yes": "Ya, tanda menang"
     },
@@ -1699,7 +1699,7 @@
       "general": "Umum",
       "quota": "Kuota caption harian dah habis. Cuba lagi esok.",
       "loading": "AI sedang tulis caption...",
-      "regenerate": "Jana semula"
+      "regenerate": "Buat semula"
     },
     "dash": {
       "handoversInProgress_one": "{{count}} handover sedang berjalan",
@@ -1714,9 +1714,9 @@
       "views": "Tontonan",
       "pageVisits": "Lawatan page",
       "waTaps": "Tap WA",
-      "views30": "Tontonan (30h)",
+      "views30": "Tontonan (30 hari)",
       "visitsAll": "Lawatan page (semua)",
-      "taps30": "Tap WhatsApp + call (30h)",
+      "taps30": "Tap WhatsApp + call (30 hari)",
       "taps": "Tap WhatsApp + call",
       "liveListings": "Listing aktif",
       "lineNew": "Tambah kereta pertama anda untuk mula bina portfolio.",
@@ -1760,7 +1760,7 @@
       "nWaTaps_one": "{{count}} tap WA",
       "nWaTaps_other": "{{count}} tap WA",
       "hotTitle": "Tontonan dan klik tinggi, antara iklan terbaik anda",
-      "topViews": "PALING RAMAI TENGOK",
+      "topViews": "TONTONAN TINGGI",
       "warmTitle": "Tontonan dan klik makin naik",
       "rising": "MENINGKAT",
       "noListingData": "Belum ada data listing. Publish kereta untuk mula pantau.",
@@ -1786,7 +1786,7 @@
       "editTarget": "Edit sasaran",
       "setGoal": "+ Set sasaran komisen bulanan",
       "pinned": "Dipin",
-      "bestToPush": "Paling sesuai ditolak",
+      "bestToPush": "Patut ditonjolkan",
       "unpin": "Buang pin",
       "pin": "Pin",
       "getStarted": "Mula di sini",
@@ -1903,10 +1903,10 @@
       "closeCounts": "{{won}} menang · {{lost}} terlepas · {{total}} lead semuanya. Hanya deal menang dan terlepas dikira, jadi lead yang masih terbuka tak tarik kadar ni turun.",
       "whereStop": "Di mana deal berhenti",
       "furthest": "Peringkat paling jauh",
-      "historyError": "Tak dapat muat sejarah peringkat, jadi funnel ni mungkin salahkan langkah yang salah. Muat semula tab untuk cuba lagi.",
+      "historyError": "Tak dapat memuatkan sejarah peringkat, jadi funnel ni mungkin salahkan langkah yang salah. Muat semula tab untuk cuba lagi.",
       "weakest": "Paling lemah",
       "stoppedHere": "{{n}} berhenti di sini ({{pct}}%)",
-      "loadingHistory": "Memuat sejarah peringkat…",
+      "loadingHistory": "Memuatkan sejarah peringkat…",
       "funnelNote": "Deal yang terlepas dikira di peringkat yang betul-betul dicapai, bukan di mana ia berakhir.",
       "moreDetail": "Butiran lanjut",
       "moreDetailSub": "Kelajuan balas, kenapa deal terlepas, sumber lead",
@@ -1916,7 +1916,7 @@
       "medianAcross": "Median daripada {{n}} lead",
       "within1h": "Dibalas dalam 1 jam",
       "later": "Dibalas lambat",
-      "closedOf": "Closing {{won}} daripada {{settled}}",
+      "closedOf": "{{won}} closing daripada {{settled}}",
       "noneSettled": "Belum ada yang selesai",
       "basedOn": "Berdasarkan {{pct}}% lead anda yang ada rekod balasan pertama.",
       "whyLost": "Kenapa deal terlepas",
@@ -2358,12 +2358,12 @@
       "hideList": "Sorok senarai call minggu ni",
       "toContact": "untuk dihubungi",
       "empty": "Tiada yang menunggu, semua dah terurus. Pertanyaan baru keluar di sini sebaik masuk, dan buyer lama muncul semula bila road tax atau insurans mereka hampir tamat.",
-      "intro": "Paling penting dulu. Tekan Mesej untuk buka WhatsApp dengan teks siap.",
+      "intro": "Paling segera dulu. Tekan Mesej untuk buka WhatsApp dengan teks siap.",
       "messageTitle": "Buka WhatsApp dengan mesej siap",
       "message": "Mesej",
       "handledTitle": "Dah settle, sorok ni",
       "markHandled": "Tanda {{name}} dah settle",
-      "showFewer": "Tunjuk sikit",
+      "showFewer": "Tunjuk kurang",
       "showAll": "Tunjuk semua {{n}}",
       "why": {
         "neverReplied": "Belum dibalas · {{n}} hari lalu",
@@ -2387,8 +2387,8 @@
     },
     "followUpRow": {
       "justNow": "baru tadi",
-      "hours": "{{n}}j",
-      "days": "{{n}}h",
+      "hours": "{{n}} jam",
+      "days": "{{n}} hari",
       "reason": {
         "never_contacted": "Belum dihubungi",
         "reminder_due": "Reminder dah sampai",
