@@ -30,7 +30,7 @@ const CONTENT = {
   en: {
     overview: {
       title: 'What is Salesman Lite?',
-      body: `Salesman Lite is the free way for independent car salesmen in Malaysia to get found and get the lead: your own page on XDrive, up to 5 live cars on the marketplace, and every buyer enquiry in one list. Following up and closing (reminders, call log, commission, performance) is Salesman Premium.`,
+      body: `Salesman Lite is the free way for independent car salesmen in Malaysia to get found and get the lead: your own page on XDrive, up to 10 live cars on the marketplace, and every buyer enquiry in one list. Following up and closing (reminders, call log, commission, performance) is Salesman Premium.`,
       items: [
         { label: 'Your public storefront', desc: 'Every listing you publish appears on xdrive.my and on your personal profile link (xdrive.my/s/your-slug). Buyers can WhatsApp you directly from any listing.' },
         { label: 'Lead list', desc: 'Every buyer who contacts you lands here. Move them through the stages, add notes, and mark the deal won when the car sells.' },
@@ -120,7 +120,7 @@ const CONTENT = {
       { q: 'What happens to my data if I join a dealership?', a: 'Your listings and leads carry over to the dealer\'s system. The dealer\'s owner and managers can see your leads and pipeline. Nothing is deleted — it just becomes shared within the team.' },
       { q: 'Can I have more than one account?', a: 'No — one account per email address. If you need to switch between a solo account and a dealership, use the Join Dealership flow.' },
       { q: 'How do I get my public profile link?', a: 'Your link is xdrive.my/s/[your-slug]. Your slug is shown in the Settings tab under "Username / Slug". Copy and share it anywhere.' },
-      { q: 'How many listings can I have?', a: 'Up to 5 live cars on Salesman Lite (Available or Reserved). Sold cars don\'t count towards the limit. Salesman Premium allows 30.' },
+      { q: 'How many listings can I have?', a: 'Up to 10 live cars on Salesman Lite (Available or Reserved). Sold cars don\'t count towards the limit. Salesman Premium allows 30.' },
       { q: 'I got an enquiry — what do I do?', a: 'Go to Inbox → Enquiries. Open the enquiry, tap the WhatsApp button to reply to the buyer, then tap "Add to Leads" to track the deal in your pipeline.' },
       { q: 'What does stale lead mean?', a: 'A lead is stale if no activity (note, stage change, follow-up, appointment) has been logged in 5 or more days. It\'s a reminder that the buyer may be going cold. Follow up immediately.' },
       { q: 'Can buyers book test drives through XDrive?', a: 'Yes. Listings on XDrive have a booking button. Requests come into your Inbox → Bookings tab. You accept, reschedule, or cancel from there.' },
@@ -131,7 +131,7 @@ const CONTENT = {
   ms: {
     overview: {
       title: 'Apa itu Salesman Lite?',
-      body: 'Salesman Lite ialah cara percuma untuk salesman kereta bebas di Malaysia dijumpai dan dapat lead: page sendiri di XDrive, sehingga 5 kereta aktif di marketplace, dan setiap pertanyaan pembeli dalam satu senarai. Follow up dan tutup deal (reminder, log call, komisen, prestasi) ada di Salesman Premium.',
+      body: 'Salesman Lite ialah cara percuma untuk salesman kereta bebas di Malaysia dijumpai dan dapat lead: page sendiri di XDrive, sehingga 10 kereta aktif di marketplace, dan setiap pertanyaan pembeli dalam satu senarai. Follow up dan tutup deal (reminder, log call, komisen, prestasi) ada di Salesman Premium.',
       items: [
         { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di xdrive.my dan pada pautan profil peribadi anda (xdrive.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
         { label: 'Senarai lead', desc: 'Setiap pembeli yang hubungi anda masuk di sini. Gerakkan mereka ikut peringkat, tambah nota, dan tanda deal menang bila kereta terjual.' },
@@ -221,7 +221,7 @@ const CONTENT = {
       { q: 'Apa yang berlaku pada data saya jika saya menyertai pengedar?', a: 'Listing dan lead anda dibawa ke sistem pengedar. Pemilik dan pengurus pengedar boleh melihat lead dan saluran anda. Tiada yang dipadam — ia hanya menjadi dikongsi dalam pasukan.' },
       { q: 'Bolehkah saya mempunyai lebih dari satu akaun?', a: 'Tidak — satu akaun bagi setiap alamat e-mel. Jika anda perlu bertukar antara akaun solo dan pengedar, gunakan aliran Sertai Pengedar.' },
       { q: 'Bagaimana saya mendapatkan pautan profil awam saya?', a: 'Pautan anda adalah xdrive.my/s/[slug-anda]. Slug anda ditunjukkan dalam tab Tetapan di bawah "Nama Pengguna / Slug". Salin dan kongsi di mana sahaja.' },
-      { q: 'Berapa banyak listing yang boleh saya ada?', a: 'Sehingga 5 kereta aktif pada Salesman Lite (Tersedia atau Ditempah). Kereta Dijual tidak dikira. Salesman Premium membenarkan 30.' },
+      { q: 'Berapa banyak listing yang boleh saya ada?', a: 'Sehingga 10 kereta aktif pada Salesman Lite (Tersedia atau Ditempah). Kereta Dijual tidak dikira. Salesman Premium membenarkan 30.' },
       { q: 'Saya mendapat pertanyaan — apa yang perlu saya lakukan?', a: 'Pergi ke Peti Masuk → Pertanyaan. Buka pertanyaan, ketik butang WhatsApp untuk membalas pembeli, kemudian ketik "Tambah ke Lead" untuk menjejaki deal dalam saluran anda.' },
       { q: 'Apa maksud lead basi?', a: 'Lead adalah basi jika tiada aktiviti (nota, perubahan peringkat, susulan, temujanji) telah dilog dalam 5 hari atau lebih. Ia adalah peringatan bahawa pembeli mungkin semakin sejuk. Susulan dengan segera.' },
       { q: 'Bolehkah pembeli menempah ujian pandu melalui XDrive?', a: 'Ya. Listing di XDrive mempunyai butang tempahan. Permintaan masuk ke tab Peti Masuk → Tempahan anda. Anda terima, jadual semula, atau batal dari sana.' },
