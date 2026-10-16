@@ -157,8 +157,8 @@ The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
 notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
 area. **Update it in the same commit** as any change that adds a screen, a table
 family, a cron job or an outside service. Check diagrams parse before committing.
-`src/pages/MindMapPage.jsx` (`/mindmap`) is an older hand-drawn map, stale since
-spring 2026 — do not update it; it is pending removal.
+`src/pages/MindMapPage.jsx` (`/mindmap`) is an older hand-drawn map, long stale (it
+still says "21 pages") — do not update it; it is pending removal.
 
 ## Key files
 - src/pages/MarketplacePage.jsx — THE public XDrive marketplace (`/` on xdrive.my).
