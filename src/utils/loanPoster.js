@@ -60,7 +60,7 @@ export const fmtPct = (n) => {
 // Every word printed on the poster, both languages. A new string goes in BOTH.
 export const POSTER_COPY = {
   ms: {
-    kicker: 'KIRAAN LOAN KERETA',
+    kicker: 'ANGGARAN ANSURAN',
     year: 'TAHUN',
     cond: { recon: 'RECOND', used: 'TERPAKAI', new: 'BARU' },
     mileage: 'Mileage',
@@ -80,7 +80,7 @@ export const POSTER_COPY = {
     preview: 'PRATONTON',
   },
   en: {
-    kicker: 'CAR LOAN ESTIMATE',
+    kicker: 'INSTALMENT ESTIMATE',
     year: 'YEAR',
     cond: { recon: 'RECOND', used: 'USED', new: 'NEW' },
     mileage: 'Mileage',

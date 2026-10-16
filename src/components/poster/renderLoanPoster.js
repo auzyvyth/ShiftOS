@@ -1,10 +1,13 @@
 // Draws the loan poster (POSTER-1) onto a canvas: one 1080x1350 (4:5) frame,
 // the largest portrait size WhatsApp, Instagram and Facebook all show uncropped.
 //
-// Layout top to bottom: kicker + car name + year/condition, the car photo,
-// spec chips, the price table, the 9/7/5 instalment strip, the seller band,
-// and the "bank decides" line. Every number comes from loanPosterNumbers()
-// (src/utils/loanPoster.js); nothing here does maths.
+// Our own look, deliberately NOT the competitor's (SA Studio X: white card,
+// navy tenure blocks side by side, navy seller band). Ours is the Drevo dark
+// surface: the photo runs full width with the car name ON it (same idea as the
+// live presenter), the price and its working on one line, the 9/7/5 instalments
+// as a stacked list with the longest tenure highlighted, then the seller.
+// Every number comes from loanPosterNumbers() (src/utils/loanPoster.js);
+// nothing here does maths.
 //
 // preview: true draws a faint diagonal "PREVIEW" over the frame. The sheet
 // shows the preview for free; the clean file is drawn only after the credit
@@ -16,12 +19,14 @@ import { POSTER_COPY, fmtRM, fmtPct, posterChips, posterTitle, posterSubtitle } 
 export const POSTER_W = 1080;
 export const POSTER_H = 1350;
 
-const INK = '#0f172a';
-const NAVY = '#13213d';
-const SUB = '#64748b';
-const LINE = '#e2e8f0';
-const TINT = '#f1f5f9';
+const BG = '#0b0f17';
+const PANEL = '#151b26';
+const WHITE = '#ffffff';
+const SOFT = 'rgba(255,255,255,0.72)';
+const FAINT = 'rgba(255,255,255,0.5)';
+const LINE = 'rgba(255,255,255,0.10)';
 const RED = '#dc2626';
+const RED_SOFT = '#f87171';
 const FAMILY = "'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif";
 
 const font = (size, weight = 400) => `${weight} ${size}px ${FAMILY}`;
@@ -55,14 +60,14 @@ export async function renderLoanPoster(canvas, { car, seller, numbers, lang = 'm
     cachedImage(seller?.avatar_url || null),
   ]);
 
-  const W = POSTER_W, H = POSTER_H, P = 56, CW = W - P * 2;
+  const W = POSTER_W, H = POSTER_H, P = 64, CW = W - P * 2;
   canvas.width = W * dpr;
   canvas.height = H * dpr;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.textBaseline = 'alphabetic';
 
-  const text = (str, x, y, { size = 24, weight = 400, color = INK, align = 'left', spacing = 0 } = {}) => {
+  const text = (str, x, y, { size = 24, weight = 400, color = WHITE, align = 'left', spacing = 0 } = {}) => {
     ctx.font = font(size, weight);
     ctx.fillStyle = color;
     ctx.textAlign = align;
@@ -79,128 +84,106 @@ export async function renderLoanPoster(canvas, { car, seller, numbers, lang = 'm
     while (out.length > 1 && measure(out, s, weight) > max) out = `${out.slice(0, -2)}…`;
     return { str: out, size: s };
   };
-  const box = (x, y, w, h, r, fill, stroke) => {
-    roundRectPath(ctx, x, y, w, h, r);
-    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
-    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke(); }
-  };
+  const box = (x, y, w, h, r, fill) => { roundRectPath(ctx, x, y, w, h, r); ctx.fillStyle = fill; ctx.fill(); };
 
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = BG;
   ctx.fillRect(0, 0, W, H);
 
-  // Header
-  text(c.kicker, P, 76, { size: 22, weight: 700, color: SUB, spacing: 3 });
-  ctx.fillStyle = RED;
-  ctx.fillRect(P, 90, 48, 5);
-  const title = fit(posterTitle(car), CW, 66, 800, 40);
-  text(title.str, P, 170, { size: title.size, weight: 800, color: INK });
-  const sub = posterSubtitle(car, lang);
-  if (sub) text(sub, P, 212, { size: 24, weight: 700, color: SUB, spacing: 2 });
-
-  // Photo
-  const PH_Y = 240, PH_H = 450;
-  if (carImg) drawCover(ctx, carImg, P, PH_Y, CW, PH_H, 24);
+  // Photo, full width, fading into the background at the bottom.
+  const PH_H = 640;
+  if (carImg) drawCover(ctx, carImg, 0, 0, W, PH_H, 0);
   else {
-    box(P, PH_Y, CW, PH_H, 24, TINT);
-    text(c.noPhoto, W / 2, PH_Y + PH_H / 2 + 10, { size: 28, weight: 600, color: SUB, align: 'center' });
+    ctx.fillStyle = PANEL; ctx.fillRect(0, 0, W, PH_H);
+    text(c.noPhoto, W / 2, PH_H / 2 - 40, { size: 30, weight: 600, color: FAINT, align: 'center' });
+  }
+  const fade = ctx.createLinearGradient(0, PH_H - 330, 0, PH_H);
+  fade.addColorStop(0, 'rgba(11,15,23,0)');
+  fade.addColorStop(0.55, 'rgba(11,15,23,0.78)');
+  fade.addColorStop(1, BG);
+  ctx.fillStyle = fade;
+  ctx.fillRect(0, PH_H - 330, W, 330);
+
+  // Kicker pill, top left on the photo.
+  const kw = measure(c.kicker, 20, 700) + 40;
+  box(P, 48, kw + c.kicker.length * 2, 46, 23, 'rgba(11,15,23,0.62)');
+  text(c.kicker, P + 20, 79, { size: 20, weight: 700, color: WHITE, spacing: 2 });
+
+  // Car name and facts, sitting on the faded bottom of the photo.
+  const title = fit(posterTitle(car), CW, 68, 800, 40);
+  text(title.str, P, PH_H - 66, { size: title.size, weight: 800 });
+  const facts = [posterSubtitle(car, lang), ...posterChips(car, lang)].filter(Boolean).join('  ·  ');
+  if (facts) {
+    const f = fit(facts, CW, 26, 500, 18);
+    text(f.str, P, PH_H - 22, { size: f.size, weight: 500, color: SOFT });
   }
 
-  // Spec chips
-  let y = PH_Y + PH_H + 24;
-  const chips = posterChips(car, lang);
-  if (chips.length) {
-    let x = P;
-    chips.forEach((chip) => {
-      const w = measure(chip, 24, 600) + 40;
-      if (x + w > P + CW) return;
-      box(x, y, w, 50, 25, TINT);
-      text(chip, x + 20, y + 33, { size: 24, weight: 600, color: INK });
-      x += w + 12;
-    });
-    y += 50 + 22;
-  } else {
-    y += 8;
-  }
+  // Price, then the working on one line.
+  let y = PH_H + 72;
+  text(c.price.toUpperCase(), P, y - 6, { size: 18, weight: 700, color: FAINT, spacing: 2 });
+  text(`RM ${fmtRM(numbers.price)}`, P, y + 62, { size: 70, weight: 800 });
+  const working = `${c.deposit} RM ${fmtRM(numbers.deposit)}   ·   ${c.loan} RM ${fmtRM(numbers.loan)}   ·   ${fmtPct(numbers.rate)} ${numbers.basis === 'flat' ? 'flat' : 'EIR'}`;
+  const wk = fit(working, CW, 25, 500, 18);
+  text(wk.str, P, y + 108, { size: wk.size, weight: 500, color: SOFT });
+  y += 140;
 
-  // Price table
-  const rows = [
-    [c.price, `RM ${fmtRM(numbers.price)}`],
-    [c.deposit, `RM ${fmtRM(numbers.deposit)}`],
-    [c.loan, `RM ${fmtRM(numbers.loan)}`],
-    [c.rate(numbers.basis), fmtPct(numbers.rate)],
-  ];
-  const RH = chips.length ? 54 : 60;
-  box(P, y, CW, rows.length * RH + 16, 20, '#ffffff', LINE);
-  rows.forEach(([label, value], i) => {
-    const ry = y + 8 + i * RH;
-    if (i > 0) { ctx.fillStyle = LINE; ctx.fillRect(P + 28, ry, CW - 56, 2); }
-    text(label, P + 28, ry + RH / 2 + 9, { size: 26, weight: 500, color: SUB });
-    text(value, P + CW - 28, ry + RH / 2 + 10, { size: 30, weight: 800, color: INK, align: 'right' });
-  });
-  y += rows.length * RH + 16 + 22;
-
-  // 9 / 7 / 5 strip
-  const GAP = 16, TW = (CW - GAP * 2) / 3, TH = 118;
+  // 9 / 7 / 5 as one stacked list; the longest tenure (lowest monthly) leads.
+  const RH = 88;
+  box(P, y, CW, RH * numbers.rows.length, 22, PANEL);
   numbers.rows.forEach((row, i) => {
-    const x = P + i * (TW + GAP);
-    box(x, y, TW, TH, 18, '#ffffff', LINE);
-    // navy tenure block on the left
-    ctx.save();
-    roundRectPath(ctx, x, y, TW, TH, 18); ctx.clip();
-    ctx.fillStyle = NAVY; ctx.fillRect(x, y, 74, TH);
-    ctx.restore();
-    text(String(row.years), x + 37, y + 66, { size: 46, weight: 800, color: '#ffffff', align: 'center' });
-    text(c.tenure, x + 37, y + 92, { size: 15, weight: 700, color: 'rgba(255,255,255,0.75)', align: 'center', spacing: 1 });
-    const amt = `${fmtRM(row.monthly)}`;
-    const avail = TW - 74 - 24;
-    const big = fit(amt, avail - 40, 44, 800, 26);
-    const rmW = measure('RM', 20, 800);
-    const ax = x + 74 + 14;
-    text('RM', ax, y + 64, { size: 20, weight: 800, color: RED });
-    text(big.str, ax + rmW + 4, y + 66, { size: big.size, weight: 800, color: RED });
-    text(c.perMonth, ax, y + 96, { size: 20, weight: 600, color: SUB });
+    const ry = y + i * RH;
+    if (i === 0) {
+      ctx.save();
+      roundRectPath(ctx, P, y, CW, RH * numbers.rows.length, 22); ctx.clip();
+      ctx.fillStyle = 'rgba(220,38,38,0.16)'; ctx.fillRect(P, ry, CW, RH);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = LINE; ctx.fillRect(P + 28, ry, CW - 56, 2);
+    }
+    text(`${row.years} ${c.tenure.toLowerCase()}`, P + 32, ry + RH / 2 + 12, { size: 32, weight: 700, color: i === 0 ? WHITE : SOFT });
+    const per = c.perMonth;
+    const perW = measure(per, 24, 600);
+    const right = P + CW - 32;
+    text(per, right, ry + RH / 2 + 14, { size: 24, weight: 600, color: FAINT, align: 'right' });
+    text(`RM ${fmtRM(row.monthly)}`, right - perW - 8, ry + RH / 2 + 16, { size: 46, weight: 800, color: i === 0 ? RED_SOFT : WHITE, align: 'right' });
   });
-  y += TH + 24;
+  y += RH * numbers.rows.length;
 
-  // Seller band, anchored to the bottom so any slack sits above it.
-  const BH = 110;
-  y = Math.max(y, H - 58 - BH);
-  box(P, y, CW, BH, 20, NAVY);
-  const avR = 36, avCx = P + 24 + avR, avCy = y + BH / 2;
-  ctx.beginPath(); ctx.arc(avCx, avCy, avR + 3, 0, Math.PI * 2); ctx.fillStyle = '#ffffff'; ctx.fill();
+  // Seller: photo, name, role on the left; WhatsApp number on the right.
+  const SY = Math.max(y + 40, H - 182);
+  ctx.fillStyle = LINE; ctx.fillRect(P, SY, CW, 2);
+  const avR = 38, avCx = P + avR, avCy = SY + 26 + avR;
   if (avatarImg) drawCircle(ctx, avatarImg, avCx, avCy, avR);
   else {
-    ctx.beginPath(); ctx.arc(avCx, avCy, avR, 0, Math.PI * 2); ctx.fillStyle = '#334155'; ctx.fill();
+    ctx.beginPath(); ctx.arc(avCx, avCy, avR, 0, Math.PI * 2); ctx.fillStyle = RED; ctx.fill();
     const initial = String(seller?.full_name || '?').trim().charAt(0).toUpperCase();
-    text(initial, avCx, avCy + 12, { size: 34, weight: 800, color: '#ffffff', align: 'center' });
+    text(initial, avCx, avCy + 13, { size: 36, weight: 800, align: 'center' });
   }
-  const nameX = avCx + avR + 20;
-  const right = P + CW - 24;
+  const nameX = avCx + avR + 22;
+  const rightX = P + CW;
   const phone = seller?.whatsapp_number || seller?.phone || '';
-  const rightW = phone ? Math.max(measure(phone, 30, 800), measure(c.contact, 15, 700) + 8) : 0;
-  const nameMax = right - nameX - (rightW ? rightW + 28 : 0);
-  const nm = fit(String(seller?.full_name || '').trim() || ' ', nameMax, 30, 800, 20);
-  text(nm.str, nameX, avCy - 2, { size: nm.size, weight: 800, color: '#ffffff' });
-  const role = fit(String(seller?.job_title || '').trim() || c.advisor, nameMax, 20, 500, 14);
-  text(role.str, nameX, avCy + 28, { size: role.size, weight: 500, color: 'rgba(255,255,255,0.7)' });
+  const rightW = phone ? Math.max(measure(phone, 34, 800), measure(c.contact, 16, 700) + 8) : 0;
+  const nameMax = rightX - nameX - (rightW ? rightW + 28 : 0);
+  const nm = fit(String(seller?.full_name || '').trim() || ' ', nameMax, 32, 800, 20);
+  text(nm.str, nameX, avCy - 2, { size: nm.size, weight: 800 });
+  const role = fit(String(seller?.job_title || '').trim() || c.advisor, nameMax, 22, 500, 14);
+  text(role.str, nameX, avCy + 30, { size: role.size, weight: 500, color: SOFT });
   if (phone) {
-    text(c.contact, right, avCy - 14, { size: 15, weight: 700, color: 'rgba(255,255,255,0.6)', align: 'right', spacing: 2 });
-    text(phone, right, avCy + 22, { size: 30, weight: 800, color: '#ffffff', align: 'right' });
+    text(c.contact, rightX, avCy - 14, { size: 16, weight: 700, color: FAINT, align: 'right', spacing: 2 });
+    text(phone, rightX, avCy + 26, { size: 34, weight: 800, align: 'right' });
   }
-  y += BH;
 
-  // Footer: the seller's page link, then the bank line
+  // Footer: page link, then the bank line.
   const foot = numbers.highValue ? c.highValue : c.disclaimer;
   const link = pageUrl ? pageUrl.replace(/^https?:\/\//, '') : '';
-  if (link) text(link, W / 2, y + 26, { size: 18, weight: 700, color: INK, align: 'center' });
+  if (link) text(link, P, H - 46, { size: 19, weight: 700, color: SOFT });
   const ft = fit(foot, CW, 17, 500, 13);
-  text(ft.str, W / 2, y + (link ? 48 : 34), { size: ft.size, weight: 500, color: SUB, align: 'center' });
+  text(ft.str, P, H - 20, { size: ft.size, weight: 500, color: FAINT });
 
   if (preview) {
     ctx.save();
     ctx.translate(W / 2, H / 2);
     ctx.rotate(-Math.PI / 6);
-    text(c.preview, 0, 0, { size: 150, weight: 800, color: 'rgba(15,23,42,0.07)', align: 'center', spacing: 12 });
+    text(c.preview, 0, 0, { size: 150, weight: 800, color: 'rgba(255,255,255,0.09)', align: 'center', spacing: 12 });
     ctx.restore();
   }
   return canvas;

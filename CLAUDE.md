@@ -1355,8 +1355,13 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 ## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
 Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
 linked-salesman car popup (`Salesmanpanel.jsx`). Seller types price, deposit, rate (EIR or
-flat) and gets one 1080x1350 JPEG: photo, spec chips, price table, a 9/7/5-year strip,
-their name/photo/WhatsApp number and mini-page link. Built against SA Studio X (IDEA-18).
+flat) and gets one 1080x1350 JPEG: full-width photo with the car name on it, price + its
+working on one line, 9/7/5 instalments as a stacked list, their name/photo/WhatsApp number
+and mini-page link. Built in answer to SA Studio X (IDEA-18).
+- **Our layout, never theirs (owner, 2026-10-16).** The first build was a near pixel copy
+  (white card, navy tenure blocks side by side, navy seller band, "KIRAAN LOAN" header).
+  The idea and the numbers are free to use; their arrangement and look are not. Keep the
+  Drevo dark surface; do not drift back toward their template.
 - Numbers + every printed word: `src/utils/loanPoster.js` (`npm run test:poster`). Drawing:
   `src/components/poster/renderLoanPoster.js`. Sheet: `src/components/poster/LoanPosterSheet.jsx`.
   Image loading shared with the calculator's quotation poster: `src/utils/posterImage.js`.
