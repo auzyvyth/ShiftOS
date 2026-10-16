@@ -12,7 +12,7 @@ Last checked against the live system: 2026-10-16.
 ## 1. The whole thing on one page
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph People
     B[Buyer<br/>guest or signed in]
     SL[Solo salesman<br/>Lite / Premium]

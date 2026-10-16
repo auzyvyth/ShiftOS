@@ -157,6 +157,9 @@ The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
 notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
 area. **Update it in the same commit** as any change that adds a screen, a table
 family, a cron job or an outside service. Check diagrams parse before committing.
+The phone-friendly page (tap a diagram to pinch-zoom) is BUILT from that file:
+`node tools/build-system-map.mjs <out.html>` outside the repo, then republish the
+artifact. Never hand-edit the page or commit its HTML: it would be a second copy.
 `src/pages/MindMapPage.jsx` (`/mindmap`) is an older hand-drawn map, long stale (it
 still says "21 pages") — do not update it; it is pending removal.
 
