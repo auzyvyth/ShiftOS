@@ -292,12 +292,12 @@
   },
   "salesmanLite": {
     "tabs": {
-      "dashboard": "Papan Pemuka",
+      "dashboard": "Dashboard",
       "listings": "Listing Saya",
       "listingsMobile": "Listing",
       "leads": "Lead",
       "inbox": "Peti Masuk",
-      "chat": "Sembang",
+      "chat": "Chat",
       "performance": "Prestasi",
       "performanceMobile": "Prestasi",
       "merge": "Sertai Pengedar",
@@ -312,7 +312,7 @@
     },
     "greeting": {
       "morning": "Selamat pagi",
-      "afternoon": "Selamat tengahari",
+      "afternoon": "Selamat tengah hari",
       "evening": "Selamat petang"
     },
     "dash": {
@@ -320,23 +320,23 @@
       "welcomeBack_other": "Selamat kembali! {{count}} lead sedia untuk disambung semula.",
       "welcomeBackClear": "Selamat kembali! Pipeline anda kemas — masa sesuai untuk hubungi pembeli lama.",
       "stale_other": "{{count}} lead menunggu follow-up — jangan biar yang panas jadi sejuk.",
-      "today_other": "Anda ada {{count}} temujanji hari ini. Jadikan ia berbaloi.",
+      "today_other": "Anda ada {{count}} temujanji hari ini. Buat yang terbaik.",
       "motion_other": "{{count}} deal sedang berjalan sekarang.",
       "clear": "Pipeline lapang — masa sesuai untuk feature kereta atau hubungi pembeli lama.",
       "portfolioValue": "Nilai portfolio semasa",
       "acrossListings_other": "dalam {{count}} listing aktif",
       "headlinedBy": "Diterajui oleh {{car}} anda — RM {{price}}",
-      "buyerViews": "Tontonan (30h)",
-      "waTaps": "Ketukan WhatsApp + panggilan (30h)",
-      "pageVisits": "Lawatan halaman (semua masa)",
-      "minipageTrafficBy": "Trafik halaman mini ikut platform",
-      "openMinipage": "Lihat halaman mini anda",
-      "openMinipageTitle": "Buka halaman mini anda dalam tab baharu",
+      "buyerViews": "Tontonan (30 hari)",
+      "waTaps": "Tap WhatsApp + panggilan (30 hari)",
+      "pageVisits": "Lawatan page (semua masa)",
+      "minipageTrafficBy": "Trafik mini page ikut platform",
+      "openMinipage": "Lihat mini page anda",
+      "openMinipageTitle": "Buka mini page anda dalam tab baharu",
       "openMarketplace": "Lihat marketplace XDrive",
       "openMarketplaceTitle": "Buka marketplace XDrive dalam tab baharu",
       "copy": "Salin",
       "share": "Kongsi",
-      "shareMyListingsCaption": "Tengok senarai kereta saya di XDrive",
+      "shareMyListingsCaption": "Tengok listing kereta saya di XDrive",
       "live": "Langsung",
       "days30": "30 hari",
       "myPerformance": "Prestasi Saya",
@@ -357,8 +357,8 @@
       "viewAllFollowUps": "+{{count}} lagi dalam pipeline",
       "step1First": "Langkah 1 dulu",
       "dismiss": "Tutup",
-      "noListingsTitle": "Senaraikan stok anda untuk dapat hasil",
-      "noListingsBody": "Halaman mini anda sudah aktif dan sedia dikongsi — cuma perlukan kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
+      "noListingsTitle": "Senaraikan kereta anda untuk dapat hasil",
+      "noListingsBody": "Mini page anda dah aktif dan sedia dikongsi — cuma belum ada kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
       "noListingsCta": "Tambah listing"
     },
     "goal": {
@@ -388,7 +388,7 @@
       "shareCta": "Kongsi kejayaan",
       "shareDealCaption": "Baru berjaya jual satu lagi — tengok kereta lain saya",
       "shareGoalCaption": "Capai sasaran jualan bulan ini — tengok kereta saya",
-      "notNow": "Tidak sekarang",
+      "notNow": "Bukan sekarang",
       "close": "Tutup"
     },
     "checklist": {
@@ -409,7 +409,7 @@
       "followUps": "Follow-up",
       "todayAppts": "Temujanji Hari Ini",
       "closed": "Ditutup",
-      "overdue": "tertunggak"
+      "overdue": "lewat"
     },
     "tour": {
       "progress": "{{current}} / {{total}}",
@@ -420,27 +420,27 @@
       "steps": {
         "welcome": {
           "title": "Selamat Datang ke ShiftOS Lite",
-          "body": "Lawatan ringkas 30 saat. Setiap langkah akan membawa anda terus ke bahagian panel — boleh tengok sendiri dalam masa nyata."
+          "body": "Panduan ringkas 30 saat. Setiap langkah bawa anda terus ke bahagian panel itu, jadi anda boleh tengok sendiri."
         },
         "dashboard": {
-          "title": "Papan Pemuka",
+          "title": "Dashboard",
           "body": "Pusat kawalan anda: KPI, booking hari ini, prestasi setiap kereta dan trafik page anda, semua dalam satu paparan."
         },
         "listings": {
-          "title": "Iklan Saya",
-          "body": "Tambah kereta anda di sini. Setiap kad menunjukkan tontonan, ketukan WA, dan bar penukaran. Kereta yang mendapat banyak klik akan terpapar jelas."
+          "title": "Listing Saya",
+          "body": "Tambah kereta anda di sini. Setiap kad tunjuk tontonan, tap WA dan bar penukaran. Kereta yang banyak diklik akan nampak jelas."
         },
         "leads": {
           "title": "Lead",
-          "body": "Jejak setiap lead: Baru → Dihubungi → Test Drive → Menang. Skor panas menunjukkan siapa yang perlu perhatian. Hantar mesej terus ke WhatsApp."
+          "body": "Jejak setiap lead: Baru → Dihubungi → Test Drive → Menang. Skor panas tunjuk siapa perlu perhatian. Mesej mereka terus di WhatsApp."
         },
         "inbox": {
           "title": "Peti Masuk",
-          "body": "Peti masuk anda — Tempahan di hadapan, dengan log Sejarah Lead di belakangnya. Semua yang pembeli mulakan dengan anda masuk di sini."
+          "body": "Peti masuk anda: Booking di depan, dengan log Sejarah Lead di belakangnya. Semua yang pembeli mulakan dengan anda masuk di sini."
         },
         "bookings": {
-          "title": "Tempahan",
-          "body": "Janji temu tontonan dipaparkan di sini dengan kereta, pembeli dan masa yang jelas. Sahkan tempahan untuk hantar mesej WhatsApp boleh-edit kepada pembeli, atau jadual semula dengan satu ketikan."
+          "title": "Booking",
+          "body": "Janji temu viewing muncul di sini dengan kereta, pembeli dan masa yang jelas. Sahkan booking untuk hantar mesej WhatsApp (boleh edit) kepada pembeli, atau tukar masa dengan satu tap."
         },
         "performance": {
           "title": "Prestasi",
@@ -448,10 +448,10 @@
         },
         "chat": {
           "title": "Chat",
-          "body": "Pembeli boleh mesej anda terus dari iklan, di dalam ShiftOS sendiri. Setiap perbualan masuk dalam satu senarai — di bawah statistik papan pemuka anda."
+          "body": "Pembeli boleh mesej anda terus dari listing, di dalam ShiftOS sendiri. Setiap perbualan masuk dalam satu senarai — di bawah statistik dashboard anda."
         },
         "services": {
-          "title": "Tambahan",
+          "title": "Add-on",
           "body": "Di Premium: katalog add-on anda sendiri seperti tint, warranty dan pakej servis, dilampirkan pada kereta untuk untung lebih setiap jualan."
         },
         "merge": {
@@ -471,14 +471,14 @@
     },
     "inbox": {
       "enquiries": "Pertanyaan",
-      "bookings": "Tempahan",
+      "bookings": "Booking",
       "leadHistory": "Sejarah Lead",
-      "noBookings": "Tiada tempahan lagi.",
-      "noBookingsSub": "Tempahan muncul bila pelanggan tempah test drive dari listing anda.",
+      "noBookings": "Belum ada booking.",
+      "noBookingsSub": "Booking muncul bila pembeli tempah test drive dari listing anda.",
       "shareListing": "Kongsi Listing →",
       "awaitingConfirmation": "Menunggu Pengesahan",
       "today": "Hari Ini",
-      "confirmedUpcoming": "Disahkan Akan Datang",
+      "confirmedUpcoming": "Akan Datang (Disahkan)",
       "past": "Lepas",
       "markCompleted": "Tandakan Selesai",
       "noShow": "Tak Hadir",
@@ -492,11 +492,11 @@
       "sent": "Dihantar!",
       "booked": "Ditempah",
       "dateChanged": "Tarikh ditukar",
-      "confirmBooking": "Sahkan Tempahan",
+      "confirmBooking": "Sahkan Booking",
       "message": "Mesej",
-      "move": "Ubah",
+      "move": "Tukar masa",
       "cancel": "Batal",
-      "keepIt": "Simpan",
+      "keepIt": "Kekalkan",
       "cancelAppt": "Ya, batalkan",
       "cancelConfirmQ": "Batalkan temujanji ini?",
       "chooseNewTime": "Pilih tarikh & masa baru",
@@ -506,13 +506,13 @@
       "scheduleReminderTitle": "Jadualkan peringatan Telegram",
       "setReminder": "Tetapkan peringatan",
       "saving": "Menyimpan…",
-      "reminderBefore1h": "1j sebelum",
-      "reminderBefore2h": "2j sebelum",
-      "reminderDayBefore": "Sehari sebelum 9pagi",
+      "reminderBefore1h": "1 jam sebelum",
+      "reminderBefore2h": "2 jam sebelum",
+      "reminderDayBefore": "Sehari sebelum, 9 pagi",
       "reminderTwoDays": "2 hari sebelum",
       "templateChat": "Jom Borak",
       "templateTestDrive": "Tempah Test Drive",
-      "templateBudget": "Apa Budget?",
+      "templateBudget": "Bajet Berapa?",
       "templateDeposit": "Deposit Nak Hold",
       "status": {
         "pending": "Menunggu",
@@ -528,12 +528,12 @@
       "contacted": "Dihubungi",
       "viewing_booked": "Viewing Ditempah",
       "test_drive": "Test Drive",
-      "negotiating": "Rundingan",
-      "deposit_taken": "Deposit Diambil",
+      "negotiating": "Berunding",
+      "deposit_taken": "Deposit diterima",
       "won": "Menang",
-      "lost": "Kalah",
+      "lost": "Terlepas",
       "closed_won": "Menang",
-      "closed_lost": "Kalah"
+      "closed_lost": "Terlepas"
     },
     "heat": {
       "hot": "panas",
@@ -543,9 +543,9 @@
     "leads": {
       "searchPlaceholder": "Cari ikut nama atau telefon…",
       "stage": "Peringkat",
-      "followUp": "Susulan",
+      "followUp": "Follow-up",
       "pipeline": "Pipeline Lead",
-      "linkCar": "Pautkan Kereta",
+      "linkCar": "Link Kereta",
       "deleteQ": "Padam?",
       "yes": "Ya",
       "no": "Tidak",
@@ -553,7 +553,9 @@
       "srcEnquiry": "Pertanyaan XDrive",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Rujukan",
-      "srcManual": "Manual"
+      "srcManual": "Manual",
+      "chat": "Chat",
+      "openChat": "Buka chat dalam app dengan pembeli ini"
     },
     "perf": {
       "closeRate": "Kadar Tutup",
@@ -631,7 +633,7 @@
       "title": "Listing Saya",
       "addListing": "Tambah Listing",
       "cancel": "Batal",
-      "copyLink": "Salin Pautan",
+      "copyLink": "Salin Link",
       "sort": "Susun:",
       "sortNewest": "Terbaru",
       "sortPriceDesc": "Harga ↓",
@@ -647,17 +649,17 @@
       }
     },
     "confirmModal": {
-      "title": "Sahkan tempahan",
+      "title": "Sahkan booking",
       "messageLabel": "Mesej kepada pembeli",
       "moveToPipeline": "Pindah ke Pipeline",
       "send": "Sahkan & Hantar WhatsApp"
     },
     "sellerBooking": {
-      "title": "Sahkan tempahan lead ini",
-      "subtitle": "Tetapkan tarikh & masa viewing. Ini cipta tempahan yang disahkan dalam tab Tempahan anda.",
+      "title": "Sahkan booking lead ini",
+      "subtitle": "Tetapkan tarikh & masa viewing. Ini akan cipta booking yang disahkan dalam tab Booking anda.",
       "dateLabel": "Tarikh & masa viewing",
       "cancel": "Batal",
-      "confirm": "Sahkan Tempahan",
+      "confirm": "Sahkan Booking",
       "confirming": "Mengesahkan…"
     },
     "time": {
@@ -671,7 +673,7 @@
       "fullName": "Nama Penuh",
       "fullNamePlaceholder": "Nama penuh anda",
       "whatsapp": "Nombor WhatsApp",
-      "whatsappHint": "Kod negara Malaysia sudah dimasukkan. Nombor sahaja.",
+      "whatsappHint": "Kod negara Malaysia (+60) sudah dimasukkan. Masukkan nombor sahaja.",
       "telegram": "Notifikasi Telegram",
       "telegramConnected": "Disambungkan",
       "telegramNotSet": "Belum ditetapkan",
@@ -688,7 +690,7 @@
       "stateSelect": "Pilih negeri",
       "address": "Alamat Penuh (untuk peta)",
       "addressPlaceholder": "cth. 12, Jalan Ampang, 50450 Kuala Lumpur",
-      "addressHint": "Dipaparkan sebagai peta pada halaman awam anda supaya pembeli dapat mencari anda.",
+      "addressHint": "Dipaparkan sebagai peta di page awam anda supaya pembeli boleh cari anda.",
       "icNumber": "No. IC",
       "icPrivate": "(peribadi — admin sahaja)",
       "icHint": "Diperlukan untuk pengesahan. Tidak ditunjukkan kepada umum.",
@@ -697,8 +699,8 @@
       "profileSection": "Profil",
       "socialSection": "Pautan Sosial",
       "changePhoto": "Tukar foto",
-      "uploading": "Memuat naik…",
-      "photoSubtext": "Terpapar pada listing & halaman profil anda",
+      "uploading": "Sedang upload…",
+      "photoSubtext": "Terpapar pada listing & page profil anda",
       "changePhotoTitle": "Tukar foto profil",
       "yourName": "Nama Anda",
       "coverPhoto": "Foto Kulit",
@@ -709,8 +711,8 @@
       "savingBtn": "Menyimpan...",
       "language": "Bahasa",
       "languageSubtext": "Tukar antara Inggeris dan Melayu",
-      "sellingTermsSection": "Terma jualan (dipapar pada iklan anda)",
-      "sellingTermsHint": "Pembeli melihat maklumat ini pada setiap kereta yang anda iklankan. Jika dibiarkan kosong, iklan akan meminta mereka bertanya kepada anda.",
+      "sellingTermsSection": "Terma jualan (dipapar pada listing anda)",
+      "sellingTermsHint": "Pembeli nampak maklumat ini pada setiap kereta yang anda listing. Jika dibiarkan kosong, listing akan minta mereka tanya anda.",
       "depositPolicy": "Polisi deposit",
       "depositPolicySelect": "Tidak dinyatakan — pembeli diminta bertanya",
       "depositRefundable": "Boleh dikembalikan jika pembeli tarik diri",
@@ -724,11 +726,12 @@
       "navProfile": "Profil",
       "navContact": "Hubungan & Lokasi",
       "navSelling": "Jualan",
-      "navAlerts": "Pemberitahuan",
+      "navAlerts": "Makluman",
       "navPremium": "Premium",
-      "navRefer": "Rujuk penjual",
+      "navRefer": "Ajak seller lain",
       "navAccount": "Akaun",
-      "navHeading": "Tetapan"
+      "navHeading": "Tetapan",
+      "navNewCars": "Kereta baru"
     },
     "logout": {
       "title": "Log keluar?",
@@ -738,11 +741,11 @@
     },
     "dangerZone": {
       "title": "Zon Bahaya",
-      "subtext": "Memadam akaun anda akan menyembunyikan senarai dan profil anda serta-merta. Data anda disimpan selama 30 hari sekiranya anda berubah fikiran, kemudian dipadam secara kekal.",
+      "subtext": "Memadam akaun anda akan menyembunyikan listing dan profil anda serta-merta. Data anda disimpan selama 30 hari sekiranya anda berubah fikiran, kemudian dipadam secara kekal.",
       "deleteBtn": "Padam akaun",
       "modalTitle": "Padam akaun anda?",
       "modalBody": "Ini menyahaktifkan akaun anda serta-merta. Anda boleh memulihkannya dengan log masuk semula dalam tempoh 30 hari — selepas itu ia dipadam selamanya.",
-      "point1": "Senarai dan halaman awam anda disembunyikan serta-merta",
+      "point1": "Listing dan page awam anda disembunyikan serta-merta",
       "point2": "Anda akan dilog keluar dari semua peranti",
       "point3": "Semuanya dipadam secara kekal selepas 30 hari",
       "confirmLabel": "Taip DELETE untuk sahkan",
@@ -757,7 +760,7 @@
       "reactivate": "Aktifkan semula akaun saya",
       "reactivating": "Mengaktifkan semula...",
       "reactivateFailed": "Tidak dapat mengaktifkan semula. Sila cuba lagi.",
-      "reactivateExpired": "Tempoh pemulihan 30 hari telah tamat. Hubungi sokongan untuk memulihkan akaun ini.",
+      "reactivateExpired": "Tempoh pemulihan 30 hari telah tamat. Hubungi support untuk pulihkan akaun ini.",
       "signOut": "Log keluar",
       "reactivateSuccess": "Selamat kembali — akaun anda aktif semula."
     },
@@ -772,8 +775,8 @@
       "noCodeHelp": "Tiada kod? Minta pengedar anda jana satu dari panel Tetapan ShiftOS mereka."
     },
     "drawer": {
-      "noCarLinkedShort": "Tiada kereta dipaut",
-      "noCarLinkedRow": "Tiada kereta dipaut pada lead ini",
+      "noCarLinkedShort": "Tiada kereta dilink",
+      "noCarLinkedRow": "Tiada kereta dilink pada lead ini",
       "plateLabel": "Plat",
       "vinLabel": "VIN",
       "notes": "Nota",
@@ -786,25 +789,25 @@
       "history": "Sejarah",
       "receipt": "Resit",
       "changeCar": "Tukar Kereta",
-      "linkCar": "Paut Kereta",
+      "linkCar": "Link Kereta",
       "activityHistory": "Sejarah Aktiviti",
       "loading": "Memuatkan…",
       "noActivity": "Belum ada aktiviti.",
-      "whyLost": "Kenapa hilang?",
+      "whyLost": "Kenapa terlepas?",
       "deleteLeadQ": "Padam lead ini?",
       "yesDelete": "Ya, padam",
       "no": "Tidak",
-      "markLost": "Tanda hilang",
+      "markLost": "Tanda terlepas",
       "delete": "Padam",
       "lostReasons": {
         "price": "Harga",
         "timing": "Masa",
         "competitor": "Pesaing",
-        "ghost": "Hilang diam"
+        "ghost": "Senyap"
       },
       "addons": {
         "title": "Add-on",
-        "empty": "Belum ada produk aktif — tambah satu dalam tab Perkhidmatan anda.",
+        "empty": "Belum ada produk aktif — tambah satu dalam tab Servis anda.",
         "selectProduct": "— Pilih produk —",
         "pricePlaceholder": "Harga jual (RM)",
         "attachCta": "Add-on",
@@ -812,7 +815,13 @@
         "submit": "Tambah",
         "attached": "Add-on ditambah",
         "attachFailed": "Gagal tambah add-on"
-      }
+      },
+      "addPhone": "Tambah nombor telefon",
+      "addPhoneWhenShared": "Tambah nombor mereka bila mereka beri",
+      "contact": "Hubungi",
+      "editPhone": "Ubah nombor telefon",
+      "inAppChat": "Chat dalam app",
+      "phoneLabel": "Nombor telefon pembeli"
     },
     "addLead": {
       "title": "Tambah Lead",
@@ -888,10 +897,10 @@
       "sendViaWa": "Hantar melalui WA"
     },
     "linkCar": {
-      "title": "Paut Kereta ke Lead",
+      "title": "Link Kereta ke Lead",
       "noListings": "Belum ada listing. Tambah listing dulu.",
-      "linked": "✓ Dipaut",
-      "link": "Paut →"
+      "linked": "✓ Dilink",
+      "link": "Link →"
     },
     "toast": {
       "listingLockedTab": "Tambah listing pertama anda untuk buka tab ini",
@@ -903,16 +912,16 @@
       "statusUpdateFailed": "Gagal kemas kini status",
       "listingDeleteFailed": "Gagal padam listing",
       "listingDeleted": "Listing dipadam",
-      "newEnquiry": "Enquiry baru!",
-      "someoneEnquired": "Ada orang enquire",
+      "newEnquiry": "Pertanyaan baru!",
+      "someoneEnquired": "Ada orang bertanya",
       "listingApproved": "Listing diluluskan!",
       "listingApprovedDesc": "{{car}} kini live.",
       "listingRejected": "Listing ditolak",
       "listingRejectedDesc": "{{car}} tidak diluluskan.",
       "newBooking": "Booking baru!",
-      "newAppointment": "Appointment baru",
+      "newAppointment": "Temujanji baru",
       "bookingsLoadFailed": "Tidak dapat muatkan booking",
-      "stageUpdateFailed": "Gagal kemas kini stage lead",
+      "stageUpdateFailed": "Gagal kemas kini peringkat lead",
       "noteSaveFailed": "Gagal simpan nota",
       "callLogFailed": "Gagal log call",
       "callLogged": "Call dilog",
@@ -920,63 +929,65 @@
       "followUpSet": "Reminder follow-up diset",
       "reminderCleared": "Reminder dikosongkan",
       "leadDeleteFailed": "Gagal padam lead",
-      "carLinkFailed": "Gagal paut kereta",
-      "carLinked": "Kereta dipaut ke lead!",
-      "lostMarkFailed": "Gagal tanda lead sebagai hilang",
+      "carLinkFailed": "Gagal link kereta",
+      "carLinked": "Kereta dilink ke lead!",
+      "lostMarkFailed": "Gagal tanda lead sebagai terlepas",
       "wonMarkFailed": "Gagal tanda lead sebagai menang",
-      "wonButSoldFailed": "Lead menang, tapi gagal tanda listing sebagai terjual",
+      "wonButSoldFailed": "Lead menang, tapi kereta tak dapat ditanda terjual",
       "wonWithCar": "Menang! {{car}} ditanda terjual.",
       "wonNoCar": "Lead ditanda Menang!",
-      "appointmentUpdateFailed": "Gagal kemas kini appointment",
+      "appointmentUpdateFailed": "Gagal kemas kini temujanji",
       "reminderSetFailed": "Tak dapat set reminder. Cuba lagi.",
-      "movedToViewingBooked": "Lead dipindah ke Viewing Booked!",
-      "createdAtViewingBooked": "Lead dicipta di Viewing Booked!",
+      "movedToViewingBooked": "Lead dipindah ke Viewing Ditempah!",
+      "createdAtViewingBooked": "Lead dicipta di Viewing Ditempah!",
       "bookingConfirmed": "Booking disahkan",
       "pickValidDateTime": "Pilih tarikh dan masa yang sah",
       "bookingCreateFailed": "Tak dapat cipta booking",
       "bookingConfirmedFor": "Booking disahkan untuk {{when}}",
       "addLeadFailed": "Gagal tambah lead",
-      "storeLinkCopied": "Pautan kedai disalin — kongsi dengan pembeli!",
-      "linkCopied": "Pautan disalin!",
+      "storeLinkCopied": "Link page disalin — kongsi dengan pembeli!",
+      "linkCopied": "Link disalin!",
       "listingPublished": "Listing diterbitkan!",
       "bookingUpdateFailed": "Gagal kemas kini booking",
-      "telegramReminderSet": "Reminder diset — Telegram akan hantar {{time}}",
+      "telegramReminderSet": "Reminder diset — Telegram akan ingatkan anda {{time}}",
       "telegramTestBody": "Telegram disambungkan! Anda akan terima alert booking dan reminder di sini. — {{name}}",
       "telegramTestSent": "Mesej ujian dihantar — semak Telegram anda",
       "telegramNeedChatId": "Masukkan Telegram Chat ID anda dahulu",
       "telegramNotStarted": "Buka {{bot}} dalam Telegram dan tekan Start, kemudian cuba lagi",
       "telegramTheBot": "bot ShiftOS",
-      "telegramNoToken": "Tiada bot Telegram disambungkan lagi — hubungi sokongan",
+      "telegramNoToken": "Tiada bot Telegram disambungkan lagi — hubungi support",
       "telegramTestFailed": "Tak dapat hantar — semak Chat ID",
       "telegramNetworkError": "Ralat rangkaian semasa hantar mesej ujian",
-      "appointmentRescheduled": "Appointment dijadual semula!",
+      "appointmentRescheduled": "Masa temujanji ditukar!",
       "selectImageFile": "Sila pilih fail imej",
-      "uploadFailed": "Muat naik gagal: {{msg}}",
-      "photoSaveFailed": "Foto dimuat naik tapi tak dapat disimpan ke profil anda — cuba lagi.",
+      "uploadFailed": "Upload gagal: {{msg}}",
+      "photoSaveFailed": "Foto dah diupload tapi tak dapat disimpan ke profil anda — cuba lagi.",
       "profilePhotoUpdated": "Foto profil dikemas kini",
-      "coverPhotoUpdated": "Foto kulit dikemas kini",
+      "coverPhotoUpdated": "Foto banner dikemas kini",
       "profileSaveFailed": "Tak dapat simpan profil anda. Semak sambungan anda dan cuba lagi.",
       "profileUpdated": "Profil dikemas kini",
       "messageLogFailed": "Gagal log mesej",
       "waSent": "WA dihantar!",
       "waSentDesc": "Anda call mereka juga?",
-      "waSentAction": "Log Call"
+      "waSentAction": "Log Call",
+      "phoneSaveFailed": "Gagal simpan nombor telefon",
+      "phoneTooShort": "Nombor telefon ini nampak tak lengkap"
     },
     "locked": {
       "leadsTitle": "Lead dikunci",
       "leadsSub": "Tambah kenderaan untuk mula kumpul lead. Pembeli yang bertanya pada listing anda akan muncul di sini secara automatik.",
       "inboxTitle": "Peti masuk dikunci",
-      "inboxSub": "Tambah kenderaan untuk terima pertanyaan dan tempahan. Setiap mesej dan permintaan test drive akan muncul di sini.",
-      "chatTitle": "Tiada sembang lagi",
-      "chatSub": "Senaraikan kereta pertama anda. Pembeli boleh menghantar mesej terus dari listing, dan setiap perbualan akan masuk di sini.",
+      "inboxSub": "Tambah kenderaan untuk terima pertanyaan dan booking. Setiap mesej dan permintaan test drive akan muncul di sini.",
+      "chatTitle": "Belum ada chat",
+      "chatSub": "Tambah kereta pertama anda. Pembeli boleh mesej anda terus dari listing, dan setiap perbualan masuk di sini.",
       "perfTitle": "Prestasi dikunci",
-      "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — paparan, kadar tutup dan kesihatan pipeline semuanya terbina daripada listing anda.",
+      "perfSub": "Tambah kenderaan untuk lihat data prestasi anda — tontonan, kadar closing dan kesihatan pipeline semuanya dibina daripada listing anda.",
       "cta": "Tambah kenderaan"
     },
     "premiumRow": {
       "cta": "Lihat Premium",
       "followUpTitle_other": "{{count}} lead dah senyap",
-      "followUpSub": "Premium senaraikan siapa nak call hari ini, set reminder follow up dan boleh WhatsApp semua sekali gus.",
+      "followUpSub": "Premium senaraikan siapa nak call hari ini, set reminder follow-up dan boleh WhatsApp semua sekali gus.",
       "commissionTitle": "Komisen dan target bulanan",
       "commissionSub": "Jejak berapa komisen setiap jualan dan berapa dekat anda dengan target bulan ini. Di Premium.",
       "leadTools": "Reminder dan log call: Premium",
@@ -989,6 +1000,9 @@
       "servicesTitle": "Jual add-on dengan setiap kereta",
       "servicesSub": "Premium simpan katalog anda sendiri untuk tint, coating, warranty dan pakej servis, dan tunjuk berapa setiap satu bawa untung.",
       "cta": "Lihat Premium"
+    },
+    "booked": {
+      "pendingBanner_other": "{{count}} booking menunggu pengesahan"
     }
   },
   "salesmanPremium": {
