@@ -1753,15 +1753,13 @@ every month. Migration `20260905p`, cron jobids 14 and 15.
   DEFINER job touches it. All three functions are revoked from `public`, `anon`
   and `authenticated`; verified with `has_function_privilege`, not by reading the
   migration back.
-- [ ] **JPJ-1: QUEUED FOR TONIGHT (after 22:00 MYT), not yet live.** Migration
-  `supabase/migrations/20261016a_jpj_refresh_alerts.sql` makes `reg_refresh_finish()`
-  call `notify_ops` when a year fails (`err:jpj_refresh`) or when there has been no
-  good load for 6 days (`err:jpj_stale`, catches `reg_refresh_start` never running).
-  Tested on a local Postgres 16 with stubs (healthy / http 500 / parse error /
-  nothing queued / old failure): one alert per bad week, none on a good one.
-  After applying: confirm one overload (`select oid::regprocedure from pg_proc where
-  proname='reg_refresh_finish'`) and that Monday 2026-10-19's run logs ok. Delete
-  this entry then. Known gap: if cron job 15 itself stops, nothing calls the check.
+- [ ] **JPJ-1: APPLIED 2026-10-16 22:06 MYT, awaiting Monday 2026-10-19 run.** Migration
+  `supabase/migrations/20261016a_jpj_refresh_alerts.sql` is live: `reg_refresh_finish()` calls
+  `notify_ops` on a failed year (`err:jpj_refresh`) or no good load for 6 days (`err:jpj_stale`).
+  Verified after apply: one overload, both alert keys in the live definition, anon/authenticated
+  cannot execute, cron job 15 active. Next: after Mon 02:20 UTC, confirm a fresh ok row in
+  `reg_ingest_log` and no stale alert, then delete this entry. Known gap: if cron job 15 itself
+  stops, nothing calls the check.
 
 ## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
 
