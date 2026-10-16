@@ -362,7 +362,7 @@
       "viewAllFollowUps": "+{{count}} more in pipeline",
       "step1First": "Step 1 first",
       "dismiss": "Dismiss",
-      "noListingsTitle": "List your stocks to get results",
+      "noListingsTitle": "List your cars to get results",
       "noListingsBody": "Your mini page is live and ready to share — it just needs cars on it. Add your first listing so buyers can start finding you.",
       "noListingsCta": "Add a listing"
     },
@@ -503,7 +503,7 @@
       "move": "Move",
       "cancel": "Cancel",
       "keepIt": "Keep it",
-      "cancelAppt": "Yes, cancel appt",
+      "cancelAppt": "Yes, cancel it",
       "cancelConfirmQ": "Cancel this appointment?",
       "chooseNewTime": "Choose new date & time",
       "saveNewTime": "Save New Time",
@@ -514,7 +514,7 @@
       "saving": "Saving…",
       "reminderBefore1h": "1h before",
       "reminderBefore2h": "2h before",
-      "reminderDayBefore": "Day before 9am",
+      "reminderDayBefore": "Day before, 9am",
       "reminderTwoDays": "2 days before",
       "templateChat": "Let's Chat",
       "templateTestDrive": "Book Test Drive",
@@ -559,7 +559,9 @@
       "srcEnquiry": "XDrive Enquiry",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Referral",
-      "srcManual": "Manual"
+      "srcManual": "Manual",
+      "chat": "Chat",
+      "openChat": "Open the in-app chat with this buyer"
     },
     "perf": {
       "closeRate": "Close Rate",
@@ -681,7 +683,7 @@
       "fullName": "Full Name",
       "fullNamePlaceholder": "Your full name",
       "whatsapp": "WhatsApp Number",
-      "whatsappHint": "Malaysia country code pre-applied. Enter digits only.",
+      "whatsappHint": "Malaysia country code (+60) is added for you. Enter digits only.",
       "telegram": "Telegram Notifications",
       "telegramConnected": "Connected",
       "telegramNotSet": "Not set",
@@ -738,7 +740,8 @@
       "navPremium": "Premium",
       "navRefer": "Refer a seller",
       "navAccount": "Account",
-      "navHeading": "Settings"
+      "navHeading": "Settings",
+      "navNewCars": "New cars"
     },
     "logout": {
       "title": "Log out?",
@@ -822,7 +825,13 @@
         "submit": "Add",
         "attached": "Add-on attached",
         "attachFailed": "Failed to attach add-on"
-      }
+      },
+      "addPhone": "Add phone number",
+      "addPhoneWhenShared": "Add their number when they share it",
+      "contact": "Contact",
+      "editPhone": "Edit phone number",
+      "inAppChat": "In-app chat",
+      "phoneLabel": "Buyer phone number"
     },
     "addLead": {
       "title": "Add Lead",
@@ -934,7 +943,7 @@
       "carLinked": "Car linked to lead!",
       "lostMarkFailed": "Failed to mark lead as lost",
       "wonMarkFailed": "Failed to mark lead as won",
-      "wonButSoldFailed": "Lead won, but failed to mark listing as sold",
+      "wonButSoldFailed": "Lead won, but the car could not be marked as sold",
       "wonWithCar": "Won! {{car}} marked as sold.",
       "wonNoCar": "Lead marked as Won!",
       "appointmentUpdateFailed": "Failed to update appointment",
@@ -946,11 +955,11 @@
       "bookingCreateFailed": "Couldn't create the booking",
       "bookingConfirmedFor": "Booking confirmed for {{when}}",
       "addLeadFailed": "Failed to add lead",
-      "storeLinkCopied": "Store link copied — share it with buyers!",
+      "storeLinkCopied": "Page link copied — share it with buyers!",
       "linkCopied": "Link copied!",
       "listingPublished": "Listing published!",
       "bookingUpdateFailed": "Failed to update booking",
-      "telegramReminderSet": "Reminder set — Telegram fires {{time}}",
+      "telegramReminderSet": "Reminder set — Telegram will remind you {{time}}",
       "telegramTestBody": "Telegram connected! You'll get booking and reminder alerts here. — {{name}}",
       "telegramTestSent": "Test message sent — check your Telegram",
       "telegramNeedChatId": "Enter your Telegram Chat ID first",
@@ -970,7 +979,9 @@
       "messageLogFailed": "Failed to log message",
       "waSent": "WA sent!",
       "waSentDesc": "Did you also call them?",
-      "waSentAction": "Log Call"
+      "waSentAction": "Log Call",
+      "phoneSaveFailed": "Failed to save phone number",
+      "phoneTooShort": "That does not look like a full phone number"
     },
     "locked": {
       "leadsTitle": "Leads locked",
@@ -1000,6 +1011,10 @@
       "servicesTitle": "Sell add-ons with every car",
       "servicesSub": "Premium keeps your own catalogue of tint, coating, warranty and service packages, and shows what each one earns you.",
       "cta": "See Premium"
+    },
+    "booked": {
+      "pendingBanner_one": "{{count}} booking pending confirmation",
+      "pendingBanner_other": "{{count}} bookings pending confirmation"
     }
   },
   "salesmanPremium": {
