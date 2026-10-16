@@ -70,6 +70,57 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## BRAND-1: One new name + one domain for XDrive and ShiftOS — name DECIDED: Drevo (2026-10-16)
+- [x] **Name: Drevo** (owner, 2026-10-16). Replaces both XDrive (collides with
+  BMW's xDrive) and ShiftOS (another company's name): ONE name, ONE domain for
+  marketplace + seller tools. Search check: no Drevo business in Malaysia; abroad
+  it is Czech/Slovak for "wood" (woodworking firms, a possibly defunct keyboard
+  brand). Rejected on the way: Telusa (Google -> TELUS), Amanu (Parti Amanah),
+  Falcon (Ford Falcon), Sahlah/Jamin (overclaim). Runners-up: Benara, KeretaTelus.
+- [x] **`drevo.my` BOUGHT (owner, 2026-10-16).** Not yet connected to Vercel.
+- [ ] **Owner still to check:** SSM name free; no MyIPO mark in classes 35/42;
+  `@drevo` (or close) free on TikTok/IG/FB.
+- [ ] **Owner call: what does "ShiftOS" become?** (plain "Drevo" recommended,
+  or "Drevo for Dealers"). Until answered, leave existing ShiftOS text alone.
+- [x] **Rename step 1 DONE (2026-10-16): the domain lives in ONE file,
+  `src/config/site.js`** (`ROOT_DOMAIN`, `SITE_URL`, `OWN_DOMAINS`,
+  `isOwnHost`, `storefrontSubdomain`, `isOwnUrl`). Every hostname CHECK now goes
+  through it: useTenant, postAuthRoute, authErrors (captcha), LoginPage,
+  BuyerAuthPage, Dashboard referrer, apiUrl, Sentry, api/og|sitemap|robots.
+  No visible change. Guarded by `npm run test:site`. Switch day: set
+  `ROOT_DOMAIN = "drevo.my"` and keep `"xdrive.my"` in `OWN_DOMAINS`.
+- [ ] **Rename step 2 (switch day): the TEXT.** ~150 literal `xdrive.my` URLs and
+  display strings (copy files, legal, articles -> `npm run articles:build`,
+  `public/llms.txt`), "XDrive" (566) and "ShiftOS" (435) brand words, logos in
+  `public/`, emails `support|legal|hello|alerts@xdrive.my` (need mailboxes on
+  drevo.my first). Never touch identifiers (`ShiftOSPage`, `/shiftos` route,
+  `xd_*` localStorage keys, `drevo_enquiry` DB value).
+- [ ] **Outside the repo (switch day):** `supabase/functions/_shared/cors.ts`
+  allowlist (redeploy after diffing deployed source), DB functions with hardcoded
+  URLs (2 migrations mention xdrive.my; check `pg_proc` too), Vercel domains,
+  Supabase auth URLs, Google OAuth origins, Turnstile hostnames, Resend DNS.
+- [ ] **Old brand still in code:** 17 `drevo` refs incl. lead_source
+  `drevo_enquiry` (CHECK on `leads`) - tidy up during the move.
+- [ ] **xdrive.my expires ~mid-Dec 2026. RENEW IT anyway** and 301 every path
+  to the new domain. Owner was quoted ~RM340; .my renewals run ~USD 11-26/yr
+  elsewhere (domainoffer.net, Oct 2026), so transfer to a cheaper registrar
+  BEFORE expiry. Never let it reach redemption (renewal ~2x). Salesmen have `xdrive.my/s/<slug>` in their bios, articles
+  rank on it, and a lapsed domain can be bought by anyone and receive that traffic.
+- [ ] **Migration list (a domain move is not just find-replace):** 563 refs in
+  92 files; Vercel domains + wildcard `<sub>.` dealer storefronts; Supabase auth
+  site URL + redirect URLs; Google OAuth origins (`ID_TOKEN_ORIGINS`,
+  `src/lib/googleIdentity.js:27`); Resend sending domain DNS; Search Console
+  "Change of address". **Push subscriptions and PWA installs are tied to the
+  origin: every device must re-subscribe on the new domain** (not a VAPID change,
+  keys stay). Everyone is logged out once (sessions are per origin).
+- [ ] **SSM:** no registration yet (no payments logged). Register a sole
+  proprietorship under the new name BEFORE the first RM35 is taken: ROBA 1956
+  has no revenue threshold. Then show name + reg. no. in the site footer.
+- **Backlink work is PAUSED until the name is set** (directories, LinkedIn,
+  AlternativeTo, writer pitches). Content work (calculator, articles) continues:
+  links to xdrive.my pages carry over through the 301s. Do NOT re-create the
+  Google Business Profile: XDrive is online-only and not eligible (owner deleted it).
+
 ## NEWCAR-1: New-car brand sales advisors (Proton/Perodua) are a target — decided 2026-10-07
 Owner's call: aim at brand SAs first, because they already do live loan maths on
 TikTok (was IDEA-13). First real lead 2026-10-07: one SA, said she will tell her team.

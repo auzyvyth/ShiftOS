@@ -1,6 +1,7 @@
 import { isCaptchaError, captchaErrorMessage } from "../hooks/useAuthCaptcha";
 import { logError } from "./logError";
 import { PLATFORM_ONLY_MESSAGE } from "./platformOnly";
+import { isOwnHost } from "../config/site";
 
 // ── One reader for every Supabase auth error the sign-in pages can hit ────────
 // Plain version: supabase-js puts a machine-readable `code` on every auth error
@@ -111,7 +112,7 @@ export function reportAuthFailure(where, error) {
     if (error.code && USER_CAUSED.has(error.code)) return;
     if (error.name === "AuthRetryableFetchError" || /failed to fetch|network/i.test(error.message || "")) return;
     const host = typeof window !== "undefined" ? window.location.hostname : "";
-    if (isCaptchaError(error) && !(host === "xdrive.my" || host.endsWith(".xdrive.my"))) return;
+    if (isCaptchaError(error) && !isOwnHost(host)) return;
     logError(error, {
       code: `auth:${where}`,
       context: `auth ${where} failed${error.code ? ` (${error.code})` : ""}`,

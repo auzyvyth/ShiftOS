@@ -1,6 +1,6 @@
 // Vercel Serverless Function — dynamic robots.txt per tenant subdomain
 
-const ROOT_DOMAIN = "xdrive.my";
+import { ROOT_DOMAIN } from "../src/config/site.js";
 
 const INTERNAL_PATHS = [
   "/dashboard",

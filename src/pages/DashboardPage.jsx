@@ -118,6 +118,7 @@ import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
+import { isOwnUrl } from '../config/site';
 import {
   Car,
   PlusCircle,
@@ -4137,7 +4138,7 @@ function categorizeRef(ref) {
   if (/tiktok\./i.test(ref)) return "TikTok";
   if (/twitter\.|t\.co/i.test(ref)) return "Twitter / X";
   if (/whatsapp\./i.test(ref)) return "WhatsApp";
-  if (/xdrive\.my/i.test(ref)) return "Internal";
+  if (isOwnUrl(ref)) return "Internal";
   return "Other";
 }
 

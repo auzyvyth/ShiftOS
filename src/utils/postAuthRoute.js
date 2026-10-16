@@ -1,6 +1,7 @@
 import { routeForProfile } from "../hooks/useRoleRedirect";
 import { handoffSuffix } from "../lib/authHandoff";
 import { isPlatformRole } from "./platformOnly";
+import { ROOT_DOMAIN, SITE_URL, isOwnHost } from "../config/site";
 
 // ── THE one answer to "where does this account land after signing in?" ──────
 // Plain version: password login, Google, magic links, the email-confirm link
@@ -25,8 +26,7 @@ export const POST_AUTH_COLUMNS =
   "role, dealer_id, plan, is_active, plan_expires_at, payment_status, subdomain, onboarding_complete, full_name, ic_number, dealership";
 
 export function isProdHost() {
-  const h = typeof window !== "undefined" ? window.location.hostname : "";
-  return h === "xdrive.my" || h.endsWith(".xdrive.my");
+  return isOwnHost(typeof window !== "undefined" ? window.location.hostname : "");
 }
 
 /**
@@ -89,7 +89,7 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
     // session in the hash. Only on the real domain — a preview or localhost
     // has no dealer subdomains, and jumping anyway lands on production.
     if (profile.subdomain && prod) {
-      return { url: `https://${profile.subdomain}.xdrive.my/dashboard${handoffSuffix(session)}`, hard: true };
+      return { url: `https://${profile.subdomain}.${ROOT_DOMAIN}/dashboard${handoffSuffix(session)}`, hard: true };
     }
     return { url: "/dashboard", hard: false };
   }
@@ -106,7 +106,7 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
     // Sign-in can start on www.xdrive.my or a dealer subdomain, whose stored
     // session xdrive.my cannot see — so on prod the panel is always reached on
     // xdrive.my with the session handed over. Off prod, stay on this host.
-    if (prod) return { url: `https://xdrive.my${home}${handoffSuffix(session)}`, hard: true };
+    if (prod) return { url: `${SITE_URL}${home}${handoffSuffix(session)}`, hard: true };
     return { url: home, hard: false };
   }
 

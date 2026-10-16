@@ -13,6 +13,7 @@ import { authErrorMessage, callbackFailureMessage, isWrongCredentials, isEmailNo
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from "../utils/installPrompt";
 import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
 import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
+import { SITE_URL, isOwnHost } from "../config/site";
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -73,8 +74,8 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const isProd = window.location.hostname === "xdrive.my" || window.location.hostname.endsWith(".xdrive.my");
-  const base = isProd ? "https://xdrive.my" : window.location.origin;
+  const isProd = isOwnHost(window.location.hostname);
+  const base = isProd ? SITE_URL : window.location.origin;
   const [unconfirmed, setUnconfirmed] = useState(
     searchParams.get("unconfirmed") === "1",
   );

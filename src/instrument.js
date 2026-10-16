@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react';
 import { useEffect } from 'react';
+import { ROOT_DOMAIN } from './config/site';
 import {
   createRoutesFromChildren,
   matchRoutes,
@@ -88,7 +89,7 @@ if (_dsn) {
     tracePropagationTargets: [
       'localhost',
       /^https:\/\/lemdkdizdlcirhbzqlos\.supabase\.co/,
-      /^https:\/\/.*\.xdrive\.my/,
+      new RegExp(`^https://.*\\.${ROOT_DOMAIN.replace(/\./g, '\\.')}`),
     ],
     replaysSessionSampleRate: wantsReplay ? 0.1 : 0,
     replaysOnErrorSampleRate: wantsReplay ? 1.0 : 0,

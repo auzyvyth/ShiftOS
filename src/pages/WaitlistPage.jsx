@@ -4,9 +4,10 @@ import { useSearchParams } from "react-router-dom";
 import LegalModal from "../components/LegalModal";
 import { useTranslation } from "react-i18next";
 import { apiUrl } from "../utils/apiUrl";
+import { SITE_URL } from "../config/site";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
-const BASE = "https://xdrive.my";
+const BASE = SITE_URL;
 
 export default function WaitlistPage() {
   const [params] = useSearchParams();
