@@ -70,15 +70,21 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
-## BRAND-1: One new name + one domain for XDrive and ShiftOS — owner decision pending (2026-10-16)
-- [ ] **Pick the name.** XDrive collides with BMW's xDrive (every "xdrive" search
-  is BMW model listings; MyIPO status unchecked) and ShiftOS is another
-  company's name. Owner: ONE name and ONE domain for marketplace + seller tools.
-  Checks: not a car term; easy to say on a live in BM + EN; `.my` free (`.com.my`
-  likely needs SSM); SSM name free; no MyIPO mark in classes 35/42; same handle
-  on TikTok/IG/FB.
+## BRAND-1: One new name + one domain for XDrive and ShiftOS — name DECIDED: Drevo (2026-10-16)
+- [x] **Name: Drevo** (owner, 2026-10-16). Replaces both XDrive (collides with
+  BMW's xDrive) and ShiftOS (another company's name): ONE name, ONE domain for
+  marketplace + seller tools. Search check: no Drevo business in Malaysia; abroad
+  it is Czech/Slovak for "wood" (woodworking firms, a possibly defunct keyboard
+  brand). Rejected on the way: Telusa (Google -> TELUS), Amanu (Parti Amanah),
+  Falcon (Ford Falcon), Sahlah/Jamin (overclaim). Runners-up: Benara, KeretaTelus.
+- [ ] **Owner to confirm before buying:** `drevo.my` free; SSM name free; no MyIPO
+  mark in classes 35/42; `@drevo` (or close) free on TikTok/IG/FB.
+- [ ] **Old brand still in code:** 17 `drevo` refs incl. lead_source
+  `drevo_enquiry` (CHECK on `leads`) - tidy up during the move.
 - [ ] **xdrive.my expires ~mid-Dec 2026. RENEW IT anyway** and 301 every path
-  to the new domain. Salesmen have `xdrive.my/s/<slug>` in their bios, articles
+  to the new domain. Owner was quoted ~RM340; .my renewals run ~USD 11-26/yr
+  elsewhere (domainoffer.net, Oct 2026), so transfer to a cheaper registrar
+  BEFORE expiry. Never let it reach redemption (renewal ~2x). Salesmen have `xdrive.my/s/<slug>` in their bios, articles
   rank on it, and a lapsed domain can be bought by anyone and receive that traffic.
 - [ ] **Migration list (a domain move is not just find-replace):** 563 refs in
   92 files; Vercel domains + wildcard `<sub>.` dealer storefronts; Supabase auth
