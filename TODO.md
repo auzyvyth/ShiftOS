@@ -2392,6 +2392,19 @@ derived meta description, and a two-column mini page at 1024px+.
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-18: Poster v2, answering SA Studio X (sastudiox.my) (2026-10-16)** — a
+  competitor sells loan posters to SAs: RM108/yr, 3 free a month, AI background
+  removal onto a white studio, a fixed "Kiraan Loan" layout (spec chips mileage /
+  gred, price - DP + insurance = loan, a 9/7/5-year strip with a "Full Loan" figure
+  under each), a photo-gallery page 2 sent as a WhatsApp album, and RM2.50 "ad
+  posters" with AI-made scenery. Ours (`generateQuotationImage`,
+  `FinancingCalculator.jsx:226`) is plainer but already has the edge they lack:
+  EIR maths (`financing.js`) - their numbers are the old FLAT formula (Alphard
+  RM184,800 @ 2.35% x 9y = RM2,073 only works flat), and the poster is built from
+  the listing and links back to the seller's page. Worth copying: the 9/7/5 strip
+  with a full-loan line, spec chips, a gallery page 2. Background removal of the
+  REAL photo is fine; AI-made scenery is not (same rule as IDEA-16). Their loan
+  also finances insurance, which needs checking before we copy it.
 - **IDEA-16: "Post once, everywhere" for solo sellers (2026-10-11)** — from a
   seller's chat: he takes his own photos and wants one place that posts them to
   Marketplace/socials daily. Half exists: `src/utils/sharePack.js` already turns a
