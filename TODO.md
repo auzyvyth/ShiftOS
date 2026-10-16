@@ -77,8 +77,11 @@
   it is Czech/Slovak for "wood" (woodworking firms, a possibly defunct keyboard
   brand). Rejected on the way: Telusa (Google -> TELUS), Amanu (Parti Amanah),
   Falcon (Ford Falcon), Sahlah/Jamin (overclaim). Runners-up: Benara, KeretaTelus.
-- [ ] **Owner to confirm before buying:** `drevo.my` free; SSM name free; no MyIPO
-  mark in classes 35/42; `@drevo` (or close) free on TikTok/IG/FB.
+- [x] **`drevo.my` BOUGHT (owner, 2026-10-16).** Not yet connected to Vercel.
+- [ ] **Owner still to check:** SSM name free; no MyIPO mark in classes 35/42;
+  `@drevo` (or close) free on TikTok/IG/FB.
+- [ ] **Owner call: what does "ShiftOS" become?** (plain "Drevo" recommended,
+  or "Drevo for Dealers"). Until answered, leave existing ShiftOS text alone.
 - [x] **Rename step 1 DONE (2026-10-16): the domain lives in ONE file,
   `src/config/site.js`** (`ROOT_DOMAIN`, `SITE_URL`, `OWN_DOMAINS`,
   `isOwnHost`, `storefrontSubdomain`, `isOwnUrl`). Every hostname CHECK now goes

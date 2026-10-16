@@ -39,6 +39,22 @@ which case say so rather than picking a path yourself.
   a Mac for the iOS build. Update this line as each is resolved so it never goes
   stale.
 
+## Brand is DREVO now (owner, 2026-10-16) — write "Drevo", never "XDrive"
+XDrive is being retired (it collides with BMW's xDrive); `drevo.my` is bought.
+Full plan and status: `TODO.md` BRAND-1.
+- **Every NEW article, feature, page, copy string, email or notification says
+  "Drevo", not "XDrive".** Do not add a new "XDrive" anywhere. Existing XDrive
+  text is renamed in one go on switch day, not piecemeal.
+- **Never hardcode a domain in new code.** Use `SITE_URL` / `ROOT_DOMAIN` /
+  `isOwnHost` from `src/config/site.js`, or a relative link (`/showroom`). That
+  file is the one place the domain lives; it still says `xdrive.my` until the
+  switch, and flipping it is the switch.
+- "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
+  becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+- Never rename identifiers to match (`ShiftOSPage`, the `/shiftos` route,
+  `xd_*` storage keys, DB values like `drevo_enquiry`): renaming a key resets
+  every user's saved setting; renaming a route breaks links.
+
 ## Capturing ideas — do this any time, unprompted
 Whenever the user floats a product/feature idea mid-conversation (not a direct
 task request — a "what if" / "I once had an idea" / brainstorm aside), add it
