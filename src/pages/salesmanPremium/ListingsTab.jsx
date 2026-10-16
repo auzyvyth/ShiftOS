@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
- BarChart2, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
+ BarChart2, Calculator, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
  Film, Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
 } from "lucide-react";
 import CarFormFast from "../../components/CarFormFast";
@@ -84,7 +84,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
- generateAiCaptions, onVerifyId, openStudio,
+ generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -688,6 +688,11 @@ export default function ListingsTab({
  <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
  <Sparkles size={12} /> {t("salesmanPremium.carActions.aiCaption")}
  </button>
+ {openLoanPoster && (
+ <button onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <Calculator size={12} /> Loan poster
+ </button>
+ )}
  {/* ShiftOS Studio: TikTok poster from this car. Post-list only, and it
      never writes back to the listing, so the XDrive photos stay clean. */}
  <button onClick={() => { openStudio(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>

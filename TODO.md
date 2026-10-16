@@ -2387,24 +2387,29 @@ in the `DashboardPage.jsx` document generator. Also shipped: Job Title editable
 from Salesman Premium, `bio`/`about_text` collapsed to one field with a real
 derived meta description, and a two-column mini page at 1024px+.
 
+## POSTER-1 — Loan poster for sellers (built 2026-10-16, was IDEA-18)
+Built: "Kiraan Loan" poster from a car's menu in Lite / Premium / linked-salesman panel,
+Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to SA Studio X
+(sastudiox.my): RM108/yr, 3 free, background removal, flat-rate maths.
+- [ ] **POSTER-2: Background removal does not work in prod.** Studio's Remove BG
+  (`TikTokStudioV3.jsx:3212`) calls `VITE_API_URL || localhost:4000` `/ai/removebg`, served
+  only by `server/routes/anthropic.js:80`, and `.vercelignore` drops `server/`. Needs an
+  `api/removebg.js` (signed-in, rate-limited). Owner: which provider has the 5k free, and
+  where is the key set? Then offer "clean background" on the loan poster too (real photo only).
+- [ ] **POSTER-3 (owner call): the public calculator's poster button.** It sits on the car
+  page and /calculator, where buyers (not sellers) see it, plus dealer dashboard + F&I.
+  Decide who keeps it, then draw it with the POSTER-1 engine so there is one poster maker.
+- [ ] **POSTER-4: Studio "Monthly Deal" template prints "LOW DEPOSIT · FAST LOAN" and
+  "BULAN INI SAHAJA" on every poster** (`carTemplates.js:246`, `:251`). "Fast loan" reads
+  as an approval promise. Remove or make them editable-and-empty.
+- [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
+  WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
+
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
-- **IDEA-18: Poster v2, answering SA Studio X (sastudiox.my) (2026-10-16)** — a
-  competitor sells loan posters to SAs: RM108/yr, 3 free a month, AI background
-  removal onto a white studio, a fixed "Kiraan Loan" layout (spec chips mileage /
-  gred, price - DP + insurance = loan, a 9/7/5-year strip with a "Full Loan" figure
-  under each), a photo-gallery page 2 sent as a WhatsApp album, and RM2.50 "ad
-  posters" with AI-made scenery. Ours (`generateQuotationImage`,
-  `FinancingCalculator.jsx:226`) is plainer but already has the edge they lack:
-  EIR maths (`financing.js`) - their numbers are the old FLAT formula (Alphard
-  RM184,800 @ 2.35% x 9y = RM2,073 only works flat), and the poster is built from
-  the listing and links back to the seller's page. Worth copying: the 9/7/5 strip
-  with a full-loan line, spec chips, a gallery page 2. Background removal of the
-  REAL photo is fine; AI-made scenery is not (same rule as IDEA-16). Their loan
-  also finances insurance, which needs checking before we copy it.
 - **IDEA-16: "Post once, everywhere" for solo sellers (2026-10-11)** — from a
   seller's chat: he takes his own photos and wants one place that posts them to
   Marketplace/socials daily. Half exists: `src/utils/sharePack.js` already turns a
