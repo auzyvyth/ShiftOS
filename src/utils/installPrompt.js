@@ -39,8 +39,11 @@ function logInstallOnce() {
   // Lazy import: this module is loaded eagerly at app boot (see file header),
   // before the main supabase client and analytics helper are needed for
   // anything else, so pull them in only when there's actually an install to log.
-  import('../supabaseClient').then(({ supabase }) => {
-    import('./analytics').then(({ trackEvent }) => trackEvent(supabase, 'pwa_installed'));
+  // A failed chunk preload resolves to undefined (see main.jsx registerSW), so
+  // never destructure the module directly.
+  import('../supabaseClient').then((sc) => {
+    if (!sc?.supabase) return;
+    import('./analytics').then((an) => an?.trackEvent?.(sc.supabase, 'pwa_installed'));
   });
 }
 

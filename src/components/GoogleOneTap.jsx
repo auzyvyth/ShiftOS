@@ -4,7 +4,7 @@ import { reportAuthFailure } from '../utils/authErrors';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile, markBuyerIntent } from '../lib/buyerAuth';
 import { isSubdomain } from '../hooks/useTenant';
-import { GOOGLE_CLIENT_ID, isEmbeddedBrowser, loadGsi, makeNonce } from '../lib/googleIdentity';
+import { GOOGLE_CLIENT_ID, canUseGoogleIdToken, loadGsi, makeNonce } from '../lib/googleIdentity';
 
 // Google One Tap sign-in for new, signed-out marketplace visitors.
 //
@@ -30,7 +30,7 @@ export default function GoogleOneTap() {
   useEffect(() => {
     if (!CLIENT_ID || started.current) return;
     if (isSubdomain()) return; // marketplace only, not dealer storefronts
-    if (isEmbeddedBrowser()) return; // see isEmbeddedBrowser() in lib/googleIdentity.js
+    if (!canUseGoogleIdToken()) return; // in-app browser or unauthorised origin, see lib/googleIdentity.js
     started.current = true;
     let cancelled = false;
 

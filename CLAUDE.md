@@ -927,6 +927,11 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   come back to the car with `?contact=chat`. After ANY redirect sign-in a stashed
   return beats the account's home for sellers too (`preferReturn`,
   `src/utils/postAuthRoute.js`): a seller testing chat landed on their dashboard.
+  **The in-page button and One Tap run ONLY on origins in `ID_TOKEN_ORIGINS`
+  (`src/lib/googleIdentity.js`, default `https://xdrive.my`), which must equal the
+  Google Cloud "Authorized JavaScript origins" list.** Any other origin (www, the
+  staging preview, a subdomain) gets Google's dead-end "Error 400: origin_mismatch"
+  page, so it uses the redirect sign-in instead (2026-10-16, a real buyer was blocked).
   `toggleSave` parks the id in the device list so a redirect still saves it. WhatsApp and Call stay
   open. A guest's EXISTING thread keeps working. Dealer subdomains keep guest chat
   and device-only saves: sign-in lives on xdrive.my and that session cannot reach
