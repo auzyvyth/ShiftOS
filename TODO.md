@@ -70,6 +70,31 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## BRAND-1: One new name + one domain for XDrive and ShiftOS — owner decision pending (2026-10-16)
+- [ ] **Pick the name.** XDrive collides with BMW's xDrive (every "xdrive" search
+  is BMW model listings; MyIPO status unchecked) and ShiftOS is another
+  company's name. Owner: ONE name and ONE domain for marketplace + seller tools.
+  Checks: not a car term; easy to say on a live in BM + EN; `.my` free (`.com.my`
+  likely needs SSM); SSM name free; no MyIPO mark in classes 35/42; same handle
+  on TikTok/IG/FB.
+- [ ] **xdrive.my expires ~mid-Dec 2026. RENEW IT anyway** and 301 every path
+  to the new domain. Salesmen have `xdrive.my/s/<slug>` in their bios, articles
+  rank on it, and a lapsed domain can be bought by anyone and receive that traffic.
+- [ ] **Migration list (a domain move is not just find-replace):** 563 refs in
+  92 files; Vercel domains + wildcard `<sub>.` dealer storefronts; Supabase auth
+  site URL + redirect URLs; Google OAuth origins (`ID_TOKEN_ORIGINS`,
+  `src/lib/googleIdentity.js:27`); Resend sending domain DNS; Search Console
+  "Change of address". **Push subscriptions and PWA installs are tied to the
+  origin: every device must re-subscribe on the new domain** (not a VAPID change,
+  keys stay). Everyone is logged out once (sessions are per origin).
+- [ ] **SSM:** no registration yet (no payments logged). Register a sole
+  proprietorship under the new name BEFORE the first RM35 is taken: ROBA 1956
+  has no revenue threshold. Then show name + reg. no. in the site footer.
+- **Backlink work is PAUSED until the name is set** (directories, LinkedIn,
+  AlternativeTo, writer pitches). Content work (calculator, articles) continues:
+  links to xdrive.my pages carry over through the 301s. Do NOT re-create the
+  Google Business Profile: XDrive is online-only and not eligible (owner deleted it).
+
 ## NEWCAR-1: New-car brand sales advisors (Proton/Perodua) are a target — decided 2026-10-07
 Owner's call: aim at brand SAs first, because they already do live loan maths on
 TikTok (was IDEA-13). First real lead 2026-10-07: one SA, said she will tell her team.
