@@ -17,9 +17,23 @@ export function isEmbeddedBrowser() {
   return /GSA\/|FBAN|FBAV|Instagram|Line\/|; ?wv\)/i.test(ua);
 }
 
-// True when the in-page Google button can be used on this device.
+// The in-page button and One Tap only work on origins listed under "Authorized
+// JavaScript origins" on the Google OAuth client. Anywhere else (www.xdrive.my,
+// the staging preview, a dealer subdomain) Google shows a dead-end "Error 400:
+// origin_mismatch" page: a buyer whose account already existed was blocked this
+// way on 2026-10-16. Keep this list EQUAL to the Google Cloud Console list
+// (comma-separated VITE_GOOGLE_JS_ORIGINS overrides it); every other origin
+// uses the redirect sign-in, which Google does not origin-check.
+const ID_TOKEN_ORIGINS = (import.meta.env.VITE_GOOGLE_JS_ORIGINS || 'https://xdrive.my')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+
+export function isAuthorizedGoogleOrigin() {
+  return ID_TOKEN_ORIGINS.includes(window.location.origin);
+}
+
+// True when the in-page Google button can be used on this device and origin.
 export function canUseGoogleIdToken() {
-  return Boolean(GOOGLE_CLIENT_ID) && !isEmbeddedBrowser();
+  return Boolean(GOOGLE_CLIENT_ID) && !isEmbeddedBrowser() && isAuthorizedGoogleOrigin();
 }
 
 export function loadGsi() {

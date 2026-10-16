@@ -195,8 +195,14 @@ if ('serviceWorker' in navigator) {
     if (hadControllerAtBoot) reloadOnceForChunk();
   });
 
-  import('virtual:pwa-register').then(({ registerSW }) => {
-    registerSW({
+  // A failed preload RESOLVES to undefined here instead of rejecting: the
+  // vite:preloadError handler above calls preventDefault(), and Vite then
+  // returns nothing rather than throwing. Destructuring that crashed with
+  // "Cannot destructure property 'registerSW' of undefined" (3 ops alerts,
+  // 2026-10-08..12). reloadOnceForChunk() already handles that case.
+  import('virtual:pwa-register').then((mod) => {
+    if (!mod?.registerSW) return;
+    mod.registerSW({
       immediate: true,
       onRegisteredSW(_url, registration) {
         if (!registration) return;

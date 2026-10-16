@@ -704,64 +704,8 @@ fixes. Nothing in this batch has been built.
 
 ### Large builds — real effort, not quick fixes
 
-- [~] **PREM-I18N-1 PHASE 1 DONE 2026-09-12 — Premium now HAS a language
-  switcher and a translated nav. The body of the panel is still English
-  (PREM-I18N-2).** Deliberately staged: wrapping ~7,500 lines in one pass is
-  not reviewable and is exactly how a working file gets broken.
-  - Measured before and after, precisely (word-boundary `t("` count, not a
-    naive grep — `at(`, `split(`, `startsWith(` all false-positive):
-    **Lite 580 call sites against 581 keys — effectively fully translated.
-    Premium was 0. It is now 12, against 14 keys.** The three lazy sub-tab
-    files (`DashboardTab`, `AnalyticsTab`, `ListingsTab`) and `shared.jsx`
-    are still 0.
-  - **So the owner's "some sections are still English" is almost entirely
-    Premium, and it was not a gap in the translations — it was the absence
-    of any i18n at all.** There was no `useTranslation`, no switcher, and no
-    `salesmanPremium` namespace to translate INTO, so a seller who chose
-    Malay in Lite walked into Premium and saw English with no way to change
-    it.
-  - Shipped: `useTranslation` wired into `SalesmanPremium`, a
-    `salesmanPremium` namespace in BOTH `en.json` and `ms.json` (additive —
-    20 lines each, no reformat of the existing 960 keys), all 10 nav labels
-    translated, and a Language section in Settings (Account group) using the
-    same `i18n` instance as Lite, so the choice follows the seller between
-    panels instead of being per-panel.
-  - **A second false positive corrected: `ms.json` is NOT missing 10 keys.**
-    The audit flagged 10 `*_one` plural variants present in `en` and absent
-    in `ms`. Malay has a single plural category — verified,
-    `new Intl.PluralRules('ms').resolvedOptions().pluralCategories` is
-    `['other']` against `['one','other']` for English — so the `_one` forms
-    are correctly absent and every one of them has its `_other` counterpart
-    present. Adding them would create keys i18next can never select. **Do
-    not "fix" this.** Lite's translation coverage has no gap at all.
-  - Syntax-checked (esbuild) and both locale files re-parsed as valid JSON.
-    No build (`npm ci` blocked). NOT eyeballed in a browser.
-
-- [ ] **PREM-I18N-2: translate Premium's body copy — the actual bulk of the
-  job.** Phase 1 above gave Premium the wiring, the namespace and the
-  switcher; the panel's own strings are still hardcoded English at 12 of
-  roughly 600 call sites' worth of copy. Work it per tab so each pass is
-  reviewable, mirroring how `salesmanLite` is structured (581 keys across
-  33 sections): `SalesmanPremium.jsx` body copy first, then
-  `salesmanPremium/DashboardTab.jsx`, `AnalyticsTab.jsx`, `ListingsTab.jsx`
-  and `shared.jsx`, which are at ZERO. Two specifics carried over:
-  `SETTINGS_GROUPS` (`SalesmanPremium.jsx:200`) is module scope, so
-  translating its labels means making it a function of `t`; and every new
-  key needs its `ms` counterpart added in the same pass, or the switcher
-  silently falls back to English for it. No `useTranslation`/`i18n` import anywhere in
-  the 7,457-line file (Lite has it fully wired,
-  `SalesmanLite.jsx:6,477,542,629,679,764`, plus a language switcher at
-  `:7030,7916`). `src/i18n/locales/en.json` has no `salesmanPremium`
-  namespace at all — the keys don't exist to translate into. Sample
-  hardcoded strings: `"Leads"` (`:2505`), `"Settings"` (`:2540`),
-  `"Customers"` (`:5912`), `"Pick a stage"` (`:3147`), `"Link a car"`
-  (`:3469`), `"Remind me on"` (`:3567`), `"Objection Scripts"` (`:3900`),
-  and dozens more. This is a from-scratch build (new locale namespace +
-  every string wrapped + a language switcher added to Premium's Settings),
-  not a revision. Lite's translations are essentially complete (960 vs 950
-  keys between en/ms, the only gap being 10 plural-form `_one` variants) —
-  the "still English in some sections" complaint is almost entirely
-  Premium.
+- Note kept from PREM-I18N (done in #480): `ms.json` has no `*_one` plural keys on purpose.
+  Malay has one plural category (`other`), so i18next can never select an `_one` key. Do not "fix" this.
 
 - [x] **LITE-SETTINGS-1 DONE 2026-09-12 — Lite's Settings is five sections
   with a rail, not one 570-line scroll.** Sections, by what a seller is
@@ -1809,10 +1753,15 @@ every month. Migration `20260905p`, cron jobids 14 and 15.
   DEFINER job touches it. All three functions are revoked from `public`, `anon`
   and `authenticated`; verified with `has_function_privilege`, not by reading the
   migration back.
-- [ ] **JPJ-1: nothing alerts if the refresh fails.** A failed week writes
-  `reg_ingest_log.ok = false` and stops there. `notify_ops()` already exists and
-  is the one ops-alert entry point — call it from `reg_refresh_finish()` on a
-  failure so a silently stale tab cannot last a month.
+- [ ] **JPJ-1: QUEUED FOR TONIGHT (after 22:00 MYT), not yet live.** Migration
+  `supabase/migrations/20261016a_jpj_refresh_alerts.sql` makes `reg_refresh_finish()`
+  call `notify_ops` when a year fails (`err:jpj_refresh`) or when there has been no
+  good load for 6 days (`err:jpj_stale`, catches `reg_refresh_start` never running).
+  Tested on a local Postgres 16 with stubs (healthy / http 500 / parse error /
+  nothing queued / old failure): one alert per bad week, none on a good one.
+  After applying: confirm one overload (`select oid::regprocedure from pg_proc where
+  proname='reg_refresh_finish'`) and that Monday 2026-10-19's run logs ok. Delete
+  this entry then. Known gap: if cron job 15 itself stops, nothing calls the check.
 
 ## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
 

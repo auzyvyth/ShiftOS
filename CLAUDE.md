@@ -152,6 +152,17 @@ Project ID: lemdkdizdlcirhbzqlos
 - Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
 
+## System map — `docs/ARCHITECTURE.md`
+The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
+notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
+area. **Update it in the same commit** as any change that adds a screen, a table
+family, a cron job or an outside service. Check diagrams parse before committing.
+The phone-friendly page (tap a diagram to pinch-zoom) is BUILT from that file:
+`node tools/build-system-map.mjs <out.html>` outside the repo, then republish the
+artifact. Never hand-edit the page or commit its HTML: it would be a second copy.
+`src/pages/MindMapPage.jsx` (`/mindmap`) is an older hand-drawn map, long stale (it
+still says "21 pages") — do not update it; it is pending removal.
+
 ## Key files
 - src/pages/MarketplacePage.jsx — THE public XDrive marketplace (`/` on xdrive.my).
   App.jsx RootRoute picks it synchronously by hostname.
@@ -916,6 +927,11 @@ Buyers message sellers inside ShiftOS (not WhatsApp). Built 2026-08-23.
   come back to the car with `?contact=chat`. After ANY redirect sign-in a stashed
   return beats the account's home for sellers too (`preferReturn`,
   `src/utils/postAuthRoute.js`): a seller testing chat landed on their dashboard.
+  **The in-page button and One Tap run ONLY on origins in `ID_TOKEN_ORIGINS`
+  (`src/lib/googleIdentity.js`, default `https://xdrive.my`), which must equal the
+  Google Cloud "Authorized JavaScript origins" list.** Any other origin (www, the
+  staging preview, a subdomain) gets Google's dead-end "Error 400: origin_mismatch"
+  page, so it uses the redirect sign-in instead (2026-10-16, a real buyer was blocked).
   `toggleSave` parks the id in the device list so a redirect still saves it. WhatsApp and Call stay
   open. A guest's EXISTING thread keeps working. Dealer subdomains keep guest chat
   and device-only saves: sign-in lives on xdrive.my and that session cannot reach
