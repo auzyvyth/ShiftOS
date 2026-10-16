@@ -1352,6 +1352,31 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   opened. Counts only, never a buyer name: the screen may still be on stream.
   `npm run test:live`.
 
+## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
+Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
+linked-salesman car popup (`Salesmanpanel.jsx`). Seller types price, deposit, rate (EIR or
+flat) and gets one 1080x1350 JPEG: full-width photo with the car name on it, price + its
+working on one line, 9/7/5 instalments as a stacked list, their name/photo/WhatsApp number
+and mini-page link. Built in answer to SA Studio X (IDEA-18).
+- **Our layout, never theirs (owner, 2026-10-16).** The first build was a near pixel copy
+  (white card, navy tenure blocks side by side, navy seller band, "KIRAAN LOAN" header).
+  The idea and the numbers are free to use; their arrangement and look are not. Keep the
+  Drevo dark surface; do not drift back toward their template.
+- Numbers + every printed word: `src/utils/loanPoster.js` (`npm run test:poster`). Drawing:
+  `src/components/poster/renderLoanPoster.js`. Sheet: `src/components/poster/LoanPosterSheet.jsx`.
+  Image loading shared with the calculator's quotation poster: `src/utils/posterImage.js`.
+- A flat rate is converted PER TENURE (`eirForTenure`); never feed it raw. A missing or
+  impossible number = no poster, never a guess.
+- No "full loan" line and no insurance folded into the loan (owner can revisit): a
+  no-deposit figure is how prices get inflated on paper.
+- Quota is server side: `claim_loan_poster(listing)` (migration `20261016b`). Lite = 3 CARS a
+  month (Malaysia time); the same car again that month is free. Premium + dealer-linked =
+  unlimited via `salesman_has_full_page`. It refuses a car the seller cannot sell. The
+  preview is free and watermarked; only the clean file claims. Limit 3 lives in BOTH the
+  SQL and `LITE_POSTERS_PER_MONTH`.
+- The seller's own number on their own poster is fine (they send it); this is NOT a public
+  page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

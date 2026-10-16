@@ -83,6 +83,7 @@ import {
  BookOpen,
  Inbox,
  Film,
+ Calculator,
 } from "lucide-react";
 
 import { callClaude } from "../lib/callClaude";
@@ -127,6 +128,7 @@ const chatOpener = (notes) => (notes || "").replace(/^Started an in-app chat:\s*
 // ShiftOS Studio — full-screen marketing-content editor (camera overlay +
 // branded templates). Lazy so the panel's initial bundle stays lean.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
+const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 
 // helpers 
 
@@ -510,6 +512,7 @@ export default function SalesmanPanel() {
  // Car detail popup
  const [selectedCar, setSelectedCar] = useState(null);
  const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
+ const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
@@ -3794,6 +3797,20 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  link,
  ].join("\n")}
  />
+ {actionBtn(
+ <>
+ <Calculator size={13} style={{ flexShrink: 0 }} />Loan poster
+ </>,
+ "#e5e7eb",
+ "rgba(255,255,255,0.04)",
+ "rgba(255,255,255,0.14)",
+ () => {
+ // Close the detail popup first (overlay rule #3).
+ const target = car;
+ close();
+ setPosterCar(target);
+ },
+ )}
  {actionBtn(
  <>
  <Film size={13} style={{ flexShrink: 0 }} />ShiftOS Studio
@@ -8255,6 +8272,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {studioCar && (
  <React.Suspense fallback={null}>
  <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} />
+ </React.Suspense>
+ )}
+ {posterCar && (
+ <React.Suspense fallback={null}>
+ <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)} />
  </React.Suspense>
  )}
 
