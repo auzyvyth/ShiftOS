@@ -152,6 +152,14 @@ Project ID: lemdkdizdlcirhbzqlos
 - Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
 
+## System map — `docs/ARCHITECTURE.md`
+The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
+notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
+area. **Update it in the same commit** as any change that adds a screen, a table
+family, a cron job or an outside service. Check diagrams parse before committing.
+`src/pages/MindMapPage.jsx` (`/mindmap`) is an older hand-drawn map, stale since
+spring 2026 — do not update it; it is pending removal.
+
 ## Key files
 - src/pages/MarketplacePage.jsx — THE public XDrive marketplace (`/` on xdrive.my).
   App.jsx RootRoute picks it synchronously by hostname.
