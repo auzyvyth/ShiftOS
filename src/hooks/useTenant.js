@@ -3,6 +3,7 @@ import { supabase, publicClient } from "../supabaseClient";
 import { withTimeout } from "../config/marketplaceConfig";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { readCache, writeCache } from "../utils/localCache";
+import { ROOT_DOMAIN, storefrontSubdomain } from "../config/site";
 
 // Stale-while-revalidate: a dealer's own profile changes rarely, but every
 // single subdomain page mounts this hook and otherwise waits on a fresh RPC
@@ -18,7 +19,7 @@ function readTenantCache(subdomain) {
   return subdomain ? readCache(tenantCacheKey(subdomain), TENANT_CACHE_TTL) : null;
 }
 
-export const MARKETPLACE_DOMAIN = "xdrive.my";
+export const MARKETPLACE_DOMAIN = ROOT_DOMAIN;
 export const DASHBOARD_DOMAIN = "shiftos.com";
 
 // The ?tenant= override is a dev/preview convenience only. Allowing it in
@@ -56,21 +57,9 @@ export function getSubdomain() {
       } catch {}
     }
   }
-  // Root domains and local dev → no subdomain, show public marketplace
-  if (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname.startsWith("192.168") ||
-    hostname === "xdrive.my" ||
-    hostname === "www.xdrive.my"
-  )
-    return null;
-  // Extract subdomain from <sub>.xdrive.my (e.g. 'fast' from 'fast.xdrive.my')
-  if (hostname.endsWith(".xdrive.my")) {
-    const sub = hostname.slice(0, -".xdrive.my".length);
-    if (sub && !sub.includes(".")) return sub;
-  }
-  return null;
+  // Root domain, www and local dev → no subdomain, show public marketplace.
+  // Otherwise the 'fast' in 'fast.<domain>' (src/config/site.js).
+  return storefrontSubdomain(hostname);
 }
 
 export function isSubdomain() {

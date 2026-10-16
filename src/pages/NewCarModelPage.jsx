@@ -9,6 +9,7 @@ import { isSubdomain } from "../hooks/useTenant";
 import { sellerWaUrl } from "../utils/sellerWhatsApp";
 import { replyTimeLabel } from "../utils/agentTrust";
 import { trackEvent } from "../utils/analytics";
+import { SITE_URL } from "../config/site";
 import {
   PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning,
 } from "../utils/newCars";
@@ -24,7 +25,7 @@ import {
 //
 // A zone with no price entered says "ask an advisor" -- never the Peninsular
 // number, which an East Malaysia buyer cannot get.
-const SITE = "https://xdrive.my";
+const SITE = SITE_URL;
 
 export default function NewCarModelPage() {
   const { brand: bSlug, model: mSlug } = useParams();

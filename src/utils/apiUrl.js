@@ -6,8 +6,9 @@
 // the app. Every /api/ caller must go through this helper rather than
 // writing the path literally, or it silently breaks only on a phone.
 import { Capacitor } from '@capacitor/core';
+import { SITE_URL } from '../config/site';
 
-const API_ORIGIN = 'https://xdrive.my';
+const API_ORIGIN = SITE_URL;
 
 export function apiUrl(path) {
   return Capacitor.isNativePlatform() ? `${API_ORIGIN}${path}` : path;

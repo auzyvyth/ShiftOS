@@ -5,7 +5,7 @@ import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelH
 import { newModelPath } from "../src/utils/newCars.js";
 export const config = { runtime: "edge" };
 
-const ROOT_DOMAIN = "xdrive.my";
+import { ROOT_DOMAIN } from "../src/config/site.js";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 // Read the public_car_listings VIEW (granted to anon) with the anon key — the
 // same source the marketplace uses. The base car_listings table is NOT granted

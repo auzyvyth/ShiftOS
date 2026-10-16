@@ -79,6 +79,23 @@
   Falcon (Ford Falcon), Sahlah/Jamin (overclaim). Runners-up: Benara, KeretaTelus.
 - [ ] **Owner to confirm before buying:** `drevo.my` free; SSM name free; no MyIPO
   mark in classes 35/42; `@drevo` (or close) free on TikTok/IG/FB.
+- [x] **Rename step 1 DONE (2026-10-16): the domain lives in ONE file,
+  `src/config/site.js`** (`ROOT_DOMAIN`, `SITE_URL`, `OWN_DOMAINS`,
+  `isOwnHost`, `storefrontSubdomain`, `isOwnUrl`). Every hostname CHECK now goes
+  through it: useTenant, postAuthRoute, authErrors (captcha), LoginPage,
+  BuyerAuthPage, Dashboard referrer, apiUrl, Sentry, api/og|sitemap|robots.
+  No visible change. Guarded by `npm run test:site`. Switch day: set
+  `ROOT_DOMAIN = "drevo.my"` and keep `"xdrive.my"` in `OWN_DOMAINS`.
+- [ ] **Rename step 2 (switch day): the TEXT.** ~150 literal `xdrive.my` URLs and
+  display strings (copy files, legal, articles -> `npm run articles:build`,
+  `public/llms.txt`), "XDrive" (566) and "ShiftOS" (435) brand words, logos in
+  `public/`, emails `support|legal|hello|alerts@xdrive.my` (need mailboxes on
+  drevo.my first). Never touch identifiers (`ShiftOSPage`, `/shiftos` route,
+  `xd_*` localStorage keys, `drevo_enquiry` DB value).
+- [ ] **Outside the repo (switch day):** `supabase/functions/_shared/cors.ts`
+  allowlist (redeploy after diffing deployed source), DB functions with hardcoded
+  URLs (2 migrations mention xdrive.my; check `pg_proc` too), Vercel domains,
+  Supabase auth URLs, Google OAuth origins, Turnstile hostnames, Resend DNS.
 - [ ] **Old brand still in code:** 17 `drevo` refs incl. lead_source
   `drevo_enquiry` (CHECK on `leads`) - tidy up during the move.
 - [ ] **xdrive.my expires ~mid-Dec 2026. RENEW IT anyway** and 301 every path

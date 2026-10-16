@@ -9,6 +9,7 @@ import { useCTAContext } from "../hooks/useCTAContext";
 import { isSubdomain } from "../hooks/useTenant";
 import { CAR_FIELDS } from "../config/marketplaceConfig";
 import NotFoundPage from "./NotFoundPage";
+import { SITE_URL } from "../config/site";
 import {
   HUB_BASE, HUB_GUIDES, HUB_LIVE, HUB_ROW_COLS, buildHubs, findHub, hubCopy, hubCrumbs,
   hubCarFilter, faqLd, breadcrumbLd,
@@ -20,7 +21,7 @@ import {
 // to /showroom and can never be indexed on their own. All grouping and copy
 // comes from src/utils/modelHubs.js, which api/og.js also renders for crawlers —
 // so the page Google indexes and the page a buyer lands on say the same thing.
-const SITE = "https://xdrive.my";
+const SITE = SITE_URL;
 const num = (n) => Math.round(n).toLocaleString("en-MY");
 const rm = (n) => `RM ${num(n)}`;
 

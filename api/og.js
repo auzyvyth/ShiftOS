@@ -20,11 +20,10 @@ import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
 import { agentName, agentLocation, agentPageTitle, agentPageDescription } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
+import { SITE_URL, ROOT_DOMAIN } from "../src/config/site.js";
 
 export const config = { runtime: "edge" };
 
-const SITE_URL = "https://xdrive.my";
-const ROOT_DOMAIN = "xdrive.my";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 

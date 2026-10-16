@@ -11,6 +11,7 @@ import { checkAccountStatus } from "../utils/authAccountStatus";
 import { authErrorMessage, isWrongCredentials, reportAuthFailure } from "../utils/authErrors";
 import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
 import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
+import { SITE_URL, isOwnHost } from "../config/site";
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -42,8 +43,8 @@ function GoogleIcon() {
 export default function BuyerAuthPage() {
   // AUTH-6: fresh proof-of-human token per auth call (inert until configured).
   const { getToken } = useAuthCaptcha();
-  const isProd = window.location.hostname === "xdrive.my" || window.location.hostname.endsWith(".xdrive.my");
-  const base = isProd ? "https://xdrive.my" : window.location.origin;
+  const isProd = isOwnHost(window.location.hostname);
+  const base = isProd ? SITE_URL : window.location.origin;
 
   const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
   const isSignup = mode === "signup";
