@@ -1753,10 +1753,15 @@ every month. Migration `20260905p`, cron jobids 14 and 15.
   DEFINER job touches it. All three functions are revoked from `public`, `anon`
   and `authenticated`; verified with `has_function_privilege`, not by reading the
   migration back.
-- [ ] **JPJ-1: nothing alerts if the refresh fails.** A failed week writes
-  `reg_ingest_log.ok = false` and stops there. `notify_ops()` already exists and
-  is the one ops-alert entry point — call it from `reg_refresh_finish()` on a
-  failure so a silently stale tab cannot last a month.
+- [ ] **JPJ-1: QUEUED FOR TONIGHT (after 22:00 MYT), not yet live.** Migration
+  `supabase/migrations/20261016a_jpj_refresh_alerts.sql` makes `reg_refresh_finish()`
+  call `notify_ops` when a year fails (`err:jpj_refresh`) or when there has been no
+  good load for 6 days (`err:jpj_stale`, catches `reg_refresh_start` never running).
+  Tested on a local Postgres 16 with stubs (healthy / http 500 / parse error /
+  nothing queued / old failure): one alert per bad week, none on a good one.
+  After applying: confirm one overload (`select oid::regprocedure from pg_proc where
+  proname='reg_refresh_finish'`) and that Monday 2026-10-19's run logs ok. Delete
+  this entry then. Known gap: if cron job 15 itself stops, nothing calls the check.
 
 ## AI proxy was never metered, and would 403 the moment credits are funded — 2026-09-05
 
