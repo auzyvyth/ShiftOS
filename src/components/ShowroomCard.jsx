@@ -111,6 +111,9 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const variant      = car.variant || '';
   const year         = car.year || '';
   const price        = car.selling_price || 0;
+  // A new-car card covers every variant of a model; selling_price is the
+  // cheapest (20261017c), so it reads "From RM x" (public_car_listings.is_model_card).
+  const fromPrefix   = car.is_model_card ? 'From ' : '';
   const origPrice    = car.original_price || null;
   const mileage      = car.mileage || null;
   const transmission = car.transmission || null;
@@ -287,7 +290,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, minHeight: 42, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', background: '#000000', pointerEvents: 'none' }}>
           {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
           <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-            {price ? 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
+            {price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
           </div>
         </div>
 
@@ -378,7 +381,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             <Link
               to={carHref}
               onClick={e => { e.stopPropagation(); trackCardClick(); }}
-              aria-label={`${[year, brand, model, variant].filter(Boolean).join(' ')}, ${price ? 'RM ' + price.toLocaleString('en-MY') : 'price on request'}`}
+              aria-label={`${[year, brand, model, variant].filter(Boolean).join(' ')}, ${price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'price on request'}`}
               style={{ color: 'inherit', textDecoration: 'none' }}
             >
               {cardName}
@@ -421,7 +424,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Row 5: monthly estimate */}
         {monthly && (
           <p style={{ fontSize: '10px', color: c.spec, margin: '0 0 6px', lineHeight: 1 }}>
-            est. <span style={{ color: c.spec, fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
+            {car.is_model_card ? 'from' : 'est.'} <span style={{ color: c.spec, fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
           </p>
         )}
 
