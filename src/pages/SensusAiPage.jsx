@@ -298,7 +298,14 @@ export default function SensusAiPage() {
         <title>{S.SEO_TITLE}</title>
         <meta name="description" content={S.SEO_DESC} />
         <link rel="canonical" href={S.CANON} />
-        <meta property="og:title" content={S.SEO_TITLE} />
+        <meta property="og:title" content={S.OG_TITLE} />
+        <meta property="og:site_name" content={S.OG_SITE} />
+        <meta property="og:image" content={S.OG_IMAGE} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={S.OG_TITLE} />
+        <meta name="twitter:image" content={S.OG_IMAGE} />
         <meta property="og:description" content={S.SEO_DESC} />
         <meta property="og:url" content={S.CANON} />
         <meta name="theme-color" content={C.bg} />

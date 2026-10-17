@@ -23,6 +23,13 @@ export const CONTACT = {
 };
 
 export const SEO_TITLE = "AI for Car Dealerships in Malaysia | Sensus AI Sales & Service Agent";
+// Link previews (WhatsApp, LinkedIn, Facebook) show og:title + og:image, not the
+// Google title: a short result-first headline and the page's own image, so a
+// shared link does not preview as the marketplace (public/og-sensus.jpg).
+export const OG_TITLE = "Wake up to test drives already booked | Sensus AI";
+export const OG_IMAGE = `${SITE_URL}/og-sensus.jpg`;
+export const OG_SITE = "Sensus AI";
+
 export const SEO_DESC =
   "Sensus AI answers every car buyer and service enquiry 24/7 on WhatsApp, web, email and phone, qualifies them, books test drives and service, and follows up automatically. Book a free 20-minute demo for your dealership.";
 

@@ -289,7 +289,7 @@ function buildNewModelHtml(brand, rows, advisors) {
 }
 
 // ── HTML shell ────────────────────────────────────────────────────────────────
-function htmlShell({ lang = "en", title, description, canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
+function htmlShell({ lang = "en", title, ogTitle = title, siteName = "xdrive.my", description, canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
   const ld = jsonLd
     .filter(Boolean)
     // "<" escaped as \u003c: JSON-LD carries seller-typed text, and a literal
@@ -306,13 +306,13 @@ function htmlShell({ lang = "en", title, description, canonical, image = `${SITE
   ${robots ? `<meta name="robots" content="${esc(robots)}" />` : `<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />`}
   <link rel="canonical" href="${esc(canonical)}" />
   <meta property="og:type" content="${ogType}" />${extraHead}
-  <meta property="og:site_name" content="xdrive.my" />
+  <meta property="og:site_name" content="${esc(siteName)}" />
   <meta property="og:url" content="${esc(canonical)}" />
-  <meta property="og:title" content="${esc(title)}" />
+  <meta property="og:title" content="${esc(ogTitle)}" />
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:image" content="${esc(image)}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="${esc(title)}" />
+  <meta name="twitter:title" content="${esc(ogTitle)}" />
   <meta name="twitter:description" content="${esc(description)}" />
   <meta name="twitter:image" content="${esc(image)}" />
   ${ld}
@@ -880,6 +880,9 @@ const STATIC_PAGES = {
   </main>`;
     return htmlShell({
       title: SX.SEO_TITLE,
+      ogTitle: SX.OG_TITLE,
+      siteName: SX.OG_SITE,
+      image: SX.OG_IMAGE,
       description: SX.SEO_DESC,
       canonical: SX.CANON,
       jsonLd: [SX.SERVICE_LD, SX.FAQ_LD],
