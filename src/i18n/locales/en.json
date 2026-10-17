@@ -2317,10 +2317,10 @@
   },
   "sellerId": {
     "title": "Get verified",
-    "body": "Verified sellers' cars show to buyers on XDrive. Your IC number and photos of your MyKad, about 2 minutes.",
+    "body": "Get the Verified badge on your page and cars. Buyers trust checked sellers more. Photos of your MyKad, about 2 minutes.",
     "cta": "Get verified",
     "checkingTitle": "We're checking your ID",
-    "checkingBody": "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile."
+    "checkingBody": "Your Verified badge shows once it's approved. Your cars are already live."
   },
   "aftercare": {
     "presets": {

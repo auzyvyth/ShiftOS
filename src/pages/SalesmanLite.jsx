@@ -871,9 +871,8 @@ export default function SalesmanLite() {
 
   // No IC gate here any more (owner, 2026-10-12: less friction while we grow).
   // Typing an IC number checked nothing, and the real check, the MyKad photos
-  // behind is_verified, already keeps an unchecked seller's cars off the
-  // marketplace (public_car_listings, 20261011b). SellerIdCard invites them
-  // to get verified instead.
+  // behind is_verified, earns the Verified badge and does not gate listings
+  // (20261017b). SellerIdCard invites them to get verified.
   function openAddListing() {
     setShowAddForm(true);
   }
@@ -6215,8 +6214,8 @@ export default function SalesmanLite() {
             {snav === "profile" && (
               <>
           {/* The ONE place a seller is asked for ID (owner, 2026-10-12), step by
-              step: Get verified -> IC number -> MyKad photos. Buyers only see a
-              seller's cars once it is approved (20261011b), so it sits first. */}
+              step: Get verified -> IC number -> MyKad photos. It earns the
+              Verified badge (cars go live without it, 20261017b). */}
           <div style={{ marginBottom: 16 }}>
           <VerifyIdentity
             profile={profile}

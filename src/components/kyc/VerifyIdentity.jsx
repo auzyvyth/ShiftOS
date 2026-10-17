@@ -11,10 +11,9 @@ import { supabase } from "../../supabaseClient";
  * CarDetailPage) were both already built, but nothing let a seller actually
  * upload an ID, so kyc_documents had zero rows and the badge was unearnable.
  *
- * Since 2026-10-11 this IS a gate for going public: public_car_listings only
- * shows cars whose seller has profiles.is_verified (migration 20261011b).
- * A seller can still add cars and take leads without it; buyers just cannot
- * see the cars until a superadmin approves the ID.
+ * It earns the Verified badge only. From 2026-10-11 it also gated listings
+ * (20261011b); the owner removed that on 2026-10-17 (20261017b): cars go
+ * live without it.
  *
  * Photos go to the PRIVATE kyc-docs bucket under the seller's own uid folder
  * (the storage policy and submit_kyc both require that prefix). submit_kyc is
@@ -217,7 +216,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
               ID under review
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              Your cars show on XDrive as soon as it's approved. You can keep adding cars in the meantime.
+              Your Verified badge shows as soon as it's approved. Your cars are already live.
             </p>
           </div>
         </div>
@@ -261,7 +260,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: P.text }}>Get verified</p>
         </div>
         <p style={{ margin: 0, fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-          Verified sellers' cars show to buyers on XDrive, with a Verified badge. Two quick steps:
+          A Verified badge on your page and cars tells buyers a person checked your ID. Two quick steps:
           your IC number, then photos of your MyKad. About 2 minutes.
         </p>
         {rejected && <div style={{ marginTop: 12 }}>{rejected}</div>}
@@ -308,7 +307,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
       {stepLabel(2)}
       <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: P.text }}>Photos of your MyKad</p>
       <p style={{ margin: "0 0 14px", fontSize: 12, color: P.sub, lineHeight: 1.6 }}>
-        A person at XDrive checks them. Your cars show to buyers once it's approved.
+        A person checks them. Your Verified badge shows once it's approved.
       </p>
 
       <div style={{ display: "grid", gap: 8 }}>
