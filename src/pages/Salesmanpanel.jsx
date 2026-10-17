@@ -112,6 +112,9 @@ const PANEL_CACHE_KEY = "spanel";
 // ones loaded with the page.
 const LEAD_SELECT = "*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)";
 
+// Every loan_applications column the Loans tab reads (table + status edit).
+const LOAN_APP_SELECT = "id, buyer_name, buyer_phone, car_model, loan_amount, banks, status, created_at";
+
 const LEAD_SOURCE_LABEL = {
   chat: "In-app chat",
   whatsapp: "WhatsApp",
@@ -206,6 +209,16 @@ export default function SalesmanPanel() {
  // this device already knows; the live bootstrap overwrites it, and clears it if
  // the real uid differs.
  const [seed] = useState(() => seedPanelCache(PANEL_CACHE_KEY));
+ // The home numbers the seed above does not cover (per-car analytics, channel
+ // split, commission, monthly sales, leaderboard). Same rules: keyed by uid,
+ // only read when the device has a session, overwritten by the live fetch.
+ const [homeSeed] = useState(() => (seed.uid && readCache(`${PANEL_CACHE_KEY}_home_${seed.uid}`)) || {});
+ const homeCacheRef = useRef({ ...homeSeed });
+ const saveHome = (uid, patch) => {
+   if (!uid) return;
+   homeCacheRef.current = { ...homeCacheRef.current, ...patch };
+   writeCache(`${PANEL_CACHE_KEY}_home_${uid}`, homeCacheRef.current);
+ };
 
  const [profile, setProfile] = useState(seed.profile);
  const { can: canPerm, permissions } = usePermissions(profile);
@@ -239,13 +252,11 @@ export default function SalesmanPanel() {
  const [copied, setCopied] = useState(false);
 
  // stats
- const [myClicks, setMyClicks] = useState(0);
- const [myEnquiries, setMyEnquiries] = useState(0);
- const [soldCount, setSoldCount] = useState(0);
- const [soldLoading, setSoldLoading] = useState(true);
+ const [myClicks, setMyClicks] = useState(homeSeed.myClicks || 0);
+ const [myEnquiries, setMyEnquiries] = useState(homeSeed.myEnquiries || 0);
 
  // commission strip (null = still loading)
- const [commission, setCommission] = useState(null);
+ const [commission, setCommission] = useState(homeSeed.commission ?? null);
 
  // my listings
  const [myListings, setMyListings] = useState(seed.listings);
@@ -296,7 +307,7 @@ export default function SalesmanPanel() {
  const [editPhoneVal, setEditPhoneVal] = useState("");
  const [phoneSavingId, setPhoneSavingId] = useState(null);
  const [staleLeads, setStaleLeads] = useState([]);
- const [leaderboard, setLeaderboard] = useState([]);
+ const [leaderboard, setLeaderboard] = useState(homeSeed.leaderboard || []);
  const [leadsLoading, setLeadsLoading] = useState(!seed.leads);
  // Incoming (unclaimed) leads pool — first salesman to claim wins.
  const [incomingLeads, setIncomingLeads] = useState([]);
@@ -482,12 +493,12 @@ export default function SalesmanPanel() {
  const [copiedScriptLine, setCopiedScriptLine] = useState(null);
 
  // Monthly target
- const [thisMonthSales, setThisMonthSales] = useState(0);
+ const [thisMonthSales, setThisMonthSales] = useState(homeSeed.thisMonthSales || 0);
 
  // Per-listing analytics
- const [carStatsMap, setCarStatsMap] = useState({});
+ const [carStatsMap, setCarStatsMap] = useState(homeSeed.carStatsMap || {});
  // Per-car share-channel breakdown: { [car_id]: [{ channel, views, enquiries }] }
- const [channelMap, setChannelMap] = useState({});
+ const [channelMap, setChannelMap] = useState(homeSeed.channelMap || {});
  // rawEvents removed — aggregated server-side via get_car_analytics RPC
  const [dealerSubdomain, setDealerSubdomain] = useState(null);
  const [dealerProfile, setDealerProfile] = useState(null);
@@ -499,7 +510,7 @@ export default function SalesmanPanel() {
  const [noteSaving, setNoteSaving] = useState(false);
 
  // Commission breakdown
- const [commissionDetails, setCommissionDetails] = useState([]);
+ const [commissionDetails, setCommissionDetails] = useState(homeSeed.commissionDetails || []);
 
  // Listings sort/filter
  const [sortBy, setSortBy] = useState("newest");
@@ -527,7 +538,6 @@ export default function SalesmanPanel() {
  buyer_income: "", notes: "",
  });
  const [loanApplications, setLoanApplications] = useState([]);
- const [loanLeads, setLoanLeads] = useState([]);
  const [loanStockUnits, setLoanStockUnits] = useState([]);
  const [loanSaving, setLoanSaving] = useState(false);
  const [loanEditId, setLoanEditId] = useState(null);
@@ -631,9 +641,18 @@ export default function SalesmanPanel() {
  setLeads([]);
  setEnquiries([]);
  setAppointments([]);
+ setCarStatsMap({}); setChannelMap({}); setMyClicks(0); setMyEnquiries(0);
+ setCommission(null); setCommissionDetails([]); setThisMonthSales(0); setLeaderboard([]);
+ homeCacheRef.current = {};
  setLoading(true);
  }
  rememberPanelUid(PANEL_CACHE_KEY, user.id);
+ // The car-id lookups need only user.id, so they start now, alongside the
+ // profile read, instead of queueing behind it.
+ const carIdsReady = Promise.all([
+   supabase.from("car_listings").select("id").eq("assigned_to", user.id),
+   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", user.id),
+ ]);
  const { data: profileData, error: profileError } = await supabase
  .from("profiles")
  .select("*")
@@ -682,10 +701,7 @@ export default function SalesmanPanel() {
  // Fetch car IDs from both direct assignment and salesman_listings (featured cars).
  // Use user.id, NOT the userId state — setUserId() above hasn't flushed yet in this
  // closure, so userId is still null here and the analytics would come back empty.
- const [{ data: assignedCars }, { data: featuredCars }] = await Promise.all([
-   supabase.from("car_listings").select("id").eq("assigned_to", user.id),
-   supabase.from("salesman_listings").select("listing_id").eq("salesman_id", user.id),
- ]);
+ const [{ data: assignedCars }, { data: featuredCars }] = await carIdsReady;
  const myCarIds = [...new Set([
    ...(assignedCars || []).map((c) => c.id),
    ...(featuredCars || []).map((c) => c.listing_id),
@@ -696,8 +712,15 @@ export default function SalesmanPanel() {
  // mini-page slug), not the car's total. Featuring a dealer car would otherwise
  // inherit the dealer's whole storefront/marketplace view history. Only events
  // stamped with the salesman's slug count as views they brought.
- const { data: analyticsRows, error: analyticsErr } = await supabase
- .rpc("get_salesman_slug_analytics", { p_car_ids: myCarIds, p_slug: profileData.slug || "" });
+ // Both RPCs take the same inputs and neither needs the other, so they run
+ // together (they used to run one after the other).
+ const [
+   { data: analyticsRows, error: analyticsErr },
+   { data: chRows, error: chErr },
+ ] = await Promise.all([
+   supabase.rpc("get_salesman_slug_analytics", { p_car_ids: myCarIds, p_slug: profileData.slug || "" }),
+   supabase.rpc("get_salesman_channel_breakdown", { p_car_ids: myCarIds, p_slug: profileData.slug || "" }),
+ ]);
  if (analyticsErr) console.error("fetchAnalytics:", analyticsErr);
  const map = {};
  (analyticsRows || []).forEach(row => {
@@ -708,14 +731,14 @@ export default function SalesmanPanel() {
  waDaily:   [row.w0, row.w1, row.w2, row.w3, row.w4, row.w5, row.w6],
  };
  });
+ const clicks = Object.values(map).reduce((s, v) => s + (v.views     || 0), 0);
+ const enqs = Object.values(map).reduce((s, v) => s + (v.enquiries || 0), 0);
  setCarStatsMap(map);
- setMyClicks(Object.values(map).reduce((s, v) => s + (v.views     || 0), 0));
- setMyEnquiries(Object.values(map).reduce((s, v) => s + (v.enquiries || 0), 0));
+ setMyClicks(clicks);
+ setMyEnquiries(enqs);
 
  // Share-channel breakdown (which platform each view/enquiry came from),
  // same slug scope. Untagged/organic rows bucket to 'direct' server-side.
- const { data: chRows, error: chErr } = await supabase
- .rpc("get_salesman_channel_breakdown", { p_car_ids: myCarIds, p_slug: profileData.slug || "" });
  if (chErr) console.error("fetchChannelBreakdown:", chErr);
  const chMap = {};
  (chRows || []).forEach(row => {
@@ -726,6 +749,12 @@ export default function SalesmanPanel() {
  });
  });
  setChannelMap(chMap);
+ // A failed read keeps the cached numbers rather than overwriting them.
+ if (!analyticsErr && !chErr) saveHome(user.id, { carStatsMap: map, channelMap: chMap, myClicks: clicks, myEnquiries: enqs });
+ } else {
+ // No cars any more: clear numbers a cached seed may have painted.
+ setCarStatsMap({}); setChannelMap({}); setMyClicks(0); setMyEnquiries(0);
+ saveHome(user.id, { carStatsMap: {}, channelMap: {}, myClicks: 0, myEnquiries: 0 });
  }
  });
  }, [navigate]);
@@ -739,26 +768,31 @@ export default function SalesmanPanel() {
  // to null and the pipeline (and other reads) come back empty and never reload.
  if (!userId || !profile) return;
 
- // Personal sold count with realtime subscription
+ // Every sold car of mine, read ONCE: all-time commission (intentionally not
+ // date-bounded — the dashboard card and analytics KPI both label it "All
+ // time"), the last 5 sales (activity feed + sparkline) and this month's count
+ // (monthly target) are all derived from these rows. They were three queries,
+ // plus a fourth sold count that nothing rendered.
  const fetchSold = async () => {
- setSoldLoading(true);
- const { count } = await supabase
+ const { data, error } = await supabase
  .from("car_listings")
- .select("id", { count: "exact", head: true })
+ .select("brand, model, year, commission_amount, sold_at")
+ .eq("assigned_to", userId)
  .eq("status", "sold")
- .eq("assigned_to", userId);
- setSoldCount(count || 0);
- setSoldLoading(false);
+ .order("sold_at", { ascending: false, nullsFirst: false });
+ if (error) return; // keep whatever is on screen (cached or live)
+ const rows = data || [];
+ const now = new Date();
+ const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+ const total = rows.reduce((sum, r) => sum + (Number(r.commission_amount) || 0), 0);
+ const details = rows.filter((r) => r.commission_amount != null).slice(0, 5);
+ const monthCount = rows.filter((r) => r.sold_at && new Date(r.sold_at) >= monthStart).length;
+ setCommission(total);
+ setCommissionDetails(details);
+ setThisMonthSales(monthCount);
+ saveHome(userId, { commission: total, commissionDetails: details, thisMonthSales: monthCount });
  };
  fetchSold();
- const ch = supabase
- .channel("salesman_sold")
- .on(
- "postgres_changes",
- { event: "UPDATE", schema: "public", table: "car_listings", filter: `assigned_to=eq.${userId}` },
- fetchSold,
- )
- .subscribe();
 
  // Active listings: assigned to me OR self-featured via salesman_listings.
  // Featuring a car (Add to my listings) does NOT create a pipeline lead —
@@ -797,24 +831,10 @@ export default function SalesmanPanel() {
  .on(
  "postgres_changes",
  { event: "*", schema: "public", table: "car_listings", filter: `assigned_to=eq.${userId}` },
- fetchMyListings,
+ // A car of mine changing (sold, relisted) also moves the sold numbers.
+ () => { fetchMyListings(); fetchSold(); },
  )
  .subscribe();
-
- // All-time commission across all this salesman's sold cars (intentionally not
- // date-bounded — the dashboard card and analytics KPI both label it "All time").
- supabase
- .from("car_listings")
- .select("commission_amount")
- .eq("assigned_to", userId)
- .eq("status", "sold")
- .then(({ data }) => {
- const total = (data || []).reduce(
- (sum, r) => sum + (Number(r.commission_amount) || 0),
- 0,
- );
- setCommission(total);
- });
 
  // Upcoming appointments — own salesman_id + unattributed bookings on featured cars
  const fetchAppts = async () => {
@@ -855,17 +875,6 @@ export default function SalesmanPanel() {
  () => fetchAppts(),
  )
  .subscribe();
-
- // Commission breakdown (last 5 sold)
- supabase
- .from("car_listings")
- .select("brand, model, year, commission_amount, sold_at")
- .eq("assigned_to", userId)
- .eq("status", "sold")
- .not("commission_amount", "is", null)
- .order("sold_at", { ascending: false })
- .limit(5)
- .then(({ data }) => setCommissionDetails(data || []));
 
  // Manager notes
  supabase
@@ -1006,23 +1015,7 @@ Rules:
  )
  .subscribe();
 
- // This month's sales
- const now = new Date();
- const monthStart = new Date(
- now.getFullYear(),
- now.getMonth(),
- 1,
- ).toISOString();
- supabase
- .from("car_listings")
- .select("id", { count: "exact", head: true })
- .eq("assigned_to", userId)
- .eq("status", "sold")
- .gte("sold_at", monthStart)
- .then(({ count }) => setThisMonthSales(count || 0));
-
  return () => {
- supabase.removeChannel(ch);
  supabase.removeChannel(notifCh);
  supabase.removeChannel(apptCh);
  supabase.removeChannel(listingsCh);
@@ -1053,21 +1046,18 @@ Rules:
    isMe: t.id === profile.id,
   })).sort((a, b) => b.units - a.units);
   setLeaderboard(rows);
+  if (team) saveHome(profile.id, { leaderboard: rows });
  })();
  }, [profile?.id, profile?.dealer_id]);
 
- // loan data
+ // loan data — only the Loans tab reads it, so it loads the first time that
+ // tab opens, once, then stays in state. (A third query here, leads ->
+ // loanLeads, fed nothing on screen and was dropped.)
+ const [loansLoaded, setLoansLoaded] = useState(false);
  useEffect(() => {
- if (!profile?.id) return;
+ if (activeTab !== "loans" || loansLoaded || !profile?.id) return;
+ setLoansLoaded(true);
  const dealerId = getDealerIdFromProfile(profile);
- supabase
- .from("leads")
- .select("id, buyer_name, phone")
- .eq("dealer_id", dealerId)
- .eq("salesman_id", profile.id)
- .eq("is_deleted", false)
- .order("created_at", { ascending: false })
- .then(({ data }) => setLoanLeads(data || []));
  supabase
  .from("stock_units")
  .select("id, brand, model, year, registration_number")
@@ -1075,11 +1065,11 @@ Rules:
  .then(({ data }) => setLoanStockUnits(data || []));
  supabase
  .from("loan_applications")
- .select("*")
+ .select(LOAN_APP_SELECT)
  .eq("salesman_id", profile.id)
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
- }, [profile?.id]);
+ }, [activeTab, loansLoaded, profile?.id]);
  //
 
  // Shared dealer inventory — lazy-loaded the first time the salesman opens the Inventory view.
@@ -6754,7 +6744,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  banks: banksPayload,
  notes: loanForm.notes || null,
  status: "Submitted",
- }).select("*").single();
+ }).select(LOAN_APP_SELECT).single();
  setLoanSaving(false);
  if (!error && data) {
  setLoanApplications((prev) => [data, ...prev]);

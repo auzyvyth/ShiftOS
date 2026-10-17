@@ -1,5 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NEW_CAR_BRANDS } from '../utils/newCars';
+
+// How a seller sells: up to two picks (owner, 2026-10-17: many new-car
+// advisors also broker for other dealers). Private is on its own. The DB keeps
+// one seller_type plus new_car_brand, so "both" is broker + a brand:
+//   broker + new_car -> seller_type 'broker',  new_car_brand set
+//   new_car only     -> seller_type 'new_car', new_car_brand set
+//   broker only      -> seller_type 'broker',  new_car_brand null
+//   private          -> seller_type 'private', new_car_brand null
+const sellsFromDb = (type, brand) =>
+  type === 'private' ? ['private']
+    : type === 'new_car' ? ['new_car']
+    : brand ? ['broker', 'new_car'] : ['broker'];
+const sellsToDb = (sells, brand) => {
+  if (sells.includes('private')) return { seller_type: 'private', new_car_brand: null };
+  const isNew = sells.includes('new_car');
+  return {
+    seller_type: sells.includes('broker') ? 'broker' : 'new_car',
+    new_car_brand: isNew ? brand : null,
+  };
+};
+const toggleSells = (sells, key) => {
+  if (key === 'private') return ['private'];
+  const base = sells.filter((k) => k !== 'private');
+  const next = base.includes(key) ? base.filter((k) => k !== key) : [...base, key];
+  return next.length ? next : [key];
+};
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
@@ -253,8 +279,8 @@ export default function SalesmanOnboarding() {
     // Defaults to the framing this product has always used for a standalone
     // signup (commission-first dashboard, "Agent" badge) — private is an
     // opt-in distinction, not a behavior change for anyone who skips this.
-    sellerType: 'broker',
-    // Only for sellerType 'new_car' (NEWCAR-1): which brand's price list their
+    sells: ['broker'],
+    // Only when sells includes 'new_car' (NEWCAR-1): which brand's price list their
     // page shows. Prices come from the platform table, never typed by the seller.
     newCarBrand: '',
   });
@@ -370,7 +396,7 @@ export default function SalesmanOnboarding() {
           icNumber: profile.ic_number || p.icNumber,
           phone: profile.phone || p.phone,
           slug: profile.slug || p.slug,
-          sellerType: profile.seller_type || p.sellerType,
+          sells: profile.seller_type ? sellsFromDb(profile.seller_type, profile.new_car_brand) : p.sells,
           newCarBrand: profile.new_car_brand || p.newCarBrand,
         }));
         setResumeIsBuyer(isBuyer);
@@ -497,7 +523,7 @@ export default function SalesmanOnboarding() {
   const skipIdentity = async () => {
     setErr('');
     if (!form.fullName.trim()) { setErr('Full name is required'); return; }
-    if (form.sellerType === 'new_car' && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
+    if (form.sells.includes('new_car') && !form.newCarBrand) { setErr('Pick the brand you sell'); return; }
     setLoading(true);
     try {
       if (userId) {
@@ -505,8 +531,7 @@ export default function SalesmanOnboarding() {
           id: userId,
           full_name: form.fullName.trim(),
           role: 'salesman',
-          seller_type: form.sellerType,
-          new_car_brand: form.sellerType === 'new_car' ? form.newCarBrand : null,
+          ...sellsToDb(form.sells, form.newCarBrand),
           onboarding_complete: false,
         }, { onConflict: 'id' });
         if (error) throw error;
@@ -607,7 +632,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sellerType: 'broker', newCarBrand: '' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sells: ['broker'], newCarBrand: '' });
     setStep(0);
   };
 
@@ -830,26 +855,26 @@ export default function SalesmanOnboarding() {
                   Your name is what buyers see. You can get verified later from your profile, in about 2 minutes.
                 </p>
 
-                <label className="eo-label">HOW DO YOU SELL CARS?</label>
+                <label className="eo-label">HOW DO YOU SELL CARS? PICK ONE OR TWO</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   {[
                     { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
                     { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua or Toyota' },
                     { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
                   ].map((opt) => (
-                    <button key={opt.key} type="button" onClick={() => upd('sellerType')(opt.key)}
+                    <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}
                       style={{
                         flex: '1 1 140px', minWidth: 0, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
-                        background: form.sellerType === opt.key ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
-                        border: `1px solid ${form.sellerType === opt.key ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
+                        background: form.sells.includes(opt.key) ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
+                        border: `1px solid ${form.sells.includes(opt.key) ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
                         fontFamily: 'inherit',
                       }}>
-                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: form.sellerType === opt.key ? '#fca5a5' : '#E8EDF5' }}>{opt.title}</p>
+                      <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: form.sells.includes(opt.key) ? '#fca5a5' : '#E8EDF5' }}>{opt.title}</p>
                       <p style={{ margin: '2px 0 0', fontSize: 10.5, color: 'rgba(255,255,255,0.45)' }}>{opt.sub}</p>
                     </button>
                   ))}
                 </div>
-                {form.sellerType === 'new_car' ? (
+                {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
                     <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
                     <div style={{ display: 'flex', gap: 8 }}>

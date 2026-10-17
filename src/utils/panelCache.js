@@ -163,7 +163,7 @@ export function seedPanelCache(panel, ttlMs = DEFAULT_TTL) {
 export const PANEL_DATA_CACHE_PREFIXES = [
   "sp_listings_", "sp_leads_", "sp_enquiries_", "sp_appts_", "sp_profile_", "sp_last_uid",
   "slite_listings_", "slite_leads_", "slite_enquiries_", "slite_appts_", "slite_profile_", "slite_last_uid",
-  "spanel_listings_", "spanel_leads_", "spanel_enquiries_", "spanel_appts_", "spanel_profile_", "spanel_last_uid",
+  "spanel_listings_", "spanel_leads_", "spanel_enquiries_", "spanel_appts_", "spanel_profile_", "spanel_last_uid", "spanel_home_",
   "dash_listings_", "dash_profile_", "dash_salesmen_", "dash_last_uid",
   // useCachedFetch envelopes (dealer snapshot, PerformanceTab) — `cf:v1:<key>`,
   // and every one of those keys ends in a user id.
