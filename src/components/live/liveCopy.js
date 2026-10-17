@@ -23,6 +23,8 @@ const en = {
   langLabel: 'Presenter language',
   showContact: 'Show contact',
   hideContact: 'Hide contact',
+  contactMe: 'Contact me',
+  variant: 'Variant',
   adjust: 'Adjust financing',
   exit: 'Exit live presentation',
   rateQuoted: 'How the rate is quoted',
@@ -61,6 +63,9 @@ const en = {
   subjectBank: 'Subject to bank approval.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
   ctaLabel: 'Comment line',
+  offer: 'Offer',
+  offerLabel: 'Your offer (free extras)',
+  offerHint: 'Shown on every car, e.g. free tint, dashcam. Leave empty to hide.',
   ctaHint: 'Type # where the car number goes. Leave empty for the standard line.',
   budgetIs: 'Budget is',
   monthlyBudget: 'Monthly budget',
@@ -112,6 +117,8 @@ const ms = {
   langLabel: 'Bahasa paparan',
   showContact: 'Tunjuk hubungan',
   hideContact: 'Sorok hubungan',
+  contactMe: 'Hubungi saya',
+  variant: 'Varian',
   adjust: 'Ubah pembiayaan',
   exit: 'Keluar dari paparan live',
   rateQuoted: 'Cara kadar disebut',
@@ -150,6 +157,9 @@ const ms = {
   subjectBank: 'Tertakluk kepada kelulusan bank.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
   ctaLabel: 'Ayat komen',
+  offer: 'Tawaran',
+  offerLabel: 'Tawaran anda (hadiah percuma)',
+  offerHint: 'Ditunjuk pada setiap kereta, cth. tinted percuma, dashcam. Biarkan kosong untuk sorok.',
   ctaHint: 'Taip # di tempat nombor kereta. Biarkan kosong untuk ayat biasa.',
   budgetIs: 'Bajet ialah',
   monthlyBudget: 'Bajet bulanan',
@@ -211,6 +221,23 @@ export function saveLiveCta(text) {
   try {
     if (text.trim()) window.localStorage.setItem(LIVE_CTA_KEY, text);
     else window.localStorage.removeItem(LIVE_CTA_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// The seller's own offer (free tint, dashcam, merchandise), remembered per
+// device like the comment line (owner, 2026-10-17). Their standing extras, so
+// it stays between lives; empty hides it.
+export const LIVE_OFFER_KEY = 'xd_live_offer';
+export const OFFER_MAX = 120;
+
+export function initialLiveOffer() {
+  try { return (window.localStorage.getItem(LIVE_OFFER_KEY) || '').slice(0, OFFER_MAX); } catch { return ''; }
+}
+
+export function saveLiveOffer(text) {
+  try {
+    if (text.trim()) window.localStorage.setItem(LIVE_OFFER_KEY, text);
+    else window.localStorage.removeItem(LIVE_OFFER_KEY);
   } catch { /* storage blocked */ }
 }
 

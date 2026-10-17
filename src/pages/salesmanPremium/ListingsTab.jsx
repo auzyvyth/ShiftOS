@@ -201,6 +201,7 @@ export default function ListingsTab({
  isMobile={isMobile}
  >
  <CarForm
+ dark
  sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {

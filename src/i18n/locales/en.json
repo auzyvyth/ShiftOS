@@ -2398,5 +2398,22 @@
         "gone_quiet": "Gone quiet"
       }
     }
+  },
+  "carKind": {
+    "what": "What are you listing?",
+    "used": "Used",
+    "usedHint": "A Malaysian-registered car",
+    "recon": "Recon",
+    "reconHint": "Imported, reconditioned, auction graded",
+    "new": "New",
+    "newHint": "Proton, Perodua or Toyota, from the official price list",
+    "back": "Change car type",
+    "which": "Which brand?",
+    "whichHint": "The model list and the official price for your area fill in by themselves.",
+    "yours": "Your brand",
+    "switchBody": "Your account sells new {{saved}}. One brand per account for now: switching to {{to}} lists you as a {{to}} advisor, not {{saved}}. Your {{saved}} cards stay up.",
+    "switchBtn": "Switch to {{to}}",
+    "saving": "Saving...",
+    "saveErr": "Couldn't save the brand. Try again."
   }
 }
