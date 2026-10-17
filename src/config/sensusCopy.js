@@ -26,12 +26,25 @@ export const SEO_TITLE = "AI for Car Dealerships in Malaysia | Sensus AI Sales &
 export const SEO_DESC =
   "Sensus AI answers every car buyer and service enquiry 24/7 on WhatsApp, web, email and phone, qualifies them, books test drives and service, and follows up automatically. Book a free 20-minute demo for your dealership.";
 
+// Lead with the result the dealer gets, not the product (owner's brief,
+// 2026-10-17). Every claim must stay true: "in minutes" matches Sensus's own
+// "median first response under 5 minutes" in IMPACT, not a promise of seconds.
 export const HERO = {
   eyebrow: "AI for Malaysian car dealerships",
-  h1: "Stop losing car buyers to slow follow-up",
-  sub: "Sensus AI replies to every enquiry in seconds, day or night, on WhatsApp, your website, email and phone. It qualifies the buyer, books the test drive or service, and keeps following up, so your sales team spends its time closing.",
+  h1: "Wake up to test drives already booked",
+  sub: "The buyer who messaged at 11pm got an answer in minutes and a slot in your diary. Sensus AI replies on WhatsApp, your website, email and phone, qualifies every enquiry, books the test drive or service, and keeps following up, so your sales team spends its day closing.",
   cta: "Book a free 20-minute demo",
-  ctaNote: "A live walk-through on your own enquiries. No commitment.",
+  ctaNote: "A live walk-through on the kind of enquiries you get. No commitment.",
+};
+
+// Before -> after, the change a dealer would notice in their own showroom.
+export const BEFORE_AFTER = {
+  title: "What changes in your showroom",
+  rows: [
+    { before: "Weekend and late-night enquiries wait until someone is back at the desk", after: "Answered in minutes, any hour, with the keen buyers already booked in" },
+    { before: "Follow-up stops after the second try because the team is busy", after: "Every lead is followed up until it books a visit or says no" },
+    { before: "Service and insurance reminders depend on someone remembering", after: "Reminders go out on time and bookings land in the service diary" },
+  ],
 };
 
 export const BRANDS = ["Volvo", "Volkswagen", "GM", "BMW", "Nissan", "Honda", "Audi", "Stellantis", "Chery", "Jetour", "Lucid", "BAIC"];

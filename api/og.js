@@ -853,6 +853,8 @@ const STATIC_PAGES = {
     <p>${esc(SX.HERO.eyebrow)}</p>
     <h1>${esc(SX.HERO.h1)}</h1>
     <p>${esc(SX.HERO.sub)}</p>
+    <h2>${esc(SX.BEFORE_AFTER.title)}</h2>
+    <ul>${SX.BEFORE_AFTER.rows.map((r) => `<li>Before: ${esc(r.before)}. After: ${esc(r.after)}.</li>`).join("")}</ul>
     <p>${esc(SX.TRUST_LINE)} ${esc(SX.BRANDS.join(", "))}. ${esc(SX.COMPANY_LINE)}</p>
     <h2>${esc(SX.PROBLEMS.title)}</h2>
     <ul>${SX.PROBLEMS.items.map((p) => `<li><strong>${esc(p.title)}:</strong> ${esc(p.stat)} ${esc(p.body)}</li>`).join("")}</ul>

@@ -12,13 +12,15 @@ import * as S from "../config/sensusCopy";
 // 20261017a), which rate-limits and fires notify_ops (Telegram + admin push).
 // publicClient, not supabase: a stale saved login must never hold the form.
 //
-// Look follows Sensus's own deck: black ground, white type, teal = inbound AI,
-// orange = outbound AI (the colours only ever encode that, as in their circle).
+// Look (owner, 2026-10-17): a dark "black & gold" palette, no bright colours.
+// Gold is the ONE accent (primary button, labels, outbound AI); steel marks
+// inbound AI; ivory is the text and the "after" side of the before/after block.
 
 const C = {
-  bg: "#07080a", panel: "#101215", line: "rgba(255,255,255,0.09)",
-  text: "#f5f6f7", muted: "rgba(255,255,255,0.66)", faint: "rgba(255,255,255,0.45)",
-  inbound: "#3bb5c3", outbound: "#f26a21", human: "#e5e7eb",
+  bg: "#0B0B0C", panel: "#161618", line: "rgba(233,223,204,0.10)",
+  text: "#EFE9DD", muted: "rgba(233,223,204,0.68)", faint: "rgba(233,223,204,0.46)",
+  gold: "#B08D57", ivory: "#E9DFCC",
+  inbound: "#8C96A8", outbound: "#B08D57", human: "#3A3A3F",
 };
 const DIR_COLOR = { inbound: C.inbound, outbound: C.outbound, human: C.human };
 
@@ -26,29 +28,31 @@ const CSS = `
 .sx{background:${C.bg};color:${C.text};font-family:var(--xd-font-body,'Outfit',system-ui,sans-serif);min-height:100vh;-webkit-font-smoothing:antialiased}
 .sx *{box-sizing:border-box}
 .sx-w{max-width:1080px;margin:0 auto;padding:0 16px}
-.sx-top{position:sticky;top:0;z-index:10;background:rgba(7,8,10,.92);backdrop-filter:blur(8px);border-bottom:1px solid ${C.line}}
+.sx-top{position:sticky;top:0;z-index:10;background:rgba(11,11,12,.78);-webkit-backdrop-filter:blur(20px) saturate(140%);backdrop-filter:blur(20px) saturate(140%);border-bottom:1px solid ${C.line}}
 .sx-top .sx-w{display:flex;align-items:center;justify-content:space-between;height:60px}
-.sx-mark{font-weight:700;letter-spacing:.22em;font-size:18px}
+.sx-mark{font-weight:700;letter-spacing:.22em;font-size:18px;color:${C.ivory}}
 .sx-mark small{display:block;font-size:9px;letter-spacing:.2em;color:${C.faint};font-weight:500;margin-top:2px}
-.sx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:10px;background:#fff;color:#07080a;font-weight:700;font-size:15px;border:0;cursor:pointer;text-decoration:none}
+.sx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:10px;background:${C.gold};color:#0B0B0C;font-weight:700;font-size:15px;border:0;cursor:pointer;text-decoration:none;transition:transform 100ms ease-out,filter 150ms ease;-webkit-tap-highlight-color:transparent}
+.sx-btn:active,.sx-ghost:active{transform:scale(.97)}
+@media (hover:hover){.sx-btn:hover{filter:brightness(1.08)}.sx-ghost:hover{border-color:${C.gold}}}
 .sx-btn:disabled{opacity:.6;cursor:default}
 .sx-btn.sm{min-height:38px;padding:0 14px;font-size:13px}
-.sx-ghost{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:10px;border:1px solid rgba(255,255,255,.22);color:${C.text};font-weight:600;font-size:15px;text-decoration:none}
-.sx-hero{padding:72px 0 56px;background:radial-gradient(120% 80% at 80% 0%,#1a1d22 0%,${C.bg} 60%)}
-.sx-eb{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:${C.inbound}}
-.sx h1{font-size:clamp(34px,6.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.02em;margin:14px 0 18px;max-width:14ch}
+.sx-ghost{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:10px;border:1px solid rgba(233,223,204,.24);color:${C.text};font-weight:600;font-size:15px;text-decoration:none;transition:transform 100ms ease-out,border-color 150ms ease;-webkit-tap-highlight-color:transparent}
+.sx-hero{padding:72px 0 56px;background:radial-gradient(120% 80% at 80% 0%,#1C1A16 0%,${C.bg} 60%)}
+.sx-eb{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:${C.gold}}
+.sx h1{font-size:clamp(34px,6.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.025em;margin:14px 0 18px;max-width:15ch;text-wrap:balance}
 .sx-sub{font-size:clamp(16px,1.6vw,19px);line-height:1.6;color:${C.muted};max-width:60ch;margin:0 0 28px}
 .sx-ctas{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .sx-note{font-size:13px;color:${C.faint};margin-top:12px}
 .sx-trust{border-top:1px solid ${C.line};border-bottom:1px solid ${C.line};padding:22px 0}
 .sx-trust p{margin:0 0 10px;font-size:12px;color:${C.faint};letter-spacing:.04em}
-.sx-brands{display:flex;flex-wrap:wrap;gap:8px 22px;font-weight:700;font-size:15px;color:rgba(255,255,255,.78);letter-spacing:.04em}
+.sx-brands{display:flex;flex-wrap:wrap;gap:8px 22px;font-weight:700;font-size:15px;color:rgba(233,223,204,.8);letter-spacing:.04em}
 .sx-sec{padding:64px 0}
-.sx h2{font-size:clamp(24px,3.4vw,38px);line-height:1.15;font-weight:800;letter-spacing:-.01em;margin:0 0 12px}
+.sx h2{font-size:clamp(24px,3.4vw,38px);line-height:1.15;font-weight:800;letter-spacing:-.018em;margin:0 0 12px;text-wrap:balance}
 .sx-lead{color:${C.muted};font-size:16px;line-height:1.6;max-width:62ch;margin:0 0 28px}
 .sx-grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 .sx-card{background:${C.panel};border:1px solid ${C.line};border-radius:14px;padding:22px;min-width:0}
-.sx-stat{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.sx-stat{font-size:44px;font-weight:800;line-height:1;letter-spacing:-.03em;color:${C.gold};font-variant-numeric:tabular-nums}
 .sx-card h3{font-size:17px;font-weight:700;margin:12px 0 6px}
 .sx-card p{margin:0;color:${C.muted};font-size:14.5px;line-height:1.55}
 .sx-k{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${C.faint}}
@@ -57,7 +61,7 @@ const CSS = `
 .sx-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .sx-stages{list-style:none;margin:0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
 .sx-stage{display:flex;gap:14px;align-items:flex-start;background:${C.panel};border:1px solid ${C.line};border-radius:12px;padding:14px 16px;min-width:0}
-.sx-num{flex:0 0 32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#07080a}
+.sx-stage .sx-num{flex:0 0 32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#0B0B0C}
 .sx-stage b{display:block;font-size:15px;margin-bottom:3px}
 .sx-stage span{font-size:13.5px;color:${C.muted};line-height:1.45}
 .sx-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
@@ -69,24 +73,35 @@ const CSS = `
 .sx-form{display:grid;gap:14px}
 .sx-row2{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .sx-form label{display:grid;gap:6px;font-size:13px;font-weight:600;color:${C.muted}}
-.sx-in{width:100%;min-height:48px;border-radius:10px;border:1px solid rgba(255,255,255,.18);background:#0b0c0f;color:${C.text};padding:0 14px;font-size:16px;font-family:inherit}
+.sx-in{width:100%;min-height:48px;border-radius:10px;border:1px solid rgba(233,223,204,.18);background:#0F0F11;color:${C.text};padding:0 14px;font-size:16px;font-family:inherit}
 textarea.sx-in{padding:12px 14px;min-height:88px;resize:vertical}
-.sx-in:focus{outline:2px solid ${C.inbound};outline-offset:1px;border-color:transparent}
+.sx-in:focus{outline:2px solid ${C.gold};outline-offset:1px;border-color:transparent}
 .sx-consent{display:flex !important;grid-template-columns:none !important;gap:10px !important;align-items:flex-start;font-weight:400 !important;line-height:1.5}
-.sx-consent input{width:18px;height:18px;margin-top:2px;flex:0 0 auto}
+.sx-consent input{width:18px;height:18px;margin-top:2px;flex:0 0 auto;accent-color:${C.gold}}
 .sx-err{color:#fca5a5;font-size:14px;margin:0}
 .sx-faq details{border-bottom:1px solid ${C.line};padding:16px 0}
 .sx-faq summary{cursor:pointer;font-weight:700;font-size:16px;list-style:none}
 .sx-faq summary::-webkit-details-marker{display:none}
 .sx-faq p{color:${C.muted};line-height:1.6;margin:10px 0 0;font-size:15px}
+.sx-ba{display:grid;gap:12px}
+.sx-ba-row{display:grid;grid-template-columns:1fr 28px 1fr;gap:10px;align-items:stretch}
+.sx-ba-cell{border-radius:14px;padding:18px 20px;min-width:0;font-size:15.5px;line-height:1.5}
+.sx-ba-cell .sx-k{display:block;margin-bottom:6px}
+.sx-ba-before{background:${C.panel};border:1px solid ${C.line};color:${C.muted}}
+.sx-ba-after{background:${C.ivory};color:#0B0B0C;font-weight:600}
+.sx-ba-after .sx-k{color:#7A6440}
+.sx-ba-arrow{display:flex;align-items:center;justify-content:center;color:${C.gold};font-size:20px}
 .sx-foot{border-top:1px solid ${C.line};padding:28px 0 40px;font-size:13px;color:${C.faint};line-height:1.7}
 .sx-foot a{color:${C.muted}}
-@media (max-width:640px){.sx-hero{padding:48px 0 40px}.sx-sec{padding:48px 0}.sx-top .sx-btn{display:none}}
+@media (prefers-reduced-motion:reduce){.sx-btn,.sx-ghost{transition:none}.sx-btn:active,.sx-ghost:active{transform:none}}
+@media (prefers-reduced-transparency:reduce){.sx-top{background:${C.bg};backdrop-filter:none;-webkit-backdrop-filter:none}}
+@media (max-width:640px){.sx-ba-row{grid-template-columns:1fr;gap:6px}.sx-ba-arrow{transform:rotate(90deg);height:20px}.sx-hero{padding:48px 0 40px}.sx-sec{padding:48px 0}.sx-top .sx-btn{display:none}}
 `;
 
 const scrollToForm = (e) => {
   e?.preventDefault?.();
-  document.getElementById("demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("demo")?.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
 };
 
 function DemoForm() {
@@ -193,6 +208,21 @@ export default function SensusAiPage() {
           </div>
         </section>
 
+        <section className="sx-sec" style={{ paddingBottom: 48 }}>
+          <div className="sx-w">
+            <h2>{S.BEFORE_AFTER.title}</h2>
+            <div className="sx-ba" style={{ marginTop: 24 }}>
+              {S.BEFORE_AFTER.rows.map((r) => (
+                <div className="sx-ba-row" key={r.after}>
+                  <div className="sx-ba-cell sx-ba-before"><span className="sx-k">Before</span>{r.before}</div>
+                  <div className="sx-ba-arrow" aria-hidden="true">&rarr;</div>
+                  <div className="sx-ba-cell sx-ba-after"><span className="sx-k">With Sensus</span>{r.after}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="sx-trust">
           <div className="sx-w">
             <p>{S.TRUST_LINE}</p>
@@ -239,13 +269,13 @@ export default function SensusAiPage() {
             <p className="sx-lead">{S.CIRCLE.lead}</p>
             <div className="sx-legend">
               {Object.entries(S.CIRCLE.legend).map(([k, v]) => (
-                <span key={k}><i className="sx-dot" style={{ background: DIR_COLOR[k] }} />{v}</span>
+                <span key={k}><i className="sx-dot" style={{ background: DIR_COLOR[k], boxShadow: k === "human" ? `inset 0 0 0 1px ${C.faint}` : undefined }} />{v}</span>
               ))}
             </div>
             <ol className="sx-stages">
               {S.CIRCLE.stages.map((s) => (
                 <li className="sx-stage" key={s.n}>
-                  <span className="sx-num" style={{ background: s.dir.length > 1 ? `linear-gradient(135deg, ${DIR_COLOR[s.dir[0]]} 50%, ${DIR_COLOR[s.dir[1]]} 50%)` : DIR_COLOR[s.dir[0]] }}>{s.n}</span>
+                  <span className="sx-num" style={{ background: s.dir.length > 1 ? `linear-gradient(135deg, ${DIR_COLOR[s.dir[0]]} 50%, ${DIR_COLOR[s.dir[1]]} 50%)` : DIR_COLOR[s.dir[0]], ...(s.dir[0] === "human" && { color: C.text, boxShadow: `inset 0 0 0 1px ${C.faint}` }) }}>{s.n}</span>
                   <div style={{ minWidth: 0 }}><b>{s.title}</b><span>{s.body}</span></div>
                 </li>
               ))}
