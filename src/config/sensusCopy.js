@@ -124,6 +124,28 @@ export const FIT = {
   ],
 };
 
+// The other half of FIT (owner, 2026-10-17, Hormozi-style soft filter): say
+// plainly who it is NOT for, so the wrong dealer leaves before taking a slot.
+export const NOT_FIT = {
+  title: "Probably too early if",
+  items: [
+    "You get fewer than about 100 enquiries a month",
+    "You sell on your own rather than run a dealership or service centre",
+    "You are looking for a free chatbot rather than a sales and service system",
+  ],
+};
+
+// Step 1 of the form. A "below the line" answer is still saved, it just gets a
+// different screen and an "Early" tag in the console (isSensusFit below).
+export const DEALER_TYPES = [
+  { id: "franchise", label: "Franchise or 3S dealership" },
+  { id: "group", label: "Used or recond group, 2+ branches" },
+  { id: "single", label: "Single used or recond showroom" },
+  { id: "service", label: "Service centre or workshop" },
+  { id: "agent", label: "Independent agent or salesperson" },
+];
+export const isSensusFit = (dealerType, enquiries) => dealerType !== "agent" && enquiries !== "lt100";
+
 export const ENQUIRY_OPTIONS = [
   { id: "lt100", label: "Under 100" },
   { id: "100_300", label: "100 to 300" },
@@ -134,10 +156,17 @@ export const ENQUIRY_OPTIONS = [
 
 export const FORM = {
   title: "Book your dealership demo",
+  step1: "First, two quick questions so I can prepare the right demo.",
+  next: "Continue",
+  back: "Back",
+  earlyTitle: "Sensus may be early for you",
+  earlyBody: "It pays off most once a showroom handles 100+ enquiries a month. Leave your number anyway and I'll send a short overview, and we can talk when the volume is there.",
+  earlySubmit: "Send me the overview",
+  earlyDone: "Thanks. I'll WhatsApp you a short overview.",
   lead: "20 minutes, online or at your showroom. I will show the AI answering the kind of enquiries you get every day.",
   submit: "Request my demo",
   sending: "Sending...",
-  consent: "I agree to be contacted on WhatsApp or phone about this demo. My details are used only to arrange it.",
+  consent: "I agree to be contacted on WhatsApp or phone about this request. My details are used only for that.",
   doneTitle: "Request received",
   doneBody: "I will WhatsApp you within one working day to fix a time.",
 };

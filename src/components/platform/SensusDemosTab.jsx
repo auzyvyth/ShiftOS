@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
-import { ENQUIRY_OPTIONS } from "../../config/sensusCopy";
+import { ENQUIRY_OPTIONS, DEALER_TYPES, isSensusFit } from "../../config/sensusCopy";
 
 // SENSUS-1: demo requests from /sensus-ai (migration 20261017a). Each one has
 // already reached the owner as a Telegram + push alert (notify_ops); this is the
@@ -17,6 +17,7 @@ const STATUSES = [
   { id: "lost", label: "Lost" },
 ];
 const ENQ = Object.fromEntries(ENQUIRY_OPTIONS.map((o) => [o.id, o.label]));
+const TYPE = Object.fromEntries(DEALER_TYPES.map((o) => [o.id, o.label]));
 const fmt = (d) => new Date(d).toLocaleString("en-MY", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kuala_Lumpur" });
 
 export default function SensusDemosTab() {
@@ -28,7 +29,7 @@ export default function SensusDemosTab() {
     setLoading(true);
     const { data, error: e } = await supabase
       .from("sensus_demo_requests")
-      .select("id,name,dealership,role,phone,monthly_enquiries,note,source,status,created_at")
+      .select("id,name,dealership,role,dealer_type,phone,monthly_enquiries,note,source,status,created_at")
       .order("created_at", { ascending: false })
       .limit(200);
     if (e) setError(e.message); else { setRows(data || []); setError(""); }
@@ -58,13 +59,18 @@ export default function SensusDemosTab() {
         <div key={r.id} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: 14, display: "grid", gap: 6, minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 700 }}>{r.name}{r.role ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {r.role}</span> : null}</div>
+              <div style={{ fontWeight: 700 }}>
+                {r.name}{r.role ? <span style={{ fontWeight: 400, opacity: 0.6 }}> · {r.role}</span> : null}
+                {(r.dealer_type || r.monthly_enquiries) && !isSensusFit(r.dealer_type, r.monthly_enquiries) && (
+                  <span title="Below the fit line on the form: send the overview, not a demo slot" style={{ marginLeft: 8, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.2)", opacity: 0.8 }}>Early</span>
+                )}
+              </div>
               <div style={{ opacity: 0.75, fontSize: 14 }}>{r.dealership}</div>
             </div>
             <div style={{ fontSize: 12, opacity: 0.55 }}>{fmt(r.created_at)}</div>
           </div>
           <div style={{ fontSize: 13, opacity: 0.7 }}>
-            +{r.phone} · Enquiries a month: {ENQ[r.monthly_enquiries] || "not given"}{r.source ? ` · from ${r.source}` : ""}
+            +{r.phone} · {TYPE[r.dealer_type] || "Type not given"} · Enquiries a month: {ENQ[r.monthly_enquiries] || "not given"}{r.source ? ` · from ${r.source}` : ""}
           </div>
           {r.note && <div style={{ fontSize: 13, opacity: 0.8, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.note}</div>}
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>

@@ -35,6 +35,7 @@ const CSS = `
 .sx-mark{font-weight:700;letter-spacing:.22em;font-size:18px;color:${C.ivory}}
 .sx-mark small{display:block;font-size:9px;letter-spacing:.2em;color:${C.faint};font-weight:500;margin-top:2px}
 .sx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 22px;border-radius:10px;background:${C.gold};color:#0B0B0C;font-weight:700;font-size:15px;border:0;cursor:pointer;text-decoration:none;transition:transform 100ms ease-out,filter 150ms ease;-webkit-tap-highlight-color:transparent}
+button.sx-ghost{background:transparent;cursor:pointer;font-family:inherit}
 .sx-btn:active,.sx-ghost:active{transform:scale(.97)}
 @media (hover:hover){.sx-btn:hover{filter:brightness(1.08)}.sx-ghost:hover{border-color:${C.gold}}}
 .sx-btn:disabled{opacity:.6;cursor:default}
@@ -80,7 +81,17 @@ textarea.sx-in{padding:12px 14px;min-height:88px;resize:vertical}
 .sx-in:focus{outline:2px solid ${C.gold};outline-offset:1px;border-color:transparent}
 .sx-consent{display:flex !important;grid-template-columns:none !important;gap:10px !important;align-items:flex-start;font-weight:400 !important;line-height:1.5}
 .sx-consent input{width:18px;height:18px;margin-top:2px;flex:0 0 auto;accent-color:${C.gold}}
-.sx-err{color:#fca5a5;font-size:14px;margin:0}
+.sx-err,.sx-card p.sx-err{color:#fca5a5;font-size:14px;margin:0}
+.sx-steps{display:flex;gap:6px}.sx-steps span{flex:1;height:3px;border-radius:2px;background:${C.line}}.sx-steps span.on{background:${C.gold}}
+.sx-opts{border:0;margin:0;padding:0;display:grid;gap:8px;min-width:0}
+.sx-opts legend{font-size:13px;font-weight:600;color:${C.muted};margin-bottom:8px;padding:0}
+.sx-opts label{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px;border-radius:10px;border:1px solid rgba(233,223,204,.16);background:#0F0F11;font-size:15px;font-weight:500;color:${C.text};cursor:pointer;transition:border-color .15s ease,background .15s ease}
+.sx-opts label.on{border-color:${C.gold};background:rgba(176,141,87,.10)}
+.sx-opts input{accent-color:${C.gold};width:16px;height:16px;flex:0 0 auto}
+.sx-opts-row{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.sx-early{display:grid;gap:4px;padding:14px 16px;border-radius:10px;background:rgba(176,141,87,.10);border:1px solid rgba(176,141,87,.35);font-size:14px;line-height:1.5}
+.sx-early span{color:${C.muted}}
+.sx-nofit{margin:0;padding-left:18px;color:${C.faint};line-height:1.9;font-size:15px}
 .sx-faq details{border-bottom:1px solid ${C.line};padding:16px 0}
 .sx-faq summary{cursor:pointer;font-weight:700;font-size:16px;list-style:none}
 .sx-faq summary::-webkit-details-marker{display:none}
@@ -160,13 +171,24 @@ function HeroGlow() {
   return <motion.div className="sx-glow" aria-hidden="true" style={{ x: sx, y: sy }} />;
 }
 
+// Two steps (owner, 2026-10-17): step 1 asks type + volume, so the demo can be
+// prepared and a dealer below the line (isSensusFit) gets an honest "may be
+// early" screen instead of a demo slot. Nobody is turned away: both paths save.
 function DemoForm() {
-  const [f, setF] = useState({ name: "", dealership: "", role: "", phone: "", enquiries: "", note: "" });
+  const [step, setStep] = useState(1);
+  const [f, setF] = useState({ type: "", enquiries: "", name: "", dealership: "", role: "", phone: "", note: "" });
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [done, setDone] = useState(false);
   const set = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));
+  const fit = S.isSensusFit(f.type, f.enquiries);
+
+  const next = (e) => {
+    e.preventDefault();
+    if (!f.type || !f.enquiries) return setErr("Please answer both questions.");
+    setErr(""); setStep(2);
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -180,7 +202,7 @@ function DemoForm() {
     const { error } = await publicClient.rpc("sensus_request_demo", {
       p_name: f.name, p_dealership: f.dealership, p_phone: f.phone,
       p_role: f.role || null, p_enquiries: f.enquiries || null, p_note: f.note || null,
-      p_source: source ? String(source).slice(0, 80) : null,
+      p_source: source ? String(source).slice(0, 80) : null, p_dealer_type: f.type || null,
     });
     setBusy(false);
     if (error) {
@@ -195,32 +217,71 @@ function DemoForm() {
   if (done) {
     return (
       <div className="sx-card" role="status">
-        <h3 style={{ marginTop: 0, fontSize: 20 }}>{S.FORM.doneTitle}</h3>
-        <p>{S.FORM.doneBody}</p>
+        <h3 style={{ marginTop: 0, fontSize: 20 }}>{fit ? S.FORM.doneTitle : "Got it"}</h3>
+        <p>{fit ? S.FORM.doneBody : S.FORM.earlyDone}</p>
       </div>
+    );
+  }
+
+  const steps = (
+    <div className="sx-steps" aria-hidden="true">
+      <span className={step >= 1 ? "on" : ""} /><span className={step >= 2 ? "on" : ""} />
+    </div>
+  );
+
+  if (step === 1) {
+    return (
+      <form className="sx-form sx-card" onSubmit={next} noValidate>
+        {steps}
+        <p className="sx-k" style={{ margin: 0 }}>Step 1 of 2</p>
+        <p style={{ margin: 0 }}>{S.FORM.step1}</p>
+        <fieldset className="sx-opts">
+          <legend>What best describes your business?</legend>
+          {S.DEALER_TYPES.map((o) => (
+            <label key={o.id} className={f.type === o.id ? "on" : ""}>
+              <input type="radio" name="type" value={o.id} checked={f.type === o.id} onChange={set("type")} />{o.label}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="sx-opts sx-opts-row">
+          <legend>Roughly how many enquiries a month?</legend>
+          {S.ENQUIRY_OPTIONS.map((o) => (
+            <label key={o.id} className={f.enquiries === o.id ? "on" : ""}>
+              <input type="radio" name="enq" value={o.id} checked={f.enquiries === o.id} onChange={set("enquiries")} />{o.label}
+            </label>
+          ))}
+        </fieldset>
+        {err && <p className="sx-err" role="alert">{err}</p>}
+        <button className="sx-btn" type="submit">{S.FORM.next}</button>
+      </form>
     );
   }
 
   return (
     <form className="sx-form sx-card" onSubmit={submit} noValidate>
+      {steps}
+      <p className="sx-k" style={{ margin: 0 }}>Step 2 of 2</p>
+      {!fit && (
+        <div className="sx-early" role="note">
+          <b>{S.FORM.earlyTitle}</b>
+          <span>{S.FORM.earlyBody}</span>
+        </div>
+      )}
       <div className="sx-row2">
         <label>Your name<input className="sx-in" value={f.name} onChange={set("name")} autoComplete="name" maxLength={100} /></label>
-        <label>Dealership<input className="sx-in" value={f.dealership} onChange={set("dealership")} autoComplete="organization" maxLength={120} /></label>
+        <label>Business name<input className="sx-in" value={f.dealership} onChange={set("dealership")} autoComplete="organization" maxLength={120} /></label>
       </div>
       <div className="sx-row2">
         <label>WhatsApp number<input className="sx-in" value={f.phone} onChange={set("phone")} type="tel" inputMode="tel" autoComplete="tel" placeholder="012 345 6789" maxLength={20} /></label>
         <label>Your role (optional)<input className="sx-in" value={f.role} onChange={set("role")} placeholder="Owner, GM, sales manager" maxLength={60} /></label>
       </div>
-      <label>Enquiries a month (roughly)
-        <select className="sx-in" value={f.enquiries} onChange={set("enquiries")}>
-          <option value="">Choose one</option>
-          {S.ENQUIRY_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-      </label>
-      <label>Anything I should know? (optional)<textarea className="sx-in" value={f.note} onChange={set("note")} maxLength={1000} placeholder="Brands you sell, branches, the channel most enquiries come in on" /></label>
+      {fit && <label>Anything I should know? (optional)<textarea className="sx-in" value={f.note} onChange={set("note")} maxLength={1000} placeholder="Brands you sell, branches, the channel most enquiries come in on" /></label>}
       <label className="sx-consent"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />{S.FORM.consent}</label>
       {err && <p className="sx-err" role="alert">{err}</p>}
-      <button className="sx-btn" type="submit" disabled={busy}>{busy ? S.FORM.sending : S.FORM.submit}</button>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <button type="button" className="sx-ghost" onClick={() => { setErr(""); setStep(1); }}>{S.FORM.back}</button>
+        <button className="sx-btn" type="submit" disabled={busy} style={{ flex: 1 }}>{busy ? S.FORM.sending : fit ? S.FORM.submit : S.FORM.earlySubmit}</button>
+      </div>
     </form>
   );
 }
@@ -380,6 +441,8 @@ export default function SensusAiPage() {
               <p className="sx-lead">{S.FORM.lead}</p>
               <div className="sx-k" style={{ marginBottom: 8 }}>{S.FIT.title}</div>
               <ul className="sx-fit">{S.FIT.items.map((x) => <li key={x}>{x}</li>)}</ul>
+              <div className="sx-k" style={{ margin: "20px 0 8px" }}>{S.NOT_FIT.title}</div>
+              <ul className="sx-nofit">{S.NOT_FIT.items.map((x) => <li key={x}>{x}</li>)}</ul>
               {(S.CONTACT.name || wa || S.CONTACT.linkedin) && (
                 <div style={{ marginTop: 24, color: C.muted, fontSize: 14, lineHeight: 1.7 }}>
                   {S.CONTACT.name && <div style={{ color: C.text, fontWeight: 700 }}>{S.CONTACT.name}</div>}

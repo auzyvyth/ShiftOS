@@ -870,6 +870,8 @@ const STATIC_PAGES = {
     <p>${esc(SX.IMPACT.note)}</p>
     <h2>${esc(SX.FIT.title)}</h2>
     <ul>${li(SX.FIT.items)}</ul>
+    <h2>${esc(SX.NOT_FIT.title)}</h2>
+    <ul>${li(SX.NOT_FIT.items)}</ul>
     <h2>${esc(SX.FORM.title)}</h2>
     <p>${esc(SX.FORM.lead)}</p>
     <h2>Questions dealers ask</h2>
