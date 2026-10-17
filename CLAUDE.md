@@ -1263,16 +1263,25 @@ and the won-trigger marks it sold on the first deal.
   the "official price" note to condition-new cars.
 - A card's slug is set in `new_car_card_fill`: `car_slug_trigger` runs first (alphabetical)
   while brand/model are still empty, so cards had a NULL slug and linked to /showroom/null.
-- `profiles.seller_type` now allows `new_car`; `new_car_brand` is the brand.
+- `profiles.seller_type` allows `new_car`; `new_car_brand` is the brand. **"Sells new" = `new_car_brand`
+  is set, NOT `seller_type='new_car'`** (owner, 2026-10-17, migration 20261017a): a broker who also
+  sells new Proton is `seller_type='broker'` + `new_car_brand='Proton'`. Signup offers one or two
+  picks (`sellsToDb`, SalesmanOnboarding.jsx). Never key a new-car check on seller_type again.
+- **Add car for every salesman starts at `CarKindChooser`** (Used / Recon / New -> brand), rendered
+  by CarForm and CarFormFast. A price-list card always edits in NewCarForm.
 - **An advisor's CARD is a real listing** (`car_listings.new_car_model_id`, migration
-  20261008b), made in `src/components/newcar/NewCarForm.jsx`, which CarForm and CarFormFast
-  render in place of the used-car form for `seller_type='new_car'` (used form one tap away).
-  One card per variant. Trigger `new_car_card_fill` copies brand/model/variant/price from the
-  catalogue for the advisor's zone (never typed, re-priced on every console edit); cards skip
-  the listing cap and never reserve. **A win on a card INSERTS a sold unit**
-  (`new_car_unit=true`, `new_car_unit_on_won`, BEFORE UPDATE on leads) and moves the lead onto
-  it, so "won = a sold car_listings row" still holds and the card stays up. Undo sale on a
-  unit deletes it and puts the lead back on the card. Never let the client set `new_car_unit`.
+  20261008b), made in `src/components/newcar/NewCarForm.jsx`.
+  **One card per MODEL, not per variant** (owner, 2026-10-17, migration 20261017c; unique index
+  `car_listings_one_card_per_model`). Trigger `new_car_card_fill` anchors the card on the model's
+  CHEAPEST variant priced for the advisor's zone ("from" price, `variant` NULL), re-anchored on
+  every console edit; the car page's variant switch (`useNewCarVariant`, NewCarListingInfo.jsx)
+  drives price, specs and the enquiry text. Cards skip the listing cap, never reserve, and can
+  never be marked sold (the trigger keeps the old status). **A win on a card INSERTS a sold unit**
+  (`new_car_unit=true`, `new_car_unit_on_won`, BEFORE UPDATE on leads) with the variant the
+  seller picked in the won confirm (`WonVariantPick` -> `leads.new_car_model_id`, validated to the
+  card's model, else the anchor), and moves the lead onto it, so "won = a sold car_listings row"
+  still holds and the card stays up. Undo sale on a unit deletes it and puts the lead back on
+  the card. Never let the client set `new_car_unit`.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
@@ -1326,6 +1335,13 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Numbers change in place (owner, 2026-10-17):** tap Rebate, Deposit or Rate in the
+  working and type (`EditCell`); Adjust still holds them. Contact, once switched on, is a
+  loud accent "Contact me" banner, but stays OFF by default (TikTok rule above).
+  The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
+  per device (`xd_live_offer`), and shown above the comment bar on every car.
+- **A new-car model card gets a variant row** (`is_model_card`): it shares
+  `useNewCarVariant` with the car page, so price + spec follow the pick on both.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.

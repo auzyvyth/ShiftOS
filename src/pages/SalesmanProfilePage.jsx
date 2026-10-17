@@ -46,11 +46,11 @@ const ownerChip = {
 
 // Same one-line estimate as the marketplace cards (calcMonthly: 90% loan,
 // 7 years, DEFAULT_EIR). null above the high-value threshold -> not shown.
-function MonthlyLine({ price }) {
+function MonthlyLine({ price, from = false }) {
   const m = calcMonthly(Number(price));
   if (!m) return null;
   return (
-    <span className="ap-mo">est. <b>RM {fmt(m)}/mo</b></span>
+    <span className="ap-mo">{from ? 'from' : 'est.'} <b>RM {fmt(m)}/mo</b></span>
   );
 }
 
@@ -86,8 +86,9 @@ function AgentCarCard({ car, num, onClick }) {
         </p>
         <div className="ap-pr">
           <div>
-            <b>{car.selling_price > 0 ? `RM ${fmt(car.selling_price)}` : 'Price on request'}</b>
-            <MonthlyLine price={car.selling_price} />
+            {/* A new-car card (is_model_card) is priced at its cheapest variant. */}
+            <b>{car.selling_price > 0 ? `${car.is_model_card ? 'From ' : ''}RM ${fmt(car.selling_price)}` : 'Price on request'}</b>
+            <MonthlyLine price={car.selling_price} from={!!car.is_model_card} />
           </div>
           <span className="ap-st"><i style={{ background: car.status === 'reserved' ? '#b45309' : '#15803d' }} />{car.status === 'reserved' ? 'Reserved' : 'Available'}</span>
         </div>
@@ -228,10 +229,10 @@ export default function SalesmanProfilePage() {
 
       const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
@@ -868,7 +869,7 @@ export default function SalesmanProfilePage() {
         <Suspense fallback={null}>
           <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
             sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)}
-            officialNew={profile?.seller_type === 'new_car'} />
+            officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)} />
         </Suspense>
       )}
     </>

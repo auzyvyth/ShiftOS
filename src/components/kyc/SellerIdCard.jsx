@@ -1,4 +1,6 @@
-import { BadgeCheck, Clock } from "lucide-react";
+import { useState } from "react";
+import { BadgeCheck, Clock, X } from "lucide-react";
+import { isVerifySnoozed, snoozeVerify } from "../../utils/verifySnooze";
 import AccountReviewBanner from "../AccountReviewBanner";
 
 /**
@@ -23,10 +25,16 @@ import AccountReviewBanner from "../AccountReviewBanner";
  * Worded as an invitation ("Get verified"), not a demand, but it must stay
  * true: never tell a seller their cars are hidden because of the ID check.
  */
+// Closeable; comes back after a week (src/utils/verifySnooze.js). The
+// rejected / account-review banners are NOT snoozed: those carry something
+// the seller has to act on.
 export default function SellerIdCard({ profile, t, onUploadId }) {
+  const [closed, setClosed] = useState(() => isVerifySnoozed(profile?.id));
   if (!profile) return null;
   if (profile.approval_status === "rejected") return <AccountReviewBanner profile={profile} />;
   if (profile.is_verified) return <AccountReviewBanner profile={profile} />;
+  if (closed) return null;
+  const close = () => { snoozeVerify(profile.id); setClosed(true); };
 
   const tr = (key, fallback) => (t ? t(`sellerId.${key}`, { defaultValue: fallback }) : fallback);
   const checking = !!profile.kyc_submitted_at;
@@ -66,6 +74,10 @@ export default function SellerIdCard({ profile, t, onUploadId }) {
           {tr("cta", "Get verified")}
         </button>
       )}
+      <button type="button" aria-label="Close" onClick={close}
+        style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+        <X size={15} />
+      </button>
     </div>
   );
 }
