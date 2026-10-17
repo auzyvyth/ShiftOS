@@ -14,8 +14,9 @@ import ThisWeek from "../../components/crm/ThisWeek";
 import FollowUpRow from "../../components/crm/FollowUpRow";
 import StarterTasks from "../../components/onboarding/StarterTasks";
 import {
- CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, PrevMonthModal, stageLabel,
+ CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, stageLabel,
 } from "./shared";
+import SalesHistorySheet from "./SalesHistorySheet";
 
 // Dashboard tab — split out of SalesmanPremium.jsx (was `renderDashboard`) so
 // it lazy-loads instead of shipping in the initial bundle regardless of which
@@ -168,23 +169,6 @@ export default function DashboardTab({
  const now = new Date();
  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
  }).length;
-
- // Previous-month commission — feeds the "Previous month" popup so history
- // is one tap away instead of just disappearing at a month boundary.
- const soldInMonth = (year, month) => myListings.filter(c => {
- if (c.status !== "sold" || !c.sold_at) return false;
- const d = new Date(c.sold_at);
- return d.getFullYear() === year && d.getMonth() === month;
- });
- const prevMonthDate = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1);
- const twoMonthsAgoDate = new Date(new Date().getFullYear(), new Date().getMonth() - 2, 1);
- const prevMonthSold = soldInMonth(prevMonthDate.getFullYear(), prevMonthDate.getMonth());
- const twoMonthsAgoSold = soldInMonth(twoMonthsAgoDate.getFullYear(), twoMonthsAgoDate.getMonth());
- const prevMonthCommission = prevMonthSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
- const twoMonthsAgoCommission = twoMonthsAgoSold.reduce((s, c) => s + (Number(c.commission_amount) || 0), 0);
- const prevMonthTrendPct = twoMonthsAgoCommission > 0
- ? Math.round(((prevMonthCommission - twoMonthsAgoCommission) / twoMonthsAgoCommission) * 100)
- : (prevMonthCommission > 0 ? 100 : null);
 
  // Commission sparkline — per-day (not cumulative) over the trailing 14 days,
  // compared against the 14 days before that.
@@ -873,14 +857,14 @@ export default function DashboardTab({
  )}
  </div>
 
- <PrevMonthModal
+ <SalesHistorySheet
  open={showPrevMonth}
  onClose={() => setShowPrevMonth(false)}
- monthLabel={prevMonthDate.toLocaleDateString(dateLocale, { month: "long", year: "numeric" })}
- commission={prevMonthCommission}
- count={prevMonthSold.length}
- trendPct={prevMonthTrendPct}
- trendLabel={twoMonthsAgoDate.toLocaleDateString(dateLocale, { month: "short" })}
+ listings={myListings}
+ userId={profile?.id}
+ profile={profile}
+ dateLocale={dateLocale}
+ isMobile={isMobile}
  />
 
  </div>

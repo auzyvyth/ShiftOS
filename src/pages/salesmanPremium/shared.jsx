@@ -118,49 +118,6 @@ export function ListingFormModal({ open, onClose, title, subtitle, isMobile, chi
  );
 }
 
-export function PrevMonthModal({ open, onClose, monthLabel, commission, count, trendPct, trendLabel }) {
- useEffect(() => {
- if (!open) return;
- document.body.style.overflow = "hidden";
- return () => { document.body.style.overflow = ""; };
- }, [open]);
-
- if (!open) return null;
-
- return createPortal(
- <div
- onClick={onClose}
- style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
- >
- <div
- onClick={(e) => e.stopPropagation()}
- style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 16, padding: 24, maxWidth: 340, width: "100%", fontFamily: "system-ui,sans-serif" }}
- >
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
- <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em" }}>{monthLabel}</p>
- <button onClick={onClose} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex" }}>
- <X size={16} />
- </button>
- </div>
- <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.07em" }}>{tp("prevMonth.commissionEarned")}</p>
- <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 800, color: "#f1f5f9", letterSpacing: "-0.03em", lineHeight: 1 }}>
- RM {commission.toLocaleString("en-MY")}
- </p>
- <p style={{ margin: "0 0 16px", fontSize: 12, color: "#6b7280" }}>{tp("prevMonth.carsSold", { count })}</p>
- {trendPct !== null ? (
- <div style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 99, background: trendPct >= 0 ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)" }}>
- <span style={{ fontSize: 12, fontWeight: 700, color: trendPct >= 0 ? "#4ade80" : "#f87171" }}>{trendPct >= 0 ? "↑" : "↓"} {Math.abs(trendPct)}%</span>
- <span style={{ fontSize: 11, color: "#6b7280" }}>{tp("prevMonth.vs", { label: trendLabel })}</span>
- </div>
- ) : (
- <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{tp("prevMonth.noData", { label: trendLabel })}</p>
- )}
- </div>
- </div>,
- document.body,
- );
-}
-
 export const timeAgo = (iso) => {
  if (!iso) return "—";
  const d = new Date(iso);
