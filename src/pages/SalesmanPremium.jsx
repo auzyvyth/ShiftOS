@@ -21,6 +21,7 @@ import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerIdCard from "../components/kyc/SellerIdCard";
+import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
@@ -2189,7 +2190,7 @@ export default function SalesmanPremium() {
 
  const { error: leadErr } = await supabase
  .from("leads")
- .update({ stage: "won", updated_at: now })
+ .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
  .eq("id", leadId);
  if (leadErr) {
  console.error("handleMarkWon lead:", leadErr);
@@ -2208,7 +2209,11 @@ export default function SalesmanPremium() {
  });
  if (actErr) console.error("handleMarkWon activity:", actErr);
 
- if (lead.car_listing_id) {
+ // A new-car card is the model's display card, not a car that sells: the DB
+ // trigger has already moved the lead onto a sold unit (new_car_unit_on_won),
+ // so the card itself is never marked sold here.
+ const isNewCarCard = !!myListings.find((c) => c.id === lead.car_listing_id)?.new_car_model_id;
+ if (lead.car_listing_id && !isNewCarCard) {
  const { error: carErr } = await supabase
  .from("car_listings")
  .update({ status: "sold", sold_at: now })
@@ -7099,6 +7104,10 @@ export default function SalesmanPremium() {
  ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
  : null}
  </p>
+ {wonPrompt.lead.car_listing_id && (
+ <WonVariantPick listingId={wonPrompt.lead.car_listing_id} value={wonPrompt.variantId}
+ onChange={(id) => setWonPrompt((p) => (p ? { ...p, variantId: id } : p))} />
+ )}
  <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
  ? t("salesmanPremium.wonPrompt.withCar")

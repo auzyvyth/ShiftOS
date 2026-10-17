@@ -38,6 +38,7 @@ import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import SellerIdCard from "../components/kyc/SellerIdCard";
+import WonVariantPick from "../components/newcar/WonVariantPick";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import SellerInbox from "../components/chat/SellerInbox";
@@ -2444,7 +2445,7 @@ export default function SalesmanLite() {
     // 1. Mark lead as won
     const { error: leadErr } = await supabase
       .from("leads")
-      .update({ stage: "won", updated_at: now })
+      .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
       .eq("id", leadId);
     if (leadErr) {
       console.error("handleMarkWon lead:", leadErr);
@@ -2465,7 +2466,11 @@ export default function SalesmanLite() {
     if (actErr) console.error("handleMarkWon activity:", actErr);
 
     // 3. Mark linked car listing as sold
-    if (lead.car_listing_id) {
+    // A new-car card is the model's display card, not a car that sells: the DB
+    // trigger has already moved the lead onto a sold unit (new_car_unit_on_won),
+    // so the card itself is never marked sold here.
+    const isNewCarCard = !!myListings.find((c) => c.id === lead.car_listing_id)?.new_car_model_id;
+    if (lead.car_listing_id && !isNewCarCard) {
       const { error: carErr } = await supabase
         .from("car_listings")
         .update({ status: "sold", sold_at: now })
@@ -8034,6 +8039,10 @@ export default function SalesmanLite() {
                 {wonLead.buyer_name || "Buyer"}{carName ? ` · ${carName}` : ""}
                 {carPrice ? ` · ${carPrice}` : ""}
               </p>
+              {wonLead.car_listing_id && (
+                <WonVariantPick listingId={wonLead.car_listing_id} value={wonPrompt.variantId}
+                  onChange={(id) => setWonPrompt((p) => (p ? { ...p, variantId: id } : p))} />
+              )}
               {car ? (
                 <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#4ade80", fontWeight: 600 }}>

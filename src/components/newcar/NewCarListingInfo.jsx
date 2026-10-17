@@ -86,9 +86,32 @@ export function useNewCarInfo(listingId) {
   return info;
 }
 
+// One card covers every variant of a model (20261017c); `info.variants` lists
+// them priced for the seller's zone, cheapest first. The buyer's pick is shared
+// by every reader of the same listing (this panel is mounted twice, and the
+// page's price block follows it), so it lives in a tiny module store.
+const picks = new Map();      // listingId -> model_id
+const pickSubs = new Set();
+export function useNewCarVariant(listingId, info) {
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const f = () => bump((n) => n + 1);
+    pickSubs.add(f);
+    return () => { pickSubs.delete(f); };
+  }, []);
+  const variants = Array.isArray(info?.variants) ? info.variants.filter((v) => v.price != null) : [];
+  const current = variants.find((v) => v.model_id === picks.get(listingId)) || variants[0] || null;
+  const choose = (modelId) => { picks.set(listingId, modelId); pickSubs.forEach((f) => f()); };
+  return { variants, current, choose };
+}
+
 export default function NewCarListingInfo({ listingId, sellerName, th }) {
-  const info = useNewCarInfo(listingId);
-  if (!info) return null;
+  const raw = useNewCarInfo(listingId);
+  const { variants, current, choose } = useNewCarVariant(listingId, raw);
+  if (!raw) return null;
+  // Specs, body, fuel and gearbox follow the picked variant; before 20261017c
+  // there is no `variants` and the card's own variant is shown, as before.
+  const info = current ? { ...raw, ...current, specs: current.specs || {} } : raw;
   const first = (sellerName || "").trim().split(/\s+/)[0] || "This advisor";
   const specs = specRows(info);
   const safety = list(info.specs?.safety);
@@ -119,6 +142,26 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
           {" "}{priceBasis(info.price_zone, info.effective_from)}
         </p>
       </div>
+
+      {variants.length > 1 && (
+        <>
+          <p style={{ ...label, marginTop: 24 }}>Pick a variant</p>
+          <div role="radiogroup" aria-label="Variant" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {variants.map((v) => {
+              const on = v.model_id === current?.model_id;
+              return (
+                <button key={v.model_id} type="button" role="radio" aria-checked={on} onClick={() => choose(v.model_id)}
+                  style={{ ...box, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px",
+                    cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0,
+                    borderColor: on ? "#dc2626" : th.border, background: on ? "rgba(220,38,38,0.06)" : th.card }}>
+                  <span style={{ minWidth: 0, fontSize: 14, fontWeight: on ? 700 : 500, color: th.text }}>{info.model} {v.variant}</span>
+                  <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 600, color: th.text, fontVariantNumeric: "tabular-nums" }}>{rm(v.price)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {specs.length > 0 && (
         <>
