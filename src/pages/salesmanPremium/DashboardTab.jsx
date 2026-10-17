@@ -730,7 +730,7 @@ export default function DashboardTab({
  <p style={{ ...EYEBROW, margin: "0 0 2px" }}>{t("salesmanPremium.dash.commissionEarned")}</p>
  <div style={{ position: "relative", margin: "2px 0 4px" }}>
  <div style={{ position: "absolute", top: 4, left: "50%", transform: "translateX(-50%)", width: 180, height: 100, background: `radial-gradient(ellipse at center, ${withAlpha(C.accent, 0.22)}, transparent 72%)`, filter: "blur(14px)", pointerEvents: "none" }} />
- <svg width="100%" height="176" viewBox="0 0 240 176" style={{ position: "relative" }}>
+ <svg width="100%" height="132" viewBox="0 0 240 132" style={{ position: "relative", display: "block" }}>
  <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.fillStrong} strokeWidth="16" strokeLinecap="round" />
  <path d={`M ${gaugeCx - gaugeR},${gaugeCy} A ${gaugeR},${gaugeR} 0 0 1 ${gaugeCx + gaugeR},${gaugeCy}`} fill="none" stroke={C.accent} strokeWidth="16" strokeLinecap="round" pathLength="100" strokeDasharray={`${pct} 100`} />
  <circle cx={gaugePtX} cy={gaugePtY} r="9" fill={C.surface} />
@@ -738,11 +738,12 @@ export default function DashboardTab({
  <text x={gaugeCx} y={gaugeCy - 14} textAnchor="middle" fontFamily="'Bebas Neue', sans-serif" fontSize="46" fill={C.text}>
  RM {soldThisMonth.toLocaleString("en-MY")}
  </text>
- <text x={gaugeCx} y={gaugeCy + 10} textAnchor="middle" fontFamily="system-ui" fontSize="12" fontWeight="600" fill={C.textMuted}>
- {t("salesmanPremium.dash.ofGoal", { target: goal.target.toLocaleString("en-MY"), pct: Math.round(pct) })}
- </text>
  </svg>
  </div>
+ {/* Below the arc, not inside the SVG: SVG text cannot wrap, and the BM line ran over the arc's end caps. */}
+ <p style={{ margin: "0 0 8px", fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textMuted, textAlign: "center" }}>
+ {t("salesmanPremium.dash.ofGoal", { target: goal.target.toLocaleString("en-MY"), pct: Math.round(pct) })}
+ </p>
  <p style={{ margin: "0 0 4px", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>{t("salesmanPremium.dash.carsSoldMonth", { count: soldCountThisMonth })}</p>
  {pct >= 100
  ? <p style={{ margin: "0 0 10px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.successText }}>{t("salesmanPremium.dash.goalSmashed")}</p>
