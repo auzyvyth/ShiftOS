@@ -1335,6 +1335,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+- **Numbers change in place (owner, 2026-10-17):** tap Rebate, Deposit or Rate in the
+  working and type (`EditCell`); Adjust still holds them. Contact, once switched on, is a
+  loud accent "Contact me" banner, but stays OFF by default (TikTok rule above).
+- **A new-car model card gets a variant row** (`is_model_card`): it shares
+  `useNewCarVariant` with the car page, so price + spec follow the pick on both.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.

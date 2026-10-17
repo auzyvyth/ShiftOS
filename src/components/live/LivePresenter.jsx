@@ -12,6 +12,7 @@ import {
 } from '../../utils/liveMaths';
 import { LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX } from './liveCopy';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
+import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -20,6 +21,8 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // on screen. So the seller's name + number (the contact box) is HIDDEN by
 // default and only shows when the seller taps the contact button, for this
 // live only; tapping the box hides it again. Never a URL, QR or app logo.
+// When it IS on it is loud (owner, 2026-10-17): an accent banner, "Contact
+// me" + the number big, like the posters advisors hold up. Loud, still opt-in.
 // Viewers also reach the seller through the profile bio link, which lands on
 // the mini page — and the car on this screen is pinned there ("Live now",
 // set_live_listing). The #number is the shared language: a viewer comments
@@ -30,6 +33,13 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 // tenure rows with the monthly, then a "comment #N" bar. One formula
 // (financing.js). The default (10% down, 7 years) is the same estimate the
 // mini page card shows, so the two never disagree.
+//
+// Every number in the working is tappable (owner, 2026-10-17): tap Rebate,
+// Deposit or Rate and type, in place, mid-pitch. Adjust still holds them too.
+//
+// A new-car MODEL card (is_model_card, 20261017c) covers every variant: a
+// variant row under the title switches price and spec, the same store the car
+// page uses (useNewCarVariant), so a viewer who opens #N sees the same variant.
 //
 // Deposit chips switch the whole sheet; tapping a tenure row picks it (shown
 // big, with a take-home-pay guide that always prints the 35% rule). The rate
@@ -97,6 +107,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // is not saved to the listing.
   const [rebates, setRebates] = useState({});
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
+  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate'
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -148,17 +159,26 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   }, [report]);
 
   const car = listings[idx] || null;
+  // Variants of a model card. The info is checked against the car on screen so
+  // the render right after a swipe never prices this car off the last one.
+  const rawInfo = useNewCarInfo(car?.is_model_card ? car.id : null);
+  const carInfo = rawInfo && car && rawInfo.brand === car.brand && rawInfo.model === car.model ? rawInfo : null;
+  const { variants, current: variant, choose: chooseVariant } = useNewCarVariant(car?.id, carInfo);
+  const shown = car && variant
+    ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
+    : car;
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
   // price = asking, net = what the loan is worked from (asking - rebate).
-  const { price, rebate, net } = netPrice(car, rebates);
+  const { price, rebate, net } = netPrice(shown, rebates);
   const rate = Math.max(0, Number(eir) || 0);
 
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
     setImgIdx(0);
+    setEditing(null);
   }, [listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -269,6 +289,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const rateFor = (y) => eirForTenure(rate, basis, y);
   const monthlyFor = (down, y) => monthlyPayment(net - down, rateFor(y), y * 12);
   const picked = rows.find((r) => r.key === pick.row) || rows.find((r) => r.key === DEFAULT_DOWN);
+  // Tapping the deposit row starts the box at the deposit on screen.
+  const openDeposit = () => {
+    if (editing === 'deposit') return;
+    setCustomDown(String(Math.round(picked.down)));
+    setPick((p) => ({ ...p, row: 'c' }));
+    setEditing('deposit');
+  };
   const pickYears = TENURES.includes(pick.years) ? pick.years : DEFAULT_TENURE;
   const answer = financeable ? monthlyFor(picked.down, pickYears) : 0;
   const salary = salaryGuide(answer);
@@ -368,9 +395,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-seg.lp-deps button { flex: 1 1 0; min-width: 0; height: auto; min-height: 34px; padding: 4px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 13px); }
         .lp-low { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
         .lp-end { display: flex; flex-direction: column; gap: 6px; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: 8px; background: #F4F3F1; font: inherit; color: #0f1115; text-align: left; cursor: pointer; min-width: 0; }
-        .lp-contact b { min-width: 0; font-size: clamp(12px, 3.4cqw, 19px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-contact span { flex-shrink: 0; font-size: clamp(14px, 4.2cqw, 22px); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-grad); box-shadow: 0 6px 20px rgba(var(--lp-rgb),.4); font: inherit; color: #fff; text-align: left; cursor: pointer; min-width: 0; }
+        .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
+        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
+        .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-seg.lp-vars { flex-wrap: wrap; }
+        .lp-seg.lp-vars button { flex: 1 1 auto; height: auto; min-height: 34px; padding: 4px 10px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 14px); }
+        .lp-brk tr.lp-tap { cursor: pointer; }
+        .lp-brk tr.lp-tap td:last-child { text-decoration: underline dotted rgba(0,0,0,.25); text-underline-offset: 3px; }
+        .lp-cellin { width: 7.5em; max-width: 100%; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         .lp-ten { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
         .lp-ten th { font-size: clamp(10px, 2.7cqw, 14px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 10px 4px; text-align: right; }
         .lp-ten th:first-child { text-align: left; }
@@ -487,8 +521,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(20px, 3.4cqh, 40px); }
           .lp:not(.lp-embed) .lp-brk tr.lp-r-rate td { font-size: clamp(12px, 1.7cqh, 18px); padding-block: 2px; }
           .lp:not(.lp-embed) .lp-seg button, .lp:not(.lp-embed) .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
-          .lp:not(.lp-embed) .lp-contact b { font-size: clamp(15px, 2.4cqh, 28px); }
-          .lp:not(.lp-embed) .lp-contact span { font-size: clamp(16px, 2.6cqh, 30px); }
+          .lp:not(.lp-embed) .lp-c-who small { font-size: clamp(18px, 3cqh, 34px); }
+          .lp:not(.lp-embed) .lp-c-who b { font-size: clamp(13px, 2cqh, 22px); }
+          .lp:not(.lp-embed) .lp-c-ph { font-size: clamp(26px, 4.4cqh, 52px); }
           .lp:not(.lp-embed) .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
           .lp:not(.lp-embed) .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
           .lp:not(.lp-embed) .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
@@ -605,13 +640,22 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-tt">
               <h2 className="lp-name">{carName(car)}</h2>
               <p className="lp-spec">
-                {(car.condition === 'new'
-                  ? [t.newTag, car.variant, car.transmission]
-                  : [car.variant, car.mileage ? `${fmt(car.mileage)} km` : null, car.transmission]
+                {(shown.condition === 'new'
+                  ? [t.newTag, shown.variant, shown.transmission]
+                  : [shown.variant, shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
                 ).filter(Boolean).join(' · ') || '\u00a0'}
               </p>
             </div>
           </div>
+
+          {variants.length > 1 && (
+            <div className="lp-seg lp-vars" role="group" aria-label={t.variant}>
+              {variants.map((v) => (
+                <button key={v.model_id} type="button" aria-pressed={v.model_id === variant?.model_id}
+                  onClick={() => chooseVariant(v.model_id)}>{v.variant}</button>
+              ))}
+            </div>
+          )}
 
           <div className="lp-pair">
             {/* Photo: tap the left / right half to step through this car's photos. */}
@@ -632,15 +676,35 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
             </div>
 
-            {/* The working, line by line: price - rebate - deposit = loan, at this rate. */}
+            {/* The working, line by line: price - rebate - deposit = loan, at this rate.
+                Rebate, deposit and rate: tap the row to type a new number in place. */}
             <table className="lp-brk">
               <tbody>
                 <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
-                {rebate > 0 && <tr className="lp-r-reb"><td>{t.rebate}</td><td>- <Money n={rebate} /></td></tr>}
+                {price > 0 && (rebate > 0 || shown.condition === 'new' || editing === 'rebate') && (
+                  <tr className="lp-r-reb lp-tap" onClick={() => setEditing('rebate')}>
+                    <td>{t.rebate}</td>
+                    <td>{editing === 'rebate' && !embedded
+                      ? <EditCell value={rebates[car.id] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
+                          onChange={(v) => setRebates((r) => ({ ...r, [car.id]: v }))} />
+                      : rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
+                  </tr>
+                )}
                 {financeable && (<>
-                  <tr className="lp-r-dep"><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
+                  <tr className="lp-r-dep lp-tap" onClick={openDeposit}>
+                    <td>{t.deposit}</td>
+                    <td>{editing === 'deposit' && !embedded
+                      ? <EditCell value={customDown} aria={t.customDeposit} onDone={() => setEditing(null)}
+                          onChange={(v) => { setCustomDown(v); setPick((p) => ({ ...p, row: 'c' })); }} />
+                      : picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td>
+                  </tr>
                   <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net - picked.down} /></td></tr>
-                  <tr className="lp-r-rate"><td>{t.rate}</td><td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td></tr>
+                  <tr className="lp-r-rate lp-tap" onClick={() => setEditing('rate')}>
+                    <td>{t.rate}</td>
+                    <td>{editing === 'rate' && !embedded
+                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={setEir} />
+                      : <>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</>}</td>
+                  </tr>
                 </>)}
               </tbody>
             </table>
@@ -690,8 +754,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           <div className="lp-end">
             {showContact && contact && (
               <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
-                {contact.name && <b>{contact.name}</b>}
-                {contact.phone && <span>{contact.phone}</span>}
+                <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
+                {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
               </button>
             )}
             <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
@@ -826,5 +890,18 @@ function LiveReport({ report, onDone, t }) {
       </p>
       <button className="lp-navbtn lp-next" onClick={onDone} style={{ flex: 'none' }}>{t.done}</button>
     </div>
+  );
+}
+
+// One number typed in place on the working (rebate / deposit / rate). Enter or
+// tapping away closes it; the value is live while typing. The row's own click
+// opens it, so the input stops the click from reaching the row again.
+function EditCell({ value, onChange, onDone, aria, decimal = false }) {
+  return (
+    <input className="lp-cellin" autoFocus type="number" min="0" step={decimal ? '0.01' : '1'}
+      inputMode={decimal ? 'decimal' : 'numeric'} aria-label={aria} value={value}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onChange(e.target.value)} onBlur={onDone}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
   );
 }
