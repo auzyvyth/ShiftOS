@@ -3632,6 +3632,7 @@ export default function SalesmanLite() {
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <CarForm
+              sellerProfile={profile}
               onUpgrade={goPremium}
               onOpenNewCars={() => { setShowAddForm(false); setSettingsNav("newcars"); setActiveTab("settings"); }}
               onCreate={(car) => {
@@ -8177,6 +8178,7 @@ export default function SalesmanLite() {
           onClose={() => setEditListing(null)}
         >
           <CarForm
+            sellerProfile={profile}
             listing={editListing}
             onUpdate={(updated) => {
               setMyListings((p) =>

@@ -7500,6 +7500,7 @@ export default function SalesmanPremium() {
  isMobile={isMobile}
  >
  <CarForm
+ sellerProfile={profile}
  listing={editListing}
  onUpdate={(updated) => {
  setMyListings((p) =>

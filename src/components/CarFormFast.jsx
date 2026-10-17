@@ -24,9 +24,12 @@ const S = {
 };
 
 // New-car advisors get the new-car form here too (see CarForm.jsx).
+// The choice waits for the profile, same as CarForm (no wrong-form flash).
 export default function CarFormFast(props) {
-  const { profile } = useProfile();
+  const { profile: fetched, loading } = useProfile();
+  const profile = props.sellerProfile || fetched;
   const [usedForm, setUsedForm] = useState(false);
+  if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>Loading form...</p>;
   if (profile?.seller_type === "new_car" && !usedForm) {
     return <NewCarForm dark profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars} onUseUsedForm={() => setUsedForm(true)} />;
   }

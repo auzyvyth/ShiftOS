@@ -784,10 +784,16 @@ const cfClearDraft = (uid) => { try { localStorage.removeItem(cfDraftKey(uid)); 
 // this one: new cars come from the price list, never typed (NEWCAR-1). The
 // used-car form is one tap away for the used or recon car they also sell, and
 // editing one of those opens it directly.
+// Which form to show depends on the profile, so the choice waits for it: a
+// panel passes the profile it already holds (`sellerProfile`); otherwise we
+// wait for useProfile. Rendering the used form while it loaded is what made a
+// new-car advisor see the wrong form flash up and then swap.
 export default function CarForm(props) {
-  const { profile } = useProfile();
+  const { profile: fetched, loading } = useProfile();
+  const profile = props.sellerProfile || fetched;
   const [usedForm, setUsedForm] = useState(false);
   const { listing } = props;
+  if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>Loading form...</p>;
   const newCar = profile?.seller_type === "new_car" && !usedForm && (!listing || listing.new_car_model_id);
   if (newCar) {
     return (
