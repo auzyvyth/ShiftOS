@@ -798,7 +798,7 @@ export default function CarForm(props) {
   // A salesman adding a car picks Used / Recon / New first. Edits skip it: the
   // car already is one of those.
   if (profile?.role === "salesman" && !listing) {
-    return <CarKindChooser profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars}
+    return <CarKindChooser dark={!!props.dark} profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars}
       renderUsed={(d) => <UsedCarForm {...props} defaultValues={{ ...(props.defaultValues || {}), ...d }} />} />;
   }
   // A price-list card always edits in the new-car form, whatever the seller's
@@ -808,7 +808,7 @@ export default function CarForm(props) {
     : profile?.seller_type === "new_car" && !usedForm;
   if (newCar) {
     return (
-      <NewCarForm profile={profile} listing={listing} onCreate={props.onCreate} onUpdate={props.onUpdate}
+      <NewCarForm dark={!!props.dark} profile={profile} listing={listing} onCreate={props.onCreate} onUpdate={props.onUpdate}
         onOpenNewCars={props.onOpenNewCars} onUseUsedForm={listing ? null : () => setUsedForm(true)} />
     );
   }

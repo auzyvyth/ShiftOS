@@ -2403,5 +2403,22 @@
         "gone_quiet": "Senyap"
       }
     }
+  },
+  "carKind": {
+    "what": "Apa yang anda mahu senaraikan?",
+    "used": "Terpakai",
+    "usedHint": "Kereta berdaftar di Malaysia",
+    "recon": "Recon",
+    "reconHint": "Import, direkondisi, ada gred lelongan",
+    "new": "Baharu",
+    "newHint": "Proton, Perodua atau Toyota, dari senarai harga rasmi",
+    "back": "Tukar jenis kereta",
+    "which": "Jenama apa?",
+    "whichHint": "Senarai model dan harga rasmi untuk kawasan anda diisi sendiri.",
+    "yours": "Jenama anda",
+    "switchBody": "Akaun anda menjual {{saved}} baharu. Satu jenama setiap akaun buat masa ini: tukar ke {{to}} bermakna anda disenaraikan sebagai penasihat {{to}}, bukan {{saved}}. Kad {{saved}} anda kekal.",
+    "switchBtn": "Tukar ke {{to}}",
+    "saving": "Menyimpan...",
+    "saveErr": "Jenama tidak dapat disimpan. Cuba lagi."
   }
 }
