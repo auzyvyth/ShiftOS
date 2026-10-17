@@ -27,6 +27,7 @@ import PostureTab from "../components/platform/PostureTab";
 import AlertsTab from "../components/platform/AlertsTab";
 import ReportsTab from "../components/platform/ReportsTab";
 import ProspectsTab from "../components/platform/ProspectsTab";
+import SensusDemosTab from "../components/platform/SensusDemosTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 import { purgeKycFiles } from "../utils/kycPurge";
 
@@ -811,6 +812,9 @@ export default function AdminPage() {
       // People the owner is signing up (OPS-CRM-1). Waitlist rows flow in, a
       // matching signup links to its account -- see ProspectsTab.jsx.
       { id: "prospects", label: "Prospects" },
+      // Sensus AI demo requests from /sensus-ai (SENSUS-1). A separate product the
+      // owner resells, so kept out of Prospects (XDrive signups).
+      { id: "sensus", label: "Sensus demos" },
     ] },
     { id: "marketplace", label: "Marketplace", sub: "XDrive settings · analytics", tabs: [
       { id: "marketplace", label: "Settings" },
@@ -1721,6 +1725,8 @@ export default function AdminPage() {
               focusId={focusAccount}
               onFocusHandled={() => setFocusAccount(null)}
             />
+          ) : activeTab === "sensus" ? (
+            <SensusDemosTab />
           ) : activeTab === "prospects" ? (
             <ProspectsTab onOpenAccount={(id) => { setActiveTab("accounts"); setFocusAccount(id); }} />
 

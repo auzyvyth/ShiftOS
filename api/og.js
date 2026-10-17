@@ -7,6 +7,7 @@
 
 import { getChassisCode } from "../src/utils/chassisCodes.js";
 import * as SL from "../src/config/salesmanLandingCopy.js";
+import * as SX from "../src/config/sensusCopy.js";
 import { GUIDE_META, GUIDE_STEPS, GUIDE_FAQS, GUIDE_TIPS, GUIDE_FAQ_LD } from "../src/config/guidesCopy.js";
 import { FEATURES as FEATURE_PAGES, ORDER as FEATURE_ORDER, featureTitle, featureMetaTitle } from "../src/config/featurePagesCopy.js";
 import { SALESMAN_PLANS, DEALER_PLANS } from "../src/utils/plans.js";
@@ -841,6 +842,43 @@ const STATIC_PAGES = {
       description: c.seoDesc,
       canonical: SL.CANON,
       jsonLd: [SL.webpageLd("ms"), SL.SOFTWARE_LD, SL.FAQ_LD],
+      body,
+    });
+  },
+  // SENSUS-1: Sensus AI landing (a separate company's product, presented by
+  // the owner as an associate). Same copy as the SPA via sensusCopy.js.
+  "/sensus-ai": () => {
+    const li = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
+    const body = `  <main>
+    <p>${esc(SX.HERO.eyebrow)}</p>
+    <h1>${esc(SX.HERO.h1)}</h1>
+    <p>${esc(SX.HERO.sub)}</p>
+    <p>${esc(SX.TRUST_LINE)} ${esc(SX.BRANDS.join(", "))}. ${esc(SX.COMPANY_LINE)}</p>
+    <h2>${esc(SX.PROBLEMS.title)}</h2>
+    <ul>${SX.PROBLEMS.items.map((p) => `<li><strong>${esc(p.title)}:</strong> ${esc(p.stat)} ${esc(p.body)}</li>`).join("")}</ul>
+    <p>${esc(SX.PROBLEMS.source)}</p>
+    <h2>${esc(SX.HOW.title)}</h2>
+    ${SX.HOW.steps.map((st) => `<h3>${esc(st.title)}</h3><p>${esc(st.body)}</p>`).join("\n    ")}
+    <p>Channels: ${esc(SX.CHANNELS.join(", "))}.</p>
+    <h2>${esc(SX.CIRCLE.title)}</h2>
+    <p>${esc(SX.CIRCLE.lead)}</p>
+    <ol>${SX.CIRCLE.stages.map((st) => `<li><strong>${esc(st.title)}</strong>: ${esc(st.body)}</li>`).join("")}</ol>
+    <h2>${esc(SX.IMPACT.title)}</h2>
+    ${SX.IMPACT.groups.map((g) => `<h3>${esc(g.title)}</h3><ul>${g.rows.map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join("")}</ul>`).join("\n    ")}
+    <p>${esc(SX.IMPACT.note)}</p>
+    <h2>${esc(SX.FIT.title)}</h2>
+    <ul>${li(SX.FIT.items)}</ul>
+    <h2>${esc(SX.FORM.title)}</h2>
+    <p>${esc(SX.FORM.lead)}</p>
+    <h2>Questions dealers ask</h2>
+    ${SX.FAQ.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    <p>${esc(SX.FOOTER.disclaimer)}</p>
+  </main>`;
+    return htmlShell({
+      title: SX.SEO_TITLE,
+      description: SX.SEO_DESC,
+      canonical: SX.CANON,
+      jsonLd: [SX.SERVICE_LD, SX.FAQ_LD],
       body,
     });
   },

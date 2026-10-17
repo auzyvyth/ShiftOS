@@ -70,6 +70,16 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## SENSUS-1: Sensus AI landing page at /sensus-ai — built 2026-10-17
+Owner resells Sensus AI (Sensus DWC LLC) to dealerships; page books demos. Page
+`src/pages/SensusAiPage.jsx`, copy `src/config/sensusCopy.js`, console People > Sensus demos.
+- [ ] **Apply migration `20261017a_sensus_demo_requests.sql`** (outside 09:00-22:00 KL).
+  Until it is live the form shows "Something went wrong". The 2026-10-17 apply was cancelled.
+- [ ] **Owner: fill `CONTACT` in `src/config/sensusCopy.js`** (name, WhatsApp, LinkedIn);
+  the WhatsApp and LinkedIn buttons stay hidden until then.
+- [ ] Owner: privacy page `/privacy` does not mention Sensus demo requests; add a line or a
+  Sensus-specific notice before running ads.
+
 ## BRAND-1: One new name + one domain for XDrive and ShiftOS — name DECIDED: Drevo (2026-10-16)
 - [x] **Name: Drevo** (owner, 2026-10-16). Replaces both XDrive (collides with
   BMW's xDrive) and ShiftOS (another company's name): ONE name, ONE domain for
