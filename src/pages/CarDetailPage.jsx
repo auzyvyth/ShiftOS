@@ -48,7 +48,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
 import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
-import NewCarListingInfo, { useNewCarInfo } from "../components/newcar/NewCarListingInfo";
+import NewCarListingInfo, { useNewCarInfo, useNewCarVariant } from "../components/newcar/NewCarListingInfo";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
@@ -1022,6 +1022,11 @@ export default function CarDetailPage() {
   // A new car's listing row carries almost no specs; the brand's per-variant
   // sheet (new_car_models.specs) does. Same cached read as the new-car panel.
   const newCarInfo = useNewCarInfo(car?.condition === 'new' ? car.id : null);
+  // One card covers every variant (20261017c): the price block, the tiles and
+  // the enquiry follow the variant the buyer picked in the new-car panel.
+  const { current: newCarVariant } = useNewCarVariant(car?.condition === 'new' ? car?.id : null, newCarInfo);
+  const newCarShown = newCarVariant ? { ...newCarInfo, ...newCarVariant } : newCarInfo;
+  const shownPrice = newCarVariant?.price ?? car?.selling_price;
   const [dealer, setDealer] = useState(null);
   const ctaCtx = useCTAContext();
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
@@ -1658,7 +1663,7 @@ export default function CarDetailPage() {
     const target = enquiryTarget || repTargetFor(salesmanProfile);
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
-    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${car.variant ? " " + car.variant : ""} listed at RM ${car.selling_price?.toLocaleString()}.`;
+    const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${(newCarVariant?.variant || car.variant) ? " " + (newCarVariant?.variant || car.variant) : ""} listed at RM ${shownPrice?.toLocaleString()}.`;
     // A targeted enquiry ("Chat with <agent>") must reach THAT agent, not the
     // dealer's main line that buildWaUrl would otherwise prefer. Neither number
     // is in the page (CDP-3): /api/wa resolves it for this car on tap, the
@@ -2439,18 +2444,18 @@ export default function CarDetailPage() {
           {/* Price section — directly under the title / mini details */}
           <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
             <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color: th.text, lineHeight:1, margin:0 }}>
-              {fmtPrice(car.selling_price)}
+              {fmtPrice(shownPrice)}
             </p>
-            {calcMonthly(car.selling_price) ? (
+            {calcMonthly(shownPrice) ? (
               <span style={{ fontSize:13, color: th.textSec }}>
-                ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+                ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
               </span>
-            ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+            ) : shownPrice > HIGH_VALUE_THRESHOLD ? (
               <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
             {!isOwnListing && (
               <AffordabilityCheck
-                carPrice={car.selling_price}
+                carPrice={shownPrice}
                 carName={`${car.brand} ${nameplate}`}
                 isLight={isXdrive}
                 onTalkToSeller={enquiryClick}
@@ -2492,14 +2497,14 @@ export default function CarDetailPage() {
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
             {[
               { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : car.condition === 'new' ? '0 km' : '—' },
-              { label:'Engine',       value: engineTile(car, newCarInfo) },
+              { label:'Engine',       value: engineTile(car, newCarShown) },
               { label:'Transmission', value: car.transmission || '—' },
               { label:'Fuel',         value: car.fuel_type || '—' },
               { label:'Colour',       value: car.colour || '—' },
               { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
               { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
               { label:'Financing',    value: fmtFinancing(car) },
-              ...newCarTiles(car, newCarInfo),
+              ...newCarTiles(car, newCarShown),
               ...(car.cylinders ? [{ label:'Cylinders', value:`${car.cylinders}-cyl` }] : []),
               ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
             ].filter(({ value }) => value && value !== '—').filter(evenForNew(car)).map(({ label, value }) => (
@@ -3380,7 +3385,7 @@ export default function CarDetailPage() {
                 },
                 {
                   label: "Engine",
-                  value: engineTile(car, newCarInfo),
+                  value: engineTile(car, newCarShown),
                 },
                 { label: "Transmission", value: car.transmission || "—" },
                 { label: "Fuel", value: car.fuel_type || "—" },
@@ -3407,7 +3412,7 @@ export default function CarDetailPage() {
                   label: "Financing",
                   value: fmtFinancing(car),
                 },
-                ...newCarTiles(car, newCarInfo),
+                ...newCarTiles(car, newCarShown),
                 ...(car.cylinders ? [{ label: "Cylinders", value: `${car.cylinders}-cyl` }] : []),
                 ...(car.fuel_consumption ? [{ label: "Fuel Economy", value: `${car.fuel_consumption} km/L` }] : []),
               ].filter(({ value }) => value && value !== "—").filter(evenForNew(car)).map(({ label, value }) => (
@@ -4084,7 +4089,7 @@ export default function CarDetailPage() {
             {/* PRICE BLOCK */}
             <div>
               <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textSec, fontWeight: 700, margin: '0 0 6px' }}>Asking price</p>
-              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1, margin: 0 }}>{fmtPrice(car.selling_price)}</p>
+              <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1, margin: 0 }}>{fmtPrice(shownPrice)}</p>
               {isHot && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                   <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>
@@ -4092,11 +4097,11 @@ export default function CarDetailPage() {
                 </div>
               )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-                {calcMonthly(car.selling_price) ? (
+                {calcMonthly(shownPrice) ? (
                   <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>
-                    ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(car.selling_price))}</span>/mo
+                    ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
                   </p>
-                ) : car.selling_price > HIGH_VALUE_THRESHOLD ? (
+                ) : shownPrice > HIGH_VALUE_THRESHOLD ? (
                   <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>Financing available on request</p>
                 ) : null}
                 {/* The calculator sits ON the monthly figure it explains. It was
@@ -4114,7 +4119,7 @@ export default function CarDetailPage() {
                 </button>
                 {!isOwnListing && (
                   <AffordabilityCheck
-                    carPrice={car.selling_price}
+                    carPrice={shownPrice}
                     carName={carTitle}
                     isLight={isXdrive}
                     onTalkToSeller={enquiryClick}
@@ -4213,7 +4218,7 @@ export default function CarDetailPage() {
               </div>
               <div style={{ maxHeight: '80vh', overflowY: 'auto', padding: '20px 24px' }}>
                 <FinancingCalculator
-                  initialPrice={car.selling_price}
+                  initialPrice={shownPrice}
                   engineCc={car.engine_cc}
                   bodyType={car.body_type}
                   carName={carTitle}

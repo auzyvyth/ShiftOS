@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, ChevronLeft, ImagePlus, X } from "lucide-react";
+import { Camera, ChevronLeft, ImagePlus, X } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { groupByModel, rm, priceBasis } from "../../utils/newCars";
@@ -16,8 +16,11 @@ import { compressListingPhoto } from "../../utils/compressImage";
 // the card whenever the console price changes. The advisor adds what only they
 // have: their own photos (brochure images belong to the brand), colour, words.
 //
-// One card per variant (owner's call): the monthly maths, the presenter's #N
-// and the stats all line up 1 to 1.
+// One card per MODEL (owner, 2026-10-17; it was one per variant): the seller
+// picks "e.MAS 7", the card shows "from" the cheapest variant, and the buyer
+// switches Prime / Premium / Premium Plus on the car page. The DB anchors the
+// card on the cheapest variant for the seller's zone (new_car_card_fill,
+// 20261017c), so the form just sends the model's cheapest priced variant.
 
 const MAX_PHOTOS = 20;
 const BUCKET = "car-images";
@@ -47,7 +50,6 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
   const [taken, setTaken] = useState(new Set());
   const [loadErr, setLoadErr] = useState("");
   const [model, setModel] = useState(editing ? listing.model : "");
-  const [pick, setPick] = useState(editing ? listing.new_car_model_id : null);
   const [photos, setPhotos] = useState(editing ? (listing.images || []).filter(Boolean) : []); // urls
   const [uploading, setUploading] = useState(0);
   const [colour, setColour] = useState(editing ? listing.colour || "" : "");
@@ -95,7 +97,12 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
 
   const groups = useMemo(() => groupByModel(rows || []), [rows]);
   const variants = groups.find((g) => g.model === model)?.variants || [];
-  const chosen = (rows || []).find((r) => r.model_id === pick);
+  // Models already on this seller's page (any variant of it = the model's card).
+  const takenModels = useMemo(
+    () => new Set((rows || []).filter((r) => taken.has(r.model_id)).map((r) => r.model)),
+    [rows, taken]);
+  const cheapest = (vs) => vs.filter((v) => v.price != null).sort((a, b) => a.price - b.price)[0] || null;
+  const chosen = model && !takenModels.has(model) ? cheapest(variants) : null;
 
   const addFiles = async (files) => {
     const list = Array.from(files || []).slice(0, MAX_PHOTOS - photos.length);
@@ -181,8 +188,8 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
       <div style={{ ...box, padding: 14 }}>
         {editing ? (
           <>
-            <p style={h}>{listing.brand} {listing.model} {listing.variant}</p>
-            <p style={sub}>Official price {rm(listing.selling_price)}. XDrive keeps it in line with {listing.brand}'s price list. To sell another variant, add a new card.</p>
+            <p style={h}>{listing.brand} {listing.model}</p>
+            <p style={sub}>From {rm(listing.selling_price)}, every variant at the official price. Buyers pick the variant on the car page.</p>
           </>
         ) : rows === null ? (
           <p style={sub}>Loading {brand} models...</p>
@@ -194,40 +201,39 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
           <>
             <p style={h}>Which {brand} model?</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 140px), 1fr))", gap: 8 }}>
-              {groups.map((g) => (
-                <button key={g.model} type="button" style={tile(false)} onClick={() => { setModel(g.model); setPick(null); }}>
-                  <span style={{ fontWeight: 700, minWidth: 0 }}>{g.model}</span>
-                  <span style={{ fontSize: 11.5, color: th.sub, flexShrink: 0 }}>{g.variants.length}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={() => { setModel(""); setPick(null); }}
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginBottom: 8, color: th.sub, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
-              <ChevronLeft size={14} /> All models
-            </button>
-            <p style={h}>Which {brand} {model}?</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {variants.map((v) => {
-                const has = taken.has(v.model_id);
-                const noPrice = v.price == null;
-                const off = has || noPrice;
+              {groups.map((g) => {
+                const has = takenModels.has(g.model);
+                const from = cheapest(g.variants);
                 return (
-                  <button key={v.model_id} type="button" disabled={off} style={tile(pick === v.model_id, off)} onClick={() => setPick(v.model_id)}>
+                  <button key={g.model} type="button" disabled={has || !from} style={tile(false, has || !from)} onClick={() => setModel(g.model)}>
                     <span style={{ minWidth: 0 }}>
-                      <span style={{ display: "block", fontWeight: 600 }}>{v.variant}</span>
-                      {has && <span style={{ fontSize: 11.5, color: th.sub }}>Already on your page</span>}
-                      {!has && noPrice && <span style={{ fontSize: 11.5, color: th.sub }}>No price for your area yet</span>}
-                    </span>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-                      {rm(v.price) || "-"}
-                      {pick === v.model_id && <Check size={15} color="#dc2626" />}
+                      <span style={{ display: "block", fontWeight: 700 }}>{g.model}</span>
+                      <span style={{ fontSize: 11.5, color: th.sub }}>
+                        {has ? "On your page" : from ? `from ${rm(from.price)}` : "No price for your area yet"}
+                      </span>
                     </span>
                   </button>
                 );
               })}
+            </div>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => setModel("")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", padding: 0, marginBottom: 8, color: th.sub, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+              <ChevronLeft size={14} /> All models
+            </button>
+            <p style={h}>{brand} {model}</p>
+            <p style={{ ...sub, marginBottom: 8 }}>One card covers every variant. Buyers pick the one they want on your car page.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {variants.map((v) => (
+                <div key={v.model_id} style={{ ...tile(false, v.price == null), cursor: "default" }}>
+                  <span style={{ minWidth: 0, fontWeight: 600 }}>{v.variant}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0, fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
+                    {rm(v.price) || "No price yet"}
+                  </span>
+                </div>
+              ))}
             </div>
             <p style={{ ...sub, fontSize: 11.5, marginTop: 8 }}>{priceBasis(rows[0]?.price_zone)} You can't change it: it's {brand}'s price, and XDrive updates it for every advisor.</p>
           </>
