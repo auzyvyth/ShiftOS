@@ -37,7 +37,6 @@ create index if not exists sensus_demo_requests_created_idx on public.sensus_dem
 create index if not exists sensus_demo_requests_phone_idx on public.sensus_demo_requests(phone);
 
 alter table public.sensus_demo_requests enable row level security;
-drop policy if exists sensus_demo_requests_superadmin on public.sensus_demo_requests;
 create policy sensus_demo_requests_superadmin on public.sensus_demo_requests
   for all to authenticated using (public.is_superadmin()) with check (public.is_superadmin());
 revoke all on public.sensus_demo_requests from anon, public;
