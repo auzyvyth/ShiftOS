@@ -169,11 +169,11 @@ import {
 import { usePersistentState } from "../hooks/usePersistentState";
 import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
-// SubTabs/PrevMonthModal/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
+// SubTabs/etc.) live here so DashboardTab/ListingsTab/AnalyticsTab
 // (and the shell below) import the same definitions instead of duplicating them.
 import { hasUnreadRejection } from "../utils/listingReview";
 import {
- priceStyle, SOFT, CARD, CARD_HEADER, ROW_LINE, EYEBROW, STAT, PrevMonthModal,
+ priceStyle, SOFT, CARD, CARD_HEADER, ROW_LINE, EYEBROW, STAT,
  timeAgo, preciseAgo, preciseUntil, timeLabels, STAGE_NEUTRAL, STATUS_LABEL,
  LEAD_STAGES, STAGE_COLOR, STAGE_WEIGHT, getHeatScore, LOST_REASONS, SubTabs,
  ListingFormModal, stageLabel,
