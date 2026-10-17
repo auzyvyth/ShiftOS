@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { supabase } from "../supabaseClient";
 import { useProfile } from "../hooks/useProfile";
 import NewCarForm from "./newcar/NewCarForm";
+import CarKindChooser from "./newcar/CarKindChooser";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
 import { MY_STATES as STATES } from "../utils/locations";
@@ -30,13 +31,19 @@ export default function CarFormFast(props) {
   const profile = props.sellerProfile || fetched;
   const [usedForm, setUsedForm] = useState(false);
   if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>Loading form...</p>;
+  // Salesmen pick Used / Recon / New first (CarKindChooser). Everyone else
+  // keeps the form they had.
+  if (profile?.role === "salesman") {
+    return <CarKindChooser dark profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars}
+      renderUsed={(d) => <UsedCarFormFast {...props} recon={!!d.isRecon} />} />;
+  }
   if (profile?.seller_type === "new_car" && !usedForm) {
     return <NewCarForm dark profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars} onUseUsedForm={() => setUsedForm(true)} />;
   }
   return <UsedCarFormFast {...props} />;
 }
 
-function UsedCarFormFast({ onCreate }) {
+function UsedCarFormFast({ onCreate, recon = false }) {
   const { profile } = useProfile();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
@@ -101,7 +108,8 @@ function UsedCarFormFast({ onCreate }) {
           // Same column as CarForm's "About this car". Most listings have no
           // text at all, which leaves their public pages reading alike.
           specs: f.specs.trim() || null,
-          condition: "used",
+          condition: recon ? "recon" : "used",
+          is_recon: recon,
           transmission: "Auto",
           fuel_type: "Petrol",
           body_type: "Sedan",

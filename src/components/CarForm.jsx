@@ -44,6 +44,7 @@ import { CAR_DATA } from "../data/carData";
 import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carFormOptions";
 import QuickCarFlow from "./carform/QuickCarFlow";
 import NewCarForm from "./newcar/NewCarForm";
+import CarKindChooser from "./newcar/CarKindChooser";
 import QuickSteps, { Tile, BigNumber, fmtNum } from "./carform/QuickSteps";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
@@ -794,7 +795,17 @@ export default function CarForm(props) {
   const [usedForm, setUsedForm] = useState(false);
   const { listing } = props;
   if (!profile && loading) return <p style={{ padding: 24, textAlign: "center", fontSize: 13, color: "#6b7280" }}>Loading form...</p>;
-  const newCar = profile?.seller_type === "new_car" && !usedForm && (!listing || listing.new_car_model_id);
+  // A salesman adding a car picks Used / Recon / New first. Edits skip it: the
+  // car already is one of those.
+  if (profile?.role === "salesman" && !listing) {
+    return <CarKindChooser profile={profile} onCreate={props.onCreate} onOpenNewCars={props.onOpenNewCars}
+      renderUsed={(d) => <UsedCarForm {...props} defaultValues={{ ...(props.defaultValues || {}), ...d }} />} />;
+  }
+  // A price-list card always edits in the new-car form, whatever the seller's
+  // type (a broker can hold cards too).
+  const newCar = listing
+    ? !!listing.new_car_model_id
+    : profile?.seller_type === "new_car" && !usedForm;
   if (newCar) {
     return (
       <NewCarForm profile={profile} listing={listing} onCreate={props.onCreate} onUpdate={props.onUpdate}

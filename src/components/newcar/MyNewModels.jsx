@@ -28,14 +28,14 @@ const pill = (on) => ({
 });
 
 export default function MyNewModels({ profile, onProfileChange }) {
-  const [brand, setBrand] = useState(profile?.seller_type === "new_car" ? profile?.new_car_brand || "" : "");
+  const [brand, setBrand] = useState(profile?.new_car_brand || "");
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(null);
 
   useEffect(() => {
-    setBrand(profile?.seller_type === "new_car" ? profile?.new_car_brand || "" : "");
+    setBrand(profile?.new_car_brand || "");
   }, [profile?.seller_type, profile?.new_car_brand]);
 
   const load = useCallback(async (b) => {
@@ -57,18 +57,21 @@ export default function MyNewModels({ profile, onProfileChange }) {
     if (!profile?.id || b === brand) return;
     setBusy("brand");
     setError("");
-    const { error: e } = await supabase.from("profiles").update({ seller_type: "new_car", new_car_brand: b }).eq("id", profile.id);
+    // A broker who also sells new stays a broker (owner, 2026-10-17); this
+    // used to set seller_type 'new_car' and quietly drop the broker side.
+    const sellerType = profile.seller_type === "broker" ? "broker" : "new_car";
+    const { error: e } = await supabase.from("profiles").update({ seller_type: sellerType, new_car_brand: b }).eq("id", profile.id);
     if (e) { setBusy(null); setError("Couldn't save the brand. Try again."); return; }
     setBusy(null);
     setBrand(b);
-    onProfileChange?.({ seller_type: "new_car", new_car_brand: b });
+    onProfileChange?.({ seller_type: sellerType, new_car_brand: b });
   };
 
   return (
     <div style={card}>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>New cars you sell</p>
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
-        {profile?.seller_type === "new_car"
+        {profile?.new_car_brand
           ? "Your page shows only the models you add. Go to Add car, pick a model, add your photo, done. The price comes from this list and XDrive keeps it up to date."
           : "Sell new Proton, Perodua or Toyota? Pick your brand, then add the models you sell from Add car. You never type a price."}
       </p>
