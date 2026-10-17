@@ -1242,12 +1242,20 @@
       "newBooking": "Ada booking baru!",
       "newAppointment": "Temujanji baru"
     },
-    "prevMonth": {
-      "commissionEarned": "Komisen diperoleh",
-      "carsSold_one": "{{count}} kereta terjual",
-      "carsSold_other": "{{count}} kereta terjual",
-      "vs": "vs {{label}}",
-      "noData": "Tiada data dari {{label}} untuk dibandingkan."
+    "salesHistory": {
+      "title": "Sejarah jualan",
+      "since": "Sejak anda sertai pada {{date}}",
+      "carsSold": "Kereta terjual",
+      "commission": "Komisen",
+      "download": "Muat turun",
+      "empty": "Belum ada kereta terjual. Kereta yang anda tanda terjual akan muncul di sini.",
+      "monthLine_one": "{{count}} kereta · {{amount}}",
+      "monthLine_other": "{{count}} kereta · {{amount}}",
+      "daysToSell_one": "terjual dalam {{count}} hari",
+      "daysToSell_other": "terjual dalam {{count}} hari",
+      "views": "Tontonan",
+      "whatsapp": "Tekan WhatsApp",
+      "calls": "Panggilan"
     },
     "time": {
       "sAgo": "{{n}} saat lalu",
@@ -1769,8 +1777,8 @@
       "closed": "Ditutup",
       "monthlyGoal": "Sasaran bulanan",
       "daysLeftIn": "Tinggal {{n}} hari dalam {{month}}",
-      "prevMonthTitle": "Kad ni hanya pantau bulan semasa. Lihat sejarah",
-      "prevMonth": "Bulan lepas",
+      "prevMonthTitle": "Setiap kereta yang anda jual, bulan demi bulan",
+      "prevMonth": "Sejarah",
       "setTarget": "Set sasaran komisen anda untuk {{month}}:",
       "commissionExplain": "Komisen ialah margin anda (harga jual tolak harga asas) bagi setiap kereta terjual, dikira automatik. Kereta terjual dikira dalam sasaran ni.",
       "commissionEarned": "Komisen diperoleh",

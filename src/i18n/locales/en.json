@@ -1253,12 +1253,20 @@
       "newBooking": "New booking!",
       "newAppointment": "New appointment"
     },
-    "prevMonth": {
-      "commissionEarned": "Commission earned",
-      "carsSold_one": "{{count}} car sold",
-      "carsSold_other": "{{count}} cars sold",
-      "vs": "vs {{label}}",
-      "noData": "No data from {{label}} to compare against."
+    "salesHistory": {
+      "title": "Sales history",
+      "since": "Since you joined in {{date}}",
+      "carsSold": "Cars sold",
+      "commission": "Commission",
+      "download": "Download",
+      "empty": "No cars sold yet. A car you mark sold shows up here.",
+      "monthLine_one": "{{count}} car · {{amount}}",
+      "monthLine_other": "{{count}} cars · {{amount}}",
+      "daysToSell_one": "sold in {{count}} day",
+      "daysToSell_other": "sold in {{count}} days",
+      "views": "Views",
+      "whatsapp": "WhatsApp taps",
+      "calls": "Calls"
     },
     "time": {
       "sAgo": "{{n}}s ago",
@@ -1780,8 +1788,8 @@
       "closed": "Closed",
       "monthlyGoal": "Monthly Goal",
       "daysLeftIn": "{{n}}d left in {{month}}",
-      "prevMonthTitle": "This card only tracks the current month. See history",
-      "prevMonth": "Previous month",
+      "prevMonthTitle": "Every car you have sold, month by month",
+      "prevMonth": "History",
       "setTarget": "Set your commission target for {{month}}:",
       "commissionExplain": "Commission is your margin (selling price minus base price) on each sold car, worked out automatically. Sold cars count toward this goal.",
       "commissionEarned": "Commission earned",
