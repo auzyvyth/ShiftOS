@@ -869,7 +869,7 @@ export default function SalesmanProfilePage() {
         <Suspense fallback={null}>
           <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
             sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)}
-            officialNew={profile?.seller_type === 'new_car'} />
+            officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)} />
         </Suspense>
       )}
     </>
