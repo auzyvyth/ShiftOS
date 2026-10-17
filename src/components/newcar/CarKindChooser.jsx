@@ -31,7 +31,7 @@ export default function CarKindChooser({ profile, dark = false, onCreate, onOpen
 
   const back = () => { setKind(null); setBrand(null); setSwitchTo(null); setError(""); };
 
-  const useBrand = async (b) => {
+  const pickBrand = async (b) => {
     setError("");
     if (b === saved) { setBrand(b); return; }
     if (saved && switchTo !== b) { setSwitchTo(b); return; }
@@ -84,7 +84,7 @@ export default function CarKindChooser({ profile, dark = false, onCreate, onOpen
         <p style={title}>Which brand?</p>
         <p style={{ ...sub, marginTop: -6 }}>The model list and the official price for your area fill in by themselves.</p>
         {NEW_CAR_BRANDS.map((b) => (
-          <button key={b} type="button" disabled={saving} onClick={() => useBrand(b)} style={tile(b === saved || b === switchTo)}>
+          <button key={b} type="button" disabled={saving} onClick={() => pickBrand(b)} style={tile(b === saved || b === switchTo)}>
             <p style={title}>{b}</p>
             {b === saved && <p style={sub}>Your brand</p>}
           </button>
@@ -95,7 +95,7 @@ export default function CarKindChooser({ profile, dark = false, onCreate, onOpen
               Your account sells new {saved}. One brand per account for now: switching to {switchTo} means
               your page lists you as a {switchTo} advisor, not {saved}. Your {saved} cards stay up.
             </p>
-            <button type="button" disabled={saving} onClick={() => useBrand(switchTo)}
+            <button type="button" disabled={saving} onClick={() => pickBrand(switchTo)}
               style={{ ...tile(true), marginTop: 10, textAlign: "center", fontWeight: 700, padding: "10px 12px" }}>
               {saving ? "Saving..." : `Switch to ${switchTo}`}
             </button>
