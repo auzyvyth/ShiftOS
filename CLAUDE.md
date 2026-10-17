@@ -1338,6 +1338,8 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Numbers change in place (owner, 2026-10-17):** tap Rebate, Deposit or Rate in the
   working and type (`EditCell`); Adjust still holds them. Contact, once switched on, is a
   loud accent "Contact me" banner, but stays OFF by default (TikTok rule above).
+  The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
+  per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).

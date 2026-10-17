@@ -10,7 +10,10 @@ import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
   netPrice,
 } from '../../utils/liveMaths';
-import { LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX } from './liveCopy';
+import {
+  LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX,
+} from './liveCopy';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
 
@@ -125,6 +128,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // The seller's own comment line, remembered per device (liveCopy.js ctaLine).
   const [ctaCustom, setCtaCustom] = useState(() => (embedded ? '' : initialLiveCta()));
   const changeCta = (v) => { const next = v.slice(0, CTA_MAX); setCtaCustom(next); if (!embedded) saveLiveCta(next); };
+  // The seller's standing offer (free extras), remembered per device (liveCopy.js).
+  const [offer, setOffer] = useState(() => (embedded ? '' : initialLiveOffer()));
+  const changeOffer = (v) => { const next = v.slice(0, OFFER_MAX); setOffer(next); if (!embedded) saveLiveOffer(next); };
   const t = LIVE_COPY[lang];
   const toggleLang = () => setLang((l) => { const next = l === 'ms' ? 'en' : 'ms'; if (!embedded) saveLiveLang(next); return next; });
   const startedAt = useRef(new Date());
@@ -400,6 +406,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: rgba(16,185,129,.11); color: #065f46; font-size: clamp(12px, 3.3cqw, 18px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+        .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #047857; }
         .lp-seg.lp-vars { flex-wrap: wrap; }
         .lp-seg.lp-vars button { flex: 1 1 auto; height: auto; min-height: 34px; padding: 4px 10px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 14px); }
         .lp-brk tr.lp-tap { cursor: pointer; }
@@ -613,6 +621,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 <small className="lp-hint">{t.ctaHint}</small>
               </label>
             )}
+            {mode === 'cars' && (
+              <label className="lp-wide">
+                {t.offerLabel}
+                <input className="lp-in" type="text" maxLength={OFFER_MAX} value={offer} onChange={(e) => changeOffer(e.target.value)} />
+                <small className="lp-hint">{t.offerHint}</small>
+              </label>
+            )}
             <div className="lp-colours" role="group" aria-label={t.colour}>
               <span>{t.colour}</span>
               {ACCENT_PRESETS.map((c) => (
@@ -752,6 +767,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           {/* Contact (tap to hide) sits on the comment bar's line: one slim row
               in the working's own style, not a box squeezing the tenure table. */}
           <div className="lp-end">
+            {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
             {showContact && contact && (
               <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
                 <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
