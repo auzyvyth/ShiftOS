@@ -183,6 +183,7 @@ export default function ListingsTab({
  isMobile={isMobile}
  >
  <CarFormFast
+ sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
@@ -200,6 +201,7 @@ export default function ListingsTab({
  isMobile={isMobile}
  >
  <CarForm
+ sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
  onCreate={(car) => {
  setMyListings((p) => [car, ...p]);
