@@ -29,6 +29,7 @@ flowchart TB
     DASH["Dealer dashboard<br/>/dashboard + /manager /accountant /fi"]
     PLAT["Platform console<br/>/platform"]
     MKT["ShiftOS marketing<br/>/shiftos, /for-salesmen, /articles"]
+    SX["Sensus AI landing<br/>/sensus-ai (resold product,<br/>demo requests)"]
   end
 
   subgraph Vercel["Vercel (hosting)"]
@@ -55,10 +56,11 @@ flowchart TB
   end
 
   B --> MK & MP & SF
+  DT --> SX
   SL --> LITE & PREM
   DT --> DASH
   OP --> PLAT
-  MK & MP & SF & LITE & PREM & DASH & PLAT & MKT --> SPA
+  MK & MP & SF & LITE & PREM & DASH & PLAT & MKT & SX --> SPA
   SPA --> MW --> API
   SPA -->|supabase-js, RLS decides what you see| DB
   SPA --> AUTH
@@ -138,7 +140,7 @@ flowchart LR
   CR["Seller replies in chat"] --> P
   CR -.->|buyer unread 30 min| CU["notify-chat-unread<br/>(every 30 min)"] --> M2[Email to buyer]
 
-  OPS["Errors, signups,<br/>pending listings, JPJ failure"] --> NO["notify_ops()"] --> TG[Telegram ops channel] & AP[Your phone push]
+  OPS["Errors, signups,<br/>pending listings, JPJ failure,<br/>Sensus demo requests"] --> NO["notify_ops()"] --> TG[Telegram ops channel] & AP[Your phone push]
 ```
 
 ---

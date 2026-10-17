@@ -186,6 +186,7 @@ export default async function handler(req) {
         { path: "/showroom",     changefreq: "daily",   priority: "0.9" },
         { path: "/shiftos",      changefreq: "weekly",  priority: "0.9" },
         { path: "/for-salesmen", changefreq: "weekly",  priority: "0.8" },
+        { path: "/sensus-ai",    changefreq: "monthly", priority: "0.6" },
         { path: "/compare",      changefreq: "weekly",  priority: "0.6" },
         { path: "/guides",       changefreq: "weekly",  priority: "0.6" },
         { path: "/guides/faq",   changefreq: "monthly", priority: "0.5" },

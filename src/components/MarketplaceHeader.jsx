@@ -4,6 +4,7 @@ import {
   X, Flame, Menu, Heart, Search, ChevronDown, Car, Sparkles, RefreshCw, LayoutGrid,
   LayoutDashboard, Tag, Handshake, PlusCircle, BookOpen, FileCheck, FileText, GitCompare, ArrowUpRight,
   User,
+  Bot,
 } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { supabase } from '../supabaseClient';
@@ -78,6 +79,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     { to: '/shiftos#features', Icon: PlusCircle,      label: 'List Your Inventory', desc: 'Put your stock in front of buyers' },
     { to: '/shiftos',          Icon: LayoutDashboard, label: 'ShiftOS DMS',         desc: 'Run your whole dealership' },
     { to: '/shiftos#pricing',  Icon: Tag,             label: 'Dealer Pricing',      desc: 'Plans from RM299/mo' },
+    // SENSUS-1: owner's call (2026-10-17) to list the Sensus AI page here.
+    { to: '/sensus-ai',        Icon: Bot,             label: 'Dealership AI Agent', desc: 'Answers enquiries 24/7' },
     { href: partnerWa,         Icon: Handshake,       label: 'Partner with XDrive', desc: 'Grow your business with us' },
   ];
   const GUIDES = [

@@ -79,6 +79,7 @@ const SavedCarsPage      = lazy(() => import("./pages/SavedCarsPage"));
 const FindMePage         = lazy(() => import("./pages/FindMePage"));
 const LoanSharePage      = lazy(() => import("./pages/LoanSharePage"));
 const FeaturePage        = lazy(() => import("./pages/FeaturePage"));
+const SensusAiPage       = lazy(() => import("./pages/SensusAiPage"));
 const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
@@ -274,6 +275,7 @@ function App() {
           <Route path="/for-salesmen" element={<SalesmanLiteLanding />} />
           <Route path="/mindmap" element={<MindMapPage />} />
           <Route path="/waitlist" element={<WaitlistPage />} />
+          <Route path="/sensus-ai" element={<SensusAiPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/deal/:token" element={<DealPage />} />

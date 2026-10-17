@@ -24,6 +24,10 @@ const INTERNAL_PREFIXES = [
   // authenticated panels / internal system
   '/dashboard', '/salesman', '/salesman-lite', '/salesman-premium',
   '/manager', '/accountant', '/fi', '/admin', '/accounts', '/platform', '/account',
+  // SENSUS-1 landing page (owner, 2026-10-17): a separate brand's page that
+  // fires no trackEvent and stores no prefill, so there is nothing to consent to.
+  // Add trackEvent there and this line must go.
+  '/sensus-ai',
 ];
 function isInternalPath(pathname) {
   return matchesPathPrefix(pathname, INTERNAL_PREFIXES);
