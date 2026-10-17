@@ -112,6 +112,9 @@ const PANEL_CACHE_KEY = "spanel";
 // ones loaded with the page.
 const LEAD_SELECT = "*, car_listings(brand, model, year, variant, selling_price, commission_amount, images, vin_number, vin, plate_number, mileage, colour, transmission, fuel_type, body_type, slug, status)";
 
+// Every loan_applications column the Loans tab reads (table + status edit).
+const LOAN_APP_SELECT = "id, buyer_name, buyer_phone, car_model, loan_amount, banks, status, created_at";
+
 const LEAD_SOURCE_LABEL = {
   chat: "In-app chat",
   whatsapp: "WhatsApp",
@@ -527,7 +530,6 @@ export default function SalesmanPanel() {
  buyer_income: "", notes: "",
  });
  const [loanApplications, setLoanApplications] = useState([]);
- const [loanLeads, setLoanLeads] = useState([]);
  const [loanStockUnits, setLoanStockUnits] = useState([]);
  const [loanSaving, setLoanSaving] = useState(false);
  const [loanEditId, setLoanEditId] = useState(null);
@@ -1056,18 +1058,14 @@ Rules:
  })();
  }, [profile?.id, profile?.dealer_id]);
 
- // loan data
+ // loan data — only the Loans tab reads it, so it loads the first time that
+ // tab opens, once, then stays in state. (A third query here, leads ->
+ // loanLeads, fed nothing on screen and was dropped.)
+ const [loansLoaded, setLoansLoaded] = useState(false);
  useEffect(() => {
- if (!profile?.id) return;
+ if (activeTab !== "loans" || loansLoaded || !profile?.id) return;
+ setLoansLoaded(true);
  const dealerId = getDealerIdFromProfile(profile);
- supabase
- .from("leads")
- .select("id, buyer_name, phone")
- .eq("dealer_id", dealerId)
- .eq("salesman_id", profile.id)
- .eq("is_deleted", false)
- .order("created_at", { ascending: false })
- .then(({ data }) => setLoanLeads(data || []));
  supabase
  .from("stock_units")
  .select("id, brand, model, year, registration_number")
@@ -1075,11 +1073,11 @@ Rules:
  .then(({ data }) => setLoanStockUnits(data || []));
  supabase
  .from("loan_applications")
- .select("*")
+ .select(LOAN_APP_SELECT)
  .eq("salesman_id", profile.id)
  .order("created_at", { ascending: false })
  .then(({ data }) => setLoanApplications(data || []));
- }, [profile?.id]);
+ }, [activeTab, loansLoaded, profile?.id]);
  //
 
  // Shared dealer inventory — lazy-loaded the first time the salesman opens the Inventory view.
@@ -6754,7 +6752,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  banks: banksPayload,
  notes: loanForm.notes || null,
  status: "Submitted",
- }).select("*").single();
+ }).select(LOAN_APP_SELECT).single();
  setLoanSaving(false);
  if (!error && data) {
  setLoanApplications((prev) => [data, ...prev]);
