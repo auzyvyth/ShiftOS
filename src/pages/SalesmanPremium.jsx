@@ -7509,6 +7509,7 @@ export default function SalesmanPremium() {
  isMobile={isMobile}
  >
  <CarForm
+ dark
  sellerProfile={profile}
  listing={editListing}
  onUpdate={(updated) => {
