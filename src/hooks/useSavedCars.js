@@ -6,7 +6,7 @@ import { isRealBuyer, requestBuyerSignIn } from '../lib/buyerAuth';
 import { isSubdomain } from './useTenant';
 
 const LS_KEY = 'xdrive_saved_cars';
-const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,seller_role,dealer_is_verified,seller_sold_count,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners';
+const CARD_COLS = 'id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,colour,condition,images,status,created_at,dealer_id,seller_role,dealer_is_verified,seller_sold_count,auction_grade,interior_grade,is_recon,financing_type,engine_cc,previous_owners,is_model_card';
 
 function readLocalIds() {
   try {
