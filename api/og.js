@@ -850,8 +850,7 @@ const STATIC_PAGES = {
   "/sensus-ai": () => {
     const li = (xs) => xs.map((x) => `<li>${esc(x)}</li>`).join("");
     const body = `  <main>
-    <p>${esc(SX.HERO.eyebrow)}</p>
-    <h1>${esc(SX.HERO.h1)}</h1>
+    <h1>${esc(SX.HERO.eyebrow)}: ${esc(SX.HERO.h1)}</h1>
     <p>${esc(SX.HERO.sub)}</p>
     <h2>${esc(SX.BEFORE_AFTER.title)}</h2>
     <ul>${SX.BEFORE_AFTER.rows.map((r) => `<li>Before: ${esc(r.before)}. After: ${esc(r.after)}.</li>`).join("")}</ul>

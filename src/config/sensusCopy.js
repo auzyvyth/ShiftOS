@@ -178,11 +178,20 @@ export const FORM = {
   doneBody: "I will WhatsApp you within one working day to fix a time.",
 };
 
+// Every answer here must be backed by something already on this page or in the
+// Sensus deck. Unknowns (setup time, contract length, DMS integrations, keeping
+// the dealer's own WhatsApp number) are NOT answered until Sensus confirms them.
 export const FAQ = [
+  { q: "What is an AI agent for a car dealership?", a: "Software that replies to buyer and service enquiries on WhatsApp, your website, email and phone, asks the qualifying questions a good salesperson would, books test drives and service slots, and follows up automatically. Every conversation is written to one customer record your team can see." },
+  { q: "How is this different from a WhatsApp chatbot?", a: "A basic chatbot answers from a fixed menu. Sensus holds a conversation, qualifies the buyer, books the appointment, chases no-shows and keeps following up across sales and aftersales, then hands a warm lead to your salesperson with the history attached." },
+  { q: "Does it work after hours and on weekends?", a: "Yes. It replies any hour, which is when most buyers browse: Sensus reports that 79% of people look for a car online outside working hours." },
+  { q: "How fast does it reply?", a: "Sensus projects a median first response of under 5 minutes, against the hours a late-night or weekend enquiry often waits today. Your results depend on your setup and volume." },
   { q: "Does the AI replace my salespeople?", a: "No. It answers, qualifies, books and follows up. Price, trade-in and finance negotiation stay with your salesperson, who receives a warm lead instead of a cold one." },
   { q: "Which channels does it work on?", a: "WhatsApp, your website, email, voice calls and SMS, with every conversation written to one customer record." },
   { q: "Can it speak Bahasa Malaysia, English and Chinese?", a: "The agent is multilingual and can reply in the language the customer writes in. We will confirm the languages you need during the demo." },
   { q: "Is it only for sales?", a: "No. It also books service, runs service-interval and insurance renewal reminders, follows up declined repair work and checks satisfaction after a visit." },
+  { q: "What happens when the AI cannot answer a question?", a: "It hands the conversation to your team. Price, trade-in and finance always go to a person, and anything the AI is not set up to answer is passed on rather than guessed." },
+  { q: "Is it suitable for used and recond car dealers?", a: "Yes, if you handle enough enquiries for slow replies to cost you sales. It is built for franchise and 3S dealerships, multi-branch used and recond groups, and service centres. Under about 100 enquiries a month it is usually too early." },
   { q: "How much does it cost?", a: "There is a one-off setup and a monthly plan sized to your conversation volume. Because volumes differ a lot between dealerships, pricing is quoted in the demo." },
   { q: "What about customer data and PDPA?", a: "Data handling and consent are part of the setup. Bring your questions to the demo and we will walk through them for your dealership." },
 ];
