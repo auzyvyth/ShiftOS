@@ -1,19 +1,15 @@
 import { ShieldCheck, Clock } from "lucide-react";
 
 /**
- * Tells a seller their cars are hidden until their ID is checked, with a
- * button to the VerifyIdentity card in Settings.
+ * Invites a seller to get the Verified badge, with a button to the
+ * VerifyIdentity card in Settings.
  *
- * Since 2026-10-11 this is not a badge nudge any more: public_car_listings
- * only shows cars whose seller has profiles.is_verified (migration
- * 20261011b), so an unchecked seller's cars are invisible to buyers. The
- * prompt used to say "Get the Verified badge", be dismissible, and go quiet
- * once an ID was submitted, so a hidden seller had no way to know why
- * nobody could see their cars. Now:
- *   - not submitted -> "hidden until we check your ID" + Verify ID
- *   - submitted     -> "we're checking it, your cars go live after"
+ * The ID check is for the BADGE, not a gate on listings (owner, 2026-10-17):
+ * cars go live without it (migration 20261017b removed the 20261011b gate on
+ * public_car_listings). Never tell a seller their cars are hidden because of it.
+ *   - not submitted -> "get the Verified badge" + Verify ID
+ *   - submitted     -> "we're checking it, the badge shows after"
  *   - verified      -> nothing
- * No dismiss: the state it describes is real until it is fixed.
  *
  * Shown on the screen a seller actually opens (their listings / home), not
  * only in Settings, which nobody opens.
@@ -39,12 +35,12 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
         {inReview ? (
           <>
             <strong style={{ color: c.strong, fontWeight: 600 }}>We're checking your ID.</strong>{" "}
-            Your cars show on XDrive as soon as it's approved.
+            Your Verified badge shows as soon as it's approved.
           </>
         ) : (
           <>
-            <strong style={{ color: c.strong, fontWeight: 600 }}>Buyers can't see your cars yet.</strong>{" "}
-            XDrive only shows cars from sellers whose ID we've checked.
+            <strong style={{ color: c.strong, fontWeight: 600 }}>Get the Verified badge.</strong>{" "}
+            Buyers trust sellers whose ID has been checked.
           </>
         )}
       </p>

@@ -2306,10 +2306,10 @@
   },
   "sellerId": {
     "title": "Dapatkan pengesahan",
-    "body": "Kereta penjual yang disahkan dipaparkan kepada pembeli di XDrive. Nombor IC dan gambar MyKad anda, lebih kurang 2 minit.",
+    "body": "Dapatkan lencana Disahkan pada halaman dan kereta anda. Pembeli lebih percaya penjual yang disemak. Gambar MyKad anda, lebih kurang 2 minit.",
     "cta": "Sahkan sekarang",
     "checkingTitle": "Kami sedang semak IC anda",
-    "checkingBody": "Kereta anda dipaparkan kepada pembeli sebaik sahaja diluluskan. Teruskan tambah kereta dan layan lead sementara itu."
+    "checkingBody": "Lencana Disahkan dipaparkan sebaik sahaja diluluskan. Kereta anda sudah pun dipaparkan."
   },
   "starterTasks": {
     "heading": "Mula di sini",

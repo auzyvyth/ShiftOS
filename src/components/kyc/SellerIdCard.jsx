@@ -15,13 +15,13 @@ import AccountReviewBanner from "../AccountReviewBanner";
  *     still pending       -> AccountReviewBanner (Find me is what that gates)
  *   - otherwise           -> nothing
  *
- * Facts, keep them true: cars show to buyers only once is_verified is set by a
- * person at XDrive (public_car_listings, 20261011b). The IC
+ * Facts, keep them true: the ID check is for the Verified BADGE only. Cars go
+ * live without it (owner, 2026-10-17, migration 20261017b undid the 20261011b
+ * gate on public_car_listings). The IC
  * number used to be required too; it is optional since 2026-10-12 (owner: as
  * little friction as possible while we grow), so it is not a step here.
  * Worded as an invitation ("Get verified"), not a demand, but it must stay
- * true: an unverified seller's cars are NOT on the marketplace yet. No
- * dismiss: the state is real until it changes.
+ * true: never tell a seller their cars are hidden because of the ID check.
  */
 export default function SellerIdCard({ profile, t, onUploadId }) {
   if (!profile) return null;
@@ -50,8 +50,8 @@ export default function SellerIdCard({ profile, t, onUploadId }) {
         </p>
         <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.5 }}>
           {checking
-            ? tr("checkingBody", "Your cars show to buyers once it's approved. Keep adding cars and taking leads meanwhile.")
-            : tr("body", "Verified sellers' cars show to buyers on XDrive. Your IC number and photos of your MyKad, about 2 minutes.")}
+            ? tr("checkingBody", "Your Verified badge shows once it's approved. Your cars are already live.")
+            : tr("body", "Get the Verified badge on your page and cars. Buyers trust checked sellers more. Photos of your MyKad, about 2 minutes.")}
         </p>
       </div>
       {!checking && onUploadId && (

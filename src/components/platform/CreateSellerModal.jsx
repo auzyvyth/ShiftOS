@@ -7,8 +7,8 @@ import { MY_STATES, cityOptionsFor } from "../../utils/locations";
 // collects a seller's name, email and cars over chat, makes the account here,
 // signs in as them to add the cars, then sends the setup email. The seller
 // sets their own password and IC on /salesman-setup (which signs every other
-// session out), and the cars stay off the marketplace until the ID check
-// passes (public_car_listings only shows is_verified sellers, 20261011b).
+// session out). The ID check only earns the Verified badge; cars go live
+// without it (20261017b removed the 20261011b gate).
 //
 // Always the seller's OWN email: the account, its leads and its buyers' chats
 // belong to whoever owns the address. Lite only; Premium is the seller's own
@@ -176,7 +176,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               </div>
             </div>
             <p style={step}>1. Open a private window and sign in at xdrive.my/login as <b style={{ color: "#f1f5f9" }}>{created.email}</b> with that password.</p>
-            <p style={step}>2. Add their cars. They stay off the marketplace until the seller's ID is checked.</p>
+            <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked.</p>
             <p style={step}>3. Sign out and close the private window.</p>
             <p style={step}>4. Send the setup email. They set their own password and IC, and every other session is signed out.</p>
             {mailState === "sent" && <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>Setup email sent to {created.email}.</p>}
