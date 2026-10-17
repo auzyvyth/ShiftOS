@@ -48,7 +48,7 @@ import { getCategoryCfg } from "../utils/serviceCategories";
 import { getChassisCode } from "../utils/chassisCodes";
 import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
-import NewCarListingInfo, { useNewCarInfo, useNewCarVariant } from "../components/newcar/NewCarListingInfo";
+import NewCarListingInfo, { useNewCarInfo, useNewCarVariant, VariantChips } from "../components/newcar/NewCarListingInfo";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
@@ -1023,8 +1023,8 @@ export default function CarDetailPage() {
   // sheet (new_car_models.specs) does. Same cached read as the new-car panel.
   const newCarInfo = useNewCarInfo(car?.condition === 'new' ? car.id : null);
   // One card covers every variant (20261017c): the price block, the tiles and
-  // the enquiry follow the variant the buyer picked in the new-car panel.
-  const { current: newCarVariant } = useNewCarVariant(car?.condition === 'new' ? car?.id : null, newCarInfo);
+  // the enquiry follow the variant the buyer picks under the price (VariantChips).
+  const { variants: newCarVariants, current: newCarVariant, choose: chooseNewCarVariant } = useNewCarVariant(car?.condition === 'new' ? car?.id : null, newCarInfo);
   const newCarShown = newCarVariant ? { ...newCarInfo, ...newCarVariant } : newCarInfo;
   const shownPrice = newCarVariant?.price ?? car?.selling_price;
   const [dealer, setDealer] = useState(null);
@@ -2463,6 +2463,7 @@ export default function CarDetailPage() {
               />
             )}
           </div>
+          <VariantChips variants={newCarVariants} current={newCarVariant} onPick={chooseNewCarVariant} th={th} />
           <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
           {isHot && (
             <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
@@ -4090,6 +4091,7 @@ export default function CarDetailPage() {
             <div>
               <p style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.14em', color: th.textSec, fontWeight: 700, margin: '0 0 6px' }}>Asking price</p>
               <p style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(2.4rem,3.5vw,3rem)', color: th.text, lineHeight: 1, margin: 0 }}>{fmtPrice(shownPrice)}</p>
+              <VariantChips variants={newCarVariants} current={newCarVariant} onPick={chooseNewCarVariant} th={th} />
               {isHot && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
                   <span style={{ fontSize: 13, color: th.textMuted, textDecoration: 'line-through' }}>{fmtPrice(car.original_price)}</span>

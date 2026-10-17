@@ -1274,8 +1274,9 @@ and the won-trigger marks it sold on the first deal.
   **One card per MODEL, not per variant** (owner, 2026-10-17, migration 20261017c; unique index
   `car_listings_one_card_per_model`). Trigger `new_car_card_fill` anchors the card on the model's
   CHEAPEST variant priced for the advisor's zone ("from" price, `variant` NULL), re-anchored on
-  every console edit; the car page's variant switch (`useNewCarVariant`, NewCarListingInfo.jsx)
-  drives price, specs and the enquiry text. Cards skip the listing cap, never reserve, and can
+  every console edit; the car page's variant switch (`VariantChips`, rendered UNDER THE PRICE in
+  both CarDetailPage price blocks; one picker, never a second one down in the panel) drives price,
+  specs and the enquiry text through `useNewCarVariant`. Cards skip the listing cap, never reserve, and can
   never be marked sold (the trigger keeps the old status). **A win on a card INSERTS a sold unit**
   (`new_car_unit=true`, `new_car_unit_on_won`, BEFORE UPDATE on leads) with the variant the
   seller picked in the won confirm (`WonVariantPick` -> `leads.new_car_model_id`, validated to the
@@ -1338,6 +1339,8 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Numbers change in place (owner, 2026-10-17):** tap Rebate, Deposit or Rate in the
   working and type (`EditCell`); Adjust still holds them. Contact, once switched on, is a
   loud accent "Contact me" banner, but stays OFF by default (TikTok rule above).
+  The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
+  per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
