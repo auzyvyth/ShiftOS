@@ -105,9 +105,33 @@ export function useNewCarVariant(listingId, info) {
   return { variants, current, choose };
 }
 
+// The variant switch, under the PRICE on the car page (owner, 2026-10-17): it
+// sat in this panel below the description, so a buyer saw the cheapest price
+// with no variant name and nothing to tap. One picker only; this panel's specs
+// follow it through the shared store above.
+export function VariantChips({ variants, current, onPick, th }) {
+  if (!variants || variants.length < 2) return null;
+  return (
+    <div role="radiogroup" aria-label="Variant" style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "12px 0 4px" }}>
+      {variants.map((v) => {
+        const on = v.model_id === current?.model_id;
+        return (
+          <button key={v.model_id} type="button" role="radio" aria-checked={on} onClick={() => onPick(v.model_id)}
+            style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "8px 12px", borderRadius: 10,
+              minWidth: 0, maxWidth: "100%", cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+              border: `1px solid ${on ? "#dc2626" : th.border}`, background: on ? "rgba(220,38,38,0.06)" : th.card }}>
+            <span style={{ fontSize: 13, fontWeight: on ? 700 : 500, color: th.text, overflowWrap: "anywhere" }}>{v.variant}</span>
+            <span style={{ fontSize: 12, color: th.textSec, fontVariantNumeric: "tabular-nums" }}>{rm(v.price)}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function NewCarListingInfo({ listingId, sellerName, th }) {
   const raw = useNewCarInfo(listingId);
-  const { variants, current, choose } = useNewCarVariant(listingId, raw);
+  const { current } = useNewCarVariant(listingId, raw);
   if (!raw) return null;
   // Specs, body, fuel and gearbox follow the picked variant; before 20261017c
   // there is no `variants` and the card's own variant is shown, as before.
@@ -142,26 +166,6 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
           {" "}{priceBasis(info.price_zone, info.effective_from)}
         </p>
       </div>
-
-      {variants.length > 1 && (
-        <>
-          <p style={{ ...label, marginTop: 24 }}>Pick a variant</p>
-          <div role="radiogroup" aria-label="Variant" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {variants.map((v) => {
-              const on = v.model_id === current?.model_id;
-              return (
-                <button key={v.model_id} type="button" role="radio" aria-checked={on} onClick={() => choose(v.model_id)}
-                  style={{ ...box, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "11px 14px",
-                    cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0,
-                    borderColor: on ? "#dc2626" : th.border, background: on ? "rgba(220,38,38,0.06)" : th.card }}>
-                  <span style={{ minWidth: 0, fontSize: 14, fontWeight: on ? 700 : 500, color: th.text }}>{info.model} {v.variant}</span>
-                  <span style={{ flexShrink: 0, fontSize: 14, fontWeight: 600, color: th.text, fontVariantNumeric: "tabular-nums" }}>{rm(v.price)}</span>
-                </button>
-              );
-            })}
-          </div>
-        </>
-      )}
 
       {specs.length > 0 && (
         <>
