@@ -133,6 +133,8 @@ export default function CustomerCircle({ circle, colors, fallback }) {
                 pathLength="1" strokeDasharray="1" style={{ strokeDashoffset: dash }}
                 transform={`rotate(-90 ${CX} ${CY})`}
               />
+              {/* Under the nodes: a stage now rests with the comet on its node, and on top it hid the number. */}
+              <motion.circle cx={cometX} cy={cometY} r="6" fill="#E9DFCC" filter="url(#ccGlow)" />
               {stages.map((st, i) => {
                 const [x, y] = pos(i / n);
                 const reached = i <= active;
@@ -163,7 +165,6 @@ export default function CustomerCircle({ circle, colors, fallback }) {
                   </g>
                 );
               })}
-              <motion.circle cx={cometX} cy={cometY} r="6" fill="#E9DFCC" filter="url(#ccGlow)" />
             </svg>
 
             <div className="cc-center">
