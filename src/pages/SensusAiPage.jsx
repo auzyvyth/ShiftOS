@@ -43,7 +43,7 @@ button.sx-ghost{background:transparent;cursor:pointer;font-family:inherit}
 .sx-ghost{display:inline-flex;align-items:center;min-height:48px;padding:0 18px;border-radius:10px;border:1px solid rgba(233,223,204,.24);color:${C.text};font-weight:600;font-size:15px;text-decoration:none;transition:transform 100ms ease-out,border-color 150ms ease;-webkit-tap-highlight-color:transparent}
 .sx-hero{padding:72px 0 56px;background:radial-gradient(120% 80% at 80% 0%,#1C1A16 0%,${C.bg} 60%)}
 .sx-eb{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:${C.gold}}
-.sx h1{font-size:clamp(34px,6.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.025em;margin:14px 0 18px;max-width:15ch;text-wrap:balance}
+.sx h1{font-size:clamp(34px,6.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.025em;margin:0 0 18px;max-width:15ch;text-wrap:balance}
 .sx-sub{font-size:clamp(16px,1.6vw,19px);line-height:1.6;color:${C.muted};max-width:60ch;margin:0 0 28px}
 .sx-ctas{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
 .sx-note{font-size:13px;color:${C.faint};margin-top:12px}
@@ -298,7 +298,14 @@ export default function SensusAiPage() {
         <title>{S.SEO_TITLE}</title>
         <meta name="description" content={S.SEO_DESC} />
         <link rel="canonical" href={S.CANON} />
-        <meta property="og:title" content={S.SEO_TITLE} />
+        <meta property="og:title" content={S.OG_TITLE} />
+        <meta property="og:site_name" content={S.OG_SITE} />
+        <meta property="og:image" content={S.OG_IMAGE} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={S.OG_TITLE} />
+        <meta name="twitter:image" content={S.OG_IMAGE} />
         <meta property="og:description" content={S.SEO_DESC} />
         <meta property="og:url" content={S.CANON} />
         <meta name="theme-color" content={C.bg} />
@@ -319,8 +326,8 @@ export default function SensusAiPage() {
         <section className="sx-hero">
           <HeroGlow />
           <div className="sx-w">
-            <Reveal delay={0} y={12}><div className="sx-eb">{S.HERO.eyebrow}</div></Reveal>
-            <h1 aria-label={S.HERO.h1}>
+            <h1 aria-label={`${S.HERO.eyebrow}: ${S.HERO.h1}`}>
+              <Reveal as="span" delay={0} y={12} className="sx-eb" style={{ display: "block", marginBottom: 14 }}>{S.HERO.eyebrow}</Reveal>
               {S.HERO.h1.split(" ").map((w, i, a) => (
                 <motion.span key={i} className="sx-word" aria-hidden="true"
                   initial={{ opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
