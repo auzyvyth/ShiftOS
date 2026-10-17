@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { motion, MotionConfig, animate, useInView, useScroll, useSpring, useMotionValue, useReducedMotion } from "framer-motion";
+import CustomerCircle from "../components/sensus/CustomerCircle";
 import { Helmet } from "react-helmet";
 import { publicClient } from "../supabaseClient";
 import * as S from "../config/sensusCopy";
@@ -91,6 +93,13 @@ textarea.sx-in{padding:12px 14px;min-height:88px;resize:vertical}
 .sx-ba-after{background:${C.ivory};color:#0B0B0C;font-weight:600}
 .sx-ba-after .sx-k{color:#7A6440}
 .sx-ba-arrow{display:flex;align-items:center;justify-content:center;color:${C.gold};font-size:20px}
+.sx-hero{position:relative;overflow:hidden}
+.sx-hero .sx-w{position:relative}
+.sx-glow{position:absolute;left:-260px;top:-260px;width:520px;height:520px;border-radius:50%;pointer-events:none;background:radial-gradient(closest-side,rgba(176,141,87,.22),rgba(176,141,87,0));will-change:transform}
+.sx-bar{position:absolute;left:0;right:0;bottom:-1px;height:2px;background:${C.gold};transform-origin:0 50%}
+.sx-word{display:inline-block;white-space:pre}
+.sx-card{transition:border-color .3s ease,transform .3s ease}
+@media (hover:hover){.sx-card:hover{border-color:rgba(176,141,87,.35)}}
 .sx-foot{border-top:1px solid ${C.line};padding:28px 0 40px;font-size:13px;color:${C.faint};line-height:1.7}
 .sx-foot a{color:${C.muted}}
 @media (prefers-reduced-motion:reduce){.sx-btn,.sx-ghost{transition:none}.sx-btn:active,.sx-ghost:active{transform:none}}
@@ -103,6 +112,53 @@ const scrollToForm = (e) => {
   const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   document.getElementById("demo")?.scrollIntoView({ behavior: still ? "auto" : "smooth", block: "start" });
 };
+
+// Motion (owner, 2026-10-17: "the page is too static"). Content rises in once as
+// it enters view; nothing loops except the active-stage pulse on the circle.
+// MotionConfig reducedMotion="user" drops every transform for visitors who ask
+// for less motion, leaving plain fades.
+const EASE = [0.23, 1, 0.32, 1];
+function Reveal({ children, delay = 0, y = 24, x = 0, className, style, as = "div" }) {
+  const M = motion[as];
+  return (
+    <M className={className} style={style}
+      initial={{ opacity: 0, y, x }} whileInView={{ opacity: 1, y: 0, x: 0 }}
+      viewport={{ once: true, amount: 0.25 }}
+      transition={{ duration: 0.7, delay, ease: EASE }}>
+      {children}
+    </M>
+  );
+}
+
+// "40%" counts up from 0 the first time it scrolls into view.
+function CountUp({ value }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const reduce = useReducedMotion();
+  const m = String(value).match(/^(\D*)(\d+)(.*)$/);
+  const [shown, setShown] = useState(m && !reduce ? `${m[1]}0${m[3]}` : value);
+  useEffect(() => {
+    if (!m || !inView || reduce) return;
+    const c = animate(0, Number(m[2]), { duration: 1.4, ease: EASE, onUpdate: (v) => setShown(`${m[1]}${Math.round(v)}${m[3]}`) });
+    return () => c.stop();
+  }, [inView]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <span ref={ref}>{shown}</span>;
+}
+
+// Gold light that trails the pointer across the hero (mouse/trackpad only).
+function HeroGlow() {
+  const x = useMotionValue(-999), y = useMotionValue(-999);
+  const sx = useSpring(x, { stiffness: 120, damping: 24 }), sy = useSpring(y, { stiffness: 120, damping: 24 });
+  useEffect(() => {
+    if (!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches) return;
+    const hero = document.querySelector(".sx-hero");
+    if (!hero) return;
+    const move = (e) => { const r = hero.getBoundingClientRect(); x.set(e.clientX - r.left); y.set(e.clientY - r.top); };
+    hero.addEventListener("pointermove", move);
+    return () => hero.removeEventListener("pointermove", move);
+  }, [x, y]);
+  return <motion.div className="sx-glow" aria-hidden="true" style={{ x: sx, y: sy }} />;
+}
 
 function DemoForm() {
   const [f, setF] = useState({ name: "", dealership: "", role: "", phone: "", enquiries: "", note: "" });
@@ -171,7 +227,10 @@ function DemoForm() {
 
 export default function SensusAiPage() {
   const wa = S.waUrl("Hi, I'd like to see a Sensus AI demo for my dealership.");
+  const { scrollYProgress } = useScroll();
+  const bar = useSpring(scrollYProgress, { stiffness: 200, damping: 40 });
   return (
+    <MotionConfig reducedMotion="user">
     <div className="sx">
       <Helmet>
         <html lang="en" />
@@ -192,31 +251,43 @@ export default function SensusAiPage() {
           <div className="sx-mark">SENSUS<small>DEALER AI HUB</small></div>
           <a className="sx-btn sm" href="#demo" onClick={scrollToForm}>Book a demo</a>
         </div>
+        <motion.div className="sx-bar" style={{ scaleX: bar }} aria-hidden="true" />
       </header>
 
       <main>
         <section className="sx-hero">
+          <HeroGlow />
           <div className="sx-w">
-            <div className="sx-eb">{S.HERO.eyebrow}</div>
-            <h1>{S.HERO.h1}</h1>
-            <p className="sx-sub">{S.HERO.sub}</p>
-            <div className="sx-ctas">
-              <a className="sx-btn" href="#demo" onClick={scrollToForm}>{S.HERO.cta}</a>
-              {wa && <a className="sx-ghost" href={wa} target="_blank" rel="noopener noreferrer">WhatsApp me</a>}
-            </div>
-            <div className="sx-note">{S.HERO.ctaNote}</div>
+            <Reveal delay={0} y={12}><div className="sx-eb">{S.HERO.eyebrow}</div></Reveal>
+            <h1 aria-label={S.HERO.h1}>
+              {S.HERO.h1.split(" ").map((w, i, a) => (
+                <motion.span key={i} className="sx-word" aria-hidden="true"
+                  initial={{ opacity: 0, y: 28, filter: "blur(8px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  transition={{ duration: 0.8, delay: 0.08 + i * 0.07, ease: EASE }}>
+                  {w}{i < a.length - 1 ? " " : ""}
+                </motion.span>
+              ))}
+            </h1>
+            <Reveal delay={0.5}><p className="sx-sub">{S.HERO.sub}</p></Reveal>
+            <Reveal delay={0.62}>
+              <div className="sx-ctas">
+                <a className="sx-btn" href="#demo" onClick={scrollToForm}>{S.HERO.cta}</a>
+                {wa && <a className="sx-ghost" href={wa} target="_blank" rel="noopener noreferrer">WhatsApp me</a>}
+              </div>
+              <div className="sx-note">{S.HERO.ctaNote}</div>
+            </Reveal>
           </div>
         </section>
 
         <section className="sx-sec" style={{ paddingBottom: 48 }}>
           <div className="sx-w">
-            <h2>{S.BEFORE_AFTER.title}</h2>
+            <Reveal><h2>{S.BEFORE_AFTER.title}</h2></Reveal>
             <div className="sx-ba" style={{ marginTop: 24 }}>
               {S.BEFORE_AFTER.rows.map((r) => (
                 <div className="sx-ba-row" key={r.after}>
-                  <div className="sx-ba-cell sx-ba-before"><span className="sx-k">Before</span>{r.before}</div>
-                  <div className="sx-ba-arrow" aria-hidden="true">&rarr;</div>
-                  <div className="sx-ba-cell sx-ba-after"><span className="sx-k">With Sensus</span>{r.after}</div>
+                  <Reveal className="sx-ba-cell sx-ba-before" y={16}><span className="sx-k">Before</span>{r.before}</Reveal>
+                  <Reveal className="sx-ba-arrow" y={0} x={-8} delay={0.25}><span aria-hidden="true">&rarr;</span></Reveal>
+                  <Reveal className="sx-ba-cell sx-ba-after" y={16} delay={0.4}><span className="sx-k">With Sensus</span>{r.after}</Reveal>
                 </div>
               ))}
             </div>
@@ -233,14 +304,14 @@ export default function SensusAiPage() {
 
         <section className="sx-sec">
           <div className="sx-w">
-            <h2>{S.PROBLEMS.title}</h2>
+            <Reveal><h2>{S.PROBLEMS.title}</h2></Reveal>
             <div className="sx-grid" style={{ marginTop: 24 }}>
-              {S.PROBLEMS.items.map((p) => (
-                <div className="sx-card" key={p.title}>
-                  <div className="sx-stat">{p.stat}</div>
+              {S.PROBLEMS.items.map((p, i) => (
+                <Reveal className="sx-card" key={p.title} delay={i * 0.08}>
+                  <div className="sx-stat"><CountUp value={p.stat} /></div>
                   <h3>{p.title}</h3>
                   <p>{p.body}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
             <div className="sx-src">{S.PROBLEMS.source}</div>
@@ -249,51 +320,53 @@ export default function SensusAiPage() {
 
         <section className="sx-sec" style={{ paddingTop: 0 }}>
           <div className="sx-w">
-            <h2>{S.HOW.title}</h2>
+            <Reveal><h2>{S.HOW.title}</h2></Reveal>
             <div className="sx-grid" style={{ marginTop: 24 }}>
               {S.HOW.steps.map((s, i) => (
-                <div className="sx-card" key={s.k}>
+                <Reveal className="sx-card" key={s.k} delay={i * 0.08}>
                   <div className="sx-k">{i + 1}. {s.k}</div>
                   <h3>{s.title}</h3>
                   <p>{s.body}</p>
-                </div>
+                </Reveal>
               ))}
             </div>
-            <div className="sx-chips">{S.CHANNELS.map((c) => <span className="sx-chip" key={c}>{c}</span>)}</div>
+            <div className="sx-chips">{S.CHANNELS.map((c, i) => <Reveal as="span" className="sx-chip" key={c} y={10} delay={i * 0.05}>{c}</Reveal>)}</div>
           </div>
         </section>
 
+        <CustomerCircle circle={S.CIRCLE} colors={DIR_COLOR} fallback={
         <section className="sx-sec" style={{ paddingTop: 0 }}>
-          <div className="sx-w">
-            <h2>{S.CIRCLE.title}</h2>
-            <p className="sx-lead">{S.CIRCLE.lead}</p>
-            <div className="sx-legend">
-              {Object.entries(S.CIRCLE.legend).map(([k, v]) => (
-                <span key={k}><i className="sx-dot" style={{ background: DIR_COLOR[k], boxShadow: k === "human" ? `inset 0 0 0 1px ${C.faint}` : undefined }} />{v}</span>
-              ))}
+            <div className="sx-w">
+              <h2>{S.CIRCLE.title}</h2>
+              <p className="sx-lead">{S.CIRCLE.lead}</p>
+              <div className="sx-legend">
+                {Object.entries(S.CIRCLE.legend).map(([k, v]) => (
+                  <span key={k}><i className="sx-dot" style={{ background: DIR_COLOR[k], boxShadow: k === "human" ? `inset 0 0 0 1px ${C.faint}` : undefined }} />{v}</span>
+                ))}
+              </div>
+              <ol className="sx-stages">
+                {S.CIRCLE.stages.map((s) => (
+                  <li className="sx-stage" key={s.n}>
+                    <span className="sx-num" style={{ background: s.dir.length > 1 ? `linear-gradient(135deg, ${DIR_COLOR[s.dir[0]]} 50%, ${DIR_COLOR[s.dir[1]]} 50%)` : DIR_COLOR[s.dir[0]], ...(s.dir[0] === "human" && { color: C.text, boxShadow: `inset 0 0 0 1px ${C.faint}` }) }}>{s.n}</span>
+                    <div style={{ minWidth: 0 }}><b>{s.title}</b><span>{s.body}</span></div>
+                  </li>
+                ))}
+              </ol>
             </div>
-            <ol className="sx-stages">
-              {S.CIRCLE.stages.map((s) => (
-                <li className="sx-stage" key={s.n}>
-                  <span className="sx-num" style={{ background: s.dir.length > 1 ? `linear-gradient(135deg, ${DIR_COLOR[s.dir[0]]} 50%, ${DIR_COLOR[s.dir[1]]} 50%)` : DIR_COLOR[s.dir[0]], ...(s.dir[0] === "human" && { color: C.text, boxShadow: `inset 0 0 0 1px ${C.faint}` }) }}>{s.n}</span>
-                  <div style={{ minWidth: 0 }}><b>{s.title}</b><span>{s.body}</span></div>
-                </li>
-              ))}
-            </ol>
-          </div>
-        </section>
+          </section>
+        } />
 
-        <section className="sx-sec" style={{ paddingTop: 0 }}>
+        <section className="sx-sec">
           <div className="sx-w">
-            <h2>{S.IMPACT.title}</h2>
+            <Reveal><h2>{S.IMPACT.title}</h2></Reveal>
             <div className="sx-grid" style={{ marginTop: 24 }}>
-              {S.IMPACT.groups.map((g) => (
-                <div className="sx-card" key={g.title}>
+              {S.IMPACT.groups.map((g, i) => (
+                <Reveal className="sx-card" key={g.title} delay={i * 0.1}>
                   <div className="sx-k">{g.title}</div>
                   <table className="sx-tbl"><tbody>
                     {g.rows.map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}
                   </tbody></table>
-                </div>
+                </Reveal>
               ))}
             </div>
             <div className="sx-src">{S.IMPACT.note}</div>
@@ -339,5 +412,6 @@ export default function SensusAiPage() {
         </div>
       </footer>
     </div>
+    </MotionConfig>
   );
 }
