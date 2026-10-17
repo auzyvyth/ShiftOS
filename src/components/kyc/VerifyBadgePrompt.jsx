@@ -1,4 +1,6 @@
-import { ShieldCheck, Clock } from "lucide-react";
+import { useState } from "react";
+import { ShieldCheck, Clock, X } from "lucide-react";
+import { isVerifySnoozed, snoozeVerify } from "../../utils/verifySnooze";
 
 /**
  * Invites a seller to get the Verified badge, with a button to the
@@ -14,8 +16,12 @@ import { ShieldCheck, Clock } from "lucide-react";
  * Shown on the screen a seller actually opens (their listings / home), not
  * only in Settings, which nobody opens.
  */
+// Closeable; comes back after a week (src/utils/verifySnooze.js), shared with
+// SellerIdCard so closing one closes both.
 export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) {
-  if (!profile || profile.is_verified) return null;
+  const [closed, setClosed] = useState(() => isVerifySnoozed(profile?.id));
+  if (!profile || profile.is_verified || closed) return null;
+  const close = () => { snoozeVerify(profile.id); setClosed(true); };
   const inReview = !!profile.kyc_submitted_at;
 
   const dark = theme !== "light";
@@ -56,6 +62,10 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
           Verify ID
         </button>
       )}
+      <button type="button" aria-label="Close" onClick={close}
+        style={{ background: "none", border: "none", color: c.icon, cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
+        <X size={15} />
+      </button>
     </div>
   );
 }
