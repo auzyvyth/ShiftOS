@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { MY_STATES, cityOptionsFor } from "../../utils/locations";
 import { PLAN_CONFIG } from "../../utils/planConfig";
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // "I'll set your page up for you" (outreach playbook, 2026-10-12). The owner
 // collects a seller's name, email and cars over chat, makes the account here,
@@ -44,6 +45,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
   const [slugFree, setSlugFree] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  useModalHistory(true, onClose, { isDirty: () => Object.entries(form).some(([k, v]) => k !== "plan" && String(v || "").trim()) });
   const [created, setCreated] = useState(null);
   const [mailState, setMailState] = useState(null); // null | sending | sent | failed
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
@@ -788,6 +789,29 @@ export default function SalesmanPremium() {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
  return () => { document.body.style.overflow = ""; };
  }, [anyOverlayOpen]);
+
+ // Back gesture closes the open overlay instead of switching tab under it
+ // (useModalHistory, one shared stack). Same list as anyOverlayOpen; the
+ // shared sheets (studio, loan poster, chat, listing form) register inside
+ // their own components.
+ useModalHistory(showAddLead, () => setShowAddLead(false), {
+ isDirty: () => !!(addLeadForm.buyer_name.trim() || addLeadForm.phone.trim() || addLeadForm.notes.trim()),
+ });
+ useModalHistory(!!waModalLead, () => setWaModalLead(null));
+ useModalHistory(!!bookingDetailId, () => setBookingDetailId(null));
+ useModalHistory(notifOpen, () => setNotifOpen(false));
+ useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
+ useModalHistory(!!broadcastCar, () => setBroadcastCar(null));
+ useModalHistory(!!aiCaptionCar, () => setAiCaptionCar(null));
+ useModalHistory(!!confirmBookingApt, () => { setConfirmBookingApt(null); setConfirmBookingMsg(""); });
+ useModalHistory(!!sellerBookingLead, () => { setSellerBookingLead(null); setSellerBookingDate(""); });
+ useModalHistory(mobileNavOpen, () => setMobileNavOpen(false));
+ useModalHistory(!!drawerLeadId, () => setDrawerLeadId(null));
+ useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarQuery(""); });
+ useModalHistory(logoutConfirmOpen, () => setLogoutConfirmOpen(false));
+ useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
+ useModalHistory(deleteConfirmOpen, () => setDeleteConfirmOpen(false));
+ useModalHistory(!!wonPrompt, () => setWonPrompt(null));
 
  // UX-1 — the topbar gets out of the way while reading a long list. Locked
  // open whenever an overlay or the tour is up: the mobile nav trigger lives
@@ -3778,8 +3802,7 @@ export default function SalesmanPremium() {
      anywhere in the product — which silently emptied staleLeads, the KPI that
      counts on it, and the stage glow that pulses it.
      Portalled per overlay rule 1 (it opens from inside the lead drawer, itself
-     a fixed panel). Deliberately NOT registered with useModalHistory — overlay
-     rule 5: it is a lightweight popup with its own Cancel and overlay-click. */}
+     a fixed panel). The back gesture closes it (useModalHistory). */}
  {followUpModalLead && createPortal(
  (() => {
  const fl = leads.find((l) => l.id === followUpModalLead.id) || followUpModalLead;
@@ -6237,6 +6260,7 @@ export default function SalesmanPremium() {
  // from before this shipped is not congratulated months late. "Show me"
  // opens Sold, where the Sold intro (held until now) plays.
  const [firstSale, setFirstSale] = useState(null);
+ useModalHistory(!!firstSale, () => closeFirstSale(false));
  useEffect(() => {
  if (loading || !userId || !profile || firstSale || tourStep !== null || wonPrompt || anyOverlayOpen) return;
  if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;

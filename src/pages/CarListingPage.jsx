@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -85,6 +86,7 @@ const san = {
 /* ── Price range popover (click → floating min/max picker) ──────── */
 function PricePopover({ minPrice, maxPrice, onApply }) {
   const [open, setOpen] = useState(false);
+  useModalHistory(open, () => setOpen(false));
   const [pos, setPos]   = useState({ top: 0, left: 0, width: 240 });
   const btnRef = useRef(null);
   const popRef = useRef(null);
@@ -414,6 +416,7 @@ export default function CarListingPage() {
   // unfiltered page 1 only) -- drives StaleListingsNotice.
   const [showingSaved, setShowingSaved] = useState(false);
   const [drawerOpen, setDrawerOpen]     = useState(false);
+  useModalHistory(drawerOpen, () => setDrawerOpen(false));
   const initialLoad = useRef(true);
 
   // Sidebar / grid-cols are driven by JS so the correct layout is set on the

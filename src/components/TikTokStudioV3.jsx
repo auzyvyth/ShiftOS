@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { supabase } from "../supabaseClient";
+import { useModalHistory } from "../hooks/useModalHistory";
 import { calcMonthly } from "../utils/financing";
 import {
   Undo2,
@@ -2160,6 +2161,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
   const [showCamera, setShowCamera] = useState(false);
+  useModalHistory(showImagePicker, () => setShowImagePicker(false));
+  useModalHistory(!!sheetPanel, () => setSheetPanel(null));
   const [camOverlay, setCamOverlay] = useState(null);
   const [libMsg, setLibMsg] = useState(null);
   const [customFonts, setCustomFonts] = useState([]);
@@ -2264,6 +2267,16 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Undo / Redo ──────────────────────────────────────────────────────────
   const history = useRef([]);
   const historyIdx = useRef(-1);
+
+  // Back gesture: closes the open picker / sheet first, then the studio. Any
+  // edit to the generated slides, or typed hook / AI text, asks before closing.
+  const initialSlidesJson = useRef(null);
+  useModalHistory(true, onClose, {
+    isDirty: () =>
+      !!hookText.trim() ||
+      !!aiCmd.trim() ||
+      (initialSlidesJson.current !== null && JSON.stringify(slides) !== initialSlidesJson.current),
+  });
 
   function pushHistory(newSlides) {
     const trimmed = history.current.slice(0, historyIdx.current + 1);
@@ -2385,6 +2398,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       listing?.whatsapp_number || "",
     );
     setSlides(initial);
+    initialSlidesJson.current = JSON.stringify(initial);
     // The layer editor is synced from the slide only when `active` changes, and
     // `active` is already 0 when these first slides arrive. Without this, the
     // editor keeps the empty list it mounted with, and the persist effect below

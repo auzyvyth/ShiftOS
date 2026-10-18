@@ -1,4 +1,5 @@
 import React from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { toast } from "sonner";
 import {
   Car, ChevronLeft, ChevronRight, Copy, Droplets, FileText, Gauge, Hash,
@@ -60,6 +61,10 @@ export default function CarDetailPopup({
   setCarDetailImgIdx, setCarDetailTab, setCarDetailLbOpen, setSelectedCar,
   actions = [],
 }) {
+  // Back closes the photo viewer first, then the car (before the early return:
+  // hooks must run on every render).
+  useModalHistory(!!selectedCar, () => setSelectedCar(null));
+  useModalHistory(!!selectedCar && !!carDetailLbOpen, () => setCarDetailLbOpen(false));
   const car = selectedCar;
   if (!car) return null;
 

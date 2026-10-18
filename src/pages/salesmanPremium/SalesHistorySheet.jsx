@@ -5,8 +5,9 @@
 //
 // Sold cars come from the page's own `myListings` (no new query). Traffic is
 // one call to get_dealer_car_analytics, guarded on auth.uid(), all-time.
-// Overlay rules: portalled, body scroll locked, no useModalHistory (rule 5).
+// Overlay rules: portalled, body scroll locked, Back closes it (useModalHistory).
 import { useEffect, useMemo, useState } from "react";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { createPortal } from "react-dom";
 import { X, Download, Eye, MessageCircle, Phone } from "lucide-react";
 import { supabase } from "../../supabaseClient";
@@ -19,6 +20,7 @@ const ALL_TIME_DAYS = 36500;
 const rm = (n) => `RM ${(Number(n) || 0).toLocaleString("en-MY")}`;
 
 export default function SalesHistorySheet({ open, onClose, listings, userId, profile, dateLocale, isMobile }) {
+  useModalHistory(!!open, onClose);
   const [stats, setStats] = useState(null); // null = loading, {} = loaded/failed
   const cars = useMemo(() => soldCars(listings), [listings]);
   const months = useMemo(() => groupByMonth(cars), [cars]);

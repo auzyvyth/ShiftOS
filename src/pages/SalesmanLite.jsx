@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams } from "react-router-dom";
@@ -409,6 +410,8 @@ function StatusBadge({ status }) {
 // screen on mobile with no rounded corners or gap, centered capped-height card on
 // desktop. Portal + body-scroll-lock per the app's overlay rules.
 function CarFormModal({ title, subtitle, onClose, children }) {
+  // Back asks first: it wraps a multi-step form.
+  useModalHistory(true, onClose, { isDirty: () => true });
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
@@ -446,9 +449,10 @@ function CarFormModal({ title, subtitle, onClose, children }) {
 // mini-storefront link via the existing ShareMenu channels. Deliberately never
 // shows the commission figure — that stays private, only the win + a link to
 // the salesman's other listings goes out. Portal + body-scroll lock per the
-// app's overlay rules; own × / overlay-click close, so it does NOT register
-// useModalHistory.
+// app's overlay rules; own × / overlay-click close; the back gesture closes it too
+// (useModalHistory).
 function WinShareCard({ prompt, onClose, slug }) {
+  useModalHistory(!!prompt, onClose);
   const { t } = useTranslation();
   useEffect(() => {
     if (!prompt) return;
@@ -511,9 +515,10 @@ function WinShareCard({ prompt, onClose, slug }) {
 // Confirm-booking modal — shows the buyer + car + date at full clarity, with an
 // editable WhatsApp message the salesman sends to the buyer. "Send" opens
 // WhatsApp AND marks the booking confirmed (via onSend). Portal + body-scroll
-// lock per the app's overlay rules; own × / overlay-click close so it does NOT
-// register useModalHistory.
+// lock per the app's overlay rules; own × / overlay-click close; the back gesture closes it too
+// (useModalHistory).
 function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend, onMoveToPipeline }) {
+  useModalHistory(!!apt, onClose);
   const { t } = useTranslation();
   useEffect(() => {
     if (!apt) return;
@@ -599,8 +604,9 @@ function ConfirmBookingModal({ apt, message, onChangeMessage, onClose, onSend, o
 
 // Logout confirmation — a small guard so an accidental tap on the header
 // logout icon doesn't sign the salesman out mid-task. Own × / overlay-click
-// close controls, so it does NOT register useModalHistory (per overlay rules).
+// close controls; the back gesture closes it too (useModalHistory).
 function LogoutConfirmModal({ open, onClose, onConfirm }) {
+  useModalHistory(!!open, onClose);
   const { t } = useTranslation();
   useEffect(() => {
     if (!open) return;
@@ -651,6 +657,7 @@ function LogoutConfirmModal({ open, onClose, onConfirm }) {
 // the date/time (defaults pre-filled, editable). Confirming creates a CONFIRMED
 // appointment → Confirmed Upcoming. Portal + body-scroll lock; own close.
 function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm, saving }) {
+  useModalHistory(!!lead, onClose);
   const { t } = useTranslation();
   useEffect(() => {
     if (!lead) return;
@@ -1345,6 +1352,19 @@ export default function SalesmanLite() {
 
   // deposit receipt
   const [depositModal, setDepositModal] = useState(null);
+  // Back gesture closes the open overlay instead of switching tab under it
+  // (useModalHistory, one shared stack). The small sheets defined at the top
+  // of this file and the shared ones (studio, poster, chat) register inside.
+  useModalHistory(!!drawerLeadId, () => setDrawerLeadId(null));
+  useModalHistory(!!bookingDetailId, () => setBookingDetailId(null));
+  useModalHistory(deleteModalOpen, () => setDeleteModalOpen(false));
+  useModalHistory(!!wonPrompt, () => setWonPrompt(null));
+  useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
+  useModalHistory(telegramSetupModal, () => setTelegramSetupModal(false));
+  useModalHistory(!!quickBriefCar, () => setQuickBriefCar(null));
+  useModalHistory(!!depositModal, () => setDepositModal(null));
+  useModalHistory(!!linkCarLeadId, () => setLinkCarLeadId(null));
+  useModalHistory(notifOpen, () => setNotifOpen(false));
   const [depositAmount, setDepositAmount] = useState("");
   const [depositCopied, setDepositCopied] = useState(false);
 

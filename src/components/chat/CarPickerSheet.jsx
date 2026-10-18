@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, Car } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // The seller's "send a car" list. Every row comes from chat_sendable_cars,
 // which applies the SAME rule the insert policy does (chat_can_send_car), so
@@ -14,6 +15,7 @@ export const carTitle = (c) =>
 export const fmtRM = (n) => (Number(n) > 0 ? `RM ${Number(n).toLocaleString('en-MY')}` : null);
 
 export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
+  useModalHistory(true, onClose);
   const [cars, setCars] = useState(null);
   const [error, setError] = useState(null);
   const [q, setQ] = useState('');

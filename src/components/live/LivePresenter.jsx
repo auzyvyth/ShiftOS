@@ -16,6 +16,7 @@ import {
 } from './liveCopy';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -117,6 +118,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [budgetDown, setBudgetDown] = useState('');
   const [budgetYears, setBudgetYears] = useState(DEFAULT_TENURE);
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
+  // Back while presenting asks first (a stray swipe must not end a live),
+  // then ends it the same way the X does: the report shows, and Back again
+  // closes. finish is declared below; the callback only runs on a gesture.
+  useModalHistory(!embedded && !report, () => finish(), { isDirty: () => true });
+  useModalHistory(!embedded && !!report, onClose);
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.

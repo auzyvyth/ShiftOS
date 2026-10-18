@@ -5,6 +5,7 @@ import { useBuyerThread } from '../../hooks/useChat';
 import { isSubdomain } from '../../hooks/useTenant';
 import { requestBuyerSignIn } from '../../lib/buyerAuth';
 import useVisualViewport from '../../hooks/useVisualViewport';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Lazy — ChatThread (message list + useChatThread's live realtime channel)
 // is only ever needed once a visitor has actually started chatting. A
@@ -122,6 +123,7 @@ export default function BuyerChat({
 
   const openSheet = () => { setView('choose'); setOpen(true); };
   const close = () => setOpen(false);
+  useModalHistory(open, close);
 
   // Overlay rule 3 — close this sheet BEFORE the page opens the enquiry modal,
   // never two overlays at once. handleWhatsApp only opens that modal (the real

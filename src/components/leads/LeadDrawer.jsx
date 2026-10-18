@@ -17,6 +17,7 @@ import {
   STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, DEFAULT_WA_TEMPLATES, renderWaTemplate,
   getInitials, avatarGradient,
 } from '../../lib/leadsHelpers';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -156,6 +157,7 @@ function calcInsuranceEst(sum, ncd, vehicleType, cc) {
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [] }) {
+  useModalHistory(true, onClose);
   const [lead, setLead]               = useState(initialLead);
   const [editingField, setEditingField] = useState(null); // 'name' | 'phone'
   // The in-app conversation behind this lead, if there is one. The dealer

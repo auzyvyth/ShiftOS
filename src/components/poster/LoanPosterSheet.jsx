@@ -20,6 +20,7 @@ import {
   POSTER_ERRORS, LITE_POSTERS_PER_MONTH,
 } from '../../utils/loanPoster';
 import { renderLoanPoster, posterBlob } from './renderLoanPoster';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 const LANG_KEY = 'xd_poster_lang';
 const readLang = () => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ms'; } catch { return 'ms'; } };
@@ -33,6 +34,7 @@ const S = {
 const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
 
 export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
+  useModalHistory(true, onClose);
   const [price, setPrice] = useState(() => String(car?.selling_price || car?.price || ''));
   const [deposit, setDeposit] = useState(() => String(defaultDeposit(car?.selling_price || car?.price)));
   const [rate, setRate] = useState(String(DEFAULT_EIR));

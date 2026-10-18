@@ -1556,7 +1556,17 @@ enquiries. Both were granted to `anon`.
 2. **Always lock body scroll**: `document.body.style.overflow = 'hidden'` when the overlay opens; restore to `''` in the cleanup. Do this in a `useEffect` keyed on the open boolean, NOT inline.
 3. **`closeAndRun` pattern for nested actions**: when an action button inside an overlay should open a second modal, ALWAYS close the first overlay before opening the second. Pattern: `const closeAndRun = (fn) => () => { setDetailUnit(null); fn(); };`. Never open two overlays in parallel unless explicitly designed for it.
 4. **SELECT queries for detail drawers must be complete**: never use a partial select for a view that shows all spec fields. Expand the `select()` call to include every column needed before building the detail UI — patching it afterwards requires re-reading the file every time.
-5. **`useModalHistory` race condition**: the hook's `history.back()` cleanup fires `popstate` asynchronously. If you call `setModalA(null)` and `setModalB(open)` in the same tick, the cleanup for A fires `history.back()` which the just-registered B handler catches → B closes immediately. **Do NOT register `useModalHistory` for lightweight popups that have their own × / overlay-click close controls.** Only register it for primary drawers (LeadDrawer, main detail panels).
+5. **EVERY overlay registers `useModalHistory(isOpen, onClose)`** (2026-10-18). Tabs are real
+   history entries, so an overlay outside history gets walked past: the phone's back swipe
+   switched the tab and left the overlay (TikTok studio) sitting on top. The hook keeps ONE
+   shared stack, so Back closes the top overlay only, and the old race (closing A + opening B
+   in one tick closed B) is gone; do not go back to per-overlay popstate listeners. A page
+   change made while an overlay's entry is on top takes that entry over, so a nav link inside
+   the phone menu costs no dead Back press. Shared sheets register INSIDE the component
+   (`useModalHistory(true, onClose)` when mounted only while open), never also in the page,
+   or Back needs two presses. Lost work: pass `{ isDirty: () => bool }` and Back asks
+   (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
+   every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
 ## Product tour (Salesman Premium) — anchors and placement
 11 steps in `TOUR_STEPS` (SalesmanPremium.jsx): a welcome card + one per sidebar link,

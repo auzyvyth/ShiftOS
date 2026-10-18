@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { Helmet } from "react-helmet";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
@@ -1093,6 +1094,7 @@ export default function CarDetailPage() {
   const [booked, setBooked] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showReservedPopup, setShowReservedPopup] = useState(false);
+  useModalHistory(showReservedPopup, () => setShowReservedPopup(false));
   // Both start UNTICKED: a pre-ticked box is not consent (PDPA), and the
   // commitment box only means something if the buyer ticks it themselves.
   const [bookingConsent, setBookingConsent] = useState({ appear: false, whatsapp: false });
@@ -1108,6 +1110,10 @@ export default function CarDetailPage() {
   /* enquiry modal */
   const [showEnquiryModal, setShowEnquiryModal] = useState(false);
   const [enquiryForm, setEnquiryForm] = useState({ name: "", phone: "", state: "" });
+  // Back closes the enquiry form; a half-typed one asks first.
+  useModalHistory(showEnquiryModal, () => setShowEnquiryModal(false), {
+    isDirty: () => !!(enquiryForm.name.trim() || enquiryForm.phone.trim()),
+  });
   const [enquiryToken, setEnquiryToken] = useState(null);
   const [enquirySubmitting, setEnquirySubmitting] = useState(false);
   // Who this enquiry is aimed at. null = the listing's default contact (dealer,
@@ -1124,6 +1130,7 @@ export default function CarDetailPage() {
 
   /* calculator */
   const [calcOpen, setCalcOpen] = useState(false);
+  useModalHistory(calcOpen, () => setCalcOpen(false));
 
   /* share */
   const [shareCopied, setShareCopied] = useState(false);
@@ -1204,6 +1211,7 @@ export default function CarDetailPage() {
   // on touchend) doesn't also open the lightbox — tap opens, swipe changes slide.
   const gallerySwiped = useRef(false);
 
+  useModalHistory(lbOpen, () => closeLb());
   function closeLb() {
     setLbOpen(false);
     setLbZoom(1);

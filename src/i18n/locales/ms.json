@@ -25,7 +25,8 @@
     "rm": "RM",
     "privacyNoticePre": "Dengan meneruskan, anda bersetuju dengan ",
     "privacyPolicy": "Dasar Privasi",
-    "privacyNoticePost": " kami dan untuk dihubungi berkenaan pertanyaan anda."
+    "privacyNoticePost": " kami dan untuk dihubungi berkenaan pertanyaan anda.",
+    "closeUnsaved": "Tutup? Apa yang anda buat di sini akan hilang."
   },
   "home": {
     "hero": {

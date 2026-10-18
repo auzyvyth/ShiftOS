@@ -4,6 +4,7 @@ import { Flag, X, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { markBuyerIntent } from '../lib/buyerAuth';
 import { useDialogA11y } from '../hooks/useDialogA11y';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 /**
  * "Report this listing" — buyer-facing moderation entry for the public marketplace.
@@ -73,6 +74,7 @@ export default function ReportListingButton({ listingId, sellerId, th, variant =
   const [busy, setBusy]       = useState(false);
   const [done, setDone]       = useState(false);
   const [error, setError]     = useState('');
+  useModalHistory(open, () => setOpen(false), { isDirty: () => !!note.trim() });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));

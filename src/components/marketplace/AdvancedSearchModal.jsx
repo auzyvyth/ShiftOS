@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search } from 'lucide-react';
 import { BRANDS, BODY_TYPES, TRANSMISSIONS, FINANCING_TYPES, MY_STATES, YEARS, MILEAGE_OPTIONS, CONDITION_OPTIONS } from '../../config/marketplaceConfig';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // The URL params this modal owns. Everything else in the URL (colour,
 // fuel_type, seller_type, sort, hot_deals, page) belongs to other controls and
@@ -14,6 +15,7 @@ const OWN_KEYS = [
 ];
 
 export default function AdvancedSearchModal({ open, onClose, heroQ, onApply, currentParams }) {
+  useModalHistory(!!open, onClose);
   const [advBrand,        setAdvBrand]        = useState('');
   const [advBodyType,     setAdvBodyType]     = useState('');
   const [advCondition,    setAdvCondition]    = useState('');

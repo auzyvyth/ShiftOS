@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -106,6 +107,7 @@ export default function AccountPage() {
   // Chat threads survive even the eventual hard purge (migration
   // 20260924j) — a seller keeps their side of the conversation.
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  useModalHistory(deleteConfirmOpen, () => setDeleteConfirmOpen(false));
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
   useEffect(() => {

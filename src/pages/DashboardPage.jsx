@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback, startTransition, Component, Suspense } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import DOMPurify from "dompurify";
 import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
@@ -595,6 +596,7 @@ function ProductsCatalogue({ dealerId, profile }) {
   const [loading, setLoading]     = useState(true);
   const [open, setOpen]           = useState(false);
   const [showModal, setShowModal] = useState(false);
+  useModalHistory(showModal, () => setShowModal(false), { isDirty: () => true });
   const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
   const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
   const [saving, setSaving]       = useState(false);
@@ -1545,6 +1547,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
   // nothing is actually destroyed until the 30-day purge cron runs, and
   // logging back in before then restores everything (restore_my_account()).
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  useModalHistory(deleteConfirmOpen, () => setDeleteConfirmOpen(false));
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deleting, setDeleting] = useState(false);
   useEffect(() => {
@@ -2901,6 +2904,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
 
 // ─── PriceEditModal ───────────────────────────────────────────────────────────
 function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
+  useModalHistory(true, onClose);
   const cur = listing.selling_price || 0;
   const orig = listing.original_price || null;
   const [np, setNp] = useState(String(cur));
@@ -3097,6 +3101,7 @@ function PriceEditModal({ listing, onClose, onSave, profile, dealerId }) {
 // unit with no public listing has nowhere to store a closer or commission, so
 // those two fields hide.
 function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, showDate = false, cost = null }) {
+  useModalHistory(true, onClose);
   const hasListing = !!listing.id;
   const [soldDate, setSoldDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [soldBy, setSoldBy] = useState(listing.assigned_to || "");
@@ -4461,6 +4466,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const loadingTeam = teamFetching && !teamCached;
   const [teamError, setTeamError] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
+  useModalHistory(showAddForm, () => setShowAddForm(false), { isDirty: () => true });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState("");
   const [addSuccess, setAddSuccess] = useState("");
@@ -4468,6 +4474,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [copiedPw, setCopiedPw] = useState(false);
   const [togglingId, setTogglingId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  useModalHistory(!!deleteConfirmId, () => setDeleteConfirmId(null));
   const [newRole, setNewRole] = useState("salesman");
   const [teamTab, setTeamTab] = useState("salesman");
   const [msgTarget, setMsgTarget] = useState('all');
@@ -4481,6 +4488,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
+  useModalHistory(!!createdAccount, () => setCreatedAccount(null));
   const [resendingId, setResendingId] = useState(null); // salesman id whose setup email is resending
   const [teamSoldCount, setTeamSoldCount] = useState(0);
   const [analyticsMap, setAnalyticsMap] = useState({});
@@ -4489,7 +4497,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const [activityCountMap, setActivityCountMap] = useState({});
   const [chatCountMap, setChatCountMap] = useState({});
   const [commissionApproveTarget, setCommissionApproveTarget] = useState(null); // salesman id
+  useModalHistory(!!commissionApproveTarget, () => setCommissionApproveTarget(null));
   const [commissionPayTarget, setCommissionPayTarget] = useState(null);
+  useModalHistory(!!commissionPayTarget, () => setCommissionPayTarget(null));
   const [commissionWorking, setCommissionWorking] = useState(false);
   const [assignedMap, setAssignedMap] = useState({}); // salesmanId -> [cars locked to them]
   const [openCars, setOpenCars] = useState([]);        // unassigned, unsold cars (assignable pool)
@@ -6036,15 +6046,18 @@ function ListingDetailDrawer({
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
   handleStatus, updatingStatus, getListingAge, userId, profile, openStudio,
 }) {
+  useModalHistory(true, onClose);
   const { can } = usePermissions(profile);
   const canViewCosts = can('view_cost');
   const [imgIdx, setImgIdx]       = useState(0);
   const [lbOpen, setLbOpen]       = useState(false);
+  useModalHistory(lbOpen, () => setLbOpen(false));
   const [drawerTab, setDrawerTab] = useState('specs');
   const [ownerTool, setOwnerTool] = useState(null);
   useEffect(() => { if (drawerTab !== 'owner') setOwnerTool(null); }, [drawerTab]);
   const [showAssign, setShowAssign] = useState(false);
   const [calcOpen,  setCalcOpen]  = useState(false);
+  useModalHistory(calcOpen, () => setCalcOpen(false));
   const [isMobile, setIsMobile]   = useState(() => window.innerWidth < 768);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
@@ -6688,6 +6701,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   const [unitsFetching, setLoading] = useState(true);
   const loading = unitsFetching && !unitsCached;
   const [showAdd, setShowAdd] = useState(false);
+  useModalHistory(showAdd, () => setShowAdd(false), { isDirty: () => true });
   const [addForm, setAddForm] = useState({ listing_id: '', purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '', asking_price: '', notes: '', puspakom_b7_date: '', puspakom_b5_date: '', encumbrance_status: 'unknown' });
   const [addSaving, setAddSaving] = useState(false);
   const [soldTarget, setSoldTarget] = useState(null);
@@ -6695,12 +6709,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   const [stockView, setStockView] = useState('available');
   const [visibleCount, setVisibleCount] = useState(30);
   const [historyUnit, setHistoryUnit] = useState(null);
+  useModalHistory(!!historyUnit, () => setHistoryUnit(null));
   const [historyLogs, setHistoryLogs] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [pnlUnit, setPnlUnit] = useState(null);
+  useModalHistory(!!pnlUnit, () => setPnlUnit(null));
   const [pnlData, setPnlData] = useState(null);
   const [pnlLoading, setPnlLoading] = useState(false);
   const [reconUnit, setReconUnit] = useState(null);
+  useModalHistory(!!reconUnit, () => setReconUnit(null));
   const [reconJobs, setReconJobs] = useState([]);
   const [reconLoading, setReconLoading] = useState(false);
   const [reconForm, setReconForm] = useState({ title: '', category: 'other', vendor: '', cost: '', eta_date: '', notes: '' });
@@ -6708,12 +6725,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   const [showReconAdd, setShowReconAdd] = useState(false);
   // Advertising spend per unit (DMS-6)
   const [adUnit, setAdUnit] = useState(null);
+  useModalHistory(!!adUnit, () => setAdUnit(null));
   const [adEntries, setAdEntries] = useState([]);
   const [adLoading, setAdLoading] = useState(false);
   const [adForm, setAdForm] = useState({ channel: 'mudah', amount: '', spent_at: new Date().toISOString().slice(0, 10), notes: '' });
   const [adSaving, setAdSaving] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
+  useModalHistory(showCsvImport, () => setShowCsvImport(false));
   const [showVendors, setShowVendors] = useState(false);
+  useModalHistory(showVendors, () => setShowVendors(false));
   const [vendors, setVendors] = useState([]);
   const [vendorsLoading, setVendorsLoading] = useState(false);
   const [vendorForm, setVendorForm] = useState({ name: '', category: 'workshop', contact: '', phone: '', address: '', notes: '' });
@@ -6726,12 +6746,15 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
   // ENT-8: inline price editing
   const [editPriceUnit, setEditPriceUnit] = useState(null);
+  useModalHistory(!!editPriceUnit, () => setEditPriceUnit(null));
   const [editPriceForm, setEditPriceForm] = useState({ purchase_price: '', recon_cost: '' });
   const [editPriceSaving, setEditPriceSaving] = useState(false);
 
   const [publishingStockId, setPublishingStockId] = useState(null);
   const [detailUnit, setDetailUnit] = useState(null);
+  useModalHistory(!!detailUnit, () => setDetailUnit(null));
   const [stockPublishListing, setStockPublishListing] = useState(null);
+  useModalHistory(!!stockPublishListing, () => setStockPublishListing(null));
   // T2-3: condition appraisal draft for the detail drawer (edit-in-place).
   const [apprDraft, setApprDraft] = useState(null);
   const [apprSaving, setApprSaving] = useState(false);
@@ -8553,15 +8576,18 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showGen, setShowGen] = useState(false);
+  useModalHistory(showGen, () => setShowGen(false));
   const [genForm, setGenForm] = useState({ ...EMPTY_GEN_FORM });
   const [genSaving, setGenSaving] = useState(false);
   const [printDoc, setPrintDoc] = useState(null);
+  useModalHistory(!!printDoc, () => setPrintDoc(null));
   const [listingDropOpen, setListingDropOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState(null);
   const [docSearch, setDocSearch] = useState('');
   const [docTypeFilter, setDocTypeFilter] = useState('');
   const [listingSearch, setListingSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  useModalHistory(!!deleteId, () => setDeleteId(null));
   const [newHandoverItem, setNewHandoverItem] = useState('');
   const [linkedStock, setLinkedStock] = useState(null);
   const [emailSendingId, setEmailSendingId] = useState(null);
@@ -9553,9 +9579,12 @@ export default function DashboardPage() {
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
   const [showFastModal, setShowFastModal] = useState(false);
+  useModalHistory(showFastModal, () => setShowFastModal(false), { isDirty: () => true });
   const [deleteId, setDeleteId] = useState(null);
+  useModalHistory(!!deleteId, () => setDeleteId(null));
   const [reactivating, setReactivating] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useModalHistory(sidebarOpen, () => setSidebarOpen(false));
   const [openGroups, setOpenGroups] = useState(() => {
     const gid = TAB_TO_GROUP[tabParam || "overview"];
     return gid ? new Set([gid]) : new Set();
@@ -9572,6 +9601,7 @@ export default function DashboardPage() {
   const [dealerSubdomain, setDealerSubdomain] = useState(null); // parent dealer's subdomain (used for manager/admin roles)
   const [updatingStatus, setUpdatingStatus] = useState(null);
   const [editListing, setEditListing] = useState(null);
+  useModalHistory(!!editListing, () => setEditListing(null), { isDirty: () => true });
   const [editTab, setEditTab] = useState('listing'); // 'listing' (CarForm) | 'cost' (procurement)
   // Every time a different listing is opened, start on the Listing details tab.
   useEffect(() => { if (editListing) setEditTab('listing'); }, [editListing?.id]);
@@ -9605,12 +9635,15 @@ export default function DashboardPage() {
   const toolsBtnRef = useRef(null);
   const [toolsBtnRect, setToolsBtnRect] = useState(null);
   const [svcPopupListing,  setSvcPopupListing]  = useState(null);
+  useModalHistory(!!svcPopupListing, () => setSvcPopupListing(null));
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
   const closeNotif = () => { setNotifOpen(false); setSidebarBellRect(null); };
   const [notifications,    setNotifications]    = useState([]);
   const [notifOpen,        setNotifOpen]        = useState(false);
+  useModalHistory(notifOpen, () => setNotifOpen(false));
   const [pendingStockListing, setPendingStockListing] = useState(null);
+  useModalHistory(!!pendingStockListing, () => setPendingStockListing(null));
   const [pendingStockForm, setPendingStockForm] = useState({ purchase_price: '', purchase_date: '', purchase_source: '', recon_cost: '' });
   const [pendingStockSaving, setPendingStockSaving] = useState(false);
   const [prefillDocData,   setPrefillDocData]   = useState(null);

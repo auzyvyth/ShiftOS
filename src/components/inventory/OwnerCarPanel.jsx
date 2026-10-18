@@ -6,6 +6,7 @@ import {
   AlertTriangle, TrendingUp, Wrench, Megaphone, ShieldCheck,
   Pencil, X, Plus, Trash2, UserCheck, Clock,
 } from 'lucide-react';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
@@ -39,6 +40,7 @@ const inp = { width: '100%', padding: '8px 10px', fontSize: 13, border: '1px sol
 
 // Tool editor modal — portals above the drawer; explicit Save (no real-time writes).
 function ToolModal({ title, onClose, children, footer }) {
+  useModalHistory(true, onClose);
   return createPortal(
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 440, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)', fontFamily: "system-ui,sans-serif" }}>

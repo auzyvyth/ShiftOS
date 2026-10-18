@@ -4,6 +4,7 @@ import { X, MessageSquare } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
 import ChatThread, { THEMES } from './ChatThread';
 import useVisualViewport from '../../hooks/useVisualViewport';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // One in-app conversation, opened over whatever surface you are already on.
 //
@@ -30,6 +31,7 @@ export default function ChatSheet({
   footer = null,
   onClose,
 }) {
+  useModalHistory(true, onClose);
   // Size to the area the keyboard leaves behind, not to `vh` — see
   // useVisualViewport. Without this the composer sits under the keyboard and
   // the browser scrolls the whole sheet up to reach it.

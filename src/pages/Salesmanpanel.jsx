@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { suggestCommission } from "../utils/commission";
 import { createPortal } from "react-dom";
 import SuspendedBanner from "../components/SuspendedBanner";
@@ -457,6 +458,7 @@ export default function SalesmanPanel() {
 
  // CRM pipeline state
  const [drawerLeadId, setDrawerLeadId] = useState(null);
+ useModalHistory(!!drawerLeadId, () => setDrawerLeadId(null));
  const [drawerHandoverOpen, setDrawerHandoverOpen] = useState(false);
  const [dealSheetBusyId, setDealSheetBusyId] = useState(null);
  const [dealSheetLink, setDealSheetLink] = useState(null);
@@ -483,6 +485,17 @@ export default function SalesmanPanel() {
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  const [linkCarSearch, setLinkCarSearch] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
+ // Back gesture closes the open overlay instead of switching tab under it
+ // (useModalHistory, one shared stack). Shared sheets register inside.
+ useModalHistory(!!logCallLeadId, () => setLogCallLeadId(null));
+ useModalHistory(!!batchWALeads, () => setBatchWALeads(null));
+ useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
+ useModalHistory(!!dealSheetConfigLead, () => setDealSheetConfigLead(null));
+ useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarSearch(""); });
+ useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
+ useModalHistory(!!waModalLead, () => setWaModalLead(null));
+ useModalHistory(notifOpen, () => setNotifOpen(false));
+ useModalHistory(moreOpen, () => setMoreOpen(false));
  const [batchWAIdx, setBatchWAIdx] = useState(0);
  const [mobileLeadStage, setMobileLeadStage] = useState("new");
  const [lostPromptId, setLostPromptId] = useState(null);
@@ -527,6 +540,8 @@ export default function SalesmanPanel() {
  const [carDetailImgIdx, setCarDetailImgIdx] = useState(0);
  const [carDetailTab, setCarDetailTab] = useState("specs");
  const [carDetailLbOpen, setCarDetailLbOpen] = useState(false);
+ useModalHistory(!!selectedCar, () => setSelectedCar(null));
+ useModalHistory(!!selectedCar && carDetailLbOpen, () => setCarDetailLbOpen(false));
 
  // loans
  const [loanCalc, setLoanCalc] = useState({ carPrice: "", downPayment: "", tenure: 7, income: "" });

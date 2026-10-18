@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -69,6 +70,7 @@ function useViewer() {
 }
 
 function Sheet({ title, onClose, children }) {
+  useModalHistory(true, onClose);
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };

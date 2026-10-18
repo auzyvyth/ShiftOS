@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useModalHistory } from '../../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
@@ -58,12 +59,14 @@ export default function OutreachHub({ dealerId, salesmanId = null, theme = 'ligh
   const [template, setTemplate]   = useState('followup');
   const [refreshKey, setRefreshKey] = useState(0);
   const [campaignIds, setCampaignIds] = useState(null); // ordered lead ids, null = inactive
+  useModalHistory(!!campaignIds, () => setCampaignIds(null));
   const [campaignIdx, setCampaignIdx] = useState(0);
   const [pushing, setPushing]     = useState(false);
   const [draft, setDraft]         = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiIsDraft, setAiIsDraft] = useState(false); // current draft came from the AI
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  useModalHistory(scheduleOpen, () => setScheduleOpen(false));
   const [customWhen, setCustomWhen]     = useState('');
 
   // RAPTOR-1/4 — follow-up nudges are per-salesman, so they only exist in the
@@ -593,8 +596,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
         </div>, document.body)}
 
       {/* Schedule sheet. Portalled + body-scroll-locked per the overlay rules.
-          Deliberately NOT registered with useModalHistory — it is a light popup
-          with its own cancel/backdrop close (overlay rule 5). */}
+          The back gesture closes it too (useModalHistory). */}
       {scheduleOpen && selected && createPortal(
         <div onClick={() => setScheduleOpen(false)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', backdropFilter:'blur(2px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10000, padding:16 }}>

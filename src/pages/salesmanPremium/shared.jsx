@@ -9,6 +9,7 @@ import { X, Flame, TrendingUp, Snowflake } from "lucide-react";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { HIGH_VALUE_THRESHOLD } from "../../utils/financing";
 import i18n from "../../i18n/config";
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Module-scope strings read through i18n.t at the moment they are used, so a
 // language switch repaints them on the next render (PREM-I18N-2). A getter
@@ -58,9 +59,10 @@ export const STAT = { fontWeight: T.weight.bold, color: C.text, letterSpacing: T
 // Overlay rules: portalled to document.body (rule 1) and body scroll locked
 // while open (rule 2). Deliberately NO backdrop-click / Escape close — these
 // wrap a multi-step form and one stray tap should not bin what was typed; the
-// x button is the only way out. Same reason it does not register
-// useModalHistory (rule 5).
+// x button is the only way out. Same reason the back gesture ASKS before
+// closing it (useModalHistory isDirty), every time.
 export function ListingFormModal({ open, onClose, title, subtitle, isMobile, children }) {
+ useModalHistory(!!open, onClose, { isDirty: () => true });
  useEffect(() => {
  if (!open) return;
  document.body.style.overflow = "hidden";

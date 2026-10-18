@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Package, Gift, Wallet
 import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { SERVICE_CATEGORY_OPTIONS } from "../../utils/serviceCategories";
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Personal product catalogue for standalone salesmen (Lite/Premium). Writes to
 // the same `dealer_products` table the full dealer dashboard uses — a Lite
@@ -269,6 +270,7 @@ export default function ServicesAddonsTab({ dealerId }) {
 }
 
 function ProductPanel({ form, setForm, editTarget, saving, onSave, onClose }) {
+  useModalHistory(true, onClose);
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };

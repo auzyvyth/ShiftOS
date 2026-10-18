@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Bug, X } from "lucide-react";
+import { useModalHistory } from '../hooks/useModalHistory';
 
 const SUPPORT_WHATSAPP = "601111521742";
 
@@ -9,6 +10,7 @@ const SUPPORT_WHATSAPP = "601111521742";
 export default function ReportBugButton({ context = "", userLabel = "", variant = "floating" }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
+  useModalHistory(open, () => setOpen(false), { isDirty: () => !!text.trim() });
 
   const send = () => {
     if (!text.trim()) return;
