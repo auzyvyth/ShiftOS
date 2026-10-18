@@ -1579,8 +1579,10 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   First visit to Listings, Leads, Sold, Loans or Outreach, only after the sidebar tour is done.
   Each step rings an in-page `data-tour-id`; a step whose target is missing or zero-height
   (no car yet) is dropped at start. Seen = `profiles.starter_tasks.intro_<tab>` (the console
-  handover already resets starter_tasks; no new column). Leaving the tab mid-intro ends it
-  unseen. A spacer under the tab content gives bottom-most controls room above the bar.
+  handover already resets starter_tasks; no new column). The tour, every intro and the
+  first-sale card count as SEEN after 3s on screen, not only on Skip/finish: closing the app or
+  leaving the tab mid-way used to record nothing, so they replayed every visit (2026-10-18).
+  `markStarterTask` re-reads the row before merging, so one flag never erases another. A spacer under the tab content gives bottom-most controls room above the bar.
 - **An intro waits until its tab has something real to show.** Sold plays only after the
   first won deal (`handover.deals`), Outreach only once there is a live lead. A new seller's
   Sold tab is three empty states; an intro there explains things they cannot see and then

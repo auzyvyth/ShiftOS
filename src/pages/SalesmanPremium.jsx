@@ -6206,8 +6206,23 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, handover.deals.length, leads]);
 
- // Leaving the tab mid-intro ends it without marking it seen, so it plays
- // again on the next visit.
+ // An intro or the tour counts as SEEN once it has been on screen for 3s, not
+ // only on Skip / the last Next. Closing the app, switching tabs or tapping a
+ // nav link mid-way used to record nothing, so it replayed on every visit
+ // (2026-10-18). The 3s grace keeps an instant reload or redirect on first
+ // landing from using it up. The sidebar tour can be replayed from Settings.
+ useEffect(() => {
+ if (tourStep === null || !tourMode || !userId) return;
+ const mode = tourMode;
+ const timer = setTimeout(() => {
+ if (mode === "main") markMainTourSeen();
+ else markIntroSeen(mode);
+ }, 3000);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [tourMode, tourStep === null, userId]);
+
+ // Leaving the tab mid-intro ends it (already counted as seen above).
  useEffect(() => {
  if (tourMode && tourMode !== "main" && tourMode !== activeTab) {
  setTourStep(null);
@@ -6231,7 +6246,13 @@ export default function SalesmanPremium() {
  const wonAt = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
  if (!wonAt || Date.now() - wonAt > 14 * 86400000) return;
  // Let the win confirm finish closing before this opens (overlay rule 3).
- const timer = setTimeout(() => setFirstSale(deal), 700);
+ // Counted as seen when it opens: closing the app with it up must not
+ // bring it back.
+ const timer = setTimeout(() => {
+ setFirstSale(deal);
+ markIntroSeenThisSession(userId, "first_sale");
+ markStarterTask(userId, "first_sale_seen", profile?.starter_tasks);
+ }, 700);
  return () => clearTimeout(timer);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, handover.deals, tourStep, wonPrompt, anyOverlayOpen, firstSale]);
@@ -6315,6 +6336,17 @@ export default function SalesmanPremium() {
  );
  };
 
+ // Per-account DB flag (mirrors SalesmanLite.jsx dismissTour) is the real
+ // guard read on next mount; the sessionStorage key is only a same-session
+ // backup so a re-render before the write lands doesn't re-trigger the tour.
+ const markMainTourSeen = () => {
+ if (!userId) return;
+ markTourSeenThisSession(userId);
+ setProfile((p) => (p && !p.onboarding_tour_done ? { ...p, onboarding_tour_done: true } : p));
+ supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId)
+ .then(({ error }) => { if (error) console.error("markMainTourSeen:", error); });
+ };
+
  const dismissTour = () => {
  if (tourMode && tourMode !== "main") {
  markIntroSeen(tourMode);
@@ -6323,15 +6355,7 @@ export default function SalesmanPremium() {
  setTourTarget(null);
  return;
  }
- // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
- // guard read on next mount; the per-user localStorage key is only a
- // same-session backup so a re-render before the write lands doesn't
- // re-trigger the tour.
- if (userId) {
- markTourSeenThisSession(userId);
- setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
- supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
- }
+ markMainTourSeen();
  setTourStep(null);
  setTourMode(null);
  setTourTarget(null);

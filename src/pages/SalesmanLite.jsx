@@ -6971,6 +6971,20 @@ export default function SalesmanLite() {
     if (tourErr) console.error("dismissTour:", tourErr);
   };
 
+  // Counted as seen once it has been on screen for 3s, not only on close:
+  // closing the app mid-tour recorded nothing, so it replayed on every launch
+  // (2026-10-18). The grace keeps an instant reload or redirect from using it up.
+  const tourOpen = tourStep !== null;
+  useEffect(() => {
+    if (!tourOpen || !userId) return;
+    const timer = setTimeout(() => {
+      try { localStorage.setItem(`slite_tour_seen_${userId}`, '1'); } catch {}
+      supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId)
+        .then(({ error }) => { if (error) console.error("tourSeen:", error); });
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [tourOpen, userId]);
+
   // Locked preview shown on a listing-gated tab (leads / inbox / performance)
   // once the intro tour is done but before the salesman has listed a single car.
   // Same lock badge across all three; copy is tailored per tab. Suppressed while
