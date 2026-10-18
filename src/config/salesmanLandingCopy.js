@@ -85,7 +85,8 @@ const EN = {
 
   demo: {
     label: "Live presentation, working demo with real cars",
-    caption: "Real cars from an XDrive seller. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
+    caption: "Real cars, starting with a new Proton Saga: tap a variant and every number follows. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
+    captionUsed: "Real cars from an XDrive seller. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
     sampleCaption: "Sample car. Tap Budget or Docs, change the deposit. Estimates only, the bank decides.",
   },
 
@@ -382,7 +383,8 @@ const MS = {
 
   demo: {
     label: "Live presentation, demo sebenar dengan kereta sebenar",
-    caption: "Kereta sebenar dari seller XDrive. Tap Bajet atau Dokumen, tukar deposit. Anggaran sahaja, bank yang putuskan.",
+    caption: "Kereta sebenar, bermula dengan Proton Saga baru: tap varian dan semua nombor ikut. Tap Bajet atau Dokumen, tukar deposit. Anggaran sahaja, bank yang putuskan.",
+    captionUsed: "Kereta sebenar dari seller XDrive. Tap Bajet atau Dokumen, tukar deposit. Anggaran sahaja, bank yang putuskan.",
     sampleCaption: "Contoh kereta. Tap Bajet atau Dokumen, tukar deposit. Anggaran sahaja, bank yang putuskan.",
   },
 

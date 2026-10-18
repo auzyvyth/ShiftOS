@@ -16,7 +16,12 @@ import { withTimeout } from "../../config/marketplaceConfig";
 const LivePresenter = lazy(() => import("../live/LivePresenter"));
 
 const DEMO_SELLER_ID = "673d0772-871c-4586-bc67-98f4382503a7"; // airymotors
-const COLS = "id,year,brand,model,variant,selling_price,images,mileage,transmission";
+// A new-car card leads the demo (owner, 2026-10-18), so a visiting advisor sees
+// the variant switch: the Proton Saga card on the example page (premiummotors,
+// EXAMPLE_PAGE in salesmanLandingCopy.js). Picked by model, not by id, so a
+// re-made card still shows; if it is gone the demo simply starts at the used cars.
+const CARD_SELLER_ID = "f92eb826-e99e-4d43-bc26-8b5a1540b717"; // premiummotors
+const COLS = "id,year,brand,model,variant,selling_price,images,mileage,transmission,condition,state,is_model_card";
 const SAMPLE = [{ id: "sample", year: 2021, brand: "Honda", model: "City", variant: "1.5 V", mileage: 38000, transmission: "Auto", selling_price: 72800, images: [] }];
 
 // `copy` is landingCopy(lang).demo; `lang` starts the presenter in the page's
@@ -24,18 +29,28 @@ const SAMPLE = [{ id: "sample", year: 2021, brand: "Honda", model: "City", varia
 export default function LiveDemo({ copy, lang }) {
   const [cars, setCars] = useState(null); // null = loading
   const [sample, setSample] = useState(false);
+  const [hasCard, setHasCard] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    withTimeout(
+    const used = withTimeout(
       publicClient.from("public_car_listings").select(COLS)
         .eq("dealer_id", DEMO_SELLER_ID).in("status", ["available", "reserved"])
         .order("created_at", { ascending: false }).limit(12),
       8000,
-    ).then(({ data, error }) => {
+    );
+    const card = withTimeout(
+      publicClient.from("public_car_listings").select(COLS)
+        .eq("dealer_id", CARD_SELLER_ID).eq("is_model_card", true)
+        .eq("brand", "Proton").eq("model", "Saga").eq("status", "available").limit(1),
+      8000,
+    ).catch(() => ({ data: [] }));
+    Promise.all([used, card]).then(([{ data, error }, cardRes]) => {
       if (cancelled) return;
-      const live = !error && Array.isArray(data) ? data.filter((c) => Number(c.selling_price) > 0) : [];
+      const ok = (rows) => (Array.isArray(rows) ? rows.filter((c) => Number(c.selling_price) > 0) : []);
+      const live = [...ok(cardRes?.data), ...(!error ? ok(data) : [])];
       setSample(!live.length);
+      setHasCard(live.some((c) => c.is_model_card));
       setCars(live.length ? live : SAMPLE);
     }).catch(() => { if (!cancelled) { setSample(true); setCars(SAMPLE); } });
     return () => { cancelled = true; };
@@ -47,11 +62,12 @@ export default function LiveDemo({ copy, lang }) {
       <div className="ld-box">
         {cars ? (
           <Suspense fallback={<div className="ld-skel" />}>
-            <LivePresenter key={lang} listings={cars} embedded initialLang={lang} onClose={() => {}} />
+            <LivePresenter key={lang} listings={cars} embedded initialLang={lang} onClose={() => {}}
+              officialNew={cars.some((c) => c.is_model_card)} />
           </Suspense>
         ) : <div className="ld-skel" />}
       </div>
-      <figcaption className="ld-note">{sample ? copy.sampleCaption : copy.caption}</figcaption>
+      <figcaption className="ld-note">{sample ? copy.sampleCaption : hasCard ? copy.caption : copy.captionUsed}</figcaption>
     </figure>
   );
 }
