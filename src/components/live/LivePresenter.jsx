@@ -502,6 +502,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-sw-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
         .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; }
         .lp-docs .lp-name { white-space: normal; }
+        /* Year + make + model + variant can be long ("2022 Lexus IS 300 2.0L(T) F-Sport"): two lines, never cut mid-name. */
+        .lp-name-car { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .lp-var { color: #6b7280; }
         .lp-docs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
         .lp-docs li { display: flex; align-items: center; gap: 12px; font-size: clamp(16px, 4.8cqw, 26px); font-weight: 700; color: #0f1115; line-height: 1.25; }
         .lp-docs li span { flex-shrink: 0; width: 1.6em; height: 1.6em; border-radius: 8px; background: var(--lp-grad); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .8em; font-variant-numeric: tabular-nums; }
@@ -625,11 +628,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           <div className="lp-title">
             <span className="lp-num">#{idx + 1}</span>
             <div className="lp-tt">
-              <h2 className="lp-name">{carName(car)}</h2>
+              {/* The variant sits in the title, next to the model (owner, 2026-10-18):
+                  "2.5" alone on the spec line read as a stray number. */}
+              <h2 className="lp-name lp-name-car">{carName(car)}{shown.variant ? <span className="lp-var"> {shown.variant}</span> : null}</h2>
               <p className="lp-spec">
                 {(shown.condition === 'new'
-                  ? [t.newTag, shown.variant, shown.transmission]
-                  : [shown.variant, shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
+                  ? [t.newTag, shown.transmission]
+                  : [shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
                 ).filter(Boolean).join(' · ') || '\u00a0'}
               </p>
             </div>
