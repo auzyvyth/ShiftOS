@@ -173,6 +173,7 @@ import {
   rememberPanelUid,
   seedPanelCache,
 } from "../utils/panelCache";
+import { refreshListingFromNotice } from "../utils/listingNotice";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { redactForAI } from "../utils/redactForAI";
 // Style tokens, formatters, and small shared components (SOFT/CARD/STAGE_COLOR/
@@ -1253,6 +1254,8 @@ export default function SalesmanPremium() {
  (payload) => {
  toast(payload.new.title, { description: payload.new.body });
  setNotifications((p) => [payload.new, ...p]);
+ // An approved / rejected car moves tab now, not on the next reload.
+ refreshListingFromNotice(supabase, payload.new, setMyListings);
  },
  )
  .on(

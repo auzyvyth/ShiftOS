@@ -35,10 +35,11 @@ import { PLAN_CONFIG } from './planConfig.js';
 // working the lead is Premium (owner, 2026-10-13), which is why follow-up
 // reminders, call logging, bulk WhatsApp, Telegram booking reminders, the
 // services catalogue and page customisation are listed here and not on Lite.
+// Live presentation moved to Lite (owner, 2026-10-18): it is on the Lite
+// card below, never here.
 // PremiumUpgradeCard drops every line matching /\bAI\b/ (English side), so
 // keep "AI" spelled out in the AI lines.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
-  { en: 'Live presentation for TikTok / FB lives', ms: 'Live presentation untuk live TikTok / FB' },
   { en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
@@ -64,6 +65,7 @@ const PRESENTATION = {
       'Your own page at xdrive.my/s/yourname',
       'Cars listed on the XDrive marketplace',
       'Buyers reach you by WhatsApp, chat + booking',
+      'Live presentation for TikTok / FB lives',
       'Alerts on new leads',
       'Simple lead list with stages',
       'Views + WhatsApp taps for each car',

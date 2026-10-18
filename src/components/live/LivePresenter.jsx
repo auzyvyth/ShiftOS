@@ -12,8 +12,9 @@ import {
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns,
 } from './liveCopy';
+import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
@@ -120,7 +121,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // is not saved to the listing.
   const [rebates, setRebates] = useState({});
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
-  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate'
+  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate' | 'ins'
+  // Insurance in the loan (motorInsurance.js): on/off remembered per device;
+  // the NCD is the viewer's, picked on the pills under the working; a typed
+  // figure (the seller's insurer quote, or an EV) wins for that car, this live.
+  const [insOn, setInsOn] = useState(() => (embedded ? false : initialLiveIns()));
+  const changeIns = (on) => { setInsOn(on); if (!embedded) saveLiveIns(on); };
+  const [ncd, setNcd] = useState(0);
+  const [insTyped, setInsTyped] = useState({});
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -180,7 +188,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     const pad = parseFloat(getComputedStyle(body).paddingTop) * 2 || 0;
     const avail = body.clientHeight - pad;
     const need = el.offsetHeight;
-    if (need > avail && avail > 0) el.style.zoom = String(Math.max(0.8, avail / need));
+    if (need > avail && avail > 0) {
+      // Shrinking widens the columns, which makes aspect-ratio boxes (the
+      // photo) taller, so one measurement undershoots: step down until
+      // nothing spills, never under the 80% floor.
+      let z = Math.max(0.8, avail / need);
+      el.style.zoom = String(z);
+      while (z > 0.8 && body.scrollHeight > body.clientHeight) {
+        z = Math.max(0.8, z - 0.01);
+        el.style.zoom = String(z);
+      }
+    }
   };
   useLayoutEffect(() => { fit.current(); });
   useEffect(() => {
@@ -208,6 +226,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
   const rate = Math.max(0, Number(eir) || 0);
+  // Insurance for a car: typed figure first, else the tariff estimate off the
+  // price before rebate (the car's value) and its engine cc (a model card's
+  // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
+  const insFor = (c, value, cc) => {
+    if (!insOn) return 0;
+    const typed = insTyped[c?.id];
+    if (typed !== undefined && typed !== '') return Math.max(0, Number(typed) || 0);
+    const est = motorPremium({ sumInsured: value, cc, ncd, region: insuranceRegion(c?.state) });
+    return est ? est.total : null;
+  };
+  const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc);
+  const insAmt = ins || 0;
 
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
@@ -321,7 +351,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const financeable = net > 0;
   const highValue = price > HIGH_VALUE_THRESHOLD;
   const rateFor = (y) => eirForTenure(rate, basis, y);
-  const monthlyFor = (down, y) => monthlyPayment(net - down, rateFor(y), y * 12);
+  const monthlyFor = (down, y) => monthlyPayment(net + insAmt - down, rateFor(y), y * 12);
   const picked = rows.find((r) => r.key === pick.row) || rows.find((r) => r.key === DEFAULT_DOWN);
   // Tapping the deposit row starts the box at the deposit on screen.
   const openDeposit = () => {
@@ -342,7 +372,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const amount = Math.max(0, Number(budgetAmount) || 0);
   const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
   const bDown = Math.max(0, Number(budgetDown) || 0);
-  const matches = budgetMatches(listings, { maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates });
+  const matches = budgetMatches(listings, {
+    maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
+    extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
+  });
   const openFromBudget = (m) => {
     setIdx(m.n - 1);
     setImgIdx(0);
@@ -421,6 +454,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brk tr.lp-r-dep td:last-child { color: #1d4ed8; }
         .lp-brk tr.lp-loan td { padding-block: 8px; background: #0f1115; color: rgba(255,255,255,.72); }
         .lp-brk tr.lp-loan td:last-child { color: #fff; font-size: clamp(16px, 4.8cqw, 26px); }
+        .lp-brk tr.lp-r-ins td { background: rgba(245,158,11,.10); color: #b45309; }
+        .lp-brk tr.lp-r-ins td:last-child { color: #b45309; }
+        /* NCD pills: six on one phone row, so they shrink and the label leads. */
+        .lp-seg.lp-ncd { align-items: center; }
+        .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 13px); font-weight: 800; letter-spacing: .08em; color: #b45309; }
+        .lp-seg.lp-ncd { padding: 3px; }
+        .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 14px); }
+        /* Insurance adds two rows; the photo gives the room back so the sheet
+           still fits the camera frame without shrinking. */
+        .lp-desk .lp-ins-on .lp-photo { aspect-ratio: 5 / 2; }
+        .lp-ins-on .lp-pair { align-items: start; }
+        /* Phone: six rows beside the photo; tighter rows keep the sheet on one screen. */
+        .lp:not(.lp-desk) .lp-ins-on .lp-brk { border-spacing: 0 2px; margin: -2px 0; }
+        .lp:not(.lp-desk) .lp-ins-on .lp-brk td { padding-block: 3px; }
+        .lp:not(.lp-desk) .lp-ins-on .lp-brk tr.lp-loan td { padding-block: 5px; }
+        .lp:not(.lp-desk) .lp-ins-on .lp-ten td { padding-block: 4px; }
+        .lp-insadj { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; }
         .lp-brk tr.lp-r-rate td { background: none; padding-block: 1px; font-size: clamp(11px, 2.9cqw, 15px); color: #6b7280; }
         .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 700; }
         /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
@@ -627,6 +677,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
               </label>
             )}
+            <div className="lp-wide lp-insadj">
+              <span>{t.insuranceLabel}</span>
+              <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
+                <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
+                <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
+              </div>
+              <small className="lp-hint">{t.insuranceHint}</small>
+            </div>
             {mode === 'cars' && (
               <label className="lp-wide">
                 {t.ctaLabel}
@@ -663,7 +721,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         )}
 
         {mode === 'cars' ? (
-        <div className="lp-card lp-sheet">
+        <div className={insOn && price > 0 ? 'lp-card lp-sheet lp-ins-on' : 'lp-card lp-sheet'}>
           <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
           <div className="lp-title">
             <span className="lp-num">#{idx + 1}</span>
@@ -716,6 +774,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <table className="lp-brk">
               <tbody>
                 <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
+                {price > 0 && insOn && (
+                  <tr className="lp-r-ins lp-tap" onClick={() => setEditing('ins')}>
+                    <td>{t.insuranceEst}</td>
+                    <td>{editing === 'ins' && !embedded
+                      ? <EditCell value={insTyped[car.id] ?? (ins ? String(ins) : '')} aria={t.insuranceThisCar} onDone={() => setEditing(null)}
+                          onChange={(v) => setInsTyped((m) => ({ ...m, [car.id]: v }))} />
+                      : ins ? <>+ <Money n={ins} /></> : t.insTap}</td>
+                  </tr>
+                )}
                 {price > 0 && (rebate > 0 || shown.condition === 'new' || editing === 'rebate') && (
                   <tr className="lp-r-reb lp-tap" onClick={() => setEditing('rebate')}>
                     <td>{t.rebate}</td>
@@ -733,7 +800,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                           onChange={(v) => { setCustomDown(v); setPick((p) => ({ ...p, row: 'c' })); }} />
                       : picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td>
                   </tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net - picked.down} /></td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net + insAmt - picked.down} /></td></tr>
                   <tr className="lp-r-rate lp-tap" onClick={() => setEditing('rate')}>
                     <td>{t.rate}</td>
                     <td>{editing === 'rate' && !embedded
@@ -744,6 +811,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </tbody>
             </table>
           </div>
+          {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
+              for this car (the typed quote already has its NCD in it). */}
+          {price > 0 && insOn && (insTyped[car.id] ?? '') === '' && ins !== null && (
+            <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
+              <span>{t.ncd}</span>
+              {NCD_TIERS.map((n) => (
+                <button key={n} type="button" aria-pressed={n === ncd} onClick={() => setNcd(n)}>{ncdLabel(n)}</button>
+              ))}
+            </div>
+          )}
           </div>
 
           <div className="lp-col">

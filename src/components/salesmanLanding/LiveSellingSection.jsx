@@ -10,7 +10,7 @@ import { EXAMPLE_PAGE } from "../../config/salesmanLandingCopy";
 // filler. `copy` is landingCopy(lang).live (salesmanLandingCopy.js), the same
 // list the crawler render (api/og.js) reads.
 
-export default function LiveSellingSection({ reveal, fadeUp, copy, cta }) {
+export default function LiveSellingSection({ reveal, fadeUp, copy, cta, href = "/salesman-onboarding/lite" }) {
   return (
     <motion.section className="sll-section" id="live" variants={fadeUp} {...reveal}>
       <style>{CSS}</style>
@@ -25,7 +25,7 @@ export default function LiveSellingSection({ reveal, fadeUp, copy, cta }) {
         </ul>
         <p className="lss-note-line">{copy.note}</p>
         <div className="lss-ctas">
-          <Link to="/salesman-onboarding/premium" className="sll-btn sll-btn-red">
+          <Link to={href} className="sll-btn sll-btn-red">
             {cta} <ArrowRight size={17} />
           </Link>
           <Link to={EXAMPLE_PAGE.path} className="sll-example lss-example">

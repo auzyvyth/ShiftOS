@@ -91,8 +91,8 @@ function Shot({ s, shotRef, pending }) {
 
 export default function PlanTour({ copy }) {
   const reduce = useReducedMotion();
-  // Opens on Premium: the page leads with Live presentation (Premium), and
-  // Lite is one tap away on the toggle.
+  // Opens on Premium: it shows the most tabs (Live presentation is on both
+  // plans since 2026-10-18), and Lite is one tap away on the toggle.
   const [plan, setPlan] = useState("premium");
   const [geo, setGeo] = useState({ w: 0, h: 0, d: "", pads: [] });
   const [lit, setLit] = useState(0);

@@ -126,6 +126,7 @@ import {
   rememberPanelUid,
   seedPanelCache,
 } from "../utils/panelCache";
+import { refreshListingFromNotice } from "../utils/listingNotice";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
@@ -1890,6 +1891,8 @@ export default function SalesmanLite() {
               (payload) => {
                 toast(payload.new.title, { description: payload.new.body });
                 setNotifications((p) => [payload.new, ...p]);
+                // An approved / rejected car moves tab now, not on the next reload.
+                refreshListingFromNotice(supabase, payload.new, setMyListings);
               },
             )
             .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_enquiries", filter: `salesman_id=eq.${uid}` },

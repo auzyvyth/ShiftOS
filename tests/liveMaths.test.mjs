@@ -2,6 +2,7 @@
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
+import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
 
 let pass = 0, fail = 0;
@@ -89,6 +90,34 @@ is('accent: default red is unchanged', accentTheme(DEFAULT_ACCENT).accent, DEFAU
 is('accent: yellow is darkened until readable', readable('#FFEB3B') && accentTheme('#FFEB3B').accent !== '#FFEB3B', true);
 is('accent: white is darkened until readable', readable('#FFFFFF'), true);
 is('accent: junk falls back to the default', accentTheme('nope').accent, DEFAULT_ACCENT);
+
+
+// Insurance (motorInsurance.js), checked against a seller's live Excel:
+// Proton X50 1.5T (1477cc), RM89,800, 0% NCD -> sheet said RM2,869.
+const x50 = motorPremium({ sumInsured: 89800, cc: 1477, ncd: 0, region: 'west' });
+is('ins: X50 tariff 305.50 + 89 x 26', x50.gross, 2620);
+is('ins: X50 total with SST + stamp', x50.total, 2839);
+is('ins: within 2% of the seller sheet', Math.abs(x50.total - 2869) / 2869 < 0.02, true);
+is('ins: 55% NCD', motorPremium({ sumInsured: 89800, cc: 1477, ncd: 55 }).total, 1283);
+is('ins: East Malaysia is cheaper', motorPremium({ sumInsured: 89800, cc: 1477, region: 'east' }).total < x50.total, true);
+is('ins: no cc (EV) is null, never a guess', motorPremium({ sumInsured: 120000, cc: null }), null);
+is('ins: no price is null', motorPremium({ sumInsured: 0, cc: 1500 }), null);
+is('ins: unknown NCD falls back to 0', motorPremium({ sumInsured: 89800, cc: 1477, ncd: 12 }).total, 2839);
+is('ins: region Sabah', insuranceRegion('Kota Kinabalu, Sabah'), 'east');
+is('ins: region Labuan', insuranceRegion('Labuan'), 'east');
+is('ins: region Selangor', insuranceRegion('Selangor'), 'west');
+is('ins: NCD tiers', NCD_TIERS, [0, 25, 30, 38.33, 45, 55]);
+is('ins: 38.33 label', ncdLabel(38.33), '38⅓%');
+
+// The seller's whole sheet: (89,800 + 2,869 - 8,000) at 2.4% flat, 9 yrs = RM953.33.
+is('ins: sheet monthly matches through EIR', monthlyPayment(89800 + 2869 - 8000, eirForTenure(2.4, 'flat', 9), 108).toFixed(2), '953.31');
+
+// Budget adds the same insurance the Cars screen does.
+const bl = [{ id: 'x', selling_price: 89800, engine_cc: 1477 }];
+const noIns = budgetMatches(bl, { maxMonthly: 5000, years: 9, rate: 4, basis: 'eir' }).fits[0].monthly;
+const withIns = budgetMatches(bl, { maxMonthly: 5000, years: 9, rate: 4, basis: 'eir', extraFor: () => 2839 }).fits[0].monthly;
+is('budget: insurance raises the monthly', withIns > noIns, true);
+is('budget: by exactly the financed insurance', withIns.toFixed(2), monthlyPayment(89800 + 2839, 4, 108).toFixed(2));
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

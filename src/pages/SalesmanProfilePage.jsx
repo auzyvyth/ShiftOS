@@ -106,12 +106,14 @@ function AgentCarCard({ car, num, onClick }) {
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
-  // Back = wherever the visitor was before this page. A buyer who arrived
-  // straight from a TikTok / WhatsApp link has no in-app history (the router's
-  // history.state.idx is 0), so they go to the marketplace instead of being
-  // thrown out of the site.
+  // Back = wherever the visitor was before this page. With no in-app history
+  // (history.state.idx 0) a buyer from a TikTok / WhatsApp link goes to the
+  // marketplace, but a signed-in SELLER goes to their own dashboard: the
+  // panels open this page in a new tab, so for them "no history" means "came
+  // from the dashboard" (owner, 2026-10-18: Back dumped them on the marketplace).
   const goBack = () => {
     if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
+    else if (viewerHome?.seller) navigate(viewerHome.to);
     else navigate('/');
   };
   const [profile, setProfile] = useState(null);
@@ -138,6 +140,9 @@ export default function SalesmanProfilePage() {
   // slug for every visitor, so a viewer arriving from a TikTok bio link sees
   // the car on screen pinned at the top. See src/components/live/LivePresenter.jsx.
   const [presenting, setPresenting] = useState(false);
+  // Why Live cannot open yet ('pending' | 'empty'): the presenter shows the
+  // cars on this page, and a car waiting for review is not on it.
+  const [liveBlock, setLiveBlock] = useState(null);
   const [liveListingId, setLiveListingId] = useState(null);
   // Newest (the query order, which is also the #N order) or cheapest first.
   const [sortBy, setSortBy] = useState('newest');
@@ -188,9 +193,6 @@ export default function SalesmanProfilePage() {
         to: routeForProfile(viewer),
         label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
         seller: isSellerRole(viewer.role),
-        // Live presentation is not part of Salesman Lite: the button showed
-        // there and did nothing, so Lite does not get it at all.
-        lite: routeForProfile(viewer) === '/salesman-lite',
       });
     });
     return () => { cancelled = true; };
@@ -235,10 +237,10 @@ export default function SalesmanProfilePage() {
 
       const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
@@ -347,6 +349,13 @@ export default function SalesmanProfilePage() {
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  const openLive = async () => {
+    if (listings.length > 0) { setLiveBlock(null); setPresenting(true); return; }
+    // The owner can read their own rows (RLS), so we can say WHY it is empty.
+    const { count } = await supabase.from('car_listings').select('id', { count: 'exact', head: true })
+      .eq('dealer_id', viewerId).eq('status', 'pending_approval');
+    setLiveBlock(count > 0 ? 'pending' : 'empty');
+  };
   // Reads the dashboard checklist's own list (StarterTasks), so the page and
   // the dashboard never ask for different things. It used to keep a second
   // list here (car, photo, banner, bio) that disagreed with the dashboard's.
@@ -645,10 +654,20 @@ export default function SalesmanProfilePage() {
                 <Link to={viewerHome.to} style={ownerChip}>
                   {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
                 </Link>
-                {isOwner && !viewerHome.lite && listings.length > 0 && (
-                  <button onClick={() => setPresenting(true)} style={ownerChip}>
+                {/* Every seller plan gets it, Lite included (owner, 2026-10-18).
+                    Always shown to the owner: with no approved car it says why
+                    instead of vanishing (a new seller looked for it and it was gone). */}
+                {isOwner && (
+                  <button onClick={openLive} style={ownerChip}>
                     <Radio size={12} /> Live presentation
                   </button>
+                )}
+                {isOwner && liveBlock && (
+                  <span role="status" style={{ ...ownerChip, cursor: 'default', whiteSpace: 'normal', maxWidth: 300, lineHeight: 1.4 }}>
+                    {liveBlock === 'pending'
+                      ? 'Your car is waiting for approval. Live presentation opens once a car is approved.'
+                      : 'Add a car first. Live presentation shows the cars on this page.'}
+                  </span>
                 )}
               </div>
             )}

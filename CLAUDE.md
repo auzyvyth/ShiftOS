@@ -1246,6 +1246,14 @@ alerts, a lead list with stages, per-car views + WhatsApp taps. Never gate a buy
 to reach a Lite seller. Premium = working the lead: reminders + call log, "WhatsApp all"
 quiet leads, Performance, commission + monthly goal, Telegram booking reminders, add-ons
 catalogue, and the full page (banner, bio, social links, job title, specialisations).
+- **Live presentation is on Lite too (owner, 2026-10-18): "Live gets them in, the lead tools
+  make them pay."** The mini page shows the button to every owner (`SalesmanProfilePage.jsx`,
+  no plan check); the DB side (`set_live_listing`) never had one. `/for-salesmen` sells it as
+  free: its main buttons sign up to Lite (`liveCta`), Premium is the secondary button and
+  the plan card. The feature line lives on the Lite card in `src/utils/plans.js`, not in
+  `SALESMAN_PREMIUM_FEATURE_LINES`. Do not re-gate Live without rewriting that copy.
+- New-car cards work the same on Lite: one `CarForm` (Used / Recon / New), no plan check in
+  any `new_car_*` function, and cards skip the listing cap (`enforce_listing_cap`).
 - In `SalesmanLite.jsx` a Premium tool is replaced by `PremiumRow` / `renderPremiumPanel`,
   both opening `goPremium` (the one upgrade screen). Do not add a second upgrade surface.
 - The basic page is enforced in the DB: `get_salesman_by_slug` / `get_salesman_by_id`
@@ -1344,7 +1352,7 @@ and the won-trigger marks it sold on the first deal.
 
 ## Live presentation (LIVE-1) — the mini page as a live-stream tool
 `src/components/live/LivePresenter.jsx`, opened by the owner-only "Live presentation"
-button on `SalesmanProfilePage.jsx`. One car per screen, "#N", price, and a monthly
+button on `SalesmanProfilePage.jsx` (every seller plan, Lite included, since 2026-10-18). One car per screen, "#N", price, and a monthly
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
@@ -1395,6 +1403,20 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   On the desktop stage it sits on the title's line, to the right (`.lp-head`), and
   the title drops the variant name there (the picked button names it); on a phone
   it stays under the title.
+- **Insurance in the loan (owner, 2026-10-18)**: Adjust > Insurance (Off | In the loan),
+  remembered per device (`xd_live_ins`), starts Off. On: an "Insurance (est.)" row under
+  Price and NCD pills under the working (0/25/30/38⅓/45/55, the viewer's, never typed).
+  Loan = price + insurance - rebate - deposit; deposit % stays on the net price. The
+  figure is ONE formula, `src/utils/motorInsurance.js` (the former PIAM tariff: first
+  RM1,000 by cc + RM26/RM1,000 Peninsular, RM20.30 Sabah/Sarawak/Labuan, - NCD, + 8% SST
+  + RM10), checked against a seller's Excel (X50 RM2,839 vs his RM2,869). The tariff
+  ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
+  says "Tap to type"; a typed figure wins for that car and hides the pills. Budget adds
+  the same insurance (`budgetMatches` `extraFor`); a model card's cc lives on its
+  variant, so Budget prices a card without it. `npm run test:live`.
+  Three older copies (`FinancingCalculator.jsx`, `LeadDrawer.jsx calcInsuranceEst`,
+  `ownership.js calcInsuranceAnnual`) use a different band table that gives about HALF
+  the tariff figure; they are not yet switched to this file.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
