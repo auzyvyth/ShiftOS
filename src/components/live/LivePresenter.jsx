@@ -78,6 +78,11 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 // Ringgit with the unit set small (.lp-rm) so the digits carry the weight.
+// The phone size the desktop stage is laid out at before zooming: the size the
+// Cars screen is checked to fit with no scroll.
+const STAGE_W = 375;
+const STAGE_H = 667;
+
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const TENURES_DESC = [...TENURES].reverse(); // the poster lists longest first
@@ -142,6 +147,19 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const startedAt = useRef(new Date());
   const touchX = useRef(null);
   const fitRef = useRef(null);
+
+  // Desktop: magnify the phone-sized stage to fill the screen height (see the
+  // note above the styles). null = phone/tablet, the stage sizes itself.
+  const [deskZoom, setDeskZoom] = useState(null);
+  useEffect(() => {
+    if (embedded || typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
+    const update = () => setDeskZoom(mq.matches ? window.innerHeight / STAGE_H : null);
+    update();
+    window.addEventListener('resize', update);
+    mq.addEventListener?.('change', update);
+    return () => { window.removeEventListener('resize', update); mq.removeEventListener?.('change', update); };
+  }, [embedded]);
 
   // Fit the Cars screen to the stage: a seller cannot scroll mid-pitch, and a
   // phone filming a monitor cannot see below the fold. Shrinks to 80% at most
@@ -336,11 +354,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
           container units so it fits a 375px phone with no scroll.
-          Desktop (mouse + landscape screen, 1024px+): a wide two-column sheet
-          (photo left, the working and the tenure table right). Owner's call,
-          2026-10-04: sellers film their monitor and the 9:16 column was too
-          thin to read on camera. The desktop block at the end of the styles is
-          the only place that layout lives. */}
+          Desktop (mouse, 1024px+): the SAME portrait stage, laid out at phone
+          size (STAGE_W x STAGE_H) and magnified with CSS zoom to the monitor's
+          full height. Sellers film the monitor with a phone held upright, so
+          the stage must be the phone's shape; the wide two-column sheet
+          (2026-10-04) spilled out of the camera frame (owner, 2026-10-18).
+          Zoom keeps the phone layout that already fits with no scroll and
+          makes every word bigger with it. Do not bring a landscape layout back. */}
       <style>{`
         .lp { --lp-grad: linear-gradient(120deg, var(--lp-a1) 0%, var(--lp-a) 45%, var(--lp-a2) 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
@@ -482,6 +502,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-sw-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
         .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; }
         .lp-docs .lp-name { white-space: normal; }
+        /* Year + make + model + variant can be long ("2022 Lexus IS 300 2.0L(T) F-Sport"): two lines, never cut mid-name. */
+        .lp-name-car { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .lp-var { color: #6b7280; }
         .lp-docs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
         .lp-docs li { display: flex; align-items: center; gap: 12px; font-size: clamp(16px, 4.8cqw, 26px); font-weight: 700; color: #0f1115; line-height: 1.25; }
         .lp-docs li span { flex-shrink: 0; width: 1.6em; height: 1.6em; border-radius: 8px; background: var(--lp-grad); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .8em; font-variant-numeric: tabular-nums; }
@@ -504,63 +527,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
-
-        /* Desktop only: a wide, landscape quotation sheet for sellers who film
-           their monitor. Phones and tablets keep the portrait stage above.
-           Sizes switch to cqh (stage height) so a 768px laptop and a 1080p
-           monitor both fit with no scroll. */
-        @media (min-width: 1024px) and (orientation: landscape) and (hover: hover) and (pointer: fine) {
-          .lp:not(.lp-embed) .lp-stage { width: min(100%, 1440px, calc(100dvh * 1.7)); }
-          .lp:not(.lp-embed) .lp-top { padding: 10px 20px; }
-          .lp:not(.lp-embed) .lp-body { padding: 16px 20px; }
-          /* Spare height on a tall monitor goes above and below the card, not all under it. */
-          .lp:not(.lp-embed) .lp-fit:has(.lp-sheet) { margin-block: auto; }
-          .lp:not(.lp-embed) .lp-sheet { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; row-gap: 12px; padding: 20px 24px;
-            grid-template-areas: "title title" "photo brk" "photo deps" "photo low" "salary salary" "note end"; align-items: start; }
-          .lp:not(.lp-embed) .lp-sheet .lp-title { grid-area: title; }
-          .lp:not(.lp-embed) .lp-sheet .lp-pair { display: contents; }
-          .lp:not(.lp-embed) .lp-sheet .lp-photo { grid-area: photo; aspect-ratio: auto; width: 100%; height: 100%; min-height: 220px; align-self: stretch; border-radius: 12px; }
-          .lp:not(.lp-embed) .lp-sheet .lp-brk { grid-area: brk; }
-          .lp:not(.lp-embed) .lp-sheet .lp-deps { grid-area: deps; }
-          .lp:not(.lp-embed) .lp-sheet .lp-low { grid-area: low; }
-          .lp:not(.lp-embed) .lp-sheet .lp-salary { grid-area: salary; }
-          .lp:not(.lp-embed) .lp-sheet .lp-note { grid-area: note; align-self: center; }
-          .lp:not(.lp-embed) .lp-sheet .lp-end { grid-area: end; align-self: center; }
-          .lp:not(.lp-embed) .lp-num { font-size: clamp(30px, 5.4cqh, 64px); padding: 8px 14px 4px; }
-          .lp:not(.lp-embed) .lp-name { font-size: clamp(30px, 5.4cqh, 64px); }
-          .lp:not(.lp-embed) .lp-spec { font-size: clamp(13px, 1.9cqh, 22px); }
-          .lp:not(.lp-embed) .lp-brk { border-spacing: 0 6px; margin: -6px 0; }
-          .lp:not(.lp-embed) .lp-brk td { font-size: clamp(15px, 2.3cqh, 26px); padding: 6px 14px; }
-          .lp:not(.lp-embed) .lp-brk tr.lp-loan td { padding-block: 10px; }
-          .lp:not(.lp-embed) .lp-brk tr.lp-loan td:last-child { font-size: clamp(20px, 3.4cqh, 40px); }
-          .lp:not(.lp-embed) .lp-brk tr.lp-r-rate td { font-size: clamp(12px, 1.7cqh, 18px); padding-block: 2px; }
-          .lp:not(.lp-embed) .lp-seg button, .lp:not(.lp-embed) .lp-seg.lp-deps button { height: clamp(34px, 4.6cqh, 48px); font-size: clamp(13px, 1.7cqh, 18px); }
-          .lp:not(.lp-embed) .lp-c-who small { font-size: clamp(18px, 3cqh, 34px); }
-          .lp:not(.lp-embed) .lp-c-who b { font-size: clamp(13px, 2cqh, 22px); }
-          .lp:not(.lp-embed) .lp-c-ph { font-size: clamp(26px, 4.4cqh, 52px); }
-          .lp:not(.lp-embed) .lp-ten th { font-size: clamp(11px, 1.5cqh, 16px); }
-          .lp:not(.lp-embed) .lp-ten td { font-size: clamp(15px, 2.4cqh, 28px); padding: 7px 14px; }
-          .lp:not(.lp-embed) .lp-ten td:last-child { font-size: clamp(18px, 3.2cqh, 36px); }
-          .lp:not(.lp-embed) .lp-ten tr.lp-def td:last-child { font-size: clamp(26px, 5cqh, 56px); }
-          .lp:not(.lp-embed) .lp-salary { font-size: clamp(13px, 1.9cqh, 21px); }
-          .lp:not(.lp-embed) .lp-note { font-size: clamp(12px, 1.6cqh, 17px); }
-          .lp:not(.lp-embed) .lp-cta { font-size: clamp(13px, 2cqh, 22px); padding: 10px 14px; }
-          .lp:not(.lp-embed) .lp-adjust { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-          .lp:not(.lp-embed) .lp-adjust .lp-seg { grid-column: auto; }
-          /* Budget: the viewer's number on the left, the cars that fit on the right. */
-          .lp:not(.lp-embed) .lp-fit:has(.lp-bud) { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; align-items: start; }
-          .lp:not(.lp-embed) .lp-fit:has(.lp-bud) > .lp-adjust { grid-column: 1 / -1; }
-          .lp:not(.lp-embed) .lp-row img, .lp:not(.lp-embed) .lp-row .lp-noimg { width: clamp(64px, 9cqh, 110px); }
-          .lp:not(.lp-embed) .lp-row .lp-n { font-size: clamp(24px, 4cqh, 44px); }
-          .lp:not(.lp-embed) .lp-row .lp-rn b { font-size: clamp(14px, 2.1cqh, 22px); }
-          .lp:not(.lp-embed) .lp-row .lp-m { font-size: clamp(16px, 2.7cqh, 30px); }
-          .lp:not(.lp-embed) .lp-nav { justify-content: center; }
-          .lp:not(.lp-embed) .lp-navbtn { flex: 0 1 320px; }
-          .lp:not(.lp-embed) .lp-report { max-width: 760px; width: 100%; margin: 0 auto; }
-        }
       `}</style>
 
-      <div className="lp-stage">
+      <div className="lp-stage" style={deskZoom ? { width: STAGE_W, height: STAGE_H, zoom: deskZoom } : undefined}>
       {/* Top bar: mode + controls. Contact only shows when the seller turns it on. */}
       <div className="lp-top">
         {report ? <span className="lp-count">{t.liveEnded}</span> : (
@@ -659,11 +628,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           <div className="lp-title">
             <span className="lp-num">#{idx + 1}</span>
             <div className="lp-tt">
-              <h2 className="lp-name">{carName(car)}</h2>
+              {/* The variant sits in the title, next to the model (owner, 2026-10-18):
+                  "2.5" alone on the spec line read as a stray number. */}
+              <h2 className="lp-name lp-name-car">{carName(car)}{shown.variant ? <span className="lp-var"> {shown.variant}</span> : null}</h2>
               <p className="lp-spec">
                 {(shown.condition === 'new'
-                  ? [t.newTag, shown.variant, shown.transmission]
-                  : [shown.variant, shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
+                  ? [t.newTag, shown.transmission]
+                  : [shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
                 ).filter(Boolean).join(' · ') || '\u00a0'}
               </p>
             </div>

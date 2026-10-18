@@ -1357,9 +1357,12 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   a "banks decide case by case" note. `calcMonthly` and the mini-page card still
   return null / "financing on request" for them — do not widen that.
 - **One portrait stage (9:16 max), never a landscape layout.** Sellers film their
-  monitor with a phone held upright, so on a desktop the presenter is a centred
-  column; sizes are container units and `.lp-fit` auto-shrinks the Cars screen to
-  fit (80% floor, then it scrolls). Name + price sit ON the photo.
+  monitor with a phone held upright, so on a desktop the presenter is the PHONE
+  layout (375x667, `STAGE_W`/`STAGE_H`) magnified with CSS zoom to the screen's
+  full height (`deskZoom`): a column the camera frames, with every word bigger.
+  A wide two-column desktop sheet (2026-10-04) spilled out of the camera frame and
+  was removed 2026-10-18. Sizes are container units and `.lp-fit` auto-shrinks the
+  Cars screen to fit (80% floor, then it scrolls). Name + price sit ON the photo.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
   **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
@@ -1476,6 +1479,13 @@ network before showing anything. Two layers, both purged on logout:
   the IC. Check the same thing on any tab whose edit form spreads the row back.
 - DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
 - A failed read keeps the cached value; never overwrite a good cache with [] on error.
+- **A number that is still loading is a placeholder, never a 0** (2026-10-18).
+  `src/components/ui/StatSkeleton.jsx`. The Lite + Premium dashboards showed 0 views /
+  0 visits / 0 taps and "your pipeline is clear" until their requests answered.
+  `carStatsMap` + `minipageStats` are now `usePersistentState`; `trafficReady` /
+  `leadsReady` reveal each group of numbers together (with a 12s fallback for a
+  stalled DB). Same rule for any new stat tile, and for empty states ("nothing
+  waiting", `ThisWeek loading`): an all-clear before the data loads is a false one.
 
 ## Loan maths — ONE formula, EIR on the reducing balance (HP-EIR, 2026-09-26)
 Hire-Purchase (Amendment) Act 2026 (in force 1 June 2026) abolished the flat rate
@@ -1589,8 +1599,11 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   never moves under the thumb. Do not put the buttons back in the bubble, and do not dock
   the bubble to the bottom of the phone again (it sat far from the link it described).
   `TOUR_BAR_H` is the space the bar takes; placement and the drawer's bottom padding use it.
-- The bubble is MEASURED after render (`tourCardRef` + `tourCardH`), never a guessed
-  height. `npm run test:tour` after touching the geometry.
+- The bubble is MEASURED after render (`tourCardRef` + `tourCardH`), on EVERY render (no
+  deps: an intro bubble mounts a render after its step, and keyed deps kept the last
+  step's height, so it floated far above the target). An intro scrolls its target into
+  view when anything covers it (`covered`, elementFromPoint): the sticky top bar hid the
+  real ··· and the ring landed on the logout button. `npm run test:tour` after touching the geometry.
 - Portalled to `document.body` (overlay rule 1). The bubble's scroll goes on an INNER
   wrapper: `overflow` on the bubble clips the arrow.
 - `startTour()` records the entry tab and `dismissTour()` returns there.

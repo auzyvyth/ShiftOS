@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Check, MessageCircle, ChevronDown } from "lucide-react";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { buildThisWeek, waLink } from "../../utils/thisWeek";
+import StatSkeleton from "../ui/StatSkeleton";
 
 // "This week" — the single call list, top of the salesman's home screen.
 //
@@ -21,7 +22,7 @@ import { buildThisWeek, waLink } from "../../utils/thisWeek";
 // Everything past the fourth row is one tap away behind "Show all".
 const PREVIEW = 4;
 
-export default function ThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", onContacted, style }) {
+export default function ThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", onContacted, style, loading = false }) {
   const [showAll, setShowAll] = useState(false);
   // The card folds to its header — a rep who has already worked the list today
   // shouldn't have to scroll past it to reach the rest of the dashboard.
@@ -76,7 +77,13 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
         )}
       </button>
 
-      {collapsed ? null : open.length === 0 ? (
+      {/* While leads load, "nothing waiting" would be a false all-clear. */}
+      {collapsed ? null : loading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+          <StatSkeleton width="100%" height={44} />
+          <StatSkeleton width="100%" height={44} />
+        </div>
+      ) : open.length === 0 ? (
         <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
           {t("crm.thisWeek.empty")}
         </p>
