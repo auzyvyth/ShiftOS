@@ -1476,6 +1476,13 @@ network before showing anything. Two layers, both purged on logout:
   the IC. Check the same thing on any tab whose edit form spreads the row back.
 - DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
 - A failed read keeps the cached value; never overwrite a good cache with [] on error.
+- **A number that is still loading is a placeholder, never a 0** (2026-10-18).
+  `src/components/ui/StatSkeleton.jsx`. The Lite + Premium dashboards showed 0 views /
+  0 visits / 0 taps and "your pipeline is clear" until their requests answered.
+  `carStatsMap` + `minipageStats` are now `usePersistentState`; `trafficReady` /
+  `leadsReady` reveal each group of numbers together (with a 12s fallback for a
+  stalled DB). Same rule for any new stat tile, and for empty states ("nothing
+  waiting", `ThisWeek loading`): an all-clear before the data loads is a false one.
 
 ## Loan maths — ONE formula, EIR on the reducing balance (HP-EIR, 2026-09-26)
 Hire-Purchase (Amendment) Act 2026 (in force 1 June 2026) abolished the flat rate

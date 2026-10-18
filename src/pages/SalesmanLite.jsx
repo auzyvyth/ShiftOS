@@ -20,6 +20,8 @@ import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import { buildCopyText } from "../utils/listingCopy";
+import { usePersistentState } from "../hooks/usePersistentState";
+import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -1143,11 +1145,20 @@ export default function SalesmanLite() {
   }, [bookingDetailId]);
 
   // per-listing analytics (carStatsMap)
-  const [carStatsMap, setCarStatsMap] = useState({});
+  // Saved on the device so the dashboard numbers paint instantly; as plain
+  // state every open showed 0 views / 0 visits / 0 taps until the requests
+  // came back one by one.
+  const [carStatsMap, setCarStatsMap, carStatsCached] = usePersistentState(userId ? `sl_carstats:${userId}` : null, {});
   // per-car share-channel breakdown: { [car_id]: [{ channel, views, enquiries }] }
   const [channelMap, setChannelMap] = useState({});
   // Mini-page (/s/:slug) footprint stats: { visits, cardClicks, byChannel: [{ channel, visits, card_clicks }] }
-  const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [] });
+  const [minipageStats, setMinipageStats, minipageCached] = usePersistentState(
+    userId ? `sl_minipage:${userId}` : null, { visits: 0, cardClicks: 0, byChannel: [] },
+  );
+  // The numbers show together: the saved copy if there is one, else
+  // placeholders until every request behind them has answered.
+  const [trafficFetched, setTrafficFetched] = useState(false);
+  const trafficReady = trafficFetched || (carStatsCached && minipageCached);
   const [cvrHover, setCvrHover] = useState(null);
 
   // car detail popup
@@ -1644,7 +1655,12 @@ export default function SalesmanLite() {
           });
       });
 
-      // Analytics: call server-side RPC — Postgres aggregates, browser receives one row per car
+      // Analytics: call server-side RPC — Postgres aggregates, browser receives one row per car.
+      // trafficDone reveals the dashboard numbers once analytics and the
+      // mini-page totals have answered (or failed); the timer covers a
+      // stalled database.
+      const trafficTimer = setTimeout(() => setTrafficFetched(true), 12000);
+      const trafficDone = () => { clearTimeout(trafficTimer); setTrafficFetched(true); };
       supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
         .then(({ data, error: evtsErr }) => {
           if (evtsErr) console.error("fetchAnalytics:", evtsErr);
@@ -1695,9 +1711,12 @@ export default function SalesmanLite() {
                   cardClicks: rows.reduce((s, r) => s + (Number(r.card_clicks) || 0), 0),
                   byChannel:  rows,
                 });
-              });
+              })
+              .finally(trafficDone);
+          } else {
+            trafficDone();
           }
-        });
+        }, trafficDone);
 
       // fetch leads
       supabase
@@ -3108,6 +3127,11 @@ export default function SalesmanLite() {
       return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
     }).length;
     const { totalViews, totalWATaps, overallCVR, bestCVRStat } = dashboardCVR;
+    // Placeholders, never 0s, until the traffic numbers and the car list are
+    // both in; then every number appears at once.
+    const statsReady = trafficReady && (listingsLoaded || !!seed.profile);
+    // Lead counts and the greeting line ("pipeline is clear") wait for leads.
+    const leadsReady = !leadsLoading && (listingsLoaded || !!seed.profile);
     const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
     const isNewUser = myListings.length === 0 && leads.length === 0;
@@ -3199,7 +3223,7 @@ export default function SalesmanLite() {
                 {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
               </p>
               <p style={{ margin: "5px 0 0", fontSize: T.size.base, color: C.textSec, maxWidth: 440 }}>
-                {personalizedLine}
+                {leadsReady ? personalizedLine : <StatSkeleton width="70%" height={16} />}
               </p>
             </div>
             {staleLeads.length > 0 && (
@@ -3251,7 +3275,9 @@ export default function SalesmanLite() {
                   { label: t("salesmanLite.kpi.liveListings"), value: available.length, color: C.text },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
+                    {statsReady
+                      ? <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
+                      : <StatSkeleton width={isMobile ? 34 : 48} height={isMobile ? 24 : 30} />}
                     <span style={EYEBROW}>{label}</span>
                   </div>
                 ))}
@@ -3445,11 +3471,11 @@ export default function SalesmanLite() {
             ].map(({ label, value }, i, arr) => (
               <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
                 <p style={{ ...EYEBROW, margin: "0 0 4px" }}>{label}</p>
-                <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+                <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{statsReady ? value : <StatSkeleton width={40} height={24} />}</p>
               </div>
             ))}
           </div>
-          {listingStats.length > 0 && (
+          {statsReady && listingStats.length > 0 && (
             <div>
               {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
                 const isHot = views > 20 && cvr >= 10;
@@ -3501,7 +3527,7 @@ export default function SalesmanLite() {
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: R.sm, background: withAlpha(accent, 0.1), color: accent }}>
                 <Icon size={13} strokeWidth={2.5} />
               </span>
-              <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{value}</p>
+              <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{leadsReady ? value : <StatSkeleton width={36} height={24} />}</p>
               <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
             </div>
           ))}

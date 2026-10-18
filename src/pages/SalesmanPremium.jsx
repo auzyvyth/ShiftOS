@@ -727,11 +727,20 @@ export default function SalesmanPremium() {
  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
  // per-listing analytics (carStatsMap)
- const [carStatsMap, setCarStatsMap] = useState({});
+ // Saved on the device (like the other tabs, PERF-LOAD) so the dashboard's
+ // numbers paint instantly; they were plain state, so every open showed 0
+ // views / 0 visits / 0 taps until three requests came back one by one.
+ const [carStatsMap, setCarStatsMap, carStatsCached] = usePersistentState(userId ? `sp_carstats:${userId}` : null, {});
  // per-car share-channel breakdown (which platform each view/enquiry came from)
  const [channelMap, setChannelMap] = useState({});
  // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
- const [minipageStats, setMinipageStats] = useState({ visits: 0, cardClicks: 0, byChannel: [], daily: [] });
+ const [minipageStats, setMinipageStats, minipageCached] = usePersistentState(
+ userId ? `sp_minipage:${userId}` : null, { visits: 0, cardClicks: 0, byChannel: [], daily: [] },
+ );
+ // The traffic numbers show together: the saved copy if there is one, else
+ // placeholders until every request behind them has answered (trafficFetched).
+ const [trafficFetched, setTrafficFetched] = useState(false);
+ const trafficReady = trafficFetched || (carStatsCached && minipageCached);
  const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
@@ -1354,7 +1363,13 @@ export default function SalesmanPremium() {
  writeCache(`sp_listings_${uid}`, merged);
  });
 
- // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser
+ // Analytics: server-side aggregation via RPC — one row per car, no raw events in browser.
+ // trafficDone reveals the dashboard numbers once the analytics, mini-page
+ // totals and mini-page daily requests have all answered (or failed). The
+ // timer is the stalled-database case: show what we have rather than
+ // placeholders forever.
+ const trafficTimer = setTimeout(() => setTrafficFetched(true), 12000);
+ const trafficDone = () => { clearTimeout(trafficTimer); setTrafficFetched(true); };
  supabase.rpc("get_salesman_analytics", { p_dealer_id: uid })
  .then(({ data, error }) => {
  if (error) console.error("fetchAnalytics:", error);
@@ -1395,7 +1410,7 @@ export default function SalesmanPremium() {
 
  // Mini-page (xdrive.my/s/slug) visits + card clicks, broken down by the
  // platform each visitor arrived through.
- supabase
+ const mpStatsReq = supabase
  .rpc("get_salesman_minipage_stats", { p_slug: profileData.slug })
  .then(({ data: mpRows, error: mpErr }) => {
  if (mpErr) { console.error("fetchMinipageStats:", mpErr); return; }
@@ -1411,7 +1426,7 @@ export default function SalesmanPremium() {
  // Mini-page visits per day for the last 7 days. Separate RPC from the
  // per-channel totals above because that one has no time axis — this is
  // the third wave on the dashboard's combined traffic chart.
- supabase
+ const mpDailyReq = supabase
  .rpc("get_salesman_minipage_daily", { p_slug: profileData.slug })
  .then(({ data: mpDaily, error: mpdErr }) => {
  if (mpdErr) { console.error("fetchMinipageDaily:", mpdErr); return; }
@@ -1422,8 +1437,11 @@ export default function SalesmanPremium() {
  daily: [r.d0, r.d1, r.d2, r.d3, r.d4, r.d5, r.d6].map((v) => Number(v) || 0),
  }));
  });
+ Promise.allSettled([mpStatsReq, mpDailyReq]).then(trafficDone);
+ } else {
+ trafficDone();
  }
- });
+ }, trafficDone);
 
  // fetch leads
  supabase
@@ -7135,7 +7153,8 @@ export default function SalesmanPremium() {
  enquiries={enquiries} staleLeads={staleLeads} isReturning={isReturning}
  goal={goal} goalEditing={goalEditing} goalDraft={goalDraft} showPrevMonth={showPrevMonth}
  customers={customers} dueNudges={dueNudges} profile={profile}
- minipageStats={minipageStats}
+ minipageStats={minipageStats} trafficReady={trafficReady && (listingsLoaded || !!seed.profile)}
+ leadsReady={!leadsLoading && (listingsLoaded || !!seed.profile)}
  servicePackages={servicePackages}
  handoverActive={handover.activeCount} handoverNext={soldNextStep}
  browserNotifPerm={browserNotifPerm} notifBannerDismissed={notifBannerDismissed}

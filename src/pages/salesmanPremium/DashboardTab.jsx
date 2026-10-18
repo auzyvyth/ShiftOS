@@ -17,6 +17,7 @@ import {
  CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, stageLabel,
 } from "./shared";
 import SalesHistorySheet from "./SalesHistorySheet";
+import StatSkeleton from "../../components/ui/StatSkeleton";
 
 // Dashboard tab — split out of SalesmanPremium.jsx (was `renderDashboard`) so
 // it lazy-loads instead of shipping in the initial bundle regardless of which
@@ -26,7 +27,7 @@ export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
  goal, goalEditing, goalDraft, showPrevMonth, customers, dueNudges, profile, servicePackages,
  handoverActive, handoverNext,
- minipageStats, browserNotifPerm, notifBannerDismissed,
+ minipageStats, trafficReady = true, leadsReady = true, browserNotifPerm, notifBannerDismissed,
  isMobile,
  setActiveTab, setActiveLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
  setShowAddForm, setInboxSubTab,
@@ -287,7 +288,8 @@ export default function DashboardTab({
  {greetingWord}, {profile?.full_name?.split(" ")[0] || t("salesmanPremium.greet.there")}.
  </p>
  <p style={{ margin: "5px 0 0", fontSize: T.size.base, color: C.textSec, maxWidth: 440 }}>
- {personalizedLine}
+ {/* It counts leads; "your pipeline is clear" before they load is false. */}
+ {leadsReady ? personalizedLine : <StatSkeleton width="70%" height={16} />}
  </p>
  </div>
  {staleLeads.length > 0 && (
@@ -335,10 +337,14 @@ export default function DashboardTab({
  <Icon size={11} strokeWidth={2.2} />
  </span>
  <span style={{ display: "flex", alignItems: "baseline", gap: 5, minWidth: 0 }}>
- <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text, lineHeight: 1.1 }}>{value.toLocaleString("en-MY")}</span>
+ {/* Placeholder, never a 0, until every number behind the row is in
+ (trafficReady, SalesmanPremium.jsx): they all appear together. */}
+ {trafficReady
+ ? <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color: C.text, lineHeight: 1.1 }}>{value.toLocaleString("en-MY")}</span>
+ : <StatSkeleton width={isMobile ? 34 : 48} height={isMobile ? 24 : 30} />}
  {/* Only when something actually happened today. A "+0" on every tile
  every morning trains people to stop reading the row. */}
- {today > 0 && (
+ {trafficReady && today > 0 && (
  <span title={t("salesmanPremium.dash.nToday", { n: today })} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText, lineHeight: 1, whiteSpace: "nowrap" }}>
  +{today}
  </span>
@@ -353,7 +359,7 @@ export default function DashboardTab({
  <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginTop: 12, fontWeight: T.weight.normal }}>
  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
  {t("salesmanPremium.dash.days30")}
- {todayTotal > 0 && (
+ {trafficReady && todayTotal > 0 && (
  <span style={{ color: C.successText, fontWeight: T.weight.semibold }}>· {t("salesmanPremium.dash.greenToday")}</span>
  )}
  </span>
@@ -364,7 +370,10 @@ export default function DashboardTab({
  WA taps come from w0..w6 on get_salesman_analytics — already returned,
  never read — and mini-page visits from get_salesman_minipage_daily.
  Live Listings is a count, not a time series, so it has no wave. */}
- {hasTrafficTrend && (
+ {/* Hold the chart's space while loading, or it lands later and shoves
+ the rest of the card down. */}
+ {!trafficReady && <StatSkeleton width="100%" height={128} style={{ display: "block", marginTop: 14 }} />}
+ {trafficReady && hasTrafficTrend && (
  <div style={{ marginTop: 14 }}>
  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 2 }}>
  <span style={EYEBROW}>{t("salesmanPremium.dash.traffic7")}</span>
@@ -596,15 +605,15 @@ export default function DashboardTab({
  <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
  <p style={{ ...EYEBROW, margin: "0 0 4px" }}>{label}</p>
  <p style={{ ...STAT, margin: 0, fontSize: T.size.stat, display: "flex", alignItems: "baseline", gap: 5 }}>
- {value}
- {today > 0 && (
+ {trafficReady ? value : <StatSkeleton width={40} height={24} />}
+ {trafficReady && today > 0 && (
  <span title={t("salesmanPremium.dash.nToday", { n: today })} style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.successText }}>+{today}</span>
  )}
  </p>
  </div>
  ))}
  </div>
- {listingStats.length > 0 && (
+ {trafficReady && listingStats.length > 0 && (
  <div>
  {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr, viewsToday, waToday }, idx, arr) => {
  const isHot = views > 20 && cvr >= 10;
@@ -658,7 +667,7 @@ export default function DashboardTab({
  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.md, background: withAlpha(accent, 0.12), color: accent }}>
  <Icon size={14} strokeWidth={2.5} />
  </span>
- <p style={{ ...STAT, margin: 0, fontSize: T.size.statLg }}>{value}</p>
+ <p style={{ ...STAT, margin: 0, fontSize: T.size.statLg }}>{leadsReady ? value : <StatSkeleton width={36} height={28} />}</p>
  <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
  </div>
  ))}
@@ -670,7 +679,7 @@ export default function DashboardTab({
  src/utils/thisWeek.js; the card folds and previews 4 rows so it never
  pushes the rest of the dashboard off screen. */}
  <ThisWeek leads={leads} customers={customers} nudges={dueNudges} packages={servicePackages}
- repName={profile?.full_name} onContacted={handleThisWeekContacted}
+ repName={profile?.full_name} onContacted={handleThisWeekContacted} loading={!leadsReady}
  style={{ order: -2, gridColumn: "1 / -1", marginBottom: 0 }} />
 
  {/* Goal */}
