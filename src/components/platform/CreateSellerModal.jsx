@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { MY_STATES, cityOptionsFor } from "../../utils/locations";
+import { PLAN_CONFIG } from "../../utils/planConfig";
 
 // "I'll set your page up for you" (outreach playbook, 2026-10-12). The owner
 // collects a seller's name, email and cars over chat, makes the account here,
@@ -11,8 +12,11 @@ import { MY_STATES, cityOptionsFor } from "../../utils/locations";
 // without it (20261017b removed the 20261011b gate).
 //
 // Always the seller's OWN email: the account, its leads and its buyers' chats
-// belong to whoever owns the address. Lite only; Premium is the seller's own
-// choice later (free month from Settings).
+// belong to whoever owns the address. Lite or Premium (owner, 2026-10-18).
+// Premium here is the one free month, granted by create-salesman the same way
+// start_premium_trial() does: it starts when the account is made, and no
+// payment is asked for. Before this the owner signed in as the seller and
+// started the free month from Lite settings by hand.
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
@@ -35,7 +39,7 @@ const ERRORS = {
 };
 
 export default function CreateSellerModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "", plan: "salesman_lite" });
   const [slugEdited, setSlugEdited] = useState(false);
   const [slugFree, setSlugFree] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -78,7 +82,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
         state: form.state || null,
         city: form.city || null,
         dealership: form.dealership.trim() || null,
-        plan: "salesman_lite",
+        plan: form.plan,
         dealer_id: null,
         send_email: false,
       },
@@ -91,7 +95,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
       code = code || e.message;
     }
     if (code || !data?.user_id) { setError(ERRORS[code] || `Could not create the account: ${code || "no reply"}`); return; }
-    setCreated({ ...data, email: form.email.trim().toLowerCase(), slug: form.slug });
+    setCreated({ ...data, email: form.email.trim().toLowerCase(), slug: form.slug, plan: form.plan });
     onCreated?.(data.profile);
   };
 
@@ -123,7 +127,9 @@ export default function CreateSellerModal({ onClose, onCreated }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{created ? "Account created" : "Set up a seller's page"}</p>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
-              {created ? "Nothing has been emailed yet." : "Salesman Lite, under the seller's own email. Nothing is emailed until you press Send setup email."}
+              {created
+                ? `${created.plan === "salesman_full" ? "Premium, free month started." : "Lite."} Nothing has been emailed yet.`
+                : "Under the seller's own email. Nothing is emailed until you press Send setup email."}
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 0 }}>×</button>
@@ -131,6 +137,24 @@ export default function CreateSellerModal({ onClose, onCreated }) {
 
         {!created ? (
           <form onSubmit={(e) => { e.preventDefault(); if (canSubmit) submit(); }} style={{ display: "grid", gap: 12 }}>
+            <div><label style={label}>Plan</label>
+              <div role="radiogroup" aria-label="Plan" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { key: "salesman_lite", name: "Lite", note: "Free" },
+                  { key: "salesman_full", name: "Premium", note: `Free month, then RM${PLAN_CONFIG.salesman_full.price}` },
+                ].map((p) => {
+                  const on = form.plan === p.key;
+                  return (
+                    <button key={p.key} type="button" role="radio" aria-checked={on} onClick={() => set("plan", p.key)}
+                      style={{ textAlign: "left", padding: "9px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", minWidth: 0,
+                        background: on ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${on ? "rgba(220,38,38,0.55)" : "rgba(255,255,255,0.1)"}` }}>
+                      <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: on ? "#f1f5f9" : "#d1d5db" }}>{p.name}</span>
+                      <span style={{ display: "block", fontSize: 11, color: "#6b7280", marginTop: 2 }}>{p.note}</span>
+                    </button>
+                  );
+                })}
+              </div></div>
             <div><label style={label}>Full name</label>
               <input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} style={input} autoComplete="off" /></div>
             <div><label style={label}>Their email (not yours)</label>
@@ -176,7 +200,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               </div>
             </div>
             <p style={step}>1. Open a private window and sign in at xdrive.my/login as <b style={{ color: "#f1f5f9" }}>{created.email}</b> with that password.</p>
-            <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked.</p>
+            <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked. Skip any tour or checklist you see: they all come back for the seller once they set their password.</p>
             <p style={step}>3. Sign out and close the private window.</p>
             <p style={step}>4. Send the setup email. They set their own password and IC, and every other session is signed out.</p>
             {mailState === "sent" && <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>Setup email sent to {created.email}.</p>}

@@ -70,6 +70,30 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## INTRO-1: First-run intros for Premium sellers — part 1 shipped 2026-10-18
+Yazeed (set up by the owner from console "Set up a seller") landed on a dashboard
+with no tour: the owner had played every intro while signed in as him, and
+`onboarding_tour_done` / `starter_tasks` live on the account. Rule (owner): a
+handed-over account must start exactly like a fresh self-signup.
+- [x] Part 1: `/salesman-setup` (the handover, `SalesmanSetup.jsx`) resets
+  `onboarding_tour_done=false` + `starter_tasks={}`. Deleted the duplicate Premium
+  "Get started" card (`DashboardTab.jsx`, gated on dead key `sp_tour_done`).
+  Console setup steps tell the owner to skip intros freely.
+- [x] Checklist rebuilt (2026-10-18): Premium 5 steps at the top of the dashboard,
+  pre-ticked "account" step, progress bar; mini page strip reads the same list.
+  Console "Set up a seller" gets a Lite / Premium choice (Premium = free month,
+  `create-salesman`).
+- [ ] Part 2: Mini page intro, owner-only, first visit to own `/s/:slug`: (1) this is
+  what buyers see, (2) how buyers reach you (rings WhatsApp/contact), (3) Live
+  presentation (rings the button; only when Premium + 1 car, as the button itself).
+  Needs a "seen" flag on the account (one migration, outside 09:00-22:00 MYT) and
+  the Part 1 reset must clear it too.
+- [ ] Part 3: Premium dashboard tour cut from 11 steps to 5 (owner, 2026-10-18):
+  Welcome, Your page (rings "View your mini page"), My Listings, Leads + Chat,
+  Settings. Premium only; Lite tour unchanged.
+- [ ] Part 4 (optional): Live presentation first-open intro: tenure rows, tap to
+  edit deposit/rate/rebate, Budget tab, contact off by default. Same flag + reset.
+
 ## SENSUS-1: Sensus AI landing page at /sensus-ai — built 2026-10-17
 Owner resells Sensus AI (Sensus DWC LLC) to dealerships; page books demos. Page
 `src/pages/SensusAiPage.jsx`, copy `src/config/sensusCopy.js`, console People > Sensus demos.
@@ -2417,6 +2441,14 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-19: "Get verified" asks only after the first car, and comes back on a
+  rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
+  sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and
+  once the checklist is gone `SellerIdCard` returns, closed = 7 days
+  (`src/utils/verifySnooze.js`). Open questions before building: shrinking gaps nag
+  harder each "no" for an OPTIONAL badge (backoff 2 -> 5 -> 10 days, or re-ask on a
+  buyer event such as the first enquiry, may fit better); the snooze is per device.
 
 - **IDEA-16: "Post once, everywhere" for solo sellers (2026-10-11)** — from a
   seller's chat: he takes his own photos and wants one place that posts them to

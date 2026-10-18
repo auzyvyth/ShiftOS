@@ -262,6 +262,19 @@ const SETTINGS_GROUPS = [
 // distinction to maintain the way there was when steps pointed at things
 // buried inside page content (sub-tab pills, the invite box).
 
+// The same-session backup for profiles.onboarding_tour_done. It lived in
+// localStorage, which never clears, so resetting the DB flag (a console-made
+// account handed over, or the owner re-testing their own intro, 2026-10-18)
+// never reached a device that had seen the tour once. sessionStorage is what
+// "same session" meant all along.
+const tourSeenKey = (uid) => `sp_tour_seen_${uid}`;
+const tourSeenThisSession = (uid) => {
+ try { return !!sessionStorage.getItem(tourSeenKey(uid)); } catch { return false; }
+};
+const markTourSeenThisSession = (uid) => {
+ try { sessionStorage.setItem(tourSeenKey(uid), "1"); localStorage.removeItem(tourSeenKey(uid)); } catch { /* storage blocked */ }
+};
+
 const TOUR_TABS = [
  null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
  "analytics", "loans", "outreach", "settings",
@@ -578,7 +591,7 @@ export default function SalesmanPremium() {
  useEffect(() => {
  if (!userId || !listingsLoaded) return;
  if (profile?.starter_tasks?.dismissed) return;
- if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+ if (!starterTasksAllDone({ profile, listingCount: myListings.length, premium: true })) return;
  markStarterTask(userId, "dismissed", profile?.starter_tasks);
  }, [userId, listingsLoaded, profile, myListings.length]);
 
@@ -1095,7 +1108,7 @@ export default function SalesmanPremium() {
  if (
  !tourAutoStarted.current &&
  !profileData.onboarding_tour_done &&
- !localStorage.getItem(`sp_tour_seen_${uid}`)
+ !tourSeenThisSession(uid)
  ) {
  tourAutoStarted.current = true;
  startTour();
@@ -5123,7 +5136,7 @@ export default function SalesmanPremium() {
  onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }))}
  onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
  />
- <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <div id="sp-photo-field" style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>
  {avatarUrl
 ? <img src={avatarUrl} alt={t("salesmanPremium.settings.profileAlt")} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
@@ -6012,7 +6025,7 @@ export default function SalesmanPremium() {
  // same-session backup so a re-render before the write lands doesn't
  // re-trigger the tour.
  if (userId) {
- localStorage.setItem(`sp_tour_seen_${userId}`, "1");
+ markTourSeenThisSession(userId);
  setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
  supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
  }
@@ -6669,6 +6682,7 @@ export default function SalesmanPremium() {
  profile={profile}
  t={t}
  onUploadId={() => openSettings("profile")}
+ inviteInChecklist={listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed}
  />}
 
  {activeTab === "dashboard" && (
@@ -6689,13 +6703,18 @@ export default function SalesmanPremium() {
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}
  handleThisWeekContacted={handleThisWeekContacted}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
- dismissTour={dismissTour} handleListingCopy={handleListingCopy}
+ handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
  starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
  onStarterDismiss={dismissStarterTasks}
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+ }}
+ onVerify={() => openSettings("profile")}
+ onEditPhoto={() => {
+ openSettings("profile");
+ setTimeout(() => document.getElementById("sp-photo-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
  }}
  />
  </Suspense>

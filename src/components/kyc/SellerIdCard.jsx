@@ -28,12 +28,16 @@ import AccountReviewBanner from "../AccountReviewBanner";
 // Closeable; comes back after a week (src/utils/verifySnooze.js). The
 // rejected / account-review banners are NOT snoozed: those carry something
 // the seller has to act on.
-export default function SellerIdCard({ profile, t, onUploadId }) {
+// inviteInChecklist: Premium's setup checklist carries "Get verified" as a step
+// (owner, 2026-10-18), so while it is on screen this card drops its invite and
+// "we're checking" states. Two setup cards stacked at the top was the problem.
+// The rejected / review banners still show: they need the seller to act.
+export default function SellerIdCard({ profile, t, onUploadId, inviteInChecklist = false }) {
   const [closed, setClosed] = useState(() => isVerifySnoozed(profile?.id));
   if (!profile) return null;
   if (profile.approval_status === "rejected") return <AccountReviewBanner profile={profile} />;
   if (profile.is_verified) return <AccountReviewBanner profile={profile} />;
-  if (closed) return null;
+  if (closed || inviteInChecklist) return null;
   const close = () => { snoozeVerify(profile.id); setClosed(true); };
 
   const tr = (key, fallback) => (t ? t(`sellerId.${key}`, { defaultValue: fallback }) : fallback);
