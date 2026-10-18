@@ -84,7 +84,7 @@ export default function ListingsTab({
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
- listingScore, updateListingStatus, handleDeleteListing, handleListingCopy, openBroadcast,
+ listingScore, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, openBroadcast,
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
 }) {
  const { t, i18n } = useTranslation();
@@ -722,7 +722,7 @@ export default function ListingsTab({
  )}
  {confirmDeleteId === car.id ? (
  <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
- <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>{t("salesmanPremium.common.delete")}</button>
+ <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: T.weight.bold }}>{deletingId === car.id ? t("salesmanPremium.common.deleting") : t("salesmanPremium.common.delete")}</button>
  <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  ) : (

@@ -1154,7 +1154,8 @@
       "yesDelete": "Yes, delete",
       "delete": "Delete",
       "add": "Add",
-      "thisBuyer": "this buyer"
+      "thisBuyer": "this buyer",
+      "deleting": "Deleting..."
     },
     "addons": {
       "attachFailed": "Couldn't attach that add-on",
