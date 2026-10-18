@@ -82,6 +82,10 @@ const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-MY');
 // Cars screen is checked to fit with no scroll.
 const STAGE_W = 375;
 const STAGE_H = 667;
+// Desktop is twice the phone's width (owner, 2026-10-18): the phone column was
+// too small on a monitor for the camera to read. Two columns: the car and its
+// working on the left, deposit + tenure + everything under it on the right.
+const DESK_W = STAGE_W * 2;
 
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
@@ -154,7 +158,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useEffect(() => {
     if (embedded || typeof window === 'undefined' || !window.matchMedia) return undefined;
     const mq = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
-    const update = () => setDeskZoom(mq.matches ? window.innerHeight / STAGE_H : null);
+    const update = () => setDeskZoom(mq.matches ? Math.min(window.innerHeight / STAGE_H, window.innerWidth / DESK_W) : null);
     update();
     window.addEventListener('resize', update);
     mq.addEventListener?.('change', update);
@@ -349,18 +353,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
 
   const screen = (
-    <div className={embedded ? 'lp lp-embed' : 'lp'} style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
+    <div className={`lp${embedded ? ' lp-embed' : ''}${deskZoom ? ' lp-desk' : ''}`} style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
       {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
           one accent gradient (--lp-grad) marks what is selected or tappable.
           Phones and tablets: ONE portrait stage, 9:16 at most, sized in
           container units so it fits a 375px phone with no scroll.
-          Desktop (mouse, 1024px+): the SAME portrait stage, laid out at phone
-          size (STAGE_W x STAGE_H) and magnified with CSS zoom to the monitor's
-          full height. Sellers film the monitor with a phone held upright, so
-          the stage must be the phone's shape; the wide two-column sheet
-          (2026-10-04) spilled out of the camera frame (owner, 2026-10-18).
-          Zoom keeps the phone layout that already fits with no scroll and
-          makes every word bigger with it. Do not bring a landscape layout back. */}
+          Desktop (mouse, 1024px+): the phone's height, TWICE its width
+          (DESK_W x STAGE_H, about square), magnified with CSS zoom to the
+          monitor's full height. Sellers film the monitor with a phone held
+          upright: the 2026-10-04 full-screen wide sheet spilled out of that
+          frame, and the phone-shaped column (2026-10-18) was too small to read
+          on camera. Owner, 2026-10-18: double the width, no wider. Two
+          columns (.lp-cols): car + working left, deposit/tenure/rest right. */}
       <style>{`
         .lp { --lp-grad: linear-gradient(120deg, var(--lp-a1) 0%, var(--lp-a) 45%, var(--lp-a2) 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
@@ -460,6 +464,30 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); overflow-wrap: anywhere; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 14px); color: #6b7280; line-height: 1.45; margin: 8px 0 0; }
         .lp-fit { display: flex; flex-direction: column; gap: 10px; }
+        /* Column wrappers vanish on a phone (the sheet stays one column) and
+           become two columns on the desktop stage. */
+        .lp-cols, .lp-col { display: contents; }
+        .lp-desk .lp-sheet { padding: 12px 16px; gap: 8px; }
+        .lp-desk .lp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+        .lp-desk .lp-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .lp-desk .lp-pair { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+        .lp-desk .lp-photo { aspect-ratio: 2 / 1; }
+        .lp-desk .lp-brk { border-spacing: 0 4px; }
+        .lp-desk .lp-brk td { padding: 5px 12px; font-size: 20px; }
+        .lp-desk .lp-brk tr.lp-loan td { padding-block: 8px; }
+        .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 30px; }
+        .lp-desk .lp-brk tr.lp-r-rate td { font-size: 16px; }
+        .lp-desk .lp-seg.lp-deps button { font-size: 15px; min-height: 36px; }
+        .lp-desk .lp-ten td { font-size: 20px; padding: 4px 12px; }
+        .lp-desk .lp-ten td:last-child { font-size: 28px; }
+        .lp-desk .lp-ten tr.lp-def td:last-child { font-size: 40px; }
+        .lp-desk .lp-name { font-size: 38px; }
+        .lp-desk .lp-num { font-size: 40px; }
+        .lp-desk .lp-seg.lp-vars button { font-size: 15px; }
+        .lp-desk .lp-cta { font-size: 15px; letter-spacing: .06em; }
+        .lp-desk .lp-salary { font-size: 15px; line-height: 1.35; }
+        .lp-desk .lp-note { font-size: 13px; line-height: 1.35; }
+        .lp-desk .lp-cta { padding-block: 7px; }
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
         .lp-in { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
@@ -529,7 +557,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
       `}</style>
 
-      <div className="lp-stage" style={deskZoom ? { width: STAGE_W, height: STAGE_H, zoom: deskZoom } : undefined}>
+      <div className="lp-stage" style={deskZoom ? { width: DESK_W, height: STAGE_H, zoom: deskZoom } : undefined}>
       {/* Top bar: mode + controls. Contact only shows when the seller turns it on. */}
       <div className="lp-top">
         {report ? <span className="lp-count">{t.liveEnded}</span> : (
@@ -649,6 +677,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </div>
           )}
 
+          <div className="lp-cols">
+          <div className="lp-col">
           <div className="lp-pair">
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
@@ -701,7 +731,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </tbody>
             </table>
           </div>
+          </div>
 
+          <div className="lp-col">
           {financeable && (<>
             <div className="lp-seg lp-deps" role="group" aria-label={t.deposit}>
               {rows.map((r) => (
@@ -752,6 +784,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </button>
             )}
             <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
+          </div>
+          </div>
           </div>
         </div>
         ) : mode === 'docs' ? (
