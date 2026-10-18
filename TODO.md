@@ -2442,6 +2442,14 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-19: "Get verified" asks only after the first car, and comes back on a
+  rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
+  sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and
+  once the checklist is gone `SellerIdCard` returns, closed = 7 days
+  (`src/utils/verifySnooze.js`). Open questions before building: shrinking gaps nag
+  harder each "no" for an OPTIONAL badge (backoff 2 -> 5 -> 10 days, or re-ask on a
+  buyer event such as the first enquiry, may fit better); the snooze is per device.
+
 - **IDEA-16: "Post once, everywhere" for solo sellers (2026-10-11)** — from a
   seller's chat: he takes his own photos and wants one place that posts them to
   Marketplace/socials daily. Half exists: `src/utils/sharePack.js` already turns a
