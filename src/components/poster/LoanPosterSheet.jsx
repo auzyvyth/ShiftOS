@@ -33,7 +33,9 @@ const S = {
 
 const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
 
-export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
+// onDownloaded: called once a clean file was saved or shared (the Premium
+// poster intro ends on it).
+export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded }) {
   useModalHistory(true, onClose);
   const [price, setPrice] = useState(() => String(car?.selling_price || car?.price || ''));
   const [deposit, setDeposit] = useState(() => String(defaultDeposit(car?.selling_price || car?.price)));
@@ -95,7 +97,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
       const file = await makeFile();
       if (!file) return;
       if (mode === 'share' && navigator.canShare?.({ files: [file] })) {
-        try { await navigator.share({ files: [file] }); } catch { /* closed the share sheet */ }
+        try { await navigator.share({ files: [file] }); onDownloaded?.(); } catch { /* closed the share sheet */ }
         return;
       }
       const url = URL.createObjectURL(file);
@@ -104,6 +106,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
       toast.success('Poster saved');
+      onDownloaded?.();
     } catch (e) {
       console.error('loan poster', e);
       toast.error('Could not make the poster.');
@@ -182,6 +185,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
           </div>
 
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div data-tour-id="poster-numbers" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {field('Car price', price, setPrice)}
             <div>
               {field('Deposit', deposit, setDeposit)}
@@ -195,6 +199,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
                 {pill(basis === 'eir', 'EIR', () => setBasis('eir'))}
                 {pill(basis === 'flat', 'Flat', () => setBasis('flat'))}
               </div>
+            </div>
             </div>
             <div>
               <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>Poster language</span>
@@ -216,7 +221,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade }) {
               </div>
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => run('download')} disabled={!numbers.ok || busy}
+                <button data-tour-id="poster-download" onClick={() => run('download')} disabled={!numbers.ok || busy}
                   style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: 10, border: 'none',
                     background: numbers.ok ? S.accent : 'rgba(220,38,38,0.3)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
                   <Download size={15} /> {busy ? 'Making...' : 'Download poster'}

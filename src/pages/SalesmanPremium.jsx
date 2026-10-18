@@ -111,6 +111,8 @@ import {
  CarFront,
  Lock,
  PartyPopper,
+ Calculator,
+ Download,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
@@ -6167,7 +6169,8 @@ export default function SalesmanPremium() {
  listings: [
  introStep("listings", "fast", "lst-fast", Zap),
  introStep("listings", "full", "lst-full", Car),
- introStep("listings", "more", "lst-more", Sparkles),
+ // No "···" step here any more: the first-poster intro below rings it
+ // with a real action once the seller has a car.
  ],
  leads: [
  introStep("leads", "add", "leads-add", Plus),
@@ -6189,6 +6192,16 @@ export default function SalesmanPremium() {
  introStep("outreach", "campaign", "oh-campaign", Megaphone),
  ],
  };
+ // First-poster intro (INTRO-4, 2026-10-18): once the seller has a car, walk
+ // them through making and downloading its loan poster. Steps with `waitFor`
+ // have no Next button: they move on when the seller does the thing (opens
+ // the ··· menu, taps Loan poster, downloads). Seen = starter_tasks.intro_poster.
+ const POSTER_INTRO = [
+ { ...introStep("poster", "menu", "lst-more", Calculator), waitFor: "menu" },
+ { ...introStep("poster", "open", "lst-poster", Calculator), waitFor: "sheet" },
+ introStep("poster", "numbers", "poster-numbers", Banknote),
+ { ...introStep("poster", "download", "poster-download", Download), waitFor: "download" },
+ ];
  const tourSteps = tourMode === "main" ? TOUR_STEPS : introSteps;
 
  const markIntroSeen = (tab) => {
@@ -6245,9 +6258,42 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [tourMode, tourStep === null, userId]);
 
+ // Start the first-poster intro on Listings once there is a car to make a
+ // poster for, after the Listings intro, and with nothing else open (the
+ // add-car form has to close first, so the list shows the new car).
+ const hasPosterCar = myListings.some((l) => l.status !== "sold");
+ useEffect(() => {
+ if (loading || !userId || !profile || tourStep !== null || activeTab !== "listings") return;
+ if (!hasPosterCar || editListing || posterCar || studioCar || anyOverlayOpen) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (!profile.starter_tasks?.intro_listings && !introSeenThisSession(userId, "listings")) return;
+ if (profile.starter_tasks?.intro_poster || introSeenThisSession(userId, "poster")) return;
+ const timer = setTimeout(() => {
+ const el = document.querySelector('[data-tour-id="lst-more"]');
+ if (!el || el.getBoundingClientRect().height === 0) return;
+ setIntroSteps(POSTER_INTRO);
+ setTourMode("poster");
+ setTourStep(0);
+ }, 900);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, activeTab, hasPosterCar, editListing, posterCar, studioCar, anyOverlayOpen]);
+
+ // The poster intro follows what the seller actually does. Closing the menu
+ // or the sheet without finishing goes back to the first step, so a stray
+ // tap does not strand them on a step whose button has gone.
+ useEffect(() => {
+ if (tourMode !== "poster" || tourStep === null) return;
+ const wait = introSteps[tourStep]?.waitFor;
+ if (wait === "menu") { if (actionMenuCarId) setTourStep(1); }
+ else if (wait === "sheet") { if (posterCar) setTourStep(2); else if (!actionMenuCarId) setTourStep(0); }
+ else if (!posterCar) setTourStep(0);
+ }, [tourMode, tourStep, actionMenuCarId, posterCar, introSteps]);
+
  // Leaving the tab mid-intro ends it (already counted as seen above).
  useEffect(() => {
- if (tourMode && tourMode !== "main" && tourMode !== activeTab) {
+ const introTab = tourMode === "poster" ? "listings" : tourMode;
+ if (tourMode && tourMode !== "main" && introTab !== activeTab) {
  setTourStep(null);
  setTourMode(null);
  }
@@ -6414,6 +6460,10 @@ export default function SalesmanPremium() {
  // Only the sidebar tour opens on a centred welcome card; an intro's first
  // step already rings a control.
  const isWelcome = tourMode === "main" && tourStep === 0;
+ // The poster intro runs over the loan poster sheet (z 9999), so it lifts
+ // itself above it. An action step has no Next: the seller taps the ring.
+ const zBase = tourMode === "poster" ? 10000 : 1000;
+ const waitsForTap = !!step.waitFor;
 
  // Placement: the bubble sits on whichever side of the ringed link has room,
  // never on top of it (utils/tourPlacement). It FOLLOWS the link on every
@@ -6475,7 +6525,7 @@ export default function SalesmanPremium() {
  border: "2px solid #3b82f6",
  boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
  pointerEvents: "none",
- zIndex: 1001,
+ zIndex: zBase + 1,
  animation: "tourRing 0.2s ease-out",
  }}
  />
@@ -6497,7 +6547,7 @@ export default function SalesmanPremium() {
  padding: "14px 16px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
  animation: `${isWelcome ? "tourInC" : "tourIn"} 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`,
- zIndex: 1002,
+ zIndex: zBase + 2,
  boxSizing: "border-box",
  }}
  >
@@ -6531,7 +6581,7 @@ export default function SalesmanPremium() {
  bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
  width: isMobile ? "calc(100vw - 24px)" : 380,
  boxSizing: "border-box",
- zIndex: 1003,
+ zIndex: zBase + 3,
  background: BUBBLE_BG,
  border: "1px solid rgba(255,255,255,0.08)",
  borderRadius: 14,
@@ -6544,7 +6594,7 @@ export default function SalesmanPremium() {
  }}
  className="tour-anim"
  >
- {tourStep > 0 ? (
+ {tourStep > 0 && tourMode !== "poster" ? (
  <button onClick={() => setTourStep((s) => s - 1)} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
  ← {t("salesmanPremium.tour.back")}
  </button>
@@ -6561,12 +6611,18 @@ export default function SalesmanPremium() {
  ))}
  </div>
  </div>
+ {waitsForTap ? (
+ <span style={{ minHeight: 44, display: "flex", alignItems: "center", padding: "0 6px", color: "#93c5fd", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+ {t("salesmanPremium.tour.tapHint")}
+ </span>
+ ) : (
  <button
  onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
  style={{ minHeight: 44, padding: "0 20px", borderRadius: 10, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
  >
  {isLast ? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
  </button>
+ )}
  </div>
  </>,
  document.body,
@@ -7958,7 +8014,8 @@ export default function SalesmanPremium() {
  )}
  {posterCar && (
  <Suspense fallback={null}>
- <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)} />
+ <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
+ onDownloaded={() => { if (tourMode === "poster") dismissTour(); }} />
  </Suspense>
  )}
 

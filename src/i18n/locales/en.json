@@ -1643,7 +1643,8 @@
       "settings": {
         "title": "Settings",
         "body": "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it under Join a Dealership to unlock the full panel — shared stock, team leads, commission tracking and more."
-      }
+      },
+      "tapHint": "Tap the ringed button"
     },
     "greet": {
       "morning": "Good morning",
@@ -2080,6 +2081,24 @@
         "campaign": {
           "title": "Message a whole group",
           "body": "Goes through the group one chat at a time. WhatsApp opens with the message, and you press send each time."
+        }
+      },
+      "poster": {
+        "menu": {
+          "title": "Make your first loan poster",
+          "body": "Your car is up. Now make the poster buyers share: tap ··· on your car."
+        },
+        "open": {
+          "title": "Tap Loan poster",
+          "body": "It opens with your price already filled in."
+        },
+        "numbers": {
+          "title": "Check the numbers",
+          "body": "Price, deposit and rate come from your listing. Change any of them and the poster updates as you type."
+        },
+        "download": {
+          "title": "Download it",
+          "body": "Tap Download poster. It saves to your phone, ready for WhatsApp status or TikTok."
         }
       }
     },

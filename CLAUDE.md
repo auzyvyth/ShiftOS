@@ -1606,6 +1606,14 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   sold to is on screen; a step's `targets` are selectors, best first, the pill as fallback.
   Seen = `starter_tasks.first_sale_seen`. Copy in `salesmanPremium.firstSale` (en + ms);
   it names no product, because the seller-side name is still an open owner call.
+- **First-poster intro (INTRO-4, 2026-10-18)**: `POSTER_INTRO` in SalesmanPremium.jsx, tourMode
+  "poster" (it belongs to the Listings tab). Plays once on Listings when the seller has a car that is
+  not sold, after the Listings intro, with no form or sheet open. ACTION steps (`waitFor`): tap ···
+  (`lst-more`), tap Loan poster (`lst-poster`), check the numbers (`poster-numbers`, the one Next),
+  download (`poster-download`); the bar shows "Tap the ringed button" instead of Next. Closing the
+  menu or sheet early goes back to step 1; `LoanPosterSheet onDownloaded` ends it. It lifts itself
+  above the sheet (`zBase` 10000; the sheet is 9999). The Listings intro lost its "···" step to it.
+  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (3 free posters/month).
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

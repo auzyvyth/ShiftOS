@@ -1632,7 +1632,8 @@
       "settings": {
         "title": "Tetapan",
         "body": "Profil awam, templat WhatsApp dan tetapan akaun anda ada di sini. Ada kod jemputan dari dealer? Masukkan di Sertai Dealer untuk buka panel penuh — stok dikongsi, lead pasukan, jejak komisen dan banyak lagi."
-      }
+      },
+      "tapHint": "Tekan butang yang ditanda"
     },
     "greet": {
       "morning": "Selamat pagi",
@@ -2069,6 +2070,24 @@
         "campaign": {
           "title": "Hantar mesej ke satu kumpulan",
           "body": "Satu chat pada satu masa. WhatsApp dibuka dengan mesej, dan anda tekan hantar setiap kali."
+        }
+      },
+      "poster": {
+        "menu": {
+          "title": "Buat poster loan pertama anda",
+          "body": "Kereta anda sudah naik. Sekarang buat poster yang pembeli kongsi: tekan ··· pada kereta anda."
+        },
+        "open": {
+          "title": "Tekan Loan poster",
+          "body": "Ia dibuka dengan harga anda sudah diisi."
+        },
+        "numbers": {
+          "title": "Semak angka",
+          "body": "Harga, deposit dan kadar diambil dari iklan anda. Tukar mana-mana dan poster dikemas kini semasa anda menaip."
+        },
+        "download": {
+          "title": "Muat turun",
+          "body": "Tekan Download poster. Ia disimpan ke telefon anda, sedia untuk status WhatsApp atau TikTok."
         }
       }
     },
