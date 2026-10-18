@@ -2591,12 +2591,20 @@ export default function SalesmanPremium() {
  refreshSales();
  };
 
+ // One delete per car at a time. A delete rewrites every row that points at
+ // the car (views, leads, chats), so on a slow database it can take seconds;
+ // repeat taps used to fire more DELETEs that queued on the first one's locks
+ // and all hit the 8s timeout (2026-10-18).
+ const [deletingId, setDeletingId] = useState(null);
  const handleDeleteListing = async (carId) => {
+ if (deletingId) return;
+ setDeletingId(carId);
  const { error } = await supabase
  .from("car_listings")
  .delete()
  .eq("id", carId)
  .eq("dealer_id", userId);
+ setDeletingId(null);
  if (error) {
  console.error("handleDeleteListing:", error);
  toast.error(t("salesmanPremium.errors.deleteListing"));
@@ -7225,7 +7233,7 @@ export default function SalesmanPremium() {
       setConfirmDeleteId={setConfirmDeleteId} setCvrHover={setCvrHover} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
       listingScore={listingScore} updateListingStatus={updateListingStatus}
-      handleDeleteListing={handleDeleteListing} handleListingCopy={handleListingCopy}
+      handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
       openLoanPoster={setPosterCar}

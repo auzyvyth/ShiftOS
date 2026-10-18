@@ -1143,7 +1143,8 @@
       "yesDelete": "Ya, padam",
       "delete": "Padam",
       "add": "Tambah",
-      "thisBuyer": "buyer ni"
+      "thisBuyer": "buyer ni",
+      "deleting": "Memadam..."
     },
     "addons": {
       "attachFailed": "Tak dapat lampirkan add-on tu",

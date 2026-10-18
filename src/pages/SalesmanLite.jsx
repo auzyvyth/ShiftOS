@@ -1276,12 +1276,18 @@ export default function SalesmanLite() {
   const [actionMenuCarId, setActionMenuCarId] = useState(null);
   const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (3 free cars a month)
 
+  // One delete per car at a time: repeat taps queued on the first delete's
+  // locks and all timed out on a slow database (2026-10-18).
+  const [deletingId, setDeletingId] = useState(null);
   const handleDeleteListing = async (carId) => {
+    if (deletingId) return;
+    setDeletingId(carId);
     const { error } = await supabase
       .from("car_listings")
       .delete()
       .eq("id", carId)
       .eq("dealer_id", userId);
+    setDeletingId(null);
     if (error) {
       console.error("handleDeleteListing:", error);
       toast.error(t("salesmanLite.toast.listingDeleteFailed"));
@@ -4306,7 +4312,7 @@ export default function SalesmanLite() {
                             <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
                             {confirmDeleteId === car.id ? (
                               <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
-                                <button onClick={() => handleDeleteListing(car.id)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.bold }}>Delete</button>
+                                <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: T.weight.bold }}>{deletingId === car.id ? "Deleting..." : "Delete"}</button>
                                 <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>Cancel</button>
                               </div>
                             ) : (
