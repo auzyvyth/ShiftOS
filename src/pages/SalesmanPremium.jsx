@@ -6253,7 +6253,7 @@ export default function SalesmanPremium() {
  <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(74,222,128,0.22)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, animation: "fsIcon 0.32s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>
  <PartyPopper size={22} style={{ color: "#4ade80" }} />
  </div>
- <p id="fs-title" style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: 1.3 }}>{t("salesmanPremium.firstSale.title")}</p>
+ <p id="fs-title" style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: 1.3, textWrap: "balance" }}>{t("salesmanPremium.firstSale.title")}</p>
  {detail && <p style={{ margin: "0 0 10px", fontSize: 13.5, fontWeight: 600, color: "#cbd5e1" }}>{detail}</p>}
  <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>{t("salesmanPremium.firstSale.body")}</p>
  <button
