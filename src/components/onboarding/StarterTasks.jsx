@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck } from "lucide-react";
+import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck, BadgeCheck } from "lucide-react";
 
 // The seller's first three wins, shared by Salesman Lite and Salesman Premium.
 //
@@ -35,8 +35,10 @@ export const STARTER_TASK_KEYS = ["listing", "minipage", "bio"];
 // endowed-progress finding (a list that starts with one real step already done
 // gets finished far more often than one starting at zero): "account" is that
 // head start and is always ticked, and a face on the page is the next thing a
-// buyer trusts after a car. Five is the ceiling; past that the end feels far.
-export const PREMIUM_TASK_KEYS = ["account", "listing", "minipage", "photo", "bio"];
+// buyer trusts after a car. "verified" was its own card above this one (the
+// SellerIdCard invite) until the owner folded it in, 2026-10-18; it is last
+// because it is the most work (MyKad photos). Six rows, five real asks.
+export const PREMIUM_TASK_KEYS = ["account", "listing", "minipage", "photo", "bio", "verified"];
 
 // Non-empty and not just whitespace. A bio of " " is not a bio.
 export const hasBio = (profile) => !!String(profile?.bio || "").trim();
@@ -47,6 +49,9 @@ export const starterTaskState = ({ profile, listingCount }) => ({
   minipage: !!profile?.starter_tasks?.minipage_visited,
   photo: !!profile?.avatar_url,
   bio: hasBio(profile),
+  // Their part is done once the photos are in; the badge itself waits on a
+  // person (SellerIdCard says "we're checking" again once this list retires).
+  verified: !!profile?.is_verified || !!profile?.kyc_submitted_at,
 });
 
 // Lite's page is the basic page (no bio, 2026-10-13), so Lite passes
@@ -71,6 +76,7 @@ export default function StarterTasks({
   onVisitMinipage,
   onEditBio,
   onEditPhoto,
+  onVerify,
   onDismiss,
   noBio = false,
   premium = false,
@@ -145,6 +151,14 @@ export default function StarterTasks({
       cta: tr("bioCta", "Write my bio"),
       action: onEditBio,
     },
+    {
+      key: "verified",
+      icon: BadgeCheck,
+      title: tr("verifiedTitle", "Get verified"),
+      sub: tr("verifiedSub", "The Verified badge on your page and cars. Photos of your MyKad, about 2 minutes."),
+      cta: tr("verifiedCta", "Get verified"),
+      action: onVerify,
+    },
   ];
   const TASKS = ALL_TASKS.filter((task) => keys.includes(task.key));
 
@@ -159,8 +173,8 @@ export default function StarterTasks({
         <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, color: P.textMuted }}>
           {allDone ? tr("doneHeading", "You're set up") : tr("heading", "Get set up")}
         </span>
-        {/* Progress as a count; the five-item Premium list adds a thin bar
-            under the header, where "1/5" alone reads as a long way off. */}
+        {/* Progress as a count; the longer Premium list adds a thin bar
+            under the header, where "1/6" alone reads as a long way off. */}
         <span style={{ fontSize: 11, fontWeight: 600, color: allDone ? P.success : P.textDim, flexShrink: 0 }}>
           {doneCount}/{keys.length}
         </span>

@@ -32,7 +32,7 @@ export default function DashboardTab({
  setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner,
- handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio, onEditPhoto,
+ handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio, onEditPhoto, onVerify,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -272,6 +272,7 @@ export default function DashboardTab({
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  onVisitMinipage={onVisitMinipage}
  onEditPhoto={onEditPhoto}
+ onVerify={onVerify}
  onEditBio={onEditBio}
  onDismiss={onStarterDismiss}
  />

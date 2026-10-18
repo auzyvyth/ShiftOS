@@ -262,6 +262,19 @@ const SETTINGS_GROUPS = [
 // distinction to maintain the way there was when steps pointed at things
 // buried inside page content (sub-tab pills, the invite box).
 
+// The same-session backup for profiles.onboarding_tour_done. It lived in
+// localStorage, which never clears, so resetting the DB flag (a console-made
+// account handed over, or the owner re-testing their own intro, 2026-10-18)
+// never reached a device that had seen the tour once. sessionStorage is what
+// "same session" meant all along.
+const tourSeenKey = (uid) => `sp_tour_seen_${uid}`;
+const tourSeenThisSession = (uid) => {
+ try { return !!sessionStorage.getItem(tourSeenKey(uid)); } catch { return false; }
+};
+const markTourSeenThisSession = (uid) => {
+ try { sessionStorage.setItem(tourSeenKey(uid), "1"); localStorage.removeItem(tourSeenKey(uid)); } catch { /* storage blocked */ }
+};
+
 const TOUR_TABS = [
  null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
  "analytics", "loans", "outreach", "settings",
@@ -1095,7 +1108,7 @@ export default function SalesmanPremium() {
  if (
  !tourAutoStarted.current &&
  !profileData.onboarding_tour_done &&
- !localStorage.getItem(`sp_tour_seen_${uid}`)
+ !tourSeenThisSession(uid)
  ) {
  tourAutoStarted.current = true;
  startTour();
@@ -6012,7 +6025,7 @@ export default function SalesmanPremium() {
  // same-session backup so a re-render before the write lands doesn't
  // re-trigger the tour.
  if (userId) {
- localStorage.setItem(`sp_tour_seen_${userId}`, "1");
+ markTourSeenThisSession(userId);
  setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
  supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
  }
@@ -6669,6 +6682,7 @@ export default function SalesmanPremium() {
  profile={profile}
  t={t}
  onUploadId={() => openSettings("profile")}
+ inviteInChecklist={listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed}
  />}
 
  {activeTab === "dashboard" && (
@@ -6697,6 +6711,7 @@ export default function SalesmanPremium() {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
  }}
+ onVerify={() => openSettings("profile")}
  onEditPhoto={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-photo-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
