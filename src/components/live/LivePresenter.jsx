@@ -484,6 +484,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-name { font-size: 38px; }
         .lp-desk .lp-num { font-size: 40px; }
         .lp-desk .lp-seg.lp-vars button { font-size: 15px; }
+        /* Desktop: the variant switch sits on the title's line, to its right
+           (owner, 2026-10-18), so a model card costs no extra row. Phone: the
+           wrapper vanishes and the switch stays under the title. */
+        .lp-head { display: contents; }
+        .lp-desk .lp-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .lp-desk .lp-head .lp-title { flex: 1 1 auto; }
+        .lp-desk .lp-head .lp-vars { flex: 0 1 auto; max-width: 60%; justify-content: flex-end; }
+        .lp-desk .lp-head .lp-vars button { flex: 0 1 auto; padding: 4px 12px; font-size: 14px; }
+        /* The picked button names the variant, so the title drops it here and
+           both stay on one line. */
+        .lp-desk .lp-has-vars .lp-var { display: none; }
         .lp-desk .lp-cta { font-size: 15px; letter-spacing: .06em; }
         .lp-desk .lp-salary { font-size: 15px; line-height: 1.35; }
         .lp-desk .lp-note { font-size: 13px; line-height: 1.35; }
@@ -653,6 +664,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         {mode === 'cars' ? (
         <div className="lp-card lp-sheet">
+          <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
           <div className="lp-title">
             <span className="lp-num">#{idx + 1}</span>
             <div className="lp-tt">
@@ -676,6 +688,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               ))}
             </div>
           )}
+          </div>
 
           <div className="lp-cols">
           <div className="lp-col">

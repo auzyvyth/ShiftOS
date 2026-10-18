@@ -1392,6 +1392,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
+  On the desktop stage it sits on the title's line, to the right (`.lp-head`), and
+  the title drops the variant name there (the picked button names it); on a phone
+  it stays under the title.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
