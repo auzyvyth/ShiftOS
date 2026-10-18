@@ -8,7 +8,6 @@ import * as Sentry from "@sentry/react";
 
 const SentryRoutes = Sentry.withSentryReactRouterV7Routing(Routes);
 import ScrollToTop from "./components/ScrollToTop";
-import CompareBar from "./components/CompareBar";
 import ConsentBanner from "./components/ConsentBanner";
 import InstallPrompt from "./components/InstallPrompt";
 import OfflineBanner from "./components/OfflineBanner";
@@ -102,6 +101,10 @@ const AktaSewaBeli2026Article = lazy(() => import("./pages/articles/AktaSewaBeli
 const HargaAlphardReconArticle = lazy(() => import("./pages/articles/HargaAlphardReconArticle"));
 const HargaHarrierReconArticle = lazy(() => import("./pages/articles/HargaHarrierReconArticle"));
 
+// Lazy: it only shows once a car is added, and it is fixed to the screen edge,
+// so loading it a moment later moves nothing.
+const CompareBar = lazy(() => import("./components/CompareBar"));
+
 const COMPARE_PATHS = ["/", "/cars", "/showroom", "/compare"];
 
 function CompareBarGate() {
@@ -109,7 +112,7 @@ function CompareBarGate() {
   const show = COMPARE_PATHS.includes(pathname) ||
     pathname.startsWith("/cars/") ||
     pathname.startsWith("/showroom/");
-  return show ? <CompareBar /> : null;
+  return show ? <Suspense fallback={null}><CompareBar /></Suspense> : null;
 }
 
 // "/marketplace" used to be its own page with no subdomain awareness — hitting

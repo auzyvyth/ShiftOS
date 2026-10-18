@@ -220,8 +220,12 @@ export function hubCopy(brand, model) {
     faqs.push({ q: `Have ${name} been sold on XDrive before?`, a: `Yes — ${h.sold} ${name} ${h.sold === 1 ? "has" : "have"} been sold through XDrive.` });
   }
 
+  // "Recon" is a big Malaysian search word, but it only goes in the title when
+  // a live car on this page really is recon (seller-stated condition).
+  const recon = (h.conditions.recon || 0) > 0 ? " & Recon" : "";
+
   return {
-    title: `Used ${name} for Sale in Malaysia | XDrive`,
+    title: `Used${recon} ${name} for Sale in Malaysia | XDrive`,
     description: `${h.count} used ${name} ${carWord} for sale${price}${yearsTxt ? `, ${yearsTxt}` : ""}. ${name} terpakai dijual di ${listStates(h.states)}. Compare asking prices and contact sellers directly on XDrive.`,
     h1: `Used ${name} for sale`,
     intro: `${h.count} ${name} ${carWord} for sale on XDrive${price}${yearsTxt ? ` (${yearsTxt})` : ""}, in ${listStates(h.states)}.`,

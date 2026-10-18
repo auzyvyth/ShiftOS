@@ -10,6 +10,23 @@ import { sentryVitePlugin } from '@sentry/vite-plugin';
 // also creates the matching git tag. Exposed to the client as __APP_VERSION__.
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
 
+// Package -> vendor chunk. Anything not listed is left to Rollup, which puts
+// it next to the code that imports it (so lazy pages keep their own deps).
+const VENDOR_CHUNK = {
+	react: 'vendor-react', 'react-dom': 'vendor-react', scheduler: 'vendor-react',
+	'react-router': 'vendor-react', 'react-router-dom': 'vendor-react', '@remix-run/router': 'vendor-react',
+	'framer-motion': 'vendor-motion', 'motion-dom': 'vendor-motion', 'motion-utils': 'vendor-motion',
+	'@supabase/supabase-js': 'vendor-supabase', '@supabase/auth-js': 'vendor-supabase',
+	'@supabase/postgrest-js': 'vendor-supabase', '@supabase/realtime-js': 'vendor-supabase',
+	'@supabase/storage-js': 'vendor-supabase', '@supabase/functions-js': 'vendor-supabase',
+	'@supabase/node-fetch': 'vendor-supabase',
+	'lucide-react': 'vendor-ui', 'react-helmet': 'vendor-ui', 'react-i18next': 'vendor-ui',
+	'@dnd-kit/core': 'vendor-dnd', '@dnd-kit/sortable': 'vendor-dnd', '@dnd-kit/utilities': 'vendor-dnd',
+	recharts: 'vendor-charts',
+	jspdf: 'vendor-pdf',
+	xlsx: 'vendor-xlsx',
+};
+
 export default defineConfig({
 	define: {
 		__APP_VERSION__: JSON.stringify(pkg.version),
@@ -238,15 +255,15 @@ export default defineConfig({
 		sourcemap: false,
 		rollupOptions: {
 			output: {
-				manualChunks: {
-					'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-					'vendor-motion': ['framer-motion'],
-					'vendor-supabase': ['@supabase/supabase-js'],
-					'vendor-ui': ['lucide-react', 'react-helmet', 'react-i18next'],
-					'vendor-dnd': ['@dnd-kit/core', '@dnd-kit/sortable'],
-					'vendor-charts': ['recharts'],
-					'vendor-pdf': ['jspdf'],
-					'vendor-xlsx': ['xlsx'],
+				// A function, not the { chunk: [packages] } object. The object form
+				// also drags each package's shared dependencies into its chunk, and
+				// it put react/jsx-runtime (needed by EVERY page) inside
+				// vendor-motion, so the marketplace downloaded all of framer-motion
+				// (~42 KB gz) on first load just to get that helper.
+				manualChunks(id) {
+					const m = id.match(/node_modules\/((?:@[^/]+\/)?[^/]+)/);
+					if (!m) return undefined;
+					return VENDOR_CHUNK[m[1]];
 				},
 			},
 		},

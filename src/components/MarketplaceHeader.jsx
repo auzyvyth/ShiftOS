@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   X, Flame, Menu, Heart, Search, ChevronDown, Car, Sparkles, RefreshCw, LayoutGrid,
@@ -8,12 +8,15 @@ import {
 } from 'lucide-react';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { supabase } from '../supabaseClient';
-import SavedCarsPanel from './SavedCarsPanel';
 import AnnouncementBar from './AnnouncementBar';
 import useMarketplaceSettings from '../hooks/useMarketplaceSettings';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { useHideOnScroll } from '../hooks/useHideOnScroll';
+
+// Loaded the first time it opens, then kept mounted (close animation and
+// back-gesture handling unchanged). Not in the first download of the page.
+const SavedCarsPanel = lazy(() => import('./SavedCarsPanel'));
 
 export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const [scrolled, setScrolled]     = useState(false);
@@ -26,6 +29,8 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // click and focus.
   const [megaOpen, setMegaOpen]     = useState(null);
   const [savedOpen, setSavedOpen]   = useState(false);
+  const savedUsed = useRef(false);
+  if (savedOpen) savedUsed.current = true;
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ]                   = useState('');
   const { savedIds }                = useSavedCars();
@@ -551,7 +556,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
           )}
         </div>
       </header>
-      <SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} />
+      {savedUsed.current && <Suspense fallback={null}><SavedCarsPanel open={savedOpen} onClose={() => setSavedOpen(false)} /></Suspense>}
     </>
   );
 }

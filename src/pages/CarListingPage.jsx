@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
@@ -6,9 +6,7 @@ import { Helmet } from 'react-helmet';
 import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
-import Header from '../components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
-import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
@@ -26,7 +24,7 @@ import {
   sanitizeFuelType, sanitizeColour, sanitizeSellerType, sanitizeStr,
   LIVE_CARS_CACHE_KEY, readLiveCarsFallback, withTimeout,
 } from '../config/marketplaceConfig';
-import { writeCache } from '../utils/localCache';
+import { readCache, writeCache } from '../utils/localCache';
 import StaleListingsNotice from '../components/StaleListingsNotice';
 import { CAR_DATA } from '../data/carData';
 import { modelFilter } from '../utils/modelKey';
@@ -36,8 +34,16 @@ import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import Pagination from '../components/ui/Pagination';
 import { storefront as SF } from '../theme/tokens';
 
+// Dealer-storefront chrome only (/cars on <sub>.xdrive.my). Lazy so the
+// marketplace /showroom does not download them, nor the framer-motion they
+// pull in (~42 KB gz). Both are position:fixed, so loading late moves nothing.
+const Header = lazy(() => import('../components/Header'));
+const StickyWhatsAppButton = lazy(() => import('../components/StickyWhatsAppButton'));
+
 /* ── Constants ──────────────────────────────────────────────────── */
 const PER_PAGE = 15;
+// Same freshness window as the marketplace grid's saved copy.
+const SEED_TTL = 30 * 60 * 1000;
 
 /* Brands, body types, transmissions, financing, mileage bands, conditions,
    fuel types, colours, the year range and every sanitiser are IMPORTED from
@@ -407,9 +413,20 @@ export default function CarListingPage() {
   const page        = san.page(searchParams.get('page')||'1');
 
   const [searchInput, setSearchInput]   = useState(q);
-  const [cars, setCars]                 = useState([]);
-  const [totalCount, setTotal]          = useState(0);
-  const [loading, setLoading]           = useState(true);
+  // Unfiltered marketplace page 1 paints the fresh saved list on its first
+  // render (the server puts one in the page, src/utils/serverSeed.js) instead
+  // of skeletons. The fetch below still runs and replaces it.
+  const [seed] = useState(() => {
+    const unfiltered = isMarketplace && page === 1 && sort === 'newest' && !q
+      && !brand && !model && !variant && !bodyType && !state && !minPrice && !maxPrice
+      && !financing && !yearFrom && !yearTo && !mileageMax && !hotDeals && !condition
+      && !transmission && !fuelType && !colour && !sellerType;
+    const hit = unfiltered ? readCache(LIVE_CARS_CACHE_KEY, SEED_TTL) : null;
+    return hit?.cars?.length ? hit : null;
+  });
+  const [cars, setCars]                 = useState(() => seed?.cars.slice(0, PER_PAGE) || []);
+  const [totalCount, setTotal]          = useState(() => seed?.totalCount || 0);
+  const [loading, setLoading]           = useState(() => !seed);
   const [fetching, setFetching]         = useState(false);
   const [error, setError]               = useState(null);
   // Showing the device's saved copy because the live fetch failed (marketplace,
@@ -418,6 +435,9 @@ export default function CarListingPage() {
   const [drawerOpen, setDrawerOpen]     = useState(false);
   useModalHistory(drawerOpen, () => setDrawerOpen(false));
   const initialLoad = useRef(true);
+  // Stays set until the first answer lands: the fetch re-runs once while the
+  // tenant check settles, and that re-run must not bring the skeletons back.
+  const refreshQuietly = useRef(!!seed);
 
   // Sidebar / grid-cols are driven by JS so the correct layout is set on the
   // very first render — no FOUC from CSS class overrides loading after paint.
@@ -503,7 +523,10 @@ export default function CarListingPage() {
       && !brand && !model && !variant && !bodyType && !state && !minPrice && !maxPrice
       && !financing && !yearFrom && !yearTo && !mileageMax && !hotDeals && !condition
       && !transmission && !fuelType && !colour && !sellerType;
-    if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
+    // Seeded cars are refreshed quietly: no skeleton, no dimmed grid over
+    // cars that are already right.
+    if (refreshQuietly.current) { /* keep the seeded grid up */ }
+    else if (initialLoad.current) { setLoading(true); } else { setFetching(true); }
     setError(null);
     try {
       const from = (page-1)*PER_PAGE, to = from+PER_PAGE-1;
@@ -618,7 +641,7 @@ export default function CarListingPage() {
         setError('Failed to load listings. Please try again.');
       }
     }
-    finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; } }
+    finally { if (myReq === reqSeq.current) { setLoading(false); setFetching(false); initialLoad.current = false; refreshQuietly.current = false; } }
   }, [page, brand, model, variant, bodyType, state, minPrice, maxPrice, transmission, financing, yearFrom, yearTo, q, condition, mileageMax, hotDeals, fuelType, colour, sellerType, sort, isMarketplace, tenant?.id, tenantLoading]); // eslint-disable-line
 
   useEffect(() => { fetchCars(); }, [fetchCars]);
@@ -671,7 +694,7 @@ export default function CarListingPage() {
   if (!isMarketplace && !tenantLoading && !tenant) {
     return (
       <>
-        <Header />
+        <Suspense fallback={null}><Header /></Suspense>
         <div style={{ background:'#F7F6F2', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"system-ui,sans-serif" }}>
           <Car size={36} color="#d1d5db" style={{ marginBottom:16 }}/>
           {/* tenantError = lookup failed (network/database), not a miss. */}
@@ -734,7 +757,7 @@ export default function CarListingPage() {
         }
       `}</style>
 
-      {isMarketplace ? <MarketplaceHeader /> : <Header />}
+      {isMarketplace ? <MarketplaceHeader /> : <Suspense fallback={null}><Header /></Suspense>}
 
       {/* Drawer backdrop — above header (z-100) */}
       {drawerOpen && (
@@ -990,7 +1013,7 @@ export default function CarListingPage() {
 
       {/* Mobile FAB — bottom-right; raised above the WhatsApp button on dealer subdomains */}
       <MarketplaceFooter />
-      {!isMarketplace && <StickyWhatsAppButton />}
+      {!isMarketplace && <Suspense fallback={null}><StickyWhatsAppButton /></Suspense>}
     </>
   );
 }

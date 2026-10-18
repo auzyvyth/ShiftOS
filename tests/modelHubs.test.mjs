@@ -90,6 +90,8 @@ const yc = hubCopy(findHub(yr, 'toyota').brand, ya);
 ok(yc.faqs.some((f) => f.a.startsWith('Asking prices on XDrive right now: 2025: RM 295,000')), 'by-year FAQ quotes real rows');
 ok(yc.faqs.some((f) => f.a.startsWith('Of the 4 listed, 3 recon, 1 used')), 'condition FAQ counts');
 ok(!hubCopy(toyota, alphard).faqs.some((f) => /recon or used/.test(f.q)), 'no condition FAQ when no seller set one');
+ok(yc.title.startsWith('Used & Recon Toyota Alphard for Sale in Malaysia'), 'title says Recon when a live car is recon');
+ok(!/Recon/.test(hubCopy(toyota, alphard).title), 'no Recon in title without a recon car');
 
 console.log(`modelHubs: ${pass} passed, ${fails.length} failed`);
 if (fails.length) { console.log(fails.map((x) => `  FAIL ${x}`).join('\n')); process.exit(1); }

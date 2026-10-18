@@ -138,6 +138,18 @@ Owner resells Sensus AI (Sensus DWC LLC) to dealerships; page books demos. Page
   elsewhere (domainoffer.net, Oct 2026), so transfer to a cheaper registrar
   BEFORE expiry. Never let it reach redemption (renewal ~2x). Salesmen have `xdrive.my/s/<slug>` in their bios, articles
   rank on it, and a lapsed domain can be bought by anyone and receive that traffic.
+- [ ] **Switch-day redirect spec (owner asked 2026-10-18).** Every old link must land
+  on the SAME page, never the home page: `xdrive.my/s/premiummotors?ref=x` ->
+  `drevo.my/s/premiummotors?ref=x` (path AND query kept, permanent 301/308, one hop).
+  Cover `www.xdrive.my` and every dealer subdomain (`<sub>.xdrive.my` ->
+  `<sub>.drevo.my`); a Vercel per-domain redirect does not do wildcards, so the
+  subdomains need a host check in `middleware.js` (or a wildcard rule) - test 3 real
+  URLs of each kind with `curl -I` before announcing. Slugs survive because they are
+  locked after onboarding (`trg_guard_profile_slug`). Keep the redirect for as long
+  as the domain is renewed (Google wants a year minimum; bios and old WhatsApp
+  messages live longer). Then in **Google Search Console: verify `drevo.my`, run
+  "Change of address" from the xdrive.my property, submit the new sitemap** - skip
+  this and Google treats drevo.my as a new site and the ranking starts from zero.
 - [ ] **Migration list (a domain move is not just find-replace):** 563 refs in
   92 files; Vercel domains + wildcard `<sub>.` dealer storefronts; Supabase auth
   site URL + redirect URLs; Google OAuth origins (`ID_TOKEN_ORIGINS`,

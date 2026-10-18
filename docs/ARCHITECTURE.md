@@ -35,7 +35,8 @@ flowchart TB
   subgraph Vercel["Vercel (hosting)"]
     SPA[Static app build]
     API["/api/* small server functions<br/>wa, call-number, enquiry, booking,<br/>whatsapp-lead, track, og, sitemap"]
-    MW[middleware.js<br/>per-IP rate limits]
+    SHELL["api/shell<br/>/ and /showroom HTML<br/>with the newest cars, CDN-cached 60s"]
+    MW[middleware.js<br/>per-IP rate limits,<br/>routes / and /showroom to the shell]
   end
 
   subgraph Supabase["Supabase (the brain)"]
@@ -62,6 +63,7 @@ flowchart TB
   OP --> PLAT
   MK & MP & SF & LITE & PREM & DASH & PLAT & MKT & SX --> SPA
   SPA --> MW --> API
+  B -->|first visit to / or /showroom| MW --> SHELL --> DB
   SPA -->|supabase-js, RLS decides what you see| DB
   SPA --> AUTH
   API --> DB
@@ -223,6 +225,7 @@ change them; each is applied on its own.
 | Why no push? | `push_subscriptions`, `push_to_users`, `send-push` |
 | Why is the marketplace blank? | `public_car_listings` view, `src/config/marketplaceConfig.js` |
 | Why does Google show a generic page? | `api/og.js` |
+| Why does / or /showroom paint cars before the app loads? | `api/shell.js` + `src/utils/serverSeed.js` |
 | Loan / instalment numbers | `src/utils/financing.js` (the only formula) |
 | What a buyer can see about a seller | `get_salesman_by_slug`, `sellerWaUrl` (`src/utils/sellerWhatsApp.js`) |
 | Plans and caps | `plan_config`, `enforce_listing_cap`, `src/utils/planConfig.js` |

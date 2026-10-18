@@ -5,6 +5,7 @@
 
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
+import { storefrontSubdomain } from './src/config/site.js';
 
 const PROTECTED = new Set([
   '/api/enquiry',
@@ -62,8 +63,33 @@ function buildLimiters() {
   return result;
 }
 
+// PERF (2026-10-18): `/` and `/showroom` on the main domain are served by
+// api/shell.js, which puts the newest cars and their first photos into the
+// HTML (and is cached on Vercel's CDN). Only for real visitors on the plain,
+// unfiltered page: a filtered URL shows other cars, a dealer subdomain is a
+// different page, and crawlers keep their own route (vercel.json -> api/og).
+const SHELL_PAGES = { '/': 'home', '/showroom': 'showroom' };
+// Tracking params do not change what the page shows.
+const TRACKING_PARAM = /^(utm_\w+|ref|fbclid|gclid|ttclid|igshid|mc_\w+)$/;
+const CRAWLER = /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|telegram|slack|discord|embedly|preview|perplexity|gpt|claude|anthropic|cohere|ia_archiver|google-inspectiontool|googleother|meta-external/i;
+
+function shellRewrite(req, url) {
+  const page = SHELL_PAGES[url.pathname];
+  if (!page || req.method !== 'GET') return null;
+  if (storefrontSubdomain(url.hostname)) return null;
+  if ([...url.searchParams.keys()].some((k) => !TRACKING_PARAM.test(k))) return null;
+  if (CRAWLER.test(req.headers.get('user-agent') || '')) return null;
+  // Same as @vercel/edge rewrite(). Tracking params are dropped so every
+  // visitor shares one CDN copy.
+  return new Response(null, { headers: { 'x-middleware-rewrite': new URL(`/api/shell?p=${page}`, url).toString() } });
+}
+
 export default async function middleware(req) {
-  const { pathname } = new URL(req.url);
+  const url = new URL(req.url);
+  const { pathname } = url;
+
+  const shell = shellRewrite(req, url);
+  if (shell) return shell;
 
   if (!PROTECTED.has(pathname)) return;
 
@@ -105,5 +131,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
+  matcher: ['/', '/showroom', '/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
 };
