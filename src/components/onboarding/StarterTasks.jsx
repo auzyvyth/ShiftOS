@@ -207,7 +207,10 @@ export default function StarterTasks({
             )}
           </div>
         ) : (
-          TASKS.map((task, idx) => {
+          // Ticked rows drop out (owner, 2026-10-18: they only took space). The
+          // count and the bar in the header still carry what is done, so the
+          // pre-ticked "account" head start is not lost.
+          TASKS.filter((task) => !done[task.key]).map((task, idx) => {
             const isDone = done[task.key];
             const isNext = task.key === nextKey;
             // Only the next task is spelled out. Later ones are a single dim

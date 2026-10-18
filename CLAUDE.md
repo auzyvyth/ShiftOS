@@ -1289,7 +1289,8 @@ and the won-trigger marks it sold on the first deal.
   (`PREMIUM_TASK_KEYS`: account [always ticked, the head start], car, see your page,
   photo, bio, get verified), at the TOP of the Premium dashboard. While it shows,
   `SellerIdCard` drops its "Get verified" invite (`inviteInChecklist`); rejected and
-  review banners still show. Lite keeps its 2. The owner's
+  review banners still show. Ticked rows are hidden; the "n/6" count and the bar
+  in the header carry progress. Lite keeps its 2. The owner's
   "Only you" strip on the mini page reads `starterTodoKeys` from the same file; never
   give it its own list again (it had one, and it disagreed with the dashboard's).
 - **A console-made account starts like a fresh signup.** The owner signs in as the
