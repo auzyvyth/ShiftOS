@@ -695,7 +695,7 @@ export default function ListingsTab({
  <Sparkles size={12} /> {t("salesmanPremium.carActions.aiCaption")}
  </button>
  {openLoanPoster && (
- <button onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
+ <button data-tour-id="lst-poster" onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
  <Calculator size={12} /> Loan poster
  </button>
  )}

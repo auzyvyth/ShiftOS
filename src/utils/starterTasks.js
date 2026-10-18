@@ -7,16 +7,20 @@ import { supabase } from "../supabaseClient";
 // bio are read straight off car_listings / profiles.bio, because a checklist
 // that can disagree with reality is worse than no checklist.
 //
-// The merge is client-side ({...current, [key]: true}) rather than a jsonb
-// `||` concat in SQL. That is safe for this use — these are one-shot flags set
-// by a deliberate click, never concurrently — but if this ever grows into
-// something written from two places at once, move the merge server-side into an
-// RPC so one write cannot clobber the other.
+// The merge re-reads the row first. Callers pass the bag from their render,
+// which is often stale (a tab intro marked a minute ago is not in it), and
+// writing that stale bag back erased the newer flags: intro "seen" keys were
+// wiped this way and the intros kept replaying (2026-10-18).
 export async function markStarterTask(userId, key, currentTasks) {
   if (!userId || !key) return currentTasks || {};
-  const next = { ...(currentTasks || {}), [key]: true };
   // Already set — nothing to write.
   if (currentTasks && currentTasks[key]) return currentTasks;
+  const { data: row } = await supabase
+    .from("profiles")
+    .select("starter_tasks")
+    .eq("id", userId)
+    .maybeSingle();
+  const next = { ...(currentTasks || {}), ...(row?.starter_tasks || {}), [key]: true };
   const { error } = await supabase
     .from("profiles")
     .update({ starter_tasks: next })

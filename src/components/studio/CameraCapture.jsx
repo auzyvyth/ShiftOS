@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, RefreshCw, Zap, ImagePlus } from "lucide-react";
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // ─── CameraCapture ────────────────────────────────────────────────────────────
 // Full-screen camera with a live template overlay:
@@ -12,6 +13,7 @@ import { X, RefreshCw, Zap, ImagePlus } from "lucide-react";
 // getUserMedia is unavailable/denied.
 
 export default function CameraCapture({ onClose, onCapture, carZone, overlayUrl, canvasW = 1080, canvasH = 1920 }) {
+  useModalHistory(true, onClose);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const fileRef = useRef(null);

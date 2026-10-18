@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { STATE_CITIES, cityOptionsFor, matchKnownLocation } from "../utils/locations";
@@ -433,6 +434,7 @@ function PillSelect({ options, value, onChange, disabled = false }) {
 // exhaustive lists).
 function PickerField({ label, value, onChange, options, placeholder = "Select…", disabled, allowCustom = false }) {
   const [open, setOpen] = useState(false);
+  useModalHistory(open, () => setOpen(false));
   const [query, setQuery] = useState("");
   const normalized = options.map((o) => (typeof o === "string" ? { value: o, label: o } : o));
   const selected = normalized.find((o) => o.value === value);
@@ -708,6 +710,7 @@ function MoreDetails({ children, label = "More details (optional)", collapsible 
   // bhp/cylinders/doors/seats, and a salesman's VIN decode fills them anyway,
   // so it stays tucked away to keep the form short.
   const [open, setOpen] = useState(false);
+  useModalHistory(open, () => setOpen(false));
   if (!collapsible) {
     return (
       <div>
@@ -863,11 +866,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [gapConfirm, setGapConfirm] = useState(null); // array of missing-field labels awaiting "post anyway" confirmation
+  useModalHistory(!!gapConfirm, () => setGapConfirm(null));
   const [previews, setPreviews] = useState([]);
   const [copied, setCopied] = useState(false);
   const [draggingIndex, setDraggingIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const [photosFull, setPhotosFull] = useState(false);
+  useModalHistory(photosFull, () => setPhotosFull(false));
   const [draftId, setDraftId] = useState(null);
   const [imgProgress, setImgProgress] = useState([]);
   const [dupWarning, setDupWarning] = useState({ plate: null, vin: null });

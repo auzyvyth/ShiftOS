@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { Helmet } from "react-helmet";
@@ -110,6 +111,8 @@ import {
  CarFront,
  Lock,
  PartyPopper,
+ Calculator,
+ Download,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
@@ -788,6 +791,29 @@ export default function SalesmanPremium() {
  document.body.style.overflow = anyOverlayOpen? "hidden" : "";
  return () => { document.body.style.overflow = ""; };
  }, [anyOverlayOpen]);
+
+ // Back gesture closes the open overlay instead of switching tab under it
+ // (useModalHistory, one shared stack). Same list as anyOverlayOpen; the
+ // shared sheets (studio, loan poster, chat, listing form) register inside
+ // their own components.
+ useModalHistory(showAddLead, () => setShowAddLead(false), {
+ isDirty: () => !!(addLeadForm.buyer_name.trim() || addLeadForm.phone.trim() || addLeadForm.notes.trim()),
+ });
+ useModalHistory(!!waModalLead, () => setWaModalLead(null));
+ useModalHistory(!!bookingDetailId, () => setBookingDetailId(null));
+ useModalHistory(notifOpen, () => setNotifOpen(false));
+ useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
+ useModalHistory(!!broadcastCar, () => setBroadcastCar(null));
+ useModalHistory(!!aiCaptionCar, () => setAiCaptionCar(null));
+ useModalHistory(!!confirmBookingApt, () => { setConfirmBookingApt(null); setConfirmBookingMsg(""); });
+ useModalHistory(!!sellerBookingLead, () => { setSellerBookingLead(null); setSellerBookingDate(""); });
+ useModalHistory(mobileNavOpen, () => setMobileNavOpen(false));
+ useModalHistory(!!drawerLeadId, () => setDrawerLeadId(null));
+ useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarQuery(""); });
+ useModalHistory(logoutConfirmOpen, () => setLogoutConfirmOpen(false));
+ useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
+ useModalHistory(deleteConfirmOpen, () => setDeleteConfirmOpen(false));
+ useModalHistory(!!wonPrompt, () => setWonPrompt(null));
 
  // UX-1 — the topbar gets out of the way while reading a long list. Locked
  // open whenever an overlay or the tour is up: the mobile nav trigger lives
@@ -3778,8 +3804,7 @@ export default function SalesmanPremium() {
      anywhere in the product — which silently emptied staleLeads, the KPI that
      counts on it, and the stage glow that pulses it.
      Portalled per overlay rule 1 (it opens from inside the lead drawer, itself
-     a fixed panel). Deliberately NOT registered with useModalHistory — overlay
-     rule 5: it is a lightweight popup with its own Cancel and overlay-click. */}
+     a fixed panel). The back gesture closes it (useModalHistory). */}
  {followUpModalLead && createPortal(
  (() => {
  const fl = leads.find((l) => l.id === followUpModalLead.id) || followUpModalLead;
@@ -6144,7 +6169,8 @@ export default function SalesmanPremium() {
  listings: [
  introStep("listings", "fast", "lst-fast", Zap),
  introStep("listings", "full", "lst-full", Car),
- introStep("listings", "more", "lst-more", Sparkles),
+ // No "···" step here any more: the first-poster intro below rings it
+ // with a real action once the seller has a car.
  ],
  leads: [
  introStep("leads", "add", "leads-add", Plus),
@@ -6166,6 +6192,16 @@ export default function SalesmanPremium() {
  introStep("outreach", "campaign", "oh-campaign", Megaphone),
  ],
  };
+ // First-poster intro (INTRO-4, 2026-10-18): once the seller has a car, walk
+ // them through making and downloading its loan poster. Steps with `waitFor`
+ // have no Next button: they move on when the seller does the thing (opens
+ // the ··· menu, taps Loan poster, downloads). Seen = starter_tasks.intro_poster.
+ const POSTER_INTRO = [
+ { ...introStep("poster", "menu", "lst-more", Calculator), waitFor: "menu" },
+ { ...introStep("poster", "open", "lst-poster", Calculator), waitFor: "sheet" },
+ introStep("poster", "numbers", "poster-numbers", Banknote),
+ { ...introStep("poster", "download", "poster-download", Download), waitFor: "download" },
+ ];
  const tourSteps = tourMode === "main" ? TOUR_STEPS : introSteps;
 
  const markIntroSeen = (tab) => {
@@ -6206,10 +6242,58 @@ export default function SalesmanPremium() {
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, handover.deals.length, leads]);
 
- // Leaving the tab mid-intro ends it without marking it seen, so it plays
- // again on the next visit.
+ // An intro or the tour counts as SEEN once it has been on screen for 3s, not
+ // only on Skip / the last Next. Closing the app, switching tabs or tapping a
+ // nav link mid-way used to record nothing, so it replayed on every visit
+ // (2026-10-18). The 3s grace keeps an instant reload or redirect on first
+ // landing from using it up. The sidebar tour can be replayed from Settings.
  useEffect(() => {
- if (tourMode && tourMode !== "main" && tourMode !== activeTab) {
+ if (tourStep === null || !tourMode || !userId) return;
+ const mode = tourMode;
+ const timer = setTimeout(() => {
+ if (mode === "main") markMainTourSeen();
+ else markIntroSeen(mode);
+ }, 3000);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [tourMode, tourStep === null, userId]);
+
+ // Start the first-poster intro on Listings once there is a car to make a
+ // poster for, after the Listings intro, and with nothing else open (the
+ // add-car form has to close first, so the list shows the new car).
+ const hasPosterCar = myListings.some((l) => l.status !== "sold");
+ useEffect(() => {
+ if (loading || !userId || !profile || tourStep !== null || activeTab !== "listings") return;
+ if (!hasPosterCar || editListing || posterCar || studioCar || anyOverlayOpen) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (!profile.starter_tasks?.intro_listings && !introSeenThisSession(userId, "listings")) return;
+ if (profile.starter_tasks?.intro_poster || introSeenThisSession(userId, "poster")) return;
+ const timer = setTimeout(() => {
+ const el = document.querySelector('[data-tour-id="lst-more"]');
+ if (!el || el.getBoundingClientRect().height === 0) return;
+ setIntroSteps(POSTER_INTRO);
+ setTourMode("poster");
+ setTourStep(0);
+ }, 900);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, activeTab, hasPosterCar, editListing, posterCar, studioCar, anyOverlayOpen]);
+
+ // The poster intro follows what the seller actually does. Closing the menu
+ // or the sheet without finishing goes back to the first step, so a stray
+ // tap does not strand them on a step whose button has gone.
+ useEffect(() => {
+ if (tourMode !== "poster" || tourStep === null) return;
+ const wait = introSteps[tourStep]?.waitFor;
+ if (wait === "menu") { if (actionMenuCarId) setTourStep(1); }
+ else if (wait === "sheet") { if (posterCar) setTourStep(2); else if (!actionMenuCarId) setTourStep(0); }
+ else if (!posterCar) setTourStep(0);
+ }, [tourMode, tourStep, actionMenuCarId, posterCar, introSteps]);
+
+ // Leaving the tab mid-intro ends it (already counted as seen above).
+ useEffect(() => {
+ const introTab = tourMode === "poster" ? "listings" : tourMode;
+ if (tourMode && tourMode !== "main" && introTab !== activeTab) {
  setTourStep(null);
  setTourMode(null);
  }
@@ -6222,6 +6306,7 @@ export default function SalesmanPremium() {
  // from before this shipped is not congratulated months late. "Show me"
  // opens Sold, where the Sold intro (held until now) plays.
  const [firstSale, setFirstSale] = useState(null);
+ useModalHistory(!!firstSale, () => closeFirstSale(false));
  useEffect(() => {
  if (loading || !userId || !profile || firstSale || tourStep !== null || wonPrompt || anyOverlayOpen) return;
  if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
@@ -6231,7 +6316,13 @@ export default function SalesmanPremium() {
  const wonAt = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
  if (!wonAt || Date.now() - wonAt > 14 * 86400000) return;
  // Let the win confirm finish closing before this opens (overlay rule 3).
- const timer = setTimeout(() => setFirstSale(deal), 700);
+ // Counted as seen when it opens: closing the app with it up must not
+ // bring it back.
+ const timer = setTimeout(() => {
+ setFirstSale(deal);
+ markIntroSeenThisSession(userId, "first_sale");
+ markStarterTask(userId, "first_sale_seen", profile?.starter_tasks);
+ }, 700);
  return () => clearTimeout(timer);
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, handover.deals, tourStep, wonPrompt, anyOverlayOpen, firstSale]);
@@ -6315,6 +6406,17 @@ export default function SalesmanPremium() {
  );
  };
 
+ // Per-account DB flag (mirrors SalesmanLite.jsx dismissTour) is the real
+ // guard read on next mount; the sessionStorage key is only a same-session
+ // backup so a re-render before the write lands doesn't re-trigger the tour.
+ const markMainTourSeen = () => {
+ if (!userId) return;
+ markTourSeenThisSession(userId);
+ setProfile((p) => (p && !p.onboarding_tour_done ? { ...p, onboarding_tour_done: true } : p));
+ supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId)
+ .then(({ error }) => { if (error) console.error("markMainTourSeen:", error); });
+ };
+
  const dismissTour = () => {
  if (tourMode && tourMode !== "main") {
  markIntroSeen(tourMode);
@@ -6323,15 +6425,7 @@ export default function SalesmanPremium() {
  setTourTarget(null);
  return;
  }
- // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
- // guard read on next mount; the per-user localStorage key is only a
- // same-session backup so a re-render before the write lands doesn't
- // re-trigger the tour.
- if (userId) {
- markTourSeenThisSession(userId);
- setProfile((p) => (p ? { ...p, onboarding_tour_done: true } : p));
- supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
- }
+ markMainTourSeen();
  setTourStep(null);
  setTourMode(null);
  setTourTarget(null);
@@ -6366,6 +6460,10 @@ export default function SalesmanPremium() {
  // Only the sidebar tour opens on a centred welcome card; an intro's first
  // step already rings a control.
  const isWelcome = tourMode === "main" && tourStep === 0;
+ // The poster intro runs over the loan poster sheet (z 9999), so it lifts
+ // itself above it. An action step has no Next: the seller taps the ring.
+ const zBase = tourMode === "poster" ? 10000 : 1000;
+ const waitsForTap = !!step.waitFor;
 
  // Placement: the bubble sits on whichever side of the ringed link has room,
  // never on top of it (utils/tourPlacement). It FOLLOWS the link on every
@@ -6427,7 +6525,7 @@ export default function SalesmanPremium() {
  border: "2px solid #3b82f6",
  boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
  pointerEvents: "none",
- zIndex: 1001,
+ zIndex: zBase + 1,
  animation: "tourRing 0.2s ease-out",
  }}
  />
@@ -6449,7 +6547,7 @@ export default function SalesmanPremium() {
  padding: "14px 16px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
  animation: `${isWelcome ? "tourInC" : "tourIn"} 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`,
- zIndex: 1002,
+ zIndex: zBase + 2,
  boxSizing: "border-box",
  }}
  >
@@ -6483,7 +6581,7 @@ export default function SalesmanPremium() {
  bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
  width: isMobile ? "calc(100vw - 24px)" : 380,
  boxSizing: "border-box",
- zIndex: 1003,
+ zIndex: zBase + 3,
  background: BUBBLE_BG,
  border: "1px solid rgba(255,255,255,0.08)",
  borderRadius: 14,
@@ -6496,7 +6594,7 @@ export default function SalesmanPremium() {
  }}
  className="tour-anim"
  >
- {tourStep > 0 ? (
+ {tourStep > 0 && tourMode !== "poster" ? (
  <button onClick={() => setTourStep((s) => s - 1)} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
  ← {t("salesmanPremium.tour.back")}
  </button>
@@ -6513,12 +6611,18 @@ export default function SalesmanPremium() {
  ))}
  </div>
  </div>
+ {waitsForTap ? (
+ <span style={{ minHeight: 44, display: "flex", alignItems: "center", padding: "0 6px", color: "#93c5fd", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+ {t("salesmanPremium.tour.tapHint")}
+ </span>
+ ) : (
  <button
  onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
  style={{ minHeight: 44, padding: "0 20px", borderRadius: 10, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
  >
  {isLast ? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
  </button>
+ )}
  </div>
  </>,
  document.body,
@@ -7910,7 +8014,9 @@ export default function SalesmanPremium() {
  )}
  {posterCar && (
  <Suspense fallback={null}>
- <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)} />
+ <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
+ onDownloaded={() => { if (tourMode === "poster") dismissTour(); }}
+ bottomInset={tourMode === "poster" ? TOUR_BAR_H + 40 : 0} />
  </Suspense>
  )}
 

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { SALESMAN_PLANS, DEALER_PLANS } from '../../utils/plans';
 import PlanCard from './PlanCard';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Shared plan switcher for the onboarding flows. Shows every plan (salesman +
 // dealer) with price, caps and features; selecting one routes to the matching
@@ -17,6 +18,7 @@ import PlanCard from './PlanCard';
 // standalone pick-a-plan surface is /plans (src/pages/PlansPage.jsx); the two
 // share the cards and the catalogue so neither can drift.
 export default function PlanPickerModal({ currentTier, onClose }) {
+  useModalHistory(true, onClose);
   const navigate = useNavigate();
 
   useEffect(() => {

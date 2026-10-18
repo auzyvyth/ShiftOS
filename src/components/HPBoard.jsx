@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { supabase } from '../supabaseClient';
 import { usePersistentState } from '../hooks/usePersistentState';
 
@@ -109,6 +110,7 @@ function BankScorecard({ rows }) {
 
 // ── Reject Modal ───────────────────────────────────────────────────────────────
 function RejectModal({ onConfirm, onCancel }) {
+  useModalHistory(true, onCancel);
   const [category, setCategory] = useState('');
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

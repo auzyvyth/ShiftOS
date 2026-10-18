@@ -7,6 +7,7 @@ import PushPromptStrip from './PushPromptStrip';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { STAGE_ORDER, STAGE_CONFIG, canonicalStage } from '../../lib/leadsHelpers';
 import { postTitle } from '../../utils/findMe';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Seller-side inbox. `theme` picks the palette so the same component sits on a
 // light dealer dashboard or a dark salesman panel without a second copy.
@@ -63,6 +64,7 @@ export default function SellerInbox({
 }) {
   const { threads, loading, totalUnread } = useChatThreads({ salesmanId, dealerId });
   const [openId, setOpenId] = useState(null);
+  useModalHistory(!!openId, () => setOpenId(null));
   const [showStage, setShowStage] = useState(false);
   const fillRef = useRef(null);
   const [fillH, setFillH] = useState(null);

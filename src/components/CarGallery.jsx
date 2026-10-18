@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CarGallery = ({ images, carName }) => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+  useModalHistory(isZoomed, () => setIsZoomed(false));
   const [showThumbnails, setShowThumbnails] = useState(false);
 
   const handleThumbnailSelect = (index) => {

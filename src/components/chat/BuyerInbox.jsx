@@ -7,6 +7,7 @@ import ChatThread from './ChatThread';
 import PushPromptStrip from './PushPromptStrip';
 import useVisualViewport from '../../hooks/useVisualViewport';
 import { postTitle } from '../../utils/findMe';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Buyer-side inbox, on /account.
 //
@@ -182,6 +183,7 @@ function ThreadRow({ t, onOpen }) {
 export default function BuyerInbox() {
   const { threads, loading } = useBuyerThreads();
   const [openId, setOpenId] = useState(null);
+  useModalHistory(!!openId, () => setOpenId(null));
   const vv = useVisualViewport();
   const open = threads.find(t => t.thread_id === openId) || null;
 

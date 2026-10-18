@@ -5,6 +5,7 @@ import { TRUST_DOCS, geranStatusLabel } from "../../utils/trustDocs";
 import DamageMap from "../DamageMap";
 import { platformClient } from "../../lib/platformClient";
 import { isPrivateDoc, isPdfDoc, resolveDocUrls } from "../../utils/carDocs";
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Full-evidence review sheet for one pending listing.
 //
@@ -123,6 +124,7 @@ export default function ListingReviewModal({
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
   const [note, setNote] = useState(listing?.admin_notes || "");
+  useModalHistory(!!listing, onClose, { isDirty: () => !!reason.trim() || note !== (listing?.admin_notes || "") });
   const [noteSaving, setNoteSaving] = useState(false);
   const [noteSaved, setNoteSaved] = useState(false);
 

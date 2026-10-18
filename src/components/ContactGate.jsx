@@ -7,6 +7,7 @@ import { supabase } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
 import { apiUrl } from '../utils/apiUrl';
 import Turnstile from './Turnstile';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 // Lazy for the same reason as in ConsentBanner: this component is reachable from
 // every car card, so a static import would drag the full legal prose onto the
@@ -20,6 +21,7 @@ const LegalModal = lazy(() => import('./LegalModal'));
 // WhatsApp. Matches the car-detail enquiry form's fields so salesmen get the same
 // info from every "WhatsApp" button. Used by every public "WhatsApp" button.
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
+  useModalHistory(!!open, onClose);
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');

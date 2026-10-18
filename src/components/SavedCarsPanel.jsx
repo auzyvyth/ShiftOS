@@ -1,4 +1,5 @@
 import React, { useEffect, lazy, Suspense } from 'react';
+import { useModalHistory } from '../hooks/useModalHistory';
 import { X, Heart, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
@@ -20,6 +21,7 @@ const CardSkeleton = () => (
 );
 
 export default function SavedCarsPanel({ open, onClose }) {
+  useModalHistory(!!open, onClose);
   const { savedIds, toggleSave, ready } = useSavedCars();
   const { cars, loading } = useSavedCarsDetails(savedIds, ready);
 

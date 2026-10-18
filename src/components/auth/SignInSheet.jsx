@@ -8,6 +8,7 @@ import {
   ensureBuyerProfile, isRealBuyer, markBuyerIntent, sendBuyerToSignIn, setPostAuthReturn,
 } from '../../lib/buyerAuth';
 import { reportAuthFailure } from '../../utils/authErrors';
+import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Sign in WITHOUT leaving the page (owner, 2026-10-14). Opened by
 // requestBuyerSignIn() when a signed-out buyer taps "Chat here" or the heart.
@@ -36,6 +37,9 @@ export default function SignInSheet({ reason = 'chat', returnUrl, onDone }) {
   const [gsiReady, setGsiReady] = useState(false);
   const [gsiFailed, setGsiFailed] = useState(!canUseGoogleIdToken());
   const [busy, setBusy] = useState(false);
+  // Back closes the sheet like the X does (finish is declared below; the
+  // callback only runs later, on a back gesture).
+  useModalHistory(true, () => finish(false));
 
   const finish = (ok) => {
     if (doneRef.current) return;

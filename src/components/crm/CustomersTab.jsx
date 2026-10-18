@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useModalHistory } from '../../hooks/useModalHistory';
 import ServicePackages from "./ServicePackages";
 import { useServicePackages } from "../../hooks/useServicePackages";
 import { AlertTriangle, Phone, Search, X } from "lucide-react";
@@ -18,6 +19,7 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState(null);
+  useModalHistory(!!editing, () => setEditing(null), { isDirty: () => true });
   const [saving, setSaving] = useState(false);
   const [handoverMap, setHandoverMap] = usePersistentState(cacheKey && `${cacheKey}:handover`, {}); // lead_id → progress %
   const [expandedPkg, setExpandedPkg] = useState(null); // customer_id being expanded

@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { TERMS, PRIVACY, DPA, LEGAL_META } from "../legal/legalDocs";
+import { useModalHistory } from '../hooks/useModalHistory';
 
 // Light, readable popup for the legal documents, shown from public buyer forms so a
 // privacy/terms link never navigates the buyer away from what they were doing.
@@ -16,6 +17,7 @@ const DOCS = {
 };
 
 export default function LegalModal({ doc, onClose }) {
+  useModalHistory(!!doc, onClose);
   useEffect(() => {
     if (!doc) return;
     // Restore the PREVIOUS value (not "") so that when this opens over another

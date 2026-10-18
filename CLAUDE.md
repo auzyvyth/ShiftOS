@@ -1556,7 +1556,17 @@ enquiries. Both were granted to `anon`.
 2. **Always lock body scroll**: `document.body.style.overflow = 'hidden'` when the overlay opens; restore to `''` in the cleanup. Do this in a `useEffect` keyed on the open boolean, NOT inline.
 3. **`closeAndRun` pattern for nested actions**: when an action button inside an overlay should open a second modal, ALWAYS close the first overlay before opening the second. Pattern: `const closeAndRun = (fn) => () => { setDetailUnit(null); fn(); };`. Never open two overlays in parallel unless explicitly designed for it.
 4. **SELECT queries for detail drawers must be complete**: never use a partial select for a view that shows all spec fields. Expand the `select()` call to include every column needed before building the detail UI — patching it afterwards requires re-reading the file every time.
-5. **`useModalHistory` race condition**: the hook's `history.back()` cleanup fires `popstate` asynchronously. If you call `setModalA(null)` and `setModalB(open)` in the same tick, the cleanup for A fires `history.back()` which the just-registered B handler catches → B closes immediately. **Do NOT register `useModalHistory` for lightweight popups that have their own × / overlay-click close controls.** Only register it for primary drawers (LeadDrawer, main detail panels).
+5. **EVERY overlay registers `useModalHistory(isOpen, onClose)`** (2026-10-18). Tabs are real
+   history entries, so an overlay outside history gets walked past: the phone's back swipe
+   switched the tab and left the overlay (TikTok studio) sitting on top. The hook keeps ONE
+   shared stack, so Back closes the top overlay only, and the old race (closing A + opening B
+   in one tick closed B) is gone; do not go back to per-overlay popstate listeners. A page
+   change made while an overlay's entry is on top takes that entry over, so a nav link inside
+   the phone menu costs no dead Back press. Shared sheets register INSIDE the component
+   (`useModalHistory(true, onClose)` when mounted only while open), never also in the page,
+   or Back needs two presses. Lost work: pass `{ isDirty: () => bool }` and Back asks
+   (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
+   every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
 ## Product tour (Salesman Premium) — anchors and placement
 11 steps in `TOUR_STEPS` (SalesmanPremium.jsx): a welcome card + one per sidebar link,
@@ -1579,8 +1589,10 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   First visit to Listings, Leads, Sold, Loans or Outreach, only after the sidebar tour is done.
   Each step rings an in-page `data-tour-id`; a step whose target is missing or zero-height
   (no car yet) is dropped at start. Seen = `profiles.starter_tasks.intro_<tab>` (the console
-  handover already resets starter_tasks; no new column). Leaving the tab mid-intro ends it
-  unseen. A spacer under the tab content gives bottom-most controls room above the bar.
+  handover already resets starter_tasks; no new column). The tour, every intro and the
+  first-sale card count as SEEN after 3s on screen, not only on Skip/finish: closing the app or
+  leaving the tab mid-way used to record nothing, so they replayed every visit (2026-10-18).
+  `markStarterTask` re-reads the row before merging, so one flag never erases another. A spacer under the tab content gives bottom-most controls room above the bar.
 - **An intro waits until its tab has something real to show.** Sold plays only after the
   first won deal (`handover.deals`), Outreach only once there is a live lead. A new seller's
   Sold tab is three empty states; an intro there explains things they cannot see and then
@@ -1594,6 +1606,14 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   sold to is on screen; a step's `targets` are selectors, best first, the pill as fallback.
   Seen = `starter_tasks.first_sale_seen`. Copy in `salesmanPremium.firstSale` (en + ms);
   it names no product, because the seller-side name is still an open owner call.
+- **First-poster intro (INTRO-4, 2026-10-18)**: `POSTER_INTRO` in SalesmanPremium.jsx, tourMode
+  "poster" (it belongs to the Listings tab). Plays once on Listings when the seller has a car that is
+  not sold, after the Listings intro, with no form or sheet open. ACTION steps (`waitFor`): tap ···
+  (`lst-more`), tap Loan poster (`lst-poster`), check the numbers (`poster-numbers`, the one Next),
+  download (`poster-download`); the bar shows "Tap the ringed button" instead of Next. Closing the
+  menu or sheet early goes back to step 1; `LoanPosterSheet onDownloaded` ends it. It lifts itself
+  above the sheet (`zBase` 10000; the sheet is 9999). The Listings intro lost its "···" step to it.
+  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (3 free posters/month).
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

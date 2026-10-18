@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Wallet, X, MessageCircle } from 'lucide-react';
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from '../utils/financing';
 import { computeAffordability } from '../utils/affordability';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 const fmt = (n) => (n != null && !Number.isNaN(n)) ? Math.round(n).toLocaleString('en-MY') : '—';
 const num = (v) => parseFloat(v) || 0;
@@ -58,6 +59,7 @@ export default function AffordabilityCheck({
     : null;
 
   const close = () => setOpen(false);
+  useModalHistory(open, close);
   // Overlay rule 3 — close this popup before anything else opens (e.g. the
   // page's own WhatsApp/chat contact flow).
   const closeAndRun = (fn) => () => { setOpen(false); if (fn) fn(); };
