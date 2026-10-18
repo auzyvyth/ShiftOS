@@ -1357,9 +1357,12 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   a "banks decide case by case" note. `calcMonthly` and the mini-page card still
   return null / "financing on request" for them — do not widen that.
 - **One portrait stage (9:16 max), never a landscape layout.** Sellers film their
-  monitor with a phone held upright, so on a desktop the presenter is a centred
-  column; sizes are container units and `.lp-fit` auto-shrinks the Cars screen to
-  fit (80% floor, then it scrolls). Name + price sit ON the photo.
+  monitor with a phone held upright, so on a desktop the presenter is the PHONE
+  layout (375x667, `STAGE_W`/`STAGE_H`) magnified with CSS zoom to the screen's
+  full height (`deskZoom`): a column the camera frames, with every word bigger.
+  A wide two-column desktop sheet (2026-10-04) spilled out of the camera frame and
+  was removed 2026-10-18. Sizes are container units and `.lp-fit` auto-shrinks the
+  Cars screen to fit (80% floor, then it scrolls). Name + price sit ON the photo.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
   **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
