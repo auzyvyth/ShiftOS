@@ -230,6 +230,14 @@ function buildHubHtml(hubs, brand, model, cars) {
     const others = brand.models.filter((m) => m.slug !== model.slug);
     nav = others.length ? `<h2>Other ${esc(brand.brand)} models</h2><ul>${others.map((m) => hubLink(m, `${brand.brand} ${m.model}`)).join("")}</ul>` : "";
   }
+  // Google builds the photo strip under a search result from <img> tags it can
+  // read, and bots never run the SPA. First photo of the first few cars only.
+  const photos = brand
+    ? cars.filter((c) => c.images?.[0]).slice(0, 6).map((c) => {
+        const name = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
+        return `<a href="${esc(carHref(c))}"><img src="${esc(c.images[0])}" alt="${esc(`${name} for sale${c.state ? ` in ${c.state}` : ""}`)}" width="800" height="600" loading="lazy" /></a>`;
+      }).join("\n      ")
+    : "";
   const listLd = cars.length
     ? {
         "@context": "https://schema.org",
@@ -246,6 +254,7 @@ function buildHubHtml(hubs, brand, model, cars) {
     ${crumbHtml(crumbs)}
     <h1>${esc(copy.h1)}</h1>
     <p>${esc(copy.intro)}</p>
+    ${photos ? `<div>\n      ${photos}\n    </div>` : ""}
     ${brand ? `<h2>${esc(copy.h1.replace(/^Used /, "").replace(/ for sale$/, ""))} listings</h2>\n    <ul>\n      ${carItems}\n    </ul>` : ""}
     ${model && model.byYear.length > 1 ? `<h2>${esc(brand.brand)} ${esc(model.model)} asking prices by year</h2>\n    <ul>${model.byYear.map((y) => `<li>${esc(yearLine(y))}</li>`).join("")}</ul>` : ""}
     ${model && HUB_GUIDES[model.path] ? `<p>Buyer's guide: <a href="${SITE_URL}${HUB_GUIDES[model.path].path}">${esc(HUB_GUIDES[model.path].title)}</a></p>` : ""}
