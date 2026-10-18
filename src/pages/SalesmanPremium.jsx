@@ -3157,6 +3157,7 @@ export default function SalesmanPremium() {
  </button>
  ) : null}
  <button
+ data-tour-id="leads-more"
  onClick={() => setDrawerLeadId(lead.id)}
  style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
  >
@@ -3187,6 +3188,7 @@ export default function SalesmanPremium() {
  >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
  <button
+ data-tour-id="leads-add"
  onClick={() => setShowAddLead(true)}
  style={{
  display: "flex",
@@ -3247,7 +3249,7 @@ export default function SalesmanPremium() {
      selected pill used to be RED whatever stage it was, so mobile said
      nothing about which stage you were in while desktop colour-coded all
      seven -- one pipeline, two colour languages. */}
- <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 12px", marginBottom: 14 }}>
+ <div data-tour-id="leads-stages" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 12px", marginBottom: 14 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
  const solid = sc.solid || "#6b7280";
@@ -3346,6 +3348,7 @@ export default function SalesmanPremium() {
      border, no saturated fills. The stage hue is a dot, a hairline and a
      faint wash on the selected row, never a solid colour bar. */}
  <div
+  data-tour-id="leads-stages"
   style={{
    width: 226,
    flexShrink: 0,
