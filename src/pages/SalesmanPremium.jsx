@@ -1623,6 +1623,18 @@ export default function SalesmanPremium() {
  let sel = null;
  let cancelled = false;
  const visible = (q) => { const el = document.querySelector(q); return el && el.getBoundingClientRect().height > 0 ? el : null; };
+ // Something else drawn over the target (the sticky top bar): a fixed
+ // "72px from the top" guess let the ring land on the header's logout
+ // button while the real ··· sat underneath it (2026-10-18). The tour's own
+ // layers don't count; the ring ignores taps, the bubble is marked.
+ const covered = (el) => {
+ const r = el.getBoundingClientRect();
+ const x = r.left + r.width / 2;
+ return [r.top + 2, r.bottom - 2].some((y) => {
+ const hit = document.elementFromPoint(x, y);
+ return hit && !el.contains(hit) && !hit.contains(el) && !hit.closest("[data-tour-layer]");
+ });
+ };
  const measure = () => {
  cancelAnimationFrame(frame);
  frame = requestAnimationFrame(() => {
@@ -1640,7 +1652,7 @@ export default function SalesmanPremium() {
  sel = found;
  const el = document.querySelector(sel);
  const r = el.getBoundingClientRect();
- if (r.top < 72 || r.bottom > window.innerHeight - TOUR_BAR_H - 24) {
+ if (r.top < 72 || r.bottom > window.innerHeight - TOUR_BAR_H - 24 || covered(el)) {
  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
  }
@@ -6463,14 +6475,18 @@ export default function SalesmanPremium() {
 
  // Measure the rendered card so placement uses its real height. Guarded on a
  // 2px delta: this runs after every render, and writing state unconditionally
- // from a layout effect that state feeds back into would loop.
+ // from a layout effect that state feeds back into would loop. It must run on
+ // EVERY render: an intro's bubble mounts only once its target is found, a
+ // render after the step changed, and keyed deps missed that, so the bubble
+ // was placed with the PREVIOUS step's height and floated far above its
+ // target (2026-10-18).
  useLayoutEffect(() => {
  const el = tourCardRef.current;
  if (tourStep === null || !el) return;
  const h = Math.round(el.getBoundingClientRect().height);
  if (!h) return;
  if (Math.abs(h - tourCardH) > 2) setTourCardH(h);
- }, [tourStep, tourCardH, isMobile]);
+ });
 
  const renderTour = () => {
  if (tourStep === null) return null;
@@ -6558,6 +6574,7 @@ export default function SalesmanPremium() {
  {(isWelcome || tourMode === "main" || tourTarget) && <div
  key={`bubble-${tourMode}-${tourStep}`}
  ref={tourCardRef}
+ data-tour-layer=""
  className="tour-anim"
  style={{
  ...bubbleStyle,

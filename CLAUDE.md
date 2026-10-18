@@ -1596,8 +1596,11 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   never moves under the thumb. Do not put the buttons back in the bubble, and do not dock
   the bubble to the bottom of the phone again (it sat far from the link it described).
   `TOUR_BAR_H` is the space the bar takes; placement and the drawer's bottom padding use it.
-- The bubble is MEASURED after render (`tourCardRef` + `tourCardH`), never a guessed
-  height. `npm run test:tour` after touching the geometry.
+- The bubble is MEASURED after render (`tourCardRef` + `tourCardH`), on EVERY render (no
+  deps: an intro bubble mounts a render after its step, and keyed deps kept the last
+  step's height, so it floated far above the target). An intro scrolls its target into
+  view when anything covers it (`covered`, elementFromPoint): the sticky top bar hid the
+  real ··· and the ring landed on the logout button. `npm run test:tour` after touching the geometry.
 - Portalled to `document.body` (overlay rule 1). The bubble's scroll goes on an INNER
   wrapper: `overflow` on the bubble clips the arrow.
 - `startTour()` records the entry tab and `dismissTour()` returns there.
