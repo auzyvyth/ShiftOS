@@ -1274,7 +1274,7 @@ export default function SalesmanLite() {
 
   // listing action overflow menu
   const [actionMenuCarId, setActionMenuCarId] = useState(null);
-  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (3 free cars a month)
+  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (10 free cars a month)
 
   // "Delete" ARCHIVES the car (status='archived'), never a hard DELETE: that
   // unlinked the car from every lead and chat and passed the 8s limit on a
@@ -4298,7 +4298,7 @@ export default function SalesmanLite() {
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                   Brief
                                 </button>
-                                {/* Loan poster: free on Lite for 3 cars a month (claim_loan_poster). */}
+                                {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
                                 <button onClick={() => { setPosterCar(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
                                   <Calculator size={12} />
                                   Loan poster

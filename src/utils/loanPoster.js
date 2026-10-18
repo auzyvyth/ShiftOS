@@ -18,7 +18,7 @@ import { HIGH_VALUE_THRESHOLD, monthlyPayment } from './financing.js';
 import { eirForTenure } from './liveMaths.js';
 
 export const POSTER_TENURES = [9, 7, 5];
-export const LITE_POSTERS_PER_MONTH = 3; // must match claim_loan_poster()
+export const LITE_POSTERS_PER_MONTH = 10; // must match claim_loan_poster()
 
 const num = (v) => {
   const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
