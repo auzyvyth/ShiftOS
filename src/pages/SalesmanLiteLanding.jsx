@@ -20,7 +20,7 @@ import {
 } from "../config/salesmanLandingCopy";
 
 // Audience (owner, 2026-10-06): agents who work out instalments on TikTok /
-// Facebook lives. The hero sells Live presentation (Premium, first month free);
+// Facebook lives. The hero sells Live presentation (free on Lite, owner 2026-10-18);
 // Lite is the free way in, one button over. Every claim on this page must match
 // what the product does — see the fact list at the top of salesmanLandingCopy.js.
 // Malay first (owner, 2026-10-13): every visible string comes from
@@ -134,10 +134,10 @@ export default function SalesmanLiteLanding() {
               </h1>
               <p className="sll-lead">{t.heroIntro}</p>
               <div className="sll-cta-row">
-                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-                  {t.premiumCta} <ArrowRight size={17} />
+                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
+                  {t.liveCta} <ArrowRight size={17} />
                 </Link>
-                <Link to={LITE_SIGNUP} className="sll-btn sll-btn-ghost">{t.liteCta}</Link>
+                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-ghost">{t.premiumCta}</Link>
               </div>
               <p className="sll-microtrust">
                 {t.heroTrust.map((x) => (
@@ -161,7 +161,7 @@ export default function SalesmanLiteLanding() {
         </div>
 
         {/* ── Live presentation, point by point ── */}
-        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} copy={t.live} cta={t.premiumCta} />
+        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} copy={t.live} cta={t.liveCta} href={LITE_SIGNUP} />
 
         {/* ── Pain → comparison: the poster by hand vs Live presentation ── */}
         <motion.section className="sll-section sll-section-alt" variants={fadeUp} {...reveal}>
@@ -267,8 +267,8 @@ export default function SalesmanLiteLanding() {
               ))}
             </motion.div>
             <div className="sll-dark-cta">
-              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-                {t.premiumCta} <ArrowRight size={17} />
+              <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
+                {t.liveCta} <ArrowRight size={17} />
               </Link>
             </div>
           </div>
@@ -303,8 +303,8 @@ export default function SalesmanLiteLanding() {
               <h3 className="sll-midcta-h">{t.midcta.title}</h3>
               <p className="sll-midcta-p">{t.midcta.body}</p>
             </div>
-            <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red">
-              {t.premiumCta} <ArrowRight size={17} />
+            <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
+              {t.liveCta} <ArrowRight size={17} />
             </Link>
           </div>
         </motion.section>
@@ -364,11 +364,11 @@ export default function SalesmanLiteLanding() {
             </h2>
             <p className="sll-final-p">{t.final.body}</p>
             <div className="sll-cta-row sll-cta-center">
-              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
-                {t.premiumCta} <ArrowRight size={18} />
+              <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
+                {t.liveCta} <ArrowRight size={18} />
               </Link>
             </div>
-            <p className="sll-final-alt"><Link to={LITE_SIGNUP}>{t.final.liteLink}</Link></p>
+            <p className="sll-final-alt"><Link to={PREMIUM_SIGNUP}>{t.final.liteLink}</Link></p>
             <p className="sll-microtrust sll-center">
               {t.final.trust.map((x, i) => {
                 const Icon = FINAL_TRUST_ICONS[i] || Check;

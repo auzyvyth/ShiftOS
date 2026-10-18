@@ -188,9 +188,6 @@ export default function SalesmanProfilePage() {
         to: routeForProfile(viewer),
         label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
         seller: isSellerRole(viewer.role),
-        // Live presentation is not part of Salesman Lite: the button showed
-        // there and did nothing, so Lite does not get it at all.
-        lite: routeForProfile(viewer) === '/salesman-lite',
       });
     });
     return () => { cancelled = true; };
@@ -645,7 +642,8 @@ export default function SalesmanProfilePage() {
                 <Link to={viewerHome.to} style={ownerChip}>
                   {viewerHome.seller ? <LayoutDashboard size={12} /> : <User size={12} />} {viewerHome.label}
                 </Link>
-                {isOwner && !viewerHome.lite && listings.length > 0 && (
+                {/* Every seller plan gets it, Lite included (owner, 2026-10-18). */}
+                {isOwner && listings.length > 0 && (
                   <button onClick={() => setPresenting(true)} style={ownerChip}>
                     <Radio size={12} /> Live presentation
                   </button>

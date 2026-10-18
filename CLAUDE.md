@@ -1246,6 +1246,14 @@ alerts, a lead list with stages, per-car views + WhatsApp taps. Never gate a buy
 to reach a Lite seller. Premium = working the lead: reminders + call log, "WhatsApp all"
 quiet leads, Performance, commission + monthly goal, Telegram booking reminders, add-ons
 catalogue, and the full page (banner, bio, social links, job title, specialisations).
+- **Live presentation is on Lite too (owner, 2026-10-18): "Live gets them in, the lead tools
+  make them pay."** The mini page shows the button to every owner (`SalesmanProfilePage.jsx`,
+  no plan check); the DB side (`set_live_listing`) never had one. `/for-salesmen` sells it as
+  free: its main buttons sign up to Lite (`liveCta`), Premium is the secondary button and
+  the plan card. The feature line lives on the Lite card in `src/utils/plans.js`, not in
+  `SALESMAN_PREMIUM_FEATURE_LINES`. Do not re-gate Live without rewriting that copy.
+- New-car cards work the same on Lite: one `CarForm` (Used / Recon / New), no plan check in
+  any `new_car_*` function, and cards skip the listing cap (`enforce_listing_cap`).
 - In `SalesmanLite.jsx` a Premium tool is replaced by `PremiumRow` / `renderPremiumPanel`,
   both opening `goPremium` (the one upgrade screen). Do not add a second upgrade surface.
 - The basic page is enforced in the DB: `get_salesman_by_slug` / `get_salesman_by_id`
@@ -1344,7 +1352,7 @@ and the won-trigger marks it sold on the first deal.
 
 ## Live presentation (LIVE-1) — the mini page as a live-stream tool
 `src/components/live/LivePresenter.jsx`, opened by the owner-only "Live presentation"
-button on `SalesmanProfilePage.jsx`. One car per screen, "#N", price, and a monthly
+button on `SalesmanProfilePage.jsx` (every seller plan, Lite included, since 2026-10-18). One car per screen, "#N", price, and a monthly
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
