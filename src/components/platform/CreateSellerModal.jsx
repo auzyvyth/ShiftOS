@@ -176,7 +176,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               </div>
             </div>
             <p style={step}>1. Open a private window and sign in at xdrive.my/login as <b style={{ color: "#f1f5f9" }}>{created.email}</b> with that password.</p>
-            <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked.</p>
+            <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked. Skip any tour or checklist you see: they all come back for the seller once they set their password.</p>
             <p style={step}>3. Sign out and close the private window.</p>
             <p style={step}>4. Send the setup email. They set their own password and IC, and every other session is signed out.</p>
             {mailState === "sent" && <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>Setup email sent to {created.email}.</p>}

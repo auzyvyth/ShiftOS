@@ -6689,7 +6689,7 @@ export default function SalesmanPremium() {
  saveGoal={saveGoal} triggerGlow={triggerGlow} switchTab={switchTab} pingWA={pingWA}
  handleThisWeekContacted={handleThisWeekContacted}
  requestBrowserNotif={requestBrowserNotif} dismissNotifBanner={dismissNotifBanner}
- dismissTour={dismissTour} handleListingCopy={handleListingCopy}
+ handleListingCopy={handleListingCopy}
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
  starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
  onStarterDismiss={dismissStarterTasks}

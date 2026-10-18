@@ -83,8 +83,17 @@ export default function SalesmanSetup() {
       const now = new Date().toISOString();
       // setup_complete: the dealer Team tab and the console key their
       // "pending setup / send setup email" state off it.
+      // Whoever set the account up was signed in as this seller, so every
+      // first-run intro already played for THEM and was marked done on the
+      // account (Yazeed, 2026-10-17: landed on a dashboard with no tour). This
+      // is the handover, so the seller starts like a fresh signup: dashboard
+      // tour and starter checklist both come back. Self-signups never reach
+      // this page, so nothing they have seen is reset.
       await supabase.from('profiles')
-        .update({ pdpa_consent: true, pdpa_consent_at: now, setup_complete: true })
+        .update({
+          pdpa_consent: true, pdpa_consent_at: now, setup_complete: true,
+          onboarding_tour_done: false, starter_tasks: {},
+        })
         .eq('id', session.user.id);
       const { data: profile } = await supabase.from('profiles').select(POST_AUTH_COLUMNS).eq('id', session.user.id).maybeSingle();
       setPhase('done');

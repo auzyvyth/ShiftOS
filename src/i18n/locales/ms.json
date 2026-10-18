@@ -1796,20 +1796,7 @@
       "pinned": "Dipin",
       "bestToPush": "Patut ditonjolkan",
       "unpin": "Buang pin",
-      "pin": "Pin",
-      "getStarted": "Mula di sini",
-      "howFirstSale": "Ini cara untuk buat jualan pertama:",
-      "step1Title": "Tambah listing pertama anda",
-      "step1Sub": "Upload gambar, set harga, publish ke marketplace XDrive.",
-      "step1Cta": "Tambah listing →",
-      "step2Title": "Kongsi link listing anda",
-      "step2Sub": "Sebarkan dalam group WhatsApp, Facebook, TikTok.",
-      "step2Cta": "Pergi ke listing →",
-      "step3Title": "Pantau lead anda",
-      "step3Sub": "Setiap pertanyaan terus jadi lead.",
-      "step3Cta": "Lihat pipeline →",
-      "step1First": "Buat langkah 1 dulu",
-      "dismiss": "Tutup"
+      "pin": "Pin"
     },
     "lst": {
       "noImages": "Tiada gambar pada listing ni",

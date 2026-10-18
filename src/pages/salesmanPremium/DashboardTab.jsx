@@ -31,7 +31,7 @@ export default function DashboardTab({
  setActiveTab, setActiveLeadStage, setGoalDraft, setGoalEditing, setShowPrevMonth,
  setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
- requestBrowserNotif, dismissNotifBanner, dismissTour,
+ requestBrowserNotif, dismissNotifBanner,
  handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
 }) {
  const { t, i18n } = useTranslation();
@@ -116,17 +116,6 @@ export default function DashboardTab({
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
  const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
  const isNewUser = myListings.length === 0 && leads.length === 0;
-
- const STEP_CIRCLE = (done) => {
- const hue = done ? C.success : C.accent;
- return {
- width: 28, height: 28, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
- fontSize: T.size.base, fontWeight: T.weight.bold,
- background: withAlpha(hue, 0.14),
- border: `1px solid ${withAlpha(hue, 0.24)}`,
- color: done ? C.success : C.danger,
- };
- };
 
 
  // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
@@ -824,37 +813,6 @@ export default function DashboardTab({
  )}
  </div>
  </div>
-
- {/* Onboarding */}
- {isNewUser && !localStorage.getItem("sp_tour_done") && (
- <div className="sp-insight-card" style={{ border: `1px solid ${withAlpha(C.accent, 0.15)}` }}>
- <div style={CARD_HEADER}><span>{t("salesmanPremium.dash.getStarted")}</span></div>
- <div style={{ padding: 18 }}>
- <p style={{ margin: "0 0 16px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{t("salesmanPremium.dash.howFirstSale")}</p>
- {[
- { num: 1, done: myListings.length > 0, title: t("salesmanPremium.dash.step1Title"), sub: t("salesmanPremium.dash.step1Sub"), ctaLabel: t("salesmanPremium.dash.step1Cta"), ctaAction: () => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }, locked: false },
- { num: 2, done: myListings.length > 0, title: t("salesmanPremium.dash.step2Title"), sub: t("salesmanPremium.dash.step2Sub"), ctaLabel: t("salesmanPremium.dash.step2Cta"), ctaAction: () => switchTab("listings"), locked: myListings.length === 0 },
- { num: 3, done: leads.length > 0, title: t("salesmanPremium.dash.step3Title"), sub: t("salesmanPremium.dash.step3Sub"), ctaLabel: t("salesmanPremium.dash.step3Cta"), ctaAction: () => switchTab("leads"), locked: myListings.length === 0 },
- ].map((step, idx) => (
- <div key={step.num}>
- <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: idx > 0 ? "14px 0 0" : "0" }}>
- <div style={STEP_CIRCLE(step.done)}>{step.done ? "✓" : step.num}</div>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{step.title}</p>
- <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{step.sub}</p>
- </div>
- {step.locked
- ? <span style={{ fontSize: T.size.xs, color: C.textDim, flexShrink: 0, paddingTop: 3 }}>{t("salesmanPremium.dash.step1First")}</span>
- : <button onClick={step.ctaAction} style={{ ...SOFT(C.accent), color: C.danger, fontSize: T.size.sm, padding: "5px 12px", borderRadius: R.sm, cursor: "pointer", flexShrink: 0, fontFamily: "inherit" }}>{step.ctaLabel}</button>
- }
- </div>
- {idx < 2 && <div style={{ height: 1, background: C.line, margin: "14px 0 0" }} />}
- </div>
- ))}
- <button onClick={dismissTour} style={{ marginTop: 16, background: "none", border: "none", color: C.textDim, fontSize: T.size.xs, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>{t("salesmanPremium.dash.dismiss")}</button>
- </div>
- </div>
- )}
  </div>
 
  <SalesHistorySheet

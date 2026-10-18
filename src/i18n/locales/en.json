@@ -1807,20 +1807,7 @@
       "pinned": "Pinned",
       "bestToPush": "Best to push",
       "unpin": "Unpin",
-      "pin": "Pin",
-      "getStarted": "Get Started",
-      "howFirstSale": "Here's how to make your first sale:",
-      "step1Title": "Add your first listing",
-      "step1Sub": "Upload photos, set a price, publish to the XDrive marketplace.",
-      "step1Cta": "Add Listing →",
-      "step2Title": "Share your listing link",
-      "step2Sub": "Blast it on WhatsApp groups, Facebook, TikTok.",
-      "step2Cta": "Go to Listings →",
-      "step3Title": "Track your leads",
-      "step3Sub": "Every enquiry auto-converts to a lead.",
-      "step3Cta": "View Pipeline →",
-      "step1First": "Step 1 first",
-      "dismiss": "Dismiss"
+      "pin": "Pin"
     },
     "lst": {
       "noImages": "No images on this listing",
