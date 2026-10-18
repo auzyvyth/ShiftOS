@@ -1369,13 +1369,17 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Cars above RM300k get the table in the presenter ONLY** (owner, 2026-10-03), with
   a "banks decide case by case" note. `calcMonthly` and the mini-page card still
   return null / "financing on request" for them — do not widen that.
-- **One portrait stage (9:16 max), never a landscape layout.** Sellers film their
-  monitor with a phone held upright, so on a desktop the presenter is the PHONE
-  layout (375x667, `STAGE_W`/`STAGE_H`) magnified with CSS zoom to the screen's
-  full height (`deskZoom`): a column the camera frames, with every word bigger.
-  A wide two-column desktop sheet (2026-10-04) spilled out of the camera frame and
-  was removed 2026-10-18. Sizes are container units and `.lp-fit` auto-shrinks the
-  Cars screen to fit (80% floor, then it scrolls). Name + price sit ON the photo.
+- **Phone: one portrait stage (9:16 max). Desktop: phone height, TWICE its width**
+  (owner, 2026-10-18). Sellers film their monitor with a phone held upright. The
+  stage is laid out at `DESK_W` x `STAGE_H` (750x667, about square) and magnified
+  with CSS zoom to the screen height (`deskZoom`, `.lp-desk`). Two columns
+  (`.lp-cols`): car photo + price working on the left, deposit chips, tenure and
+  everything under it on the right. The full-screen wide sheet (2026-10-04)
+  spilled out of the camera frame; the phone-width column (morning of 2026-10-18)
+  was too small to read on camera. Do not go wider than DESK_W. On a phone the
+  column wrappers are `display: contents`, so the phone layout is untouched.
+  Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
+  (80% floor, then it scrolls). Check the desktop sheet renders at zoom ~1.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
   **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
@@ -1388,6 +1392,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
+  On the desktop stage it sits on the title's line, to the right (`.lp-head`), and
+  the title drops the variant name there (the picked button names it); on a phone
+  it stays under the title.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
