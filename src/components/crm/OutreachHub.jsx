@@ -328,7 +328,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
       <div className="oh-body">
         {/* LEFT — Lead list */}
         <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius:16, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:`1px solid ${P.border}` }}>
+          <div data-tour-id="oh-segments" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:`1px solid ${P.border}` }}>
             {Object.entries(SEGS).map(([key, seg]) => {
               const count = scored.filter(seg.filter).length;
               const active = segment === key;
@@ -523,7 +523,7 @@ Hard rules: do NOT state, invent, change or imply any price, discount, deposit, 
             style={{ padding:'9px 12px', background:P.surface, border:`1px solid ${P.border}`, borderRadius:9, color:P.textSec, fontSize:12, fontFamily:"system-ui,sans-serif", cursor:'pointer', outline:'none' }}>
             {Object.entries(TEMPLATES).map(([k, tpl]) => <option key={k} value={k}>{tpl.icon} {tpl.label}</option>)}
           </select>
-          <button onClick={launchCampaign}
+          <button data-tour-id="oh-campaign" onClick={launchCampaign}
             style={{ padding:'9px 20px', borderRadius:9, background:'rgba(167,139,250,0.18)', border:'1px solid rgba(167,139,250,0.35)', color:P.violetText, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', gap:7, whiteSpace:'nowrap' }}>
             <Send size={13} /> Contact All ({visibleLeads.length})
           </button>

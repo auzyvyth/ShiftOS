@@ -7009,6 +7009,10 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "sold" && renderSold()}
  {activeTab === "settings" && renderSettings()}
+ {/* Room under the last control while a tab intro runs, so a button at
+ the very bottom of a tab (Outreach's Contact All) can scroll up clear
+ of the pinned tour bar instead of sitting under it. */}
+ {tourMode && tourMode !== "main" && <div aria-hidden="true" style={{ height: TOUR_BAR_H + 160 }} />}
  </div>
  </div>
 

@@ -1574,6 +1574,15 @@ on a phone) and rings each link where it sits (`data-tour-id`).
 - Portalled to `document.body` (overlay rule 1). The bubble's scroll goes on an INNER
   wrapper: `overflow` on the bubble clips the arrow.
 - `startTour()` records the entry tab and `dismissTour()` returns there.
+- **Per-tab intros (INTRO-2, 2026-10-18)** run on the SAME engine (`tourMode` = "main" or a
+  tab key; `TAB_INTROS` in SalesmanPremium.jsx; copy in `salesmanPremium.intro.*`, en + ms).
+  First visit to Listings, Leads, Sold, Loans or Outreach, only after the sidebar tour is done.
+  Each step rings an in-page `data-tour-id`; a step whose target is missing or zero-height
+  (no car yet) is dropped at start. Seen = `profiles.starter_tasks.intro_<tab>` (the console
+  handover already resets starter_tasks; no new column). Leaving the tab mid-intro ends it
+  unseen. A spacer under the tab content gives bottom-most controls room above the bar.
+- Motion: ring and bubble FADE in per step (keyed) and then track the target with no
+  position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt
