@@ -21,11 +21,12 @@ process.env.TZ = "UTC";
 
 import fs from "fs";
 import path from "path";
+import { SITE_URL } from "../src/config/site.js";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const DIR = path.join(ROOT, "src/pages/articles");
 const OUT = path.join(ROOT, "src/config/articlePages.generated.js");
-const SITE = "https://xdrive.my";
+const SITE = SITE_URL;
 
 async function transformJsx(src) {
   if (typeof Bun !== "undefined") {
@@ -68,7 +69,9 @@ async function renderArticle(file) {
     .flatMap((m) => [m[1], ...(m[2] || "").split(",")]).map((s) => (s || "").trim()).filter(Boolean);
   const src = orig.replace(/^import .*$/gm, "").replace(/export default function\s+\w+/, "function __Article");
   const js = await transformJsx(src);
-  const scope = { h, Frag, React: { Fragment: Frag }, Link };
+  // SITE_URL is real data, not chrome: an article builds its canonical URL and
+  // JSON-LD from it, so it must not render as nothing like the other imports.
+  const scope = { h, Frag, React: { Fragment: Frag }, Link, SITE_URL };
   for (const n of imported) if (!(n in scope)) scope[n] = nothing;
   const body = `${js}\nreturn { ARTICLE, FAQS: typeof FAQS === "undefined" ? [] : FAQS, jsonLd: typeof jsonLd === "undefined" ? null : jsonLd, render: __Article };`;
   const mod = new Function(...Object.keys(scope), body)(...Object.values(scope));
@@ -84,6 +87,8 @@ async function renderArticle(file) {
     dateModified: mod.ARTICLE.dateModified,
     faqs: mod.FAQS,
     jsonLd: mod.jsonLd,
+    // Only English articles carry it; absent = Malay, so older pages keep their output.
+    ...(mod.ARTICLE.lang ? { lang: mod.ARTICLE.lang } : {}),
     html,
   };
 }

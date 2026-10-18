@@ -91,6 +91,13 @@ const ARTICLES = [
     readMins: 8,
   },
   {
+    slug: 'car-loan-malaysia-flat-rate-vs-eir',
+    title: 'Car Loans in Malaysia 2026: Flat Rate vs EIR, Explained With a Proton Saga',
+    description: 'Why 3.5% flat is about 6.44% EIR, a Proton Saga loan worked year by year, and what early settlement saves under the reducing balance method. In English.',
+    category: 'Kewangan',
+    readMins: 9,
+  },
+  {
     slug: 'beli-kereta-ev-terpakai-apa-perlu-semak',
     title: 'Beli Kereta EV Terpakai: Apa Perlu Semak Sebelum Bayar (2026)',
     description: 'Cara semak kesihatan bateri, waranti bila pindah milik, cukai jalan EV 2026, insurans dan pengecas di rumah sebelum beli EV terpakai.',

@@ -727,16 +727,22 @@ const SOFTWARE_LD = {
 // retyped, so the crawler reads exactly the article a visitor reads.
 function buildArticleHtml(slug, canonical) {
   const a = ARTICLES[slug];
+  // Articles are Malay unless they say otherwise (ARTICLE.lang). An English
+  // article served as lang="ms" with Malay links reads to Google as Malay.
+  // New copy says Drevo (BRAND-1); the Malay pages rename on switch day.
+  const en = a.lang === "en";
   const extraHead = `
   <meta property="article:published_time" content="${esc(a.datePublished)}" />
   <meta property="article:modified_time" content="${esc(a.dateModified)}" />`;
   const body = `  <main>
     <article>
 ${a.html}
-      <p><a href="${SITE_URL}/articles">Semua panduan</a> · <a href="${SITE_URL}/showroom">Lihat kereta dijual</a></p>
+      <p>${en
+        ? `<a href="${SITE_URL}/articles">All guides</a> · <a href="${SITE_URL}/showroom">Browse cars for sale</a>`
+        : `<a href="${SITE_URL}/articles">Semua panduan</a> · <a href="${SITE_URL}/showroom">Lihat kereta dijual</a>`}</p>
     </article>
   </main>`;
-  return htmlShell({ lang: "ms", title: `${a.title} · XDrive`, description: a.description, canonical, jsonLd: [a.jsonLd], body, ogType: "article", extraHead });
+  return htmlShell({ lang: en ? "en" : "ms", title: `${a.title} · ${en ? "Drevo" : "XDrive"}`, description: a.description, canonical, jsonLd: [a.jsonLd], body, ogType: "article", extraHead });
 }
 
 // ── Shared-copy pages (guides, plans, features, legal) ───────────────────────

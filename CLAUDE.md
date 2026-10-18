@@ -432,7 +432,10 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   `npm run articles:build` and bump its `dateModified`; `npm test` fails on a
   stale file (`articles:check`) and the build regenerates it anyway. A new
   article is a new file in that folder plus its route in App.jsx, nothing
-  else. Article copy is buyer-facing: never promise something about XDrive
+  else. Articles are Malay by default; an English one sets `lang: 'en'` in its
+  ARTICLE so the crawler page is served `lang="en"` with English links
+  (`buildArticleHtml`, api/og.js). The generator gets `SITE_URL` from
+  `src/config/site.js`, so build URLs from it, not a typed domain. Article copy is buyer-facing: never promise something about XDrive
   listings the platform does not check (three CTAs claimed every car was
   Puspakom-inspected / fully documented; nothing verifies that).
 - **The public grids survive a database outage (2026-10-02).** The free DB
