@@ -412,7 +412,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-seg.lp-vars button { flex: 1 1 auto; height: auto; min-height: 34px; padding: 4px 10px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 14px); }
         .lp-brk tr.lp-tap { cursor: pointer; }
         .lp-brk tr.lp-tap td:last-child { text-decoration: underline dotted rgba(0,0,0,.25); text-underline-offset: 3px; }
-        .lp-cellin { width: 7.5em; max-width: 100%; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+        .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         .lp-ten { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
         .lp-ten th { font-size: clamp(10px, 2.7cqw, 14px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 10px 4px; text-align: right; }
         .lp-ten th:first-child { text-align: left; }
