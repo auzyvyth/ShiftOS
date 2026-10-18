@@ -235,10 +235,10 @@ export default function SalesmanProfilePage() {
 
       const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         supabase.from('public_car_listings')
-          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card')
+          .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss

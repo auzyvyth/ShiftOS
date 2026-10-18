@@ -63,6 +63,15 @@ const en = {
   subjectBank: 'Subject to bank approval.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
   ctaLabel: 'Comment line',
+  insurance: 'Insurance',
+  insuranceEst: 'Insurance (est.)',
+  insuranceLabel: 'Insurance',
+  insOff: 'Off',
+  insInLoan: 'In the loan',
+  insuranceHint: 'Estimate from the old motor tariff, by engine cc and NCD. Pick the viewer\'s NCD under the car.',
+  insuranceThisCar: 'Insurance on this car (RM)',
+  insTap: 'Tap to type',
+  ncd: 'NCD',
   offer: 'Offer',
   offerLabel: 'Your offer (free extras)',
   offerHint: 'Shown on every car, e.g. free tint, dashcam. Leave empty to hide.',
@@ -157,6 +166,15 @@ const ms = {
   subjectBank: 'Tertakluk kepada kelulusan bank.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
   ctaLabel: 'Ayat komen',
+  insurance: 'Insurans',
+  insuranceEst: 'Insurans (anggaran)',
+  insuranceLabel: 'Insurans',
+  insOff: 'Tidak',
+  insInLoan: 'Dalam pinjaman',
+  insuranceHint: 'Anggaran ikut tarif motor lama, ikut cc enjin dan NCD. Pilih NCD penonton di bawah kereta.',
+  insuranceThisCar: 'Insurans kereta ini (RM)',
+  insTap: 'Tekan untuk taip',
+  ncd: 'NCD',
   offer: 'Tawaran',
   offerLabel: 'Tawaran anda (hadiah percuma)',
   offerHint: 'Ditunjuk pada setiap kereta, cth. tinted percuma, dashcam. Biarkan kosong untuk sorok.',
@@ -238,6 +256,22 @@ export function saveLiveOffer(text) {
   try {
     if (text.trim()) window.localStorage.setItem(LIVE_OFFER_KEY, text);
     else window.localStorage.removeItem(LIVE_OFFER_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// Insurance in the loan: on or off, remembered per device (owner, 2026-10-18).
+// Some sellers always quote with it (Proton advisors), most used-car sellers
+// never do, so it starts off and the seller's choice sticks between lives.
+export const LIVE_INS_KEY = 'xd_live_ins';
+
+export function initialLiveIns() {
+  try { return window.localStorage.getItem(LIVE_INS_KEY) === '1'; } catch { return false; }
+}
+
+export function saveLiveIns(on) {
+  try {
+    if (on) window.localStorage.setItem(LIVE_INS_KEY, '1');
+    else window.localStorage.removeItem(LIVE_INS_KEY);
   } catch { /* storage blocked */ }
 }
 

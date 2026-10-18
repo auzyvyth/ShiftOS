@@ -59,7 +59,10 @@ export function netPrice(car, rebates) {
   return { price, rebate, net: price - rebate };
 }
 
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates }) {
+// extraFor(car, price): anything financed on top of the price, i.e. the
+// insurance the Cars screen adds, so a car opened from here shows the same
+// monthly. Deposit is never charged against it.
+export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
   const down = Math.max(0, Number(deposit) || 0);
@@ -69,7 +72,8 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
     if (price <= 0 || down >= price) return;
-    const monthly = monthlyPayment(price - down, eir, years * 12);
+    const extra = Math.max(0, Number(extraFor?.(car, price)) || 0);
+    const monthly = monthlyPayment(price + extra - down, eir, years * 12);
     const row = { n: i + 1, car, price, monthly };
     if (monthly <= cap) fits.push(row);
     else if (monthly <= cap * (1 + ABOVE_MARGIN)) above.push(row);
