@@ -2089,7 +2089,8 @@
       "buyerOnly": "To {{buyer}}.",
       "body": "Your next commission starts in the Sold tab: finish the handover, then keep this buyer coming back for renewals, servicing and their next car.",
       "show": "Show me",
-      "later": "Later"
+      "later": "Later",
+      "eyebrow": "First sale"
     }
   },
   "availability": {

@@ -1589,6 +1589,9 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   `handover.deals` has exactly ONE deal won in the last 14 days (never "first car" for a
   seller with an old or second sale), after the win confirm closes and outside any tour.
   Names the car and buyer from the deal. "Show me" opens Sold, where the Sold intro plays.
+  The Sold intro's Handover and Customers steps switch the pill (`onEnter`) and ring the
+  seller's own first row (`handover-deal-<id>` / `customer-<id>`), so the buyer they just
+  sold to is on screen; a step's `targets` are selectors, best first, the pill as fallback.
   Seen = `starter_tasks.first_sale_seen`. Copy in `salesmanPremium.firstSale` (en + ms);
   it names no product, because the seller-side name is still an open owner call.
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no

@@ -2078,7 +2078,8 @@
       "buyerOnly": "Kepada {{buyer}}.",
       "body": "Komisen seterusnya bermula di tab Terjual: selesaikan serahan, kemudian pastikan pembeli ini kembali untuk pembaharuan, servis dan kereta seterusnya.",
       "show": "Tunjukkan",
-      "later": "Nanti"
+      "later": "Nanti",
+      "eyebrow": "Jualan pertama"
     }
   },
   "availability": {

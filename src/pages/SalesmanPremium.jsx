@@ -1569,29 +1569,45 @@ export default function SalesmanPremium() {
  // scroll to show them. Scroll only when the target is outside the clear
  // band (below the header, above the button bar), and follow every scroll
  // after that so the ring and bubble stay glued to the control.
- const id = introSteps[tourStep]?.target;
+ const st = introSteps[tourStep];
  setMobileNavOpen(false);
+ st?.onEnter?.();
  let frame = 0;
+ let poll = 0;
+ let sel = null;
+ let cancelled = false;
+ const visible = (q) => { const el = document.querySelector(q); return el && el.getBoundingClientRect().height > 0 ? el : null; };
  const measure = () => {
  cancelAnimationFrame(frame);
  frame = requestAnimationFrame(() => {
- const el = id && document.querySelector(`[data-tour-id="${id}"]`);
+ const el = sel && document.querySelector(sel);
  setTourTarget(el ? el.getBoundingClientRect() : null);
  });
  };
- const el = id && document.querySelector(`[data-tour-id="${id}"]`);
- if (el) {
+ // The best target may only appear after onEnter re-renders (and the lazy
+ // handover board loads), so give it up to ~0.6s before using a fallback.
+ const settle = (tries) => {
+ if (cancelled || !st) return;
+ const best = st.targets[0];
+ const found = visible(best) ? best : tries <= 0 ? st.targets.find(visible) : null;
+ if (!found) { poll = requestAnimationFrame(() => settle(tries - 1)); return; }
+ sel = found;
+ const el = document.querySelector(sel);
  const r = el.getBoundingClientRect();
  if (r.top < 72 || r.bottom > window.innerHeight - TOUR_BAR_H - 24) {
  const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
  }
- }
  measure();
+ };
+ setTourTarget(null);
+ settle(36);
  document.addEventListener("scroll", measure, { capture: true, passive: true });
  window.addEventListener("resize", measure);
  return () => {
+ cancelled = true;
  cancelAnimationFrame(frame);
+ cancelAnimationFrame(poll);
  document.removeEventListener("scroll", measure, { capture: true });
  window.removeEventListener("resize", measure);
  };
@@ -6114,8 +6130,13 @@ export default function SalesmanPremium() {
  // brand-new seller with no data; a step whose target is missing (no car yet,
  // so no ··· menu) is dropped when the intro starts rather than pointing at
  // nothing. Copy lives in salesmanPremium.intro.<tab>.<step> (en + ms).
- const introStep = (tab, key, target, icon) => ({
- target, icon,
+ // `targets` are CSS selectors, best first: a step can ring the seller's own
+ // first row (Farah's handover) and fall back to the pill when there is none.
+ // `onEnter` puts the page in the state the step talks about (the right pill).
+ const tourSel = (id) => `[data-tour-id="${id}"]`;
+ const introStep = (tab, key, targets, icon, onEnter) => ({
+ targets: (Array.isArray(targets) ? targets : [targets]).map((x) => (x.startsWith("[") ? x : tourSel(x))),
+ icon, onEnter,
  title: t(`salesmanPremium.intro.${tab}.${key}.title`),
  body: t(`salesmanPremium.intro.${tab}.${key}.body`),
  });
@@ -6132,8 +6153,8 @@ export default function SalesmanPremium() {
  ],
  sold: [
  introStep("sold", "coming", "sold-coming", Calendar),
- introStep("sold", "handover", "sold-handover", CheckCircle2),
- introStep("sold", "customers", "sold-customers", Users),
+ introStep("sold", "handover", ['[id^="handover-deal-"]', "sold-handover"], CheckCircle2, () => setSoldSubTab("handover")),
+ introStep("sold", "customers", ['[id^="customer-"]', "sold-customers"], Users, () => setSoldSubTab("customers")),
  ],
  loans: [
  introStep("loans", "new", "loan-new", Banknote),
@@ -6156,10 +6177,10 @@ export default function SalesmanPremium() {
  };
 
  const startIntro = (tab) => {
- const steps = (TAB_INTROS[tab] || []).filter((st) => {
- const el = document.querySelector(`[data-tour-id="${st.target}"]`);
+ const steps = (TAB_INTROS[tab] || []).filter((st) => st.targets.some((sel) => {
+ const el = document.querySelector(sel);
  return el && el.getBoundingClientRect().height > 0;
- });
+ }));
  if (!steps.length) return;
  setIntroSteps(steps);
  setTourMode(tab);
@@ -6242,27 +6263,51 @@ export default function SalesmanPremium() {
  className="fs-anim"
  style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(3,5,10,0.72)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? "16px 12px calc(12px + env(safe-area-inset-bottom, 0px))" : 16, animation: "fsFade 0.2s ease-out" }}
  >
- <style>{`@keyframes fsFade{from{opacity:0}to{opacity:1}}@keyframes fsIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:none}}@keyframes fsIcon{0%{opacity:0;transform:scale(0.85)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){.fs-anim,.fs-anim *{animation:none!important}}`}</style>
+ <style>{`@keyframes fsFade{from{opacity:0}to{opacity:1}}@keyframes fsIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:none}}@keyframes fsIcon{0%{opacity:0;transform:scale(0.8)}70%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:none}}@keyframes fsBit{from{opacity:0;translate:0 -10px}to{translate:0 0}}@media (prefers-reduced-motion: reduce){.fs-anim,.fs-anim *{animation:none!important}}`}</style>
  <div
  role="dialog"
  aria-modal="true"
  aria-labelledby="fs-title"
  onClick={(e) => e.stopPropagation()}
- style={{ width: "100%", maxWidth: 400, boxSizing: "border-box", background: "#111827", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "24px 20px 16px", boxShadow: "0 24px 60px rgba(0,0,0,0.55)", animation: "fsIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)" }}
+ style={{
+ position: "relative", overflow: "hidden",
+ width: "100%", maxWidth: 400, boxSizing: "border-box",
+ // A win, not a notice: an emerald wash from the top, a little gold
+ // from the corner, on the panel's own card colour.
+ background: "radial-gradient(120% 70% at 50% -10%, rgba(34,197,94,0.30) 0%, rgba(34,197,94,0.08) 45%, rgba(17,24,39,0) 70%), radial-gradient(70% 50% at 100% 0%, rgba(250,204,21,0.16) 0%, rgba(250,204,21,0) 60%), #111827",
+ border: "1px solid rgba(74,222,128,0.30)",
+ borderRadius: 20, padding: "28px 20px 16px",
+ boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03) inset, 0 1px 0 rgba(255,255,255,0.08) inset",
+ animation: "fsIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)",
+ }}
  >
- <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(74,222,128,0.22)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, animation: "fsIcon 0.32s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>
- <PartyPopper size={22} style={{ color: "#4ade80" }} />
+ {/* Confetti: drawn once, settles in, then sits still. */}
+ <div aria-hidden="true" style={{ position: "absolute", inset: "0 0 auto 0", height: 110, pointerEvents: "none" }}>
+ <span style={{ position: "absolute", left: "21%", top: 10, width: 6, height: 10, borderRadius: 1.5, background: "#facc15", opacity: 0.85, transform: "rotate(-20deg)", animation: "fsBit 0.6s 0ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "18%", top: 58, width: 5, height: 5, borderRadius: 99, background: "#4ade80", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 40ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "30%", top: 16, width: 7, height: 4, borderRadius: 1.5, background: "#60a5fa", opacity: 0.85, transform: "rotate(25deg)", animation: "fsBit 0.6s 80ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "44%", top: 40, width: 4, height: 9, borderRadius: 1.5, background: "#f472b6", opacity: 0.85, transform: "rotate(-35deg)", animation: "fsBit 0.6s 20ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "58%", top: 14, width: 6, height: 6, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(45deg)", animation: "fsBit 0.6s 100ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "70%", top: 50, width: 7, height: 4, borderRadius: 1.5, background: "#4ade80", opacity: 0.85, transform: "rotate(-15deg)", animation: "fsBit 0.6s 60ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "82%", top: 20, width: 5, height: 9, borderRadius: 1.5, background: "#60a5fa", opacity: 0.85, transform: "rotate(30deg)", animation: "fsBit 0.6s 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "92%", top: 56, width: 5, height: 5, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 30ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "64%", top: 78, width: 4, height: 4, borderRadius: 99, background: "#f472b6", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 140ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "24%", top: 86, width: 4, height: 4, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 90ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
  </div>
- <p id="fs-title" style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: 1.3, textWrap: "balance" }}>{t("salesmanPremium.firstSale.title")}</p>
- {detail && <p style={{ margin: "0 0 10px", fontSize: 13.5, fontWeight: 600, color: "#cbd5e1" }}>{detail}</p>}
- <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>{t("salesmanPremium.firstSale.body")}</p>
+ <div style={{ position: "relative", width: 56, height: 56, borderRadius: 16, background: "linear-gradient(140deg, #4ade80 0%, #16a34a 100%)", boxShadow: "0 10px 28px rgba(34,197,94,0.40), 0 1px 0 rgba(255,255,255,0.35) inset", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, animation: "fsIcon 0.45s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>
+ <PartyPopper size={26} style={{ color: "#fff" }} />
+ </div>
+ <span style={{ position: "relative", display: "inline-block", marginBottom: 8, padding: "3px 9px", borderRadius: 99, background: "rgba(250,204,21,0.12)", border: "1px solid rgba(250,204,21,0.28)", color: "#fde047", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{t("salesmanPremium.firstSale.eyebrow")}</span>
+ <p id="fs-title" style={{ position: "relative", margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "#f8fafc", lineHeight: 1.25, textWrap: "balance" }}>{t("salesmanPremium.firstSale.title")}</p>
+ {detail && <p style={{ position: "relative", margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "#bbf7d0" }}>{detail}</p>}
+ <p style={{ position: "relative", margin: "0 0 22px", fontSize: 13, color: "#a3b1c2", lineHeight: 1.6 }}>{t("salesmanPremium.firstSale.body")}</p>
  <button
  onClick={() => closeFirstSale(true)}
- style={{ width: "100%", minHeight: 46, borderRadius: 11, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ position: "relative", width: "100%", minHeight: 48, borderRadius: 12, background: "linear-gradient(140deg, #22c55e 0%, #15803d 100%)", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 22px rgba(34,197,94,0.30), 0 1px 0 rgba(255,255,255,0.25) inset" }}
  >{t("salesmanPremium.firstSale.show")}</button>
  <button
  onClick={() => closeFirstSale(false)}
- style={{ width: "100%", minHeight: 42, marginTop: 6, borderRadius: 11, background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ position: "relative", width: "100%", minHeight: 42, marginTop: 6, borderRadius: 12, background: "none", border: "none", color: "#7b8794", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
  >{t("salesmanPremium.firstSale.later")}</button>
  </div>
  </div>,
@@ -6389,8 +6434,10 @@ export default function SalesmanPremium() {
  )}
 
  {/* Bubble: words only. The buttons are in the bar below. Keyed on the
- step so it re-pops at the new link instead of sliding across the screen. */}
- <div
+ step so it re-pops at the new link instead of sliding across the screen.
+ An intro step still waiting for its target shows nothing yet, rather than
+ flashing a centred card that then jumps to the control. */}
+ {(isWelcome || tourMode === "main" || tourTarget) && <div
  key={`bubble-${tourMode}-${tourStep}`}
  ref={tourCardRef}
  className="tour-anim"
@@ -6424,7 +6471,7 @@ export default function SalesmanPremium() {
  {step.body}
  </p>
  </div>
- </div>
+ </div>}
 
  {/* Button bar: pinned in one place for every step, so Next is always
  under the same thumb (Next on the right edge, the easy reach). Desktop
