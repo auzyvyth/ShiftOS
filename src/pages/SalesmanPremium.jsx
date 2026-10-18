@@ -27,9 +27,11 @@ import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
-import CarFormFast from "../components/CarFormFast";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
-import CarForm, { buildCopyText, buildListingFacts } from "../components/CarForm";
+import { buildCopyText, buildListingFacts } from "../utils/listingCopy";
+// The add/edit form (with photo drag-and-drop and the chassis decoder) loads
+// when it opens, not with the dashboard.
+const CarForm = React.lazy(() => import("../components/CarForm"));
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import BookingWeekCalendar from "../components/bookings/BookingWeekCalendar";
@@ -7973,6 +7975,7 @@ export default function SalesmanPremium() {
  subtitle={editListing ? `${editListing.brand} ${editListing.model} ${editListing.variant || ""}`.trim() : ""}
  isMobile={isMobile}
  >
+ <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanPremium.common.loading")}</p>}>
  <CarForm
  dark
  sellerProfile={profile}
@@ -7985,6 +7988,7 @@ export default function SalesmanPremium() {
  }}
  onCreate={() => {}}
  />
+ </React.Suspense>
  </ListingFormModal>
 
  {/* One in-app conversation, over whatever tab you are on. Rendered at page

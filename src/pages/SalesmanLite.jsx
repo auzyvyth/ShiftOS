@@ -19,7 +19,7 @@ import { normalizePhone } from "../lib/phone";
 import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
-import CarForm, { buildCopyText } from "../components/CarForm";
+import { buildCopyText } from "../utils/listingCopy";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -126,6 +126,9 @@ import {
 } from "../utils/panelCache";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
+// The add/edit form (with photo drag-and-drop and the chassis decoder) loads
+// when it opens, not with the dashboard.
+const CarForm = React.lazy(() => import("../components/CarForm"));
 
 // Cache namespace for this panel (keys look like `slite_leads_<uid>`).
 const PANEL_CACHE_KEY = "slite";
@@ -3655,6 +3658,7 @@ export default function SalesmanLite() {
 
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
+            <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
             <CarForm
               sellerProfile={profile}
               onUpgrade={goPremium}
@@ -3678,6 +3682,7 @@ export default function SalesmanLite() {
                 }
               }}
             />
+            </React.Suspense>
           </CarFormModal>
         )}
 
@@ -8219,6 +8224,7 @@ export default function SalesmanLite() {
           subtitle={[editListing.brand, editListing.model, editListing.variant || ""].filter(Boolean).join(" ")}
           onClose={() => setEditListing(null)}
         >
+          <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
           <CarForm
             sellerProfile={profile}
             listing={editListing}
@@ -8230,6 +8236,7 @@ export default function SalesmanLite() {
             }}
             onCreate={() => {}}
           />
+          </React.Suspense>
         </CarFormModal>
       )}
 

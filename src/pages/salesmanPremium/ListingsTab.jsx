@@ -6,8 +6,9 @@ import {
  BarChart2, Calculator, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
  Film, Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
 } from "lucide-react";
-import CarFormFast from "../../components/CarFormFast";
-import CarForm from "../../components/CarForm";
+// Both forms load when they open, not with the Listings tab.
+const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
+const CarForm = React.lazy(() => import("../../components/CarForm"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import { priceStyle, SOFT, ListingFormModal, tp } from "./shared";
@@ -184,6 +185,7 @@ export default function ListingsTab({
  subtitle={t("salesmanPremium.lst.fastSub")}
  isMobile={isMobile}
  >
+ <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanPremium.common.loading")}</p>}>
  <CarFormFast
  sellerProfile={profile}
  onOpenNewCars={onOpenNewCars}
@@ -193,6 +195,7 @@ export default function ListingsTab({
  toast.success(t("salesmanPremium.lst.listedFast"));
  }}
  />
+ </React.Suspense>
  </ListingFormModal>
 
  <ListingFormModal
@@ -202,6 +205,7 @@ export default function ListingsTab({
  subtitle={t("salesmanPremium.lst.newSub")}
  isMobile={isMobile}
  >
+ <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanPremium.common.loading")}</p>}>
  <CarForm
  dark
  sellerProfile={profile}
@@ -212,6 +216,7 @@ export default function ListingsTab({
  toast.success(t("salesmanPremium.lst.published"));
  }}
  />
+ </React.Suspense>
  </ListingFormModal>
 
  {/* Store exposure bar */}
