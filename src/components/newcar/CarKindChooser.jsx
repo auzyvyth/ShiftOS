@@ -7,7 +7,7 @@ import NewCarForm from "./NewCarForm";
 
 // The first screen of Add car for a salesman: Used, Recon or New. Used and
 // Recon open the used-car form with the condition already set; New asks the
-// brand (Proton / Perodua / Toyota) and opens NewCarForm. Owner's call
+// brand (Proton / Perodua / Toyota / BYD) and opens NewCarForm. Owner's call
 // (2026-10-17): one Add car for everyone, because many new-car advisors also
 // broker used and recon cars for other dealers.
 //

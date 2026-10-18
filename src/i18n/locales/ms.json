@@ -1177,7 +1177,7 @@
       },
       "newcars": {
         "label": "Kereta Baru",
-        "desc": "Harga Proton, Perodua & Toyota"
+        "desc": "Harga Proton, Perodua, Toyota & BYD"
       },
       "alerts": {
         "label": "Makluman",
@@ -2506,7 +2506,7 @@
     "recon": "Recon",
     "reconHint": "Import, direkondisi, ada gred lelongan",
     "new": "Baharu",
-    "newHint": "Proton, Perodua atau Toyota, dari senarai harga rasmi",
+    "newHint": "Proton, Perodua, Toyota atau BYD, dari senarai harga rasmi",
     "back": "Tukar jenis kereta",
     "which": "Jenama apa?",
     "whichHint": "Senarai model dan harga rasmi untuk kawasan anda diisi sendiri.",
