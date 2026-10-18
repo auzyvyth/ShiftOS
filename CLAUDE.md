@@ -1559,26 +1559,21 @@ enquiries. Both were granted to `anon`.
 5. **`useModalHistory` race condition**: the hook's `history.back()` cleanup fires `popstate` asynchronously. If you call `setModalA(null)` and `setModalB(open)` in the same tick, the cleanup for A fires `history.back()` which the just-registered B handler catches → B closes immediately. **Do NOT register `useModalHistory` for lightweight popups that have their own × / overlay-click close controls.** Only register it for primary drawers (LeadDrawer, main detail panels).
 
 ## Product tour (Salesman Premium) — anchors and placement
-14 steps in `TOUR_STEPS` (SalesmanPremium.jsx), index-matched to `TOUR_TABS`.
-- **Every step rings the thing it is TALKING ABOUT**, never a nav button standing in
-  for it. Pointing at the Settings nav while describing the invite box is what put the
-  card on top of that box. Steps with no nav slot ring their own content:
-  `TOUR_HIGHLIGHT` maps the step's tab -> a `data-tour-id` (`sp-merge`,
-  `customers-heading`, `handover-heading`); the Inbox pair rings the sub-tab pills
-  (`bookings`, `leadhistory`, set in salesmanPremium/shared.jsx SubTabs).
-- **Placement lives in `src/utils/tourPlacement.js` (`placeTourCard`) and its rule is:
-  never overlap the target, never leave the viewport.** It picks the side with the most
-  free space. Do NOT reintroduce a per-surface branch or a guessed card height — the card
-  is MEASURED after render (`tourCardRef` + `tourCardH`). Guarded by
-  `tests/tourPlacement.test.mjs` (`npm run test:tour`) — run it after touching the geometry.
-- The card is portalled to `document.body` (overlay rule 1). Its scroll goes on an INNER
-  wrapper: `overflow` on the card clips the arrow, which is absolutely positioned outside
-  the padding box.
-- Tour navigation uses `switchTab(tab, { replace: true })` — one history entry per step
-  turned the phone back gesture into a walk back through the whole tour. `startTour()`
-  records the entry tab and `dismissTour()` returns there.
-- In-content targets (`TOUR_IN_CONTENT`) re-measure on scroll; nav-anchored steps scroll
-  the page back to the top so the panel starts at its beginning.
+11 steps in `TOUR_STEPS` (SalesmanPremium.jsx): a welcome card + one per sidebar link,
+index-matched to `TOUR_TABS`. The tour never switches tabs: it opens the nav (the drawer
+on a phone) and rings each link where it sits (`data-tour-id`).
+- **The bubble FOLLOWS the ringed link; the buttons do NOT (owner, 2026-10-18).** The
+  bubble is words only, placed beside the link by `placeTourCard` (`src/utils/tourPlacement.js`:
+  never overlap the target, never leave the viewport), on a phone too. Back / Skip / Next
+  are ONE bar pinned to the bottom (centred on a phone, bottom-right on desktop), so Next
+  never moves under the thumb. Do not put the buttons back in the bubble, and do not dock
+  the bubble to the bottom of the phone again (it sat far from the link it described).
+  `TOUR_BAR_H` is the space the bar takes; placement and the drawer's bottom padding use it.
+- The bubble is MEASURED after render (`tourCardRef` + `tourCardH`), never a guessed
+  height. `npm run test:tour` after touching the geometry.
+- Portalled to `document.body` (overlay rule 1). The bubble's scroll goes on an INNER
+  wrapper: `overflow` on the bubble clips the arrow.
+- `startTour()` records the entry tab and `dismissTour()` returns there.
 
 ## Prompt discipline
 - Never write more than 80 lines of instructions per prompt

@@ -275,6 +275,13 @@ const markTourSeenThisSession = (uid) => {
  try { sessionStorage.setItem(tourSeenKey(uid), "1"); localStorage.removeItem(tourSeenKey(uid)); } catch { /* storage blocked */ }
 };
 
+// The tour's Back / Skip / Next live in ONE bar pinned to the bottom of the
+// screen, apart from the bubble (owner, 2026-10-18): when Next rode inside the
+// bubble, it jumped to a new spot on every step and the thumb had to chase it.
+// Height reserved for that bar (incl. its margin), so the bubble and the ringed
+// link are kept above it.
+const TOUR_BAR_H = 84;
+
 const TOUR_TABS = [
  null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
  "analytics", "loans", "outreach", "settings",
@@ -721,9 +728,6 @@ export default function SalesmanPremium() {
  // the desktop clamp could cut off the Next button.
  const tourCardRef = useRef(null);
  const [tourCardH, setTourCardH] = useState(240);
- // Same number, readable from the scroll loop below without re-running the
- // effect: the band the target must land in is measured off the card's height.
- const tourCardHRef = useRef(240);
  // Tab the user was on when the tour started, so finishing puts them back.
  const tourReturnTab = useRef("dashboard");
  const [tourTarget, setTourTarget] = useState(null);
@@ -1548,16 +1552,16 @@ export default function SalesmanPremium() {
  const el = document.querySelector(`[data-tour-id="${tab}"]`);
  setTourTarget(el ? el.getBoundingClientRect() : null);
  };
- // On a phone the card is docked over the bottom of the screen, and the
- // last links (Outreach, Settings) sit right under it: the ring was drawn
- // behind the card (2026-10-18). Scroll the drawer so the link lands above
- // the card. The drawer pads its bottom by the card height while the tour
- // runs (renderMobileNav), so even the last link has room to rise.
+ // On a phone the tour's button bar is pinned over the bottom of the
+ // screen, and the last links (Outreach, Settings) sit right under it.
+ // Scroll the drawer so the link lands above the bar. The drawer pads its
+ // bottom by the bar height while the tour runs (renderMobileNav), so even
+ // the last link has room to rise.
  const bringIntoView = () => {
  const el = document.querySelector(`[data-tour-id="${tab}"]`);
  const drawer = document.querySelector("[data-tour-drawer]");
  if (isMobile && el && drawer) {
- const clearLine = window.innerHeight - (tourCardHRef.current || tourCardH) - 24;
+ const clearLine = window.innerHeight - TOUR_BAR_H - 24;
  const r = el.getBoundingClientRect();
  if (r.bottom > clearLine) drawer.scrollTop += r.bottom - clearLine;
  else if (r.top < 12) drawer.scrollTop -= 12 - r.top;
@@ -2737,7 +2741,7 @@ export default function SalesmanPremium() {
  onClick={(e) => e.stopPropagation()}
  style={{
  position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
- paddingBottom: tourStep !== null ? tourCardH + 24 : 0,
+ paddingBottom: tourStep !== null ? TOUR_BAR_H + 24 : 0,
  width: "min(78vw, 280px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
@@ -6081,7 +6085,6 @@ export default function SalesmanPremium() {
  if (tourStep === null || !el) return;
  const h = Math.round(el.getBoundingClientRect().height);
  if (!h) return;
- tourCardHRef.current = h;
  if (Math.abs(h - tourCardH) > 2) setTourCardH(h);
  }, [tourStep, tourCardH, isMobile]);
 
@@ -6091,22 +6094,27 @@ export default function SalesmanPremium() {
  const isLast = tourStep === TOUR_STEPS.length - 1;
  const isWelcome = tourStep === 0;
 
- // Placement: the card is put on whichever side of the target has room, and
- // never on top of the target itself. See utils/tourPlacement.
- const BUBBLE_W = isMobile ? Math.min(320, window.innerWidth - 32) : 300;
+ // Placement: the bubble sits on whichever side of the ringed link has room,
+ // never on top of it (utils/tourPlacement). It FOLLOWS the link on every
+ // step, phone included: it used to be docked in a fixed strip at the bottom
+ // of the phone screen, far from the link it was talking about. The space
+ // under the button bar is taken off the viewport so the bubble never lands
+ // behind the bar.
+ const BUBBLE_W = isMobile ? Math.min(300, window.innerWidth - 32) : 300;
  // The arrow used to be #1e2d3d while the card was #111827, so it read as a
  // stray notch rather than part of the bubble. One constant, both.
  const BUBBLE_BG = "#111827";
- // dock: on a phone there is no free column beside the target, so a floating
- // card always ends up on top of something. Docked, it lives in one fixed
- // strip at the bottom of the screen for every step and the page scrolls
- // the target into the space above it. navH: 0 — Premium's mobile nav is
- // now the renderMobileNav() drawer, not a fixed bottom bar, so there's no
- // nav height to leave clear (unlike Lite/Salesmanpanel's default).
- const place = { dock: isMobile, navH: 0 };
- const { style: bubbleStyle, arrow } = isWelcome
- ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
- : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
+ const usableH = window.innerHeight - TOUR_BAR_H;
+ const { style: bubbleStyle, arrow } = placeTourCard(
+ isWelcome ? null : tourTarget,
+ { w: BUBBLE_W, h: tourCardH },
+ window.innerWidth,
+ usableH,
+ // placeTourCard centres the welcome card on the full screen; it is
+ // centred on the space above the bar instead (top below).
+ { dock: false },
+ );
+ if (isWelcome) bubbleStyle.top = usableH / 2;
 
  const arrowEl = arrow && (
  <div style={{
@@ -6128,7 +6136,7 @@ export default function SalesmanPremium() {
  return createPortal(
  <>
  {/* Highlight ring around the target — no backdrop */}
- {tourTarget &&!isWelcome && (
+ {tourTarget && !isWelcome && (
  <div
  style={{
  position: "fixed",
@@ -6136,7 +6144,7 @@ export default function SalesmanPremium() {
  top: tourTarget.top - 3,
  width: tourTarget.width + 6,
  height: tourTarget.height + 6,
- borderRadius: isMobile? 8 : 10,
+ borderRadius: isMobile ? 8 : 10,
  border: "2px solid #3b82f6",
  boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
  pointerEvents: "none",
@@ -6146,73 +6154,88 @@ export default function SalesmanPremium() {
  />
  )}
 
- {/* Bubble */}
+ {/* Bubble: words only. The buttons are in the bar below. Keyed on the
+ step so it re-pops at the new link instead of sliding across the screen. */}
  <div
+ key={tourStep}
  ref={tourCardRef}
  style={{
  ...bubbleStyle,
  background: BUBBLE_BG,
  border: "1px solid rgba(59,130,246,0.3)",
  borderRadius: 14,
- padding: "18px 18px 14px",
+ padding: "14px 16px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
  animation: "tourPop 0.18s ease",
  zIndex: 1002,
  boxSizing: "border-box",
  }}
  >
- <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
+ <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
  {arrowEl}
 
  {/* Content scrolls INSIDE the card when a step is taller than the
- viewport, so the buttons are always reachable. The scroll cannot go
- on the card itself — the arrow is an absolutely positioned child
- outside the padding box and overflow would clip it. */}
- <div style={{ maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 64px)", overflowY: "auto" }}>
-
- {/* Header */}
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
- <step.icon size={20} />
- <div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
- {tourStep + 1} / {TOUR_STEPS.length}
- </p>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
+ space above the bar. The scroll cannot go on the card itself — the
+ arrow is an absolutely positioned child outside the padding box and
+ overflow would clip it. */}
+ <div style={{ maxHeight: `calc(100vh - ${TOUR_BAR_H + 32}px)`, overflowY: "auto" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+ <step.icon size={18} />
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9", flex: 1, minWidth: 0 }}>{step.title}</p>
+ <button onClick={dismissTour} aria-label={t("salesmanPremium.tour.skip")} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
+ <X size={16} />
+ </button>
  </div>
- </div>
- <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}></button>
- </div>
-
- <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
+ <p style={{ margin: 0, fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
  {step.body}
  </p>
-
- {/* Progress bar */}
- <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
- {TOUR_STEPS.map((_, i) => (
- <div key={i} style={{ height: 2, flex: i === tourStep? 2 : 1, borderRadius: 99, background: i <= tourStep? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
- ))}
+ </div>
  </div>
 
- {/* Buttons */}
- <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
- {tourStep > 0 && (
- <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
+ {/* Button bar: pinned in one place for every step, so Next is always
+ under the same thumb (Next on the right edge, the easy reach). Desktop
+ docks it bottom-right, clear of the sidebar links being ringed. */}
+ <div
+ style={{
+ position: "fixed",
+ ...(isMobile ? { left: "50%", transform: "translateX(-50%)" } : { right: 24 }),
+ bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+ width: isMobile ? "calc(100vw - 24px)" : 380,
+ boxSizing: "border-box",
+ zIndex: 1003,
+ background: BUBBLE_BG,
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 14,
+ padding: "10px 10px 10px 12px",
+ boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+ display: "flex",
+ alignItems: "center",
+ gap: 8,
+ }}
+ >
+ {tourStep > 0 ? (
+ <button onClick={() => setTourStep((s) => s - 1)} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
  ← {t("salesmanPremium.tour.back")}
  </button>
+ ) : (
+ <button onClick={dismissTour} style={{ minHeight: 44, padding: "0 10px", background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
+ {t("salesmanPremium.tour.skip")}
+ </button>
  )}
- <div style={{ flex: 1 }} />
- <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>{t("salesmanPremium.tour.skip")}
- </button>
+ <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+ <span style={{ fontSize: 11, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>{tourStep + 1} / {TOUR_STEPS.length}</span>
+ <div style={{ display: "flex", gap: 3, width: "100%", maxWidth: 140 }}>
+ {TOUR_STEPS.map((_, i) => (
+ <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
+ ))}
+ </div>
+ </div>
  <button
- onClick={() => isLast? dismissTour() : setTourStep((s) => s + 1)}
- style={{ padding: "7px 16px", borderRadius: 7, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+ onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
+ style={{ minHeight: 44, padding: "0 20px", borderRadius: 10, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
  >
- {isLast? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
+ {isLast ? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
  </button>
- </div>
- </div>
  </div>
  </>,
  document.body,
