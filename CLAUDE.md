@@ -358,6 +358,16 @@ dealer_products (dealer_id, name, category, cost_price, selling_price, is_active
 deal_products (dealer_id, lead_id, listing_id, product_id, sold_price)
 salesman_listings (dealer_id, salesman_id, listing_id) — many-to-many; a salesman features a dealer car on their own listings WITHOUT creating a lead. Pipeline = real buyers only.
 
+## A seller's "Delete" archives the car, never a hard DELETE (2026-10-18)
+Lite + Premium `handleDeleteListing` set `status='archived'`. A real DELETE unlinks the
+car from 33 tables (each with triggers), took up to 5s and passed the 8s limit whenever
+the DB was busy, and stripped the car off buyers' chats and leads. `archived` is already
+excluded by `public_car_listings`, the listing cap and the one-card-per-model index; the
+panels load listings with `.neq("status","archived")`. A won-deal car is refused
+(`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
+with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
+dealer dashboard and the console.
+
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
 - `car_listings.assigned_to = NULL` → OPEN: any salesman can feature it (salesman_listings)
@@ -422,7 +432,10 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   `npm run articles:build` and bump its `dateModified`; `npm test` fails on a
   stale file (`articles:check`) and the build regenerates it anyway. A new
   article is a new file in that folder plus its route in App.jsx, nothing
-  else. Article copy is buyer-facing: never promise something about XDrive
+  else. Articles are Malay by default; an English one sets `lang: 'en'` in its
+  ARTICLE so the crawler page is served `lang="en"` with English links
+  (`buildArticleHtml`, api/og.js). The generator gets `SITE_URL` from
+  `src/config/site.js`, so build URLs from it, not a typed domain. Article copy is buyer-facing: never promise something about XDrive
   listings the platform does not check (three CTAs claimed every car was
   Puspakom-inspected / fully documented; nothing verifies that).
 - **The public grids survive a database outage (2026-10-02).** The free DB
@@ -1418,10 +1431,10 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
   impossible number = no poster, never a guess.
 - No "full loan" line and no insurance folded into the loan (owner can revisit): a
   no-deposit figure is how prices get inflated on paper.
-- Quota is server side: `claim_loan_poster(listing)` (migration `20261016b`). Lite = 3 CARS a
+- Quota is server side: `claim_loan_poster(listing)` (migrations `20261016b`, `20261018b`). Lite = 10 CARS a
   month (Malaysia time); the same car again that month is free. Premium + dealer-linked =
   unlimited via `salesman_has_full_page`. It refuses a car the seller cannot sell. The
-  preview is free and watermarked; only the clean file claims. Limit 3 lives in BOTH the
+  preview is free and watermarked; only the clean file claims. Limit 10 lives in BOTH the
   SQL and `LITE_POSTERS_PER_MONTH`.
 - The seller's own number on their own poster is fine (they send it); this is NOT a public
   page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
@@ -1636,7 +1649,7 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   download (`poster-download`); the bar shows "Tap the ringed button" instead of Next. Closing the
   menu or sheet early goes back to step 1; `LoanPosterSheet onDownloaded` ends it. It lifts itself
   above the sheet (`zBase` 10000; the sheet is 9999). The Listings intro lost its "···" step to it.
-  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (3 free posters/month).
+  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (10 free posters/month).
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

@@ -1274,23 +1274,34 @@ export default function SalesmanLite() {
 
   // listing action overflow menu
   const [actionMenuCarId, setActionMenuCarId] = useState(null);
-  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (3 free cars a month)
+  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (10 free cars a month)
 
-  // One delete per car at a time: repeat taps queued on the first delete's
-  // locks and all timed out on a slow database (2026-10-18).
+  // "Delete" ARCHIVES the car (status='archived'), never a hard DELETE: that
+  // unlinked the car from every lead and chat and passed the 8s limit on a
+  // slow database (2026-10-18). Archived cars are hidden here, on the
+  // marketplace and from the listing cap. One request per car at a time.
   const [deletingId, setDeletingId] = useState(null);
   const handleDeleteListing = async (carId) => {
     if (deletingId) return;
     setDeletingId(carId);
     const { error } = await supabase
       .from("car_listings")
-      .delete()
+      .update({ status: "archived" })
       .eq("id", carId)
       .eq("dealer_id", userId);
     setDeletingId(null);
     if (error) {
       console.error("handleDeleteListing:", error);
-      toast.error(t("salesmanLite.toast.listingDeleteFailed"));
+      if (isWonDealBlock(error)) {
+        // Same way out as the status menu: a car with a won deal stays sold.
+        offerUndoSale(carId, () => {
+          setMyListings(relistCar(carId));
+          setLeads(reopenWonLeads(carId));
+          refreshCommissionData();
+        });
+      } else {
+        toast.error(t(error.code === "57014" ? "salesmanLite.toast.listingDeleteBusy" : "salesmanLite.toast.listingDeleteFailed"));
+      }
       return;
     }
     setMyListings((p) => p.filter((c) => c.id !== carId));
@@ -1621,7 +1632,7 @@ export default function SalesmanLite() {
             // not set"). See CarForm pre-fill effect for the full list.
             "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id",
           )
-          .eq("assigned_to", uid),
+          .eq("assigned_to", uid).neq("status", "archived"),
         supabase
           .from("car_listings")
           .select(
@@ -1630,7 +1641,7 @@ export default function SalesmanLite() {
             // not set"). See CarForm pre-fill effect for the full list.
             "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id",
           )
-          .eq("dealer_id", uid),
+          .eq("dealer_id", uid).neq("status", "archived"),
       ]).then(([r1, r2]) => {
         setListingsLoaded(true);
         if (r1.error) console.error("fetchListings(assigned_to):", r1.error);
@@ -1896,7 +1907,8 @@ export default function SalesmanLite() {
                 // car just vanished from the Pending tab.
                 const prevStatus = listingStatusRef.current[payload.new.id];
                 setMyListings((p) => {
-                  const next = p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c);
+                  // An archived car (deleted from another tab) leaves the list.
+                  const next = p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c).filter((c) => c.status !== "archived");
                   writeCache(`slite_listings_${uid}`, next);
                   return next;
                 });
@@ -1912,7 +1924,7 @@ export default function SalesmanLite() {
             )
             .on("postgres_changes", { event: "UPDATE", schema: "public", table: "car_listings", filter: `assigned_to=eq.${uid}` },
               (payload) => {
-                setMyListings((p) => p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+                setMyListings((p) => p.map((c) => c.id === payload.new.id ? { ...c, ...payload.new } : c).filter((c) => c.status !== "archived"));
               },
             )
             .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `salesman_id=eq.${uid}` },
@@ -4286,7 +4298,7 @@ export default function SalesmanLite() {
                                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                   Brief
                                 </button>
-                                {/* Loan poster: free on Lite for 3 cars a month (claim_loan_poster). */}
+                                {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
                                 <button onClick={() => { setPosterCar(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
                                   <Calculator size={12} />
                                   Loan poster

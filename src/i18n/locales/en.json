@@ -913,6 +913,7 @@
       "icSaveFailed": "Could not save IC",
       "statusUpdateFailed": "Failed to update status",
       "listingDeleteFailed": "Failed to delete listing",
+      "listingDeleteBusy": "The server is busy right now. Nothing was changed, try again in a minute.",
       "listingDeleted": "Listing deleted",
       "newEnquiry": "New enquiry!",
       "someoneEnquired": "Someone enquired",
@@ -1245,6 +1246,7 @@
       "addLead": "Could not add the lead",
       "updateStatus": "Failed to update status",
       "deleteListing": "Failed to delete listing",
+      "deleteListingBusy": "The server is busy right now. Nothing was changed, try again in a minute.",
       "saveContacted": "Could not save that as contacted",
       "setReminder": "Couldn't set the reminder. Try again.",
       "network": "Network error"

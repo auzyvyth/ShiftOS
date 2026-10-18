@@ -903,6 +903,7 @@
       "icSaveFailed": "Tidak dapat simpan IC",
       "statusUpdateFailed": "Gagal kemas kini status",
       "listingDeleteFailed": "Gagal padam listing",
+      "listingDeleteBusy": "Server sibuk sekarang. Tiada apa berubah, cuba lagi sebentar.",
       "listingDeleted": "Listing dipadam",
       "newEnquiry": "Enquiry baru!",
       "someoneEnquired": "Ada orang enquire",
@@ -1234,6 +1235,7 @@
       "addLead": "Tak dapat tambah lead",
       "updateStatus": "Gagal update status",
       "deleteListing": "Gagal padam listing",
+      "deleteListingBusy": "Server sibuk sekarang. Tiada apa berubah, cuba lagi sebentar.",
       "saveContacted": "Tak dapat simpan sebagai dah dihubungi",
       "setReminder": "Tak dapat set reminder. Cuba lagi.",
       "network": "Masalah rangkaian"
