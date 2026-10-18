@@ -1548,10 +1548,33 @@ export default function SalesmanPremium() {
  const el = document.querySelector(`[data-tour-id="${tab}"]`);
  setTourTarget(el ? el.getBoundingClientRect() : null);
  };
+ // On a phone the card is docked over the bottom of the screen, and the
+ // last links (Outreach, Settings) sit right under it: the ring was drawn
+ // behind the card (2026-10-18). Scroll the drawer so the link lands above
+ // the card. The drawer pads its bottom by the card height while the tour
+ // runs (renderMobileNav), so even the last link has room to rise.
+ const bringIntoView = () => {
+ const el = document.querySelector(`[data-tour-id="${tab}"]`);
+ const drawer = document.querySelector("[data-tour-drawer]");
+ if (isMobile && el && drawer) {
+ const clearLine = window.innerHeight - (tourCardHRef.current || tourCardH) - 24;
+ const r = el.getBoundingClientRect();
+ if (r.bottom > clearLine) drawer.scrollTop += r.bottom - clearLine;
+ else if (r.top < 12) drawer.scrollTop -= 12 - r.top;
+ }
  measure();
+ };
+ // The drawer mounts in this same commit on step 1, so wait a frame for it.
+ const raf = requestAnimationFrame(bringIntoView);
+ const drawer = document.querySelector("[data-tour-drawer]");
+ drawer?.addEventListener("scroll", measure, { passive: true });
  window.addEventListener("resize", measure);
- return () => window.removeEventListener("resize", measure);
- }, [tourStep, isMobile]);
+ return () => {
+ cancelAnimationFrame(raf);
+ drawer?.removeEventListener("scroll", measure);
+ window.removeEventListener("resize", measure);
+ };
+ }, [tourStep, isMobile, tourCardH, mobileNavOpen]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -2704,9 +2727,11 @@ export default function SalesmanPremium() {
  style={{ position: "fixed", inset: 0, zIndex: 999, background: "rgba(0,0,0,0.55)" }}
  >
  <nav
+ data-tour-drawer
  onClick={(e) => e.stopPropagation()}
  style={{
  position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
+ paddingBottom: tourStep !== null ? tourCardH + 24 : 0,
  width: "min(78vw, 280px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
