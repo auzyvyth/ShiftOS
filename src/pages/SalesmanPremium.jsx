@@ -1343,11 +1343,11 @@ export default function SalesmanPremium() {
  supabase
  .from("car_listings")
  .select(LISTING_SELECT)
- .eq("assigned_to", uid),
+ .eq("assigned_to", uid).neq("status", "archived"),
  supabase
  .from("car_listings")
  .select(LISTING_SELECT)
- .eq("dealer_id", uid),
+ .eq("dealer_id", uid).neq("status", "archived"),
  ]).then(([r1, r2]) => {
  if (r1.error || r2.error) { console.error("fetchListings:", r1.error || r2.error); toast.error(i18n.t("salesmanPremium.errors.loadListings")); }
  const seen = new Set();
@@ -2591,23 +2591,37 @@ export default function SalesmanPremium() {
  refreshSales();
  };
 
- // One delete per car at a time. A delete rewrites every row that points at
- // the car (views, leads, chats), so on a slow database it can take seconds;
- // repeat taps used to fire more DELETEs that queued on the first one's locks
- // and all hit the 8s timeout (2026-10-18).
+ // "Delete" ARCHIVES the car (status='archived'), it never hard-deletes it.
+ // A real DELETE unlinks the car from every lead, chat and view (33 tables,
+ // each with its own triggers), took up to 5s on a good day and passed the 8s
+ // limit on a slow one (2026-10-18). It also stripped the car off the buyer's
+ // chat. Archived cars are hidden from this panel, the marketplace view and
+ // the listing cap, and the history stays linked. One request per car at a time.
  const [deletingId, setDeletingId] = useState(null);
  const handleDeleteListing = async (carId) => {
  if (deletingId) return;
  setDeletingId(carId);
  const { error } = await supabase
  .from("car_listings")
- .delete()
+ .update({ status: "archived" })
  .eq("id", carId)
  .eq("dealer_id", userId);
  setDeletingId(null);
  if (error) {
  console.error("handleDeleteListing:", error);
- toast.error(t("salesmanPremium.errors.deleteListing"));
+ if (isWonDealBlock(error)) {
+ // Same way out as the status menu: a car with a won deal stays sold.
+ offerUndoSale(carId, () => {
+ setMyListings(relistCar(carId));
+ setLeads(reopenWonLeads(carId));
+ handover.refresh();
+ refreshCustomers();
+ refreshCommissionData();
+ refreshSales();
+ });
+ } else {
+ toast.error(t(error.code === "57014" ? "salesmanPremium.errors.deleteListingBusy" : "salesmanPremium.errors.deleteListing"));
+ }
  return;
  }
  setMyListings((p) => p.filter((c) => c.id !== carId));

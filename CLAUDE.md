@@ -358,6 +358,16 @@ dealer_products (dealer_id, name, category, cost_price, selling_price, is_active
 deal_products (dealer_id, lead_id, listing_id, product_id, sold_price)
 salesman_listings (dealer_id, salesman_id, listing_id) — many-to-many; a salesman features a dealer car on their own listings WITHOUT creating a lead. Pipeline = real buyers only.
 
+## A seller's "Delete" archives the car, never a hard DELETE (2026-10-18)
+Lite + Premium `handleDeleteListing` set `status='archived'`. A real DELETE unlinks the
+car from 33 tables (each with triggers), took up to 5s and passed the 8s limit whenever
+the DB was busy, and stripped the car off buyers' chats and leads. `archived` is already
+excluded by `public_car_listings`, the listing cap and the one-card-per-model index; the
+panels load listings with `.neq("status","archived")`. A won-deal car is refused
+(`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
+with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
+dealer dashboard and the console.
+
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
 - `car_listings.assigned_to = NULL` → OPEN: any salesman can feature it (salesman_listings)
