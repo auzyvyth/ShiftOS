@@ -6048,6 +6048,7 @@ export default function SalesmanPremium() {
  {/* Above the pills so both halves see what is due. Tapping a row opens the
  stage it is about: the handover checklist, or that buyer's renewals /
  aftercare in place. */}
+ <div data-tour-id="sold-coming">
  <ComingUp
  customers={customers}
  handover={handover}
@@ -6058,6 +6059,7 @@ export default function SalesmanPremium() {
  setSoldFocus({ id: it.customerId, section: it.kind === "renewal" ? "renewals" : "aftercare", at: Date.now() });
  }}
  />
+ </div>
  <SubTabs
  value={soldSubTab}
  onChange={setSoldSubTab}
@@ -6153,7 +6155,10 @@ export default function SalesmanPremium() {
  };
 
  const startIntro = (tab) => {
- const steps = (TAB_INTROS[tab] || []).filter((st) => document.querySelector(`[data-tour-id="${st.target}"]`));
+ const steps = (TAB_INTROS[tab] || []).filter((st) => {
+ const el = document.querySelector(`[data-tour-id="${st.target}"]`);
+ return el && el.getBoundingClientRect().height > 0;
+ });
  if (!steps.length) return;
  setIntroSteps(steps);
  setTourMode(tab);
