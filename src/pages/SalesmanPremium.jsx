@@ -8015,7 +8015,8 @@ export default function SalesmanPremium() {
  {posterCar && (
  <Suspense fallback={null}>
  <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
- onDownloaded={() => { if (tourMode === "poster") dismissTour(); }} />
+ onDownloaded={() => { if (tourMode === "poster") dismissTour(); }}
+ bottomInset={tourMode === "poster" ? TOUR_BAR_H + 40 : 0} />
  </Suspense>
  )}
 

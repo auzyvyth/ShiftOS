@@ -34,8 +34,10 @@ const S = {
 const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
 
 // onDownloaded: called once a clean file was saved or shared (the Premium
-// poster intro ends on it).
-export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded }) {
+// poster intro ends on it). bottomInset: extra scroll room under the content,
+// so a control at the very bottom can rise above a bar pinned over the screen
+// (the intro's button bar covered half of Download, 2026-10-18).
+export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded, bottomInset = 0 }) {
   useModalHistory(true, onClose);
   const [price, setPrice] = useState(() => String(car?.selling_price || car?.price || ''));
   const [deposit, setDeposit] = useState(() => String(defaultDeposit(car?.selling_price || car?.price)));
@@ -245,6 +247,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             </p>
           </div>
         </div>
+        {bottomInset > 0 && <div aria-hidden="true" style={{ height: bottomInset }} />}
       </div>
     </div>,
     document.body,
