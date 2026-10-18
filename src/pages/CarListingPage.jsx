@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect, lazy, Suspense } from 'react';
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from 'react-dom';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
@@ -6,9 +6,7 @@ import { Helmet } from 'react-helmet';
 import { X, RotateCcw, SlidersHorizontal, Flame, Car, ChevronDown, Search, Sparkles } from 'lucide-react';
 import { useCompare } from '../hooks/useCompare';
 import MarketplaceHeader from '../components/MarketplaceHeader';
-import Header from '../components/Header';
 import MarketplaceFooter from '../components/MarketplaceFooter';
-import StickyWhatsAppButton from '../components/StickyWhatsAppButton';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
@@ -35,6 +33,12 @@ import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import Pagination from '../components/ui/Pagination';
 import { storefront as SF } from '../theme/tokens';
+
+// Dealer-storefront chrome only (/cars on <sub>.xdrive.my). Lazy so the
+// marketplace /showroom does not download them, nor the framer-motion they
+// pull in (~42 KB gz). Both are position:fixed, so loading late moves nothing.
+const Header = lazy(() => import('../components/Header'));
+const StickyWhatsAppButton = lazy(() => import('../components/StickyWhatsAppButton'));
 
 /* ── Constants ──────────────────────────────────────────────────── */
 const PER_PAGE = 15;
@@ -671,7 +675,7 @@ export default function CarListingPage() {
   if (!isMarketplace && !tenantLoading && !tenant) {
     return (
       <>
-        <Header />
+        <Suspense fallback={null}><Header /></Suspense>
         <div style={{ background:'#F7F6F2', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"system-ui,sans-serif" }}>
           <Car size={36} color="#d1d5db" style={{ marginBottom:16 }}/>
           {/* tenantError = lookup failed (network/database), not a miss. */}
@@ -734,7 +738,7 @@ export default function CarListingPage() {
         }
       `}</style>
 
-      {isMarketplace ? <MarketplaceHeader /> : <Header />}
+      {isMarketplace ? <MarketplaceHeader /> : <Suspense fallback={null}><Header /></Suspense>}
 
       {/* Drawer backdrop — above header (z-100) */}
       {drawerOpen && (
@@ -990,7 +994,7 @@ export default function CarListingPage() {
 
       {/* Mobile FAB — bottom-right; raised above the WhatsApp button on dealer subdomains */}
       <MarketplaceFooter />
-      {!isMarketplace && <StickyWhatsAppButton />}
+      {!isMarketplace && <Suspense fallback={null}><StickyWhatsAppButton /></Suspense>}
     </>
   );
 }
