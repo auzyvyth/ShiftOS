@@ -161,12 +161,14 @@ export default function ListingsTab({
  </p>
  <div style={{ display: "flex", gap: 7 }}>
  <button
+ data-tour-id="lst-fast"
  onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
  style={{ display: "flex", alignItems: "center", gap: 5, background: "#dc2626", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
  >
  {t("salesmanPremium.lst.fast")}
  </button>
  <button
+ data-tour-id="lst-full"
  onClick={() => { setShowAddForm(true); setShowFastForm(false); }}
  style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
  >
@@ -672,6 +674,7 @@ export default function ListingsTab({
  {/* ··· overflow — Broadcast / AI Caption (Premium-only) + Delete */}
  <div style={{ position: "relative", flexShrink: 0 }}>
  <button
+ data-tour-id="lst-more"
  onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id? null : car.id); setConfirmDeleteId(null); }}
  title={t("salesmanPremium.lst.moreActions")} aria-label={t("salesmanPremium.lst.moreActions")}
  style={{ width: 30, height: 30, borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, letterSpacing: 1 }}

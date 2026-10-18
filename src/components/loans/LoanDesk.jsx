@@ -188,9 +188,9 @@ function Field({ label, hint, children }) {
   );
 }
 
-function SectionHead({ n, title, sub }) {
+function SectionHead({ n, title, sub, tourId }) {
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14 }}>
+    <div data-tour-id={tourId} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14 }}>
       <span style={{
         width: 22, height: 22, borderRadius: R.pill, flexShrink: 0, marginTop: 1,
         background: withAlpha(C.info, 0.14), border: `1px solid ${withAlpha(C.info, 0.3)}`,
@@ -806,7 +806,7 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
 
       {/* 4 — banks */}
       <div style={cardSx}>
-        <SectionHead n="4" title="Which banks to try" sub="Pick more than one — if the first says no, the second is already on the file." />
+        <SectionHead n="4" tourId="loan-banks" title="Which banks to try" sub="Pick more than one — if the first says no, the second is already on the file." />
         {loan <= 0 ? (
           <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted }}>Enter a car price to compare instalments.</p>
         ) : (
@@ -1145,7 +1145,7 @@ export default function LoanDesk({ userId, dealerId, leads = [], listings = [], 
           { key: "new",  label: "New application" },
           { key: "list", label: "Applications", badge: applications.length },
         ].map(({ key, label, badge }) => (
-          <button key={key} onClick={() => setView(key)} style={{
+          <button key={key} data-tour-id={key === "new" ? "loan-new" : "loan-list"} onClick={() => setView(key)} style={{
             fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "7px 15px", borderRadius: R.md,
             cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
             background: view === key ? withAlpha(C.info, 0.15) : C.fill,

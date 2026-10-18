@@ -2013,6 +2013,84 @@
           "body": "This page gets sharper the more deals you close out. You have settled {{settled}} so far. Mark deals won or lost as they finish and the funnel, reply-speed and loss-reason numbers below start telling you where to focus."
         }
       }
+    },
+    "intro": {
+      "listings": {
+        "fast": {
+          "title": "Fast list",
+          "body": "Photos, price and the basics, and the car is live in about 30 seconds. Fill in the rest later."
+        },
+        "full": {
+          "title": "Full form",
+          "body": "This is where you add a listing with every detail: new, used or recon, specs, condition and what's included. The more you fill in, the more a buyer trusts it."
+        },
+        "more": {
+          "title": "More on each car",
+          "body": "Tap ··· on a car for its loan poster, an AI caption or a broadcast."
+        }
+      },
+      "leads": {
+        "add": {
+          "title": "Add a buyer",
+          "body": "Walk-ins and phone calls go in here. Buyers from WhatsApp, chat and enquiries land here on their own."
+        },
+        "stages": {
+          "title": "Stages",
+          "body": "Every buyer sits in one stage, from New to Won. Tap a stage to see who is in it."
+        },
+        "more": {
+          "title": "Open a buyer",
+          "body": "Tap ··· to move them to the next stage, add a note, log a call or set a reminder. Marking a buyer Won moves the car to Sold."
+        }
+      },
+      "sold": {
+        "coming": {
+          "title": "Coming up",
+          "body": "What is due next across your buyers: handover steps, renewals and aftercare visits. Tap a row to open it."
+        },
+        "handover": {
+          "title": "Handover",
+          "body": "Each sale gets a checklist: insurance, Puspakom, JPJ transfer, road tax and handover. Ticking insurance or road tax saves the expiry date, so renewal reminders come on time."
+        },
+        "customers": {
+          "title": "Customers",
+          "body": "Everyone who bought from you. Add an aftercare plan and log their service visits here."
+        }
+      },
+      "loans": {
+        "new": {
+          "title": "New application",
+          "body": "Start from a lead or type the buyer in. Add the car and the deposit, and it works out the monthly and whether the buyer can carry it."
+        },
+        "banks": {
+          "title": "Which banks",
+          "body": "Pick more than one bank. If the first says no, the next one is already on file."
+        },
+        "list": {
+          "title": "Applications",
+          "body": "Every application stays here. Update each bank's answer as it comes in."
+        }
+      },
+      "outreach": {
+        "segments": {
+          "title": "Who to message",
+          "body": "Your buyers, sorted by how warm they are. Pick a group, then tap a buyer to get a message ready to send."
+        },
+        "campaign": {
+          "title": "Message a whole group",
+          "body": "Goes through the group one chat at a time. WhatsApp opens with the message, and you press send each time."
+        }
+      }
+    },
+    "firstSale": {
+      "title": "Congratulations, you sold your first car",
+      "carToBuyer": "{{car}} to {{buyer}}.",
+      "carOnly": "{{car}}.",
+      "buyerOnly": "To {{buyer}}.",
+      "body": "Your next commission starts in the Sold tab: finish the handover, then keep this buyer coming back for renewals, servicing and their next car.",
+      "show": "Show me",
+      "later": "Later",
+      "eyebrow": "First sale"
     }
   },
   "availability": {

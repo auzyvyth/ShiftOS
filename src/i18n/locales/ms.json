@@ -2002,6 +2002,84 @@
           "body": "Page ni makin tepat bila makin banyak deal anda tutup. Setakat ni anda dah selesaikan {{settled}}. Tanda deal menang atau terlepas bila habis, dan nombor funnel, kelajuan balas dan sebab terlepas di bawah akan mula tunjuk apa yang perlu difokus."
         }
       }
+    },
+    "intro": {
+      "listings": {
+        "fast": {
+          "title": "Senarai pantas",
+          "body": "Gambar, harga dan maklumat asas, dan kereta terus live dalam lebih kurang 30 saat. Isi yang lain kemudian."
+        },
+        "full": {
+          "title": "Borang penuh",
+          "body": "Di sini anda tambah listing dengan maklumat lengkap: baru, terpakai atau recon, spesifikasi, keadaan dan apa yang disertakan. Lebih lengkap, lebih yakin pembeli."
+        },
+        "more": {
+          "title": "Lagi untuk setiap kereta",
+          "body": "Tekan ··· pada kereta untuk poster loan, kapsyen AI atau broadcast."
+        }
+      },
+      "leads": {
+        "add": {
+          "title": "Tambah pembeli",
+          "body": "Pembeli walk-in dan panggilan telefon masukkan di sini. Pembeli dari WhatsApp, chat dan enquiry masuk ke sini sendiri."
+        },
+        "stages": {
+          "title": "Peringkat",
+          "body": "Setiap pembeli berada di satu peringkat, dari Baru hingga Menang. Tekan satu peringkat untuk lihat siapa di dalamnya."
+        },
+        "more": {
+          "title": "Buka pembeli",
+          "body": "Tekan ··· untuk alih ke peringkat seterusnya, tambah nota, rekod panggilan atau set peringatan. Tanda pembeli Menang akan alih kereta ke Terjual."
+        }
+      },
+      "sold": {
+        "coming": {
+          "title": "Akan datang",
+          "body": "Apa yang perlu dibuat seterusnya untuk pembeli anda: langkah serahan, pembaharuan dan lawatan servis. Tekan satu baris untuk buka."
+        },
+        "handover": {
+          "title": "Serahan",
+          "body": "Setiap jualan ada senarai semak: insurans, Puspakom, tukar nama JPJ, cukai jalan dan serahan. Tanda insurans atau cukai jalan akan simpan tarikh tamat, jadi peringatan pembaharuan sampai tepat masa."
+        },
+        "customers": {
+          "title": "Pelanggan",
+          "body": "Semua yang beli dari anda. Tambah pelan servis dan rekod lawatan servis mereka di sini."
+        }
+      },
+      "loans": {
+        "new": {
+          "title": "Permohonan baru",
+          "body": "Mula dari lead atau taip nama pembeli. Masukkan kereta dan deposit, dan ia kira bayaran bulanan dan sama ada pembeli mampu."
+        },
+        "banks": {
+          "title": "Bank mana",
+          "body": "Pilih lebih dari satu bank. Kalau yang pertama tolak, yang seterusnya sudah dalam fail."
+        },
+        "list": {
+          "title": "Permohonan",
+          "body": "Semua permohonan disimpan di sini. Kemas kini jawapan setiap bank bila sampai."
+        }
+      },
+      "outreach": {
+        "segments": {
+          "title": "Siapa nak dihubungi",
+          "body": "Pembeli anda, disusun ikut tahap minat. Pilih satu kumpulan, kemudian tekan pembeli untuk dapat mesej yang sedia dihantar."
+        },
+        "campaign": {
+          "title": "Hantar mesej ke satu kumpulan",
+          "body": "Satu chat pada satu masa. WhatsApp dibuka dengan mesej, dan anda tekan hantar setiap kali."
+        }
+      }
+    },
+    "firstSale": {
+      "title": "Tahniah, kereta pertama anda terjual",
+      "carToBuyer": "{{car}} kepada {{buyer}}.",
+      "carOnly": "{{car}}.",
+      "buyerOnly": "Kepada {{buyer}}.",
+      "body": "Komisen seterusnya bermula di tab Terjual: selesaikan serahan, kemudian pastikan pembeli ini kembali untuk pembaharuan, servis dan kereta seterusnya.",
+      "show": "Tunjukkan",
+      "later": "Nanti",
+      "eyebrow": "Jualan pertama"
     }
   },
   "availability": {

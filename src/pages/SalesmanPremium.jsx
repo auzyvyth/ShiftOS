@@ -109,6 +109,7 @@ import {
  Gift,
  CarFront,
  Lock,
+ PartyPopper,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
@@ -273,6 +274,27 @@ const tourSeenThisSession = (uid) => {
 };
 const markTourSeenThisSession = (uid) => {
  try { sessionStorage.setItem(tourSeenKey(uid), "1"); localStorage.removeItem(tourSeenKey(uid)); } catch { /* storage blocked */ }
+};
+
+// The tour's Back / Skip / Next live in ONE bar pinned to the bottom of the
+// screen, apart from the bubble (owner, 2026-10-18): when Next rode inside the
+// bubble, it jumped to a new spot on every step and the thumb had to chase it.
+// Height reserved for that bar (incl. its margin), so the bubble and the ringed
+// link are kept above it.
+const TOUR_BAR_H = 84;
+
+// Per-tab intros (INTRO-2, 2026-10-18): the first visit to a complex tab plays
+// a few steps that ring the tab's own controls, in the same bubble + pinned bar
+// as the sidebar tour. "Seen" lives in profiles.starter_tasks (intro_<tab>),
+// the first-run bag /salesman-setup already resets on a console handover, so no
+// new column and no extra reset path. sessionStorage is the same-session backup.
+const TAB_INTRO_TABS = ["listings", "leads", "sold", "loans", "outreach"];
+const introSeenKey = (uid, tab) => `sp_intro_seen_${uid}_${tab}`;
+const introSeenThisSession = (uid, tab) => {
+ try { return !!sessionStorage.getItem(introSeenKey(uid, tab)); } catch { return false; }
+};
+const markIntroSeenThisSession = (uid, tab) => {
+ try { sessionStorage.setItem(introSeenKey(uid, tab), "1"); } catch { /* storage blocked */ }
 };
 
 const TOUR_TABS = [
@@ -716,14 +738,15 @@ export default function SalesmanPremium() {
 
  // tour
  const [tourStep, setTourStep] = useState(null);
+ // "main" = the sidebar walkthrough; a tab key = that tab's own intro, whose
+ // steps (only the ones whose target is on screen) sit in introSteps.
+ const [tourMode, setTourMode] = useState(null);
+ const [introSteps, setIntroSteps] = useState([]);
  // The card's real height, measured after render. It used to be a hardcoded
  // 220px guess used to pick above-vs-below, so a long step ran off screen and
  // the desktop clamp could cut off the Next button.
  const tourCardRef = useRef(null);
  const [tourCardH, setTourCardH] = useState(240);
- // Same number, readable from the scroll loop below without re-running the
- // effect: the band the target must land in is measured off the card's height.
- const tourCardHRef = useRef(240);
  // Tab the user was on when the tour started, so finishing puts them back.
  const tourReturnTab = useRef("dashboard");
  const [tourTarget, setTourTarget] = useState(null);
@@ -1541,6 +1564,54 @@ export default function SalesmanPremium() {
  // target is a fixed nav row that doesn't move under its own step.
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
+ if (tourMode && tourMode !== "main") {
+ // A tab intro rings things INSIDE the page, so the page may have to
+ // scroll to show them. Scroll only when the target is outside the clear
+ // band (below the header, above the button bar), and follow every scroll
+ // after that so the ring and bubble stay glued to the control.
+ const st = introSteps[tourStep];
+ setMobileNavOpen(false);
+ st?.onEnter?.();
+ let frame = 0;
+ let poll = 0;
+ let sel = null;
+ let cancelled = false;
+ const visible = (q) => { const el = document.querySelector(q); return el && el.getBoundingClientRect().height > 0 ? el : null; };
+ const measure = () => {
+ cancelAnimationFrame(frame);
+ frame = requestAnimationFrame(() => {
+ const el = sel && document.querySelector(sel);
+ setTourTarget(el ? el.getBoundingClientRect() : null);
+ });
+ };
+ // The best target may only appear after onEnter re-renders (and the lazy
+ // handover board loads), so give it up to ~0.6s before using a fallback.
+ const settle = (tries) => {
+ if (cancelled || !st) return;
+ const best = st.targets[0];
+ const found = visible(best) ? best : tries <= 0 ? st.targets.find(visible) : null;
+ if (!found) { poll = requestAnimationFrame(() => settle(tries - 1)); return; }
+ sel = found;
+ const el = document.querySelector(sel);
+ const r = el.getBoundingClientRect();
+ if (r.top < 72 || r.bottom > window.innerHeight - TOUR_BAR_H - 24) {
+ const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+ el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+ }
+ measure();
+ };
+ setTourTarget(null);
+ settle(36);
+ document.addEventListener("scroll", measure, { capture: true, passive: true });
+ window.addEventListener("resize", measure);
+ return () => {
+ cancelled = true;
+ cancelAnimationFrame(frame);
+ cancelAnimationFrame(poll);
+ document.removeEventListener("scroll", measure, { capture: true });
+ window.removeEventListener("resize", measure);
+ };
+ }
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
  if (isMobile) setMobileNavOpen(true);
@@ -1548,16 +1619,16 @@ export default function SalesmanPremium() {
  const el = document.querySelector(`[data-tour-id="${tab}"]`);
  setTourTarget(el ? el.getBoundingClientRect() : null);
  };
- // On a phone the card is docked over the bottom of the screen, and the
- // last links (Outreach, Settings) sit right under it: the ring was drawn
- // behind the card (2026-10-18). Scroll the drawer so the link lands above
- // the card. The drawer pads its bottom by the card height while the tour
- // runs (renderMobileNav), so even the last link has room to rise.
+ // On a phone the tour's button bar is pinned over the bottom of the
+ // screen, and the last links (Outreach, Settings) sit right under it.
+ // Scroll the drawer so the link lands above the bar. The drawer pads its
+ // bottom by the bar height while the tour runs (renderMobileNav), so even
+ // the last link has room to rise.
  const bringIntoView = () => {
  const el = document.querySelector(`[data-tour-id="${tab}"]`);
  const drawer = document.querySelector("[data-tour-drawer]");
  if (isMobile && el && drawer) {
- const clearLine = window.innerHeight - (tourCardHRef.current || tourCardH) - 24;
+ const clearLine = window.innerHeight - TOUR_BAR_H - 24;
  const r = el.getBoundingClientRect();
  if (r.bottom > clearLine) drawer.scrollTop += r.bottom - clearLine;
  else if (r.top < 12) drawer.scrollTop -= 12 - r.top;
@@ -1580,7 +1651,7 @@ export default function SalesmanPremium() {
  drawer?.removeEventListener("scroll", measure);
  window.removeEventListener("resize", measure);
  };
- }, [tourStep, isMobile, tourCardH]);
+ }, [tourStep, tourMode, introSteps, isMobile, tourCardH]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -2737,7 +2808,7 @@ export default function SalesmanPremium() {
  onClick={(e) => e.stopPropagation()}
  style={{
  position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
- paddingBottom: tourStep !== null ? tourCardH + 24 : 0,
+ paddingBottom: tourStep !== null ? TOUR_BAR_H + 24 : 0,
  width: "min(78vw, 280px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
@@ -3103,6 +3174,7 @@ export default function SalesmanPremium() {
  </button>
  ) : null}
  <button
+ data-tour-id="leads-more"
  onClick={() => setDrawerLeadId(lead.id)}
  style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
  >
@@ -3133,6 +3205,7 @@ export default function SalesmanPremium() {
  >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
  <button
+ data-tour-id="leads-add"
  onClick={() => setShowAddLead(true)}
  style={{
  display: "flex",
@@ -3193,7 +3266,7 @@ export default function SalesmanPremium() {
      selected pill used to be RED whatever stage it was, so mobile said
      nothing about which stage you were in while desktop colour-coded all
      seven -- one pipeline, two colour languages. */}
- <div style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 12px", marginBottom: 14 }}>
+ <div data-tour-id="leads-stages" style={{ display: "flex", gap: 8, overflowX: "auto", scrollbarWidth: "none", padding: "2px 0 12px", marginBottom: 14 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
  const solid = sc.solid || "#6b7280";
@@ -3292,6 +3365,7 @@ export default function SalesmanPremium() {
      border, no saturated fills. The stage hue is a dot, a hairline and a
      faint wash on the selected row, never a solid colour bar. */}
  <div
+  data-tour-id="leads-stages"
   style={{
    width: 226,
    flexShrink: 0,
@@ -5991,6 +6065,7 @@ export default function SalesmanPremium() {
  {/* Above the pills so both halves see what is due. Tapping a row opens the
  stage it is about: the handover checklist, or that buyer's renewals /
  aftercare in place. */}
+ <div data-tour-id="sold-coming">
  <ComingUp
  customers={customers}
  handover={handover}
@@ -6001,6 +6076,7 @@ export default function SalesmanPremium() {
  setSoldFocus({ id: it.customerId, section: it.kind === "renewal" ? "renewals" : "aftercare", at: Date.now() });
  }}
  />
+ </div>
  <SubTabs
  value={soldSubTab}
  onChange={setSoldSubTab}
@@ -6050,7 +6126,203 @@ export default function SalesmanPremium() {
  { icon: Settings, title: t("salesmanPremium.tour.settings.title"), body: t("salesmanPremium.tour.settings.body") },
  ];
 
+ // Per-tab intros. Each step rings a control that is on screen even for a
+ // brand-new seller with no data; a step whose target is missing (no car yet,
+ // so no ··· menu) is dropped when the intro starts rather than pointing at
+ // nothing. Copy lives in salesmanPremium.intro.<tab>.<step> (en + ms).
+ // `targets` are CSS selectors, best first: a step can ring the seller's own
+ // first row (Farah's handover) and fall back to the pill when there is none.
+ // `onEnter` puts the page in the state the step talks about (the right pill).
+ const tourSel = (id) => `[data-tour-id="${id}"]`;
+ const introStep = (tab, key, targets, icon, onEnter) => ({
+ targets: (Array.isArray(targets) ? targets : [targets]).map((x) => (x.startsWith("[") ? x : tourSel(x))),
+ icon, onEnter,
+ title: t(`salesmanPremium.intro.${tab}.${key}.title`),
+ body: t(`salesmanPremium.intro.${tab}.${key}.body`),
+ });
+ const TAB_INTROS = {
+ listings: [
+ introStep("listings", "fast", "lst-fast", Zap),
+ introStep("listings", "full", "lst-full", Car),
+ introStep("listings", "more", "lst-more", Sparkles),
+ ],
+ leads: [
+ introStep("leads", "add", "leads-add", Plus),
+ introStep("leads", "stages", "leads-stages", Users),
+ introStep("leads", "more", "leads-more", ClipboardList),
+ ],
+ sold: [
+ introStep("sold", "coming", "sold-coming", Calendar),
+ introStep("sold", "handover", ['[id^="handover-deal-"]', "sold-handover"], CheckCircle2, () => setSoldSubTab("handover")),
+ introStep("sold", "customers", ['[id^="customer-"]', "sold-customers"], Users, () => setSoldSubTab("customers")),
+ ],
+ loans: [
+ introStep("loans", "new", "loan-new", Banknote),
+ introStep("loans", "banks", "loan-banks", ShieldCheck),
+ introStep("loans", "list", "loan-list", ClipboardList),
+ ],
+ outreach: [
+ introStep("outreach", "segments", "oh-segments", Users),
+ introStep("outreach", "campaign", "oh-campaign", Megaphone),
+ ],
+ };
+ const tourSteps = tourMode === "main" ? TOUR_STEPS : introSteps;
+
+ const markIntroSeen = (tab) => {
+ if (!userId) return;
+ markIntroSeenThisSession(userId, tab);
+ const key = `intro_${tab}`;
+ setProfile((p) => (p ? { ...p, starter_tasks: { ...(p.starter_tasks || {}), [key]: true } } : p));
+ markStarterTask(userId, key, profile?.starter_tasks);
+ };
+
+ const startIntro = (tab) => {
+ const steps = (TAB_INTROS[tab] || []).filter((st) => st.targets.some((sel) => {
+ const el = document.querySelector(sel);
+ return el && el.getBoundingClientRect().height > 0;
+ }));
+ if (!steps.length) return;
+ setIntroSteps(steps);
+ setTourMode(tab);
+ setTourStep(0);
+ };
+
+ // First visit to a complex tab plays its intro, once the sidebar tour is
+ // out of the way. The short delay lets a lazy tab paint its controls first.
+ useEffect(() => {
+ if (loading || !userId || !profile || tourStep !== null) return;
+ if (!TAB_INTRO_TABS.includes(activeTab)) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (profile.starter_tasks?.[`intro_${activeTab}`] || introSeenThisSession(userId, activeTab)) return;
+ // Wait until the tab has something real to explain. A new seller's Sold
+ // tab is three empty states and Outreach is all zeros: an intro there
+ // describes things they cannot see, then never comes back once they can.
+ // Sold plays after the first sale (the first-sale card sends them there),
+ // Outreach once there is a live buyer to message.
+ if (activeTab === "sold" && handover.deals.length === 0) return;
+ if (activeTab === "outreach" && !leads.some((l) => !["lost", "closed_lost"].includes(l.stage))) return;
+ const timer = setTimeout(() => startIntro(activeTab), 600);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, handover.deals.length, leads]);
+
+ // Leaving the tab mid-intro ends it without marking it seen, so it plays
+ // again on the next visit.
+ useEffect(() => {
+ if (tourMode && tourMode !== "main" && tourMode !== activeTab) {
+ setTourStep(null);
+ setTourMode(null);
+ }
+ }, [activeTab, tourMode]);
+
+ // First sale card (INTRO-3). Shown once, when the seller's FIRST won deal
+ // appears: whichever surface won it (the pipeline confirm, the lead drawer)
+ // the handover list is the one place every win lands. Only for a genuine
+ // first sale, recent enough to still be news: a seller with one old deal
+ // from before this shipped is not congratulated months late. "Show me"
+ // opens Sold, where the Sold intro (held until now) plays.
+ const [firstSale, setFirstSale] = useState(null);
+ useEffect(() => {
+ if (loading || !userId || !profile || firstSale || tourStep !== null || wonPrompt || anyOverlayOpen) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (profile.starter_tasks?.first_sale_seen || introSeenThisSession(userId, "first_sale")) return;
+ if (handover.deals.length !== 1) return;
+ const deal = handover.deals[0];
+ const wonAt = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
+ if (!wonAt || Date.now() - wonAt > 14 * 86400000) return;
+ // Let the win confirm finish closing before this opens (overlay rule 3).
+ const timer = setTimeout(() => setFirstSale(deal), 700);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, handover.deals, tourStep, wonPrompt, anyOverlayOpen, firstSale]);
+ useEffect(() => {
+ if (!firstSale) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [firstSale]);
+ const closeFirstSale = (goToSold) => {
+ if (userId) {
+ markIntroSeenThisSession(userId, "first_sale");
+ setProfile((p) => (p ? { ...p, starter_tasks: { ...(p.starter_tasks || {}), first_sale_seen: true } } : p));
+ markStarterTask(userId, "first_sale_seen", profile?.starter_tasks);
+ }
+ setFirstSale(null);
+ if (goToSold) switchTab("sold");
+ };
+ const renderFirstSale = () => {
+ if (!firstSale) return null;
+ const c = firstSale.car_listings || myListings.find((l) => l.id === firstSale.car_listing_id) || null;
+ const car = c ? [c.year, c.brand, c.model].filter(Boolean).join(" ") : "";
+ const buyer = (firstSale.buyer_name || "").trim();
+ const detail = car && buyer ? t("salesmanPremium.firstSale.carToBuyer", { car, buyer })
+ : car ? t("salesmanPremium.firstSale.carOnly", { car })
+ : buyer ? t("salesmanPremium.firstSale.buyerOnly", { buyer }) : "";
+ return createPortal(
+ <div
+ onClick={() => closeFirstSale(false)}
+ className="fs-anim"
+ style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(3,5,10,0.72)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? "16px 12px calc(12px + env(safe-area-inset-bottom, 0px))" : 16, animation: "fsFade 0.2s ease-out" }}
+ >
+ <style>{`@keyframes fsFade{from{opacity:0}to{opacity:1}}@keyframes fsIn{from{opacity:0;transform:translateY(10px) scale(0.98)}to{opacity:1;transform:none}}@keyframes fsIcon{0%{opacity:0;transform:scale(0.8)}70%{opacity:1;transform:scale(1.04)}100%{opacity:1;transform:none}}@keyframes fsBit{from{opacity:0;translate:0 -10px}to{translate:0 0}}@media (prefers-reduced-motion: reduce){.fs-anim,.fs-anim *{animation:none!important}}`}</style>
+ <div
+ role="dialog"
+ aria-modal="true"
+ aria-labelledby="fs-title"
+ onClick={(e) => e.stopPropagation()}
+ style={{
+ position: "relative", overflow: "hidden",
+ width: "100%", maxWidth: 400, boxSizing: "border-box",
+ // A win, not a notice: an emerald wash from the top, a little gold
+ // from the corner, on the panel's own card colour.
+ background: "radial-gradient(120% 70% at 50% -10%, rgba(34,197,94,0.30) 0%, rgba(34,197,94,0.08) 45%, rgba(17,24,39,0) 70%), radial-gradient(70% 50% at 100% 0%, rgba(250,204,21,0.16) 0%, rgba(250,204,21,0) 60%), #111827",
+ border: "1px solid rgba(74,222,128,0.30)",
+ borderRadius: 20, padding: "28px 20px 16px",
+ boxShadow: "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.03) inset, 0 1px 0 rgba(255,255,255,0.08) inset",
+ animation: "fsIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)",
+ }}
+ >
+ {/* Confetti: drawn once, settles in, then sits still. */}
+ <div aria-hidden="true" style={{ position: "absolute", inset: "0 0 auto 0", height: 110, pointerEvents: "none" }}>
+ <span style={{ position: "absolute", left: "21%", top: 10, width: 6, height: 10, borderRadius: 1.5, background: "#facc15", opacity: 0.85, transform: "rotate(-20deg)", animation: "fsBit 0.6s 0ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "18%", top: 58, width: 5, height: 5, borderRadius: 99, background: "#4ade80", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 40ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "30%", top: 16, width: 7, height: 4, borderRadius: 1.5, background: "#60a5fa", opacity: 0.85, transform: "rotate(25deg)", animation: "fsBit 0.6s 80ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "44%", top: 40, width: 4, height: 9, borderRadius: 1.5, background: "#f472b6", opacity: 0.85, transform: "rotate(-35deg)", animation: "fsBit 0.6s 20ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "58%", top: 14, width: 6, height: 6, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(45deg)", animation: "fsBit 0.6s 100ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "70%", top: 50, width: 7, height: 4, borderRadius: 1.5, background: "#4ade80", opacity: 0.85, transform: "rotate(-15deg)", animation: "fsBit 0.6s 60ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "82%", top: 20, width: 5, height: 9, borderRadius: 1.5, background: "#60a5fa", opacity: 0.85, transform: "rotate(30deg)", animation: "fsBit 0.6s 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "92%", top: 56, width: 5, height: 5, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 30ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "64%", top: 78, width: 4, height: 4, borderRadius: 99, background: "#f472b6", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 140ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ <span style={{ position: "absolute", left: "24%", top: 86, width: 4, height: 4, borderRadius: 99, background: "#facc15", opacity: 0.85, transform: "rotate(0deg)", animation: "fsBit 0.6s 90ms cubic-bezier(0.2, 0.8, 0.2, 1) both" }} />
+ </div>
+ <div style={{ position: "relative", width: 56, height: 56, borderRadius: 16, background: "linear-gradient(140deg, #4ade80 0%, #16a34a 100%)", boxShadow: "0 10px 28px rgba(34,197,94,0.40), 0 1px 0 rgba(255,255,255,0.35) inset", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18, animation: "fsIcon 0.45s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>
+ <PartyPopper size={26} style={{ color: "#fff" }} />
+ </div>
+ <span style={{ position: "relative", display: "inline-block", marginBottom: 8, padding: "3px 9px", borderRadius: 99, background: "rgba(250,204,21,0.12)", border: "1px solid rgba(250,204,21,0.28)", color: "#fde047", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{t("salesmanPremium.firstSale.eyebrow")}</span>
+ <p id="fs-title" style={{ position: "relative", margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "#f8fafc", lineHeight: 1.25, textWrap: "balance" }}>{t("salesmanPremium.firstSale.title")}</p>
+ {detail && <p style={{ position: "relative", margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "#bbf7d0" }}>{detail}</p>}
+ <p style={{ position: "relative", margin: "0 0 22px", fontSize: 13, color: "#a3b1c2", lineHeight: 1.6 }}>{t("salesmanPremium.firstSale.body")}</p>
+ <button
+ onClick={() => closeFirstSale(true)}
+ style={{ position: "relative", width: "100%", minHeight: 48, borderRadius: 12, background: "linear-gradient(140deg, #22c55e 0%, #15803d 100%)", border: "none", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: "0 8px 22px rgba(34,197,94,0.30), 0 1px 0 rgba(255,255,255,0.25) inset" }}
+ >{t("salesmanPremium.firstSale.show")}</button>
+ <button
+ onClick={() => closeFirstSale(false)}
+ style={{ position: "relative", width: "100%", minHeight: 42, marginTop: 6, borderRadius: 12, background: "none", border: "none", color: "#7b8794", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+ >{t("salesmanPremium.firstSale.later")}</button>
+ </div>
+ </div>,
+ document.body,
+ );
+ };
+
  const dismissTour = () => {
+ if (tourMode && tourMode !== "main") {
+ markIntroSeen(tourMode);
+ setTourStep(null);
+ setTourMode(null);
+ setTourTarget(null);
+ return;
+ }
  // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
  // guard read on next mount; the per-user localStorage key is only a
  // same-session backup so a re-render before the write lands doesn't
@@ -6061,6 +6333,7 @@ export default function SalesmanPremium() {
  supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
  }
  setTourStep(null);
+ setTourMode(null);
  setTourTarget(null);
  // The tour walked the user across 13 tabs; finishing or skipping should not
  // strand them on Settings, scrolled to the invite box.
@@ -6070,6 +6343,7 @@ export default function SalesmanPremium() {
 
  const startTour = () => {
  tourReturnTab.current = activeTab;
+ setTourMode("main");
  setTourStep(0);
  };
 
@@ -6081,32 +6355,39 @@ export default function SalesmanPremium() {
  if (tourStep === null || !el) return;
  const h = Math.round(el.getBoundingClientRect().height);
  if (!h) return;
- tourCardHRef.current = h;
  if (Math.abs(h - tourCardH) > 2) setTourCardH(h);
  }, [tourStep, tourCardH, isMobile]);
 
  const renderTour = () => {
  if (tourStep === null) return null;
- const step = TOUR_STEPS[tourStep];
- const isLast = tourStep === TOUR_STEPS.length - 1;
- const isWelcome = tourStep === 0;
+ const step = tourSteps[tourStep];
+ if (!step) return null;
+ const isLast = tourStep === tourSteps.length - 1;
+ // Only the sidebar tour opens on a centred welcome card; an intro's first
+ // step already rings a control.
+ const isWelcome = tourMode === "main" && tourStep === 0;
 
- // Placement: the card is put on whichever side of the target has room, and
- // never on top of the target itself. See utils/tourPlacement.
- const BUBBLE_W = isMobile ? Math.min(320, window.innerWidth - 32) : 300;
+ // Placement: the bubble sits on whichever side of the ringed link has room,
+ // never on top of it (utils/tourPlacement). It FOLLOWS the link on every
+ // step, phone included: it used to be docked in a fixed strip at the bottom
+ // of the phone screen, far from the link it was talking about. The space
+ // under the button bar is taken off the viewport so the bubble never lands
+ // behind the bar.
+ const BUBBLE_W = isMobile ? Math.min(300, window.innerWidth - 32) : 300;
  // The arrow used to be #1e2d3d while the card was #111827, so it read as a
  // stray notch rather than part of the bubble. One constant, both.
  const BUBBLE_BG = "#111827";
- // dock: on a phone there is no free column beside the target, so a floating
- // card always ends up on top of something. Docked, it lives in one fixed
- // strip at the bottom of the screen for every step and the page scrolls
- // the target into the space above it. navH: 0 — Premium's mobile nav is
- // now the renderMobileNav() drawer, not a fixed bottom bar, so there's no
- // nav height to leave clear (unlike Lite/Salesmanpanel's default).
- const place = { dock: isMobile, navH: 0 };
- const { style: bubbleStyle, arrow } = isWelcome
- ? placeTourCard(null, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place)
- : placeTourCard(tourTarget, { w: BUBBLE_W, h: tourCardH }, window.innerWidth, window.innerHeight, place);
+ const usableH = window.innerHeight - TOUR_BAR_H;
+ const { style: bubbleStyle, arrow } = placeTourCard(
+ isWelcome ? null : tourTarget,
+ { w: BUBBLE_W, h: tourCardH },
+ window.innerWidth,
+ usableH,
+ // placeTourCard centres the welcome card on the full screen; it is
+ // centred on the space above the bar instead (top below).
+ { dock: false },
+ );
+ if (isWelcome) bubbleStyle.top = usableH / 2;
 
  const arrowEl = arrow && (
  <div style={{
@@ -6128,91 +6409,116 @@ export default function SalesmanPremium() {
  return createPortal(
  <>
  {/* Highlight ring around the target — no backdrop */}
- {tourTarget &&!isWelcome && (
+ {/* Motion: the ring and bubble fade in at each new target (keyed on the
+ step) and then track it exactly. No position transition: one made the
+ ring trail behind the page while it scrolled to an in-page control. */}
+ <style>{`@keyframes tourIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@keyframes tourInC{from{opacity:0;transform:translate(-50%,-50%) translateY(4px)}to{opacity:1;transform:translate(-50%,-50%)}}@keyframes tourRing{from{opacity:0}to{opacity:1}}@media (prefers-reduced-motion: reduce){.tour-anim{animation:none!important}}`}</style>
+ {tourTarget && !isWelcome && (
  <div
+ key={`ring-${tourMode}-${tourStep}`}
+ className="tour-anim"
  style={{
  position: "fixed",
  left: tourTarget.left - 3,
  top: tourTarget.top - 3,
  width: tourTarget.width + 6,
  height: tourTarget.height + 6,
- borderRadius: isMobile? 8 : 10,
+ borderRadius: isMobile ? 8 : 10,
  border: "2px solid #3b82f6",
  boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
  pointerEvents: "none",
  zIndex: 1001,
- transition: "all 0.25s ease",
+ animation: "tourRing 0.2s ease-out",
  }}
  />
  )}
 
- {/* Bubble */}
- <div
+ {/* Bubble: words only. The buttons are in the bar below. Keyed on the
+ step so it re-pops at the new link instead of sliding across the screen.
+ An intro step still waiting for its target shows nothing yet, rather than
+ flashing a centred card that then jumps to the control. */}
+ {(isWelcome || tourMode === "main" || tourTarget) && <div
+ key={`bubble-${tourMode}-${tourStep}`}
  ref={tourCardRef}
+ className="tour-anim"
  style={{
  ...bubbleStyle,
  background: BUBBLE_BG,
  border: "1px solid rgba(59,130,246,0.3)",
  borderRadius: 14,
- padding: "18px 18px 14px",
+ padding: "14px 16px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
- animation: "tourPop 0.18s ease",
+ animation: `${isWelcome ? "tourInC" : "tourIn"} 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`,
  zIndex: 1002,
  boxSizing: "border-box",
  }}
  >
- <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
  {arrowEl}
 
  {/* Content scrolls INSIDE the card when a step is taller than the
- viewport, so the buttons are always reachable. The scroll cannot go
- on the card itself — the arrow is an absolutely positioned child
- outside the padding box and overflow would clip it. */}
- <div style={{ maxHeight: isMobile ? "calc(100vh - 200px)" : "calc(100vh - 64px)", overflowY: "auto" }}>
-
- {/* Header */}
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
- <step.icon size={20} />
- <div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.07em" }}>
- {tourStep + 1} / {TOUR_STEPS.length}
- </p>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{step.title}</p>
+ space above the bar. The scroll cannot go on the card itself — the
+ arrow is an absolutely positioned child outside the padding box and
+ overflow would clip it. */}
+ <div style={{ maxHeight: `calc(100vh - ${TOUR_BAR_H + 32}px)`, overflowY: "auto" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+ <step.icon size={18} />
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9", flex: 1, minWidth: 0 }}>{step.title}</p>
+ <button onClick={dismissTour} aria-label={t("salesmanPremium.tour.skip")} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
+ <X size={16} />
+ </button>
  </div>
- </div>
- <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 2 }}></button>
- </div>
-
- <p style={{ margin: "0 0 12px", fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
+ <p style={{ margin: 0, fontSize: 12.5, color: "#94a3b8", lineHeight: 1.6 }}>
  {step.body}
  </p>
-
- {/* Progress bar */}
- <div style={{ display: "flex", gap: 4, marginBottom: 12 }}>
- {TOUR_STEPS.map((_, i) => (
- <div key={i} style={{ height: 2, flex: i === tourStep? 2 : 1, borderRadius: 99, background: i <= tourStep? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
- ))}
  </div>
+ </div>}
 
- {/* Buttons */}
- <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
- {tourStep > 0 && (
- <button onClick={() => setTourStep((s) => s - 1)} style={{ padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
+ {/* Button bar: pinned in one place for every step, so Next is always
+ under the same thumb (Next on the right edge, the easy reach). Desktop
+ docks it bottom-right, clear of the sidebar links being ringed. */}
+ <div
+ style={{
+ position: "fixed",
+ ...(isMobile ? { left: "50%", transform: "translateX(-50%)" } : { right: 24 }),
+ bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+ width: isMobile ? "calc(100vw - 24px)" : 380,
+ boxSizing: "border-box",
+ zIndex: 1003,
+ background: BUBBLE_BG,
+ border: "1px solid rgba(255,255,255,0.08)",
+ borderRadius: 14,
+ padding: "10px 10px 10px 12px",
+ boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+ display: "flex",
+ alignItems: "center",
+ gap: 8,
+ animation: "tourRing 0.2s ease-out",
+ }}
+ className="tour-anim"
+ >
+ {tourStep > 0 ? (
+ <button onClick={() => setTourStep((s) => s - 1)} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
  ← {t("salesmanPremium.tour.back")}
  </button>
+ ) : (
+ <button onClick={dismissTour} style={{ minHeight: 44, padding: "0 10px", background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
+ {t("salesmanPremium.tour.skip")}
+ </button>
  )}
- <div style={{ flex: 1 }} />
- <button onClick={dismissTour} style={{ background: "none", border: "none", color: "#4b5563", fontSize: 11, cursor: "pointer", padding: "7px 6px" }}>{t("salesmanPremium.tour.skip")}
- </button>
+ <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+ <span style={{ fontSize: 11, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>{tourStep + 1} / {tourSteps.length}</span>
+ <div style={{ display: "flex", gap: 3, width: "100%", maxWidth: 140 }}>
+ {tourSteps.map((_, i) => (
+ <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
+ ))}
+ </div>
+ </div>
  <button
- onClick={() => isLast? dismissTour() : setTourStep((s) => s + 1)}
- style={{ padding: "7px 16px", borderRadius: 7, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+ onClick={() => isLast ? dismissTour() : setTourStep((s) => s + 1)}
+ style={{ minHeight: 44, padding: "0 20px", borderRadius: 10, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
  >
- {isLast? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
+ {isLast ? t("salesmanPremium.tour.done") : `${t("salesmanPremium.tour.next")} →`}
  </button>
- </div>
- </div>
  </div>
  </>,
  document.body,
@@ -6834,6 +7140,10 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "sold" && renderSold()}
  {activeTab === "settings" && renderSettings()}
+ {/* Room under the last control while a tab intro runs, so a button at
+ the very bottom of a tab (Outreach's Contact All) can scroll up clear
+ of the pinned tour bar instead of sitting under it. */}
+ {tourMode && tourMode !== "main" && <div aria-hidden="true" style={{ height: TOUR_BAR_H + 160 }} />}
  </div>
  </div>
 
@@ -6928,6 +7238,7 @@ export default function SalesmanPremium() {
  </Suspense>
  )}
  {renderTour()}
+ {renderFirstSale()}
 
  {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
  desktop sidebar, mobile topbar) open this instead of calling
