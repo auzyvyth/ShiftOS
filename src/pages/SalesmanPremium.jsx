@@ -1564,17 +1564,23 @@ export default function SalesmanPremium() {
  }
  measure();
  };
- // The drawer mounts in this same commit on step 1, so wait a frame for it.
- const raf = requestAnimationFrame(bringIntoView);
- const drawer = document.querySelector("[data-tour-drawer]");
+ // The drawer mounts in this same commit on step 1, so wait a frame for it,
+ // then hook its scroll. Do NOT add mobileNavOpen to the deps: with no tour
+ // running, the early return above closes the drawer, so every tap on the
+ // menu button would open and instantly shut it (2026-10-18, live on prod).
+ let drawer = null;
+ const raf = requestAnimationFrame(() => {
+ bringIntoView();
+ drawer = document.querySelector("[data-tour-drawer]");
  drawer?.addEventListener("scroll", measure, { passive: true });
+ });
  window.addEventListener("resize", measure);
  return () => {
  cancelAnimationFrame(raf);
  drawer?.removeEventListener("scroll", measure);
  window.removeEventListener("resize", measure);
  };
- }, [tourStep, isMobile, tourCardH, mobileNavOpen]);
+ }, [tourStep, isMobile, tourCardH]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
