@@ -859,7 +859,7 @@ export default function SalesmanOnboarding() {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
                   {[
                     { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
-                    { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua or Toyota' },
+                    { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua, Toyota or BYD' },
                     { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
                   ].map((opt) => (
                     <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}

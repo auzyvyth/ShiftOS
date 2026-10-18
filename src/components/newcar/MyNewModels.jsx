@@ -73,7 +73,7 @@ export default function MyNewModels({ profile, onProfileChange }) {
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         {profile?.new_car_brand
           ? "Your page shows only the models you add. Go to Add car, pick a model, add your photo, done. The price comes from this list and XDrive keeps it up to date."
-          : "Sell new Proton, Perodua or Toyota? Pick your brand, then add the models you sell from Add car. You never type a price."}
+          : "Sell new Proton, Perodua, Toyota or BYD? Pick your brand, then add the models you sell from Add car. You never type a price."}
       </p>
 
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

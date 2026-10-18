@@ -239,7 +239,7 @@ const SETTINGS_GROUPS = [
  { group: "Selling", items: [
  { key: "availability", icon: Clock, label: "Viewing Hours", desc: "When buyers can book you" },
  { key: "terms", icon: DollarSign, label: "Selling Terms", desc: "Deposit policy & your fees" },
- { key: "newcars", icon: CarFront, label: "New Cars", desc: "Proton, Perodua & Toyota prices" },
+ { key: "newcars", icon: CarFront, label: "New Cars", desc: "Proton, Perodua, Toyota & BYD prices" },
  ]},
  { group: "Notifications", items: [
  { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
