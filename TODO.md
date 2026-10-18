@@ -79,6 +79,10 @@ handed-over account must start exactly like a fresh self-signup.
   `onboarding_tour_done=false` + `starter_tasks={}`. Deleted the duplicate Premium
   "Get started" card (`DashboardTab.jsx`, gated on dead key `sp_tour_done`).
   Console setup steps tell the owner to skip intros freely.
+- [x] Checklist rebuilt (2026-10-18): Premium 5 steps at the top of the dashboard,
+  pre-ticked "account" step, progress bar; mini page strip reads the same list.
+  Console "Set up a seller" gets a Lite / Premium choice (Premium = free month,
+  `create-salesman`).
 - [ ] Part 2: Mini page intro, owner-only, first visit to own `/s/:slug`: (1) this is
   what buyers see, (2) how buyers reach you (rings WhatsApp/contact), (3) Live
   presentation (rings the button; only when Premium + 1 car, as the button itself).

@@ -578,7 +578,7 @@ export default function SalesmanPremium() {
  useEffect(() => {
  if (!userId || !listingsLoaded) return;
  if (profile?.starter_tasks?.dismissed) return;
- if (!starterTasksAllDone({ profile, listingCount: myListings.length })) return;
+ if (!starterTasksAllDone({ profile, listingCount: myListings.length, premium: true })) return;
  markStarterTask(userId, "dismissed", profile?.starter_tasks);
  }, [userId, listingsLoaded, profile, myListings.length]);
 
@@ -5123,7 +5123,7 @@ export default function SalesmanPremium() {
  onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }))}
  onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
  />
- <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
+ <div id="sp-photo-field" style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
  <div style={{ position: "relative", flexShrink: 0 }}>
  {avatarUrl
 ? <img src={avatarUrl} alt={t("salesmanPremium.settings.profileAlt")} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
@@ -6696,6 +6696,10 @@ export default function SalesmanPremium() {
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
+ }}
+ onEditPhoto={() => {
+ openSettings("profile");
+ setTimeout(() => document.getElementById("sp-photo-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
  }}
  />
  </Suspense>

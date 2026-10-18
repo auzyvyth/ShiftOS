@@ -13,6 +13,7 @@ import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../
 import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
+import { starterTodoKeys } from '../components/onboarding/StarterTasks';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -25,6 +26,11 @@ const fmt = (n) => Number(n).toLocaleString('en-MY');
 // setupTodo, the stored key stops matching the new next step, and the nudge
 // comes back for whatever's next. Closing it is never "gone for good" while
 // something real is still missing.
+const SETUP_TODO = {
+  listing: { key: 'listing', label: 'List your first car', tab: 'listings' },
+  photo: { key: 'photo', label: 'Add a profile photo', tab: 'settings' },
+  bio: { key: 'bio', label: 'Write a short bio', tab: 'settings' },
+};
 const setupDismissKey = (uid) => `sp_setup_dismissed_${uid}`;
 
 // Light-surface tokens (DESIGN.md) for the shared components on this page.
@@ -341,14 +347,14 @@ export default function SalesmanProfilePage() {
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
-  const setupTodo = !isOwner ? [] : [
-    listings.length === 0 && { key: 'car', label: 'List your first car', tab: 'listings' },
-    !profile.avatar_url && { key: 'avatar', label: 'Add a profile photo', tab: 'settings' },
-    // A Lite page is the basic page (get_salesman_by_slug.page_basic): the RPC
-    // returns no banner or bio for it, so never ask the owner to fill them in.
-    !profile.page_basic && !profile.cover_url && { key: 'cover', label: 'Add a banner image', tab: 'settings' },
-    !profile.page_basic && !(profile.bio || '').trim() && { key: 'bio', label: 'Write a short bio', tab: 'settings' },
-  ].filter(Boolean);
+  // Reads the dashboard checklist's own list (StarterTasks), so the page and
+  // the dashboard never ask for different things. It used to keep a second
+  // list here (car, photo, banner, bio) that disagreed with the dashboard's.
+  // A Lite page is the basic page (get_salesman_by_slug.page_basic): its list
+  // has no photo or bio step, so it only ever asks for a car.
+  const setupTodo = !isOwner ? [] : starterTodoKeys({
+    profile, listingCount: listings.length, premium: !profile.page_basic, noBio: !!profile.page_basic,
+  }).map((key) => SETUP_TODO[key]).filter(Boolean);
   // viewerHome.to is whichever panel their role resolves to (/salesman-lite,
   // /salesman-premium, /salesman) — both panels take an optional :tab segment.
   // It lands one await LATER than viewerId, so the note waits for it rather

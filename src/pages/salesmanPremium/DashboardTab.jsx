@@ -32,7 +32,7 @@ export default function DashboardTab({
  setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, pingWA, handleThisWeekContacted,
  requestBrowserNotif, dismissNotifBanner,
- handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio,
+ handleListingCopy, onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio, onEditPhoto,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -116,7 +116,6 @@ export default function DashboardTab({
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
  const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
  const isNewUser = myListings.length === 0 && leads.length === 0;
-
 
  // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
  // UTC) so an early-morning appointment isn't bucketed into the wrong day.
@@ -259,6 +258,24 @@ export default function DashboardTab({
  background: radial-gradient(120% 60px at 15% 0%, rgba(255,255,255,0.05), transparent 60%);
  }
  `}</style>
+
+ {/* Starter tasks — same component Lite uses, Premium's 5-step list.
+ First thing on the page, where a setup guide sits in Shopify's admin:
+ below the Sold shortcut it was the last thing a new seller reached. */}
+ {starterTasksReady && !starterHidden && (
+ <StarterTasks
+ premium
+ t={t}
+ profile={profile}
+ listingCount={myListings.length}
+ palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
+ onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
+ onVisitMinipage={onVisitMinipage}
+ onEditPhoto={onEditPhoto}
+ onEditBio={onEditBio}
+ onDismiss={onStarterDismiss}
+ />
+ )}
 
  {/* Hero: greeting + live portfolio snapshot */}
  <div className="sp-insight-card" style={{ padding: isMobile ? "20px 18px" : "26px 28px" }}>
@@ -468,21 +485,6 @@ export default function DashboardTab({
  </div>
  <ChevronRight size={16} color={C.textDim} style={{ flexShrink: 0 }} />
  </button>
-
- {/* Starter tasks — same component Lite uses. Premium never had a
- setup checklist at all, so a new Premium seller got the tour and
- then nothing telling them what to actually do first. */}
- {starterTasksReady && !starterHidden && (
- <StarterTasks
- profile={profile}
- listingCount={myListings.length}
- palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
- onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
- onVisitMinipage={onVisitMinipage}
- onEditBio={onEditBio}
- onDismiss={onStarterDismiss}
- />
- )}
 
  {/* Dashboard body — 2-up grid on desktop, single column on mobile */}
  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>

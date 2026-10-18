@@ -1284,6 +1284,20 @@ and the won-trigger marks it sold on the first deal.
   still holds and the card stays up. Undo sale on a unit deletes it and puts the lead back on
   the card. Never let the client set `new_car_unit`.
 
+## Seller first-run: one checklist, and a handover resets it (INTRO-1, 2026-10-18)
+- **One setup list:** `src/components/onboarding/StarterTasks.jsx`. Premium = 5 steps
+  (`PREMIUM_TASK_KEYS`: account [always ticked, the head start], car, see your page,
+  photo, bio), at the TOP of the Premium dashboard. Lite keeps its 2. The owner's
+  "Only you" strip on the mini page reads `starterTodoKeys` from the same file; never
+  give it its own list again (it had one, and it disagreed with the dashboard's).
+- **A console-made account starts like a fresh signup.** The owner signs in as the
+  seller to add cars, so every intro plays for the owner and is marked done on the
+  account. Saving the password on `/salesman-setup` resets `onboarding_tour_done` and
+  `starter_tasks`. Any NEW first-run flag must be reset there too.
+- Console "Set up a seller" offers Lite or Premium. Premium = the free month, written
+  by `create-salesman` (service role skips `apply_premium_free_month`), never the
+  `payment_status='pending'` pay-first lock.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

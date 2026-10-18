@@ -77,7 +77,9 @@ async function sendSetupEmail(
       ? `Hi ${fullName}, XDrive has set up your seller page and added your cars.`
       : `Hi ${fullName}, ${dealershipName} has created your salesman account on ShiftOS.`;
     const ask = standalone
-      ? "Set your own password to take it over. Your cars go live once XDrive has checked your ID, which you can start from your dashboard."
+      // Cars go live without the ID check since 20261017b; it only earns the
+      // Verified badge. This line used to say the opposite.
+      ? "Set your own password to take it over. Your cars are already live on your page."
       : "Set your password to finish setting up and access your dashboard:";
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
@@ -238,7 +240,21 @@ serve(async (req) => {
     // circuits it), so without this the row lands with payment_status NULL --
     // which SalesmanPremium.jsx treats as "grandfathered, pass" -- creating a
     // permanently free, unpaid Premium account.
-    const paymentStatus = plan === "salesman_full" && !effectiveDealerId ? "pending" : null;
+    //
+    // The one exception is the platform console's "Set up a seller" choosing
+    // Premium (owner, 2026-10-18): that is the free month, granted the way
+    // start_premium_trial() grants it (a paid-through date, the marker set so
+    // it is never granted twice). Those triggers skip service-role writes, so
+    // the fields are written here. Before this, the owner signed in as the
+    // seller and started the free month from Lite settings by hand.
+    const consoleFreeMonth = isSuperCaller && !effectiveDealerId && plan === "salesman_full";
+    const paymentStatus = plan === "salesman_full" && !effectiveDealerId && !consoleFreeMonth ? "pending" : null;
+    const freeMonth = consoleFreeMonth
+      ? {
+        plan_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        premium_trial_started_at: new Date().toISOString(),
+      }
+      : {};
 
     const tempPassword = generatePassword();
 
@@ -296,6 +312,7 @@ serve(async (req) => {
             city: body.city ?? null,
             dealership: body.dealership ?? null,
           } : {}),
+          ...freeMonth,
           is_active: true,
           // Dealer-created salesmen are fully provisioned here (tier, name, slug,
           // dealership all set by the dealer), so they must NOT be sent through the
@@ -325,6 +342,7 @@ serve(async (req) => {
         phone: phone ?? null,
         whatsapp_number: phone ?? null,
         slug: slug ?? null,
+        ...freeMonth,
         is_active: true,
         onboarding_complete: true,
       });

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Check, ChevronRight, Plus, ExternalLink, PenLine } from "lucide-react";
+import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck } from "lucide-react";
 
 // The seller's first three wins, shared by Salesman Lite and Salesman Premium.
 //
@@ -31,21 +31,38 @@ import { Check, ChevronRight, Plus, ExternalLink, PenLine } from "lucide-react";
 
 export const STARTER_TASK_KEYS = ["listing", "minipage", "bio"];
 
+// Premium's list (owner, 2026-10-18), shaped on Shopify's setup guide and the
+// endowed-progress finding (a list that starts with one real step already done
+// gets finished far more often than one starting at zero): "account" is that
+// head start and is always ticked, and a face on the page is the next thing a
+// buyer trusts after a car. Five is the ceiling; past that the end feels far.
+export const PREMIUM_TASK_KEYS = ["account", "listing", "minipage", "photo", "bio"];
+
 // Non-empty and not just whitespace. A bio of " " is not a bio.
 export const hasBio = (profile) => !!String(profile?.bio || "").trim();
 
 export const starterTaskState = ({ profile, listingCount }) => ({
+  account: true,
   listing: (listingCount || 0) > 0,
   minipage: !!profile?.starter_tasks?.minipage_visited,
+  photo: !!profile?.avatar_url,
   bio: hasBio(profile),
 });
 
 // Lite's page is the basic page (no bio, 2026-10-13), so Lite passes
-// noBio and the list is two tasks there.
-const keysFor = (noBio) => (noBio ? STARTER_TASK_KEYS.filter((k) => k !== "bio") : STARTER_TASK_KEYS);
+// noBio and the list is two tasks there. Premium passes `premium`.
+export const starterTaskKeys = ({ premium, noBio } = {}) =>
+  premium ? PREMIUM_TASK_KEYS : noBio ? STARTER_TASK_KEYS.filter((k) => k !== "bio") : STARTER_TASK_KEYS;
 
 export const starterTasksAllDone = (args) =>
-  keysFor(args?.noBio).every((k) => starterTaskState(args)[k]);
+  starterTaskKeys(args).every((k) => starterTaskState(args)[k]);
+
+// The unfinished tasks the seller can do from a settings or listings screen,
+// in list order. The owner's strip on their own mini page reads this, so the
+// page and the dashboard never ask for different things ("one list"). The
+// account step is always done and the mini page step is the page they are on.
+export const starterTodoKeys = (args) =>
+  starterTaskKeys(args).filter((k) => k !== "account" && k !== "minipage" && !starterTaskState(args)[k]);
 
 export default function StarterTasks({
   profile,
@@ -53,8 +70,10 @@ export default function StarterTasks({
   onAddListing,
   onVisitMinipage,
   onEditBio,
+  onEditPhoto,
   onDismiss,
   noBio = false,
+  premium = false,
   t,
   // Both seller panels are dark surfaces, but they own different token sets, so
   // the palette comes in rather than being hardcoded to either one's.
@@ -77,7 +96,7 @@ export default function StarterTasks({
     () => starterTaskState({ profile, listingCount }),
     [profile, listingCount],
   );
-  const keys = keysFor(noBio);
+  const keys = starterTaskKeys({ premium, noBio });
   const doneCount = keys.filter((k) => done[k]).length;
   const allDone = doneCount === keys.length;
 
@@ -89,6 +108,11 @@ export default function StarterTasks({
   };
 
   const ALL_TASKS = [
+    {
+      key: "account",
+      icon: UserCheck,
+      title: tr("accountTitle", "Create your account"),
+    },
     {
       key: "listing",
       icon: Plus,
@@ -104,6 +128,14 @@ export default function StarterTasks({
       sub: tr("minipageSub", "Your public storefront. See exactly what a buyer sees before you share the link."),
       cta: tr("minipageCta", "Open my page"),
       action: onVisitMinipage,
+    },
+    {
+      key: "photo",
+      icon: Camera,
+      title: tr("photoTitle", "Add a profile photo"),
+      sub: tr("photoSub", "Your face on your page. Buyers message a person they can see."),
+      cta: tr("photoCta", "Add a photo"),
+      action: onEditPhoto,
     },
     {
       key: "bio",
@@ -127,12 +159,18 @@ export default function StarterTasks({
         <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700, color: P.textMuted }}>
           {allDone ? tr("doneHeading", "You're set up") : tr("heading", "Get set up")}
         </span>
-        {/* Progress as a count, not a bar — three items don't need a bar, and
-            "2 of 3" says the same thing in less space. */}
+        {/* Progress as a count; the five-item Premium list adds a thin bar
+            under the header, where "1/5" alone reads as a long way off. */}
         <span style={{ fontSize: 11, fontWeight: 600, color: allDone ? P.success : P.textDim, flexShrink: 0 }}>
           {doneCount}/{keys.length}
         </span>
       </div>
+
+      {keys.length > 3 && !allDone && (
+        <div aria-hidden style={{ height: 3, background: P.line }}>
+          <div style={{ height: "100%", width: `${(doneCount / keys.length) * 100}%`, background: P.success, transition: "width 0.3s ease" }} />
+        </div>
+      )}
 
       <div style={{ padding: 16 }}>
         {allDone ? (
