@@ -12,7 +12,11 @@ import App from '@/App';
 import { logError } from '@/utils/logError';
 import { purgeDeadImageCaches } from '@/utils/localCache';
 import { captureInvite } from '@/utils/invite';
+import { adoptServerSeed } from '@/utils/serverSeed';
 import '@/index.css';
+
+// Before any page reads the saved car list (see src/utils/serverSeed.js).
+adoptServerSeed();
 
 const queryClient = new QueryClient({
   defaultOptions: {

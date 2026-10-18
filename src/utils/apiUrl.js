@@ -5,11 +5,16 @@
 // instead and 404s, since none of the Vercel /api routes are bundled into
 // the app. Every /api/ caller must go through this helper rather than
 // writing the path literally, or it silently breaks only on a phone.
-import { Capacitor } from '@capacitor/core';
 import { SITE_URL } from '../config/site';
 
 const API_ORIGIN = SITE_URL;
 
+// The native app's own bridge defines window.Capacitor before the page loads,
+// so this needs no import. Importing @capacitor/core here put ~23 KB into every
+// web visitor's first download just to answer "no".
+const isNativeApp = () =>
+  typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.();
+
 export function apiUrl(path) {
-  return Capacitor.isNativePlatform() ? `${API_ORIGIN}${path}` : path;
+  return isNativeApp() ? `${API_ORIGIN}${path}` : path;
 }

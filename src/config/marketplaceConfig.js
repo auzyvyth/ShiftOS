@@ -1,5 +1,5 @@
-import { MY_STATES } from '../utils/locations';
-import { readCache } from '../utils/localCache';
+import { MY_STATES } from '../utils/locations.js';
+import { readCache } from '../utils/localCache.js';
 // Canonical brand whitelist used for filtering. Must cover every brand the
 // brand strips link to AND every brand value that can exist in the DB (from
 // CarForm CAR_DATA), otherwise sanitizeBrand() drops the param and the page

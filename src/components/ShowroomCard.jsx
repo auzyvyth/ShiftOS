@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, lazy, Suspense } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ import { supabase } from '../supabaseClient';
 import { cdnImg } from '../utils/img';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
-import ContactGate from './ContactGate';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { calcMonthly } from '../utils/financing';
 import { isSubdomain } from '../hooks/useTenant';
@@ -58,6 +57,10 @@ const XDRIVE_WA = '601111521742';
 // silently ignored by Supabase, so full-res images were being served.)
 // The image column is 38% wide, capped at 210px, so ~420px covers a 2x screen.
 // 640px was ~1.5x oversized for every card in the grid.
+// Loaded the first time it opens, then kept mounted (close animation and
+// back-gesture handling unchanged). Not in the first download of the page.
+const ContactGate = lazy(() => import('./ContactGate'));
+
 const toThumb = (url) => cdnImg(url, 480, 72);
 
 export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false }) {
@@ -67,6 +70,8 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const [imgIdx, setImgIdx] = useState(0);
   const [inView, setInView] = useState(false);
   const [waGateOpen, setWaGateOpen] = useState(false);
+  const waGateUsed = useRef(false);
+  if (waGateOpen) waGateUsed.current = true;
   const cardRef = useRef(null);
   const dragX = useRef(null);
   const suppressClick = useRef(false);
@@ -443,7 +448,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
           >
             <MessageCircle size={13} /> WhatsApp
           </a>
-          <ContactGate
+          {waGateUsed.current && <Suspense fallback={null}><ContactGate
             open={waGateOpen}
             onClose={() => setWaGateOpen(false)}
             waUrl={whatsappUrl}
@@ -454,7 +459,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
               supabase.from('whatsapp_enquiries').insert({ dealer_id: car.dealer_id || null, listing_id: car.id || null, buyer_name: null, buyer_phone: null, buyer_message: waText, source: 'showroom_card', status: 'new', ref_slug: getRef() || null, session_id: getOrCreateSessionId() }).then(() => {});
               trackEvent(supabase, 'whatsapp_click', { car_id: car.id, car_name: `${year} ${brand} ${model}`, dealer_id: car.dealer_id || null, metadata: { source: 'showroom_card' } });
             }}
-          />
+          /></Suspense>}
           {!isSold && (
             <button
               onClick={e => { e.stopPropagation(); toggleSave(car.id); }}

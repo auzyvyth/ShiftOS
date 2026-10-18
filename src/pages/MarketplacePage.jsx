@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Helmet } from 'react-helmet';
@@ -18,7 +18,6 @@ import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import HeroCarRow from '../components/marketplace/HeroCarRow';
-import AdvancedSearchModal from '../components/marketplace/AdvancedSearchModal';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import StaleListingsNotice from '../components/StaleListingsNotice';
@@ -32,6 +31,10 @@ import {
 } from '../config/marketplaceConfig';
 
 /* ── Constants ─────────────────────────────────────────────────────────────── */
+// Loaded the first time it opens, then kept mounted (close animation and
+// back-gesture handling unchanged). Not in the first download of the page.
+const AdvancedSearchModal = lazy(() => import('../components/marketplace/AdvancedSearchModal'));
+
 const PER_PAGE = 12;
 
 /* Trimmed field list for the hero rows (photo + price only, above-the-fold
@@ -79,6 +82,8 @@ export default function MarketplacePage() {
 
   const [heroQ,        setHeroQ]        = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const advancedUsed = useRef(false);
+  if (advancedOpen) advancedUsed.current = true;
   const [heroTab, setHeroTab] = useState('find');
 
   // Single nav path for every hero-search entry point (Enter, search icon,
@@ -108,7 +113,7 @@ export default function MarketplacePage() {
   const hadCacheOnMount = useRef(!!initialCache);
 
   /* Data state */
-  const [cars, setCars]           = useState(() => initialCache?.cars || []);
+  const [cars, setCars]           = useState(() => initialCache?.cars?.slice(0, PER_PAGE) || []);
   const [totalCount, setTotal]    = useState(() => initialCache?.totalCount || 0);
   const [loading, setLoading]     = useState(() => !initialCache);
   const [error, setError]         = useState(null);
@@ -139,9 +144,13 @@ export default function MarketplacePage() {
   /* ── Hero rows: "All Cars"/"Hot Deals" + "MPV" — fetched eagerly on mount
      (unlike bodyTypeCars below, this is above the fold and must be visible
      on first paint, not lazy-loaded on scroll). ── */
-  const [row1Pool, setRow1Pool] = useState([]);
+  // Start both rows from the fresh saved list (the server puts one in the page,
+  // src/utils/serverSeed.js): it is the same newest-first live cars row 1
+  // fetches, so the top of the page has photos on its first paint. The fetches
+  // below still run and replace them.
+  const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).slice(0, 12));
   const [row1Mode, setRow1Mode] = useState('all'); // 'all' | 'hot'
-  const [row2Pool, setRow2Pool] = useState([]);
+  const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => c.body_type === 'MPV').slice(0, 12));
 
   useEffect(() => {
     // On a failed or timed-out read, fill the row from the device's saved copy
@@ -952,13 +961,17 @@ export default function MarketplacePage() {
       <MarketplaceSubNav />
       <GoogleOneTapSlot />
 
-      <AdvancedSearchModal
-        open={advancedOpen}
-        onClose={() => setAdvancedOpen(false)}
-        heroQ={heroQ}
-        currentParams={searchParams}
-        onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
-      />
+      {advancedUsed.current && (
+        <Suspense fallback={null}>
+          <AdvancedSearchModal
+            open={advancedOpen}
+            onClose={() => setAdvancedOpen(false)}
+            heroQ={heroQ}
+            currentParams={searchParams}
+            onApply={(p) => navigate(`/showroom${p.toString() ? '?' + p : ''}`)}
+          />
+        </Suspense>
+      )}
 
       <main id="main-content" tabIndex={-1} style={S.page}>
         {/* ── Hero ── */}

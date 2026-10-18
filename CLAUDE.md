@@ -433,6 +433,16 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   `src/config/marketplaceConfig.js`), with `StaleListingsNotice` above the
   grid. Users: MarketplacePage grid + hero rows, CarListingPage `/showroom`.
   Never show that copy under an active filter or on a dealer storefront.
+- **`/` and `/showroom` arrive with the newest cars inside the HTML (2026-10-18).**
+  `middleware.js` sends real visitors on the main domain, unfiltered, to
+  `api/shell.js` (CDN-cached 60s, plain index.html if the DB is slow). It embeds
+  the 15 newest cars as a JSON data block and preloads the first two photos;
+  `src/utils/serverSeed.js` copies them into `LIVE_CARS_CACHE_KEY` before React
+  renders, so both pages paint cars on their first render (mobile LCP was 6.6s
+  waiting on JS, then the DB, then the photo). The preload URL must equal what
+  the card renders (`cdnImg(url, 480, 72)` ShowroomCard, `cdnImg(url, 300, 65)`
+  HeroCarRow): change one size, change `PHOTO` in api/shell.js or the photo
+  downloads twice. Never put anything private in that block: it is public HTML.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.
