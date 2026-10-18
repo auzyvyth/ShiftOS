@@ -282,6 +282,20 @@ const markTourSeenThisSession = (uid) => {
 // link are kept above it.
 const TOUR_BAR_H = 84;
 
+// Per-tab intros (INTRO-2, 2026-10-18): the first visit to a complex tab plays
+// a few steps that ring the tab's own controls, in the same bubble + pinned bar
+// as the sidebar tour. "Seen" lives in profiles.starter_tasks (intro_<tab>),
+// the first-run bag /salesman-setup already resets on a console handover, so no
+// new column and no extra reset path. sessionStorage is the same-session backup.
+const TAB_INTRO_TABS = ["listings", "leads", "sold", "loans", "outreach"];
+const introSeenKey = (uid, tab) => `sp_intro_seen_${uid}_${tab}`;
+const introSeenThisSession = (uid, tab) => {
+ try { return !!sessionStorage.getItem(introSeenKey(uid, tab)); } catch { return false; }
+};
+const markIntroSeenThisSession = (uid, tab) => {
+ try { sessionStorage.setItem(introSeenKey(uid, tab), "1"); } catch { /* storage blocked */ }
+};
+
 const TOUR_TABS = [
  null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
  "analytics", "loans", "outreach", "settings",
@@ -723,6 +737,10 @@ export default function SalesmanPremium() {
 
  // tour
  const [tourStep, setTourStep] = useState(null);
+ // "main" = the sidebar walkthrough; a tab key = that tab's own intro, whose
+ // steps (only the ones whose target is on screen) sit in introSteps.
+ const [tourMode, setTourMode] = useState(null);
+ const [introSteps, setIntroSteps] = useState([]);
  // The card's real height, measured after render. It used to be a hardcoded
  // 220px guess used to pick above-vs-below, so a long step ran off screen and
  // the desktop clamp could cut off the Next button.
@@ -1545,6 +1563,38 @@ export default function SalesmanPremium() {
  // target is a fixed nav row that doesn't move under its own step.
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
+ if (tourMode && tourMode !== "main") {
+ // A tab intro rings things INSIDE the page, so the page may have to
+ // scroll to show them. Scroll only when the target is outside the clear
+ // band (below the header, above the button bar), and follow every scroll
+ // after that so the ring and bubble stay glued to the control.
+ const id = introSteps[tourStep]?.target;
+ setMobileNavOpen(false);
+ let frame = 0;
+ const measure = () => {
+ cancelAnimationFrame(frame);
+ frame = requestAnimationFrame(() => {
+ const el = id && document.querySelector(`[data-tour-id="${id}"]`);
+ setTourTarget(el ? el.getBoundingClientRect() : null);
+ });
+ };
+ const el = id && document.querySelector(`[data-tour-id="${id}"]`);
+ if (el) {
+ const r = el.getBoundingClientRect();
+ if (r.top < 72 || r.bottom > window.innerHeight - TOUR_BAR_H - 24) {
+ const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+ el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+ }
+ }
+ measure();
+ document.addEventListener("scroll", measure, { capture: true, passive: true });
+ window.addEventListener("resize", measure);
+ return () => {
+ cancelAnimationFrame(frame);
+ document.removeEventListener("scroll", measure, { capture: true });
+ window.removeEventListener("resize", measure);
+ };
+ }
  const tab = TOUR_TABS[tourStep];
  if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
  if (isMobile) setMobileNavOpen(true);
@@ -1584,7 +1634,7 @@ export default function SalesmanPremium() {
  drawer?.removeEventListener("scroll", measure);
  window.removeEventListener("resize", measure);
  };
- }, [tourStep, isMobile, tourCardH]);
+ }, [tourStep, tourMode, introSteps, isMobile, tourCardH]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -6054,7 +6104,88 @@ export default function SalesmanPremium() {
  { icon: Settings, title: t("salesmanPremium.tour.settings.title"), body: t("salesmanPremium.tour.settings.body") },
  ];
 
+ // Per-tab intros. Each step rings a control that is on screen even for a
+ // brand-new seller with no data; a step whose target is missing (no car yet,
+ // so no ··· menu) is dropped when the intro starts rather than pointing at
+ // nothing. Copy lives in salesmanPremium.intro.<tab>.<step> (en + ms).
+ const introStep = (tab, key, target, icon) => ({
+ target, icon,
+ title: t(`salesmanPremium.intro.${tab}.${key}.title`),
+ body: t(`salesmanPremium.intro.${tab}.${key}.body`),
+ });
+ const TAB_INTROS = {
+ listings: [
+ introStep("listings", "fast", "lst-fast", Zap),
+ introStep("listings", "full", "lst-full", Car),
+ introStep("listings", "more", "lst-more", Sparkles),
+ ],
+ leads: [
+ introStep("leads", "add", "leads-add", Plus),
+ introStep("leads", "stages", "leads-stages", Users),
+ introStep("leads", "more", "leads-more", ClipboardList),
+ ],
+ sold: [
+ introStep("sold", "coming", "sold-coming", Calendar),
+ introStep("sold", "handover", "sold-handover", CheckCircle2),
+ introStep("sold", "customers", "sold-customers", Users),
+ ],
+ loans: [
+ introStep("loans", "new", "loan-new", Banknote),
+ introStep("loans", "banks", "loan-banks", ShieldCheck),
+ introStep("loans", "list", "loan-list", ClipboardList),
+ ],
+ outreach: [
+ introStep("outreach", "segments", "oh-segments", Users),
+ introStep("outreach", "campaign", "oh-campaign", Megaphone),
+ ],
+ };
+ const tourSteps = tourMode === "main" ? TOUR_STEPS : introSteps;
+
+ const markIntroSeen = (tab) => {
+ if (!userId) return;
+ markIntroSeenThisSession(userId, tab);
+ const key = `intro_${tab}`;
+ setProfile((p) => (p ? { ...p, starter_tasks: { ...(p.starter_tasks || {}), [key]: true } } : p));
+ markStarterTask(userId, key, profile?.starter_tasks);
+ };
+
+ const startIntro = (tab) => {
+ const steps = (TAB_INTROS[tab] || []).filter((st) => document.querySelector(`[data-tour-id="${st.target}"]`));
+ if (!steps.length) return;
+ setIntroSteps(steps);
+ setTourMode(tab);
+ setTourStep(0);
+ };
+
+ // First visit to a complex tab plays its intro, once the sidebar tour is
+ // out of the way. The short delay lets a lazy tab paint its controls first.
+ useEffect(() => {
+ if (loading || !userId || !profile || tourStep !== null) return;
+ if (!TAB_INTRO_TABS.includes(activeTab)) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (profile.starter_tasks?.[`intro_${activeTab}`] || introSeenThisSession(userId, activeTab)) return;
+ const timer = setTimeout(() => startIntro(activeTab), 600);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep]);
+
+ // Leaving the tab mid-intro ends it without marking it seen, so it plays
+ // again on the next visit.
+ useEffect(() => {
+ if (tourMode && tourMode !== "main" && tourMode !== activeTab) {
+ setTourStep(null);
+ setTourMode(null);
+ }
+ }, [activeTab, tourMode]);
+
  const dismissTour = () => {
+ if (tourMode && tourMode !== "main") {
+ markIntroSeen(tourMode);
+ setTourStep(null);
+ setTourMode(null);
+ setTourTarget(null);
+ return;
+ }
  // Per-account DB flag (mirrors SalesmanLite.jsx:8373-8375) is the real
  // guard read on next mount; the per-user localStorage key is only a
  // same-session backup so a re-render before the write lands doesn't
@@ -6065,6 +6196,7 @@ export default function SalesmanPremium() {
  supabase.from("profiles").update({ onboarding_tour_done: true }).eq("id", userId).then(() => {});
  }
  setTourStep(null);
+ setTourMode(null);
  setTourTarget(null);
  // The tour walked the user across 13 tabs; finishing or skipping should not
  // strand them on Settings, scrolled to the invite box.
@@ -6074,6 +6206,7 @@ export default function SalesmanPremium() {
 
  const startTour = () => {
  tourReturnTab.current = activeTab;
+ setTourMode("main");
  setTourStep(0);
  };
 
@@ -6090,9 +6223,12 @@ export default function SalesmanPremium() {
 
  const renderTour = () => {
  if (tourStep === null) return null;
- const step = TOUR_STEPS[tourStep];
- const isLast = tourStep === TOUR_STEPS.length - 1;
- const isWelcome = tourStep === 0;
+ const step = tourSteps[tourStep];
+ if (!step) return null;
+ const isLast = tourStep === tourSteps.length - 1;
+ // Only the sidebar tour opens on a centred welcome card; an intro's first
+ // step already rings a control.
+ const isWelcome = tourMode === "main" && tourStep === 0;
 
  // Placement: the bubble sits on whichever side of the ringed link has room,
  // never on top of it (utils/tourPlacement). It FOLLOWS the link on every
@@ -6136,8 +6272,14 @@ export default function SalesmanPremium() {
  return createPortal(
  <>
  {/* Highlight ring around the target — no backdrop */}
+ {/* Motion: the ring and bubble fade in at each new target (keyed on the
+ step) and then track it exactly. No position transition: one made the
+ ring trail behind the page while it scrolled to an in-page control. */}
+ <style>{`@keyframes tourIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@keyframes tourInC{from{opacity:0;transform:translate(-50%,-50%) translateY(4px)}to{opacity:1;transform:translate(-50%,-50%)}}@keyframes tourRing{from{opacity:0}to{opacity:1}}@media (prefers-reduced-motion: reduce){.tour-anim{animation:none!important}}`}</style>
  {tourTarget && !isWelcome && (
  <div
+ key={`ring-${tourMode}-${tourStep}`}
+ className="tour-anim"
  style={{
  position: "fixed",
  left: tourTarget.left - 3,
@@ -6149,7 +6291,7 @@ export default function SalesmanPremium() {
  boxShadow: "0 0 0 4px rgba(59,130,246,0.18), 0 0 16px rgba(59,130,246,0.25)",
  pointerEvents: "none",
  zIndex: 1001,
- transition: "all 0.25s ease",
+ animation: "tourRing 0.2s ease-out",
  }}
  />
  )}
@@ -6157,8 +6299,9 @@ export default function SalesmanPremium() {
  {/* Bubble: words only. The buttons are in the bar below. Keyed on the
  step so it re-pops at the new link instead of sliding across the screen. */}
  <div
- key={tourStep}
+ key={`bubble-${tourMode}-${tourStep}`}
  ref={tourCardRef}
+ className="tour-anim"
  style={{
  ...bubbleStyle,
  background: BUBBLE_BG,
@@ -6166,12 +6309,11 @@ export default function SalesmanPremium() {
  borderRadius: 14,
  padding: "14px 16px",
  boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
- animation: "tourPop 0.18s ease",
+ animation: `${isWelcome ? "tourInC" : "tourIn"} 0.22s cubic-bezier(0.2, 0.8, 0.2, 1)`,
  zIndex: 1002,
  boxSizing: "border-box",
  }}
  >
- <style>{`@keyframes tourPop{from{opacity:0;transform:${isWelcome ? "translate(-50%,-48%)" : "scale(0.95)"}}to{opacity:1;transform:${isWelcome ? "translate(-50%,-50%)" : "scale(1)"}}}`}</style>
  {arrowEl}
 
  {/* Content scrolls INSIDE the card when a step is taller than the
@@ -6211,7 +6353,9 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 8,
+ animation: "tourRing 0.2s ease-out",
  }}
+ className="tour-anim"
  >
  {tourStep > 0 ? (
  <button onClick={() => setTourStep((s) => s - 1)} style={{ minHeight: 44, padding: "0 14px", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, cursor: "pointer", flexShrink: 0 }}>
@@ -6223,9 +6367,9 @@ export default function SalesmanPremium() {
  </button>
  )}
  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
- <span style={{ fontSize: 11, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>{tourStep + 1} / {TOUR_STEPS.length}</span>
+ <span style={{ fontSize: 11, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>{tourStep + 1} / {tourSteps.length}</span>
  <div style={{ display: "flex", gap: 3, width: "100%", maxWidth: 140 }}>
- {TOUR_STEPS.map((_, i) => (
+ {tourSteps.map((_, i) => (
  <div key={i} style={{ height: 2, flex: i === tourStep ? 2 : 1, borderRadius: 99, background: i <= tourStep ? "#3b82f6" : "rgba(255,255,255,0.08)", transition: "flex 0.25s" }} />
  ))}
  </div>
