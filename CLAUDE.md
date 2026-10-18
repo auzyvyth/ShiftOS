@@ -1409,14 +1409,16 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Loan = price + insurance - rebate - deposit; deposit % stays on the net price. The
   figure is ONE formula, `src/utils/motorInsurance.js` (the former PIAM tariff: first
   RM1,000 by cc + RM26/RM1,000 Peninsular, RM20.30 Sabah/Sarawak/Labuan, - NCD, + 8% SST
-  + RM10), checked against a seller's Excel (X50 RM2,839 vs his RM2,869). The tariff
+  + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
   ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
   says "Tap to type"; a typed figure wins for that car and hides the pills. Budget adds
   the same insurance (`budgetMatches` `extraFor`); a model card's cc lives on its
   variant, so Budget prices a card without it. `npm run test:live`.
-  Three older copies (`FinancingCalculator.jsx`, `LeadDrawer.jsx calcInsuranceEst`,
-  `ownership.js calcInsuranceAnnual`) use a different band table that gives about HALF
-  the tariff figure; they are not yet switched to this file.
+  It is the ONLY insurance formula in the app (2026-10-18): the financing calculator,
+  the dealer LeadDrawer deal sheet and `ownership.js calcInsuranceAnnual` (car page /
+  Compare) all call it. They had their own band table that gave about HALF the tariff,
+  plus a saloon / SUV switch: that split is a ROAD TAX rule, never insurance. Do not
+  add a second insurance table anywhere.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.

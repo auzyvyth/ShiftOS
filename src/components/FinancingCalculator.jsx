@@ -9,70 +9,14 @@ import { estimateRoadTax } from '../utils/roadTax';
 import { getDealerIdFromProfile } from '../hooks/useProfile';
 import { getStorefrontUrl } from '../hooks/useTenant';
 import { DEFAULT_EIR, loanTotals } from '../utils/financing';
+import { NCD_TIERS, motorPremium } from '../utils/motorInsurance';
 import { fetchDataUrl, loadImg, roundRectPath, drawCover, drawCircle } from '../utils/posterImage';
 
 // ─── Insurance estimate ───────────────────────────────────────────────────────
-const NCD_TIERS = [0, 25, 30, 38.33, 45, 55];
-
-const VEHICLE_TYPE_NON_SALOON_RATES = [
-  { maxCc: 1400,  rate: 297 },
-  { maxCc: 1650,  rate: 432 },
-  { maxCc: 2200,  rate: 514 },
-  { maxCc: 2500,  rate: 1280 },
-  { maxCc: 3050,  rate: 1466 },
-  { maxCc: 4250,  rate: 1711 },
-  { maxCc: Infinity, rate: 2097 },
-];
-
-const calcSaloonGross = (sum) => {
-  if (sum <= 0) return 0;
-  let gross = 26.00; // first RM1,000
-  const tiers = [
-    { cap: 15000, rate: 0.01615 },
-    { cap: 15000, rate: 0.01540 },
-    { cap: 25000, rate: 0.01400 },
-    { cap: 25000, rate: 0.01370 },
-    { cap: 50000, rate: 0.01295 },
-    { cap: 50000, rate: 0.01250 },
-    { cap: Infinity, rate: 0.01220 },
-  ];
-  let remaining = Math.max(0, sum - 1000);
-  for (const { cap, rate } of tiers) {
-    if (remaining <= 0) break;
-    const chunk = Math.min(remaining, cap);
-    gross += chunk * rate;
-    remaining -= chunk;
-  }
-  return gross;
-};
-
-const calcInsurance = (sum, ncd, vehicleType, cc) => {
-  if (!sum || sum <= 0) return null;
-  let grossRaw;
-  if (vehicleType === 'Non-Saloon') {
-    const ccNum = parseFloat(cc) || 0;
-    const tier = VEHICLE_TYPE_NON_SALOON_RATES.find(t => ccNum <= t.maxCc);
-    grossRaw = tier ? tier.rate : 2097;
-  } else {
-    grossRaw = calcSaloonGross(sum);
-  }
-  // Round each line item first, then sum the rounded values — so the
-  // displayed rows (gross − NCD savings + SST + stamp duty) always foot
-  // exactly to the displayed total instead of drifting by RM1.
-  const gross      = Math.round(grossRaw);
-  const netPremium = Math.round(gross * (1 - ncd / 100));
-  const sst        = Math.round(netPremium * 0.08);
-  const stampDuty  = 10;
-  const total      = netPremium + sst + stampDuty;
-  return {
-    gross,
-    netPremium,
-    sst,
-    stampDuty,
-    total,
-    net: total, // keeps existing .net usage working
-  };
-};
+// One formula for the whole app: src/utils/motorInsurance.js (the former motor
+// tariff, by engine cc + value). This file had its own band table that gave
+// about half the tariff figure, plus a saloon / SUV switch that belongs to ROAD
+// TAX, not insurance (owner, 2026-10-18).
 
 const BODY_TYPES = ['Sedan', 'Hatchback', 'Coupe', 'SUV', 'MPV', 'Pickup'];
 const CC_QUICK   = [1000, 1300, 1500, 1600, 1800, 2000, 2500, 3000];
@@ -342,8 +286,7 @@ const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDeta
   }
   if (calc.insCalc) {
     const ins = calc.insCalc;
-    const vtLabel = calc.vehicleType === 'Non-Saloon' ? 'SUV/MPV' : 'Saloon';
-    onRoad.push([`Insurance (${vtLabel})`, `RM ${fmt(ins.gross)}`]);
+    onRoad.push([`Insurance (est.)`, `RM ${fmt(ins.gross)}`]);
     // Canvas renders the real U+2212 minus fine (unlike jsPDF's Helvetica).
     onRoad.push([`NCD ${calc.insNcd}% saved`, `− RM ${fmt(ins.gross - ins.netPremium)}`, { sub: true }]);
     onRoad.push([`SST (8%)`, `RM ${fmt(ins.sst)}`, { sub: true }]);
@@ -437,7 +380,6 @@ const FinancingCalculator = ({
   // Insurance inputs
   const [insSum, setInsSum] = useState(initialPrice);
   const [insNcd, setInsNcd] = useState(55);
-  const [vehicleType, setVehicleType] = useState('Saloon'); // 'Saloon' | 'Non-Saloon'
 
   // Car details for the poster (pre-filled from props when coming from a listing)
   const [carName,  setCarName]  = useState(carNameProp);
@@ -473,9 +415,9 @@ const FinancingCalculator = ({
   const eir = intRate;
 
   const roadTax  = estimateRoadTax(rtCc);
-  const insCalc  = calcInsurance(insSum || carPrice, insNcd, vehicleType, rtCc);
+  const insCalc  = motorPremium({ sumInsured: insSum || carPrice, cc: rtCc, ncd: insNcd });
 
-  const onRoadPrice = carPrice + (roadTax != null ? Math.round(roadTax) : 0) + (insCalc?.net || 0);
+  const onRoadPrice = carPrice + (roadTax != null ? Math.round(roadTax) : 0) + (insCalc?.total || 0);
 
   const isValid = carPrice > 0 && downPayment < carPrice && loanTerm > 0 && intRate > 0;
 
@@ -603,7 +545,7 @@ const FinancingCalculator = ({
           interest, totalLoan, monthly, eir,
           roadTax, rtCc,
           insCalc: insCalc ?? null,
-          insurance: insCalc?.net ?? null, insNcd, vehicleType,
+          insurance: insCalc?.total ?? null, insNcd,
           onRoadPrice,
         },
         fmt,
@@ -767,26 +709,6 @@ const FinancingCalculator = ({
             {advanced && <div style={card}>
               {sectionTitle('Road Tax & Insurance')}
               {/* Vehicle Type Toggle */}
-              <div style={{ marginBottom: 14 }}>
-                <Label>Vehicle Type</Label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {['Saloon', 'Non-Saloon'].map(vt => (
-                    <button
-                      key={vt}
-                      className={`calc-pill${vehicleType === vt ? ' active' : ''}`}
-                      onClick={() => setVehicleType(vt)}
-                      style={{ flex: 1 }}
-                    >
-                      {vt === 'Saloon' ? 'Saloon / Sedan' : 'SUV / MPV / Pickup'}
-                    </button>
-                  ))}
-                </div>
-                {vehicleType === 'Non-Saloon' && (
-                  <p style={{ color: '#6b7280', fontSize: 11, margin: '6px 0 0' }}>
-                    Flat rate by CC bracket (JPJ tariff)
-                  </p>
-                )}
-              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
 
                 {/* Engine CC */}
@@ -954,7 +876,7 @@ const FinancingCalculator = ({
                     value={roadTax != null ? `RM ${fmt(Math.round(roadTax))}` : 'Enter CC'}
                     muted={roadTax == null}
                   />
-                  <ResultRow label={`Insurance gross`}        value={insCalc ? `RM ${fmt(insCalc.gross)}` : '—'}                      muted={!insCalc} />
+                  <ResultRow label={`Insurance (est.)`}       value={insCalc ? `RM ${fmt(insCalc.gross)}` : 'Enter CC'}                muted={!insCalc} />
                   <ResultRow label={`  NCD ${insNcd}% savings`} value={insCalc ? `− RM ${fmt(insCalc.gross - insCalc.netPremium)}` : '—'} muted />
                   <ResultRow label={`  SST (8%)`}               value={insCalc ? `RM ${fmt(insCalc.sst)}` : '—'}                          muted />
                   <ResultRow label={`  Stamp duty`}              value={`RM 10`}                                                           muted />

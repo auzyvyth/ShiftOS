@@ -96,13 +96,14 @@ is('accent: junk falls back to the default', accentTheme('nope').accent, DEFAULT
 // Proton X50 1.5T (1477cc), RM89,800, 0% NCD -> sheet said RM2,869.
 const x50 = motorPremium({ sumInsured: 89800, cc: 1477, ncd: 0, region: 'west' });
 is('ins: X50 tariff 305.50 + 89 x 26', x50.gross, 2620);
-is('ins: X50 total with SST + stamp', x50.total, 2839);
+is('ins: X50 total with SST + stamp', x50.total, 2840);
+is('ins: breakdown adds up to the total', x50.gross - x50.ncdOff + x50.sst + x50.stampDuty, x50.total);
 is('ins: within 2% of the seller sheet', Math.abs(x50.total - 2869) / 2869 < 0.02, true);
 is('ins: 55% NCD', motorPremium({ sumInsured: 89800, cc: 1477, ncd: 55 }).total, 1283);
 is('ins: East Malaysia is cheaper', motorPremium({ sumInsured: 89800, cc: 1477, region: 'east' }).total < x50.total, true);
 is('ins: no cc (EV) is null, never a guess', motorPremium({ sumInsured: 120000, cc: null }), null);
 is('ins: no price is null', motorPremium({ sumInsured: 0, cc: 1500 }), null);
-is('ins: unknown NCD falls back to 0', motorPremium({ sumInsured: 89800, cc: 1477, ncd: 12 }).total, 2839);
+is('ins: unknown NCD falls back to 0', motorPremium({ sumInsured: 89800, cc: 1477, ncd: 12 }).total, 2840);
 is('ins: region Sabah', insuranceRegion('Kota Kinabalu, Sabah'), 'east');
 is('ins: region Labuan', insuranceRegion('Labuan'), 'east');
 is('ins: region Selangor', insuranceRegion('Selangor'), 'west');
