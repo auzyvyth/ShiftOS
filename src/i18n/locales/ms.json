@@ -2070,6 +2070,15 @@
           "body": "Satu chat pada satu masa. WhatsApp dibuka dengan mesej, dan anda tekan hantar setiap kali."
         }
       }
+    },
+    "firstSale": {
+      "title": "Tahniah, kereta pertama anda terjual",
+      "carToBuyer": "{{car}} kepada {{buyer}}.",
+      "carOnly": "{{car}}.",
+      "buyerOnly": "Kepada {{buyer}}.",
+      "body": "Komisen seterusnya bermula di tab Terjual: selesaikan serahan, kemudian pastikan pembeli ini kembali untuk pembaharuan, servis dan kereta seterusnya.",
+      "show": "Tunjukkan",
+      "later": "Nanti"
     }
   },
   "availability": {

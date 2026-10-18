@@ -1581,6 +1581,16 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   (no car yet) is dropped at start. Seen = `profiles.starter_tasks.intro_<tab>` (the console
   handover already resets starter_tasks; no new column). Leaving the tab mid-intro ends it
   unseen. A spacer under the tab content gives bottom-most controls room above the bar.
+- **An intro waits until its tab has something real to show.** Sold plays only after the
+  first won deal (`handover.deals`), Outreach only once there is a live lead. A new seller's
+  Sold tab is three empty states; an intro there explains things they cannot see and then
+  never returns once they can. Any new tab intro needs the same check.
+- **First sale card (INTRO-3)**: `renderFirstSale` in SalesmanPremium.jsx, shown once when
+  `handover.deals` has exactly ONE deal won in the last 14 days (never "first car" for a
+  seller with an old or second sale), after the win confirm closes and outside any tour.
+  Names the car and buyer from the deal. "Show me" opens Sold, where the Sold intro plays.
+  Seen = `starter_tasks.first_sale_seen`. Copy in `salesmanPremium.firstSale` (en + ms);
+  it names no product, because the seller-side name is still an open owner call.
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

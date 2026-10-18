@@ -109,6 +109,7 @@ import {
  Gift,
  CarFront,
  Lock,
+ PartyPopper,
 } from "lucide-react";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
@@ -6172,10 +6173,17 @@ export default function SalesmanPremium() {
  if (!TAB_INTRO_TABS.includes(activeTab)) return;
  if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
  if (profile.starter_tasks?.[`intro_${activeTab}`] || introSeenThisSession(userId, activeTab)) return;
+ // Wait until the tab has something real to explain. A new seller's Sold
+ // tab is three empty states and Outreach is all zeros: an intro there
+ // describes things they cannot see, then never comes back once they can.
+ // Sold plays after the first sale (the first-sale card sends them there),
+ // Outreach once there is a live buyer to message.
+ if (activeTab === "sold" && handover.deals.length === 0) return;
+ if (activeTab === "outreach" && !leads.some((l) => !["lost", "closed_lost"].includes(l.stage))) return;
  const timer = setTimeout(() => startIntro(activeTab), 600);
  return () => clearTimeout(timer);
  // eslint-disable-next-line react-hooks/exhaustive-deps
- }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep]);
+ }, [activeTab, loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, tourStep, handover.deals.length, leads]);
 
  // Leaving the tab mid-intro ends it without marking it seen, so it plays
  // again on the next visit.
@@ -6185,6 +6193,82 @@ export default function SalesmanPremium() {
  setTourMode(null);
  }
  }, [activeTab, tourMode]);
+
+ // First sale card (INTRO-3). Shown once, when the seller's FIRST won deal
+ // appears: whichever surface won it (the pipeline confirm, the lead drawer)
+ // the handover list is the one place every win lands. Only for a genuine
+ // first sale, recent enough to still be news: a seller with one old deal
+ // from before this shipped is not congratulated months late. "Show me"
+ // opens Sold, where the Sold intro (held until now) plays.
+ const [firstSale, setFirstSale] = useState(null);
+ useEffect(() => {
+ if (loading || !userId || !profile || firstSale || tourStep !== null || wonPrompt || anyOverlayOpen) return;
+ if (!profile.onboarding_tour_done && !tourSeenThisSession(userId)) return;
+ if (profile.starter_tasks?.first_sale_seen || introSeenThisSession(userId, "first_sale")) return;
+ if (handover.deals.length !== 1) return;
+ const deal = handover.deals[0];
+ const wonAt = deal.updated_at ? new Date(deal.updated_at).getTime() : 0;
+ if (!wonAt || Date.now() - wonAt > 14 * 86400000) return;
+ // Let the win confirm finish closing before this opens (overlay rule 3).
+ const timer = setTimeout(() => setFirstSale(deal), 700);
+ return () => clearTimeout(timer);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [loading, userId, profile?.onboarding_tour_done, profile?.starter_tasks, handover.deals, tourStep, wonPrompt, anyOverlayOpen, firstSale]);
+ useEffect(() => {
+ if (!firstSale) return;
+ document.body.style.overflow = "hidden";
+ return () => { document.body.style.overflow = ""; };
+ }, [firstSale]);
+ const closeFirstSale = (goToSold) => {
+ if (userId) {
+ markIntroSeenThisSession(userId, "first_sale");
+ setProfile((p) => (p ? { ...p, starter_tasks: { ...(p.starter_tasks || {}), first_sale_seen: true } } : p));
+ markStarterTask(userId, "first_sale_seen", profile?.starter_tasks);
+ }
+ setFirstSale(null);
+ if (goToSold) switchTab("sold");
+ };
+ const renderFirstSale = () => {
+ if (!firstSale) return null;
+ const c = firstSale.car_listings || myListings.find((l) => l.id === firstSale.car_listing_id) || null;
+ const car = c ? [c.year, c.brand, c.model].filter(Boolean).join(" ") : "";
+ const buyer = (firstSale.buyer_name || "").trim();
+ const detail = car && buyer ? t("salesmanPremium.firstSale.carToBuyer", { car, buyer })
+ : car ? t("salesmanPremium.firstSale.carOnly", { car })
+ : buyer ? t("salesmanPremium.firstSale.buyerOnly", { buyer }) : "";
+ return createPortal(
+ <div
+ onClick={() => closeFirstSale(false)}
+ className="fs-anim"
+ style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(3,5,10,0.72)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? "16px 12px calc(12px + env(safe-area-inset-bottom, 0px))" : 16, animation: "fsFade 0.2s ease-out" }}
+ >
+ <style>{`@keyframes fsFade{from{opacity:0}to{opacity:1}}@keyframes fsIn{from{opacity:0;transform:translateY(8px) scale(0.98)}to{opacity:1;transform:none}}@keyframes fsIcon{0%{opacity:0;transform:scale(0.85)}100%{opacity:1;transform:none}}@media (prefers-reduced-motion: reduce){.fs-anim,.fs-anim *{animation:none!important}}`}</style>
+ <div
+ role="dialog"
+ aria-modal="true"
+ aria-labelledby="fs-title"
+ onClick={(e) => e.stopPropagation()}
+ style={{ width: "100%", maxWidth: 400, boxSizing: "border-box", background: "#111827", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, padding: "24px 20px 16px", boxShadow: "0 24px 60px rgba(0,0,0,0.55)", animation: "fsIn 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)" }}
+ >
+ <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(74,222,128,0.22)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16, animation: "fsIcon 0.32s 0.08s cubic-bezier(0.2, 0.8, 0.2, 1) both" }}>
+ <PartyPopper size={22} style={{ color: "#4ade80" }} />
+ </div>
+ <p id="fs-title" style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "#f1f5f9", lineHeight: 1.3 }}>{t("salesmanPremium.firstSale.title")}</p>
+ {detail && <p style={{ margin: "0 0 10px", fontSize: 13.5, fontWeight: 600, color: "#cbd5e1" }}>{detail}</p>}
+ <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>{t("salesmanPremium.firstSale.body")}</p>
+ <button
+ onClick={() => closeFirstSale(true)}
+ style={{ width: "100%", minHeight: 46, borderRadius: 11, background: "#2563eb", border: "none", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ >{t("salesmanPremium.firstSale.show")}</button>
+ <button
+ onClick={() => closeFirstSale(false)}
+ style={{ width: "100%", minHeight: 42, marginTop: 6, borderRadius: 11, background: "none", border: "none", color: "#6b7280", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}
+ >{t("salesmanPremium.firstSale.later")}</button>
+ </div>
+ </div>,
+ document.body,
+ );
+ };
 
  const dismissTour = () => {
  if (tourMode && tourMode !== "main") {
@@ -7107,6 +7191,7 @@ export default function SalesmanPremium() {
  </Suspense>
  )}
  {renderTour()}
+ {renderFirstSale()}
 
  {/* ── Log out confirm ── all three logout buttons (mobile nav drawer,
  desktop sidebar, mobile topbar) open this instead of calling
