@@ -1,7 +1,9 @@
 // Cost-of-ownership estimates for the Malaysian market.
 // Formulas mirror the vetted ones in LeadDrawer (JPJ road tax + PIAM insurance
-// tariff) so figures stay consistent across the app. Kept dependency-free so
-// the public ComparePage can use them without pulling extra weight.
+// tariff) so figures stay consistent across the app. Kept light so the public
+// ComparePage can use them without pulling extra weight.
+
+import { motorPremium, insuranceRegion } from './motorInsurance.js';
 
 // Round raw CC to the nearest 100 before any calculation.
 // Manufacturers often declare 1998cc, 2494cc etc. for a "2.0L" or "2.5L" engine
@@ -29,26 +31,13 @@ export function calcRoadTaxEst(cc) {
   return Math.round(2980 + (c - 3000) * 4.00);
 }
 
-// ─── Comprehensive insurance (PIAM tariff, West Malaysia, saloon, 0% NCD) ────
-// Returns the rounded annual premium (net + SST + stamp duty) for a given
-// sum insured (we use the asking price as a proxy for market value).
-export function calcInsuranceAnnual(sum) {
-  if (!sum || sum <= 0) return null;
-  let gross = 26;
-  const tiers = [
-    { cap: 15000, rate: 0.01615 },
-    { cap: 25000, rate: 0.01400 },
-    { cap: 50000, rate: 0.01295 },
-    { cap: Infinity, rate: 0.01220 },
-  ];
-  let rem = Math.max(0, sum - 1000);
-  for (const { cap, rate } of tiers) {
-    if (rem <= 0) break;
-    gross += Math.min(rem, cap) * rate;
-    rem -= cap;
-  }
-  const sst = gross * 0.08;
-  return Math.round(gross + sst + 10);
+// ─── Comprehensive insurance (former motor tariff, 0% NCD) ───────────────────
+// The one formula, src/utils/motorInsurance.js (by engine cc + value, East
+// Malaysia rates for Sabah/Sarawak/Labuan). The copy that lived here had no cc
+// and gave about half the tariff figure. No cc = null, never a guess.
+export function calcInsuranceAnnual(sum, cc, state) {
+  const est = motorPremium({ sumInsured: sum, cc, ncd: 0, region: insuranceRegion(state) });
+  return est ? est.total : null;
 }
 
 // ─── Annual fuel cost ────────────────────────────────────────────────────────
@@ -76,7 +65,7 @@ export function estAnnualFuel(car) {
 // ─── Combined yearly running cost (road tax + insurance + fuel) ──────────────
 export function estRunningCost(car) {
   const tax = calcRoadTaxEst(car.engine_cc) || 0;
-  const ins = calcInsuranceAnnual(car.selling_price) || 0;
+  const ins = calcInsuranceAnnual(car.selling_price, car.engine_cc, car.state) || 0;
   const fuel = estAnnualFuel(car);
   if (!tax && !ins && !fuel) return null;
   return tax + ins + (fuel?.rm || 0);

@@ -9,7 +9,7 @@
 //           further RM1,000 or part of it,
 //         - NCD, then + 8% SST + RM10 stamp duty.
 // Checked against a seller's live Excel (owner, 2026-10-18): Proton X50 1.5T,
-// RM89,800, 0% NCD -> RM2,839 here vs RM2,869 on the sheet.
+// RM89,800, 0% NCD -> RM2,840 here vs RM2,869 on the sheet.
 //
 // The tariff priced by engine cc; an EV has none, so it returns null and the
 // seller types the figure instead. Never guess a cc.
@@ -38,8 +38,12 @@ export function insuranceRegion(state) {
 }
 
 // sumInsured: the car's value (we use the price on screen). cc: engine cc.
-// Returns { gross, ncdOff, sst, stampDuty, total } in whole ringgit, or null
-// when there is nothing honest to show.
+// Returns { gross, ncdOff, netPremium, sst, stampDuty, total } in whole
+// ringgit, or null when there is nothing honest to show. Each line is rounded
+// BEFORE the next is worked out, so a breakdown (gross - NCD + SST + stamp
+// duty) always adds up to the total printed under it.
+// There is no saloon / SUV split: that is a ROAD TAX rule. The insurance tariff
+// priced every private car by cc and value alone.
 export function motorPremium({ sumInsured, cc, ncd = 0, region = 'west' }) {
   const sum = Number(sumInsured) || 0;
   const c = Number(cc) || 0;
@@ -47,17 +51,12 @@ export function motorPremium({ sumInsured, cc, ncd = 0, region = 'west' }) {
   const band = BANDS.find(([max]) => c <= max);
   const first = region === 'east' ? band[2] : band[1];
   const further = Math.ceil(Math.max(0, sum - 1000) / 1000);
-  const gross = first + further * PER_THOUSAND[region === 'east' ? 'east' : 'west'];
+  const gross = Math.round(first + further * PER_THOUSAND[region === 'east' ? 'east' : 'west']);
   const pct = NCD_TIERS.includes(Number(ncd)) ? Number(ncd) : 0;
-  const net = gross * (1 - pct / 100);
-  const sst = net * SST;
-  return {
-    gross: Math.round(gross),
-    ncdOff: Math.round(gross - net),
-    sst: Math.round(sst),
-    stampDuty: STAMP_DUTY,
-    total: Math.round(net + sst + STAMP_DUTY),
-  };
+  const netPremium = Math.round(gross * (1 - pct / 100));
+  const sst = Math.round(netPremium * SST);
+  const total = netPremium + sst + STAMP_DUTY;
+  return { gross, ncdOff: gross - netPremium, netPremium, sst, stampDuty: STAMP_DUTY, total };
 }
 
 // "38.33" reads as noise on a stream; the industry writes it 38 1/3.

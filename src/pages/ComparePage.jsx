@@ -650,7 +650,7 @@ export default function ComparePage() {
                 },
 
                 { sec: 'Cost to Own', secNote: 'estimates only', label: 'Road Tax / yr', get: c => calcRoadTaxEst(c.engine_cc), fmt: v => v ? fmtRM(v) : '—', dir: 'low' },
-                { sec: 'Cost to Own', label: 'Insurance / yr', get: c => calcInsuranceAnnual(c.selling_price), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low' },
+                { sec: 'Cost to Own', label: 'Insurance / yr', get: c => calcInsuranceAnnual(c.selling_price, c.engine_cc, c.state), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low' },
                 { sec: 'Cost to Own', label: 'Fuel / yr', get: c => estAnnualFuel(c)?.rm ?? null, fmt: (v, c) => { const f = estAnnualFuel(c); return f ? `${f.estimated ? '~' : ''}${fmtRM(f.rm)}` : '—'; }, dir: 'low' },
                 {
                   sec: 'Cost to Own', label: 'Running / yr', get: c => estRunningCost(c), fmt: v => v ? `~${fmtRM(v)}` : '—', dir: 'low',

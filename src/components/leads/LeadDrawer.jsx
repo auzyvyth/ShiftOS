@@ -12,6 +12,7 @@ import PostSaleChecklist from '../postsale/PostSaleChecklist';
 import ChatSheet from '../chat/ChatSheet';
 import { useLeadActivities } from '../../hooks/useLeadActivities';
 import { DEFAULT_EIR, loanTotals, RATE_BASIS } from '../../utils/financing';
+import { NCD_TIERS, motorPremium, insuranceRegion } from '../../utils/motorInsurance';
 import {
   formatWhatsAppURL, calcInstalment, getLeadAgeDays, ageTextColor,
   STAGE_ORDER, STAGE_CONFIG, LOST_REASONS, DEFAULT_WA_TEMPLATES, renderWaTemplate,
@@ -123,37 +124,10 @@ function calcRoadTaxEst(cc) {
   return Math.round(2980 + (c - 3000) * 4.00);
 }
 
-const NON_SALOON_RATES = [
-  { maxCc: 1400, rate: 297 }, { maxCc: 1650, rate: 432 }, { maxCc: 2200, rate: 514 },
-  { maxCc: 2500, rate: 1280 }, { maxCc: 3050, rate: 1466 }, { maxCc: 4250, rate: 1711 },
-  { maxCc: Infinity, rate: 2097 },
-];
-function calcInsuranceEst(sum, ncd, vehicleType, cc) {
-  if (!sum || sum <= 0) return null;
-  let gross;
-  if (vehicleType === 'Non-Saloon') {
-    const ccNum = parseFloat(cc) || 0;
-    gross = (NON_SALOON_RATES.find(t => ccNum <= t.maxCc) || NON_SALOON_RATES.at(-1)).rate;
-  } else {
-    gross = 26;
-    // Sum-insured bands per the PIAM comprehensive motor tariff (West Malaysia rates).
-    const tiers = [
-      { cap: 15000, rate: 0.01615 },
-      { cap: 25000, rate: 0.01400 },
-      { cap: 50000, rate: 0.01295 },
-      { cap: Infinity, rate: 0.01220 },
-    ];
-    let rem = Math.max(0, sum - 1000);
-    for (const { cap, rate } of tiers) {
-      if (rem <= 0) break;
-      gross += Math.min(rem, cap) * rate;
-      rem -= cap;
-    }
-  }
-  const net = gross * (1 - ncd / 100);
-  const sst = net * 0.08;
-  return { gross: Math.round(gross), netPremium: Math.round(net), sst: Math.round(sst), stampDuty: 10, total: Math.round(net + sst + 10) };
-}
+// Insurance comes from src/utils/motorInsurance.js, the one formula the app
+// uses (former motor tariff, by cc + value). The copy that lived here gave about
+// half the tariff figure and had a saloon / SUV switch, which is a ROAD TAX
+// rule, not an insurance one (owner, 2026-10-18).
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
 export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [] }) {
@@ -208,7 +182,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [generatingLink, setGeneratingLink] = useState(false);
   const [dealLinkCopied, setDealLinkCopied] = useState(false);
   const [minsLeft, setMinsLeft]             = useState(null);
-  const [calcState, setCalcState]           = useState({ dpPct: 10, loanTerm: 7, intRate: DEFAULT_EIR, engineCc: '', vehicleType: 'Saloon', insNcd: 55 });
+  const [calcState, setCalcState]           = useState({ dpPct: 10, loanTerm: 7, intRate: DEFAULT_EIR, engineCc: '', insNcd: 55 });
 
   // HP / Financing state
   const [hpRows, setHpRows]     = useState([]);
@@ -541,7 +515,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       const monthly    = loan.monthly;
       const eir        = calcState.intRate;
       const roadTax    = calcRoadTaxEst(ccToUse);
-      const insCalc    = calcInsuranceEst(carPrice, calcState.insNcd, calcState.vehicleType, ccToUse);
+      const insCalc    = motorPremium({ sumInsured: carPrice, cc: ccToUse, ncd: calcState.insNcd, region: insuranceRegion(fullCar?.state) });
       const addonsTotal = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
       const feesTotal  = (roadTax || 0) + (insCalc?.total || 0) + 150;
       const token      = crypto.randomUUID();
@@ -596,7 +570,6 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           insurance_breakdown: insCalc || null,
           puspakom:  150,
           engine_cc: ccToUse || null,
-          vehicle_type: calcState.vehicleType,
           ncd: calcState.insNcd,
         },
         car_price:    carPrice,
@@ -665,7 +638,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const dealLoanAmt    = Math.max(0, carPriceNum - carPriceNum * calcState.dpPct / 100);
   const dealMonthly    = loanTotals(dealLoanAmt, calcState.intRate, calcState.loanTerm * 12).monthly;
   const dealRoadTax    = calcRoadTaxEst(calcState.engineCc);
-  const dealInsCalc    = carPriceNum > 0 ? calcInsuranceEst(carPriceNum, calcState.insNcd, calcState.vehicleType, calcState.engineCc) : null;
+  const dealInsCalc    = motorPremium({ sumInsured: carPriceNum, cc: calcState.engineCc, ncd: calcState.insNcd, region: insuranceRegion(car?.state) });
   const dealAddonsAmt  = dealAddons.reduce((s, a) => s + Number(a.sold_price), 0);
   const dealOnRoad     = carPriceNum + dealAddonsAmt + (dealRoadTax || 0) + (dealInsCalc?.total || 0) + 150;
 
@@ -1694,18 +1667,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                         </div>
                       </div>
 
-                      {/* Vehicle type + NCD */}
-                      <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                        {['Saloon', 'Non-Saloon'].map(vt => (
-                          <button key={vt} onClick={() => setCalcState(s => ({ ...s, vehicleType: vt }))}
-                            style={{ flex: 1, padding: '5px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${calcState.vehicleType === vt ? '#6366f1' : '#e5e7eb'}`, background: calcState.vehicleType === vt ? '#eef2ff' : '#f9fafb', color: calcState.vehicleType === vt ? '#6366f1' : '#6b7280' }}>
-                            {vt === 'Saloon' ? 'Saloon' : 'SUV/MPV'}
-                          </button>
-                        ))}
-                      </div>
+                      {/* NCD (insurance estimate, motorInsurance.js) */}
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 12 }}>
                         <span style={{ fontSize: 10, color: '#9ca3af', alignSelf: 'center', marginRight: 2 }}>NCD</span>
-                        {[0, 25, 30, 38.33, 45, 55].map(n => (
+                        {NCD_TIERS.map(n => (
                           <button key={n} onClick={() => setCalcState(s => ({ ...s, insNcd: n }))}
                             style={{ padding: '3px 8px', borderRadius: 5, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: `1px solid ${calcState.insNcd === n ? '#6366f1' : '#e5e7eb'}`, background: calcState.insNcd === n ? '#eef2ff' : '#f9fafb', color: calcState.insNcd === n ? '#6366f1' : '#6b7280' }}>
                             {n === 38.33 ? '38%' : `${n}%`}
@@ -1728,8 +1693,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                           <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{dealRoadTax ? `RM ${dealRoadTax.toLocaleString()}` : <span style={{ color: '#d1d5db' }}>Enter CC</span>}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Insurance (NCD {calcState.insNcd}%)</span>
-                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{dealInsCalc ? `RM ${dealInsCalc.total.toLocaleString()}` : '—'}</span>
+                          <span style={{ fontSize: 11, color: '#9ca3af' }}>Insurance est. (NCD {calcState.insNcd}%)</span>
+                          <span style={{ fontSize: 11, color: '#374151', fontWeight: 600 }}>{dealInsCalc ? `RM ${dealInsCalc.total.toLocaleString()}` : <span style={{ color: '#d1d5db' }}>Enter CC</span>}</span>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                           <span style={{ fontSize: 11, color: '#9ca3af' }}>Puspakom</span>
