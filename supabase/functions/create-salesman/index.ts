@@ -314,6 +314,25 @@ serve(async (req) => {
       }
       : {};
 
+    // Standalone page set up by the platform: what signup collects (how they
+    // sell, where they are based, their trading name) plus what the seller
+    // would otherwise type into Settings later. Used by both profile writes
+    // below so the slow-trigger insert lands the same row.
+    const standaloneFields = isSuperCaller && !effectiveDealerId
+      ? {
+        state: body.state ?? null,
+        city: body.city ?? null,
+        // Signup's rule: no business name -> the seller's own name
+        // (SalesmanOnboarding.jsx activate()).
+        dealership: text(body.dealership, 120) ?? full_name,
+        seller_type: sellerType,
+        new_car_brand: newCarBrand,
+        location: text(body.location, 200),
+        job_title: text(body.job_title, 60),
+        bio: text(body.bio, 2000),
+      }
+      : {};
+
     const tempPassword = generatePassword();
 
     // ── Create auth user ────────────────────────────────────────────────────
@@ -367,20 +386,7 @@ serve(async (req) => {
           dealership: callerProfile.role !== "superadmin"
             ? undefined  // will be set by the dealer's own dealership value below
             : undefined,
-          // Standalone page set up by the platform: where the seller is based
-          // (new-car price zone, marketplace location) and their trading name.
-          ...(isSuperCaller && !effectiveDealerId ? {
-            state: body.state ?? null,
-            city: body.city ?? null,
-            // Signup's rule: no business name -> the seller's own name
-            // (SalesmanOnboarding.jsx activate()).
-            dealership: text(body.dealership, 120) ?? full_name,
-            seller_type: sellerType,
-            new_car_brand: newCarBrand,
-            location: text(body.location, 200),
-            job_title: text(body.job_title, 60),
-            bio: text(body.bio, 2000),
-          } : {}),
+          ...standaloneFields,
           ...freeMonth,
           is_active: true,
           // Dealer-created salesmen are fully provisioned here (tier, name, slug,
@@ -411,6 +417,7 @@ serve(async (req) => {
         phone: phone ?? null,
         whatsapp_number: phone ?? null,
         slug: slug ?? null,
+        ...standaloneFields,
         ...freeMonth,
         is_active: true,
         onboarding_complete: true,
