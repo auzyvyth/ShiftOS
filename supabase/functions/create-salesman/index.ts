@@ -32,6 +32,46 @@ function generatePassword(length = 14): string {
   return chars.join("");
 }
 
+const esc = (v: unknown) =>
+  String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+// Same allowed values as the profiles CHECK constraints
+// (profiles_seller_type_check, profiles_new_car_brand_check). Checked here so a
+// bad value is a clear invalid_input instead of a failed profile write, which
+// deletes the half-made login and reads "profile_creation_failed".
+const SELLER_TYPES = ["broker", "new_car", "private"];
+const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD"];
+
+// What a platform-set-up page holds, as label/value rows for the setup email,
+// so the seller sees exactly what was filled in for them. Built from the
+// SAVED profile row, never the request body, so the email can't list
+// something the database refused.
+const DETAIL_COLUMNS =
+  "full_name, email, dealership, slug, whatsapp_number, state, city, location, seller_type, new_car_brand, plan, plan_expires_at, job_title, bio";
+function setupDetails(p: any, base: string): Array<[string, string]> {
+  const how = p.seller_type === "private" ? "Private seller"
+    : [p.seller_type === "broker" ? "Broker / Agent" : null, p.new_car_brand ? `New car advisor (${p.new_car_brand})` : null]
+      .filter(Boolean).join(" + ");
+  const until = p.plan_expires_at
+    ? new Date(p.plan_expires_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })
+    : null;
+  const plan = p.plan === "salesman_full" ? `Premium${until ? `, free until ${until}` : ""}` : "Lite (free)";
+  const rows: Array<[string, string | null]> = [
+    ["Name", p.full_name],
+    ["Email", p.email],
+    ["Business name", p.dealership],
+    ["Your page", p.slug ? `${base}/s/${p.slug}` : null],
+    ["WhatsApp", p.whatsapp_number],
+    ["Area", [p.city, p.state].filter(Boolean).join(", ") || null],
+    ["Shop address", p.location],
+    ["How you sell", how || null],
+    ["Plan", plan],
+    ["Job title", p.job_title],
+    ["Bio", p.bio],
+  ];
+  return rows.filter((r): r is [string, string] => !!r[1]);
+}
+
 // Emails the salesman a one-time recovery link to set their own password and
 // finish onboarding. Uses the SAME Resend channel as send-document
 // (RESEND_API_KEY) — NOT Supabase Auth SMTP. Returns whether the email was
@@ -49,6 +89,7 @@ async function sendSetupEmail(
   // Where the "Set your password" button points. null = the old Supabase
   // action link (kept for clients deployed before the set-password page).
   setPasswordBase: string | null = null,
+  details: Array<[string, string]> = [],
 ): Promise<boolean> {
   try {
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
@@ -81,6 +122,11 @@ async function sendSetupEmail(
       // Verified badge. This line used to say the opposite.
       ? "Set your own password to take it over. Your cars are already live on your page."
       : "Set your password to finish setting up and access your dashboard:";
+    const detailsHtml = details.length
+      ? `<p style="margin:0 0 8px;font-size:12px;color:#6b7280;">What we set up for you. You can change any of it in Settings.</p>
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:13px;">${details.map(([k, v]) =>
+      `<tr><td style="padding:7px 12px 7px 0;color:#6b7280;vertical-align:top;white-space:nowrap;border-top:1px solid #f3f4f6;">${esc(k)}</td><td style="padding:7px 0;color:#111827;border-top:1px solid #f3f4f6;word-break:break-word;">${esc(v).replace(/\n/g, "<br>")}</td></tr>`).join("")}</table>`
+      : "";
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:24px 0;background:#f4f4f5;font-family:'Helvetica Neue',Arial,sans-serif;">
 <div style="max-width:520px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
   <div style="background:#111827;padding:28px 32px;color:#fff;">
@@ -88,8 +134,9 @@ async function sendSetupEmail(
     <h1 style="margin:0;font-size:22px;font-weight:700;">${heading}</h1>
   </div>
   <div style="padding:28px 32px;color:#374151;font-size:14px;line-height:1.6;">
-    <p style="margin:0 0 16px;">${intro}</p>
+    <p style="margin:0 0 16px;">${esc(intro)}</p>
     <p style="margin:0 0 24px;">${ask}</p>
+    ${detailsHtml}
     <a href="${actionLink}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:13px 28px;border-radius:8px;">Set your password</a>
     <p style="margin:24px 0 0;font-size:12px;color:#9ca3af;">This link works once and expires. If we send you another setup email, only the newest link works. If it no longer works, use &quot;Forgot password&quot; on the sign-in page.</p>
   </div>
@@ -208,7 +255,12 @@ serve(async (req) => {
         return json({ success: true, email_sent: true, throttled: true });
       }
       const dealershipName = target.dealership || callerProfile.dealership || target.full_name || "Your dealership";
-      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id, setPasswordBase);
+      let details: Array<[string, string]> = [];
+      if (!target.dealer_id) {
+        const { data: full } = await adminClient.from("profiles").select(DETAIL_COLUMNS).eq("id", target.id).maybeSingle();
+        if (full) details = setupDetails(full, setPasswordBaseFor(origin));
+      }
+      const sent = await sendSetupEmail(adminClient, targetEmail, target.full_name || "there", dealershipName, !target.dealer_id, setPasswordBase, details);
       return json({ success: true, email_sent: sent });
     }
 
@@ -225,6 +277,12 @@ serve(async (req) => {
     if (!["salesman_full", "salesman_lite"].includes(plan)) {
       return json({ error: "invalid_input" }, 400);
     }
+
+    const sellerType = body.seller_type ?? null;
+    const newCarBrand = body.new_car_brand ?? null;
+    if (sellerType !== null && !SELLER_TYPES.includes(sellerType)) return json({ error: "invalid_input" }, 400);
+    if (newCarBrand !== null && !NEW_CAR_BRANDS.includes(newCarBrand)) return json({ error: "invalid_input" }, 400);
+    const text = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 
     // Authz: a dealer/owner caller may only create salesmen inside their OWN
     // tenant -- never trust a client-supplied dealer_id, or a dealer could
@@ -256,6 +314,25 @@ serve(async (req) => {
       }
       : {};
 
+    // Standalone page set up by the platform: what signup collects (how they
+    // sell, where they are based, their trading name) plus what the seller
+    // would otherwise type into Settings later. Used by both profile writes
+    // below so the slow-trigger insert lands the same row.
+    const standaloneFields = isSuperCaller && !effectiveDealerId
+      ? {
+        state: body.state ?? null,
+        city: body.city ?? null,
+        // Signup's rule: no business name -> the seller's own name
+        // (SalesmanOnboarding.jsx activate()).
+        dealership: text(body.dealership, 120) ?? full_name,
+        seller_type: sellerType,
+        new_car_brand: newCarBrand,
+        location: text(body.location, 200),
+        job_title: text(body.job_title, 60),
+        bio: text(body.bio, 2000),
+      }
+      : {};
+
     const tempPassword = generatePassword();
 
     // ── Create auth user ────────────────────────────────────────────────────
@@ -268,6 +345,10 @@ serve(async (req) => {
         role: "salesman",
         plan,
         dealer_id: effectiveDealerId,
+        // Same tags signUp() puts on an organic login (SalesmanOnboarding.jsx),
+        // so anything that reads them treats both accounts alike.
+        account_type: "salesman",
+        tier: plan === "salesman_full" ? "premium" : "lite",
       },
     });
 
@@ -305,13 +386,7 @@ serve(async (req) => {
           dealership: callerProfile.role !== "superadmin"
             ? undefined  // will be set by the dealer's own dealership value below
             : undefined,
-          // Standalone page set up by the platform: where the seller is based
-          // (new-car price zone, marketplace location) and their trading name.
-          ...(isSuperCaller && !effectiveDealerId ? {
-            state: body.state ?? null,
-            city: body.city ?? null,
-            dealership: body.dealership ?? null,
-          } : {}),
+          ...standaloneFields,
           ...freeMonth,
           is_active: true,
           // Dealer-created salesmen are fully provisioned here (tier, name, slug,
@@ -342,6 +417,7 @@ serve(async (req) => {
         phone: phone ?? null,
         whatsapp_number: phone ?? null,
         slug: slug ?? null,
+        ...standaloneFields,
         ...freeMonth,
         is_active: true,
         onboarding_complete: true,
@@ -374,15 +450,16 @@ serve(async (req) => {
     // Email the salesman a one-time link to set their own password, so they don't
     // depend on the dealer relaying the temp password. Non-fatal: if the Resend
     // key is unset or Resend errors, the dealer still gets temp_password to share.
-    const emailSent = sendEmail
-      ? await sendSetupEmail(adminClient, email, full_name, dealershipName, !effectiveDealerId, setPasswordBase)
-      : false;
-
     const { data: finalProfile } = await adminClient
       .from("profiles")
       .select("*")
       .eq("id", newUserId)
       .maybeSingle();
+
+    const emailSent = sendEmail
+      ? await sendSetupEmail(adminClient, email, full_name, dealershipName, !effectiveDealerId, setPasswordBase,
+        !effectiveDealerId && finalProfile ? setupDetails(finalProfile, setPasswordBaseFor(origin)) : [])
+      : false;
 
     return json({
       success: true,

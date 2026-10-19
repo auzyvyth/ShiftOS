@@ -1,31 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NEW_CAR_BRANDS } from '../utils/newCars';
-
-// How a seller sells: up to two picks (owner, 2026-10-17: many new-car
-// advisors also broker for other dealers). Private is on its own. The DB keeps
-// one seller_type plus new_car_brand, so "both" is broker + a brand:
-//   broker + new_car -> seller_type 'broker',  new_car_brand set
-//   new_car only     -> seller_type 'new_car', new_car_brand set
-//   broker only      -> seller_type 'broker',  new_car_brand null
-//   private          -> seller_type 'private', new_car_brand null
-const sellsFromDb = (type, brand) =>
-  type === 'private' ? ['private']
-    : type === 'new_car' ? ['new_car']
-    : brand ? ['broker', 'new_car'] : ['broker'];
-const sellsToDb = (sells, brand) => {
-  if (sells.includes('private')) return { seller_type: 'private', new_car_brand: null };
-  const isNew = sells.includes('new_car');
-  return {
-    seller_type: sells.includes('broker') ? 'broker' : 'new_car',
-    new_car_brand: isNew ? brand : null,
-  };
-};
-const toggleSells = (sells, key) => {
-  if (key === 'private') return ['private'];
-  const base = sells.filter((k) => k !== 'private');
-  const next = base.includes(key) ? base.filter((k) => k !== key) : [...base, key];
-  return next.length ? next : [key];
-};
+import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import LegalContent from '../components/onboarding/LegalContent';
@@ -857,11 +832,7 @@ export default function SalesmanOnboarding() {
 
                 <label className="eo-label">HOW DO YOU SELL CARS? PICK ONE OR TWO</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-                  {[
-                    { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
-                    { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua, Toyota or BYD' },
-                    { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
-                  ].map((opt) => (
+                  {SELLS_OPTIONS.map((opt) => (
                     <button key={opt.key} type="button" aria-pressed={form.sells.includes(opt.key)} onClick={() => upd('sells')(toggleSells(form.sells, opt.key))}
                       style={{
                         flex: '1 1 140px', minWidth: 0, textAlign: 'left', padding: '10px 12px', borderRadius: 8, cursor: 'pointer',
