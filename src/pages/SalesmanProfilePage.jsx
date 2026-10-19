@@ -356,6 +356,23 @@ export default function SalesmanProfilePage() {
       .eq('dealer_id', viewerId).eq('status', 'pending_approval');
     setLiveBlock(count > 0 ? 'pending' : 'empty');
   };
+  // `?live=1` opens Live straight away: the Lite dashboard's "Loan
+  // calculator" button lands here, so a new seller does not have to find the
+  // Live chip first. Owner only (a buyer with the link just sees the page),
+  // once per page load, and the param is dropped so a refresh or Back does
+  // not reopen it.
+  const liveParamDone = useRef(false);
+  useEffect(() => {
+    if (liveParamDone.current || loading || !isOwner) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('live') !== '1') return;
+    liveParamDone.current = true;
+    params.delete('live');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`);
+    openLive();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, isOwner]);
   // Reads the dashboard checklist's own list (StarterTasks), so the page and
   // the dashboard never ask for different things. It used to keep a second
   // list here (car, photo, banner, bio) that disagreed with the dashboard's.

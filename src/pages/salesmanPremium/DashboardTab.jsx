@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
- Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap,
+ Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap, Calculator,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
@@ -461,6 +461,20 @@ export default function DashboardTab({
  />
  </div>
  )}
+ {/* Loan calculator, one tap from home: a new seller could not find it.
+     Same as Lite: opens the mini page with the Live presentation (the
+     calculator sellers use on camera) already open (?live=1,
+     SalesmanProfilePage). */}
+ {profile?.slug && <a
+ href={`/s/${profile.slug}?live=1`}
+ target="_blank"
+ rel="noopener noreferrer"
+ style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.08), border: `1.5px solid ${C.accent}`, color: C.text, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
+ >
+ <Calculator size={11} color={C.accent} />
+ <span style={{ flex: 1 }}>{t("salesmanPremium.dash.loanCalculator")}</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </a>}
  {minipageStats.byChannel.length > 0 && (
  <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
  <ChannelBreakdown
