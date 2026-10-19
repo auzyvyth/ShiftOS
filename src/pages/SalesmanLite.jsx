@@ -1285,12 +1285,19 @@ export default function SalesmanLite() {
   const handleDeleteListing = async (carId) => {
     if (deletingId) return;
     setDeletingId(carId);
-    const { error } = await supabase
+    // .select() returns the rows actually changed: RLS turns a refused update
+    // into "0 rows, no error", and the car came back on the next load.
+    const { data: archived, error } = await supabase
       .from("car_listings")
       .update({ status: "archived" })
       .eq("id", carId)
-      .eq("dealer_id", userId);
+      .eq("dealer_id", userId)
+      .select("id");
     setDeletingId(null);
+    if (!error && !archived?.length) {
+      toast.error(t("salesmanLite.toast.listingDeleteFailed"));
+      return;
+    }
     if (error) {
       console.error("handleDeleteListing:", error);
       if (isWonDealBlock(error)) {
@@ -1305,8 +1312,11 @@ export default function SalesmanLite() {
       }
       return;
     }
-    setMyListings((p) => p.filter((c) => c.id !== carId));
-    writeCache(`slite_listings_${userId}`, myListings.filter((c) => c.id !== carId));
+    setMyListings((p) => {
+      const next = p.filter((c) => c.id !== carId);
+      writeCache(`slite_listings_${userId}`, next);
+      return next;
+    });
     setConfirmDeleteId(null);
     toast.success(t("salesmanLite.toast.listingDeleted"));
   };

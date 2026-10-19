@@ -367,6 +367,9 @@ panels load listings with `.neq("status","archived")`. A won-deal car is refused
 (`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
 with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
 dealer dashboard and the console.
+- **The update must `.select("id")` and check a row came back, and the device copy
+  (`sp_listings_` / `slite_listings_`) must be rewritten** (2026-10-19). RLS refuses as "0 rows,
+  no error", and Premium never rewrote its saved copy, so a deleted car came back on reopen.
 
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
