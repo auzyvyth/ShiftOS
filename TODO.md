@@ -70,6 +70,19 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## URGENT — PREM-LAPSE: Premium -> Lite leftovers (logged 2026-10-19, before 4 Nov)
+The first 8 free months end 4-17 Nov 2026. Shipped: lock cars over the Lite cap,
+payment-due banner, 2 pushes, forever-'received' fix (migration 20261019a, applied
+tonight by a scheduled check). Still open:
+- [ ] Follow-up reminders keep firing for a lapsed seller: `fire_due_nudges()` never
+  checks the plan, so a Lite seller gets pushes from a Premium tool they can't open.
+- [ ] Telegram booking reminders set before the lapse still send:
+  `trg_zz_lite_no_booking_reminder` only clears NEW/edited `appointments.remind_at`.
+- [ ] A Premium dashboard left open stays on Premium until reload (the plan check runs
+  only at bootstrap, `SalesmanPremium.jsx:1102`); features fail on RLS with no reason.
+- [ ] Dead code: the `trialExpired` screen (`SalesmanPremium.jsx:1128`, `:6736`) keys
+  off `subscription_status='trial'`, which the free month never sets. Remove it.
+
 ## INTRO-1: First-run intros for Premium sellers — part 1 shipped 2026-10-18
 Yazeed (set up by the owner from console "Set up a seller") landed on a dashboard
 with no tour: the owner had played every intro while signed in as him, and
