@@ -425,22 +425,30 @@ export default function SalesmanProfilePage() {
   }, [profile?.bio, bioExpanded]);
 
   // Poll rather than subscribe: the state lives in a no-policy table that only
-  // SECURITY DEFINER functions read, so anon cannot use realtime on it. 15s is
-  // fast enough for "the car he's talking about" and costs one tiny RPC. A
+  // SECURITY DEFINER functions read, so anon cannot use realtime on it. 15s
+  // while the seller IS live (the car changes as they talk), 2 min while they
+  // are not: almost every visit is the second case, and polling it every 15s
+  // was the 4th most-called request on the free database (2026-10-19). A
   // missing function (migration not applied yet) just means no banner.
   useEffect(() => {
     if (!profile?.id) return undefined;
     let cancelled = false;
-    const check = () => {
+    let timer = null;
+    const schedule = (live) => {
+      clearTimeout(timer);
+      if (!cancelled) timer = setTimeout(check, live ? 15000 : 120000);
+    };
+    function check() {
       if (document.visibilityState !== 'visible') return;
       publicClient.rpc('get_salesman_live', { p_slug: slug }).then(({ data, error }) => {
-        if (!cancelled && !error) setLiveListingId(data || null);
-      }, () => {});
-    };
+        if (cancelled) return;
+        if (!error) setLiveListingId(data || null);
+        schedule(!error && !!data);
+      }, () => schedule(false));
+    }
     check();
-    const t = setInterval(check, 15000);
     document.addEventListener('visibilitychange', check);
-    return () => { cancelled = true; clearInterval(t); document.removeEventListener('visibilitychange', check); };
+    return () => { cancelled = true; clearTimeout(timer); document.removeEventListener('visibilitychange', check); };
   }, [profile?.id, slug]);
 
   // The number is never in this page (CDP-3): /api/wa resolves it on tap.
