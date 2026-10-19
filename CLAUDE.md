@@ -1348,6 +1348,12 @@ and the won-trigger marks it sold on the first deal.
   `starter_tasks`. Any NEW first-run flag must be reset there too.
 - The Premium tour's "seen" backup is `sessionStorage` (`sp_tour_seen_<uid>`), never
   `localStorage`: a persistent copy made every DB reset invisible on that device.
+- **A console-made account answers what signup answers** (2026-10-19). `CreateSellerModal` asks
+  "how do they sell" + brand through the SAME helpers as signup (`src/utils/sellsHow.js`), plus
+  shop address, and job title + bio on Premium (the only plan whose page shows them).
+  `create-salesman` uses signup's business-name fallback (blank = full name) and tags the login
+  `account_type`/`tier` like `signUp()`. The setup email lists every saved field, read back
+  from the profile row. A new signup question goes in both, or console accounts drift again.
 - Console "Set up a seller" offers Lite or Premium. Premium = the free month, written
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.

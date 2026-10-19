@@ -3,6 +3,8 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { MY_STATES, cityOptionsFor } from "../../utils/locations";
 import { PLAN_CONFIG } from "../../utils/planConfig";
+import { NEW_CAR_BRANDS } from "../../utils/newCars";
+import { SELLS_OPTIONS, sellsToDb, toggleSells } from "../../utils/sellsHow";
 import { useModalHistory } from '../../hooks/useModalHistory';
 
 // "I'll set your page up for you" (outreach playbook, 2026-10-12). The owner
@@ -18,6 +20,12 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 // start_premium_trial() does: it starts when the account is made, and no
 // payment is asked for. Before this the owner signed in as the seller and
 // started the free month from Lite settings by hand.
+//
+// The form asks what signup asks (how they sell, which brand) plus what the
+// seller would otherwise type into Settings later (shop address; job title
+// and bio on Premium, the only plan whose page shows them). The account then
+// matches an organic signup, and the setup email lists every field so the
+// seller can see what was set up for them (2026-10-19).
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
@@ -40,12 +48,13 @@ const ERRORS = {
 };
 
 export default function CreateSellerModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "", plan: "salesman_lite" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "", plan: "salesman_lite",
+    sells: ["broker"], new_car_brand: "", location: "", job_title: "", bio: "" });
   const [slugEdited, setSlugEdited] = useState(false);
   const [slugFree, setSlugFree] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useModalHistory(true, onClose, { isDirty: () => Object.entries(form).some(([k, v]) => k !== "plan" && String(v || "").trim()) });
+  useModalHistory(true, onClose, { isDirty: () => Object.entries(form).some(([k, v]) => k !== "plan" && k !== "sells" && String(v || "").trim()) });
   const [created, setCreated] = useState(null);
   const [mailState, setMailState] = useState(null); // null | sending | sent | failed
 
@@ -71,7 +80,9 @@ export default function CreateSellerModal({ onClose, onCreated }) {
   }, [form.slug]);
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
-  const canSubmit = form.full_name.trim().length >= 2 && emailOk && form.slug.length >= 3 && slugFree !== false && !busy;
+  const premium = form.plan === "salesman_full";
+  const brandOk = !form.sells.includes("new_car") || !!form.new_car_brand;
+  const canSubmit = form.full_name.trim().length >= 2 && emailOk && brandOk && form.slug.length >= 3 && slugFree !== false && !busy;
 
   const submit = async () => {
     setBusy(true); setError("");
@@ -85,6 +96,12 @@ export default function CreateSellerModal({ onClose, onCreated }) {
         city: form.city || null,
         dealership: form.dealership.trim() || null,
         plan: form.plan,
+        ...sellsToDb(form.sells, form.new_car_brand),
+        location: form.location.trim() || null,
+        // Premium-page fields; a Lite page never shows them, so don't store
+        // something the seller can't see or edit in Lite settings.
+        job_title: premium ? form.job_title.trim() || null : null,
+        bio: premium ? form.bio.trim() || null : null,
         dealer_id: null,
         send_email: false,
       },
@@ -165,6 +182,36 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="012 345 6789" style={input} inputMode="tel" autoComplete="off" /></div>
             <div><label style={label}>Business name (optional)</label>
               <input value={form.dealership} onChange={(e) => set("dealership", e.target.value)} placeholder="e.g. Ali Auto" style={input} autoComplete="off" /></div>
+            <div><label style={label}>How do they sell? Pick one or two</label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+                {SELLS_OPTIONS.map((o) => {
+                  const on = form.sells.includes(o.key);
+                  return (
+                    <button key={o.key} type="button" aria-pressed={on} onClick={() => set("sells", toggleSells(form.sells, o.key))}
+                      style={{ textAlign: "left", padding: "9px 10px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", minWidth: 0,
+                        background: on ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.04)",
+                        border: `1px solid ${on ? "rgba(220,38,38,0.55)" : "rgba(255,255,255,0.1)"}` }}>
+                      <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: on ? "#f1f5f9" : "#d1d5db" }}>{o.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {form.sells.includes("new_car") && (
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${NEW_CAR_BRANDS.length}, minmax(0, 1fr))`, gap: 8, marginTop: 8 }}>
+                  {NEW_CAR_BRANDS.map((b) => {
+                    const on = form.new_car_brand === b;
+                    return (
+                      <button key={b} type="button" aria-pressed={on} onClick={() => set("new_car_brand", b)}
+                        style={{ padding: "8px 6px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", minWidth: 0, fontSize: 12, fontWeight: 600,
+                          color: on ? "#f1f5f9" : "#d1d5db",
+                          background: on ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${on ? "rgba(220,38,38,0.55)" : "rgba(255,255,255,0.1)"}` }}>{b}</button>
+                    );
+                  })}
+                </div>
+              )}
+              {!brandOk && <p style={{ margin: "5px 0 0", fontSize: 11, color: "#6b7280" }}>Pick the brand they sell.</p>}
+            </div>
             <div><label style={label}>Page link</label>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span style={{ fontSize: 13, color: "#6b7280", flexShrink: 0 }}>xdrive.my/s/</span>
@@ -186,6 +233,17 @@ export default function CreateSellerModal({ onClose, onCreated }) {
                   {cityOptionsFor(form.state, form.city).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select></div>
             </div>
+            <div><label style={label}>Shop address (optional)</label>
+              <input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={input} autoComplete="off" maxLength={200} /></div>
+            {premium && (
+              <>
+                <div><label style={label}>Job title (optional)</label>
+                  <input value={form.job_title} onChange={(e) => set("job_title", e.target.value)} placeholder="e.g. Senior sales advisor" style={input} autoComplete="off" maxLength={60} /></div>
+                <div><label style={label}>Bio (optional)</label>
+                  <textarea value={form.bio} onChange={(e) => set("bio", e.target.value)} rows={4} maxLength={2000}
+                    placeholder="A few lines about them, in their words" style={{ ...input, resize: "vertical" }} /></div>
+              </>
+            )}
             {error && <p role="alert" style={{ margin: 0, fontSize: 12, color: "#f87171", lineHeight: 1.5 }}>{error}</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="submit" disabled={!canSubmit} style={primary(canSubmit)}>{busy ? "Creating..." : "Create account"}</button>
