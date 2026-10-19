@@ -19,7 +19,8 @@ import { normalizePhone } from "../lib/phone";
 import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
-import { buildCopyText } from "../utils/listingCopy";
+import { copyListingCaption } from "../utils/copyListingCaption";
+import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
 import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
@@ -2995,15 +2996,12 @@ export default function SalesmanLite() {
   };
 
   const handleListingCopy = (car, type) => {
-    const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
-    let text = link;
-    if (type === "wa") {
-      // Full-length, structured listing copy — same rich formatter the CarForm
-      // final step uses (specs, pricing, features, about, hashtags) — with the
-      // salesman's referral link appended so buyer taps come back to this rep.
-      text = `${buildCopyText(car)}\n👉 ${link}`;
-    }
-    navigator.clipboard.writeText(text);
+    const link = `${SITE_URL}/showroom/${car.slug}?ref=${profile?.slug || ""}`;
+    // "wa" = the full caption (copyListingCaption: buildCopyText for used/recon,
+    // the BM price-list caption for a new-car card), with the salesman's
+    // referral link appended so buyer taps come back to this rep.
+    if (type === "wa") copyListingCaption(car, link).catch(() => {});
+    else navigator.clipboard.writeText(link);
     setListingCopied((prev) => ({ ...prev, [car.id]: type }));
     setTimeout(
       () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),

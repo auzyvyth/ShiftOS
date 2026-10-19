@@ -29,7 +29,9 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
-import { buildCopyText, buildListingFacts } from "../utils/listingCopy";
+import { buildListingFacts } from "../utils/listingCopy";
+import { copyListingCaption } from "../utils/copyListingCaption";
+import { SITE_URL } from "../config/site";
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
 const CarForm = React.lazy(() => import("../components/CarForm"));
@@ -2517,17 +2519,12 @@ export default function SalesmanPremium() {
 
 
  const handleListingCopy = (car, type) => {
- const link = `https://xdrive.my/showroom/${car.slug}?ref=${profile?.slug || ""}`;
- let text = link;
- if (type === "wa") {
- // Same rich formatter Lite and the CarForm final step use (specs, pricing,
- // features, about, hashtags), with the rep's referral link appended.
- // Premium used to hand-roll a six-line version here, so the cheaper tier
- // was posting the better ad: no features, no specs, no seller description,
- // no discount, and a caption that dropped the emoji it was written around.
- text = `${buildCopyText(car)}\n👉 ${link}`;
- }
- navigator.clipboard.writeText(text);
+ const link = `${SITE_URL}/showroom/${car.slug}?ref=${profile?.slug || ""}`;
+ // "wa" = the same full caption Lite copies (copyListingCaption: buildCopyText
+ // for used/recon, the BM price-list caption for a new-car card), with the
+ // rep's referral link appended. Premium once hand-rolled a six-line version.
+ if (type === "wa") copyListingCaption(car, link).catch(() => {});
+ else navigator.clipboard.writeText(link);
  setListingCopied((prev) => ({ ...prev, [car.id]: type }));
  setTimeout(
  () => setListingCopied((prev) => ({ ...prev, [car.id]: null })),
