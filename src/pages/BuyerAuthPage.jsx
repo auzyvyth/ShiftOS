@@ -12,6 +12,11 @@ import { authErrorMessage, isWrongCredentials, reportAuthFailure } from "../util
 import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
 import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
 import { SITE_URL, isOwnHost } from "../config/site";
+import { withTimeout } from "../config/marketplaceConfig";
+
+// A magic-link send that has not answered in 20s is not coming back.
+const OTP_SEND_TIMEOUT_MS = 20000;
+const OTP_SEND_TIMEOUT_ERROR = { code: "send_timeout", message: "The server took too long to answer. Please try again." };
 
 const CONSENT_ERR =
   "Please confirm you're 18+ and agree to the Terms of Service and Privacy Policy to continue.";
@@ -131,7 +136,9 @@ export default function BuyerAuthPage() {
     const gate = await emailActionGate(email, EMAIL_ACTIONS.MAGIC);
     if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
     const captchaToken = await getToken();
-    const { error } = await supabase.auth.signInWithOtp({
+    // Capped: the send waits on the auth lock, and a held lock or a stalled
+    // server hangs it with no error, leaving the button on "Sending..." forever.
+    const { error } = await withTimeout(supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
         captchaToken,
@@ -140,7 +147,7 @@ export default function BuyerAuthPage() {
         // so never mint a new one here — that would skip the PDPA consent tick.
         shouldCreateUser: false,
       },
-    });
+    }), OTP_SEND_TIMEOUT_MS).catch(() => ({ error: OTP_SEND_TIMEOUT_ERROR }));
     setMagicLoading(false);
     if (error) {
       console.error("[BuyerAuthPage] magic link send failed:", error.code, error.message);

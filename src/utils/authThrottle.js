@@ -1,4 +1,11 @@
 import { supabase as mainClient } from "../supabaseClient";
+import { withTimeout } from "../config/marketplaceConfig";
+
+// Every check below fails OPEN, but a stalled database does not fail a request,
+// it HANGS it, and a hang never reaches the catch. That is how the magic-link
+// button sat on "Sending..." for good (2026-10-19): the gate RPC never answered,
+// so the email was never even asked for. Cap each call so a stall fails open too.
+const GATE_TIMEOUT_MS = 6000;
 
 // ── One brute-force throttle for every password login page ───────────────────
 // Plain version: three wrong passwords for the same email inside 15 minutes
@@ -37,7 +44,7 @@ export async function throttleCheck(email, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { allowed: true, secondsLeft: 0 };
   try {
-    const { data } = await client.rpc("login_throttle_check", { p_email: clean });
+    const { data } = await withTimeout(client.rpc("login_throttle_check", { p_email: clean }), GATE_TIMEOUT_MS);
     const row = Array.isArray(data) ? data[0] : data;
     if (row && row.allowed === false) {
       return { allowed: false, secondsLeft: row.seconds_left || 60 };
@@ -57,7 +64,7 @@ export async function throttleFail(email, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { locked: false, secondsLeft: 0, attempts: 0 };
   try {
-    const { data } = await client.rpc("login_throttle_fail", { p_email: clean });
+    const { data } = await withTimeout(client.rpc("login_throttle_fail", { p_email: clean }), GATE_TIMEOUT_MS);
     const row = Array.isArray(data) ? data[0] : data;
     return {
       locked: !!row?.locked,
@@ -120,10 +127,10 @@ export async function emailActionGate(email, action, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { allowed: true, secondsLeft: 0, message: "" };
   try {
-    const { data } = await client.rpc("auth_email_action_gate", {
+    const { data } = await withTimeout(client.rpc("auth_email_action_gate", {
       p_email: clean,
       p_action: action,
-    });
+    }), GATE_TIMEOUT_MS);
     const row = Array.isArray(data) ? data[0] : data;
     if (row && row.allowed === false) {
       const secs = row.seconds_left || 60;
