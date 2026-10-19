@@ -367,6 +367,9 @@ panels load listings with `.neq("status","archived")`. A won-deal car is refused
 (`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
 with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
 dealer dashboard and the console.
+- **The update must `.select("id")` and check a row came back, and the device copy
+  (`sp_listings_` / `slite_listings_`) must be rewritten** (2026-10-19). RLS refuses as "0 rows,
+  no error", and Premium never rewrote its saved copy, so a deleted car came back on reopen.
 
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
@@ -1238,6 +1241,21 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   email link came back as Lite.
 - `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
+
+## Premium lapse -> Lite (2026-10-19, migration 20261019a)
+Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around that:
+- **Cars over the Lite cap are LOCKED, not left live** (owner). `sweep_premium_lapses()`
+  (cron hourly :41) keeps reserved cars, then the newest, up to the Lite cap; the rest go
+  `status='unpublished'` + `plan_locked_at` (+ `plan_locked_status` to restore). Lite shows
+  them under Available, blacked out (`get_my_locked_listings`). `trg_zz_unlock_plan_cars`
+  (on profiles) puts them back the moment Premium returns, whatever restored it.
+  `enforce_listing_cap_on_publish` now uses the entitlement cap, or a locked car could be
+  republished on the 30-car Premium cap.
+- **Two pushes per lapse, never more:** `premium_ending` 3 days before, `premium_ended` on
+  the day. Banners: `src/components/premium/PremiumStatusBanner.jsx` (one line, closes until
+  tomorrow; owner: "make it not annoying"). Pay screen is ONE component, `PremiumPayBox.jsx`.
+- No standalone seller has `payment_status='received'` any more: it never expires. Only
+  `record_subscription_payment` grants Premium time.
 
 ## Lite vs Premium split (owner, 2026-10-13) -- "get found" vs "work the lead"
 Lite (free) = get found and get the lead: up to 10 live cars (`plan_config`; cut to 5, then back to 10 on 2026-10-14), a

@@ -165,6 +165,7 @@ flowchart LR
 | 15 jpj-refresh-parse | Mon 02:20 | loads it into `reg_car_month`; alerts you on failure |
 | 16 ask-viewing-outcomes | hourly :17, 01-13 | asks sellers how a past viewing went |
 | 17 notify-seller-unread | every 15 min | email sellers about unseen leads |
+| sweep-premium-lapses | hourly :41 | Premium ending in 3 days / ended pushes; hides cars over the Lite cap when Premium lapses (renewal unhides them) |
 
 ### JPJ data, end to end
 

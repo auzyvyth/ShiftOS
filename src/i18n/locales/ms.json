@@ -2515,5 +2515,19 @@
     "switchBtn": "Tukar ke {{to}}",
     "saving": "Menyimpan...",
     "saveErr": "Jenama tidak dapat disimpan. Cuba lagi."
+  },
+  "premiumLapse": {
+    "paidUntil": "Premium dibayar sehingga {{date}}.",
+    "dueSoon_one": "Premium tamat esok, {{date}}.",
+    "dueSoon_other": "Premium tamat dalam {{count}} hari, pada {{date}}.",
+    "renew": "Perbaharui",
+    "hide": "Tutup",
+    "close": "Sembunyi hingga esok",
+    "ended": "Premium anda tamat pada {{date}}. Anda kini di Lite, dan tiada apa yang dipadam.",
+    "endedLocked_one": "Premium anda tamat pada {{date}}. 1 kereta disembunyikan daripada pembeli sehingga anda memperbaharui.",
+    "endedLocked_other": "Premium anda tamat pada {{date}}. {{count}} kereta disembunyikan daripada pembeli sehingga anda memperbaharui.",
+    "lockedTitle": "Dikunci",
+    "lockedBody": "Disembunyikan daripada pembeli. Lite memaparkan {{cap}} kereta; perbaharui Premium untuk memaparkannya semula.",
+    "lockedCta": "Perbaharui Premium"
   }
 }

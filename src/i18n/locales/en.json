@@ -2503,5 +2503,19 @@
     "switchBtn": "Switch to {{to}}",
     "saving": "Saving...",
     "saveErr": "Couldn't save the brand. Try again."
+  },
+  "premiumLapse": {
+    "paidUntil": "Premium paid until {{date}}.",
+    "dueSoon_one": "Premium ends tomorrow, {{date}}.",
+    "dueSoon_other": "Premium ends in {{count}} days, on {{date}}.",
+    "renew": "Renew",
+    "hide": "Hide",
+    "close": "Hide until tomorrow",
+    "ended": "Your Premium ended on {{date}}. You're on Lite now, and nothing was deleted.",
+    "endedLocked_one": "Your Premium ended on {{date}}. 1 car is hidden from buyers until you renew.",
+    "endedLocked_other": "Your Premium ended on {{date}}. {{count}} cars are hidden from buyers until you renew.",
+    "lockedTitle": "Locked",
+    "lockedBody": "Hidden from buyers. Lite shows {{cap}} cars; renew Premium to bring this one back.",
+    "lockedCta": "Renew Premium"
   }
 }

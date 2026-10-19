@@ -485,8 +485,18 @@ export default function SalesmanPanel() {
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  const [linkCarSearch, setLinkCarSearch] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
+ const [batchWAIdx, setBatchWAIdx] = useState(0);
+ const [mobileLeadStage, setMobileLeadStage] = useState("new");
+ const [lostPromptId, setLostPromptId] = useState(null);
+ const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+ const [waModalLead, setWaModalLead] = useState(null);
+ const [waModalMsg, setWaModalMessage] = useState("");
+ const [playbookLeadId, setPlaybookLeadId] = useState(null);
+ const [copiedScriptLine, setCopiedScriptLine] = useState(null);
  // Back gesture closes the open overlay instead of switching tab under it
  // (useModalHistory, one shared stack). Shared sheets register inside.
+ // Keep this BELOW every useState it reads: calling it above waModalLead's
+ // declaration crashed the whole panel on load (TDZ, 2026-10-19).
  useModalHistory(!!logCallLeadId, () => setLogCallLeadId(null));
  useModalHistory(!!batchWALeads, () => setBatchWALeads(null));
  useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
@@ -496,14 +506,6 @@ export default function SalesmanPanel() {
  useModalHistory(!!waModalLead, () => setWaModalLead(null));
  useModalHistory(notifOpen, () => setNotifOpen(false));
  useModalHistory(moreOpen, () => setMoreOpen(false));
- const [batchWAIdx, setBatchWAIdx] = useState(0);
- const [mobileLeadStage, setMobileLeadStage] = useState("new");
- const [lostPromptId, setLostPromptId] = useState(null);
- const [deleteConfirmId, setDeleteConfirmId] = useState(null);
- const [waModalLead, setWaModalLead] = useState(null);
- const [waModalMsg, setWaModalMessage] = useState("");
- const [playbookLeadId, setPlaybookLeadId] = useState(null);
- const [copiedScriptLine, setCopiedScriptLine] = useState(null);
 
  // Monthly target
  const [thisMonthSales, setThisMonthSales] = useState(homeSeed.thisMonthSales || 0);

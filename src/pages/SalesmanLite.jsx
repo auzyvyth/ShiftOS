@@ -44,6 +44,8 @@ import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
+import { PremiumEndedBanner } from "../components/premium/PremiumStatusBanner";
+import { PLAN_CONFIG } from "../utils/planConfig";
 import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
@@ -1182,6 +1184,21 @@ export default function SalesmanLite() {
   // the fraction of a second before the real count landed. That flash is the
   // "it still appears for a second every time I log in" report.
   const [listingsLoaded, setListingsLoaded] = useState(false);
+  // Cars hidden because Premium lapsed with more live cars than Lite allows
+  // (sweep_premium_lapses, migration 20261019a). They are status 'unpublished'
+  // in the DB but show under Available, blacked out, so the seller can still
+  // see them and their numbers. Renewal unlocks them server side.
+  const [lockedIds, setLockedIds] = useState(() => new Set());
+  useEffect(() => {
+    if (!listingsLoaded || !userId) return;
+    let alive = true;
+    supabase.rpc("get_my_locked_listings").then(({ data, error }) => {
+      // Missing function (migration not applied yet) = nothing locked.
+      if (alive && !error) setLockedIds(new Set((data || []).map((r) => (typeof r === "string" ? r : r.get_my_locked_listings))));
+    });
+    return () => { alive = false; };
+  }, [listingsLoaded, userId]);
+  const isLockedCar = (c) => c.status === "unpublished" && lockedIds.has(c.id);
   // Status of every car as we last saw it — the realtime handler compares
   // against this because Supabase does not send the old row.
   useEffect(() => {
@@ -1285,12 +1302,19 @@ export default function SalesmanLite() {
   const handleDeleteListing = async (carId) => {
     if (deletingId) return;
     setDeletingId(carId);
-    const { error } = await supabase
+    // .select() returns the rows actually changed: RLS turns a refused update
+    // into "0 rows, no error", and the car came back on the next load.
+    const { data: archived, error } = await supabase
       .from("car_listings")
       .update({ status: "archived" })
       .eq("id", carId)
-      .eq("dealer_id", userId);
+      .eq("dealer_id", userId)
+      .select("id");
     setDeletingId(null);
+    if (!error && !archived?.length) {
+      toast.error(t("salesmanLite.toast.listingDeleteFailed"));
+      return;
+    }
     if (error) {
       console.error("handleDeleteListing:", error);
       if (isWonDealBlock(error)) {
@@ -1305,8 +1329,11 @@ export default function SalesmanLite() {
       }
       return;
     }
-    setMyListings((p) => p.filter((c) => c.id !== carId));
-    writeCache(`slite_listings_${userId}`, myListings.filter((c) => c.id !== carId));
+    setMyListings((p) => {
+      const next = p.filter((c) => c.id !== carId);
+      writeCache(`slite_listings_${userId}`, next);
+      return next;
+    });
     setConfirmDeleteId(null);
     toast.success(t("salesmanLite.toast.listingDeleted"));
   };
@@ -3600,7 +3627,7 @@ export default function SalesmanLite() {
       if (!s || s === "active") return "available";
       return s;
     };
-    const filtered = enriched.filter((e) => normStatus(e.car.status) === filterStatus);
+    const filtered = enriched.filter((e) => (isLockedCar(e.car) ? "available" : normStatus(e.car.status)) === filterStatus);
 
     const sorted = [...filtered].sort((a, b) => {
       if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
@@ -3749,7 +3776,7 @@ export default function SalesmanLite() {
                 {[
                   { key: "pending_approval", label: t("salesmanLite.listings.status.pending"),   count: myListings.filter((c) => c.status === "pending_approval").length },
                   { key: "rejected",         label: t("salesmanLite.listings.status.rejected"),  count: myListings.filter((c) => c.status === "rejected").length },
-                  { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
+                  { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available" || isLockedCar(c)).length },
                   { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
                   { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
                 ].map(({ key, label, count }) => (
@@ -3908,6 +3935,7 @@ export default function SalesmanLite() {
               const isReserved = car.status === "reserved";
               const isPending  = car.status === "pending_approval";
               const isRejected = car.status === "rejected";
+              const isLocked   = isLockedCar(car);
               const isInactive = isSold || isPending || isRejected;
               const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
               const img  = car.images?.[0];
@@ -3961,6 +3989,23 @@ export default function SalesmanLite() {
                       </button>
                     </div>
                   )}
+                  {/* Locked after Premium lapsed: same full-width strip as a
+                      rejection, photo blacked out below it. Views and
+                      enquiries on the card stay readable on purpose. */}
+                  {isLocked && (
+                    <div style={{ padding: "12px 14px", background: "rgba(0,0,0,0.45)", borderBottom: `1px solid ${C.border}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <Lock size={12} style={{ color: C.textMuted, flexShrink: 0 }} />
+                        <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted }}>{t("premiumLapse.lockedTitle")}</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.45 }}>
+                        {t("premiumLapse.lockedBody", { cap: PLAN_CONFIG.salesman_lite?.listingCap ?? 10 })}
+                      </p>
+                      <button onClick={goPremium} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}>
+                        {t("premiumLapse.lockedCta")}
+                      </button>
+                    </div>
+                  )}
                   {/* Image */}
                   {img ? (
                     <img
@@ -3972,7 +4017,7 @@ export default function SalesmanLite() {
                         height: 150,
                         objectFit: "cover",
                         cursor: "pointer",
-                        filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none",
+                        filter: isLocked ? "grayscale(1) brightness(0.3)" : isSold ? "grayscale(0.75) brightness(0.6)" : "none",
                       }}
                     />
                   ) : (
@@ -3986,7 +4031,7 @@ export default function SalesmanLite() {
                         alignItems: "center",
                         justifyContent: "center",
                         cursor: "pointer",
-                        filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none",
+                        filter: isLocked ? "grayscale(1) brightness(0.3)" : isSold ? "grayscale(0.75) brightness(0.6)" : "none",
                       }}
                     >
                       <Car size={32} color={C.textDim} />
@@ -7898,6 +7943,10 @@ export default function SalesmanLite() {
           {/* Suspension used to be invisible here: the seller lost the
               marketplace but kept a working dashboard with no explanation (A5). */}
           <SuspendedBanner />
+          {/* Premium lapsed: one line saying so, and how many cars it hid. */}
+          {activeTab !== "settings" && (
+            <PremiumEndedBanner profile={profile} lockedCount={myListings.filter(isLockedCar).length} onRenew={goPremium} />
+          )}
           {/* Review status, the ID check and the IC number used to be three
               stacked banners on first landing; SellerIdCard is the one card
               (with one button to the next missing step) for all of them. */}
