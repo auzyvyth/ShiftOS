@@ -21,6 +21,7 @@ import { warmChunks } from "../utils/warmChunks";
 import { mergePendingTag } from "../utils/pendingTag";
 import { normalizePhone } from "../lib/phone";
 import SuspendedBanner from "../components/SuspendedBanner";
+import { PremiumDueBanner } from "../components/premium/PremiumStatusBanner";
 import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
@@ -7201,6 +7202,9 @@ export default function SalesmanPremium() {
  onUploadId={() => openSettings("profile")}
  inviteInChecklist={listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed}
  />}
+ {/* Paid-through date, from 7 days out. Dashboard only, one line, closes
+     until tomorrow (owner: "make it not annoying"). */}
+ {activeTab === "dashboard" && <PremiumDueBanner profile={profile} />}
 
  {activeTab === "dashboard" && (
  <Suspense fallback={<TabLoadingFallback />}>

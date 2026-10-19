@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { SALESMAN_PREMIUM_FEATURES } from "../../utils/plans";
 import { PLAN_CONFIG } from "../../utils/planConfig";
+import PremiumPayBox, { PREMIUM_PRICE } from "./PremiumPayBox";
 
 // The Lite -> Premium door (migration 20261004b). Before this, Lite had no
 // upgrade control at all and /plans looped a signed-in Lite seller back to
@@ -14,8 +15,7 @@ import { PLAN_CONFIG } from "../../utils/planConfig";
 //     seller lands on Premium on their next load.
 // Dark seller-panel surface.
 
-const OPS_WHATSAPP = "601111521742";
-const PRICE = PLAN_CONFIG.salesman_full?.price ?? 35;
+const PRICE = PREMIUM_PRICE;
 const LITE_CAP = PLAN_CONFIG.salesman_lite?.listingCap ?? 10;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full?.listingCap ?? 30;
 
@@ -51,9 +51,6 @@ export default function PremiumUpgradeCard({ profile, onRefer }) {
     toast.error("This account can't start a free month.");
   };
 
-  const ref = profile?.slug || profile?.full_name || profile?.email || "";
-  const waText = `Hi, I've paid RM${PRICE} for XDrive Premium. My page: ${ref}`;
-
   const card = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
 
   return (
@@ -80,16 +77,7 @@ export default function PremiumUpgradeCard({ profile, onRefer }) {
         </>
       ) : (
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <p style={{ margin: 0, fontSize: 12.5, color: "#e5e7eb", lineHeight: 1.6 }}>
-            {offer.trial_used ? "Your free month has ended. " : ""}
-            Scan to pay RM{PRICE}, then send us a WhatsApp. We switch you to Premium as soon as we see it.
-          </p>
-          <img src="/payment-qr.png" alt="DuitNow payment QR" width="180" height="180"
-            style={{ display: "block", width: 180, height: 180, marginTop: 12, borderRadius: 8, background: "#fff", padding: 6 }} />
-          <a href={`https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"
-            style={{ display: "inline-block", marginTop: 12, padding: "10px 16px", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-            I've paid, tell XDrive
-          </a>
+          <PremiumPayBox profile={profile} lead={offer.trial_used ? "Your free month has ended. " : ""} />
         </div>
       )}
 
