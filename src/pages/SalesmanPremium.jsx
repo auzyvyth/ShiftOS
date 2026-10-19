@@ -2604,12 +2604,20 @@ export default function SalesmanPremium() {
  const handleDeleteListing = async (carId) => {
  if (deletingId) return;
  setDeletingId(carId);
- const { error } = await supabase
+ // .select() returns the rows actually changed. RLS turns a refused update
+ // into "0 rows, no error", and the car then came back on the next load
+ // after the screen had said Deleted.
+ const { data: archived, error } = await supabase
  .from("car_listings")
  .update({ status: "archived" })
  .eq("id", carId)
- .eq("dealer_id", userId);
+ .eq("dealer_id", userId)
+ .select("id");
  setDeletingId(null);
+ if (!error && !archived?.length) {
+ toast.error(t("salesmanPremium.errors.deleteListing"));
+ return;
+ }
  if (error) {
  console.error("handleDeleteListing:", error);
  if (isWonDealBlock(error)) {
@@ -2627,7 +2635,13 @@ export default function SalesmanPremium() {
  }
  return;
  }
- setMyListings((p) => p.filter((c) => c.id !== carId));
+ // Update the device copy too: the panel paints from it before the database
+ // answers, so a stale copy put the deleted car back on every open.
+ setMyListings((p) => {
+ const next = p.filter((c) => c.id !== carId);
+ writeCache(`${PANEL_CACHE_KEY}_listings_${userId}`, next);
+ return next;
+ });
  setConfirmDeleteId(null);
  toast.success(t("salesmanPremium.listings.deleted"));
  };
