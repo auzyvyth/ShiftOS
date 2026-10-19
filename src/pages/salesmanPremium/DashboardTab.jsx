@@ -469,9 +469,9 @@ export default function DashboardTab({
  href={`/s/${profile.slug}?live=1`}
  target="_blank"
  rel="noopener noreferrer"
- style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, textDecoration: "none", fontWeight: T.weight.medium, fontFamily: "inherit" }}
+ style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.08), border: `1.5px solid ${C.accent}`, color: C.text, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
  >
- <Calculator size={11} />
+ <Calculator size={11} color={C.accent} />
  <span style={{ flex: 1 }}>{t("salesmanPremium.dash.loanCalculator")}</span>
  <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
  </a>}
