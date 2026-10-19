@@ -3390,6 +3390,20 @@ export default function SalesmanLite() {
                   />
                 </div>
               )}
+              {/* Loan calculator under the mini-page link: a new seller could not
+                  find one. Lite has no in-app calculator (the flat-rate one was
+                  removed), so this opens the public /calculator page, which uses
+                  financing.js (EIR). */}
+              <a
+                href="/calculator"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, textDecoration: "none", fontWeight: T.weight.medium, fontFamily: "inherit" }}
+              >
+                <Calculator size={11} />
+                <span style={{ flex: 1 }}>{t("salesmanLite.dash.loanCalculator")}</span>
+                <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+              </a>
               {/* Where the mini-page footprints came from (Instagram / Facebook /
                   TikTok / WhatsApp / …), so the agent knows which channel works. */}
               {minipageStats.byChannel.length > 0 && (

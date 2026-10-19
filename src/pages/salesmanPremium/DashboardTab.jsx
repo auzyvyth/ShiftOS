@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
- Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap,
+ Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap, Calculator,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
@@ -461,6 +461,17 @@ export default function DashboardTab({
  />
  </div>
  )}
+ {/* Loan calculator, one tap from home: a new seller could not find it
+     behind the "Loans" nav label. Same destination as the lead drawer's
+     "Loan calc" button (the loan desk, financing.js EIR maths). */}
+ <button
+ onClick={() => switchTab("loans")}
+ style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontWeight: T.weight.medium, fontFamily: "inherit" }}
+ >
+ <Calculator size={11} />
+ <span style={{ flex: 1, textAlign: "left" }}>{t("salesmanPremium.dash.loanCalculator")}</span>
+ <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
+ </button>
  {minipageStats.byChannel.length > 0 && (
  <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
  <ChannelBreakdown
