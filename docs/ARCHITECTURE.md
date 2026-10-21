@@ -224,6 +224,7 @@ change them; each is applied on its own.
 | Why didn't a lead reach a rep? | `resolve_lead_salesman` (DB) |
 | Why isn't a sale counted? | `auto_create_customer_on_won` trigger on `leads` |
 | Why no push? | `push_subscriptions`, `push_to_users`, `send-push` |
+| Which sellers have alerts on / the app on their home screen? | `get_account_reach`, `app_home_screen` (stamped by `src/hooks/useHomeScreenMark.js`), console > Accounts |
 | Why is the marketplace blank? | `public_car_listings` view, `src/config/marketplaceConfig.js` |
 | Why does Google show a generic page? | `api/og.js` |
 | Why does / or /showroom paint cars before the app loads? | `api/shell.js` + `src/utils/serverSeed.js` |

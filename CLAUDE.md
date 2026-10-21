@@ -845,6 +845,13 @@ across all sections, one state each).
   destroyed in one click). Clicking a row opens the ACCOUNT RECORD — identity,
   plan/billing, activity, actions — instead of four tabs and four searches. Every
   write to an account lives there; do not add action buttons back onto the row.
+- **Reach (REACH-1, 2026-10-21): Accounts shows, per seller, notifications on/off and
+  "app on the home screen"**, from `get_account_reach(p_ids)` (SECURITY DEFINER; counts and
+  dates only, never an endpoint). Home screen = `app_home_screen`, one row per account, stamped
+  by `useHomeScreenMark` (App.jsx) via `mark_home_screen_app` when the signed-in app runs
+  standalone; the old `pwa_installed` event is anonymous and per device, so it cannot answer
+  this. Installs made before 2026-10-21 show only once the seller next opens from the home
+  screen. "Ask them on WhatsApp" opens `wa.me` with steps + `?install=1` link; a human sends.
 - **Activity counts come from `get_account_activity(p_ids)`, never client-side
   queries.** `leads` has no superadmin SELECT policy and must not get one — lead
   rows carry buyer name, phone, IC and address. The RPC returns COUNTS ONLY. It
@@ -1661,8 +1668,15 @@ enquiries. Both were granted to `anon`.
    every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
 ## Product tour (Salesman Premium) — anchors and placement
-11 steps in `TOUR_STEPS` (SalesmanPremium.jsx): a welcome card + one per sidebar link,
-index-matched to `TOUR_TABS`. The tour never switches tabs: it opens the nav (the drawer
+A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
+`navTabs`, SalesmanPremium.jsx).
+**The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
+Leads, Settings always; Inbox once a booking/enquiry exists, Sold after the first sale,
+Analytics once there is a car, Loans + Outreach once there is a lead. The tab you are on
+keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
+only setup + greeting + page link (`startingOut`, DashboardTab.jsx) until the first buyer.
+Three new signups called the full panel "too complicated" on day one. A new tab must say
+when it earns its link, or it goes back to ten links for a seller with no car. The tour never switches tabs: it opens the nav (the drawer
 on a phone) and rings each link where it sits (`data-tour-id`).
 - **The bubble FOLLOWS the ringed link; the buttons do NOT (owner, 2026-10-18).** The
   bubble is words only, placed beside the link by `placeTourCard` (`src/utils/tourPlacement.js`:

@@ -262,8 +262,9 @@ const SETTINGS_GROUPS = [
  ]},
 ];
 
-// Which tab each tour step rings, index-matched to TOUR_STEPS (step 0 is the
-// welcome card and rings nothing). SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
+// Which tab each tour step rings: `tourTabs` in the component, built from the
+// links the menu is SHOWING (navTabs, SIMPLE-1), so a new seller's tour is as
+// short as their menu. Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
 // the sidebar but was introduced 9th, so the ring jumped back up the menu. One step per sidebar link — exactly the
 // 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
 // anymore (see the tourStep effect): it opens the nav (the drawer on
@@ -306,10 +307,6 @@ const markIntroSeenThisSession = (uid, tab) => {
  try { sessionStorage.setItem(introSeenKey(uid, tab), "1"); } catch { /* storage blocked */ }
 };
 
-const TOUR_TABS = [
- null, "dashboard", "listings", "chat", "leads", "enquiries", "sold",
- "analytics", "loans", "outreach", "settings",
-];
 
 
 
@@ -1616,6 +1613,24 @@ export default function SalesmanPremium() {
  // scroll-room padding and in-content scroll-compensation logic (needed
  // when steps pointed at things buried in page content) is gone — every
  // target is a fixed nav row that doesn't move under its own step.
+ // The menu grows with the seller (SIMPLE-1, 2026-10-21). Three new signups
+ // in a day said the panel was "too complicated": a seller with no car saw ten
+ // links, most of them empty boards (Sold, Inbox, Loans, Analytics, Outreach).
+ // A link appears once there is something behind it. The tabs themselves are
+ // untouched, so a deep link or a dashboard shortcut still opens one, and the
+ // tab you are on always keeps its link.
+ const navTabs = [
+  "dashboard", "listings", "chat", "leads",
+  ...((appointments || []).length > 0 || (enquiries || []).length > 0 ? ["enquiries"] : []),
+  ...(handover.deals.length > 0 || soldCount > 0 ? ["sold"] : []),
+  ...(myListings.length > 0 ? ["analytics"] : []),
+  ...(leads.length > 0 ? ["loans", "outreach"] : []),
+  "settings",
+ ];
+ const navShows = (tab) => navTabs.includes(tab) || activeTab === tab;
+ const tourTabs = [null, ...navTabs];
+ const tourTabsKey = tourTabs.join(",");
+
  useEffect(() => {
  if (tourStep === null) { setTourTarget(null); setMobileNavOpen(false); return; }
  if (tourMode && tourMode !== "main") {
@@ -1678,7 +1693,7 @@ export default function SalesmanPremium() {
  window.removeEventListener("resize", measure);
  };
  }
- const tab = TOUR_TABS[tourStep];
+ const tab = tourTabs[tourStep];
  if (!tab) { setTourTarget(null); setMobileNavOpen(false); return; }
  if (isMobile) setMobileNavOpen(true);
  const measure = () => {
@@ -1717,7 +1732,7 @@ export default function SalesmanPremium() {
  drawer?.removeEventListener("scroll", measure);
  window.removeEventListener("resize", measure);
  };
- }, [tourStep, tourMode, introSteps, isMobile, tourCardH]);
+ }, [tourStep, tourMode, introSteps, isMobile, tourCardH, tourTabsKey]);
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
@@ -2863,7 +2878,7 @@ export default function SalesmanPremium() {
  label: t("salesmanPremium.tabs.settings", { defaultValue: "Settings" }),
  icon: <Settings style={{ width: 14, height: 14 }} />,
  },
- ];
+ ].filter((x) => navShows(x.tab));
 
  // NOTIFICATION PANEL — markup lives in the shared component (Lite renders the
  // same one). This page only owns where each notification goes.
@@ -6205,21 +6220,24 @@ export default function SalesmanPremium() {
 
  // TOUR
 
- // One step per TOUR_TABS entry — the 10 sidebar links, in nav order, plus
+ // One step per link the menu is showing (navTabs), in nav order, plus
  // the welcome card. Titles match the nav labels exactly (TABS_DESKTOP)
  // since the ring and the bubble now always describe the same thing.
+ const TOUR_STEP_BY_TAB = {
+ dashboard: { icon: BarChart2, title: t("salesmanPremium.tour.dashboard.title"), body: t("salesmanPremium.tour.dashboard.body") },
+ listings: { icon: Car, title: t("salesmanPremium.tour.listings.title"), body: t("salesmanPremium.tour.listings.body") },
+ chat: { icon: MessageCircle, title: t("salesmanPremium.tour.chat.title"), body: t("salesmanPremium.tour.chat.body") },
+ leads: { icon: Users, title: t("salesmanPremium.tour.leads.title"), body: t("salesmanPremium.tour.leads.body") },
+ enquiries: { icon: MessageSquare, title: t("salesmanPremium.tour.inbox.title"), body: t("salesmanPremium.tour.inbox.body") },
+ sold: { icon: ClipboardList, title: t("salesmanPremium.tour.sold.title"), body: t("salesmanPremium.tour.sold.body") },
+ analytics: { icon: TrendingUp, title: t("salesmanPremium.tour.analytics.title"), body: t("salesmanPremium.tour.analytics.body") },
+ loans: { icon: Banknote, title: t("salesmanPremium.tour.loans.title"), body: t("salesmanPremium.tour.loans.body") },
+ outreach: { icon: Megaphone, title: t("salesmanPremium.tour.outreach.title"), body: t("salesmanPremium.tour.outreach.body") },
+ settings: { icon: Settings, title: t("salesmanPremium.tour.settings.title"), body: t("salesmanPremium.tour.settings.body") },
+ };
  const TOUR_STEPS = [
  { icon: Sparkles, title: t("salesmanPremium.tour.welcome.title"), body: t("salesmanPremium.tour.welcome.body") },
- { icon: BarChart2, title: t("salesmanPremium.tour.dashboard.title"), body: t("salesmanPremium.tour.dashboard.body") },
- { icon: Car, title: t("salesmanPremium.tour.listings.title"), body: t("salesmanPremium.tour.listings.body") },
- { icon: MessageCircle, title: t("salesmanPremium.tour.chat.title"), body: t("salesmanPremium.tour.chat.body") },
- { icon: Users, title: t("salesmanPremium.tour.leads.title"), body: t("salesmanPremium.tour.leads.body") },
- { icon: MessageSquare, title: t("salesmanPremium.tour.inbox.title"), body: t("salesmanPremium.tour.inbox.body") },
- { icon: ClipboardList, title: t("salesmanPremium.tour.sold.title"), body: t("salesmanPremium.tour.sold.body") },
- { icon: TrendingUp, title: t("salesmanPremium.tour.analytics.title"), body: t("salesmanPremium.tour.analytics.body") },
- { icon: Banknote, title: t("salesmanPremium.tour.loans.title"), body: t("salesmanPremium.tour.loans.body") },
- { icon: Megaphone, title: t("salesmanPremium.tour.outreach.title"), body: t("salesmanPremium.tour.outreach.body") },
- { icon: Settings, title: t("salesmanPremium.tour.settings.title"), body: t("salesmanPremium.tour.settings.body") },
+ ...navTabs.map((tab) => TOUR_STEP_BY_TAB[tab]),
  ];
 
  // Per-tab intros. Each step rings a control that is on screen even for a
