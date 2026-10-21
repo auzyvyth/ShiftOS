@@ -845,6 +845,13 @@ across all sections, one state each).
   destroyed in one click). Clicking a row opens the ACCOUNT RECORD — identity,
   plan/billing, activity, actions — instead of four tabs and four searches. Every
   write to an account lives there; do not add action buttons back onto the row.
+- **Reach (REACH-1, 2026-10-21): Accounts shows, per seller, notifications on/off and
+  "app on the home screen"**, from `get_account_reach(p_ids)` (SECURITY DEFINER; counts and
+  dates only, never an endpoint). Home screen = `app_home_screen`, one row per account, stamped
+  by `useHomeScreenMark` (App.jsx) via `mark_home_screen_app` when the signed-in app runs
+  standalone; the old `pwa_installed` event is anonymous and per device, so it cannot answer
+  this. Installs made before 2026-10-21 show only once the seller next opens from the home
+  screen. "Ask them on WhatsApp" opens `wa.me` with steps + `?install=1` link; a human sends.
 - **Activity counts come from `get_account_activity(p_ids)`, never client-side
   queries.** `leads` has no superadmin SELECT policy and must not get one — lead
   rows carry buyer name, phone, IC and address. The RPC returns COUNTS ONLY. It

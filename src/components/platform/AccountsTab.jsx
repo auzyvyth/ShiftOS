@@ -4,6 +4,8 @@ import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 import CreateSellerModal from "./CreateSellerModal";
 import { purgeKycFiles } from "../../utils/kycPurge";
+import { routeForProfile } from "../../hooks/useRoleRedirect";
+import { SITE_URL } from "../../config/site";
 import { accountKind, accessState, reviewState, billingState, headlineState, STATUS_FILTERS, matchesStatusFilter } from "../../utils/accountState";
 
 // One accounts table (P5) with an account record (P6).
@@ -113,6 +115,77 @@ function SectionTitle({ children }) {
   );
 }
 
+// ── Reach (REACH-1): can this seller actually hear about a new lead? ─────────
+// Two facts from get_account_reach (migration 20261021c), merged into `stats`
+// by AdminPage: a push device on file, and the app last opened from the home
+// screen. `reach_known` is false until that migration is live, and then both
+// read "not known yet" rather than a false "off".
+function reachOf(s) {
+  if (!s?.reach_known) return { known: false, alerts: null, app: null };
+  return { known: true, alerts: (s.push_devices || 0) > 0, app: Boolean(s.home_screen_last_at) };
+}
+
+const PLATFORM_LABEL = { ios: "iPhone", android: "Android", desktop: "computer", other: "device" };
+
+const REACH_FILTERS = [
+  { id: "all", label: "Any reach" },
+  { id: "missing", label: "Missing either" },
+  { id: "alerts_off", label: "Notifications off" },
+  { id: "no_app", label: "Not on home screen" },
+];
+
+function matchesReachFilter(s, f) {
+  if (f === "all") return true;
+  const r = reachOf(s);
+  if (!r.known) return false;
+  if (f === "alerts_off") return !r.alerts;
+  if (f === "no_app") return !r.app;
+  return !r.alerts || !r.app;
+}
+
+function waNumber(a) {
+  const digits = String(a.whatsapp_number || a.phone || "").replace(/\D/g, "");
+  if (digits.length < 9) return null;
+  if (digits.startsWith("60")) return digits;
+  if (digits.startsWith("0")) return `6${digits}`;
+  return `60${digits}`;
+}
+
+// The message the admin sends from their own phone. A human presses send
+// (never an automated blast). Malay, since the sellers are Malaysian; names no
+// product, because the seller-side name is an open owner call (BRAND-1).
+// `?install=1` re-opens the install card even if the seller dismissed it.
+function reachMessage(a, r) {
+  const name = (a.full_name || "").split(" ")[0] || "";
+  const link = `${SITE_URL}${routeForProfile(a)}?install=1`;
+  const lines = [`Hai${name ? ` ${name}` : ""}, supaya anda tak terlepas pembeli baru:`, ""];
+  if (!r.app) {
+    lines.push(
+      `1. Buka ${link} dalam Safari (iPhone) atau Chrome (Android).`,
+      `2. iPhone: tekan butang Kongsi, pilih "Add to Home Screen". Android: tekan "Install" atau menu ⋮ > "Add to Home screen".`,
+      `3. Buka app dari skrin utama dan log masuk.`,
+      `4. Tekan butang untuk hidupkan notifikasi, kemudian "Allow".`,
+    );
+  } else {
+    lines.push(
+      `1. Buka app dari skrin utama telefon anda.`,
+      `2. Tekan butang untuk hidupkan notifikasi, kemudian "Allow".`,
+    );
+  }
+  lines.push("", "Lepas itu telefon anda akan berbunyi setiap kali pembeli chat, WhatsApp atau buat tempahan.");
+  return lines.join("\n");
+}
+
+function ReachDot({ on, known, label }) {
+  const color = !known ? "#374151" : on ? "#4ade80" : "#6b7280";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: !known ? "#4b5563" : on ? "#d1d5db" : "#6b7280", whiteSpace: "nowrap" }}>
+      <span style={{ width: 6, height: 6, borderRadius: 99, background: on && known ? color : "transparent", border: `1.5px solid ${color}` }} />
+      {label}
+    </span>
+  );
+}
+
 const btn = (tone = "neutral", off = false) => {
   const tones = {
     neutral: ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.1)", "#9ca3af"],
@@ -133,6 +206,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   const [roleFilter, setRoleFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState("created_at");
+  const [reachFilter, setReachFilter] = useState("all");
   const [openId, setOpenId] = useState(null);
   const [suspendFor, setSuspendFor] = useState(null);
   const [suspendReason, setSuspendReason] = useState("");
@@ -165,7 +239,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   onFocusHandledRef.current = onFocusHandled;
   useEffect(() => {
     if (!focusId) return;
-    setSearch(""); setRoleFilter("all"); setStatusFilter("all"); setTeamOf(null);
+    setSearch(""); setRoleFilter("all"); setStatusFilter("all"); setReachFilter("all"); setTeamOf(null);
     setOpenId(focusId);
     onFocusHandledRef.current?.();
   }, [focusId]);
@@ -190,6 +264,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (teamOf && a.dealer_id !== teamOf) return false;
         if (roleFilter !== "all" && accountKind(a) !== roleFilter) return false;
         if (!matchesStatusFilter(a, statusFilter)) return false;
+        if (!matchesReachFilter(stats[a.id], reachFilter)) return false;
         if (!q) return true;
         return [a.full_name, a.email, a.dealership, a.subdomain, a.slug, a.phone, a.whatsapp_number]
           .some(v => v && String(v).toLowerCase().includes(q));
@@ -200,7 +275,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         if (sortBy === "name") return (a.dealership || a.full_name || "").localeCompare(b.dealership || b.full_name || "");
         return new Date(b.created_at) - new Date(a.created_at);
       });
-  }, [accounts, stats, search, roleFilter, statusFilter, sortBy, teamOf]);
+  }, [accounts, stats, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf]);
 
   const open = openId ? byId[openId] : null;
 
@@ -485,6 +560,9 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="adm-select">
           {STATUS_FILTERS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
         </select>
+        <select value={reachFilter} onChange={e => setReachFilter(e.target.value)} className="adm-select" aria-label="Filter by notifications and home screen">
+          {REACH_FILTERS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+        </select>
         <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="adm-select">
           <option value="created_at">Newest first</option>
           <option value="activity">Recently active</option>
@@ -499,16 +577,16 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr style={{ background: "rgba(255,255,255,0.025)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                {["Account", "Type", "Status", "Listings", "Leads", "Last active", "Joined", ""].map(h => (
+                {["Account", "Type", "Status", "Reach", "Listings", "Leads", "Last active", "Joined", ""].map(h => (
                   <th key={h} style={{ textAlign: "left", padding: "10px 14px", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", color: "#6b7280", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>Loading…</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No accounts match those filters.</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: "center", padding: 40, color: "#4b5563" }}>No accounts match those filters.</td></tr>
               ) : rows.map(a => {
                 const st = headlineState(a);
                 const rv = reviewState(a);
@@ -516,6 +594,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                 // A dead account should read as dead at a glance (A4): no
                 // listings and no leads is the signal, not a missing column.
                 const dormant = !s.listings && !s.leads;
+                const r = reachOf(s);
                 return (
                   <tr key={a.id} className="adm-row" onClick={() => setOpenId(a.id)}
                     style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", opacity: st.id === "deleted" ? 0.45 : 1 }}>
@@ -532,6 +611,12 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                     <td style={{ padding: "10px 14px", color: "#9ca3af", whiteSpace: "nowrap" }}>{kindLabel(a)}</td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: st.color }}>{st.text}</span>
+                    </td>
+                    <td style={{ padding: "10px 14px", fontSize: 11 }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                        <ReachDot known={r.known} on={r.alerts} label={r.known ? (r.alerts ? "Alerts on" : "Alerts off") : "Alerts ?"} />
+                        <ReachDot known={r.known} on={r.app} label={r.known ? (r.app ? "Home screen" : "No app") : "App ?"} />
+                      </div>
                     </td>
                     <td style={{ padding: "10px 14px", color: dormant ? "#374151" : "#e5e7eb", fontVariantNumeric: "tabular-nums" }}>
                       {s.listings ?? 0}
@@ -667,6 +752,47 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
                         </button>
                       ) : "a dealer no longer on the platform"
                     } />
+                  )}
+                </>
+              );
+            })()}
+
+            <SectionTitle>Reach</SectionTitle>
+            {(() => {
+              const s = stats[open.id] || {};
+              const r = reachOf(s);
+              if (!r.known) {
+                return <p style={{ fontSize: 12, color: "#6b7280", margin: 0 }}>Not known yet: the database update for this (migration 20261021c) is not live.</p>;
+              }
+              const num = waNumber(open);
+              const done = r.alerts && r.app;
+              return (
+                <>
+                  <Field label="Notifications" value={r.alerts
+                    ? `On, ${s.push_devices} ${s.push_devices === 1 ? "device" : "devices"} (last set up ${sinceLabel(s.push_last_at)})`
+                    : <span style={{ color: "#fbbf24" }}>Off on every device</span>} />
+                  <Field label="Home screen app" value={r.app
+                    ? `Opened ${sinceLabel(s.home_screen_last_at)} on ${PLATFORM_LABEL[s.home_screen_platform] || "a device"}`
+                    : <span style={{ color: "#fbbf24" }}>Not seen yet</span>} />
+                  <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "#9ca3af", lineHeight: 1.55 }}>
+                    {done
+                      ? "They hear about a new buyer the moment it arrives."
+                      : !r.alerts
+                        ? "A new buyer reaches them only when they next open the app. On an iPhone, notifications need the home screen app first."
+                        : "Notifications work, but the app is not on their home screen (or they installed it before this was tracked and have not opened it since)."}
+                  </p>
+                  {open.role !== "superadmin" && open.account_status !== "deleted" && !done && (
+                    <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <button disabled={!num}
+                        onClick={() => {
+                          // Synchronous inside the click so no popup blocker gets in the way.
+                          window.open(`https://wa.me/${num}?text=${encodeURIComponent(reachMessage(open, r))}`, "_blank", "noopener");
+                        }}
+                        style={btn("good", !num)}>
+                        Ask them on WhatsApp
+                      </button>
+                      {!num && <span style={{ fontSize: 11.5, color: "#6b7280" }}>No phone number on this account.</span>}
+                    </div>
                   )}
                 </>
               );

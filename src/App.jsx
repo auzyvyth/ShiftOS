@@ -15,6 +15,7 @@ import { isSubdomain } from "./hooks/useTenant";
 import { useIdleLogout } from "./hooks/useIdleLogout";
 import { usePushHeal } from "./hooks/usePushHeal";
 import { useInternalDeviceMark } from "./hooks/useInternalDeviceMark";
+import { useHomeScreenMark } from "./hooks/useHomeScreenMark";
 import { usePlatformSessionGuard } from "./hooks/usePlatformSessionGuard";
 import "./i18n/config";
 
@@ -141,6 +142,7 @@ function App() {
   useIdleLogout(); // sign out after 24h of inactivity
   usePushHeal();   // silently re-register a push subscription the browser dropped
   useInternalDeviceMark(); // a seller/staff login keeps this device out of analytics
+  useHomeScreenMark(); // stamps "opened from the home screen" on the account (console > Accounts)
   usePlatformSessionGuard(); // the admin account only ever signs in at /platform
   return (
     <Router>

@@ -579,11 +579,18 @@ export default function AdminPage() {
     // must not get one -- lead rows carry buyer name, phone, IC and address.
     // The RPC returns numbers only.
     if (allAccounts.length > 0) {
-      const { data: activity, error: actErr } = await supabase
-        .rpc("get_account_activity", { p_ids: allAccounts.map(a => a.id) });
+      const ids = allAccounts.map(a => a.id);
+      // Reach (REACH-1): notifications on + app on the home screen. Its own RPC
+      // so a failure there (e.g. migration 20261021c not applied yet) leaves the
+      // activity counts intact; the record then reads "not known yet".
+      const [{ data: activity, error: actErr }, { data: reach, error: reachErr }] = await Promise.all([
+        supabase.rpc("get_account_activity", { p_ids: ids }),
+        supabase.rpc("get_account_reach", { p_ids: ids }),
+      ]);
       if (actErr) setActionError(`Could not load account activity: ${actErr.message}`);
       const byAccount = {};
       (activity || []).forEach(r => { byAccount[r.id] = r; });
+      if (!reachErr) (reach || []).forEach(r => { byAccount[r.id] = { ...(byAccount[r.id] || {}), ...r, reach_known: true }; });
       setAccountStats(byAccount);
     }
     if (!silent) setLoading(false);
