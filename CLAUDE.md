@@ -504,6 +504,26 @@ seller's showroom search sat on skeletons. Write `(_, s) => { resolve(s); }`,
 never `async (_, s) => ...`. The marketplace + showroom grids and
 `useMarketplaceStats` read through `publicClient` so a dead login cannot blank them.
 
+## Production releases happen after MIDNIGHT, and only when nobody is live (owner, 2026-10-21)
+Sellers run Live presentation on TikTok in the evening; a release or a DB change during a
+live can stall it in front of their audience. So:
+- **Daytime = staging only.** Build, push staging, the owner tests the preview.
+- **The owner's "ship tonight" is the approval.** Schedule a `send_later` check-in for
+  00:05 Malaysia time (16:05 UTC). At that time: run
+  `select count(*) from seller_live_state where live_until > now();`. If it is 0, merge the
+  PR, verify the Vercel production deploy is READY, apply any queued migrations in the same
+  slot, and leave the owner a short summary. If someone is live, check again every 30 min;
+  give up at 03:00 and say so (never release after that without asking).
+- **Emergency fix (something broken for users):** only on the owner's explicit "ship now",
+  and say first if anyone is live.
+- What a release does to an open page: nothing until it reloads (`registerType: 'prompt'`,
+  `vite.config.js`; LivePresenter loads no further chunks once open). A DB migration is the
+  bigger hazard: it freezes the API up to 45s, and the presenter heartbeat
+  (`set_live_listing`) and the mini page "Live now" poll both go through it.
+- "Who is online right now" is NOT answerable from existing data: `auth.sessions` only
+  updates on the hourly token refresh, and `analytics_events` skips sellers' devices and
+  anyone without analytics consent. `seller_live_state` is the one reliable signal.
+
 ## Deployment pipeline — 3 stages
 **API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**
 (`vercel.json` `regions`, 2026-10-21). They ran in Vercel's default `iad1` (Washington):
@@ -577,10 +597,12 @@ instruction — run the intake yourself, do not ask first. Full runbook:
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
-  - **No DDL between 09:00 and 22:00 Malaysia time (01:00-14:00 UTC).** Run `date -u`
-    before every `apply_migration`. Inside the window, do NOT apply it: write the
-    migration file, commit it, and tell the owner it is queued for tonight. Only an
-    explicit "apply it now" from the owner overrides this, per migration.
+  - **DDL only after midnight Malaysia time (00:00-09:00 MYT, 16:00-01:00 UTC), and only
+    when nobody is live** (owner, 2026-10-21; it was 22:00, which overlaps evening lives).
+    Run `date -u` and the `seller_live_state` check before every `apply_migration`.
+    Outside the window, do NOT apply it: write the migration file, commit it, and queue it
+    for tonight's release. Only an explicit "apply it now" from the owner overrides this,
+    per migration.
   - **One migration per change, not one per statement.** Each call is one freeze;
     five small migrations froze the API five times on 2026-09-26.
   - **A migration that DROPs anything needs the owner to confirm it in the tool, and
