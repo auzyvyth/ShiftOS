@@ -19,6 +19,7 @@ import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '
 import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
+import { cdnImg, imgFallback } from '../../utils/img';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -88,6 +89,27 @@ const STAGE_H = 667;
 // too small on a monitor for the camera to read. Two columns: the car and its
 // working on the left, deposit + tenure + everything under it on the right.
 const DESK_W = STAGE_W * 2;
+
+// Photos go through the resizer (img.js): the raw uploads are 2-5 MB, and a
+// tap to the next photo kept the old one on screen until the new file landed,
+// so three quick taps showed nothing new until the last arrived. 960px is
+// sharp on the zoomed desktop stage; the phone box is smaller.
+const PHOTO_W = 960;
+const photoUrl = (u) => cdnImg(u, PHOTO_W, 75);
+// The preloaded Image objects are KEPT (not just fired and forgotten): a
+// live image is what lets the browser reuse the download for the <img> with
+// the same URL, whatever cache headers the resizer sends. Capped so a long
+// live does not hold every photo of every car.
+const preloaded = new Map();
+const PRELOAD_MAX = 60;
+const preload = (u) => {
+  if (!u || preloaded.has(u) || typeof Image === 'undefined') return;
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = photoUrl(u);
+  preloaded.set(u, im);
+  if (preloaded.size > PRELOAD_MAX) preloaded.delete(preloaded.keys().next().value);
+};
 
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
@@ -264,6 +286,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
+  // Fetch this car's photos ahead of the taps, plus the first photo of the
+  // cars either side, so swiping shows a photo that is already downloaded.
+  useEffect(() => {
+    if (!listings.length) return;
+    const pics = (c) => (Array.isArray(c?.images) ? c.images.filter(Boolean) : []);
+    pics(listings[idx]).slice(0, 12).forEach(preload);
+    preload(pics(listings[(idx + 1) % listings.length])[0]);
+    preload(pics(listings[(idx - 1 + listings.length) % listings.length])[0]);
+  }, [idx, listings]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
   const rate = Math.max(0, Number(eir) || 0);
@@ -847,7 +878,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
               {images[imgIdx]
-                ? <img src={images[imgIdx]} alt={carLabel(shown)} />
+                // Keyed by photo: a new tap shows the new photo (or the blank
+                // frame while it lands), never the old one under the new dot.
+                ? <img key={images[imgIdx]} src={photoUrl(images[imgIdx])} alt={carLabel(shown)}
+                    decoding="async" onError={imgFallback(images[imgIdx])} />
                 : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
@@ -1104,7 +1138,7 @@ function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
         </div>
       )}
       <button type="button" className="lp-row" onClick={() => onOpen(row)}>
-        {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
+        {img ? <img src={cdnImg(img, 240, 70)} alt="" decoding="async" onError={imgFallback(img)} /> : <span className="lp-noimg" />}
         <span className="lp-n">#{m.n}</span>
         <span className="lp-rn">
           {/* With the variant buttons above, the title leaves the variant to them. */}

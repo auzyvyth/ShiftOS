@@ -1527,6 +1527,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   A model card's Budget row shows its variants ON TOP (`options` from `budgetMatches`): the ones the
   budget buys are tappable and the row's price + monthly follow the pick (and the car it opens);
   the rest are dimmed and struck through, never blurred (blur reads as a glitch on camera).
+- **Photos go through `cdnImg` at 960px and are preloaded** (2026-10-22, `photoUrl` / `preload` in
+  LivePresenter.jsx): the current car's photos plus the first photo of the cars either side, held
+  as live Image objects. Raw uploads (2-5 MB) left the old photo on screen through three taps. The
+  `<img>` is keyed by photo so a tap never shows the old photo under the new dot.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
   each VARIANT holds its own rebate (`rebateKey` = card + variant, owner 2026-10-22); the Cars
