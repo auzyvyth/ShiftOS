@@ -5,6 +5,7 @@ import { ArrowLeft, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
 import { withTimeout } from '../config/marketplaceConfig';
+import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
@@ -143,7 +144,7 @@ function AgentCarCard({ car, num, onClick }) {
   const imgs = Array.isArray(car.images) ? car.images.filter(Boolean) : [];
   const cond = car.condition ? car.condition.charAt(0).toUpperCase() + car.condition.slice(1) : null;
   return (
-    <Link to={`/showroom/${car.slug || car.id}`} onClick={onClick} className="ap-card ap-car">
+    <Link to={`/showroom/${car.slug || car.id}`} {...carWarmProps(car)} onClick={onClick} className="ap-card ap-car">
       <div className="ap-ph">
         {imgs[0]
           ? <img src={cdnImg(imgs[0], 480, 72)} srcSet={cdnSrcSet(imgs[0], [320, 480, 640], 72)}
@@ -882,7 +883,7 @@ export default function SalesmanProfilePage() {
                   <div className="ap-sec"><h2>On my live now</h2></div>
                   <div className="ap-card ap-live">
                     <p className="ap-live-h"><i />Showing #{liveIdx + 1}</p>
-                    <Link to={`/showroom/${liveCar.slug || liveCar.id}`} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
+                    <Link to={`/showroom/${liveCar.slug || liveCar.id}`} {...carWarmProps(liveCar)} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
                       <div className="ap-live-ph">
                         {Array.isArray(liveCar.images) && liveCar.images[0] && <img src={cdnImg(liveCar.images[0], 320, 72)} alt="" />}
                       </div>

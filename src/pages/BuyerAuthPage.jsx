@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { markBuyerIntent, markBuyerConsent, ensureBuyerProfile, consumePostAuthReturn, hasPostAuthReturn } from "../lib/buyerAuth";
 import { routeForProfile, ROUTE_PROFILE_COLUMNS } from "../hooks/useRoleRedirect";
@@ -46,7 +46,11 @@ export default function BuyerAuthPage() {
   const isProd = isOwnHost(window.location.hostname);
   const base = isProd ? SITE_URL : window.location.origin;
 
-  const [mode, setMode] = useState("signin"); // 'signin' | 'signup'
+  // /buyer-signup opens on Create account. Both routes render this page, and it
+  // used to always start on Sign in, so "Sign up to buy" (LoginPage) and "Create
+  // a buyer account" (FindMePage) landed buyers on the wrong form.
+  const { pathname } = useLocation();
+  const [mode, setMode] = useState(() => (pathname === "/buyer-signup" ? "signup" : "signin")); // 'signin' | 'signup'
   const isSignup = mode === "signup";
   const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState("");
@@ -112,6 +116,10 @@ export default function BuyerAuthPage() {
   }, [lockSeconds]);
 
   const switchMode = (m) => { setMode(m); setError(""); setConfirmSent(false); setShowForgot(false); setShowMagic(false); setMagicSent(false); };
+  // Following a link between the two routes keeps this page mounted.
+  useEffect(() => {
+    switchMode(pathname === "/buyer-signup" ? "signup" : "signin");
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMagicLink = async () => {
     if (isSignup && !consent) { setError(CONSENT_ERR); return; }

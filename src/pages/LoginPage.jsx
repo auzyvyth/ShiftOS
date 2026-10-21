@@ -1152,7 +1152,7 @@ export default function LoginPage() {
               cars was put into the salesman signup wizard. */}
           <div className="lr-create-row" style={{ flexWrap: 'wrap', rowGap: 6 }}>
             <span className="lr-create-text">New here?</span>
-            <a href="/buyer-login" className="lr-create-link">Sign up to buy →</a>
+            <a href="/buyer-signup" className="lr-create-link">Sign up to buy →</a>
             <span className="lr-create-text" aria-hidden>·</span>
             <a href="/plans" className="lr-create-link">Sign up to sell →</a>
           </div>

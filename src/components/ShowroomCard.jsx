@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from 'react';
+import { carWarmProps } from '../utils/carPrefetch';
 import { useNavigate, Link } from 'react-router-dom';
 import { Car, Users, ArrowLeftRight, MessageCircle, Heart, BadgeCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -236,6 +237,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
     <div
       ref={cardRef}
       className={`sc-root${isHot ? ' hot' : ''}`}
+      {...(!isSold ? carWarmProps(car) : {})}
       onClick={() => {
         if (suppressClick.current) { suppressClick.current = false; return; }
         if (isSold || !(car.slug || car.id)) return;
