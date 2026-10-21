@@ -87,8 +87,10 @@ export function useNewCarInfo(listingId) {
 }
 
 // Several cards at once (the Live presenter's Budget tab prices every variant
-// of every model card). Same cached request per card as useNewCarInfo.
-// Returns { [listingId]: info } for the ones that answered.
+// of every model card). ONE call for the whole list, get_new_car_variants_batch
+// (migration 20261021f): it used to be one get_new_car_listing_info per card.
+// Returns { [listingId]: { variants } } for the ones that answered. If the batch
+// call fails (e.g. before that migration is applied), falls back to per card.
 export function useNewCarInfos(listingIds) {
   const key = (listingIds || []).join(",");
   const [infos, setInfos] = useState({});
@@ -96,9 +98,13 @@ export function useNewCarInfos(listingIds) {
     let alive = true;
     const ids = key ? key.split(",") : [];
     if (!ids.length) return undefined;
-    Promise.all(ids.map((id) => loadInfo(id).then((d) => [id, d]))).then((pairs) => {
-      if (alive) setInfos(Object.fromEntries(pairs.filter(([, d]) => d)));
-    });
+    const perCard = () => Promise.all(ids.map((id) => loadInfo(id).then((d) => [id, d])))
+      .then((pairs) => Object.fromEntries(pairs.filter(([, d]) => d)));
+    publicClient.rpc("get_new_car_variants_batch", { p_listing_ids: ids })
+      .then(({ data, error }) => (error
+        ? perCard()
+        : Object.fromEntries((data || []).map((r) => [r.listing_id, { variants: r.variants }]))))
+      .then((m) => { if (alive) setInfos(m); }, () => {});
     return () => { alive = false; };
   }, [key]);
   return infos;
