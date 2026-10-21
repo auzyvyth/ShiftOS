@@ -42,6 +42,8 @@ const en = {
   newPriceNote: 'Official price, on the road without insurance.',
   prevPhoto: 'Previous photo',
   nextPhoto: 'Next photo',
+  fullPhoto: 'Full view',
+  closePhoto: 'Close photo',
   price: 'Price',
   onRequest: 'On request',
   deposit: 'Deposit',
@@ -49,6 +51,10 @@ const en = {
   noDeposit: 'No deposit',
   loan: 'Loan',
   rate: 'Rate',
+  rateInfoLabel: 'What is this rate?',
+  rateInfo: (r, flat) => (flat
+    ? `${r}% flat, as the bank quoted it. It is worked out as EIR for each tenure, so the monthly matches what the bank charges.`
+    : `${r}% EIR: the effective rate, charged on what you still owe. Since 1 June 2026 banks quote EIR, not flat. A 3.5% flat rate over 7 years is about 6.4% EIR, the same monthly. Bank gave you a flat rate? Switch to Flat with the sliders button at the top.`),
   flat: 'flat',
   pctDown: (p) => `${p}% down`,
   tenure: 'Tenure',
@@ -61,6 +67,16 @@ const en = {
   flatAsEir: (y, r) => `, flat rate worked out as EIR (${y} yrs ${r}%)`,
   highValue: 'Above RM300k banks decide case by case, often with a bigger deposit or shorter tenure, so treat this as a rough guide.',
   subjectBank: 'Subject to bank approval.',
+  depositCovers: 'The deposit covers the price: no loan needed.',
+  tenureCap: (y, age) => `Banks usually finance a used car until it is ${age} years old, so up to ${y} years here.`,
+  tooOld: (age) => `Banks rarely give a car loan once a car is near ${age} years old.`,
+  looksFlat: 'This looks like a flat (brochure) rate.',
+  switchFlat: 'Switch to flat',
+  aboveCap: (cap) => `Above the legal cap of ${cap}% EIR for this tenure.`,
+  total: (y, total, interest) => `Total repaid over ${y} years ${total}, of which interest ${interest}.`,
+  topUp: (rm) => `+${rm} deposit and it fits`,
+  targetMonthly: 'Target monthly (RM)',
+  monthlyTip: 'Tip: tap the picked monthly and type a target. The deposit it needs fills in.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
   ctaLabel: 'Comment line',
   insurance: 'Insurance',
@@ -145,6 +161,8 @@ const ms = {
   newPriceNote: 'Harga rasmi, atas jalan tanpa insurans.',
   prevPhoto: 'Gambar sebelum',
   nextPhoto: 'Gambar seterusnya',
+  fullPhoto: 'Paparan penuh',
+  closePhoto: 'Tutup gambar',
   price: 'Harga',
   onRequest: 'Hubungi kami',
   deposit: 'Deposit',
@@ -152,6 +170,10 @@ const ms = {
   noDeposit: 'Tanpa deposit',
   loan: 'Pinjaman',
   rate: 'Kadar',
+  rateInfoLabel: 'Apa kadar ini?',
+  rateInfo: (r, flat) => (flat
+    ? `${r}% flat, seperti yang bank sebut. Ia dikira sebagai EIR untuk setiap tempoh, jadi bayaran bulanan sama dengan caj bank.`
+    : `${r}% EIR: kadar efektif, dikenakan atas baki yang masih dihutang. Sejak 1 Jun 2026 bank menyebut EIR, bukan flat. Kadar flat 3.5% selama 7 tahun lebih kurang 6.4% EIR, bayaran bulanan yang sama. Bank beri kadar flat? Tukar ke Flat melalui butang pelaras di atas.`),
   flat: 'flat',
   pctDown: (p) => `Deposit ${p}%`,
   tenure: 'Tempoh',
@@ -164,6 +186,16 @@ const ms = {
   flatAsEir: (y, r) => `, kadar flat dikira sebagai EIR (${y} thn ${r}%)`,
   highValue: 'Melebihi RM300k, bank menilai setiap kes, selalunya dengan deposit lebih besar atau tempoh lebih pendek, jadi ini anggaran kasar sahaja.',
   subjectBank: 'Tertakluk kepada kelulusan bank.',
+  depositCovers: 'Deposit menampung harga: tiada pinjaman diperlukan.',
+  tenureCap: (y, age) => `Bank biasanya membiayai kereta terpakai sehingga umurnya ${age} tahun, jadi maksimum ${y} tahun di sini.`,
+  tooOld: (age) => `Bank jarang memberi pinjaman kereta yang hampir berumur ${age} tahun.`,
+  looksFlat: 'Kadar ini nampak seperti kadar flat (brosur).',
+  switchFlat: 'Tukar ke flat',
+  aboveCap: (cap) => `Melebihi had undang-undang ${cap}% EIR untuk tempoh ini.`,
+  total: (y, total, interest) => `Jumlah bayaran ${y} tahun ${total}, termasuk faedah ${interest}.`,
+  topUp: (rm) => `+${rm} deposit, terus muat`,
+  targetMonthly: 'Sasaran bulanan (RM)',
+  monthlyTip: 'Tip: tekan bayaran bulanan yang dipilih dan taip sasaran. Deposit yang diperlukan diisi sendiri.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
   ctaLabel: 'Ayat komen',
   insurance: 'Insurans',
@@ -256,6 +288,23 @@ export function saveLiveOffer(text) {
   try {
     if (text.trim()) window.localStorage.setItem(LIVE_OFFER_KEY, text);
     else window.localStorage.removeItem(LIVE_OFFER_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// New-car model card rebates (Proton / Perodua / Toyota / BYD price list),
+// remembered per device until the month ends (liveMaths.rebatesForMonth):
+// the seller types this month's promo once, not every live. Rebates on cars
+// from the normal form are NOT saved: they are per deal, per live.
+export const LIVE_REBATES_KEY = 'xd_live_rebates';
+
+export function initialLiveRebates(rebatesForMonth) {
+  try { return rebatesForMonth(JSON.parse(window.localStorage.getItem(LIVE_REBATES_KEY) || 'null')); } catch { return {}; }
+}
+
+export function saveLiveRebates(rebates, month) {
+  try {
+    if (Object.keys(rebates).length) window.localStorage.setItem(LIVE_REBATES_KEY, JSON.stringify({ month, rebates }));
+    else window.localStorage.removeItem(LIVE_REBATES_KEY);
   } catch { /* storage blocked */ }
 }
 

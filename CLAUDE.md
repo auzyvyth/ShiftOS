@@ -1356,8 +1356,8 @@ account (owner, 2026-10-08, migration 20261008d):** nothing from the catalogue i
 for them; they add a CARD per variant they sell (below), and only cards show. Do not
 bring back an automatic price list on the mini page (it was built twice: opt-in ticks,
 then default-on; the owner rejected both as clutter). Settings > New cars is a brand
-picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored: promos expire (the ones in the owner's 2026-10-08
-file had); the presenter's per-live rebate box is where a current one goes. Never copy a new car into `car_listings`: it blows the listing cap,
+picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
+file had); the presenter's rebate box is where a current one goes (kept on the device to month end). Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
@@ -1515,8 +1515,36 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Compare) all call it. They had their own band table that gave about HALF the tariff,
   plus a saloon / SUV switch: that split is a ROAD TAX rule, never insurance. Do not
   add a second insurance table anywhere.
+- **Guards + reverse maths (LIVE-CALC, 2026-10-22)**, all in `liveMaths.js`, `npm run test:live`:
+  tenures follow the car's age (`tenuresFor`: about 15 years old at loan end, bank policy, the note
+  says "usually"; new cars uncapped; Budget prices each car on the SAME rows the Cars screen offers,
+  or the row and the car it opens disagree); `rateWarning` flags an EIR under 4% (a flat number on
+  the wrong switch) or over the HP Act cap (17% <=5y, 16% >5y); tapping the PICKED monthly takes a
+  target and fills the deposit (`depositToFit`, rounded UP to RM100); "just above" Budget rows say
+  "+RM x deposit and it fits" and open with it; a "total repaid / interest" line under the salary
+  guide. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
+  10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
+  The rate box stops at 17 (`RATE_MAX` / `clampRateInput`, the legal EIR ceiling; a typo like 65
+  for 6.5 becomes 17) and the "Rate" label has an info button (`lp-info`, hover with a mouse,
+  tap on a phone; `pointerType === 'mouse'` only, or a tap opens and closes it at once) that
+  explains EIR vs flat in both languages (`liveCopy.js rateInfo`).
+  A model card's Budget row shows its variants ON TOP (`options` from `budgetMatches`): the ones the
+  budget buys are tappable and the row's price + monthly follow the pick (and the car it opens);
+  the rest are dimmed and struck through, never blurred (blur reads as a glitch on camera).
+- **Photos go through `cdnImg` at 960px and are preloaded** (2026-10-22, `photoUrl` / `preload` in
+  LivePresenter.jsx): the current car's photos plus the first photo of the cars either side, held
+  as live Image objects. Raw uploads (2-5 MB) left the old photo on screen through three taps. The
+  `<img>` is keyed by photo so a tap never shows the old photo under the new dot.
+  **Full view** (expand button on the photo, `photoFull`): fills the STAGE (`.lp-full`, absolute in
+  `.lp-stage`), never the browser window, so it is never wider than the calculator (owner,
+  2026-10-22). Uncropped (`object-fit: contain`), tap halves / swipe / arrow keys step photos, X /
+  Esc / Back close it (it registers `useModalHistory`). Not portalled: the presenter already is.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
-  Typed in Adjust, never saved to the listing (promos change monthly). Loan =
+  Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
+  ONE rebate covers every variant (keyed by the listing; owner 2026-10-22: brands run one promo
+  per model) and it is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
+  (`xd_live_rebates`, `rebatesForMonth`), so the seller types this month's promo once. Rebates on
+  cars from the normal form are per live only, never saved. Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
   never counted as the buyer's deposit.

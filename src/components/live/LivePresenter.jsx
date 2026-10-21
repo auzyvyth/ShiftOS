@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Info, Maximize2, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
-  monthlyPayment, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
+  monthlyPayment, loanTotals, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel,
+  netPrice, carLabel, rebatesForMonth, myMonth, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
+import { cdnImg, imgFallback } from '../../utils/img';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -89,9 +90,29 @@ const STAGE_H = 667;
 // working on the left, deposit + tenure + everything under it on the right.
 const DESK_W = STAGE_W * 2;
 
+// Photos go through the resizer (img.js): the raw uploads are 2-5 MB, and a
+// tap to the next photo kept the old one on screen until the new file landed,
+// so three quick taps showed nothing new until the last arrived. 960px is
+// sharp on the zoomed desktop stage; the phone box is smaller.
+const PHOTO_W = 960;
+const photoUrl = (u) => cdnImg(u, PHOTO_W, 75);
+// The preloaded Image objects are KEPT (not just fired and forgotten): a
+// live image is what lets the browser reuse the download for the <img> with
+// the same URL, whatever cache headers the resizer sends. Capped so a long
+// live does not hold every photo of every car.
+const preloaded = new Map();
+const PRELOAD_MAX = 60;
+const preload = (u) => {
+  if (!u || preloaded.has(u) || typeof Image === 'undefined') return;
+  const im = new Image();
+  im.decoding = 'async';
+  im.src = photoUrl(u);
+  preloaded.set(u, im);
+  if (preloaded.size > PRELOAD_MAX) preloaded.delete(preloaded.keys().next().value);
+};
+
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
-const TENURES_DESC = [...TENURES].reverse(); // the poster lists longest first
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
 const DOWN_ROWS = [DEFAULT_DOWN, 20, 30];
 const DEFAULT_TENURE = 7;
@@ -122,6 +143,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
+  // Full view of the car photo. It fills the STAGE, not the browser window, so
+  // it is never wider than the calculator (owner, 2026-10-22): on a phone that
+  // is the portrait stage, on desktop the zoomed 750px stage the camera films.
+  const [photoFull, setPhotoFull] = useState(false);
+  const [rateInfo, setRateInfo] = useState(false);
+  const photoTouchX = useRef(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
   // 'click', not 'pointerdown': the tapped control acts first, then the panel
@@ -151,9 +178,20 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, typed during this live only. Promos change monthly, so it
   // is not saved to the listing.
-  const [rebates, setRebates] = useState({});
+  // A new-car model card's rebate is remembered until the month ends (liveCopy.js);
+  // every other car's rebate lasts this live only.
+  const [rebates, setRebates] = useState(() => (embedded ? {} : initialLiveRebates(rebatesForMonth)));
+  const modelCardIds = listings.filter((c) => c.is_model_card).map((c) => c.id).join(',');
+  useEffect(() => {
+    if (embedded) return;
+    const ids = new Set(modelCardIds ? modelCardIds.split(',') : []);
+    const keep = Object.fromEntries(Object.entries(rebates).filter(([id, v]) => ids.has(id) && Number(v) > 0));
+    saveLiveRebates(keep, myMonth());
+  }, [rebates, modelCardIds, embedded]);
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
-  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate' | 'ins'
+  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate' | 'ins' | 'monthly'
+  // Tapping the picked monthly and typing a target works out the deposit it needs.
+  const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
   // the NCD is the viewer's, picked on the pills under the working; a typed
   // figure (the seller's insurer quote, or an EV) wins for that car, this live.
@@ -166,12 +204,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetDown, setBudgetDown] = useState('');
   const [budgetYears, setBudgetYears] = useState(DEFAULT_TENURE);
+  // Variant picked on a model card's Budget row, by #N. Only a variant that
+  // fits can be picked; one that stops fitting falls back to the row's own.
+  const [budgetPick, setBudgetPick] = useState({});
+  const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
   // then ends it the same way the X does: the report shows, and Back again
   // closes. finish is declared below; the callback only runs on a gesture.
   useModalHistory(!embedded && !report, () => finish(), { isDirty: () => true });
   useModalHistory(!embedded && !!report, onClose);
+  // Back closes the photo first, then (asking) the live.
+  useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
@@ -253,10 +297,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const shown = car && variant
     ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
+  // One rebate box per listing: a model card's covers every variant.
+  const rk = car?.id;
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
+  const nImages = images.length;
+  const stepPhoto = useCallback((d) => {
+    if (nImages > 1) setImgIdx((i) => (i + d + nImages) % nImages);
+  }, [nImages]);
+  // Fetch this car's photos ahead of the taps, plus the first photo of the
+  // cars either side, so swiping shows a photo that is already downloaded.
+  useEffect(() => {
+    if (!listings.length) return;
+    const pics = (c) => (Array.isArray(c?.images) ? c.images.filter(Boolean) : []);
+    pics(listings[idx]).slice(0, 12).forEach(preload);
+    preload(pics(listings[(idx + 1) % listings.length])[0]);
+    preload(pics(listings[(idx - 1 + listings.length) % listings.length])[0]);
+  }, [idx, listings]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
   const rate = Math.max(0, Number(eir) || 0);
@@ -276,6 +335,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
     setImgIdx(0);
+    setPhotoFull(false);
     setEditing(null);
   }, [listings.length]);
 
@@ -320,6 +380,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     const onKey = (e) => {
       if (e.target?.tagName === 'INPUT') return;
       if (report) { if (e.key === 'Escape') onClose(); return; }
+      if (photoFull) {
+        if (e.key === 'Escape') setPhotoFull(false);
+        else if (e.key === 'ArrowRight') stepPhoto(1);
+        else if (e.key === 'ArrowLeft') stepPhoto(-1);
+        return;
+      }
       if (e.key === 'Escape') finish();
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
@@ -327,7 +393,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, finish, report, mode, embedded]);
+  }, [go, onClose, finish, report, mode, embedded, photoFull, stepPhoto]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -376,9 +442,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   if (!car) return null;
 
   // Typed deposit, 0 included: "no deposit" is the most-asked question on a live.
+  // A deposit at or above the price stays on screen as typed and the loan
+  // reads zero; it used to drop the row and quietly fall back to 10%, so the
+  // box and the working showed two different deposits.
   const custom = customDown === '' ? null : Math.max(0, Number(customDown) || 0);
   const rows = [
-    ...(custom !== null && custom < net
+    ...(custom !== null
       ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : t.noDeposit, down: custom, custom: true }] : []),
     ...DOWN_ROWS.map((pct) => ({ key: pct, down: net * pct / 100 })),
   ];
@@ -394,9 +463,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setPick((p) => ({ ...p, row: 'c' }));
     setEditing('deposit');
   };
-  const pickYears = TENURES.includes(pick.years) ? pick.years : DEFAULT_TENURE;
-  const answer = financeable ? monthlyFor(picked.down, pickYears) : 0;
+  const loanAmt = Math.max(0, net + insAmt - picked.down);
+  const noLoan = financeable && loanAmt <= 0;
+  // Only the tenures a bank gives on a car this age (liveMaths.tenuresFor);
+  // [] = too old for a car loan. Longest first, like the poster.
+  const tenures = tenuresFor(TENURES, shown);
+  const tenuresDesc = [...tenures].reverse();
+  const tenureCapped = tenures.length > 0 && maxTenureYears(shown) < MAX_TENURE_YEARS;
+  const pickYears = tenures.includes(pick.years) ? pick.years
+    : tenures.includes(DEFAULT_TENURE) ? DEFAULT_TENURE : tenures[tenures.length - 1];
+  const canLoan = financeable && !noLoan && tenures.length > 0;
+  const answer = canLoan ? monthlyFor(picked.down, pickYears) : 0;
   const salary = salaryGuide(answer);
+  const totals = canLoan ? loanTotals(loanAmt, rateFor(pickYears), pickYears * 12) : null;
+  const rateWarn = canLoan ? rateWarning(rate, basis, pickYears) : null;
+  const applyTarget = (v) => {
+    setTarget(v);
+    const dep = depositToFit({ price: net, extra: insAmt, cap: Number(v), eir: rateFor(pickYears), years: pickYears });
+    if (dep === null) return;
+    setCustomDown(String(dep));
+    setPick((p) => ({ ...p, row: 'c' }));
+  };
   const rateTextFor = (y) => (basis === 'flat'
     ? t.rateFlatText(fmtRate(rate), fmtRate(rateFor(y)))
     : `${fmtRate(rate)}% EIR`);
@@ -420,13 +507,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const matches = budgetMatches(budgetCars, {
     maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
+    // The same tenure rows the Cars screen offers this car, so the row and the
+    // car it opens show the same monthly.
+    yearsFor: (c) => { const ok = tenuresFor(TENURES, c); return ok.filter((y) => y <= budgetYears).pop() ?? ok[0] ?? 0; },
   });
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
     setImgIdx(0);
-    setCustomDown(String(bDown));
-    setPick({ row: 'c', years: budgetYears });
+    // A "just above" car opens with the extra deposit that makes it fit.
+    setCustomDown(String(bDown + (m.topUp || 0)));
+    setPick({ row: 'c', years: m.years });
     setMode('cars');
   };
   const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
@@ -455,7 +546,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
            red and cream only, no dark) and in one red gradient; the numbers stay dark on near-white glass so they still
            read through a phone camera filming a monitor. */
-        .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
+        .lp-stage { position: relative; height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
           background:
             radial-gradient(75% 45% at 0% 0%, rgba(var(--lp-rgb),.30), transparent 70%),
             radial-gradient(70% 45% at 100% 100%, rgba(var(--lp-rgb),.28), transparent 70%),
@@ -487,6 +578,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
+        .lp-brkwrap { position: relative; min-width: 0; }
+        .lp-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 4px; padding: 0; border: none; border-radius: 50%; background: rgba(15,17,21,.08); color: #4b5563; vertical-align: middle; cursor: pointer; }
+        .lp-tip { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 4; margin: 0; padding: 10px 12px; border-radius: 10px; background: #0f1115; color: #fff; font-size: clamp(12px, 3.2cqw, 15px); font-weight: 500; line-height: 1.45; box-shadow: 0 10px 30px rgba(15,17,21,.3); }
+        .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
+        .lp-full-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; flex-shrink: 0; }
+        .lp-full-top span { min-width: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(20px, 6cqw, 32px); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-full-img { position: relative; flex: 1; min-height: 0; }
+        .lp-full-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        .lp-full-half { position: absolute; top: 0; bottom: 0; width: 50%; display: flex; align-items: center; padding: 0 8px; border: none; background: none; color: rgba(255,255,255,.85); filter: drop-shadow(0 1px 3px rgba(0,0,0,.7)); cursor: pointer; }
+        .lp-full-count { margin: 0; padding: 8px 0 calc(10px + env(safe-area-inset-bottom)); text-align: center; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
@@ -624,8 +726,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-budrow .lp-seg button { padding: 0 6px; height: 36px; }
         .lp-res { padding: 6px 14px; }
         .lp-res h3 { font-size: clamp(11px, 2.8cqw, 14px); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; margin: 8px 0 2px; }
-        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; border-top: 1px solid rgba(0,0,0,.06); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-res h3 + .lp-row { border-top: none; }
+        .lp-rowwrap { border-top: 1px solid rgba(0,0,0,.06); }
+        .lp-res h3 + .lp-rowwrap { border-top: none; }
+        .lp-vchips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+        .lp-vchips button { min-height: 30px; padding: 3px 10px; border-radius: 8px; border: 1.5px solid var(--lp-a); background: #fff; color: var(--lp-a2); font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; cursor: pointer; }
+        .lp-vchips button[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
+        .lp-vchips button:disabled { border: 1px dashed rgba(0,0,0,.18); background: transparent; color: #9ca3af; text-decoration: line-through; font-weight: 600; cursor: default; }
+        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
         .lp-row img, .lp-row .lp-noimg { width: clamp(52px, 15cqw, 88px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #EDEAE3; flex-shrink: 0; }
         .lp-row .lp-n { font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.5cqw, 38px); line-height: 1; color: #0f1115; flex-shrink: 0; }
         .lp-row .lp-rn { flex: 1; min-width: 0; }
@@ -633,7 +740,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row .lp-rn span { display: block; font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; }
-        .lp-row.lp-over { opacity: .62; }
+        .lp-rowwrap.lp-over { opacity: .62; }
+        .lp-row .lp-rn .lp-fitdep { color: #047857; font-weight: 700; }
+        .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
+        .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 15px); font-weight: 700; line-height: 1.35; }
+        .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .lp-colours > span { flex-basis: 100%; font-size: 12px; font-weight: 700; color: #4b5563; }
         .lp-sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); cursor: pointer; padding: 0; flex-shrink: 0; position: relative; overflow: hidden; }
@@ -712,13 +823,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </div>
             <label style={mode === 'budget' ? { gridColumn: '1 / -1' } : undefined}>
               {basis === 'flat' ? t.rateFlat : t.rateEir}
-              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
+              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX} value={eir} onChange={(e) => setEir(clampRateInput(e.target.value))} />
             </label>
             {mode === 'cars' && (
               <label>
                 {t.rebateThisCar}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[car.id] ?? ''}
-                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [car.id]: v })); }} />
+                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[rk] ?? ''}
+                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [rk]: v })); }} />
               </label>
             )}
             {mode === 'cars' && (
@@ -751,6 +862,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 <small className="lp-hint">{t.offerHint}</small>
               </label>
             )}
+            {mode === 'cars' && <p className="lp-hint">{t.monthlyTip}</p>}
             <div className="lp-colours" role="group" aria-label={t.colour}>
               <span>{t.colour}</span>
               {ACCENT_PRESETS.map((c) => (
@@ -805,7 +917,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
               {images[imgIdx]
-                ? <img src={images[imgIdx]} alt={carLabel(shown)} />
+                // Keyed by photo: a new tap shows the new photo (or the blank
+                // frame while it lands), never the old one under the new dot.
+                ? <img key={images[imgIdx]} src={photoUrl(images[imgIdx])} alt={carLabel(shown)}
+                    decoding="async" onError={imgFallback(images[imgIdx])} />
                 : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
@@ -818,10 +933,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   </div>
                 </>
               )}
+              {images[imgIdx] && (
+                <button type="button" className="lp-expand" aria-label={t.fullPhoto} onClick={() => setPhotoFull(true)}>
+                  <Maximize2 size={16} />
+                </button>
+              )}
             </div>
 
             {/* The working, line by line: price - rebate - deposit = loan, at this rate.
                 Rebate, deposit and rate: tap the row to type a new number in place. */}
+            <div className="lp-brkwrap">
             <table className="lp-brk">
               <tbody>
                 <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
@@ -838,8 +959,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <tr className="lp-r-reb lp-tap" onClick={() => setEditing('rebate')}>
                     <td>{t.rebate}</td>
                     <td>{editing === 'rebate' && !embedded
-                      ? <EditCell value={rebates[car.id] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
-                          onChange={(v) => setRebates((r) => ({ ...r, [car.id]: v }))} />
+                      ? <EditCell value={rebates[rk] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
+                          onChange={(v) => setRebates((r) => ({ ...r, [rk]: v }))} />
                       : rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
                   </tr>
                 )}
@@ -851,17 +972,38 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                           onChange={(v) => { setCustomDown(v); setPick((p) => ({ ...p, row: 'c' })); }} />
                       : picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td>
                   </tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={net + insAmt - picked.down} /></td></tr>
+                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={loanAmt} /></td></tr>
                   <tr className="lp-r-rate lp-tap" onClick={() => setEditing('rate')}>
-                    <td>{t.rate}</td>
+                    <td>
+                      {t.rate}
+                      {/* What the rate means: hover on a mouse, tap on a phone. Its
+                          own click stops here so it never opens the rate box. */}
+                      <button type="button" className="lp-info" aria-label={t.rateInfoLabel} aria-expanded={rateInfo}
+                        onClick={(e) => { e.stopPropagation(); setRateInfo((v) => !v); }}
+                        onPointerEnter={(e) => { if (e.pointerType === 'mouse') setRateInfo(true); }}
+                        onPointerLeave={(e) => { if (e.pointerType === 'mouse') setRateInfo(false); }}>
+                        <Info size={13} />
+                      </button>
+                    </td>
                     <td>{editing === 'rate' && !embedded
-                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={setEir} />
+                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={(v) => setEir(clampRateInput(v))} />
                       : <>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</>}</td>
                   </tr>
                 </>)}
               </tbody>
             </table>
+            {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
+            </div>
           </div>
+          {/* A typed rate that is probably a mistake: a flat number on the EIR
+              switch, or above the Hire-Purchase Act cap. */}
+          {rateWarn && (
+            <p className="lp-warn">
+              {rateWarn === 'looksFlat'
+                ? <>{t.looksFlat}<button type="button" onClick={() => setBasis('flat')}>{t.switchFlat}</button></>
+                : t.aboveCap(eirCap(pickYears))}
+            </p>
+          )}
           {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
               for this car (the typed quote already has its NCD in it). */}
           {price > 0 && insOn && (insTyped[car.id] ?? '') === '' && ins !== null && (
@@ -885,31 +1027,48 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               ))}
             </div>
 
+            {noLoan ? <p className="lp-salary"><b>{t.depositCovers}</b></p>
+              : !tenures.length ? <p className="lp-salary"><b>{t.tooOld(MAX_CAR_AGE_AT_END)}</b></p> : (
             <div className="lp-low">
               <table className="lp-ten">
                 <thead><tr><th>{t.tenure}</th><th>{t.monthly}</th></tr></thead>
                 <tbody>
-                  {TENURES_DESC.map((y) => {
+                  {tenuresDesc.map((y) => {
                     const on = y === pickYears;
+                    // The picked row's monthly is tappable: type a target and the deposit fills in.
+                    const tap = () => {
+                      if (!on) { setPick((p) => ({ ...p, years: y })); return; }
+                      if (embedded || editing === 'monthly') return;
+                      setTarget(String(Math.round(answer)));
+                      setEditing('monthly');
+                    };
                     return (
-                      <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={() => setPick((p) => ({ ...p, years: y }))}
+                      <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={tap}
                         role="button" aria-pressed={on}>
                         <td>{t.years(y)}</td>
-                        <td><Money n={monthlyFor(picked.down, y)} /></td>
+                        <td>{on && editing === 'monthly'
+                          ? <EditCell value={target} aria={t.targetMonthly} onDone={() => setEditing(null)} onChange={applyTarget} />
+                          : <Money n={monthlyFor(picked.down, y)} />}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
             </div>
+            )}
 
             {salary && (
               <p className="lp-salary">
                 {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
               </p>
             )}
+            {totals && (
+              <p className="lp-salary">
+                {t.total(pickYears, `RM ${fmt(totals.totalRepayment)}`, `RM ${fmt(totals.totalInterest)}`)}
+              </p>
+            )}
             <p className="lp-note" style={{ margin: 0 }}>
-              {officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
+              {tenureCapped ? `${t.tenureCap(Math.max(...tenures), MAX_CAR_AGE_AT_END)} ` : ''}{officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
               {highValue ? t.highValue : t.subjectBank}
             </p>
           </>)}
@@ -986,9 +1145,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <p className="lp-empty">{t.budgetEmpty}</p>
           ) : (<>
             <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} onOpen={openFromBudget} t={t} />)}
+            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
             {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over onOpen={openFromBudget} t={t} />)}
+            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
             <p className="lp-note" style={{ marginBottom: 8 }}>
               {t.budgetNote}
               {anyHighValue ? t.budgetHigh : ''}
@@ -1007,6 +1166,33 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       )}
       </>)}
+
+      {/* Full photo, inside the stage: contained, uncropped, never wider than
+          the calculator. Tap a half (or swipe, or arrow keys) for the next. */}
+      {photoFull && images[imgIdx] && !report && (
+        <div className="lp-full" role="dialog" aria-label={carLabel(shown)}
+          onTouchStart={(e) => { photoTouchX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (photoTouchX.current == null) return;
+            const dx = e.changedTouches[0].clientX - photoTouchX.current;
+            photoTouchX.current = null;
+            if (Math.abs(dx) > 50) stepPhoto(dx < 0 ? 1 : -1);
+          }}>
+          <div className="lp-full-top">
+            <span>#{idx + 1} {carLabel(shown)}</span>
+            <button type="button" className="lp-iconbtn" onClick={() => setPhotoFull(false)} aria-label={t.closePhoto}><X size={18} /></button>
+          </div>
+          <div className="lp-full-img">
+            <img key={images[imgIdx]} src={photoUrl(images[imgIdx])} alt={carLabel(shown)}
+              decoding="async" onError={imgFallback(images[imgIdx])} />
+            {images.length > 1 && (<>
+              <button type="button" className="lp-full-half" style={{ left: 0 }} aria-label={t.prevPhoto} onClick={() => stepPhoto(-1)}><ChevronLeft size={28} /></button>
+              <button type="button" className="lp-full-half" style={{ right: 0, justifyContent: 'flex-end' }} aria-label={t.nextPhoto} onClick={() => stepPhoto(1)}><ChevronRight size={28} /></button>
+            </>)}
+          </div>
+          {images.length > 1 && <p className="lp-full-count">{imgIdx + 1} / {images.length}</p>}
+        </div>
+      )}
       </div>
     </div>
   );
@@ -1015,18 +1201,38 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
 // One budget result. Tapping it opens that car on the Cars screen with the
 // same deposit and years picked, so the big number matches this row.
-function BudgetRow({ m, over, onOpen, t }) {
+// A car the budget's tenure is too long for is priced at its own limit, and
+// the row says which; a "just above" car says the deposit that makes it fit.
+// A model card shows its variants on top: the ones this budget buys are
+// tappable (the row's price and monthly follow the pick, and so does the car
+// it opens); the rest are dimmed and struck through. Never blurred: on a
+// camera filming a screen, blur reads as a glitch.
+function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
+  const row = m.options?.find((o) => o.car._variantId === pick && o.fits) || m;
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
   return (
-    <button type="button" className={over ? 'lp-row lp-over' : 'lp-row'} onClick={() => onOpen(m)}>
-      {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
-      <span className="lp-n">#{m.n}</span>
-      <span className="lp-rn">
-        <b>{carLabel(m.car)}</b>
-        <span>RM {fmt(m.price)}</span>
-      </span>
-      <span className="lp-m">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
-    </button>
+    <div className={over ? 'lp-rowwrap lp-over' : 'lp-rowwrap'}>
+      {m.options && (
+        <div className="lp-vchips" role="group" aria-label={t.variant}>
+          {m.options.map((o) => (
+            <button key={o.car._variantId} type="button" disabled={!o.fits}
+              aria-pressed={o.car._variantId === row.car._variantId}
+              onClick={() => onPick(m.n, o.car._variantId)}>{o.car.variant}</button>
+          ))}
+        </div>
+      )}
+      <button type="button" className="lp-row" onClick={() => onOpen(row)}>
+        {img ? <img src={cdnImg(img, 240, 70)} alt="" decoding="async" onError={imgFallback(img)} /> : <span className="lp-noimg" />}
+        <span className="lp-n">#{m.n}</span>
+        <span className="lp-rn">
+          {/* With the variant buttons above, the title leaves the variant to them. */}
+          <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
+          <span>RM {fmt(row.price)}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}</span>
+          {over && row.topUp > 0 && <span className="lp-fitdep">{t.topUp(`RM ${fmt(row.topUp)}`)}</span>}
+        </span>
+        <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
+      </button>
+    </div>
   );
 }
 
