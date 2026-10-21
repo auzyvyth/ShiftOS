@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Maximize2, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -143,6 +143,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
+  // Full view of the car photo. It fills the STAGE, not the browser window, so
+  // it is never wider than the calculator (owner, 2026-10-22): on a phone that
+  // is the portrait stage, on desktop the zoomed 750px stage the camera films.
+  const [photoFull, setPhotoFull] = useState(false);
+  const photoTouchX = useRef(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
   // 'click', not 'pointerdown': the tapped control acts first, then the panel
@@ -208,6 +213,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // closes. finish is declared below; the callback only runs on a gesture.
   useModalHistory(!embedded && !report, () => finish(), { isDirty: () => true });
   useModalHistory(!embedded && !!report, onClose);
+  // Back closes the photo first, then (asking) the live.
+  useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
@@ -295,6 +302,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
+  const nImages = images.length;
+  const stepPhoto = useCallback((d) => {
+    if (nImages > 1) setImgIdx((i) => (i + d + nImages) % nImages);
+  }, [nImages]);
   // Fetch this car's photos ahead of the taps, plus the first photo of the
   // cars either side, so swiping shows a photo that is already downloaded.
   useEffect(() => {
@@ -323,6 +334,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
     setImgIdx(0);
+    setPhotoFull(false);
     setEditing(null);
   }, [listings.length]);
 
@@ -367,6 +379,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     const onKey = (e) => {
       if (e.target?.tagName === 'INPUT') return;
       if (report) { if (e.key === 'Escape') onClose(); return; }
+      if (photoFull) {
+        if (e.key === 'Escape') setPhotoFull(false);
+        else if (e.key === 'ArrowRight') stepPhoto(1);
+        else if (e.key === 'ArrowLeft') stepPhoto(-1);
+        return;
+      }
       if (e.key === 'Escape') finish();
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
@@ -374,7 +392,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, finish, report, mode, embedded]);
+  }, [go, onClose, finish, report, mode, embedded, photoFull, stepPhoto]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -527,7 +545,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
            red and cream only, no dark) and in one red gradient; the numbers stay dark on near-white glass so they still
            read through a phone camera filming a monitor. */
-        .lp-stage { height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
+        .lp-stage { position: relative; height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
           background:
             radial-gradient(75% 45% at 0% 0%, rgba(var(--lp-rgb),.30), transparent 70%),
             radial-gradient(70% 45% at 100% 100%, rgba(var(--lp-rgb),.28), transparent 70%),
@@ -559,6 +577,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
+        .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
+        .lp-full-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; flex-shrink: 0; }
+        .lp-full-top span { min-width: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(20px, 6cqw, 32px); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-full-img { position: relative; flex: 1; min-height: 0; }
+        .lp-full-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        .lp-full-half { position: absolute; top: 0; bottom: 0; width: 50%; display: flex; align-items: center; padding: 0 8px; border: none; background: none; color: rgba(255,255,255,.85); filter: drop-shadow(0 1px 3px rgba(0,0,0,.7)); cursor: pointer; }
+        .lp-full-count { margin: 0; padding: 8px 0 calc(10px + env(safe-area-inset-bottom)); text-align: center; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
@@ -903,6 +929,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   </div>
                 </>
               )}
+              {images[imgIdx] && (
+                <button type="button" className="lp-expand" aria-label={t.fullPhoto} onClick={() => setPhotoFull(true)}>
+                  <Maximize2 size={16} />
+                </button>
+              )}
             </div>
 
             {/* The working, line by line: price - rebate - deposit = loan, at this rate.
@@ -1118,6 +1149,33 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       )}
       </>)}
+
+      {/* Full photo, inside the stage: contained, uncropped, never wider than
+          the calculator. Tap a half (or swipe, or arrow keys) for the next. */}
+      {photoFull && images[imgIdx] && !report && (
+        <div className="lp-full" role="dialog" aria-label={carLabel(shown)}
+          onTouchStart={(e) => { photoTouchX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            if (photoTouchX.current == null) return;
+            const dx = e.changedTouches[0].clientX - photoTouchX.current;
+            photoTouchX.current = null;
+            if (Math.abs(dx) > 50) stepPhoto(dx < 0 ? 1 : -1);
+          }}>
+          <div className="lp-full-top">
+            <span>#{idx + 1} {carLabel(shown)}</span>
+            <button type="button" className="lp-iconbtn" onClick={() => setPhotoFull(false)} aria-label={t.closePhoto}><X size={18} /></button>
+          </div>
+          <div className="lp-full-img">
+            <img key={images[imgIdx]} src={photoUrl(images[imgIdx])} alt={carLabel(shown)}
+              decoding="async" onError={imgFallback(images[imgIdx])} />
+            {images.length > 1 && (<>
+              <button type="button" className="lp-full-half" style={{ left: 0 }} aria-label={t.prevPhoto} onClick={() => stepPhoto(-1)}><ChevronLeft size={28} /></button>
+              <button type="button" className="lp-full-half" style={{ right: 0, justifyContent: 'flex-end' }} aria-label={t.nextPhoto} onClick={() => stepPhoto(1)}><ChevronRight size={28} /></button>
+            </>)}
+          </div>
+          {images.length > 1 && <p className="lp-full-count">{imgIdx + 1} / {images.length}</p>}
+        </div>
+      )}
       </div>
     </div>
   );

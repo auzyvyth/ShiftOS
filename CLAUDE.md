@@ -1531,6 +1531,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   LivePresenter.jsx): the current car's photos plus the first photo of the cars either side, held
   as live Image objects. Raw uploads (2-5 MB) left the old photo on screen through three taps. The
   `<img>` is keyed by photo so a tap never shows the old photo under the new dot.
+  **Full view** (expand button on the photo, `photoFull`): fills the STAGE (`.lp-full`, absolute in
+  `.lp-stage`), never the browser window, so it is never wider than the calculator (owner,
+  2026-10-22). Uncropped (`object-fit: contain`), tap halves / swipe / arrow keys step photos, X /
+  Esc / Back close it (it registers `useModalHistory`). Not portalled: the presenter already is.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
   ONE rebate covers every variant (keyed by the listing; owner 2026-10-22: brands run one promo
