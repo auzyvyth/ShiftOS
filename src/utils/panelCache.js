@@ -168,6 +168,8 @@ export const PANEL_DATA_CACHE_PREFIXES = [
   // useCachedFetch envelopes (dealer snapshot, PerformanceTab) — `cf:v1:<key>`,
   // and every one of those keys ends in a user id.
   "cf:v1:",
+  // The mini page's copy of who is looking (SalesmanProfilePage.jsx).
+  "ap_viewer_v1",
 ];
 
 // Drop every cached buyer list on this device. Called on sign-out. Deliberately

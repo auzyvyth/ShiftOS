@@ -17,6 +17,7 @@ import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
+import { hasStoredSession } from '../utils/panelCache';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -91,6 +92,28 @@ function writeAgentCache(slug, data) {
 }
 function clearAgentCache(slug) {
   try { localStorage.removeItem(AGENT_CACHE_PREFIX + slug); } catch { /* blocked */ }
+}
+
+// Device copy of WHO IS LOOKING (the signed-in viewer's own id, home link and
+// number), so Dashboard + Live presentation paint on the first frame instead
+// of after getSession and a profiles read. Only seeded while this device holds
+// a session, re-checked against the live session, purged on sign-out
+// (PANEL_DATA_CACHE_PREFIXES in src/utils/panelCache.js).
+const VIEWER_CACHE_KEY = 'ap_viewer_v1';
+// The most a signed-in owner's first visit holds the loader for its buttons.
+const VIEWER_WAIT_MS = 2000;
+function readViewerCache() {
+  if (!hasStoredSession()) return null;
+  try {
+    const v = JSON.parse(localStorage.getItem(VIEWER_CACHE_KEY) || 'null');
+    return v?.id && v?.home ? v : null;
+  } catch { return null; }
+}
+function writeViewerCache(v) {
+  try {
+    if (v) localStorage.setItem(VIEWER_CACHE_KEY, JSON.stringify(v));
+    else localStorage.removeItem(VIEWER_CACHE_KEY);
+  } catch { /* full or blocked */ }
 }
 
 // First-visit loader (owner, 2026-10-21: "preparing your ... gamify it a
@@ -198,14 +221,20 @@ export default function SalesmanProfilePage() {
   const [bioExpanded, setBioExpanded] = useState(false);
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
-  const [viewerHome, setViewerHome] = useState(null);
+  const [viewerSeed] = useState(readViewerCache);
+  const [viewerHome, setViewerHome] = useState(viewerSeed?.home || null);
+  // False only while a signed-in device with no viewer copy is still finding
+  // out who it is. The loader waits on it (at most VIEWER_WAIT_MS) so the page
+  // opens with its Dashboard / Live buttons already there. A signed-out buyer
+  // never waits: there is nothing to look up.
+  const [viewerReady, setViewerReady] = useState(() => !!viewerSeed || !hasStoredSession());
   // Who is looking. Only ever compared against the profile's own id, to decide
   // whether the "finish your page" note renders — it must never be shown to a
   // buyer sitting on someone else's page.
-  const [viewerId, setViewerId] = useState(null);
+  const [viewerId, setViewerId] = useState(viewerSeed?.id || null);
   // The viewer's OWN number, read from their own row. The public page no longer
   // carries the seller's number (CDP-3), but the presenter shows it to its owner.
-  const [viewerPhone, setViewerPhone] = useState(null);
+  const [viewerPhone, setViewerPhone] = useState(viewerSeed?.phone || null);
   // Fire the mini-page visit exactly once per mount (StrictMode double-invokes).
   const visitTracked = useRef(false);
   // Live presentation (owner only) and the car it is showing right now. The
@@ -254,21 +283,35 @@ export default function SalesmanProfilePage() {
   // /salesman-lite or /salesman-premium, which the role alone cannot say.
   useEffect(() => {
     let cancelled = false;
+    const ready = () => { if (!cancelled) setViewerReady(true); };
+    const cap = setTimeout(ready, VIEWER_WAIT_MS);
     supabase.auth.getSession().then(async ({ data }) => {
       const uid = data?.session?.user?.id;
-      if (!uid || cancelled) return;
+      if (cancelled) return;
+      if (!uid) {
+        // Signed out since the copy was saved: take the buttons back down.
+        writeViewerCache(null);
+        setViewerId(null); setViewerHome(null); setViewerPhone(null);
+        ready();
+        return;
+      }
       setViewerId(uid);
       const { data: viewer } = await supabase
         .from('profiles').select(`${ROUTE_PROFILE_COLUMNS}, whatsapp_number, phone`).eq('id', uid).maybeSingle();
-      if (cancelled || !viewer?.role) return;
-      setViewerPhone(viewer.whatsapp_number || viewer.phone || null);
-      setViewerHome({
+      if (cancelled) return;
+      if (!viewer?.role) { ready(); return; }
+      const phone = viewer.whatsapp_number || viewer.phone || null;
+      const home = {
         to: routeForProfile(viewer),
         label: isSellerRole(viewer.role) ? 'Dashboard' : 'My Account',
         seller: isSellerRole(viewer.role),
-      });
-    });
-    return () => { cancelled = true; };
+      };
+      setViewerPhone(phone);
+      setViewerHome(home);
+      writeViewerCache({ id: uid, home, phone });
+      ready();
+    }).catch(ready);
+    return () => { cancelled = true; clearTimeout(cap); };
   }, []);
 
   useEffect(() => {
@@ -529,7 +572,7 @@ export default function SalesmanProfilePage() {
   const ownLocationStr = profile?.location || null;
   const mapLocationStr = ownLocationStr || dealerLocationStr;
 
-  if (!profile && !notFound) return <ShowroomLoader slug={slug} />;
+  if ((!profile && !notFound) || !viewerReady) return <ShowroomLoader slug={slug} />;
 
   if (notFound) return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--xd-font-body)', padding: '0 24px', textAlign: 'center' }}>
