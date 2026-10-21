@@ -441,8 +441,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(24px, 7.4cqw, 44px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-spec { font-size: clamp(11px, 3cqw, 15px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-pair { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 10px; align-items: center; }
-        .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #EDEAE3; }
-        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* The frame is a fixed size; the photo fits INSIDE it, never cropped
+           (owner, 2026-10-21: the desktop 2:1 frame cut the roof and wheels off
+           a 4:3 photo). The bars are white so they melt into the light sheet
+           and into studio shots, which have a white backdrop; the hairline
+           keeps the frame's edge visible on camera. */
+        .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
+        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
