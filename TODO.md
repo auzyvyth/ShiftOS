@@ -2521,6 +2521,13 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-20: OTR / "cash to drive away" line in the Live presenter (owner, 2026-10-22)** —
+  one line under the monthly: deposit + OTR (JPJ transfer RM100, Puspakom B5 RM30, B7 RM60 if
+  financed, road tax est. by cc, insurance if not in the loan), the OTR figure tappable so the
+  seller can type their own quote. Reuse `postSaleSteps.js` fees + `ownership.js calcRoadTaxEst`,
+  no new table. Constraints: NOT for the 4-brand price-list cards (their price is already OTR
+  without insurance, it would double-count); never folded into the loan (same inflation rule as
+  the Loan poster); road tax formula is saloon / Peninsular only, so label "est." (SUV/MPV/EV differ).
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
   sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and
