@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { carWarmProps } from '../../utils/carPrefetch';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cdnImg } from '../../utils/img';
@@ -161,6 +162,7 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
                 key={car.id}
                 to={`/showroom/${car.slug || car.id}`}
                 className="mp-carrow-item"
+                {...carWarmProps(car)}
                 onClick={onTileClick}
                 draggable={false}
               >

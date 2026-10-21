@@ -56,6 +56,7 @@ import FinancingCalculator from "../components/FinancingCalculator";
 import AffordabilityCheck from "../components/AffordabilityCheck";
 import SimilarCars from "../components/car/SimilarCars";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
+import { fetchCarRow, getCarPreview } from "../utils/carPrefetch";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
@@ -751,7 +752,13 @@ const SIM_FIELDS =
   "id, slug, year, brand, model, variant, body_type, dealer_id, selling_price, original_price, mileage, transmission, state, fuel_type, status, created_at, images, is_recon, auction_grade, interior_grade, import_country, document_types, dealer_is_verified, colour, condition, listing_title, market_avg_price";
 
 /* ─── skeleton ─── */
-function Skeleton() {
+// The loading screen. When the buyer came from a card, `preview` holds that
+// card's title, price and first photo (carPrefetch.js), so the car itself is on
+// screen at once and only the details still shimmer. Same photo URL and sizes as
+// the real hero, so the image is not downloaded twice.
+function Skeleton({ preview = null }) {
+  const pvImg = preview?.image ? cdnImg(preview.image, 1280, 72) : null;
+  const pvSet = preview?.image ? cdnSrcSet(preview.image, HERO_WIDTHS, 72) : undefined;
   const isXdrive = !isSubdomain();
   const pageBg    = isXdrive ? '#F6F7F9' : '#060c14';
   const card      = isXdrive ? '#ffffff' : '#0a1220';
@@ -789,9 +796,13 @@ function Skeleton() {
         {/* Left — flex 1.55 */}
         <div style={{ flex:1.55, minWidth:0 }}>
           {/* Title — matches the small h1 above the photo */}
-          <div className="sk-b" style={{ height:28, width:'46%', marginBottom:14 }} />
+          {preview?.title
+            ? <p style={{ fontSize:22, fontWeight:700, margin:'0 0 14px', color: isXdrive ? '#111827' : '#fff', fontFamily:'var(--xd-font-body)' }}>{preview.title}</p>
+            : <div className="sk-b" style={{ height:28, width:'46%', marginBottom:14 }} />}
           {/* Photo — matches .cdp-mosaic-grid */}
-          <div className="sk-b" style={{ aspectRatio:'3 / 2', maxHeight:560, borderRadius:16, marginBottom:14, background:mosaicGap }} />
+          {pvImg
+            ? <img src={pvImg} srcSet={pvSet} sizes={HERO_SIZES} alt="" fetchPriority="high" style={{ display:'block', width:'100%', aspectRatio:'3 / 2', maxHeight:560, objectFit:'cover', borderRadius:16, marginBottom:14, background:mosaicGap }} />
+            : <div className="sk-b" style={{ aspectRatio:'3 / 2', maxHeight:560, borderRadius:16, marginBottom:14, background:mosaicGap }} />}
           <div className="sk-b" style={{ height:13, width:'38%', marginBottom:20 }} />
           <div className="sk-b" style={{ height:1, marginBottom:28 }} />
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:2, border:`1px solid ${border}`, borderRadius:12, overflow:'hidden', marginBottom:32 }}>
@@ -816,7 +827,9 @@ function Skeleton() {
             </div>
           </div>
           <div className="sk-b" style={{ height:11, width:'36%', marginBottom:12 }} />
-          <div className="sk-b" style={{ height:46, width:'68%', marginBottom:8 }} />
+          {preview?.price
+            ? <p style={{ fontSize:34, fontWeight:800, margin:'0 0 8px', color: isXdrive ? '#111827' : '#fff', fontVariantNumeric:'tabular-nums', fontFamily:'var(--xd-font-body)' }}>{fmtPrice(preview.price)}</p>
+            : <div className="sk-b" style={{ height:46, width:'68%', marginBottom:8 }} />}
           <div className="sk-b" style={{ height:11, width:'50%', marginBottom:20 }} />
           <div className="sk-b" style={{ height:1, marginBottom:16 }} />
           <div className="sk-b" style={{ height:48, borderRadius:10, marginBottom:8 }} />
@@ -826,14 +839,20 @@ function Skeleton() {
 
       {/* ── MOBILE (≤900px) ── */}
       {/* M1 — full-width image */}
-      <div className="sk-mobile sk-b" style={{ height:'clamp(200px,50vw,360px)', borderRadius:0 }} />
+      {pvImg
+        ? <img className="sk-mobile" src={pvImg} srcSet={pvSet} sizes={HERO_SIZES} alt="" fetchPriority="high" style={{ display:'block', width:'100%', height:'clamp(240px,64vw,420px)', objectFit:'cover', background:'#080f18' }} />
+        : <div className="sk-mobile sk-b" style={{ height:'clamp(200px,50vw,360px)', borderRadius:0 }} />}
 
       {/* M2 — identity block */}
       <div className="sk-mobile" style={{ padding:'20px 20px 0' }}>
         <div className="sk-b" style={{ height:10, width:'18%', marginBottom:10 }} />
-        <div className="sk-b" style={{ height:44, width:'72%', marginBottom:8 }} />
+        {preview?.heading
+          ? <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(1.7rem,7.5vw,2.4rem)', lineHeight:1.05, letterSpacing:'0.01em', margin:'0 0 8px', color: isXdrive ? '#111827' : '#fff' }}>{preview.heading}</p>
+          : <div className="sk-b" style={{ height:44, width:'72%', marginBottom:8 }} />}
         <div className="sk-b" style={{ height:13, width:'42%', marginBottom:16 }} />
-        <div className="sk-b" style={{ height:38, width:'55%', marginBottom:4 }} />
+        {preview?.price
+          ? <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', lineHeight:1, margin:'0 0 4px', color: isXdrive ? '#111827' : '#fff' }}>{fmtPrice(preview.price)}</p>
+          : <div className="sk-b" style={{ height:38, width:'55%', marginBottom:4 }} />}
         <div className="sk-b" style={{ height:1, margin:'16px 0 20px' }} />
       </div>
 
@@ -1297,25 +1316,10 @@ export default function CarDetailPage() {
       setDealer(null);
       setSalesmanProfile(null);
       setSellerCars([]);
-      // seller_role (from the public_car_listings view) is the authoritative signal
-      // for agent-vs-dealer below — without it in the select, carData.seller_role is
-      // always undefined and the get_salesman_by_id lookup never fires, so a Salesman
-      // Lite listing silently falls through to a nameless "Seller" with no mini-page link.
-      const PUBLIC_FIELDS = "id,listing_title,specs_overridden,brand,model,variant,year,state,mileage,colour,condition,registration_date,specs,options,features,selling_price,images,created_at,transmission,city,body_type,fuel_type,status,engine_cc,previous_price,original_price,dealer_id,vin_number,auction_grade,interior_grade,is_recon,import_country,damage_map,local_reg_date,auction_house,chassis_status,assigned_to,slug,video_url,salesman_slug,document_types,previous_owners,road_tax_expiry,loan_eligible,warranty_months,deposit_amount,ai_captions,financing_type,dealer_perks,canonical_variant,description,included_services,co2_emissions,fuel_consumption,insurance_group,horsepower,acceleration,top_speed,boot_size,doors,seats,safety_rating,cylinders,market_avg_price,market_sample_count,puspakom_b5_date,puspakom_b7_date,seller_role,seller_type,payment_type,docs_verified,geran_status,condition_declared_at";
-      let { data: carData, error } = await supabase
-        .from("public_car_listings")
-        .select(PUBLIC_FIELDS)
-        .eq("slug", slug)
-        .maybeSingle();
-      if (!carData && !error) {
-        const res = await supabase
-          .from("public_car_listings")
-          .select(PUBLIC_FIELDS)
-          .eq("id", slug)
-          .maybeSingle();
-        carData = res.data;
-        error = res.error;
-      }
+      // Usually already in flight: the card the buyer tapped started it on
+      // pointer-down (src/utils/carPrefetch.js). Same fields, same slug-then-id
+      // lookup as before, through publicClient with a time cap.
+      const { data: carData, error } = await fetchCarRow(slug);
       if (!alive) return;
       if (error || !carData) {
         setNotFound(true);
@@ -1840,7 +1844,7 @@ export default function CarDetailPage() {
   }
 
   /* ── early returns ── */
-  if (loading) return <Skeleton />;
+  if (loading) return <Skeleton preview={getCarPreview(slug)} />;
   if (notFound)
     return (
       <div

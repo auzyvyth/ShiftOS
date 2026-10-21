@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { carWarmProps } from '../utils/carPrefetch';
 import { useNavigate } from 'react-router-dom';
 import { Gauge, Settings2, MessageCircle, Fuel, Calendar, Heart, Images, GitCompare, BadgeCheck } from 'lucide-react';
 import GradeBadge from './GradeBadge';
@@ -308,6 +309,7 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
         tabIndex={isSold ? undefined : 0}
         role="article"
         aria-label={`${year} ${brand} ${model}${isSold ? ' — Sold' : ''}`}
+        {...(!isSold ? carWarmProps(car) : {})}
         onClick={() => {
           if (suppressClick.current) { suppressClick.current = false; return; }
           if (isSold || !(car.slug || car.id)) return;
