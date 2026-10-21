@@ -340,15 +340,32 @@ export default function SalesmanPremium() {
  useEffect(() => { if (profile?.id) claimStoredInvite(); }, [profile?.id]);
  const [userId, setUserId] = useState(seed.uid);
  // A cached profile is enough to render the panel; the fresh one lands moments
- // later and every access gate below (pending pay / expired trial / wrong role)
+ // later and every access gate below (pending pay / wrong role)
  // re-runs against it. Without a cached profile this is the old blocking spinner.
  const [loading, setLoading] = useState(!seed.profile);
  // Once the first screen and its data are up, fetch the other tabs' code in the
  // background so their first tap is instant and works offline.
  useEffect(() => (loading ? undefined : warmChunks(WARM_TABS)), [loading]);
  const [pendingPay, setPendingPay] = useState(false);
- const [trialExpired, setTrialExpired] = useState(false);
  const isPremium = isPremiumSalesman(profile);
+ // Premium ends by itself when plan_expires_at passes (PREM-LAPSE). The plan
+ // check in the bootstrap runs once, so a dashboard left open stayed on Premium
+ // and its tools failed on RLS with no reason given. Re-check the moment it ends
+ // and whenever the tab comes back (a sleeping phone delays timers). Lite
+ // re-reads the profile and sends a seller who has renewed straight back here.
+ useEffect(() => {
+ if (!profile || profile.dealer_id || profile.payment_status === "received" ||!profile.plan_expires_at) return undefined;
+ const check = () => {
+ if (document.visibilityState === "visible" &&!isPremiumSalesman(profile)) navigate("/salesman-lite", { replace: true });
+ };
+ const ms = new Date(profile.plan_expires_at).getTime() - Date.now();
+ const timer = ms > 0 && ms < 2147483647? setTimeout(check, ms + 1000) : null;
+ document.addEventListener("visibilitychange", check);
+ return () => {
+ if (timer) clearTimeout(timer);
+ document.removeEventListener("visibilitychange", check);
+ };
+ }, [profile, navigate]);
  // Unread buyer-chat count for the nav badge. Its own hook instance, separate
  // from the one inside SellerInbox (each gets a distinct realtime channel).
  const { threads: chatThreads, totalUnread: chatUnread } = useChatThreads({ salesmanId: userId });
@@ -1124,25 +1141,10 @@ export default function SalesmanPremium() {
  return;
  }
 
- // First-month-free promo: a fresh solo Premium signup gets 30 days of full
- // access (subscription_status='trial', trial_ends_at set by the DB trigger
- // on insert — see prevent_profile_privilege_escalation). Once that runs
- // out, same expired-trial QR screen dealers already hit.
- if (
- profileData.subscription_status === "trial" &&
- profileData.trial_ends_at &&
- new Date(profileData.trial_ends_at) < new Date()
- ) {
- setProfile(profileData);
- setTrialExpired(true);
- setLoading(false);
- return;
- }
-
  setProfile(profileData);
  setLoading(false);
  // Cached so the NEXT cold start can clear the loading gate on frame 1. The
- // gates above (pending pay / expired trial / wrong role) all re-run against
+ // gates above (pending pay / wrong role) all re-run against
  // this same shape when the fresh row lands, so a cached profile can only ever
  // bring the panel forward, never past an access check.
  writeCache(`${PANEL_CACHE_KEY}_profile_${uid}`, redactProfileForCache(profileData));
@@ -6735,21 +6737,6 @@ export default function SalesmanPremium() {
  if (pendingPay) {
  return (
  <DealerPendingApproval
- planKey="salesman_full"
- dealershipName={profile?.full_name}
- email={profile?.email}
- profileId={profile?.id}
- redirectTo="/salesman-premium"
- />
- );
- }
-
- // First-month-free trial ended — same screen, "expired" dress.
- if (trialExpired) {
- return (
- <DealerPendingApproval
- variant="expired"
- trialDays={30}
  planKey="salesman_full"
  dealershipName={profile?.full_name}
  email={profile?.email}
