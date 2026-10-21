@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { supabase, publicClient } from '../supabaseClient';
 import { matchesPathPrefix } from '../utils/routeMatch';
 import { isInternalDevice } from '../utils/internalTraffic';
-import { ONLINE_CHANNEL, SELLER_PREFIXES, isLiveOpen } from '../lib/onlinePresence';
+import { ONLINE_CHANNEL, SELLER_PREFIXES, deviceKey, isLiveOpen } from '../lib/onlinePresence';
 
 // Mounted once inside the Router (App.jsx). Announces this tab on the
 // "online now" presence channel (src/lib/onlinePresence.js): seller, buyer or
@@ -13,16 +13,13 @@ import { ONLINE_CHANNEL, SELLER_PREFIXES, isLiveOpen } from '../lib/onlinePresen
 // skips the platform console (the admin is not a user).
 const JOIN_DELAY_MS = 4000;
 
-function newKey() {
-  try { return crypto.randomUUID(); } catch { return `t${Date.now()}${Math.random().toString(36).slice(2)}`; }
-}
-
 export default function OnlineBeacon() {
   const { pathname } = useLocation();
   const [user, setUser] = useState(undefined); // undefined = not known yet
   const [ready, setReady] = useState(false);
   const [live, setLive] = useState(isLiveOpen());
-  const keyRef = useRef(newKey());
+  // Shared by every tab on this device, so two tabs count as one (deviceKey).
+  const keyRef = useRef(deviceKey());
   const chanRef = useRef(null);
 
   useEffect(() => {
