@@ -366,7 +366,8 @@
       "dismiss": "Dismiss",
       "noListingsTitle": "List your stocks to get results",
       "noListingsBody": "Your mini page is live and ready to share — it just needs cars on it. Add your first listing so buyers can start finding you.",
-      "noListingsCta": "Add a listing"
+      "noListingsCta": "Add a listing",
+      "startingOutNote": "Leads, bookings, chats and your figures show up here as soon as your first buyer gets in touch."
     },
     "goal": {
       "setTarget": "Set your commission target for {{month}}:",

@@ -1676,7 +1676,12 @@ Analytics once there is a car, Loans + Outreach once there is a lead. The tab yo
 keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
 only setup + greeting + page link (`startingOut`, DashboardTab.jsx) until the first buyer.
 Three new signups called the full panel "too complicated" on day one. A new tab must say
-when it earns its link, or it goes back to ten links for a seller with no car. The tour never switches tabs: it opens the nav (the drawer
+when it earns its link, or it goes back to ten links for a seller with no car.
+**Lite does the same** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
+Settings always; Leads + Performance once there is a car, Inbox once a booking/enquiry exists.
+The tour is built from `TOUR_PLAN` (one list for steps AND anchors; never re-split them into two
+index-matched arrays). Dashboard `startingOut` hides the Chat/Add-ons row and every card below
+it until the first buyer. `gatedLocked` lock screens stay for deep links. The tour never switches tabs: it opens the nav (the drawer
 on a phone) and rings each link where it sits (`data-tour-id`).
 - **The bubble FOLLOWS the ringed link; the buttons do NOT (owner, 2026-10-18).** The
   bubble is words only, placed beside the link by `placeTourCard` (`src/utils/tourPlacement.js`:

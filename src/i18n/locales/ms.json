@@ -361,7 +361,8 @@
       "dismiss": "Tutup",
       "noListingsTitle": "Senaraikan stok anda untuk dapat hasil",
       "noListingsBody": "Halaman mini anda sudah aktif dan sedia dikongsi — cuma perlukan kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
-      "noListingsCta": "Tambah listing"
+      "noListingsCta": "Tambah listing",
+      "startingOutNote": "Lead, tempahan, chat dan angka anda akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda."
     },
     "goal": {
       "setTarget": "Tetapkan sasaran komisen untuk {{month}}:",
