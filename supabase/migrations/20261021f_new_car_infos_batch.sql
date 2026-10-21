@@ -4,6 +4,8 @@
 -- with 10 model cards paid 10 round trips, each also building the card's
 -- "other cards" list that Budget never reads.
 --
+-- Applied 2026-10-21 14:40 UTC (22:40 MYT) via apply_migration, owner's "ship it all now", nobody live.
+--
 -- One call for the whole list instead, returning only what Budget uses: each
 -- card's variants priced for the seller's zone, same shape and order as
 -- get_new_car_listing_info.variants. Same visibility rule as that function:

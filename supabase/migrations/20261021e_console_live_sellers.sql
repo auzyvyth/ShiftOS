@@ -1,5 +1,7 @@
 -- ONLINE-2 (2026-10-21): console Home names who is live, not just how many.
 --
+-- Applied 2026-10-21 14:40 UTC (22:40 MYT) via apply_migration, owner's "ship it all now", nobody live.
+--
 -- The "online now" counter (presence, src/lib/onlinePresence.js) carries no
 -- names on purpose: its channel is public, so a name there is a name anyone can
 -- read. Who is LIVE is already a database fact (seller_live_state, written only

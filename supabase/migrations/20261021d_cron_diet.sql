@@ -1,5 +1,7 @@
 -- IO-1 (2026-10-21): timed jobs do their work only when there is work.
 --
+-- Applied 2026-10-21 14:40 UTC (22:40 MYT) via apply_migration, owner's "ship it all now", nobody live.
+--
 -- The database is 57 MB and every read is served from memory, so disk IO is
 -- WRITES. Every cron run writes its own log rows (cron.job_run_details, ~5
 -- writes), and every job that calls an edge function also writes a pg_net
