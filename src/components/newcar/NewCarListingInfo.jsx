@@ -86,6 +86,24 @@ export function useNewCarInfo(listingId) {
   return info;
 }
 
+// Several cards at once (the Live presenter's Budget tab prices every variant
+// of every model card). Same cached request per card as useNewCarInfo.
+// Returns { [listingId]: info } for the ones that answered.
+export function useNewCarInfos(listingIds) {
+  const key = (listingIds || []).join(",");
+  const [infos, setInfos] = useState({});
+  useEffect(() => {
+    let alive = true;
+    const ids = key ? key.split(",") : [];
+    if (!ids.length) return undefined;
+    Promise.all(ids.map((id) => loadInfo(id).then((d) => [id, d]))).then((pairs) => {
+      if (alive) setInfos(Object.fromEntries(pairs.filter(([, d]) => d)));
+    });
+    return () => { alive = false; };
+  }, [key]);
+  return infos;
+}
+
 // One card covers every variant of a model (20261017c); `info.variants` lists
 // them priced for the seller's zone, cheapest first. The buyer's pick is shared
 // by every reader of the same listing (this panel is mounted twice, and the
@@ -101,8 +119,14 @@ export function useNewCarVariant(listingId, info) {
   }, []);
   const variants = Array.isArray(info?.variants) ? info.variants.filter((v) => v.price != null) : [];
   const current = variants.find((v) => v.model_id === picks.get(listingId)) || variants[0] || null;
-  const choose = (modelId) => { picks.set(listingId, modelId); pickSubs.forEach((f) => f()); };
+  const choose = (modelId) => pickNewCarVariant(listingId, modelId);
   return { variants, current, choose };
+}
+
+// Pick a variant for a card from outside its own screen (Budget -> Cars).
+export function pickNewCarVariant(listingId, modelId) {
+  picks.set(listingId, modelId);
+  pickSubs.forEach((f) => f());
 }
 
 // The variant switch, under the PRICE on the car page (owner, 2026-10-17): it

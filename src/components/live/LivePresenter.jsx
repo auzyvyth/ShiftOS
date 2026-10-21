@@ -8,7 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice,
+  netPrice, carLabel,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -16,7 +16,7 @@ import {
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
-import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
+import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 
 // Live presentation — the seller's full-screen view of their own cars, built
@@ -97,6 +97,8 @@ const DEFAULT_TENURE = 7;
 const HEARTBEAT_MS = 4 * 60 * 1000; // live_until window is 10 min server-side
 const REPORT_MIN_MS = 60 * 1000;     // a quick peek at the presenter is not a live
 
+// Title only: the Cars screen prints the variant beside it in grey (and the
+// desktop variant switch names it). Everywhere else uses carLabel, with the variant.
 const carName = (c) => [c.year, c.brand, c.model].filter(Boolean).join(' ');
 
 // 0182479790 / 60182479790 -> 018-2479790, the way it is said out loud.
@@ -238,6 +240,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const rawInfo = useNewCarInfo(car?.is_model_card ? car.id : null);
   const carInfo = rawInfo && car && rawInfo.brand === car.brand && rawInfo.model === car.model ? rawInfo : null;
   const { variants, current: variant, choose: chooseVariant } = useNewCarVariant(car?.id, carInfo);
+  // Every model card's variants, for the Budget tab (budgetCars, below).
+  const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
     ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
@@ -394,11 +398,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const amount = Math.max(0, Number(budgetAmount) || 0);
   const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
   const bDown = Math.max(0, Number(budgetDown) || 0);
-  const matches = budgetMatches(listings, {
+  // A model card is priced once per variant, each named, so "fits" says WHICH
+  // X50 the budget buys, not the cheapest one under the model's name. Its cc
+  // rides along from the variant's specs so insurance is added here too.
+  const budgetCars = listings.flatMap((c, i) => {
+    const vs = c.is_model_card ? (cardInfos[c.id]?.variants || []).filter((v) => v.price != null) : [];
+    if (!vs.length) return [{ ...c, _n: i + 1 }];
+    return vs.map((v) => ({
+      ...c, _n: i + 1, _variantId: v.model_id, selling_price: v.price, variant: v.variant,
+      engine_cc: v.specs?.engine_cc ?? c.engine_cc,
+    }));
+  });
+  const matches = budgetMatches(budgetCars, {
     maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
   });
   const openFromBudget = (m) => {
+    if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
     setImgIdx(0);
     setCustomDown(String(bDown));
@@ -781,7 +797,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
               {images[imgIdx]
-                ? <img src={images[imgIdx]} alt={carName(car)} />
+                ? <img src={images[imgIdx]} alt={carLabel(shown)} />
                 : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
@@ -962,9 +978,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <p className="lp-empty">{t.budgetEmpty}</p>
           ) : (<>
             <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-            {matches.fits.map((m) => <BudgetRow key={m.car.id} m={m} onOpen={openFromBudget} t={t} />)}
+            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} onOpen={openFromBudget} t={t} />)}
             {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-            {matches.above.map((m) => <BudgetRow key={m.car.id} m={m} over onOpen={openFromBudget} t={t} />)}
+            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over onOpen={openFromBudget} t={t} />)}
             <p className="lp-note" style={{ marginBottom: 8 }}>
               {t.budgetNote}
               {anyHighValue ? t.budgetHigh : ''}
@@ -998,7 +1014,7 @@ function BudgetRow({ m, over, onOpen, t }) {
       {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
       <span className="lp-n">#{m.n}</span>
       <span className="lp-rn">
-        <b>{carName(m.car)}</b>
+        <b>{carLabel(m.car)}</b>
         <span>RM {fmt(m.price)}</span>
       </span>
       <span className="lp-m">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>

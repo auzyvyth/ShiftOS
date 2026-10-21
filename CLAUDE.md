@@ -1447,8 +1447,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
   ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
   says "Tap to type"; a typed figure wins for that car and hides the pills. Budget adds
-  the same insurance (`budgetMatches` `extraFor`); a model card's cc lives on its
-  variant, so Budget prices a card without it. `npm run test:live`.
+  the same insurance (`budgetMatches` `extraFor`), a model card's with its variant's cc.
+  `npm run test:live`.
+- **Every car the presenter names carries its VARIANT** (owner, 2026-10-21: "details is
+  what we win in"): `carLabel` (liveMaths.js) = year, brand, model, variant, used by the
+  Budget rows and the live report. Budget prices a new-car model card ONCE PER VARIANT
+  (`budgetCars`, via `useNewCarInfos`) and lists the dearest variant that fits, by name;
+  tapping it opens that card with that variant picked (`pickNewCarVariant`). One row per
+  car per list. Never name a car by model alone, or price a card only at its cheapest.
   It is the ONLY insurance formula in the app (2026-10-18): the financing calculator,
   the dealer LeadDrawer deal sheet and `ownership.js calcInsuranceAnnual` (car page /
   Compare) all call it. They had their own band table that gave about HALF the tariff,
