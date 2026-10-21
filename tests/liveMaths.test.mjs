@@ -1,6 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel } from '../src/utils/liveMaths.js';
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
+  maxTenureYears, tenuresFor, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -129,6 +130,40 @@ const noIns = budgetMatches(bl, { maxMonthly: 5000, years: 9, rate: 4, basis: 'e
 const withIns = budgetMatches(bl, { maxMonthly: 5000, years: 9, rate: 4, basis: 'eir', extraFor: () => 2839 }).fits[0].monthly;
 is('budget: insurance raises the monthly', withIns > noIns, true);
 is('budget: by exactly the financed insurance', withIns.toFixed(2), monthlyPayment(89800 + 2839, 4, 108).toFixed(2));
+
+// Tenure by car age: about 15 years old at the end of the loan.
+is('tenure: new car keeps 9', maxTenureYears({ condition: 'new', year: 2010 }, 2026), 9);
+is('tenure: no year keeps 9', maxTenureYears({}, 2026), 9);
+is('tenure: 2024 used keeps 9', maxTenureYears({ year: 2024 }, 2026), 9);
+is('tenure: 2017 used max 6', maxTenureYears({ year: 2017 }, 2026), 6);
+is('tenure: 2017 offers 5 only', tenuresFor([5, 7, 9], { year: 2017 }, 2026), [5]);
+is('tenure: 2014 offers its own 3', tenuresFor([5, 7, 9], { year: 2014 }, 2026), [3]);
+is('tenure: 2010 is too old', tenuresFor([5, 7, 9], { year: 2010 }, 2026), []);
+const old = [{ id: 'o', selling_price: 40000, year: 2017 }];
+const ob = budgetMatches(old, { maxMonthly: 5000, years: 9, rate: 5, basis: 'eir', yearsFor: (c) => maxTenureYears(c, 2026) });
+is('budget: an old car is priced at its own limit', ob.fits[0].years, 6);
+is('budget: a car too old for a loan is left out', budgetMatches([{ id: 'z', selling_price: 9000, year: 2008 }], { maxMonthly: 5000, years: 7, rate: 5, basis: 'eir', yearsFor: (c) => maxTenureYears(c, 2026) }).fits.length, 0);
+
+// Deposit to fit: rounded up to RM100, so the monthly lands at or under the target.
+const dep = depositToFit({ price: 80000, cap: 1000, eir: 6.5, years: 7 });
+is('fit: deposit is a round hundred', dep % 100, 0);
+is('fit: monthly at or under the target', monthlyPayment(80000 - dep, 6.5, 84) <= 1000, true);
+is('fit: RM100 less would miss it', monthlyPayment(80000 - dep + 100, 6.5, 84) > 1000, true);
+is('fit: already under target needs none', depositToFit({ price: 30000, cap: 2000, eir: 6.5, years: 7 }), 0);
+is('fit: insurance counts', depositToFit({ price: 80000, extra: 3000, cap: 1000, eir: 6.5, years: 7 }) > dep, true);
+const near1 = monthlyPayment(70000, 3, 84) * 0.9;
+const ab = budgetMatches([{ id: 'u', selling_price: 70000 }], { maxMonthly: near1, years: 7, rate: 3, basis: 'eir' });
+is('budget: just-above row says the extra deposit', ab.above[0].topUp > 0 && ab.above[0].topUp % 100 === 0, true);
+is('budget: that deposit makes it fit', monthlyPayment(70000 - ab.above[0].topUp, 3, 84) <= near1, true);
+
+// Rate sanity.
+is('rate: 2.88 on EIR looks flat', rateWarning(2.88, 'eir', 7), 'looksFlat');
+is('rate: 2.88 flat is fine', rateWarning(2.88, 'flat', 7), null);
+is('rate: 6.5 EIR fine', rateWarning(6.5, 'eir', 9), null);
+is('rate: caps', [eirCap(5), eirCap(7)], [17, 16]);
+is('rate: 16.5 over 7 yrs is above cap', rateWarning(16.5, 'eir', 7), 'aboveCap');
+is('rate: 16.5 over 5 yrs is legal', rateWarning(16.5, 'eir', 5), null);
+is('rate: empty is no warning', rateWarning('', 'eir', 7), null);
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

@@ -1515,6 +1515,15 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Compare) all call it. They had their own band table that gave about HALF the tariff,
   plus a saloon / SUV switch: that split is a ROAD TAX rule, never insurance. Do not
   add a second insurance table anywhere.
+- **Guards + reverse maths (LIVE-CALC, 2026-10-22)**, all in `liveMaths.js`, `npm run test:live`:
+  tenures follow the car's age (`tenuresFor`: about 15 years old at loan end, bank policy, the note
+  says "usually"; new cars uncapped; Budget prices each car on the SAME rows the Cars screen offers,
+  or the row and the car it opens disagree); `rateWarning` flags an EIR under 4% (a flat number on
+  the wrong switch) or over the HP Act cap (17% <=5y, 16% >5y); tapping the PICKED monthly takes a
+  target and fills the deposit (`depositToFit`, rounded UP to RM100); "just above" Budget rows say
+  "+RM x deposit and it fits" and open with it; a "total repaid / interest" line under the salary
+  guide. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
+  10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.

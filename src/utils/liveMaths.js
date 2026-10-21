@@ -3,7 +3,7 @@
 //
 // Pure: no React, no Supabase (tests/liveMaths.test.mjs).
 
-import { flatToEir, monthlyPayment } from './financing.js';
+import { flatToEir, monthlyPayment, principalForPayment, MAX_TENURE_YEARS } from './financing.js';
 
 // "Take-home pay needed" rule: the instalment as a share of net monthly pay.
 // It is a rule of thumb shown WITH its rule, never an approval — the bank
@@ -49,6 +49,51 @@ export function maxMonthlyFromPay(net) {
 // already covers are left out: neither is a financing question.
 export const ABOVE_MARGIN = 0.25;
 
+// Banks lend on a used car only until it is about 15 years old at the end of
+// the loan (BSN states it outright; other banks cut tenure by car age the same
+// way). A 9-year row on a 2014 car is a monthly no bank will give, so the
+// presenter only offers tenures that fit. New cars are not capped.
+// Bank policy, not law: the note on screen says "usually".
+export const MAX_CAR_AGE_AT_END = 15;
+export function maxTenureYears(car, nowYear = new Date().getFullYear()) {
+  const y = Number(car?.year);
+  if (car?.condition === 'new' || !Number.isFinite(y) || y < 1950) return MAX_TENURE_YEARS;
+  return Math.max(0, Math.min(MAX_TENURE_YEARS, MAX_CAR_AGE_AT_END - Math.max(0, nowYear - y)));
+}
+
+// The tenures to offer for a car: the standard ones that fit its age, or its
+// own shorter limit when none of them do. [] = too old for a bank loan.
+export function tenuresFor(standard, car, nowYear) {
+  const max = maxTenureYears(car, nowYear);
+  const ok = standard.filter((y) => y <= max);
+  return ok.length ? ok : (max >= 1 ? [max] : []);
+}
+
+// Deposit needed to bring the instalment down to `cap` ("nak bayar RM1,000
+// sebulan, deposit berapa?"). Rounded UP to RM100 so the monthly it gives is
+// never above the target. 0 = no deposit needed.
+export function depositToFit({ price, extra = 0, cap, eir, years }) {
+  const total = (Number(price) || 0) + (Number(extra) || 0);
+  const c = Number(cap);
+  if (total <= 0 || !Number.isFinite(c) || c <= 0) return null;
+  const need = total - principalForPayment(c, eir, years * 12);
+  return need <= 0 ? 0 : Math.min(total, Math.ceil(need / 100) * 100);
+}
+
+// A typed rate that is probably a mistake. 'looksFlat': under 4% "EIR" is a
+// brochure flat rate typed on the wrong switch, which understates every
+// monthly ~9% in the buyer's favour (HP-EIR). 'aboveCap': over the Hire-
+// Purchase Act cap (17% EIR up to 5 years, 16% over 5; TODO.md HP-EIR).
+export const LOOKS_FLAT_BELOW = 4;
+export const eirCap = (years) => (years <= 5 ? 17 : 16);
+export function rateWarning(rate, basis, years) {
+  const r = Number(rate) || 0;
+  if (r <= 0) return null;
+  if (basis !== 'flat' && r < LOOKS_FLAT_BELOW) return 'looksFlat';
+  if (eirForTenure(r, basis, years) > eirCap(years)) return 'aboveCap';
+  return null;
+}
+
 // What the buyer actually pays for the car: asking price minus the rebate the
 // seller typed for it on this live. A rebate is money off the price, nothing
 // else: never a deposit, never shown as a crossed-out "was" price.
@@ -71,21 +116,30 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // it, each copy carrying `_n`, the card's #N). One car keeps ONE row per list:
 // the dearest variant that fits, and under "just above" only a car with no
 // variant that fits, at its cheapest, so one model never fills both slots.
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor }) {
+// yearsFor(car): the car's own tenure limit (tenuresFor); a car is priced at
+// the budget's tenure or its limit, whichever is shorter, and the row says so.
+// Rows under "just above" carry topUp: the extra deposit that makes them fit.
+export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
   const down = Math.max(0, Number(deposit) || 0);
-  const eir = eirForTenure(rate, basis, years);
   const fits = [];
   const above = [];
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
     if (price <= 0 || down >= price) return;
     const extra = Math.max(0, Number(extraFor?.(car, price)) || 0);
-    const monthly = monthlyPayment(price + extra - down, eir, years * 12);
-    const row = { n: car._n ?? i + 1, car, price, monthly };
+    const limit = yearsFor ? yearsFor(car) : years;
+    const y = Math.min(years, limit || 0);
+    if (y < 1) return;
+    const eir = eirForTenure(rate, basis, y);
+    const monthly = monthlyPayment(price + extra - down, eir, y * 12);
+    const row = { n: car._n ?? i + 1, car, price, monthly, years: y };
     if (monthly <= cap) fits.push(row);
-    else if (monthly <= cap * (1 + ABOVE_MARGIN)) above.push(row);
+    else if (monthly <= cap * (1 + ABOVE_MARGIN)) {
+      const need = depositToFit({ price, extra, cap, eir, years: y });
+      above.push({ ...row, topUp: need == null ? null : Math.max(0, need - down) });
+    }
   });
   fits.sort((a, b) => b.price - a.price);
   above.sort((a, b) => a.monthly - b.monthly);
