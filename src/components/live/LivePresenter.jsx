@@ -113,6 +113,28 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
+  // 'click', not 'pointerdown': the tapped control acts first, then the panel
+  // closes, so the layout never shifts under a finger mid-tap. The sliders
+  // button is excluded or its own toggle would reopen the panel.
+  const adjustRef = useRef(null);
+  const adjustBtnRef = useRef(null);
+  useEffect(() => {
+    if (!adjustOpen) return undefined;
+    // composedPath is fixed at dispatch, so a control that re-renders out of
+    // the DOM during its own click still counts as inside.
+    const onClick = (e) => {
+      const path = e.composedPath();
+      if (!path.includes(adjustRef.current) && !path.includes(adjustBtnRef.current)) setAdjustOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setAdjustOpen(false); };
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [adjustOpen]);
   const [showContact, setShowContact] = useState(false); // off every time: see header
   const [eir, setEir] = useState(String(DEFAULT_EIR));
   const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
@@ -645,7 +667,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </button>
           )}
           {!report && mode !== 'docs' && (
-            <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
+            <button ref={adjustBtnRef} className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
               <SlidersHorizontal size={17} />
             </button>
           )}
@@ -659,7 +681,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {adjustOpen && mode !== 'docs' && (
-          <div className="lp-card lp-adjust">
+          <div ref={adjustRef} className="lp-card lp-adjust">
             <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
               <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
               <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
