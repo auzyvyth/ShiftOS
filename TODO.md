@@ -72,15 +72,11 @@
 
 ## AUDIT-1021: repo-wide security + performance audit (2026-10-21)
 Checked live (advisors, grants, pg_stat_statements, cron), not from reading code.
-Still-open older items are re-ranked here, not duplicated: SEC-4, SEC-3, SEC-A5, SEC-5, SEC-9.
+Still-open older items are re-ranked here, not duplicated: SEC-3, SEC-A5, SEC-5, SEC-9.
+Done 2026-10-21: SEC-4 (backup tables dropped), PREM-LAPSE leftovers (#515 + 20261021b).
 
 ### Security / liability
-- [ ] **SEC-4 (owner, still open since 2026-10-06): run
-  `supabase/migrations/20261005g_drop_backups_and_workshop_share.sql` in the SQL Editor.**
-  `_bk_airy_leads` (~97 rows: buyer IC, address, email, phone) and `_bk_airy_customers`
-  (ic_number) are still live. Not readable by anon/authenticated, but they break the
-  retention promise in `src/legal/legalDocs.js:200` (PDPA) and widen any breach.
-- [ ] **SEC-10 Turnstile + IP limit were optional — CODE DONE 2026-10-21, migration QUEUED.**
+- [ ] **SEC-10 Turnstile + IP limit were optional — SHIPPED 2026-10-21 (#515 + migration 20261021a applied).** Remaining: owner click-test on prod, then delete this item.
   Anon could call `create_lead_from_whatsapp` / `create_lead_from_booking` and insert into
   `whatsapp_enquiries` / `appointments` straight from /rest/v1, skipping
   `api/whatsapp-lead.js` / `api/enquiry.js` / `api/booking.js`. Only per-seller caps
@@ -91,7 +87,7 @@ Still-open older items are re-ranked here, not duplicated: SEC-4, SEC-3, SEC-A5,
   `20261021a_public_lead_writes_server_only.sql` revokes the two RPCs from anon/authenticated,
   limits public enquiry inserts to nameless tap rows, replaces `appointments_public_insert`
   with `appointments_team_insert`, and makes the WhatsApp RPC fill a blank car only.
-  **Order: routes live on prod FIRST, then run the migration after 22:00 MYT.** Then click-test:
+  Click-test:
   car page enquiry, booking, ContactGate WhatsApp, and a seller booking from Lite/Premium/LeadDrawer.
 - [ ] SEC-10b (follow-up) Tap rows (`buyer_message` free text) still fire `on_new_enquiry` +
   `trg_notify_salesman_enquiry` (push + Telegram, message text quoted) at 60/hr/seller. Move the
@@ -131,22 +127,6 @@ Still-open older items are re-ranked here, not duplicated: SEC-4, SEC-3, SEC-A5,
   each, three copies of overlapping seller logic (source of most split-brain bugs).
 - [ ] ENG-AI model IDs pinned to 2025 releases in `lib/aiGuard.js:12-17`; confirm still served.
   `server/` Express twin of the AI guard: delete if unused.
-
-## URGENT — PREM-LAPSE: Premium -> Lite leftovers (logged 2026-10-19, before 4 Nov)
-The first 8 free months end 4-17 Nov 2026. Shipped: lock cars over the Lite cap,
-payment-due banner, 2 pushes, forever-'received' fix (migration 20261019a, applied
-tonight by a scheduled check). Leftovers CODE DONE 2026-10-21, DB half QUEUED
-(`supabase/migrations/20261021b_premium_lapse_leftovers.sql`, run after 22:00 MYT):
-- [ ] (migration) `fire_due_nudges()` now fires only for `salesman_has_full_page()`
-  sellers; a lapsed seller's nudges wait, and anything due 7+ days expires so a
-  renewal does not fire a backlog.
-- [ ] (migration) `sweep_premium_lapses()` clears unsent `appointments.remind_at` for
-  every lapsed seller (worst case one reminder slips out before the hourly :41 run).
-- [x] Open Premium dashboard: `SalesmanPremium.jsx` re-checks `isPremiumSalesman` at
-  `plan_expires_at` and on tab return, then moves to Lite (Lite bounces a renewed
-  seller straight back).
-- [x] Removed the dead `trialExpired` screen.
-After running the migration, delete this section.
 
 ## INTRO-1: First-run intros for Premium sellers — part 1 shipped 2026-10-18
 Yazeed (set up by the owner from console "Set up a seller") landed on a dashboard
@@ -403,11 +383,6 @@ inside self-rolling-back transactions.
   seller on (owner decision: approval = ID check), and car-images listing is limited
   to your own folder (guest buyer now lists 0 files, was the whole bucket incl. 23
   geran/loan-letter scans).
-- [ ] SEC-2b + SEC-4 OWNER RUNS SQL: `supabase/migrations/20261005g_drop_backups_and_workshop_share.sql`
-  (drop the 8 `_bk_airy_*` backup tables of old buyer data + the workshop_jobs
-  shape-check share policy). Owner approved both 2026-10-06; every DROP was cancelled
-  at the session's approval step (3 times), so paste that file into the Supabase SQL
-  editor. Nothing references the tables (checked views, functions, client, edge fns).
 - [ ] SEC-3 (DEFERRED, low residual risk) Car documents live in the PUBLIC car-images
   bucket (CarForm.jsx:962). Listing is closed (20261005f) and names are random, so a
   link only reaches people who can read car_documents (seller, team, superadmin).

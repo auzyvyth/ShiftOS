@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabaseClient";
+import { publicClient } from "../supabaseClient";
+import { withTimeout } from "../config/marketplaceConfig";
 
 // Buyer-facing tap calendar. One RPC call (get_booking_slots) resolves whose
 // calendar this is (ref slug > assigned rep > dealer house), returns their
@@ -21,41 +22,59 @@ const fmtTime = (h, m) => {
 };
 
 const DAYS_AHEAD = 21;
+const OPEN_GRID = { has: false, weekdays: [0, 1, 2, 3, 4, 5, 6], startHour: 9, endHour: 18, slotMinutes: 60 };
+const OPEN_GRID_RESULT = { rule: OPEN_GRID, booked: [] };
 
+// One request per car, started by the CAR PAGE (prefetchBookingSlots) rather
+// than when this calendar mounts. It used to start on mount, so the slots
+// arrived while the buyer was already typing in the sheet and the form jumped
+// under their thumb. publicClient: a public read must never wait on a login's
+// auth lock. Failures are not cached, so reopening retries.
+const slotCache = new Map();
+
+export function prefetchBookingSlots(carId, refSlug) {
+  if (!carId) return Promise.resolve(OPEN_GRID_RESULT);
+  const key = `${carId}|${refSlug || ""}`;
+  if (!slotCache.has(key)) {
+    const p = withTimeout(publicClient.rpc("get_booking_slots", {
+      p_car_id: carId,
+      p_ref_slug: refSlug || null,
+      p_days: DAYS_AHEAD,
+    }), 8000)
+      .then(({ data, error }) => {
+        // On any failure fall back to an open grid — booking must never break.
+        if (error || !data) { slotCache.delete(key); return OPEN_GRID_RESULT; }
+        return {
+          rule: {
+            has: !!data.has_availability,
+            weekdays: Array.isArray(data.weekdays) ? data.weekdays : OPEN_GRID.weekdays,
+            startHour: data.start_hour ?? 9,
+            endHour: data.end_hour ?? 18,
+            slotMinutes: data.slot_minutes ?? 60,
+          },
+          booked: (data.booked || []).map((b) => new Date(b).getTime()),
+        };
+      })
+      .catch(() => { slotCache.delete(key); return OPEN_GRID_RESULT; });
+    slotCache.set(key, p);
+  }
+  return slotCache.get(key);
+}
 export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, onChange }) {
   const [loading, setLoading] = useState(true);
-  const [rule, setRule] = useState({ has: false, weekdays: [0, 1, 2, 3, 4, 5, 6], startHour: 9, endHour: 18, slotMinutes: 60 });
+  const [rule, setRule] = useState(OPEN_GRID);
   const [bookedSet, setBookedSet] = useState(() => new Set());
   const [openDay, setOpenDay] = useState(value?.date || null);
 
   useEffect(() => {
     let alive = true;
-    (async () => {
-      setLoading(true);
-      const { data, error } = await supabase.rpc("get_booking_slots", {
-        p_car_id: carId,
-        p_ref_slug: refSlug || null,
-        p_days: DAYS_AHEAD,
-      });
+    setLoading(true);
+    prefetchBookingSlots(carId, refSlug).then((res) => {
       if (!alive) return;
-      // On any failure fall back to an open grid — booking must never break.
-      if (error || !data) {
-        setRule({ has: false, weekdays: [0, 1, 2, 3, 4, 5, 6], startHour: 9, endHour: 18, slotMinutes: 60 });
-        setBookedSet(new Set());
-        setLoading(false);
-        return;
-      }
-      setRule({
-        has: !!data.has_availability,
-        weekdays: Array.isArray(data.weekdays) ? data.weekdays : [0, 1, 2, 3, 4, 5, 6],
-        startHour: data.start_hour ?? 9,
-        endHour: data.end_hour ?? 18,
-        slotMinutes: data.slot_minutes ?? 60,
-      });
-      const taken = new Set((data.booked || []).map((b) => new Date(b).getTime()));
-      setBookedSet(taken);
+      setRule(res.rule);
+      setBookedSet(new Set(res.booked));
       setLoading(false);
-    })();
+    });
     return () => { alive = false; };
   }, [carId, refSlug]);
 
@@ -104,14 +123,10 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
 
   const openSlots = openDay ? slotsFor(new Date(`${openDay}T00:00:00`)) : [];
 
-  if (loading) {
-    return <div style={{ padding: "24px 0", textAlign: "center", fontSize: 12, color: th.textMuted, fontFamily: "system-ui,sans-serif" }}>Loading available times…</div>;
-  }
-
   return (
-    <div>
+    <div aria-busy={loading || undefined}>
       <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "system-ui,sans-serif" }}>
-        {rule.has ? "Pick an available day" : "Pick a day"}
+        {loading ? "Loading available days…" : rule.has ? "Pick an available day" : "Pick a day"}
       </p>
 
       {/* weekday header */}
@@ -126,7 +141,9 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
         {cells.map((cell, i) => {
           if (!cell) return <div key={`b${i}`} />;
           const selected = openDay === cell.key;
-          if (cell.disabled) {
+          // While loading, the same grid in the same place, just not tappable:
+          // the sheet keeps its final height, so nothing below it moves.
+          if (loading || cell.disabled) {
             return (
               <div key={cell.key} style={{ ...cellBase, color: th.textMuted, opacity: 0.28, cursor: "not-allowed" }} aria-disabled>
                 <span>{cell.date.getDate()}</span>
@@ -153,7 +170,7 @@ export default function BookingCalendar({ carId, refSlug, th, isXdrive, value, o
       </div>
 
       {/* time chips for the chosen day */}
-      {openDay && (
+      {openDay && !loading && (
         <div style={{ marginTop: 16 }}>
           <p style={{ fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: th.textMuted, fontWeight: 700, margin: "0 0 8px", fontFamily: "system-ui,sans-serif" }}>
             Pick a time

@@ -55,7 +55,7 @@ import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import AffordabilityCheck from "../components/AffordabilityCheck";
 import SimilarCars from "../components/car/SimilarCars";
-import BookingCalendar from "../components/BookingCalendar";
+import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
@@ -114,6 +114,9 @@ const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
    have. It now says what it actually compares against, and the method note
    spells out the rest. */
 const MARKET_SAMPLE_FLOOR = 5;
+// Booking send: say "slow" after this, give up (honestly) after that.
+const SLOW_SEND_MS = 5000;
+const SEND_TIMEOUT_MS = 30000;
 
 const MarketPriceTag = ({ car, isXdrive, th }) => {
   // Locked per car at first paint. The page loads with a rough view-provided
@@ -363,7 +366,6 @@ const BUYING_INTENT = [
   { v: 'one_month', l: 'Looking to buy within a month' },
   { v: 'browsing', l: 'Just exploring for now' },
 ];
-const intentLabel = (v) => BUYING_INTENT.find((o) => o.v === v)?.l || '';
 
 // Shown in the Puspakom row when the dealer logged B5/B7 inspection dates
 // (a verified trust signal) even if no certificate file was uploaded.
@@ -1091,6 +1093,9 @@ export default function CarDetailPage() {
   });
   const [focusedField, setFocused] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // A booking can take several seconds on a slow line. After SLOW_SEND_MS the
+  // button says so instead of looking frozen.
+  const [sendSlow, setSendSlow] = useState(false);
   const [booked, setBooked] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [showReservedPopup, setShowReservedPopup] = useState(false);
@@ -1190,6 +1195,13 @@ export default function CarDetailPage() {
      perks loads, since that's the highest-value info on the page and was
      previously buried below the specs tabs (the original complaint: buyers
      had to scroll well past the fold to find it). */
+  // Fetch the seller's open viewing slots with the page, not when the booking
+  // sheet opens: they used to arrive while the buyer was typing and push the
+  // form down under their thumb.
+  useEffect(() => {
+    if (car?.id && car.status === "available") prefetchBookingSlots(car.id, getRef() || null);
+  }, [car?.id, car?.status]);
+
   const [detailTab, setDetailTab] = useState("specs");
   const detailTabDefaultedRef = useRef(false);
   useEffect(() => {
@@ -1745,16 +1757,23 @@ export default function CarDetailPage() {
     }
     setBookErrors({});
     setSubmitting(true);
+    setSendSlow(false);
     const [h, m] = form.time.split(":");
     const dt = new Date(`${form.date}T${h.padStart(2, "0")}:${m}:00`);
+    // Never a fake "booked" before the server says so: a buyer told they are
+    // booked when the request failed waits for a seller who never heard of
+    // them. Instead: say it is slow, and give up honestly after a limit.
+    const ctrl = new AbortController();
+    const slowTimer = setTimeout(() => setSendSlow(true), SLOW_SEND_MS);
+    const abortTimer = setTimeout(() => ctrl.abort(), SEND_TIMEOUT_MS);
     try {
       const res = await fetch(apiUrl("/api/booking"), {
         method: "POST",
+        signal: ctrl.signal,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           carId: car.id,
           dealerId: car.dealer_id,
-          assignedTo: car.assigned_to || null,
           name: form.name,
           phone: form.phone,
           state: form.state || null,
@@ -1801,27 +1820,20 @@ export default function CarDetailPage() {
         return;
       }
     } catch (err) {
+      setSubmitting(false);
+      if (err?.name === "AbortError") {
+        // It may still have arrived: a retry could book twice.
+        toast.error("This is taking too long. It may still have gone through, so wait for the seller's WhatsApp before trying again.", { duration: 9000 });
+        return;
+      }
       console.error("[handleBook] fetch error:", err);
       toast.error("Couldn't reach the seller right now. Check your connection and try again.");
-      setSubmitting(false);
       return;
+    } finally {
+      clearTimeout(slowTimer);
+      clearTimeout(abortTimer);
+      setSendSlow(false);
     }
-    // Fire Telegram notification to dealer (non-blocking)
-    supabase.from("profiles").select("telegram_bot_token,telegram_channel_id,dealership")
-      .eq("id", car.dealer_id).maybeSingle()
-      .then(({ data: dp }) => {
-        if (!dp?.telegram_bot_token || !dp?.telegram_channel_id) return;
-        const dateStr = dt.toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
-        const timeStr = dt.toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" });
-        const stateStr = form.state ? ` (${form.state})` : "";
-        const intentStr = form.timeline ? `\n🎯 ${intentLabel(form.timeline)}` : "";
-        const msg = `🗓️ New Booking!\n\n*${form.name}*${stateStr} booked a viewing for the *${car.brand} ${car.model} ${car.year}*\n\n📅 ${dateStr} · ${timeStr}\n📞 ${form.phone}${intentStr}${form.notes ? `\n💬 "${form.notes}"` : ""}`;
-        fetch(`https://api.telegram.org/bot${dp.telegram_bot_token}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: dp.telegram_channel_id, text: msg, parse_mode: "Markdown" }),
-        }).catch(() => {});
-      });
     setSubmitting(false);
     setBooked(true);
     setBookingConsent({ appear: false, whatsapp: false });
@@ -4591,8 +4603,13 @@ export default function CarDetailPage() {
                       boxShadow:'0 4px 20px rgba(220,38,38,0.25)',
                     }}
                   >
-                    {submitting ? 'Requesting…' : (!form.date || !form.time) ? 'Pick a date & time' : 'Request This Viewing'}
+                    {submitting ? 'Sending your request…' : (!form.date || !form.time) ? 'Pick a date & time' : 'Request This Viewing'}
                   </button>
+                  {sendSlow && (
+                    <p role="status" style={{ fontSize:12, color:th.textMuted, textAlign:'center', margin:'10px 0 0', lineHeight:1.5 }}>
+                      Still sending, the connection is slow. Keep this page open.
+                    </p>
+                  )}
                 </form>
               )}
             </div>
