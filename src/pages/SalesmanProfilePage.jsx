@@ -2,7 +2,9 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { supabase, publicClient } from '../supabaseClient';
+import { cdnImg, cdnSrcSet } from '../utils/img';
+import { withTimeout } from '../config/marketplaceConfig';
 import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
@@ -69,6 +71,70 @@ const SOCIAL_ICONS = {
 };
 const WA_ICON = <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .1-3.3-.8-2.8-1.1-4.5-3.9-4.7-4.1-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.3.5-.4.4c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.1.1.6-.1 1.2z"/></svg>;
 
+// Device copy of the PUBLIC page (what get_salesman_by_slug and the public car
+// view return to anyone; no number is in it, CDP-3). A buyer coming back from a
+// car sees the page at once, and the fresh read replaces it a moment later.
+const AGENT_CACHE_PREFIX = 'xd_agent_page_v1:';
+const AGENT_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+function readAgentCache(slug) {
+  try {
+    const raw = localStorage.getItem(AGENT_CACHE_PREFIX + slug);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (!c?.profile || Date.now() - (c.at || 0) > AGENT_CACHE_TTL) return null;
+    return { profile: c.profile, dealer: c.dealer || null, listings: c.listings || [], soldCount: c.soldCount || 0 };
+  } catch { return null; }
+}
+function writeAgentCache(slug, data) {
+  try { localStorage.setItem(AGENT_CACHE_PREFIX + slug, JSON.stringify({ ...data, at: Date.now() })); } catch { /* full or blocked */ }
+}
+function clearAgentCache(slug) {
+  try { localStorage.removeItem(AGENT_CACHE_PREFIX + slug); } catch { /* blocked */ }
+}
+
+// First-visit loader (owner, 2026-10-21: "preparing your ... gamify it a
+// little"). Only shows until the agent is known, usually under a second; the
+// cars then fill in on the real page. The bar eases toward 90% and never
+// claims done: it is a feeling of progress, not a measurement.
+const LOADER_STEPS = ['Unlocking the showroom', 'Washing the cars', 'Lining them up', 'Checking today\'s prices', 'Opening the doors'];
+function ShowroomLoader({ slug }) {
+  const [step, setStep] = useState(0);
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setInterval(() => setStep((n) => Math.min(n + 1, LOADER_STEPS.length - 1)), 700);
+    const s = setTimeout(() => setSlow(true), 12000);
+    return () => { clearInterval(t); clearTimeout(s); };
+  }, []);
+  const pct = Math.round(90 * (1 - Math.pow(0.55, step + 1)));
+  return (
+    <div role="status" aria-live="polite" style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 24px', fontFamily: 'var(--xd-font-body)', textAlign: 'center' }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#dc2626', margin: '0 0 10px' }}>
+        Preparing @{slug}&apos;s showroom
+      </p>
+      <p key={step} className="ap-load-step" style={{ fontSize: 17, fontWeight: 600, color: '#111827', margin: '0 0 18px', minHeight: 24 }}>
+        {LOADER_STEPS[step]}…
+      </p>
+      <div style={{ width: 'min(240px, 70vw)', height: 4, borderRadius: 4, background: 'rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+        <div className="ap-load-bar" style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: '#dc2626' }} />
+      </div>
+      {slow && (
+        <p style={{ fontSize: 13, color: '#6b7280', margin: '18px 0 0', lineHeight: 1.5 }}>
+          Taking longer than usual.{' '}
+          <button type="button" onClick={() => window.location.reload()} style={{ background: 'none', border: 'none', padding: 0, color: '#dc2626', fontWeight: 600, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}>
+            Try again
+          </button>
+        </p>
+      )}
+      <style>{`
+        .ap-load-step { animation: ap-step-in .3s ease-out; }
+        .ap-load-bar { transition: width .6s cubic-bezier(.22,1,.36,1); }
+        @keyframes ap-step-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+        @media (prefers-reduced-motion: reduce) { .ap-load-step { animation: none; } .ap-load-bar { transition: none; } }
+      `}</style>
+    </div>
+  );
+}
+
 // One car card, per docs/mockups/agent-page-light.html. Deliberately not
 // ShowroomCard: that one carries an "Agent/Dealer" chip (meaningless on the
 // agent's own page) and its own WhatsApp gate, which would compete with this
@@ -80,7 +146,9 @@ function AgentCarCard({ car, num, onClick }) {
     <Link to={`/showroom/${car.slug || car.id}`} onClick={onClick} className="ap-card ap-car">
       <div className="ap-ph">
         {imgs[0]
-          ? <img src={imgs[0]} alt={[car.year, car.brand, car.model].filter(Boolean).join(' ')} loading="lazy" />
+          ? <img src={cdnImg(imgs[0], 480, 72)} srcSet={cdnSrcSet(imgs[0], [320, 480, 640], 72)}
+              sizes="(max-width: 640px) 50vw, 360px" decoding="async"
+              alt={[car.year, car.brand, car.model].filter(Boolean).join(' ')} loading="lazy" />
           : <span className="ap-nophoto">No photo</span>}
         <span className="ap-ov ap-tl">#{num}{cond ? ` · ${cond}` : ''}</span>
         {imgs.length > 1 && <span className="ap-ov ap-br">{imgs.length} photos</span>}
@@ -116,11 +184,15 @@ export default function SalesmanProfilePage() {
     else if (viewerHome?.seller) navigate(viewerHome.to);
     else navigate('/');
   };
-  const [profile, setProfile] = useState(null);
-  const [dealer, setDealer] = useState(null);
-  const [listings, setListings] = useState([]);
-  const [soldCount, setSoldCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // A repeat visit paints from the device copy at once and refreshes behind it.
+  const [seed] = useState(() => readAgentCache(slug));
+  const [profile, setProfile] = useState(seed?.profile || null);
+  const [dealer, setDealer] = useState(seed?.dealer || null);
+  const [listings, setListings] = useState(seed?.listings || []);
+  const [soldCount, setSoldCount] = useState(seed?.soldCount || 0);
+  // True until the CARS are in. The page itself renders as soon as the agent
+  // is known; only the car grid waits (skeleton cards, never "No cars").
+  const [loading, setLoading] = useState(!seed);
   const [notFound, setNotFound] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const bioRef = useRef(null);
@@ -201,6 +273,15 @@ export default function SalesmanProfilePage() {
   useEffect(() => {
     let cancelled = false;
 
+    // Moving from one agent's page to another: show the new agent's device
+    // copy (or the loader), never the previous agent.
+    const c = readAgentCache(slug);
+    if (c && c.profile?.slug !== profile?.slug) {
+      setProfile(c.profile); setDealer(c.dealer); setListings(c.listings); setSoldCount(c.soldCount); setLoading(false);
+    } else if (!c && profile && profile.slug !== slug) {
+      setProfile(null); setDealer(null); setListings([]); setSoldCount(0); setLoading(true);
+    }
+
     // Look up the agent, retrying on transient RPC failures. A mobile tab woken
     // from the background re-mounts this page and fires the RPC while the
     // network is still coming back — a FAILED request must not be shown as
@@ -208,9 +289,12 @@ export default function SalesmanProfilePage() {
     // returns no row. Retry a few times before giving up; a manual refresh used
     // to be the only way out of the false not-found.
     async function load(attempt = 0) {
-      const { data: p, error } = await supabase
-        .rpc('get_salesman_by_slug', { p_slug: slug })
-        .maybeSingle();
+      // publicClient: a stale login on this phone must not hold up a public page.
+      let p = null, error = null;
+      try {
+        ({ data: p, error } = await withTimeout(
+          publicClient.rpc('get_salesman_by_slug', { p_slug: slug }).maybeSingle(), 10000));
+      } catch (e) { error = e; }
       if (cancelled) return;
 
       if (error) {
@@ -222,7 +306,7 @@ export default function SalesmanProfilePage() {
         return;
       }
 
-      if (!p) { setNotFound(true); setLoading(false); return; }
+      if (!p) { clearAgentCache(slug); setNotFound(true); setLoading(false); return; }
       setProfile(p);
 
       // Log the mini-page visit (footprint). Keyed on the agent's slug so it
@@ -235,17 +319,17 @@ export default function SalesmanProfilePage() {
         });
       }
 
-      const [ownedRes, assignedRes, featuredRes, soldStatsRes] = await Promise.all([
-        supabase.from('public_car_listings')
+      const [ownedRes, assignedRes, featuredRes, soldStatsRes, dealerRes] = await Promise.all([
+        publicClient.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('dealer_id', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
-        supabase.from('public_car_listings')
+        publicClient.from('public_car_listings')
           .select('id,slug,year,brand,model,variant,selling_price,images,mileage,transmission,colour,dealer_id,docs_verified,condition,state,status,is_model_card,engine_cc')
           .eq('assigned_to', p.id).in('status', ['available', 'reserved']).order('created_at', { ascending: false }),
         // Linked salesmen feature dealer cars via salesman_listings (car stays
         // owned by the dealer, assigned_to null) — the two queries above miss
         // those, so pull them via a SECURITY DEFINER RPC.
-        supabase.rpc('get_salesman_featured_listings', { p_salesman_id: p.id }),
+        publicClient.rpc('get_salesman_featured_listings', { p_salesman_id: p.id }),
         // Sold count comes from seller_public_stats — the SAME source the
         // marketplace card reads as public_car_listings.seller_sold_count.
         // This used to be two counts (dealer_id + assigned_to) added together,
@@ -253,17 +337,14 @@ export default function SalesmanProfilePage() {
         // assignee (14 of 26 sold cars live), so the mini page claimed roughly
         // twice what the card showed for the same seller. The view does a
         // count(DISTINCT listing_id) over the union, so it cannot double-count.
-        supabase.from('seller_public_stats').select('sold_count').eq('seller_id', p.id).maybeSingle(),
+        publicClient.from('seller_public_stats').select('sold_count').eq('seller_id', p.id).maybeSingle(),
+        // In the same round as the cars: it used to be a third wait after them.
+        p.dealer_id
+          ? publicClient.rpc('get_dealer_profile_by_id', { p_dealer_id: p.dealer_id }).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
       if (cancelled) return;
-
-      if (p.dealer_id) {
-        const { data: d } = await supabase
-          .rpc('get_dealer_profile_by_id', { p_dealer_id: p.dealer_id })
-          .maybeSingle();
-        if (cancelled) return;
-        setDealer(d);
-      }
+      setDealer(dealerRes.data || null);
 
       const seen = new Set();
       const lst = [...(ownedRes.data || []), ...(assignedRes.data || []), ...(featuredRes.data || [])].filter(c => {
@@ -272,9 +353,14 @@ export default function SalesmanProfilePage() {
         return true;
       });
 
-      setSoldCount(Number(soldStatsRes.data?.sold_count) || 0);
+      const sold = Number(soldStatsRes.data?.sold_count) || 0;
+      setSoldCount(sold);
       setListings(lst);
       setLoading(false);
+      // A failed car read must not overwrite a good copy with an empty list.
+      if (!ownedRes.error && !assignedRes.error) {
+        writeAgentCache(slug, { profile: p, dealer: dealerRes.data || null, listings: lst, soldCount: sold });
+      }
     }
     load();
     return () => { cancelled = true; };
@@ -302,7 +388,7 @@ export default function SalesmanProfilePage() {
     let cancelled = false;
     const check = () => {
       if (document.visibilityState !== 'visible') return;
-      supabase.rpc('get_salesman_live', { p_slug: slug }).then(({ data, error }) => {
+      publicClient.rpc('get_salesman_live', { p_slug: slug }).then(({ data, error }) => {
         if (!cancelled && !error) setLiveListingId(data || null);
       }, () => {});
     };
@@ -442,12 +528,7 @@ export default function SalesmanProfilePage() {
   const ownLocationStr = profile?.location || null;
   const mapLocationStr = ownLocationStr || dealerLocationStr;
 
-  if (loading) return (
-    <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid rgba(0,0,0,0.08)', borderTopColor: '#dc2626', animation: 'spin 0.8s linear infinite' }} />
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-    </div>
-  );
+  if (!profile && !notFound) return <ShowroomLoader slug={slug} />;
 
   if (notFound) return (
     <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--xd-font-body)', padding: '0 24px', textAlign: 'center' }}>
@@ -485,7 +566,8 @@ export default function SalesmanProfilePage() {
   const hasReviews = (reviewSummary?.count || 0) > 0;
   // Only real numbers: Sold hides at 0, rating hides with no reviews.
   const stats = [
-    { key: 'sale', n: listings.length, l: 'For sale' },
+    // A count that is still loading is a dash, never a 0.
+    { key: 'sale', n: loading ? '–' : listings.length, l: 'For sale' },
     soldCount > 0 && { key: 'sold', n: soldCount, l: 'Sold' },
     hasReviews && { key: 'rating', n: reviewSummary.avg.toFixed(1), suffix: '/5', l: `${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}` },
   ].filter(Boolean);
@@ -579,6 +661,11 @@ export default function SalesmanProfilePage() {
         .ap-car:hover { box-shadow: 0 12px 32px rgba(15,23,42,.14); transform: translateY(-3px); }
         .ap-ph { aspect-ratio: 4 / 3; position: relative; background: #EDEAE3; overflow: hidden; }
         .ap-ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: ap-pulse 1.4s ease-in-out infinite; }
+        .ap-skel .ap-cb i { display: block; height: 12px; border-radius: 6px; background: #EDEAE3; margin-bottom: 10px; }
+        .ap-skel .ap-cb i:nth-child(1) { width: 80%; } .ap-skel .ap-cb i:nth-child(2) { width: 55%; } .ap-skel .ap-cb i:nth-child(3) { width: 40%; height: 18px; margin-bottom: 0; }
+        @keyframes ap-pulse { 50% { opacity: .55; } }
+        @media (prefers-reduced-motion: reduce) { .ap-skel .ap-ph, .ap-skel .ap-cb i { animation: none; } }
         .ap-nophoto { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #9ca3af; }
         .ap-ov { position: absolute; background: rgba(15,17,21,.78); color: #fff; font-size: 11px; font-weight: 600; padding: 4px 7px; border-radius: 4px; font-variant-numeric: tabular-nums; }
         .ap-tl { left: 10px; top: 10px; } .ap-br { right: 10px; bottom: 10px; }
@@ -656,7 +743,7 @@ export default function SalesmanProfilePage() {
               marketplace's warm wave bands (colour lives here and nowhere else). */}
           <div className="ap-cover">
             {profile.cover_url ? (
-              <img src={profile.cover_url} alt="" />
+              <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" />
             ) : (
               <svg className="ap-waves" viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fillOpacity=".85" />
@@ -694,7 +781,7 @@ export default function SalesmanProfilePage() {
             <div className="ap-left">
               <div className="ap-card ap-id">
                 <div className="ap-av">
-                  {profile.avatar_url ? <img src={profile.avatar_url} alt={profile.full_name} /> : <div>{initial}</div>}
+                  {profile.avatar_url ? <img src={cdnImg(profile.avatar_url, 240, 80)} alt={profile.full_name} /> : <div>{initial}</div>}
                 </div>
                 {eyebrow && <p className="ap-eb"><i />{eyebrow}</p>}
                 <h1>
@@ -797,7 +884,7 @@ export default function SalesmanProfilePage() {
                     <p className="ap-live-h"><i />Showing #{liveIdx + 1}</p>
                     <Link to={`/showroom/${liveCar.slug || liveCar.id}`} onClick={() => trackCardClick(liveCar)} className="ap-live-car">
                       <div className="ap-live-ph">
-                        {Array.isArray(liveCar.images) && liveCar.images[0] && <img src={liveCar.images[0]} alt="" />}
+                        {Array.isArray(liveCar.images) && liveCar.images[0] && <img src={cdnImg(liveCar.images[0], 320, 72)} alt="" />}
                       </div>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <p className="ap-cn">{[liveCar.year, liveCar.brand, liveCar.model, liveCar.variant].filter(Boolean).join(' ')}</p>
@@ -828,7 +915,16 @@ export default function SalesmanProfilePage() {
                 <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
               )}
 
-              {listings.length > 0 ? (
+              {loading && listings.length === 0 ? (
+                <div className="ap-grid" aria-busy="true" aria-label="Loading cars">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="ap-card ap-car ap-skel">
+                      <div className="ap-ph" />
+                      <div className="ap-cb"><i /><i /><i /></div>
+                    </div>
+                  ))}
+                </div>
+              ) : listings.length > 0 ? (
                 <div className="ap-grid">
                   {sortedListings.map((car) => (
                     <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} onClick={() => trackCardClick(car)} />
@@ -900,8 +996,8 @@ export default function SalesmanProfilePage() {
         {/* Mobile only: the contact button must not scroll away under the cars. */}
         {waHref && (
           <div className="ap-sticky">
-            <div className="ap-mini">{profile.avatar_url ? <img src={profile.avatar_url} alt="" /> : initial}</div>
-            <p className="ap-who"><b>{profile.full_name}</b>{replyLabel || `${listings.length} ${listings.length === 1 ? 'car' : 'cars'} for sale`}</p>
+            <div className="ap-mini">{profile.avatar_url ? <img src={cdnImg(profile.avatar_url, 96, 80)} alt="" /> : initial}</div>
+            <p className="ap-who"><b>{profile.full_name}</b>{replyLabel || (loading ? '' : `${listings.length} ${listings.length === 1 ? 'car' : 'cars'} for sale`)}</p>
             <a href={waHref} target="_blank" rel="noopener noreferrer" className="ap-btn">{WA_ICON}WhatsApp</a>
           </div>
         )}
