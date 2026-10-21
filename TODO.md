@@ -2521,6 +2521,17 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-20: Sell the seller software as "results", not a subscription (owner,
+  2026-10-21)** — RaaS: the seller pays for what the platform delivers instead of
+  a flat RM35/month. Blockers before building: (1) a per-SALE fee gives sellers a
+  reason to never mark a deal won, which starves the one won-trigger everything
+  reads (`auto_create_customer_on_won`); (2) "results" usually means AI doing the
+  work alone, which the AI-drafts-a-human-sends rule forbids; (3) a fee tied to a
+  car sale needs a real check of Malaysian law (agent/broker licensing) before any
+  price is set. The measurable version is per LEAD the platform itself creates
+  (`leads.lead_source` chat / enquiry / find_me / whatsapp), on top of a small
+  subscription floor.
+
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
   sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and
