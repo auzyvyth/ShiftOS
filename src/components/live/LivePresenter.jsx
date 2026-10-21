@@ -8,7 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, rebateKey, carLabel, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -256,8 +256,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Every model card's variants, for the Budget tab (budgetCars, below).
   const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
-    ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
+    ? { ...car, _variantId: variant.model_id, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
+  // This car's rebate box: per variant on a model card (liveMaths.rebateKey).
+  const rk = car ? rebateKey(shown) : null;
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
@@ -756,8 +758,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {mode === 'cars' && (
               <label>
                 {t.rebateThisCar}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[car.id] ?? ''}
-                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [car.id]: v })); }} />
+                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[rk] ?? ''}
+                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [rk]: v })); }} />
               </label>
             )}
             {mode === 'cars' && (
@@ -878,8 +880,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <tr className="lp-r-reb lp-tap" onClick={() => setEditing('rebate')}>
                     <td>{t.rebate}</td>
                     <td>{editing === 'rebate' && !embedded
-                      ? <EditCell value={rebates[car.id] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
-                          onChange={(v) => setRebates((r) => ({ ...r, [car.id]: v }))} />
+                      ? <EditCell value={rebates[rk] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
+                          onChange={(v) => setRebates((r) => ({ ...r, [rk]: v }))} />
                       : rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
                   </tr>
                 )}

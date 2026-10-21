@@ -1528,7 +1528,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   budget buys are tappable and the row's price + monthly follow the pick (and the car it opens);
   the rest are dimmed and struck through, never blurred (blur reads as a glitch on camera).
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
-  Typed in Adjust, never saved to the listing (promos change monthly). Loan =
+  Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
+  each VARIANT holds its own rebate (`rebateKey` = card + variant, owner 2026-10-22); the Cars
+  screen and the Budget rows read the same key, so they agree. Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
   never counted as the buyer's deposit.
