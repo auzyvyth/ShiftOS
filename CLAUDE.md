@@ -504,6 +504,50 @@ seller's showroom search sat on skeletons. Write `(_, s) => { resolve(s); }`,
 never `async (_, s) => ...`. The marketplace + showroom grids and
 `useMarketplaceStats` read through `publicClient` so a dead login cannot blank them.
 
+## Production releases happen after MIDNIGHT, and only when nobody is live (owner, 2026-10-21)
+Sellers run Live presentation on TikTok in the evening; a release or a DB change during a
+live can stall it in front of their audience. So:
+- **Daytime = staging only.** Build, push staging, the owner tests the preview.
+- **The owner's "ship tonight" is the approval.** Schedule a `send_later` check-in for
+  00:05 Malaysia time (16:05 UTC). At that time: run
+  `select count(*) from seller_live_state where live_until > now();`. If it is 0, merge the
+  PR, verify the Vercel production deploy is READY, apply any queued migrations in the same
+  slot, and leave the owner a short summary. If someone is live, check again every 30 min;
+  give up at 03:00 and say so (never release after that without asking).
+- **Emergency fix (something broken for users):** only on the owner's explicit "ship now",
+  and say first if anyone is live.
+- What a release does to an open page: nothing until it reloads (`registerType: 'prompt'`,
+  `vite.config.js`; LivePresenter loads no further chunks once open). A DB migration is the
+  bigger hazard: it freezes the API up to 45s, and the presenter heartbeat
+  (`set_live_listing`) and the mini page "Live now" poll both go through it.
+- "Who is online right now" was not answerable from the database (`auth.sessions` only
+  updates on the hourly token refresh; `analytics_events` skips sellers' devices and anyone
+  without analytics consent). **ONLINE-1 (2026-10-21)**: every app tab announces itself on the
+  Realtime PRESENCE channel `online-now` (`src/components/OnlineBeacon.jsx`, mounted in
+  App.jsx; payload `{a: seller|buyer|visitor, live}`, random key per tab, no user id), and
+  console Home counts it (`useOnlineNow`). Presence lives in the realtime server's memory: NO
+  database writes. The channel is public and spoofable, so it is a dashboard number, never
+  the release gate: `seller_live_state` stays the gate.
+
+## Disk IO is WRITES here (IO-1, 2026-10-21)
+The DB is ~57 MB and every read is served from memory (cache hit 100%), so disk IO comes
+from writes: cron run logs, pg_net request/response rows, realtime subscription rows, auth
+refresh tokens. Before adding anything that runs on a timer or on every page open:
+- **A cron job that calls an edge function sits behind `where exists (...)`** that is a
+  superset of what the function selects (migration `20261021d_cron_diet.sql`, pattern from
+  appointment-reminders). Idle runs then cost one in-memory check, no function call.
+  Never slow `appointment-reminders`: the function only looks back 10 min for due reminders.
+- **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
+  the device (a delete + insert) on every open; it now saves at most once a day per account
+  + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
+- **Only subscribe `postgres_changes` to tables IN the `supabase_realtime` publication**
+  (`select tablename from pg_publication_tables where pubname='supabase_realtime'`). A
+  subscription to any other table never fires but still opens a socket and writes
+  `realtime.subscription` rows. `useTenant` had one on `profiles` for every storefront visitor.
+- Biggest remaining cost: Realtime's change polling (`realtime.list_changes`, ~100k
+  calls / 2 days) runs while ANY `postgres_changes` subscriber is connected. Moving the seller
+  panels to Broadcast-from-trigger would remove it; not done yet (TODO IO-2).
+
 ## Deployment pipeline — 3 stages
 **API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**
 (`vercel.json` `regions`, 2026-10-21). They ran in Vercel's default `iad1` (Washington):
@@ -520,6 +564,12 @@ local (main) → staging branch → production (main on GitHub)
 ```
 - **local main**: all development happens here, commits stay local until staged
 - **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **Before EVERY force-push to staging, `git fetch origin staging` and run
+  `git log --oneline HEAD..origin/staging`.** Any commit listed is someone else's
+  unshipped work (another session builds on the same staging) and a force-push deletes it
+  from the only place it lives. Put your commits ON TOP of it instead. On 2026-10-21 a push
+  wiped two Live presenter fixes from another session; they were recovered from the local
+  object store only because the fetch had happened minutes earlier.
 - **production**: NEVER push to origin/main directly — always via temp branch → PR → merge
 - NEVER deploy to production without explicit user instruction ("push to prod" / "go live")
 - Every feature or fix must go to staging first and be confirmed before production
@@ -577,10 +627,12 @@ instruction — run the intake yourself, do not ask first. Full runbook:
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
-  - **No DDL between 09:00 and 22:00 Malaysia time (01:00-14:00 UTC).** Run `date -u`
-    before every `apply_migration`. Inside the window, do NOT apply it: write the
-    migration file, commit it, and tell the owner it is queued for tonight. Only an
-    explicit "apply it now" from the owner overrides this, per migration.
+  - **DDL only after midnight Malaysia time (00:00-09:00 MYT, 16:00-01:00 UTC), and only
+    when nobody is live** (owner, 2026-10-21; it was 22:00, which overlaps evening lives).
+    Run `date -u` and the `seller_live_state` check before every `apply_migration`.
+    Outside the window, do NOT apply it: write the migration file, commit it, and queue it
+    for tonight's release. Only an explicit "apply it now" from the owner overrides this,
+    per migration.
   - **One migration per change, not one per statement.** Each call is one freeze;
     five small migrations froze the API five times on 2026-09-26.
   - **A migration that DROPs anything needs the owner to confirm it in the tool, and
@@ -1447,8 +1499,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
   ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
   says "Tap to type"; a typed figure wins for that car and hides the pills. Budget adds
-  the same insurance (`budgetMatches` `extraFor`); a model card's cc lives on its
-  variant, so Budget prices a card without it. `npm run test:live`.
+  the same insurance (`budgetMatches` `extraFor`), a model card's with its variant's cc.
+  `npm run test:live`.
+- **Every car the presenter names carries its VARIANT** (owner, 2026-10-21: "details is
+  what we win in"): `carLabel` (liveMaths.js) = year, brand, model, variant, used by the
+  Budget rows and the live report. Budget prices a new-car model card ONCE PER VARIANT
+  (`budgetCars`, via `useNewCarInfos`) and lists the dearest variant that fits, by name;
+  tapping it opens that card with that variant picked (`pickNewCarVariant`). One row per
+  car per list. Never name a car by model alone, or price a card only at its cheapest.
   It is the ONLY insurance formula in the app (2026-10-18): the financing calculator,
   the dealer LeadDrawer deal sheet and `ownership.js calcInsuranceAnnual` (car page /
   Compare) all call it. They had their own band table that gave about HALF the tariff,
@@ -1676,7 +1734,12 @@ Analytics once there is a car, Loans + Outreach once there is a lead. The tab yo
 keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
 only setup + greeting + page link (`startingOut`, DashboardTab.jsx) until the first buyer.
 Three new signups called the full panel "too complicated" on day one. A new tab must say
-when it earns its link, or it goes back to ten links for a seller with no car. The tour never switches tabs: it opens the nav (the drawer
+when it earns its link, or it goes back to ten links for a seller with no car.
+**Lite does the same** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
+Settings always; Leads + Performance once there is a car, Inbox once a booking/enquiry exists.
+The tour is built from `TOUR_PLAN` (one list for steps AND anchors; never re-split them into two
+index-matched arrays). Dashboard `startingOut` hides the Chat/Add-ons row and every card below
+it until the first buyer. `gatedLocked` lock screens stay for deep links. The tour never switches tabs: it opens the nav (the drawer
 on a phone) and rings each link where it sits (`data-tour-id`).
 - **The bubble FOLLOWS the ringed link; the buttons do NOT (owner, 2026-10-18).** The
   bubble is words only, placed beside the link by `placeTourCard` (`src/utils/tourPlacement.js`:

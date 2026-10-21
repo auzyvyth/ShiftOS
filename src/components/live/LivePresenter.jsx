@@ -8,7 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice,
+  netPrice, carLabel,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -16,8 +16,9 @@ import {
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
-import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
+import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { setLiveOpen } from '../../lib/onlinePresence';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -97,6 +98,8 @@ const DEFAULT_TENURE = 7;
 const HEARTBEAT_MS = 4 * 60 * 1000; // live_until window is 10 min server-side
 const REPORT_MIN_MS = 60 * 1000;     // a quick peek at the presenter is not a live
 
+// Title only: the Cars screen prints the variant beside it in grey (and the
+// desktop variant switch names it). Everywhere else uses carLabel, with the variant.
 const carName = (c) => [c.year, c.brand, c.model].filter(Boolean).join(' ');
 
 // 0182479790 / 60182479790 -> 018-2479790, the way it is said out loud.
@@ -108,11 +111,40 @@ const fmtPhone = (raw) => {
 };
 
 export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang }) {
+  // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
+  // Not for the embedded demo on the marketing page, which is not a real live.
+  useEffect(() => {
+    if (embedded) return undefined;
+    setLiveOpen(true);
+    return () => setLiveOpen(false);
+  }, [embedded]);
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
+  // 'click', not 'pointerdown': the tapped control acts first, then the panel
+  // closes, so the layout never shifts under a finger mid-tap. The sliders
+  // button is excluded or its own toggle would reopen the panel.
+  const adjustRef = useRef(null);
+  const adjustBtnRef = useRef(null);
+  useEffect(() => {
+    if (!adjustOpen) return undefined;
+    // composedPath is fixed at dispatch, so a control that re-renders out of
+    // the DOM during its own click still counts as inside.
+    const onClick = (e) => {
+      const path = e.composedPath();
+      if (!path.includes(adjustRef.current) && !path.includes(adjustBtnRef.current)) setAdjustOpen(false);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') setAdjustOpen(false); };
+    document.addEventListener('click', onClick);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [adjustOpen]);
   const [showContact, setShowContact] = useState(false); // off every time: see header
   const [eir, setEir] = useState(String(DEFAULT_EIR));
   const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
@@ -216,6 +248,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const rawInfo = useNewCarInfo(car?.is_model_card ? car.id : null);
   const carInfo = rawInfo && car && rawInfo.brand === car.brand && rawInfo.model === car.model ? rawInfo : null;
   const { variants, current: variant, choose: chooseVariant } = useNewCarVariant(car?.id, carInfo);
+  // Every model card's variants, for the Budget tab (budgetCars, below).
+  const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
     ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
@@ -372,11 +406,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const amount = Math.max(0, Number(budgetAmount) || 0);
   const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
   const bDown = Math.max(0, Number(budgetDown) || 0);
-  const matches = budgetMatches(listings, {
+  // A model card is priced once per variant, each named, so "fits" says WHICH
+  // X50 the budget buys, not the cheapest one under the model's name. Its cc
+  // rides along from the variant's specs so insurance is added here too.
+  const budgetCars = listings.flatMap((c, i) => {
+    const vs = c.is_model_card ? (cardInfos[c.id]?.variants || []).filter((v) => v.price != null) : [];
+    if (!vs.length) return [{ ...c, _n: i + 1 }];
+    return vs.map((v) => ({
+      ...c, _n: i + 1, _variantId: v.model_id, selling_price: v.price, variant: v.variant,
+      engine_cc: v.specs?.engine_cc ?? c.engine_cc,
+    }));
+  });
+  const matches = budgetMatches(budgetCars, {
     maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
   });
   const openFromBudget = (m) => {
+    if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
     setImgIdx(0);
     setCustomDown(String(bDown));
@@ -433,8 +479,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(24px, 7.4cqw, 44px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-spec { font-size: clamp(11px, 3cqw, 15px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-pair { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 10px; align-items: center; }
-        .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #EDEAE3; }
-        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        /* The frame is a fixed size; the photo fits INSIDE it, never cropped
+           (owner, 2026-10-21: the desktop 2:1 frame cut the roof and wheels off
+           a 4:3 photo). The bars are white so they melt into the light sheet
+           and into studio shots, which have a white backdrop; the hairline
+           keeps the frame's edge visible on camera. */
+        .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
+        .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
@@ -640,7 +691,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </button>
           )}
           {!report && mode !== 'docs' && (
-            <button className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
+            <button ref={adjustBtnRef} className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
               <SlidersHorizontal size={17} />
             </button>
           )}
@@ -654,7 +705,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {adjustOpen && mode !== 'docs' && (
-          <div className="lp-card lp-adjust">
+          <div ref={adjustRef} className="lp-card lp-adjust">
             <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
               <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
               <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
@@ -754,7 +805,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
               {images[imgIdx]
-                ? <img src={images[imgIdx]} alt={carName(car)} />
+                ? <img src={images[imgIdx]} alt={carLabel(shown)} />
                 : <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>{t.noPhoto}</div>}
               {images.length > 1 && (
                 <>
@@ -935,9 +986,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <p className="lp-empty">{t.budgetEmpty}</p>
           ) : (<>
             <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-            {matches.fits.map((m) => <BudgetRow key={m.car.id} m={m} onOpen={openFromBudget} t={t} />)}
+            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} onOpen={openFromBudget} t={t} />)}
             {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-            {matches.above.map((m) => <BudgetRow key={m.car.id} m={m} over onOpen={openFromBudget} t={t} />)}
+            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over onOpen={openFromBudget} t={t} />)}
             <p className="lp-note" style={{ marginBottom: 8 }}>
               {t.budgetNote}
               {anyHighValue ? t.budgetHigh : ''}
@@ -971,7 +1022,7 @@ function BudgetRow({ m, over, onOpen, t }) {
       {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
       <span className="lp-n">#{m.n}</span>
       <span className="lp-rn">
-        <b>{carName(m.car)}</b>
+        <b>{carLabel(m.car)}</b>
         <span>RM {fmt(m.price)}</span>
       </span>
       <span className="lp-m">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>

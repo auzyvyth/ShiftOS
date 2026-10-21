@@ -70,6 +70,20 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## IO-1 / IO-2: disk IO is writes, not reads (2026-10-21)
+DB 57 MB, cache hit 100%: every byte of disk IO is a write. IO-1 (shipping tonight):
+guarded cron jobs (`20261021d_cron_diet.sql`), push re-save once a day, dead storefront
+realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
+- [ ] **IO-2 Realtime change polling** (`realtime.list_changes`, ~100k calls in 2 days, the
+  single biggest DB cost) runs while any `postgres_changes` subscriber is connected. Replace
+  the seller panels' subscriptions (Lite, Premium, Salesmanpanel, dealer dashboard: leads,
+  notifications, enquiries, appointments, car_listings, chat) with Broadcast messages sent
+  from DB triggers (`realtime.broadcast_changes`), then drop the tables from the
+  `supabase_realtime` publication. Needs DB triggers + private-channel authorization
+  (migration, after-midnight slot) and a careful click-through of every live-updating screen.
+- [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
+  subscribes to `lead_activities`, which is not in the publication (never fires).
+
 ## AUDIT-1021: repo-wide security + performance audit (2026-10-21)
 Checked live (advisors, grants, pg_stat_statements, cron), not from reading code.
 Still-open older items are re-ranked here, not duplicated: SEC-3, SEC-A5, SEC-5, SEC-9.

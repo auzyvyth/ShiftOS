@@ -2096,26 +2096,49 @@ export default function SalesmanLite() {
     return () => clearInterval(id);
   }, []);
 
+  // The menu grows with the seller (SIMPLE-1, same rule as Premium, 2026-10-21).
+  // A seller with no car saw six links, and Leads, Inbox and Performance each
+  // opened a lock screen ("list a car first"). A link appears once there is
+  // something behind it; the tab you are on keeps its link, and every tab still
+  // opens by URL (gatedLocked keeps the lock screen for a deep link).
+  const hasCar = myListings.length > 0;
+  const hasInbox = (appointments || []).length > 0 || (enquiries || []).length > 0;
+  // No buyer has reached this seller yet: the dashboard drops every card that
+  // would be zeros (renderDashboard), and the tour skips what that hides.
+  const startingOut = leads.length === 0 && !hasInbox;
+  const navTabs = [
+    "dashboard", "listings",
+    ...(hasCar || leads.length > 0 ? ["leads"] : []),
+    ...(hasInbox ? ["enquiries"] : []),
+    ...(hasCar ? ["performance"] : []),
+    "settings",
+  ];
+  const navShows = (tab) => navTabs.includes(tab) || activeTab === tab;
+  // One entry per tour step: the key names its copy (salesmanLite.tour.steps.*),
+  // the anchor says which tab it opens and what it rings. Only steps whose link
+  // or button is on screen are kept, so the tour is as short as the menu.
+  const TOUR_PLAN = [
+    { key: "welcome" },
+    { key: "dashboard", anchor: { tab: "dashboard" } },
+    { key: "listings", anchor: { tab: "listings" } },
+    { key: "leads", anchor: { tab: "leads" }, show: navTabs.includes("leads") },
+    { key: "inbox", anchor: { tab: "enquiries" }, show: hasInbox },
+    { key: "bookings", anchor: { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") }, show: hasInbox },
+    { key: "performance", anchor: { tab: "performance" }, show: hasCar },
+    { key: "chat", anchor: { tab: "dashboard", targetId: "chat" }, show: !startingOut },
+    { key: "services", anchor: { tab: "dashboard", targetId: "services" }, show: !startingOut },
+    { key: "settings", anchor: { tab: "settings" } },
+    { key: "help", anchor: { tab: "settings", targetId: "help" } },
+  ].filter((st) => st.show !== false);
+  const tourPlanKey = TOUR_PLAN.map((st) => st.key).join(",");
+
   useEffect(() => {
     if (tourStep === null) { setTourTarget(null); return; }
-    // Index-aligned with TOUR_STEPS. Most steps switch to a tab and highlight that
+    // Index-aligned with TOUR_STEPS (both come from TOUR_PLAN). Most steps switch to a tab and highlight that
     // same tab's nav anchor — but chat/services now live as quick-access buttons on
     // the Dashboard (not their own nav slot), and help now lives inside Settings, so
     // those three track a target id separate from the tab they switch to.
-    const TOUR_ANCHORS = [
-      null,
-      { tab: "dashboard" },
-      { tab: "listings" },
-      { tab: "leads" },
-      { tab: "enquiries" },
-      { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") },
-      { tab: "performance" },
-      { tab: "dashboard", targetId: "chat" },
-      { tab: "dashboard", targetId: "services" },
-      { tab: "settings" },
-      { tab: "settings", targetId: "help" },
-    ];
-    const anchor = TOUR_ANCHORS[tourStep];
+    const anchor = TOUR_PLAN[tourStep]?.anchor;
     if (!anchor) { setTourTarget(null); return; }
     switchTab(anchor.tab);
     anchor.onSwitch?.();
@@ -2154,7 +2177,7 @@ export default function SalesmanLite() {
       clearInterval(interval);
       window.removeEventListener("resize", reposition);
     };
-  }, [tourStep]);
+  }, [tourStep, tourPlanKey]);
 
   // Browser notification: fire when user returns to tab and has stale leads
   useEffect(() => {
@@ -3051,7 +3074,7 @@ export default function SalesmanLite() {
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
     },
-  ];
+  ].filter((x) => navShows(x.tab));
 
   const TABS_MOBILE = [
     { tab: "dashboard", label: t("salesmanLite.tabs.dashboard"), icon: <LayoutGrid size={18} /> },
@@ -3075,7 +3098,7 @@ export default function SalesmanLite() {
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
-  ];
+  ].filter((x) => navShows(x.tab));
 
   // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
 
@@ -3419,6 +3442,8 @@ export default function SalesmanLite() {
           </div>
         </div>
 
+        {!startingOut ? (
+        <>
         {/* Chat & Add-ons moved out of the footer/sidebar nav — they don't need a
             permanent nav slot, so they live here instead, one tap below the
             mini-page stats. Still reachable, just not competing for nav space. */}
@@ -3609,6 +3634,15 @@ export default function SalesmanLite() {
            above. Revenue/avg-per-deal live in the Performance tab. */}
 
         </div>
+        </>
+        ) : (
+          // Starting out (SIMPLE-1): one quiet line instead of a call list,
+          // agenda, figures and a goal row that are all empty until the first
+          // buyer arrives. Says where they went so nothing feels missing.
+          <p style={{ margin: "4px 2px 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.55 }}>
+            {t("salesmanLite.dash.startingOutNote")}
+          </p>
+        )}
 
 
       </div>
@@ -7074,19 +7108,16 @@ export default function SalesmanLite() {
 
   // ── TOUR ─────────────────────────────────────────────────────────────────
 
-  const TOUR_STEPS = [
-    { icon: Zap,          title: t("salesmanLite.tour.steps.welcome.title"),     body: t("salesmanLite.tour.steps.welcome.body") },
-    { icon: LayoutGrid,   title: t("salesmanLite.tour.steps.dashboard.title"),   body: t("salesmanLite.tour.steps.dashboard.body") },
-    { icon: Car,          title: t("salesmanLite.tour.steps.listings.title"),    body: t("salesmanLite.tour.steps.listings.body") },
-    { icon: Users,        title: t("salesmanLite.tour.steps.leads.title"),       body: t("salesmanLite.tour.steps.leads.body") },
-    { icon: MessageSquare, title: t("salesmanLite.tour.steps.inbox.title"),      body: t("salesmanLite.tour.steps.inbox.body") },
-    { icon: Calendar,     title: t("salesmanLite.tour.steps.bookings.title"),    body: t("salesmanLite.tour.steps.bookings.body") },
-    { icon: BarChart2,    title: t("salesmanLite.tour.steps.performance.title"), body: t("salesmanLite.tour.steps.performance.body") },
-    { icon: MessageCircle, title: t("salesmanLite.tour.steps.chat.title"),       body: t("salesmanLite.tour.steps.chat.body") },
-    { icon: Package,      title: t("salesmanLite.tour.steps.services.title"),    body: t("salesmanLite.tour.steps.services.body") },
-    { icon: Settings,     title: t("salesmanLite.tour.steps.settings.title"),    body: t("salesmanLite.tour.steps.settings.body") },
-    { icon: BookOpen,     title: t("salesmanLite.tour.steps.help.title"),        body: t("salesmanLite.tour.steps.help.body") },
-  ];
+  const TOUR_ICONS = {
+    welcome: Zap, dashboard: LayoutGrid, listings: Car, leads: Users, inbox: MessageSquare,
+    bookings: Calendar, performance: BarChart2, chat: MessageCircle, services: Package,
+    settings: Settings, help: BookOpen,
+  };
+  const TOUR_STEPS = TOUR_PLAN.map(({ key }) => ({
+    icon: TOUR_ICONS[key],
+    title: t(`salesmanLite.tour.steps.${key}.title`),
+    body: t(`salesmanLite.tour.steps.${key}.body`),
+  }));
 
   const dismissTour = async () => {
     // Mark seen locally the moment they close it, so a slow/failed DB write never

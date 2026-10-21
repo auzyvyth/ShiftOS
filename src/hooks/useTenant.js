@@ -11,8 +11,7 @@ import { ROOT_DOMAIN, storefrontSubdomain } from "../config/site";
 // on tenant !== undefined). Caching it here benefits every one of them at
 // once. The RPC below always still runs and overwrites tenant + cache the
 // moment it lands — this only affects what paints before that response
-// arrives, and the realtime subscription further down keeps it correct
-// whenever the dealer edits their storefront.
+// arrives; a dealer's storefront edit shows on the next load.
 const TENANT_CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
 const tenantCacheKey = (subdomain) => `tenant_profile_v1_${subdomain}`;
 function readTenantCache(subdomain) {
@@ -104,10 +103,8 @@ export default function useTenant() {
   // only ever a clean "no dealer has this subdomain" answer. Pages show
   // "couldn't load, retry" for this, never "this dealer page doesn't exist".
   const [error, setError] = useState(false);
-  const tenantIdRef = useRef(null); // used by realtime subscription
 
   useEffect(() => {
-    let realtimeChannel = null;
     let settled = false;
     // In-app webviews, flaky mobile networks and a stalled database can make
     // calls throw or hang. The hook must still always finish: a slow or failed
@@ -203,47 +200,14 @@ export default function useTenant() {
       // storefront remember "not found" past this one bad request.
       if (profile) writeCache(tenantCacheKey(subdomain), profile);
 
-      // Subscribe to realtime changes for this dealer's profile row so that
-      // when settings are saved in the dashboard, the storefront tab updates
-      // without requiring a manual page refresh.
-      if (profile?.id) {
-        try {
-        tenantIdRef.current = profile.id;
-        realtimeChannel = supabase
-          .channel(`tenant_profile_${profile.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "profiles",
-              filter: `id=eq.${profile.id}`,
-            },
-            async () => {
-              // Re-fetch the full profile so all storefront fields refresh
-              const { data: updatedRows } = await supabase
-                .rpc("get_dealer_profile_by_subdomain", { p_subdomain: subdomain });
-              const updated = Array.isArray(updatedRows) ? updatedRows[0] : updatedRows;
-              if (updated) {
-                setTenant(updated);
-                // Keep the cache in step with a dashboard edit, so the next
-                // repeat visit paints the latest version instantly too.
-                writeCache(tenantCacheKey(subdomain), updated);
-              }
-            }
-          )
-          .subscribe();
-        } catch (e) {
-          // realtime is non-essential — storefront already rendered
-        }
-      }
+      // No live subscription to the dealer's profile row (IO-1, 2026-10-21).
+      // There was one, but `profiles` is not in the supabase_realtime
+      // publication, so it never fired; it only opened a socket and wrote
+      // realtime.subscription rows for every storefront visitor. A dashboard
+      // edit shows on the storefront's next load (the cache above refreshes).
     }
 
     resolve().catch(() => settle(cachedTenantRef.current || null, true));
-
-    return () => {
-      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
-    };
   }, []);
 
   return { tenant, loading, error };
