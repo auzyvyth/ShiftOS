@@ -117,6 +117,12 @@ export default function DashboardTab({
  const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
  const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
  const isNewUser = myListings.length === 0 && leads.length === 0;
+ // No buyer has reached this seller yet (SIMPLE-1, 2026-10-21): every card
+ // below the hero is about leads, bookings or sales, so all of them would
+ // render as zeros and empty states. New signups called that "too
+ // complicated"; hide them until there is something to show.
+ const startingOut = leads.length === 0 && customers.length === 0
+ && (appointments || []).length === 0 && (enquiries || []).length === 0;
 
  // Today's agenda — grouped by urgency, dates keyed on the LOCAL calendar (not
  // UTC) so an early-morning appointment isn't bucketed into the wrong day.
@@ -491,6 +497,8 @@ export default function DashboardTab({
 
  </div>
 
+ {!startingOut ? (
+ <>
  {/* Shortcut into the Sold tab. This used to be two buttons labelled
  "Customers" and "Handover" and nothing else — a noun is a menu item
  people skip, a number is a job. Both halves now live behind one
@@ -840,6 +848,15 @@ export default function DashboardTab({
  </div>
  </div>
  </div>
+ </>
+ ) : (
+ // Starting out (SIMPLE-1): one quiet line instead of a Sold card, a
+ // goal gauge, a call list and a KPI strip that are all zero until the
+ // first buyer arrives. Says where those went so nothing feels missing.
+ <p style={{ margin: "4px 2px 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.55 }}>
+ {t("salesmanPremium.dash.startingOutNote")}
+ </p>
+ )}
 
  <SalesHistorySheet
  open={showPrevMonth}
