@@ -102,6 +102,13 @@ Done 2026-10-21: SEC-4 (backup tables dropped), PREM-LAPSE leftovers (#515 + 202
   `waitlist_credit_referrer` from anon.
 - [ ] SEC-3 car documents (23 geran / loan-letter scans) in the public `car-images` bucket.
   A geran carries the owner's IC: biggest remaining personal-data exposure.
+- [ ] RETAIN-1 (owner decision, then build) Buyer data retention: pick (a) months before a quiet/lost
+  lead is anonymised (suggested 12) and (b) days after handover to drop IC + address (suggested 90),
+  have a lawyer confirm, then build a nightly anonymiser (keep the row for stats, strip name/phone/
+  email/notes) + a Privacy Policy line. PDPA s.10 retention; tax records 7 years (ITA s.82A).
+- [ ] VERCEL-ENV (owner) `SUPABASE_SERVICE_ROLE_KEY` is flagged "readable-secret": delete and re-add
+  as Sensitive (same value). Delete the unused `supabase` and `antrophic` env vars; rotate those
+  keys if they are real.
 - [ ] LEGAL-1 Terms/Privacy (`src/legal/legalDocs.js`) name "ShiftOS" with no registered entity
   (no Sdn Bhd / SSM number). Name the contracting company before the Drevo switch; lawyer to word it.
 
