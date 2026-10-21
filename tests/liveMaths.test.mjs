@@ -1,6 +1,6 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice } from '../src/utils/liveMaths.js';
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -76,6 +76,16 @@ const many = [{ selling_price: 50000 }, { selling_price: 51000 }, { selling_pric
 const m2 = budgetMatches(many, { maxMonthly: near(49000), years: 7, rate: 3, basis: 'eir' });
 is('budget: at most two just-over cars, cheapest first', m2.above.map((x) => x.n), [1, 2]);
 is('budget: a car far over budget is not "just above"', budgetMatches(many, { maxMonthly: near(100000), years: 7, rate: 3, basis: 'eir' }).above.length, 0);
+
+// A model card expanded per variant (presenter budgetCars): one row per car, named.
+const card = [55000, 62000, 70000].map((p, k) => ({ id: 'x50', _n: 2, _variantId: `v${k}`, variant: `V${k}`, selling_price: p }));
+const cb = budgetMatches([{ id: 'saga', selling_price: 40000 }, ...card], { maxMonthly: near(63000), years: 7, rate: 3, basis: 'eir' });
+is('budget: model card keeps ONE fit, its dearest variant', cb.fits.map((x) => [x.n, x.car.variant]), [[2, 'V1'], [1, undefined]]);
+is('budget: a car that fits is not also "just above"', cb.above.length, 0);
+const cu = budgetMatches(card, { maxMonthly: near(52000), years: 7, rate: 3, basis: 'eir' });
+is('budget: no variant fits -> its cheapest is just above, once', cu.above.map((x) => x.car.variant), ['V0']);
+is('label: names the variant', carLabel({ year: 2022, brand: 'Lexus', model: 'IS', variant: '300 F Sport' }), '2022 Lexus IS 300 F Sport');
+is('label: no variant, no gap', carLabel({ year: 2025, brand: 'Honda', model: 'Civic' }), '2025 Honda Civic');
 
 is('rebate: net is price minus rebate', netPrice({ id: 'a', selling_price: 75000 }, { a: '3000' }), { price: 75000, rebate: 3000, net: 72000 });
 is('rebate: none typed', netPrice({ id: 'a', selling_price: 75000 }, {}).net, 75000);

@@ -62,6 +62,15 @@ export function netPrice(car, rebates) {
 // extraFor(car, price): anything financed on top of the price, i.e. the
 // insurance the Cars screen adds, so a car opened from here shows the same
 // monthly. Deposit is never charged against it.
+// The name a viewer hears: year, brand, model AND variant. "2022 Lexus IS"
+// is three different cars at three prices; the variant is the detail that
+// tells them which one this is (owner, 2026-10-21).
+export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(Boolean).join(' ');
+
+// A new-car model card can arrive here once per variant (the presenter expands
+// it, each copy carrying `_n`, the card's #N). One car keeps ONE row per list:
+// the dearest variant that fits, and under "just above" only a car with no
+// variant that fits, at its cheapest, so one model never fills both slots.
 export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
@@ -74,13 +83,15 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     if (price <= 0 || down >= price) return;
     const extra = Math.max(0, Number(extraFor?.(car, price)) || 0);
     const monthly = monthlyPayment(price + extra - down, eir, years * 12);
-    const row = { n: i + 1, car, price, monthly };
+    const row = { n: car._n ?? i + 1, car, price, monthly };
     if (monthly <= cap) fits.push(row);
     else if (monthly <= cap * (1 + ABOVE_MARGIN)) above.push(row);
   });
   fits.sort((a, b) => b.price - a.price);
   above.sort((a, b) => a.monthly - b.monthly);
-  return { fits, above: above.slice(0, 2) };
+  const once = (rows, skip = new Set()) => rows.filter((r) => !skip.has(r.n) && (skip.add(r.n), true));
+  const fitOnce = once(fits);
+  return { fits: fitOnce, above: once(above, new Set(fitOnce.map((r) => r.n))).slice(0, 2) };
 }
 
 export const fmtRate = (n) => {
@@ -115,7 +126,7 @@ export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
     if (idx < 0) continue;
     if (!topCar || taps > topCar.taps) {
       const c = listings[idx];
-      topCar = { n: idx + 1, name: [c.year, c.brand, c.model].filter(Boolean).join(' '), taps };
+      topCar = { n: idx + 1, name: carLabel(c), taps };
     }
   }
   const minutes = Math.max(0, Math.round((new Date(endedAt) - new Date(startedAt)) / 60000));
