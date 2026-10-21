@@ -6,13 +6,16 @@
 //   2. Cloudflare Turnstile proof-of-human (verifyTurnstile below).
 // The buyer has already been sent to WhatsApp by ContactGate BEFORE this call, so
 // a rejection here only skips the CRM record — it never blocks the actual chat.
+//
+// SEC-10 (migration 20261021a): create_lead_from_whatsapp now runs for the
+// server key only. While the public key could call it, both gates above were
+// optional: a script called the RPC straight from /rest/v1.
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lemdkdizdlcirhbzqlos.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -33,7 +36,14 @@ export default async function handler(req, res) {
     return res.status(403).json({ error: 'captcha_failed', reason: check.reason });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.error('[api/whatsapp-lead] SUPABASE_SERVICE_ROLE_KEY not set');
+    return res.status(200).json({ success: false, softError: 'not_configured' });
+  }
+  const supabase = createClient(SUPABASE_URL, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 
   // Trust the car listing over caller-supplied dealerId when a car is in play
   // (stops a bot from aiming leads at a competitor's pipeline). Fall back to the

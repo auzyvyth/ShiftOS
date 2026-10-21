@@ -1,12 +1,16 @@
 /* eslint-env node */
 // Public proxy: records a test-drive appointment + lead row.
 // Rate-limited at the edge by middleware.js (3 req/IP/min).
+//
+// Writes with the SERVER key (SEC-10): migration 20261021a removed the public
+// insert on appointments and the public EXECUTE on create_lead_from_booking,
+// so this route is the only way a buyer books. The server key skips RLS, so
+// the checks that policy made (active seller, car bookable, caps) run here.
 
 import { createClient } from '@supabase/supabase-js';
 import { applyCors } from '../lib/cors.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -14,7 +18,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { carId, dealerId, assignedTo, name, phone, state, appointmentDate, bookingType, notes, refSlug } =
+  const { carId, dealerId, name, phone, state, appointmentDate, bookingType, notes, refSlug } =
     req.body || {};
 
   // Buying-intent qualifier (window-shopper triage). Keep in sync with
@@ -43,7 +47,16 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid appointment date' });
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.error('[api/booking] SUPABASE_SERVICE_ROLE_KEY not set');
+    return res.status(500).json({ error: 'Booking failed. Please try again.' });
+  }
+  const supabase = createClient(
+    process.env.VITE_SUPABASE_URL || SUPABASE_URL,
+    serviceKey,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
 
   // Verify the listing exists and get its real dealer_id from the DB
   // (never trust caller-supplied dealerId — prevents fake bookings on competitor dealers).
@@ -59,14 +72,26 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
-  // Salesman attribution is resolved DB-side, never here. This handler runs as
-  // the anon role, and RLS on profiles returns zero rows to anon — so the old
+  // What the old appointments_public_insert policy checked.
+  const [{ data: active }, { data: bookable }, { data: underCap }] = await Promise.all([
+    supabase.rpc('is_dealer_active', { p_dealer_id: listing.dealer_id }),
+    supabase.rpc('car_listing_bookable', { p_car: carId, p_dealer: listing.dealer_id }),
+    supabase.rpc('appointments_public_rate_ok', { p_phone: phoneClean, p_dealer_id: listing.dealer_id }),
+  ]);
+  if (active !== true || bookable !== true || underCap !== true) {
+    return res.status(500).json({ error: 'Booking failed. Please try again.' });
+  }
+
+  // Salesman attribution is resolved DB-side, never here. This handler used to
+  // run as the anon role, where RLS on profiles returns zero rows — so the old
   // inline `profiles.eq('slug', refSlug)` lookup that used to sit here could
   // never match and silently did nothing. refSlug is forwarded raw instead:
   // create_lead_from_booking hands it to resolve_lead_salesman (the ONE resolver,
   // SECURITY DEFINER so it can actually read profiles), and the appointment row
   // is backfilled by the set_appointment_salesman trigger using the same helper.
-  const salesmanId = assignedTo || listing.assigned_to || null;
+  // Never the caller's `assignedTo`: it was trusted here, so a script could
+  // file a booking (and its lead) under any salesman id it liked.
+  const salesmanId = listing.assigned_to || null;
 
   const cleanNotes = notes?.trim().substring(0, 500) || null;
   const notesWithIntent = intentLabel
@@ -83,10 +108,10 @@ export default async function handler(req, res) {
   // Solo-panel gate lives INSIDE create_lead_from_booking, not here: a Lite or
   // Premium booking must land in its Bookings tab as a pending appointment only
   // (lead_id null) and become a pipeline lead only when the salesman confirms it
-  // (SalesmanLite/SalesmanPremium.autoUpsertLeadFromAppt). We cannot gate on plan
-  // in this handler because it runs as the anon role and RLS on profiles blocks
-  // the plan read, so the check silently never fires. The SECURITY DEFINER
-  // function reads the owner's plan reliably and RETURNs NULL (no lead) for
+  // (SalesmanLite/SalesmanPremium.autoUpsertLeadFromAppt). Keep the plan gate
+  // in the DB function, where every caller gets it (this handler ran as anon
+  // for months, where RLS hid the plan and an inline check silently never
+  // fired). The SECURITY DEFINER function reads the owner's plan and RETURNs NULL (no lead) for
   // salesman_lite/salesman_full; every other flow (dealer, linked salesman,
   // open pool) still gets the pre-created lead.
   let leadId = null;
