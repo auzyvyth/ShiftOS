@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, Maximize2, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Info, Maximize2, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel, rebatesForMonth, myMonth, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, carLabel, rebatesForMonth, myMonth, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -147,6 +147,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // it is never wider than the calculator (owner, 2026-10-22): on a phone that
   // is the portrait stage, on desktop the zoomed 750px stage the camera films.
   const [photoFull, setPhotoFull] = useState(false);
+  const [rateInfo, setRateInfo] = useState(false);
   const photoTouchX = useRef(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
@@ -577,6 +578,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         /* New-car variant with no photo: the model name, not a grey "no photo". */
+        .lp-brkwrap { position: relative; min-width: 0; }
+        .lp-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 4px; padding: 0; border: none; border-radius: 50%; background: rgba(15,17,21,.08); color: #4b5563; vertical-align: middle; cursor: pointer; }
+        .lp-tip { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 4; margin: 0; padding: 10px 12px; border-radius: 10px; background: #0f1115; color: #fff; font-size: clamp(12px, 3.2cqw, 15px); font-weight: 500; line-height: 1.45; box-shadow: 0 10px 30px rgba(15,17,21,.3); }
         .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
         .lp-full-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; flex-shrink: 0; }
@@ -819,7 +823,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </div>
             <label style={mode === 'budget' ? { gridColumn: '1 / -1' } : undefined}>
               {basis === 'flat' ? t.rateFlat : t.rateEir}
-              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" value={eir} onChange={(e) => setEir(e.target.value)} />
+              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX} value={eir} onChange={(e) => setEir(clampRateInput(e.target.value))} />
             </label>
             {mode === 'cars' && (
               <label>
@@ -938,6 +942,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
             {/* The working, line by line: price - rebate - deposit = loan, at this rate.
                 Rebate, deposit and rate: tap the row to type a new number in place. */}
+            <div className="lp-brkwrap">
             <table className="lp-brk">
               <tbody>
                 <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
@@ -969,14 +974,26 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   </tr>
                   <tr className="lp-loan"><td>{t.loan}</td><td><Money n={loanAmt} /></td></tr>
                   <tr className="lp-r-rate lp-tap" onClick={() => setEditing('rate')}>
-                    <td>{t.rate}</td>
+                    <td>
+                      {t.rate}
+                      {/* What the rate means: hover on a mouse, tap on a phone. Its
+                          own click stops here so it never opens the rate box. */}
+                      <button type="button" className="lp-info" aria-label={t.rateInfoLabel} aria-expanded={rateInfo}
+                        onClick={(e) => { e.stopPropagation(); setRateInfo((v) => !v); }}
+                        onPointerEnter={(e) => { if (e.pointerType === 'mouse') setRateInfo(true); }}
+                        onPointerLeave={(e) => { if (e.pointerType === 'mouse') setRateInfo(false); }}>
+                        <Info size={13} />
+                      </button>
+                    </td>
                     <td>{editing === 'rate' && !embedded
-                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={setEir} />
+                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={(v) => setEir(clampRateInput(v))} />
                       : <>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</>}</td>
                   </tr>
                 </>)}
               </tbody>
             </table>
+            {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
+            </div>
           </div>
           {/* A typed rate that is probably a mistake: a flat number on the EIR
               switch, or above the Hire-Purchase Act cap. */}

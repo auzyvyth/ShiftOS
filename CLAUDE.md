@@ -1524,6 +1524,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   "+RM x deposit and it fits" and open with it; a "total repaid / interest" line under the salary
   guide. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
   10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
+  The rate box stops at 17 (`RATE_MAX` / `clampRateInput`, the legal EIR ceiling; a typo like 65
+  for 6.5 becomes 17) and the "Rate" label has an info button (`lp-info`, hover with a mouse,
+  tap on a phone; `pointerType === 'mouse'` only, or a tap opens and closes it at once) that
+  explains EIR vs flat in both languages (`liveCopy.js rateInfo`).
   A model card's Budget row shows its variants ON TOP (`options` from `budgetMatches`): the ones the
   budget buys are tappable and the row's price + monthly follow the pick (and the car it opens);
   the rest are dimmed and struck through, never blurred (blur reads as a glitch on camera).

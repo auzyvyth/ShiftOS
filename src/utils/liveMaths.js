@@ -86,6 +86,13 @@ export function depositToFit({ price, extra = 0, cap, eir, years }) {
 // Purchase Act cap (17% EIR up to 5 years, 16% over 5; TODO.md HP-EIR).
 export const LOOKS_FLAT_BELOW = 4;
 export const eirCap = (years) => (years <= 5 ? 17 : 16);
+// The rate box stops at the legal ceiling (owner, 2026-10-22): nothing above
+// 17% EIR can be a real HP loan, so a bigger number is a typo (65 for 6.5)
+// that would put a scary monthly on stream. A flat rate is always lower than
+// its EIR, so the same ceiling holds for a flat input. Partial input ("6.")
+// passes through untouched so typing a decimal still works.
+export const RATE_MAX = 17;
+export const clampRateInput = (v) => (v !== '' && Number(v) > RATE_MAX ? String(RATE_MAX) : v);
 export function rateWarning(rate, basis, years) {
   const r = Number(rate) || 0;
   if (r <= 0) return null;

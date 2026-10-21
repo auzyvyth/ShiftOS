@@ -51,6 +51,10 @@ const en = {
   noDeposit: 'No deposit',
   loan: 'Loan',
   rate: 'Rate',
+  rateInfoLabel: 'What is this rate?',
+  rateInfo: (r, flat) => (flat
+    ? `${r}% flat, as the bank quoted it. It is worked out as EIR for each tenure, so the monthly matches what the bank charges.`
+    : `${r}% EIR: the effective rate, charged on what you still owe. Since 1 June 2026 banks quote EIR, not flat. A 3.5% flat rate over 7 years is about 6.4% EIR, the same monthly. Bank gave you a flat rate? Switch to Flat with the sliders button at the top.`),
   flat: 'flat',
   pctDown: (p) => `${p}% down`,
   tenure: 'Tenure',
@@ -166,6 +170,10 @@ const ms = {
   noDeposit: 'Tanpa deposit',
   loan: 'Pinjaman',
   rate: 'Kadar',
+  rateInfoLabel: 'Apa kadar ini?',
+  rateInfo: (r, flat) => (flat
+    ? `${r}% flat, seperti yang bank sebut. Ia dikira sebagai EIR untuk setiap tempoh, jadi bayaran bulanan sama dengan caj bank.`
+    : `${r}% EIR: kadar efektif, dikenakan atas baki yang masih dihutang. Sejak 1 Jun 2026 bank menyebut EIR, bukan flat. Kadar flat 3.5% selama 7 tahun lebih kurang 6.4% EIR, bayaran bulanan yang sama. Bank beri kadar flat? Tukar ke Flat melalui butang pelaras di atas.`),
   flat: 'flat',
   pctDown: (p) => `Deposit ${p}%`,
   tenure: 'Tempoh',

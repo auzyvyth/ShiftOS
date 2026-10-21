@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
+  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, clampRateInput, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -174,6 +174,12 @@ const rvb = budgetMatches([
   { id: 'm', _n: 1, _variantId: 'v2', variant: 'Executive', selling_price: 45000 },
 ], { maxMonthly: 100000, years: 7, rate: 6.5, basis: 'eir', rebates: { m: 5000 } });
 is('rebate: Budget takes it off every variant', rvb.fits[0].options.map((o) => o.price), [35000, 40000]);
+
+// The rate box stops at the legal ceiling; partial input passes through.
+is('clamp: 65 becomes 17', clampRateInput('65'), '17');
+is('clamp: 6.5 untouched', clampRateInput('6.5'), '6.5');
+is('clamp: partial "6." untouched', clampRateInput('6.'), '6.');
+is('clamp: empty untouched', clampRateInput(''), '');
 
 // Saved rebates last the month, Malaysia time.
 is('month: MYT, not UTC', myMonth('2026-10-31T17:00:00Z'), '2026-11');
