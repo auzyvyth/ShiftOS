@@ -6,6 +6,7 @@
       "staging": true
     }
   },
+  "regions": ["syd1"],
   "functions": {
     "api/ai-messages.js": {
       "maxDuration": 300

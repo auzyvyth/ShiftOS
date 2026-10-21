@@ -505,6 +505,10 @@ never `async (_, s) => ...`. The marketplace + showroom grids and
 `useMarketplaceStats` read through `publicClient` so a dead login cannot blank them.
 
 ## Deployment pipeline — 3 stages
+**API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**
+(`vercel.json` `regions`, 2026-10-21). They ran in Vercel's default `iad1` (Washington):
+every database call crossed the Pacific and a buyer's booking took ~15s. Never move them
+away from the database region; the edge middleware and `api/shell.js` run near the user.
 **Vercel builds exactly TWO branches: `main` (prod) and `staging` (the one preview).**
 `vercel.json` `git.deploymentEnabled` = `"**": false` + those two (owner, 2026-10-03:
 the free plan was being flooded by a build per session branch). Never add a branch
