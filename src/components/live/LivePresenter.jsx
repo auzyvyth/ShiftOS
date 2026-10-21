@@ -167,6 +167,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetDown, setBudgetDown] = useState('');
   const [budgetYears, setBudgetYears] = useState(DEFAULT_TENURE);
+  // Variant picked on a model card's Budget row, by #N. Only a variant that
+  // fits can be picked; one that stops fitting falls back to the row's own.
+  const [budgetPick, setBudgetPick] = useState({});
+  const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
   // then ends it the same way the X does: the report shows, and Back again
@@ -650,8 +654,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-budrow .lp-seg button { padding: 0 6px; height: 36px; }
         .lp-res { padding: 6px 14px; }
         .lp-res h3 { font-size: clamp(11px, 2.8cqw, 14px); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; margin: 8px 0 2px; }
-        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; border-top: 1px solid rgba(0,0,0,.06); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-res h3 + .lp-row { border-top: none; }
+        .lp-rowwrap { border-top: 1px solid rgba(0,0,0,.06); }
+        .lp-res h3 + .lp-rowwrap { border-top: none; }
+        .lp-vchips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+        .lp-vchips button { min-height: 30px; padding: 3px 10px; border-radius: 8px; border: 1.5px solid var(--lp-a); background: #fff; color: var(--lp-a2); font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; cursor: pointer; }
+        .lp-vchips button[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
+        .lp-vchips button:disabled { border: 1px dashed rgba(0,0,0,.18); background: transparent; color: #9ca3af; text-decoration: line-through; font-weight: 600; cursor: default; }
+        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
         .lp-row img, .lp-row .lp-noimg { width: clamp(52px, 15cqw, 88px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #EDEAE3; flex-shrink: 0; }
         .lp-row .lp-n { font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.5cqw, 38px); line-height: 1; color: #0f1115; flex-shrink: 0; }
         .lp-row .lp-rn { flex: 1; min-width: 0; }
@@ -659,9 +668,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row .lp-rn span { display: block; font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; }
-        .lp-row.lp-over { opacity: .62; }
+        .lp-rowwrap.lp-over { opacity: .62; }
         .lp-row .lp-rn .lp-fitdep { color: #047857; font-weight: 700; }
-        .lp-row.lp-over:has(.lp-fitdep) { opacity: .85; }
+        .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 15px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -1043,9 +1052,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <p className="lp-empty">{t.budgetEmpty}</p>
           ) : (<>
             <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} onOpen={openFromBudget} t={t} />)}
+            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
             {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} onOpen={openFromBudget} t={t} />)}
+            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
             <p className="lp-note" style={{ marginBottom: 8 }}>
               {t.budgetNote}
               {anyHighValue ? t.budgetHigh : ''}
@@ -1074,19 +1083,36 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 // same deposit and years picked, so the big number matches this row.
 // A car the budget's tenure is too long for is priced at its own limit, and
 // the row says which; a "just above" car says the deposit that makes it fit.
-function BudgetRow({ m, over, years, onOpen, t }) {
+// A model card shows its variants on top: the ones this budget buys are
+// tappable (the row's price and monthly follow the pick, and so does the car
+// it opens); the rest are dimmed and struck through. Never blurred: on a
+// camera filming a screen, blur reads as a glitch.
+function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
+  const row = m.options?.find((o) => o.car._variantId === pick && o.fits) || m;
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
   return (
-    <button type="button" className={over ? 'lp-row lp-over' : 'lp-row'} onClick={() => onOpen(m)}>
-      {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
-      <span className="lp-n">#{m.n}</span>
-      <span className="lp-rn">
-        <b>{carLabel(m.car)}</b>
-        <span>RM {fmt(m.price)}{m.years !== years ? ` · ${t.yrsShort(m.years)}` : ''}</span>
-        {over && m.topUp > 0 && <span className="lp-fitdep">{t.topUp(`RM ${fmt(m.topUp)}`)}</span>}
-      </span>
-      <span className="lp-m">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
-    </button>
+    <div className={over ? 'lp-rowwrap lp-over' : 'lp-rowwrap'}>
+      {m.options && (
+        <div className="lp-vchips" role="group" aria-label={t.variant}>
+          {m.options.map((o) => (
+            <button key={o.car._variantId} type="button" disabled={!o.fits}
+              aria-pressed={o.car._variantId === row.car._variantId}
+              onClick={() => onPick(m.n, o.car._variantId)}>{o.car.variant}</button>
+          ))}
+        </div>
+      )}
+      <button type="button" className="lp-row" onClick={() => onOpen(row)}>
+        {img ? <img src={img} alt="" /> : <span className="lp-noimg" />}
+        <span className="lp-n">#{m.n}</span>
+        <span className="lp-rn">
+          {/* With the variant buttons above, the title leaves the variant to them. */}
+          <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
+          <span>RM {fmt(row.price)}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}</span>
+          {over && row.topUp > 0 && <span className="lp-fitdep">{t.topUp(`RM ${fmt(row.topUp)}`)}</span>}
+        </span>
+        <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
+      </button>
+    </div>
   );
 }
 

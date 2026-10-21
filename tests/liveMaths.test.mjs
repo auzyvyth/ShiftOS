@@ -165,5 +165,17 @@ is('rate: 16.5 over 7 yrs is above cap', rateWarning(16.5, 'eir', 7), 'aboveCap'
 is('rate: 16.5 over 5 yrs is legal', rateWarning(16.5, 'eir', 5), null);
 is('rate: empty is no warning', rateWarning('', 'eir', 7), null);
 
+// Variant options on a model card's Budget row.
+const vcard = [
+  { id: 'm', _n: 1, _variantId: 'v1', variant: 'Standard', selling_price: 40000 },
+  { id: 'm', _n: 1, _variantId: 'v2', variant: 'Executive', selling_price: 45000 },
+  { id: 'm', _n: 1, _variantId: 'v3', variant: 'Premium', selling_price: 60000 },
+];
+const vb = budgetMatches(vcard, { maxMonthly: monthlyPayment(46000, 6.5, 84), years: 7, rate: 6.5, basis: 'eir' });
+is('options: row is the dearest that fits', vb.fits[0].car._variantId, 'v2');
+is('options: every variant, cheapest first', vb.fits[0].options.map((o) => o.car._variantId), ['v1', 'v2', 'v3']);
+is('options: fits flags', vb.fits[0].options.map((o) => o.fits), [true, true, false]);
+is('options: a plain car has none', budgetMatches([{ id: 'p', selling_price: 30000 }], { maxMonthly: 5000, years: 7, rate: 6.5, basis: 'eir' }).fits[0].options, undefined);
+
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

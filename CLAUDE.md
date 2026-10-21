@@ -1524,6 +1524,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   "+RM x deposit and it fits" and open with it; a "total repaid / interest" line under the salary
   guide. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
   10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
+  A model card's Budget row shows its variants ON TOP (`options` from `budgetMatches`): the ones the
+  budget buys are tappable and the row's price + monthly follow the pick (and the car it opens);
+  the rest are dimmed and struck through, never blurred (blur reads as a glitch on camera).
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.

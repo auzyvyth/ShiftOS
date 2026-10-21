@@ -119,12 +119,16 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // yearsFor(car): the car's own tenure limit (tenuresFor); a car is priced at
 // the budget's tenure or its limit, whichever is shorter, and the row says so.
 // Rows under "just above" carry topUp: the extra deposit that makes them fit.
+// A model card's row also carries `options`: every priced variant, cheapest
+// first, each with `fits`, so the Budget row can show which variants this
+// budget buys and let the seller switch between them (owner, 2026-10-22).
 export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
   const down = Math.max(0, Number(deposit) || 0);
   const fits = [];
   const above = [];
+  const byN = new Map();
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
     if (price <= 0 || down >= price) return;
@@ -135,6 +139,10 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     const eir = eirForTenure(rate, basis, y);
     const monthly = monthlyPayment(price + extra - down, eir, y * 12);
     const row = { n: car._n ?? i + 1, car, price, monthly, years: y };
+    if (car._variantId) {
+      if (!byN.has(row.n)) byN.set(row.n, []);
+      byN.get(row.n).push({ ...row, fits: monthly <= cap });
+    }
     if (monthly <= cap) fits.push(row);
     else if (monthly <= cap * (1 + ABOVE_MARGIN)) {
       const need = depositToFit({ price, extra, cap, eir, years: y });
@@ -145,7 +153,14 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
   above.sort((a, b) => a.monthly - b.monthly);
   const once = (rows, skip = new Set()) => rows.filter((r) => !skip.has(r.n) && (skip.add(r.n), true));
   const fitOnce = once(fits);
-  return { fits: fitOnce, above: once(above, new Set(fitOnce.map((r) => r.n))).slice(0, 2) };
+  const withOptions = (r) => {
+    const opts = byN.get(r.n);
+    return opts && opts.length > 1 ? { ...r, options: [...opts].sort((a, b) => a.price - b.price) } : r;
+  };
+  return {
+    fits: fitOnce.map(withOptions),
+    above: once(above, new Set(fitOnce.map((r) => r.n))).slice(0, 2).map(withOptions),
+  };
 }
 
 export const fmtRate = (n) => {
