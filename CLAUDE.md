@@ -564,6 +564,12 @@ local (main) → staging branch → production (main on GitHub)
 ```
 - **local main**: all development happens here, commits stay local until staged
 - **staging**: `git push origin main:staging --force` → triggers Vercel preview URL
+- **Before EVERY force-push to staging, `git fetch origin staging` and run
+  `git log --oneline HEAD..origin/staging`.** Any commit listed is someone else's
+  unshipped work (another session builds on the same staging) and a force-push deletes it
+  from the only place it lives. Put your commits ON TOP of it instead. On 2026-10-21 a push
+  wiped two Live presenter fixes from another session; they were recovered from the local
+  object store only because the fetch had happened minutes earlier.
 - **production**: NEVER push to origin/main directly — always via temp branch → PR → merge
 - NEVER deploy to production without explicit user instruction ("push to prod" / "go live")
 - Every feature or fix must go to staging first and be confirmed before production
