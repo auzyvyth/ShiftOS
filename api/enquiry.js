@@ -1,13 +1,18 @@
 /* eslint-env node */
 // Public proxy: records a WhatsApp enquiry + lead row.
 // Rate-limited at the edge by middleware.js (5 req/IP/min).
+//
+// Writes with the SERVER key (SEC-10): the public key may only insert a
+// nameless "tapped WhatsApp" row (migration 20261021a), so a named enquiry,
+// which becomes a lead, can only come through here, after Turnstile. The
+// server key skips RLS, so the checks the old public insert policy made
+// (active seller, per-seller cap) are made here instead.
 
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -37,9 +42,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.error('[api/enquiry] SUPABASE_SERVICE_ROLE_KEY not set');
+    return res.status(500).json({ error: 'Failed to record enquiry' });
+  }
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL || SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    serviceKey,
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   // Read via public_car_listings: the base car_listings table is NOT anon-readable
@@ -56,10 +67,19 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: 'Listing not found' });
   }
 
-  // Salesman attribution is resolved DB-side, never here. This handler runs as
-  // the anon role and RLS on profiles returns zero rows to anon, so the inline
+  const [{ data: active }, { data: underCap }] = await Promise.all([
+    supabase.rpc('is_dealer_active', { p_dealer_id: listing.dealer_id }),
+    supabase.rpc('whatsapp_enquiry_rate_ok', { p_session_id: null, p_dealer_id: listing.dealer_id }),
+  ]);
+  if (active !== true || underCap !== true) {
+    // Same answer the policy's rejection used to give.
+    return res.status(500).json({ error: 'Failed to record enquiry' });
+  }
+
+  // Salesman attribution is resolved DB-side, never here. (This handler used to
+  // run as the anon role, where RLS on profiles returns zero rows, so the inline
   // `profiles.eq('slug', refSlug)` lookup that used to sit here could never
-  // match. ref_slug is stored on the enquiry row below and the enquiry_to_lead
+  // match.) ref_slug is stored on the enquiry row below and the enquiry_to_lead
   // trigger resolves it through resolve_lead_salesman (the ONE resolver), which
   // is SECURITY DEFINER and can read profiles.
   const salesmanId = listing.assigned_to || null;

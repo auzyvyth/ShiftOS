@@ -70,18 +70,83 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## AUDIT-1021: repo-wide security + performance audit (2026-10-21)
+Checked live (advisors, grants, pg_stat_statements, cron), not from reading code.
+Still-open older items are re-ranked here, not duplicated: SEC-4, SEC-3, SEC-A5, SEC-5, SEC-9.
+
+### Security / liability
+- [ ] **SEC-4 (owner, still open since 2026-10-06): run
+  `supabase/migrations/20261005g_drop_backups_and_workshop_share.sql` in the SQL Editor.**
+  `_bk_airy_leads` (~97 rows: buyer IC, address, email, phone) and `_bk_airy_customers`
+  (ic_number) are still live. Not readable by anon/authenticated, but they break the
+  retention promise in `src/legal/legalDocs.js:200` (PDPA) and widen any breach.
+- [ ] **SEC-10 Turnstile + IP limit were optional — CODE DONE 2026-10-21, migration QUEUED.**
+  Anon could call `create_lead_from_whatsapp` / `create_lead_from_booking` and insert into
+  `whatsapp_enquiries` / `appointments` straight from /rest/v1, skipping
+  `api/whatsapp-lead.js` / `api/enquiry.js` / `api/booking.js`. Only per-seller caps
+  remained (40+60+30/hr, each row a push + Telegram + email). Same hole:
+  `create_lead_from_whatsapp` OVERWROTE an existing lead's car with any car id (any seller),
+  and `api/booking.js` trusted the caller's `assignedTo`.
+  Fix: the three routes write with the server key; migration
+  `20261021a_public_lead_writes_server_only.sql` revokes the two RPCs from anon/authenticated,
+  limits public enquiry inserts to nameless tap rows, replaces `appointments_public_insert`
+  with `appointments_team_insert`, and makes the WhatsApp RPC fill a blank car only.
+  **Order: routes live on prod FIRST, then run the migration after 22:00 MYT.** Then click-test:
+  car page enquiry, booking, ContactGate WhatsApp, and a seller booking from Lite/Premium/LeadDrawer.
+- [ ] SEC-10b (follow-up) Tap rows (`buyer_message` free text) still fire `on_new_enquiry` +
+  `trg_notify_salesman_enquiry` (push + Telegram, message text quoted) at 60/hr/seller. Move the
+  three browser tap inserts (`StickyWhatsAppButton.jsx:54`, `ShowroomCard.jsx:459`,
+  `CarCard.jsx:774`) to `/api/track` or skip notifications for nameless rows.
+- [ ] SEC-10c `is_dealer_active()` reads `subscription_status`, which means nothing for a
+  salesman: 2 live Premium sellers read "inactive", so their buyers' enquiries and bookings are
+  refused today. Breaks the "never gate a buyer's way to reach a seller" rule. Replace with a
+  live-account check (is_active + not deleted), as `create_lead_from_whatsapp` now does.
+- [ ] SEC-A5 waitlist oracle: now fixable — the server key IS set on Vercel (/api/track writes
+  with it, 89 events in 24h). Move `api/waitlist.js` to it, revoke `waitlist_lookup` /
+  `waitlist_credit_referrer` from anon.
+- [ ] SEC-3 car documents (23 geran / loan-letter scans) in the public `car-images` bucket.
+  A geran carries the owner's IC: biggest remaining personal-data exposure.
+- [ ] LEGAL-1 Terms/Privacy (`src/legal/legalDocs.js`) name "ShiftOS" with no registered entity
+  (no Sdn Bhd / SSM number). Name the contracting company before the Drevo switch; lawyer to word it.
+
+### Performance / engineering
+- [ ] PERF-RT Realtime is the #1 DB consumer: 807s total vs ~78s for the next query.
+  9 tables publish, incl. `car_listings` (19 overlapping policies, re-checked per subscriber per
+  change). Meanwhile `get_salesman_minipage_daily` averages 1.2s (max 5.3s) on an 11k-row
+  `analytics_events`: contention, not data size. Drop `car_listings` from `supabase_realtime`
+  (or broadcast a light "changed" signal) and re-measure.
+- [ ] PERF-RLS 140 multiple-permissive-policy warnings (car_listings 19, leads 18). Two superadmin
+  UPDATE policies on car_listings; `superadmin_update_all_listings` uses the raw profiles subquery
+  (same on `marketplace_settings`). Collapse into one policy per command.
+- [ ] PERF-IDX 78 unindexed FKs, 87 unused indexes; `analytics_rate_limit_ok` filters
+  `session_id` with no index on every /api/track call (144ms avg).
+- [ ] BRAND-CORS `lib/cors.js:15` and `supabase/functions/_shared/cors.ts:20` have no `drevo.my`
+  (only `server/index.js` does). Switch day = native app + edge-function calls refused.
+  108 non-comment `xdrive.my` strings in src outside `src/config/site.js`.
+- [ ] ENG-DEPS `xlsx` installs from cdn.sheetjs.com (`package.json:92`), so `npm ci` fails on any
+  network that blocks it (workaround used 2026-10-21: install a copy of package.json
+  without xlsx in a scratch dir and symlink its node_modules; lint + `npm test` then pass). npm audit: 5 high / 3
+  moderate, all build-time (tailwind -> chokidar -> braces).
+- [ ] ENG-SIZE `DashboardPage.jsx` 12k lines; Salesmanpanel / SalesmanLite / SalesmanPremium 8-9k
+  each, three copies of overlapping seller logic (source of most split-brain bugs).
+- [ ] ENG-AI model IDs pinned to 2025 releases in `lib/aiGuard.js:12-17`; confirm still served.
+  `server/` Express twin of the AI guard: delete if unused.
+
 ## URGENT — PREM-LAPSE: Premium -> Lite leftovers (logged 2026-10-19, before 4 Nov)
 The first 8 free months end 4-17 Nov 2026. Shipped: lock cars over the Lite cap,
 payment-due banner, 2 pushes, forever-'received' fix (migration 20261019a, applied
-tonight by a scheduled check). Still open:
-- [ ] Follow-up reminders keep firing for a lapsed seller: `fire_due_nudges()` never
-  checks the plan, so a Lite seller gets pushes from a Premium tool they can't open.
-- [ ] Telegram booking reminders set before the lapse still send:
-  `trg_zz_lite_no_booking_reminder` only clears NEW/edited `appointments.remind_at`.
-- [ ] A Premium dashboard left open stays on Premium until reload (the plan check runs
-  only at bootstrap, `SalesmanPremium.jsx:1102`); features fail on RLS with no reason.
-- [ ] Dead code: the `trialExpired` screen (`SalesmanPremium.jsx:1128`, `:6736`) keys
-  off `subscription_status='trial'`, which the free month never sets. Remove it.
+tonight by a scheduled check). Leftovers CODE DONE 2026-10-21, DB half QUEUED
+(`supabase/migrations/20261021b_premium_lapse_leftovers.sql`, run after 22:00 MYT):
+- [ ] (migration) `fire_due_nudges()` now fires only for `salesman_has_full_page()`
+  sellers; a lapsed seller's nudges wait, and anything due 7+ days expires so a
+  renewal does not fire a backlog.
+- [ ] (migration) `sweep_premium_lapses()` clears unsent `appointments.remind_at` for
+  every lapsed seller (worst case one reminder slips out before the hourly :41 run).
+- [x] Open Premium dashboard: `SalesmanPremium.jsx` re-checks `isPremiumSalesman` at
+  `plan_expires_at` and on tab return, then moves to Lite (Lite bounces a renewed
+  seller straight back).
+- [x] Removed the dead `trialExpired` screen.
+After running the migration, delete this section.
 
 ## INTRO-1: First-run intros for Premium sellers — part 1 shipped 2026-10-18
 Yazeed (set up by the owner from console "Set up a seller") landed on a dashboard

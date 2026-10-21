@@ -17,7 +17,7 @@ const LegalModal = lazy(() => import('./LegalModal'));
 
 // Gate shown before a buyer opens WhatsApp. Captures the buyer's name (required)
 // plus phone and state (both optional, so friction stays low), creates a real
-// pipeline lead (create_lead_from_whatsapp RPC — anon-callable), then opens
+// pipeline lead (via /api/whatsapp-lead; the RPC is server-only since SEC-10), then opens
 // WhatsApp. Matches the car-detail enquiry form's fields so salesmen get the same
 // info from every "WhatsApp" button. Used by every public "WhatsApp" button.
 export default function ContactGate({ open, onClose, waUrl, dealerId, carId, carName, onConfirmed }) {
