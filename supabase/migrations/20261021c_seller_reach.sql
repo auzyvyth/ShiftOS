@@ -1,8 +1,8 @@
 -- REACH-1 (2026-10-21): the platform console could not tell which sellers
--- Applied 2026-10-21 by the owner in the Supabase SQL Editor (verified after: one
--- copy of each function, RLS on, anon cannot call either or read the table).
 -- can actually be reached -- who has notifications switched on, and who has
 -- added the app to their home screen.
+-- Applied 2026-10-21 by the owner in the Supabase SQL Editor (verified after: one
+-- copy of each function, RLS on, anon cannot call either or read the table).
 --
 -- Notifications were already knowable (push_subscriptions), but owner-only RLS
 -- means a superadmin .from() returns an EMPTY ARRAY WITH NO ERROR, so it has to
