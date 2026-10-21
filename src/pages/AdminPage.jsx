@@ -31,6 +31,7 @@ import SensusDemosTab from "../components/platform/SensusDemosTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 import { purgeKycFiles } from "../utils/kycPurge";
 import { useOnlineNow } from "../hooks/useOnlineNow";
+import { useLiveSellers } from "../hooks/useLiveSellers";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -263,6 +264,8 @@ export default function AdminPage() {
   // not in HomeTab, because HomeTab is re-created on every render and would
   // re-join the channel each time.
   const online = useOnlineNow(supabase, Boolean(meId));
+  // Who is live, by name (ONLINE-2): from the database, not the presence channel.
+  const liveSellers = useLiveSellers(supabase, Boolean(meId));
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
@@ -999,13 +1002,42 @@ export default function AdminPage() {
 
         <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Online now</p>
         <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 30 }}>
-          {/* Open app tabs this minute (presence, src/lib/onlinePresence.js).
-              One person with two tabs counts twice; nothing here names anyone. */}
+          {/* Open app devices this minute (presence, src/lib/onlinePresence.js).
+              Two tabs on one device count once; nothing here names anyone. */}
           <HealthStat label="Sellers" value={online ? online.sellers : "…"} sub="in their dashboard" />
           <HealthStat label="Live now" value={online ? online.live : "…"} sub="Live presentation open" />
           <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in" />
           <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub="not signed in" />
         </div>
+
+        {/* Names of who is live (get_live_sellers, superadmin-only). The release
+            gate reads the same table, so this is who a release tonight would hit. */}
+        {liveSellers && liveSellers.length > 0 && (
+          <div style={{ margin: "-18px 0 30px", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, overflow: "hidden" }}>
+            {liveSellers.map((l, i) => {
+              const mins = Math.max(0, Math.round((Date.now() - new Date(l.last_beat_at).getTime()) / 60000));
+              return (
+                <div key={l.seller_id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderTop: i ? "1px solid rgba(255,255,255,0.06)" : "none", minWidth: 0 }}>
+                  <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {l.name || l.slug || "Seller"}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {l.car ? `Showing ${l.car}` : "Live presentation open"} · checked in {mins ? `${mins} min ago` : "just now"}
+                    </p>
+                  </div>
+                  {l.slug && (
+                    <a href={`/s/${l.slug}`} target="_blank" rel="noopener noreferrer"
+                      style={{ fontSize: 12, fontWeight: 600, color: "#e5e7eb", textDecoration: "none", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, padding: "6px 10px", flexShrink: 0 }}>
+                      Their page
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Platform</p>
         <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10 }}>

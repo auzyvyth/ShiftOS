@@ -224,6 +224,7 @@ change them; each is applied on its own.
 | Why didn't a lead reach a rep? | `resolve_lead_salesman` (DB) |
 | Why isn't a sale counted? | `auto_create_customer_on_won` trigger on `leads` |
 | Why no push? | `push_subscriptions`, `push_to_users`, `send-push` |
+| Who is live right now, by name? | `get_live_sellers()` (superadmin, reads `seller_live_state`), `src/hooks/useLiveSellers.js` (console Home) |
 | Who is online right now? | `online-now` Realtime presence channel: `src/components/OnlineBeacon.jsx` (every tab), `src/hooks/useOnlineNow.js` (console Home) |
 | Which sellers have alerts on / the app on their home screen? | `get_account_reach`, `app_home_screen` (stamped by `src/hooks/useHomeScreenMark.js`), console > Accounts |
 | Why is the marketplace blank? | `public_car_listings` view, `src/config/marketplaceConfig.js` |
