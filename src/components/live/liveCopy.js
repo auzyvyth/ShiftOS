@@ -279,6 +279,23 @@ export function saveLiveOffer(text) {
   } catch { /* storage blocked */ }
 }
 
+// New-car model card rebates (Proton / Perodua / Toyota / BYD price list),
+// remembered per device until the month ends (liveMaths.rebatesForMonth):
+// the seller types this month's promo once, not every live. Rebates on cars
+// from the normal form are NOT saved: they are per deal, per live.
+export const LIVE_REBATES_KEY = 'xd_live_rebates';
+
+export function initialLiveRebates(rebatesForMonth) {
+  try { return rebatesForMonth(JSON.parse(window.localStorage.getItem(LIVE_REBATES_KEY) || 'null')); } catch { return {}; }
+}
+
+export function saveLiveRebates(rebates, month) {
+  try {
+    if (Object.keys(rebates).length) window.localStorage.setItem(LIVE_REBATES_KEY, JSON.stringify({ month, rebates }));
+    else window.localStorage.removeItem(LIVE_REBATES_KEY);
+  } catch { /* storage blocked */ }
+}
+
 // Insurance in the loan: on or off, remembered per device (owner, 2026-10-18).
 // Some sellers always quote with it (Proton advisors), most used-car sellers
 // never do, so it starts off and the seller's choice sticks between lives.

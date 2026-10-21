@@ -8,11 +8,11 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, rebateKey, carLabel, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, carLabel, rebatesForMonth, myMonth, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -172,7 +172,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, typed during this live only. Promos change monthly, so it
   // is not saved to the listing.
-  const [rebates, setRebates] = useState({});
+  // A new-car model card's rebate is remembered until the month ends (liveCopy.js);
+  // every other car's rebate lasts this live only.
+  const [rebates, setRebates] = useState(() => (embedded ? {} : initialLiveRebates(rebatesForMonth)));
+  const modelCardIds = listings.filter((c) => c.is_model_card).map((c) => c.id).join(',');
+  useEffect(() => {
+    if (embedded) return;
+    const ids = new Set(modelCardIds ? modelCardIds.split(',') : []);
+    const keep = Object.fromEntries(Object.entries(rebates).filter(([id, v]) => ids.has(id) && Number(v) > 0));
+    saveLiveRebates(keep, myMonth());
+  }, [rebates, modelCardIds, embedded]);
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
   const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate' | 'ins' | 'monthly'
   // Tapping the picked monthly and typing a target works out the deposit it needs.
@@ -278,10 +287,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Every model card's variants, for the Budget tab (budgetCars, below).
   const cardInfos = useNewCarInfos(mode === 'budget' ? listings.filter((c) => c.is_model_card).map((c) => c.id) : []);
   const shown = car && variant
-    ? { ...car, _variantId: variant.model_id, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
+    ? { ...car, selling_price: variant.price, variant: variant.variant, transmission: variant.transmission || car.transmission }
     : car;
-  // This car's rebate box: per variant on a model card (liveMaths.rebateKey).
-  const rk = car ? rebateKey(shown) : null;
+  // One rebate box per listing: a model card's covers every variant.
+  const rk = car?.id;
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;

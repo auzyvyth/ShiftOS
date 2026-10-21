@@ -1356,8 +1356,8 @@ account (owner, 2026-10-08, migration 20261008d):** nothing from the catalogue i
 for them; they add a CARD per variant they sell (below), and only cards show. Do not
 bring back an automatic price list on the mini page (it was built twice: opt-in ticks,
 then default-on; the owner rejected both as clutter). Settings > New cars is a brand
-picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored: promos expire (the ones in the owner's 2026-10-08
-file had); the presenter's per-live rebate box is where a current one goes. Never copy a new car into `car_listings`: it blows the listing cap,
+picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
+file had); the presenter's rebate box is where a current one goes (kept on the device to month end). Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
 - Zones: Peninsular, Sabah/Sarawak, Labuan, Langkawi. The zone comes from the seller's
@@ -1533,8 +1533,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   `<img>` is keyed by photo so a tap never shows the old photo under the new dot.
 - **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
   Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
-  each VARIANT holds its own rebate (`rebateKey` = card + variant, owner 2026-10-22); the Cars
-  screen and the Budget rows read the same key, so they agree. Loan =
+  ONE rebate covers every variant (keyed by the listing; owner 2026-10-22: brands run one promo
+  per model) and it is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
+  (`xd_live_rebates`, `rebatesForMonth`), so the seller types this month's promo once. Rebates on
+  cars from the normal form are per live only, never saved. Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
   never counted as the buyer's deposit.

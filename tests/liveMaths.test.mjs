@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebateKey, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
+  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -165,17 +165,22 @@ is('rate: 16.5 over 7 yrs is above cap', rateWarning(16.5, 'eir', 7), 'aboveCap'
 is('rate: 16.5 over 5 yrs is legal', rateWarning(16.5, 'eir', 5), null);
 is('rate: empty is no warning', rateWarning('', 'eir', 7), null);
 
-// Rebate per variant on a model card.
-const rbs = { 'm:v2': 2000, p: 1000 };
-is('rebate: per variant', netPrice({ id: 'm', _variantId: 'v2', selling_price: 45000 }, rbs).net, 43000);
-is('rebate: other variant untouched', netPrice({ id: 'm', _variantId: 'v1', selling_price: 40000 }, rbs).net, 40000);
-is('rebate: plain car by id', netPrice({ id: 'p', selling_price: 30000 }, rbs).net, 29000);
-is('rebate: key', [rebateKey({ id: 'm', _variantId: 'v1' }), rebateKey({ id: 'p' })], ['m:v1', 'p']);
+// Rebate per MODEL: one box covers every variant of a card.
+const rbs = { m: 2000 };
+is('rebate: covers a variant', netPrice({ id: 'm', _variantId: 'v2', selling_price: 45000 }, rbs).net, 43000);
+is('rebate: covers the other variant too', netPrice({ id: 'm', _variantId: 'v1', selling_price: 40000 }, rbs).net, 38000);
 const rvb = budgetMatches([
   { id: 'm', _n: 1, _variantId: 'v1', variant: 'Standard', selling_price: 40000 },
   { id: 'm', _n: 1, _variantId: 'v2', variant: 'Executive', selling_price: 45000 },
-], { maxMonthly: 100000, years: 7, rate: 6.5, basis: 'eir', rebates: { 'm:v2': 5000 } });
-is('rebate: Budget prices each variant with its own rebate', rvb.fits[0].options.map((o) => o.price), [40000, 40000]);
+], { maxMonthly: 100000, years: 7, rate: 6.5, basis: 'eir', rebates: { m: 5000 } });
+is('rebate: Budget takes it off every variant', rvb.fits[0].options.map((o) => o.price), [35000, 40000]);
+
+// Saved rebates last the month, Malaysia time.
+is('month: MYT, not UTC', myMonth('2026-10-31T17:00:00Z'), '2026-11');
+is('month: same month', myMonth('2026-10-31T15:59:00Z'), '2026-10');
+is('saved: this month kept', rebatesForMonth({ month: '2026-10', rebates: { a: '3000', b: 0, c: 'x' } }, '2026-10'), { a: '3000' });
+is('saved: last month dropped', rebatesForMonth({ month: '2026-09', rebates: { a: '3000' } }, '2026-10'), {});
+is('saved: junk is empty', [rebatesForMonth(null, '2026-10'), rebatesForMonth({ month: '2026-10' }, '2026-10')], [{}, {}]);
 
 // Variant options on a model card's Budget row.
 const vcard = [

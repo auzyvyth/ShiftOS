@@ -98,14 +98,12 @@ export function rateWarning(rate, basis, years) {
 // seller typed for it on this live. A rebate is money off the price, nothing
 // else: never a deposit, never shown as a crossed-out "was" price.
 //   rebates: { [listingId]: number | string } — presenter state, never saved
-// A new-car model card's variants each carry their own rebate (owner,
-// 2026-10-22: brands set a different promo per variant), so the key is the
-// card + the variant. `_variantId` rides on the car (the Cars screen's shown
-// car and every Budget variant row), so both read the same box.
-export const rebateKey = (car) => (car?._variantId ? `${car.id}:${car._variantId}` : car?.id);
+// Keyed by the listing, so a new-car model card's rebate covers EVERY variant:
+// brands run one promo per model, and the seller types it once (owner,
+// 2026-10-22). Budget's variant rows carry the card's id, so they share it.
 export function netPrice(car, rebates) {
   const price = Number(car?.selling_price) || 0;
-  const rebate = Math.min(price, Math.max(0, Number(rebates?.[rebateKey(car)]) || 0));
+  const rebate = Math.min(price, Math.max(0, Number(rebates?.[car?.id]) || 0));
   return { price, rebate, net: price - rebate };
 }
 
@@ -166,6 +164,20 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     fits: fitOnce.map(withOptions),
     above: once(above, new Set(fitOnce.map((r) => r.n))).slice(0, 2).map(withOptions),
   };
+}
+
+// Saved rebates (new-car model cards only, liveCopy.js) last until the month
+// ends, Malaysia time: brand promos run by the month, and a rebate that
+// quietly outlived its promo would put a wrong price on stream.
+export const myMonth = (d = new Date()) => new Date(new Date(d).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 7);
+export function rebatesForMonth(saved, month = myMonth()) {
+  if (!saved || saved.month !== month || typeof saved.rebates !== 'object' || !saved.rebates) return {};
+  const out = {};
+  for (const [id, v] of Object.entries(saved.rebates)) {
+    const n = Number(v);
+    if (Number.isFinite(n) && n > 0) out[id] = String(n);
+  }
+  return out;
 }
 
 export const fmtRate = (n) => {
