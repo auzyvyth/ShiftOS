@@ -520,9 +520,33 @@ live can stall it in front of their audience. So:
   `vite.config.js`; LivePresenter loads no further chunks once open). A DB migration is the
   bigger hazard: it freezes the API up to 45s, and the presenter heartbeat
   (`set_live_listing`) and the mini page "Live now" poll both go through it.
-- "Who is online right now" is NOT answerable from existing data: `auth.sessions` only
-  updates on the hourly token refresh, and `analytics_events` skips sellers' devices and
-  anyone without analytics consent. `seller_live_state` is the one reliable signal.
+- "Who is online right now" was not answerable from the database (`auth.sessions` only
+  updates on the hourly token refresh; `analytics_events` skips sellers' devices and anyone
+  without analytics consent). **ONLINE-1 (2026-10-21)**: every app tab announces itself on the
+  Realtime PRESENCE channel `online-now` (`src/components/OnlineBeacon.jsx`, mounted in
+  App.jsx; payload `{a: seller|buyer|visitor, live}`, random key per tab, no user id), and
+  console Home counts it (`useOnlineNow`). Presence lives in the realtime server's memory: NO
+  database writes. The channel is public and spoofable, so it is a dashboard number, never
+  the release gate: `seller_live_state` stays the gate.
+
+## Disk IO is WRITES here (IO-1, 2026-10-21)
+The DB is ~57 MB and every read is served from memory (cache hit 100%), so disk IO comes
+from writes: cron run logs, pg_net request/response rows, realtime subscription rows, auth
+refresh tokens. Before adding anything that runs on a timer or on every page open:
+- **A cron job that calls an edge function sits behind `where exists (...)`** that is a
+  superset of what the function selects (migration `20261021d_cron_diet.sql`, pattern from
+  appointment-reminders). Idle runs then cost one in-memory check, no function call.
+  Never slow `appointment-reminders`: the function only looks back 10 min for due reminders.
+- **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
+  the device (a delete + insert) on every open; it now saves at most once a day per account
+  + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
+- **Only subscribe `postgres_changes` to tables IN the `supabase_realtime` publication**
+  (`select tablename from pg_publication_tables where pubname='supabase_realtime'`). A
+  subscription to any other table never fires but still opens a socket and writes
+  `realtime.subscription` rows. `useTenant` had one on `profiles` for every storefront visitor.
+- Biggest remaining cost: Realtime's change polling (`realtime.list_changes`, ~100k
+  calls / 2 days) runs while ANY `postgres_changes` subscriber is connected. Moving the seller
+  panels to Broadcast-from-trigger would remove it; not done yet (TODO IO-2).
 
 ## Deployment pipeline — 3 stages
 **API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**

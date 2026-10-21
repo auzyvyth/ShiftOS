@@ -122,6 +122,28 @@ async function saveSubscription(userId, sub, client = supabase) {
   return true;
 }
 
+// The silent repair below used to re-save the device on EVERY app open:
+// push_register_device deletes and re-inserts the row each time (191 calls in
+// two days, ~0.6s each, all disk writes). Now it saves at most once a day per
+// account + endpoint on this device. A new endpoint, a new account or a
+// sign-out (which drops the row, see forgetPushDevice) always saves again.
+const PUSH_SAVED_PREFIX = 'xd_push_saved_';
+const SAVE_EVERY_MS = 24 * 60 * 60 * 1000;
+function savedRecently(userId, endpoint) {
+  try {
+    const v = JSON.parse(localStorage.getItem(PUSH_SAVED_PREFIX + userId) || 'null');
+    return Boolean(v && v.e === endpoint && Date.now() - v.t < SAVE_EVERY_MS);
+  } catch { return false; }
+}
+function markSaved(userId, endpoint) {
+  try { localStorage.setItem(PUSH_SAVED_PREFIX + userId, JSON.stringify({ e: endpoint, t: Date.now() })); } catch { /* non-fatal */ }
+}
+function clearSavedMarks() {
+  try {
+    Object.keys(localStorage).filter((k) => k.startsWith(PUSH_SAVED_PREFIX)).forEach((k) => localStorage.removeItem(k));
+  } catch { /* non-fatal */ }
+}
+
 // Drops this browser's row at sign-out. Called with no session left, which is
 // why it cannot be a plain delete: auth.uid() is null by then and RLS would
 // reject it. The endpoint is the credential and only this browser holds it.
@@ -132,6 +154,8 @@ async function saveSubscription(userId, sub, client = supabase) {
 // having to mint a fresh endpoint.
 export async function forgetPushDevice(client = supabase) {
   if (!pushSupported()) return false;
+  // The row is about to go, so the next sign-in on this device must save again.
+  clearSavedMarks();
   try {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
@@ -163,7 +187,9 @@ export async function healPushSubscription(userId, client = supabase) {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
     }));
+    if (savedRecently(userId, sub.endpoint)) return { status: 'ok', endpoint: sub.endpoint };
     const saved = await saveSubscription(userId, sub, client);
+    if (saved) markSaved(userId, sub.endpoint);
     return saved ? { status: 'ok', endpoint: sub.endpoint } : { status: 'save_failed' };
   } catch (err) {
     console.error('healPushSubscription:', err);
@@ -247,7 +273,18 @@ export function usePushNotifications(userId, client = supabase) {
     // Repair before reading. The app-wide heal may not have run yet (or may have
     // raced this mount), and a Settings page that shows OFF for a device it could
     // have fixed itself is the bug this whole file is about.
-    healPushSubscription(userId, client).then(() => { if (!cancelled) sync(); });
+    healPushSubscription(userId, client).then(async () => {
+      if (cancelled) return;
+      const ok = await sync();
+      // The once-a-day skip trusted a row the server no longer has (a dead
+      // endpoint cleaned up by send-push, or another account claimed this
+      // device): forget the mark and save for real.
+      if (!ok && !cancelled && supported && Notification.permission === 'granted') {
+        try { localStorage.removeItem(PUSH_SAVED_PREFIX + userId); } catch { /* non-fatal */ }
+        await healPushSubscription(userId, client);
+        if (!cancelled) sync();
+      }
+    });
     return () => { cancelled = true; };
   }, [userId, client, sync]);
 

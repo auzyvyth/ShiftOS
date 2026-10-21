@@ -18,6 +18,7 @@ import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { setLiveOpen } from '../../lib/onlinePresence';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -108,6 +109,13 @@ const fmtPhone = (raw) => {
 };
 
 export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang }) {
+  // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
+  // Not for the embedded demo on the marketing page, which is not a real live.
+  useEffect(() => {
+    if (embedded) return undefined;
+    setLiveOpen(true);
+    return () => setLiveOpen(false);
+  }, [embedded]);
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);

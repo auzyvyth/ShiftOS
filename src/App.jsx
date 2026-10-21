@@ -16,6 +16,7 @@ import { useIdleLogout } from "./hooks/useIdleLogout";
 import { usePushHeal } from "./hooks/usePushHeal";
 import { useInternalDeviceMark } from "./hooks/useInternalDeviceMark";
 import { useHomeScreenMark } from "./hooks/useHomeScreenMark";
+import OnlineBeacon from "./components/OnlineBeacon";
 import { usePlatformSessionGuard } from "./hooks/usePlatformSessionGuard";
 import "./i18n/config";
 
@@ -163,6 +164,8 @@ function App() {
       <CompareBarGate />
       <ConsentBanner />
       <InstallPrompt />
+      {/* "Online now" for the platform console; presence only, no DB writes */}
+      <OnlineBeacon />
       <OfflineBanner />
       <Suspense fallback={null}>
         <SentryRoutes>

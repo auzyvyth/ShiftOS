@@ -30,6 +30,7 @@ import ProspectsTab from "../components/platform/ProspectsTab";
 import SensusDemosTab from "../components/platform/SensusDemosTab";
 import ListingReviewModal, { listingFlags, relTime } from "../components/platform/ListingReviewModal";
 import { purgeKycFiles } from "../utils/kycPurge";
+import { useOnlineNow } from "../hooks/useOnlineNow";
 
 function MktSection({ label, hint, children }) {
   return (
@@ -258,6 +259,10 @@ export default function AdminPage() {
   // Id of the superadmin this console is running as. Needed by the Alerts tab:
   // a push subscription is stored per user_id, so the toggle has to know who.
   const [meId, setMeId] = useState(null);
+  // "Online now" (ONLINE-1): presence counts from every open app tab. Held here,
+  // not in HomeTab, because HomeTab is re-created on every render and would
+  // re-join the channel each time.
+  const online = useOnlineNow(supabase, Boolean(meId));
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPw, setLoginPw] = useState("");
   const [loginBusy, setLoginBusy] = useState(false);
@@ -990,6 +995,16 @@ export default function AdminPage() {
           <QueueCard label="ID checks: Verified badge" n={pendingKycCount}
             sub={pendingKycCount ? "waiting on the Verified badge" : "none waiting"}
             onClick={() => openReview("ids")} />
+        </div>
+
+        <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Online now</p>
+        <div className="adm-home-health" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 10, marginBottom: 30 }}>
+          {/* Open app tabs this minute (presence, src/lib/onlinePresence.js).
+              One person with two tabs counts twice; nothing here names anyone. */}
+          <HealthStat label="Sellers" value={online ? online.sellers : "…"} sub="in their dashboard" />
+          <HealthStat label="Live now" value={online ? online.live : "…"} sub="Live presentation open" />
+          <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in" />
+          <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub="not signed in" />
         </div>
 
         <p style={{ margin: "0 0 10px", fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700 }}>Platform</p>
