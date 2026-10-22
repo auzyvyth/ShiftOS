@@ -1521,8 +1521,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   or the row and the car it opens disagree); `rateWarning` flags an EIR under 4% (a flat number on
   the wrong switch) or over the HP Act cap (17% <=5y, 16% >5y); tapping the PICKED monthly takes a
   target and fills the deposit (`depositToFit`, rounded UP to RM100); "just above" Budget rows say
-  "+RM x deposit and it fits" and open with it; a "total repaid / interest" line under the salary
-  guide. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
+  "+RM x deposit and it fits" and open with it; a TOTAL COUNTER under the salary guide (owner,
+  2026-10-22: two tiles, "Total you pay" = deposit + every instalment, and "Interest"; `.lp-totals`).
+  **No OTR line, on any car (owner, 2026-10-22):** used/recon OTR varies by dealer, and the 4 brands'
+  official price is already on the road without insurance, so an OTR amount would double-count. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
   10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
   The rate box stops at 17 (`RATE_MAX` / `clampRateInput`, the legal EIR ceiling; a typo like 65
   for 6.5 becomes 17) and the "Rate" label has an info button (`lp-info`, hover with a mouse,

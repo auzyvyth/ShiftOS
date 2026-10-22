@@ -662,6 +662,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten tr.lp-def td:last-child { border-radius: 0 8px 8px 0; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 16px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
+        .lp-totals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+        .lp-totals > div { display: flex; flex-direction: column; min-width: 0; padding: 6px 10px; border-radius: 8px; background: #F4F3F1; }
+        .lp-totals span { font-size: clamp(10px, 2.7cqw, 13px); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+        .lp-totals b { font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
         .lp-work { font-size: clamp(13px, 3.4cqw, 18px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.45; }
         .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
         .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); overflow-wrap: anywhere; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
@@ -1062,10 +1067,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
               </p>
             )}
+            {/* Total counter (owner, 2026-10-22): what the buyer pays in all,
+                deposit + every instalment, and the interest inside it. */}
             {totals && (
-              <p className="lp-salary">
-                {t.total(pickYears, `RM ${fmt(totals.totalRepayment)}`, `RM ${fmt(totals.totalInterest)}`)}
-              </p>
+              <div className="lp-totals">
+                <div><span>{t.totalPay}</span><b><Money n={picked.down + totals.totalRepayment} /></b><small>{t.totalPayHow(pickYears * 12)}</small></div>
+                <div><span>{t.interest}</span><b><Money n={totals.totalInterest} /></b><small>{t.interestHow(fmtRate(rateFor(pickYears)))}</small></div>
+              </div>
             )}
             <p className="lp-note" style={{ margin: 0 }}>
               {tenureCapped ? `${t.tenureCap(Math.max(...tenures), MAX_CAR_AGE_AT_END)} ` : ''}{officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
