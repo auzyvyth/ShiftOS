@@ -93,7 +93,10 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   drop the WAL-switch theory before cutting.
 - [ ] **IO-5 Quiet cron — APPLIED 2026-10-22 ~02:10 UTC (owner: "apply it now"): appointment-reminder v19
   (look-back 20 min) deployed first, then `20261022a_cron_align.sql`. Remaining: compare the archive
-  rate (pg_stat_archiver.archived_count per hour) against the 24/h measured before, then delete.** Measured: archive_timeout=2min,
+  rate (pg_stat_archiver.archived_count per hour) against the 24/h measured before, then delete.**
+  First hour after (02:08-03:10 UTC, Thu daytime): 17 archived = ~16.5/h vs ~24/h (-30%); cron now runs only at
+  :00/:15/:30/:45, 0 failures. The floor from cron alone is 4/h; the rest is user traffic. Re-measure tomorrow
+  with IO-6 live (open tabs pick it up only on reload, so its effect builds over a day). Measured: archive_timeout=2min,
   188 kB WAL vs 18 segments archived in 44 min. Was: `20261021d_cron_diet.sql` IS applied
   (job 12 went 4/h -> 2/h, job 3 2/h -> every 3 h, from ~15:00 UTC Oct 21, 6 h before the freeze); appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
   widened 10 -> 20 min (`supabase/functions/appointment-reminder/index.ts:42`) in the same change;
