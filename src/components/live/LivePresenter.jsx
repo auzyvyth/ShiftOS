@@ -13,6 +13,7 @@ import {
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
   initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
+  initialLiveRate, saveLiveRate,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -185,8 +186,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
   }, [adjustOpen]);
   const [showContact, setShowContact] = useState(false); // off every time: see header
-  const [eir, setEir] = useState(String(DEFAULT_EIR));
-  const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
+  // One rate for every car, remembered per device (liveCopy.js initialLiveRate).
+  const [savedRate] = useState(() => (embedded ? { eir: String(DEFAULT_EIR), basis: 'eir' } : initialLiveRate(DEFAULT_EIR, RATE_MAX)));
+  const [eir, setEir] = useState(savedRate.eir);
+  const [basis, setBasis] = useState(savedRate.basis); // 'eir' | 'flat' — how the seller typed the rate
+  useEffect(() => { if (!embedded) saveLiveRate(eir, basis); }, [eir, basis, embedded]);
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, never saved to the listing (promos change monthly). Every
   // car's rebate is remembered on this device until the month ends, Malaysia

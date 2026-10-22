@@ -1559,6 +1559,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   **No OTR line, on any car (owner, 2026-10-22):** used/recon OTR varies by dealer, and the 4 brands'
   official price is already on the road without insurance, so an OTR amount would double-count. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
   10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
+  **The rate is ONE number for every car, remembered per device** (`xd_live_rate`, rate +
+  EIR/flat, `initialLiveRate` / `saveLiveRate` in liveCopy.js; owner 2026-10-22). Editing it in
+  Adjust saves the new value; an empty box mid-typing never overwrites the last good one.
   The rate box stops at 17 (`RATE_MAX` / `clampRateInput`, the legal EIR ceiling; a typo like 65
   for 6.5 becomes 17) and the "Rate" label has an info button (`lp-info`, hover with a mouse,
   tap on a phone; `pointerType === 'mouse'` only, or a tap opens and closes it at once) that

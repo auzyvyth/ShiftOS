@@ -350,6 +350,26 @@ export function saveLiveIns(on) {
   } catch { /* storage blocked */ }
 }
 
+// The rate and how it was quoted (EIR | flat), remembered per device (owner,
+// 2026-10-22). One rate covers every car; the seller sets it once and it is
+// still there next live. Changing it in Adjust saves the new number.
+export const LIVE_RATE_KEY = 'xd_live_rate';
+
+export function initialLiveRate(fallback, max) {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(LIVE_RATE_KEY) || 'null');
+    const n = Number(v?.eir);
+    if (!(n > 0 && n <= max)) return { eir: String(fallback), basis: 'eir' };
+    return { eir: String(n), basis: v.basis === 'flat' ? 'flat' : 'eir' };
+  } catch { return { eir: String(fallback), basis: 'eir' }; }
+}
+
+export function saveLiveRate(eir, basis) {
+  // An empty or zero box is mid-typing, not a rate: keep the last good one.
+  if (!(Number(eir) > 0)) return;
+  try { window.localStorage.setItem(LIVE_RATE_KEY, JSON.stringify({ eir: String(eir), basis })); } catch { /* storage blocked */ }
+}
+
 export function ctaLine(custom, n, fallback) {
   const text = String(custom || '').trim();
   if (!text) return fallback;
