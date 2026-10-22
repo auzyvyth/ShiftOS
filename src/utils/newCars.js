@@ -25,7 +25,7 @@ export function zoneForState(state) {
 }
 
 // Live model cards (public_car_listings rows with is_model_card) grouped for the
-// marketplace hero's New picker: [{ brand, models: [{ model, from }] }], brands in
+// marketplace hero's New picker: [{ brand, models: [{ model, from, photo }] }], brands in
 // NEW_CAR_BRANDS order, models cheapest first. Only brands with a live card
 // appear, so the picker never offers a brand that opens an empty page.
 export function liveNewCarBrands(rows) {
@@ -36,14 +36,28 @@ export function liveNewCarBrands(rows) {
     if (!byBrand.has(brand)) byBrand.set(brand, new Map());
     const models = byBrand.get(brand);
     const p = Number(r.selling_price) > 0 ? Number(r.selling_price) : null;
+    const photo = Array.isArray(r.images) ? r.images[0] || null : null;
     const prev = models.get(r.model);
-    if (!prev) models.set(r.model, { model: r.model, from: p });
-    else if (p && (!prev.from || p < prev.from)) prev.from = p;
+    if (!prev) models.set(r.model, { model: r.model, from: p, photo });
+    else {
+      if (p && (!prev.from || p < prev.from)) prev.from = p;
+      if (!prev.photo && photo) prev.photo = photo;
+    }
   }
   return NEW_CAR_BRANDS.filter((b) => byBrand.has(b)).map((brand) => ({
     brand,
     models: [...byBrand.get(brand).values()].sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity)),
   }));
+}
+
+// The buyer's state, remembered on the device (a per-viewer convenience; the
+// model page sorts advisors by it). Never sent anywhere.
+const BUYER_STATE_KEY = "xd_buyer_state";
+export function readBuyerState(valid) {
+  try { const s = localStorage.getItem(BUYER_STATE_KEY); return valid.includes(s) ? s : ""; } catch { return ""; }
+}
+export function saveBuyerState(state) {
+  try { if (state) localStorage.setItem(BUYER_STATE_KEY, state); else localStorage.removeItem(BUYER_STATE_KEY); } catch { /* private mode */ }
 }
 
 export function zoneLabel(key) {

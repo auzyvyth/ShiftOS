@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
+import { MY_STATES } from "../utils/locations";
 import { Helmet } from "react-helmet";
 import { supabase } from "../supabaseClient";
 import MarketplaceHeader from "../components/MarketplaceHeader";
@@ -12,7 +13,7 @@ import { trackEvent } from "../utils/analytics";
 import { sanitizeState } from "../config/marketplaceConfig";
 import { SITE_URL } from "../config/site";
 import {
-  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning, zoneForState,
+  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning, zoneForState, readBuyerState, saveBuyerState,
 } from "../utils/newCars";
 
 // /new-cars/:brand/:model -- NEWCAR-1, "the salesman is the product".
@@ -36,12 +37,18 @@ export default function NewCarModelPage() {
   const [loadError, setLoadError] = useState(false);
   const [advisors, setAdvisors] = useState(null);
   const [advError, setAdvError] = useState(false);
-  // ?state= comes from the marketplace hero's New picker. It only ORDERS the
-  // advisors (that state first, then its price zone, then everyone else) and
-  // picks the starting zone; it never hides anyone.
-  const [params] = useSearchParams();
-  const buyerState = sanitizeState(params.get("state") || "");
+  // The buyer's state ORDERS the advisors (that state first, then its price
+  // zone, then everyone else) and picks the starting zone; it never hides
+  // anyone. It arrives as ?state= (the marketplace hero) or from the device,
+  // and the "Near" picker above the advisors changes it.
+  const [params, setParams] = useSearchParams();
+  const buyerState = sanitizeState(params.get("state") || "") || readBuyerState(MY_STATES);
   const [zone, setZone] = useState(() => zoneForState(buyerState));
+  const pickState = (s) => {
+    saveBuyerState(s);
+    setZone(zoneForState(s));
+    setParams(s ? { state: s } : {}, { replace: true });
+  };
 
   useEffect(() => {
     if (!brand) return;
@@ -145,12 +152,17 @@ export default function NewCarModelPage() {
 
               <section className="ncm-sec">
                 <h2 className="ncm-h2">Advisors who sell it {sorted.length > 0 && <span className="ncm-count">{sorted.length}</span>}</h2>
-                {buyerState && sorted.length > 0 && (
-                  <p className="ncm-note ncm-near">
-                    {nearCount > 0
-                      ? `${nearCount} in ${buyerState}, listed first.`
-                      : `None in ${buyerState} yet. These advisors are in other states.`}
-                  </p>
+                {sorted.length > 0 && (
+                  <div className="ncm-near">
+                    <label htmlFor="ncm-state">Near</label>
+                    <select id="ncm-state" value={buyerState} onChange={(e) => pickState(e.target.value)}>
+                      <option value="">Any state</option>
+                      {MY_STATES.map((st) => <option key={st} value={st}>{st}</option>)}
+                    </select>
+                    {buyerState && (
+                      <span>{nearCount > 0 ? `${nearCount} in ${buyerState}, listed first` : `None in ${buyerState} yet`}</span>
+                    )}
+                  </div>
                 )}
                 {advisors === null ? (
                   <p className="ncm-note">Loading advisors...</p>
@@ -236,6 +248,8 @@ const CSS = `
   .ncm-a-btns { display: flex; gap: 8px; }
   .ncm-a-btns a { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid rgba(0,0,0,0.12); color: #111827; }
   .ncm-a-btns a.ncm-primary { background: #dc2626; border-color: #dc2626; color: #fff; }
-  .ncm-near { margin: -4px 0 12px; }
+  .ncm-near { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 14px; font-size: 13px; color: #6b7280; }
+  .ncm-near label { font-weight: 600; color: #374151; }
+  .ncm-near select { min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.12); background: #fff; font: inherit; font-size: 16px; color: #111827; max-width: 100%; }
   .ncm-foot { margin-top: 40px; font-size: 14px; color: #6b7280; }
 `;
