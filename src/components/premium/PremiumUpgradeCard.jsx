@@ -4,6 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { SALESMAN_PREMIUM_FEATURES } from "../../utils/plans";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 import PremiumPayBox, { PREMIUM_PRICE } from "./PremiumPayBox";
+import PagePreview from "./PagePreview";
 
 // The Lite -> Premium door (migration 20261004b). Before this, Lite had no
 // upgrade control at all and /plans looped a signed-in Lite seller back to
@@ -19,7 +20,7 @@ const PRICE = PREMIUM_PRICE;
 const LITE_CAP = PLAN_CONFIG.salesman_lite?.listingCap ?? 10;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full?.listingCap ?? 30;
 
-export default function PremiumUpgradeCard({ profile, onRefer }) {
+export default function PremiumUpgradeCard({ profile, cars, onRefer }) {
   const [offer, setOffer] = useState(null);
   const [starting, setStarting] = useState(false);
 
@@ -59,7 +60,11 @@ export default function PremiumUpgradeCard({ profile, onRefer }) {
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         Everything you have now comes with you: cars, leads, buyers, chats and bookings. Nothing is moved or re-entered.
       </p>
-      <ul style={{ margin: "12px 0 0", padding: "0 0 0 18px", fontSize: 12.5, color: "#d1d5db", lineHeight: 1.8 }}>
+      {/* The page is the one difference a seller with no buyers yet can see. */}
+      <div style={{ marginTop: 14 }}>
+        <PagePreview profile={profile} cars={cars} />
+      </div>
+      <ul style={{ margin: "14px 0 0", padding: "0 0 0 18px", fontSize: 12.5, color: "#d1d5db", lineHeight: 1.8 }}>
         <li>Up to {PREMIUM_CAP} active listings (Lite has {LITE_CAP})</li>
         {/* AI lines are left out while AI_FEATURES_ENABLED is off. */}
         {SALESMAN_PREMIUM_FEATURES.filter((f) => !/\bAI\b/.test(f)).slice(0, 5).map((f) => <li key={f}>{f}</li>)}
