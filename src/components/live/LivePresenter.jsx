@@ -162,6 +162,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [rateInfo, setRateInfo] = useState(false);
   const photoTouchX = useRef(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // ONE close button, top right, always (owner, 2026-10-22). It closes what is
+  // open first (full photo, then Adjust); only with nothing open does it offer
+  // to end the live, and that asks first. A seller aiming for Adjust's own
+  // close hit the live's X a row above it and ended the stream.
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const requestExit = () => {
+    if (photoFull) setPhotoFull(false);
+    else if (adjustOpen) setAdjustOpen(false);
+    else setConfirmEnd(true);
+  };
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
   // 'click', not 'pointerdown': the tapped control acts first, then the panel
   // closes, so the layout never shifts under a finger mid-tap. Anything that
@@ -242,6 +252,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useModalHistory(!embedded && !!report, onClose);
   // Back closes the photo first, then (asking) the live.
   useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
+  useModalHistory(!embedded && confirmEnd, () => setConfirmEnd(false));
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
@@ -413,14 +424,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         else if (e.key === 'ArrowLeft') stepPhoto(-1);
         return;
       }
-      if (e.key === 'Escape') finish();
+      if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
+      if (e.key === 'Escape') { if (adjustOpen) setAdjustOpen(false); else setConfirmEnd(true); }
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, finish, report, mode, embedded, photoFull, stepPhoto]);
+  }, [go, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -745,7 +757,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjhead { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
         .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
-        .lp-adjclose { flex-shrink: 0; width: 42px; height: 42px; border: none; border-radius: 10px; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-confirm { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,17,21,.45); }
+        .lp-confirm-card { width: 100%; max-width: 320px; padding: 18px; border-radius: 14px; background: #fff; color: #0f1115; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
+        .lp-confirm-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+        .lp-confirm-card p { margin: 0 0 14px; font-size: 14px; color: #4b5563; }
+        .lp-confirm-btns { display: flex; gap: 8px; }
+        .lp-confirm-btns button { flex: 1; height: 44px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .lp-confirm-keep { border: none; background: var(--lp-a); color: #fff; }
+        .lp-confirm-end { border: 1.5px solid #d1d5db; background: #fff; color: #0f1115; }
         .lp-brk tr.lp-tap { cursor: pointer; }
         .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         /* Tailwind preflight makes every svg display:block, which dropped the pen onto
@@ -886,7 +905,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </button>
           )}
           {!embedded && (
-            <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label={t.exit}><X size={18} /></button>
+            <button className="lp-iconbtn" onClick={report ? onClose : requestExit}
+              aria-label={!report && adjustOpen ? t.closeAdjust : t.exit}><X size={18} /></button>
           )}
         </div>
       </div>
@@ -904,11 +924,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
                 </button>
               </div>
-              {/* Close (owner, 2026-10-22): a tap outside also closes it, but on a
-                  phone the panel fills the screen and there is no "outside". */}
-              <button type="button" className="lp-adjclose" onClick={() => setAdjustOpen(false)} aria-label={t.closeAdjust}>
-                <X size={18} />
-              </button>
+              {/* No close button of its own: the top bar's X closes Adjust while it
+                  is open (one close spot, see requestExit), and so does a tap outside. */}
             </div>
             {adjustTab === 'rebates' ? (
               <div className="lp-wide lp-rebs">
@@ -1332,6 +1349,22 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </>)}
           </div>
           {images.length > 1 && <p className="lp-full-count">{imgIdx + 1} / {images.length}</p>}
+        </div>
+      )}
+
+      {/* Ending the live always asks. Keep presenting is the focused, accent
+          button, so a stray Enter or second tap keeps the stream going. */}
+      {confirmEnd && !report && (
+        <div className="lp-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lp-confirm-h"
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmEnd(false); }}>
+          <div className="lp-confirm-card">
+            <h2 id="lp-confirm-h">{t.endTitle}</h2>
+            <p>{t.endBody}</p>
+            <div className="lp-confirm-btns">
+              <button type="button" className="lp-confirm-end" onClick={() => { setConfirmEnd(false); finish(); }}>{t.endYes}</button>
+              <button type="button" className="lp-confirm-keep" autoFocus onClick={() => setConfirmEnd(false)}>{t.endKeep}</button>
+            </div>
+          </div>
         </div>
       )}
       </div>

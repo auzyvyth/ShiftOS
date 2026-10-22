@@ -1483,9 +1483,13 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   exception is Rebate (owner, 2026-10-22, after a seller said opening Adjust for one car was
   slower): tapping its line turns the number into a box typed in place (`rebateEdit`, Enter
   or tapping away sets it). Adjust > Rebates stays for setting every car before a live.
-  Do not extend this to deposit, rate or loan. Adjust has a close button (`.lp-adjclose`, the accent
-  colour): on a phone the panel fills the screen, so "tap outside" was no way out. A
-  control that opens Adjust carries `data-adjust-open`, or its own click closes it again.
+  Do not extend this to deposit, rate or loan.
+- **ONE close button, top right, always (owner, 2026-10-22, `requestExit`).** The top bar's X
+  closes whatever is open first (full photo, then Adjust); only with nothing open does it end
+  the live, and ending ALWAYS asks (`confirmEnd`, "Keep presenting" focused). Esc follows the
+  same order. Adjust had its own close a row lower; a seller aiming for it hit the live's X and
+  ended the stream. Never add a second close button in another spot. A control that opens
+  Adjust carries `data-adjust-open`, or its own click closes it again.
 - **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed
   into IN PLACE (same slot, same size, the sheet follows each keystroke, Enter or tapping
   away sets it); empty or 0 = the None chip. Budget uses the same chip: `[RM x ✎] None
