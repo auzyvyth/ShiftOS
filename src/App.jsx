@@ -17,8 +17,14 @@ import { usePushHeal } from "./hooks/usePushHeal";
 import { useInternalDeviceMark } from "./hooks/useInternalDeviceMark";
 import { useHomeScreenMark } from "./hooks/useHomeScreenMark";
 import OnlineBeacon from "./components/OnlineBeacon";
+import { supabase, publicClient } from "./supabaseClient";
+import { installRealtimeIdle } from "./lib/realtimeIdle";
 import { usePlatformSessionGuard } from "./hooks/usePlatformSessionGuard";
 import "./i18n/config";
+
+// Live updates pause on a screen hidden 2+ minutes and catch up on return (IO-6).
+installRealtimeIdle(supabase);
+installRealtimeIdle(publicClient);
 
 // Eager — only true above-the-fold entry points. The public marketplace
 // (xdrive.my "/") is the highest-traffic page, so it lives in the entry bundle

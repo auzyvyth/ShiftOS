@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 // (utils/platformOnly.js), so a seller can stay signed in on the main client in
 // the same browser.
 import { platformClient as supabase } from "../lib/platformClient";
+import { installRealtimeIdle } from "../lib/realtimeIdle";
 import { markInternalDevice } from "../utils/internalTraffic";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { throttleCheck, throttleFail, throttleClear } from "../utils/authThrottle";
@@ -32,6 +33,9 @@ import ListingReviewModal, { listingFlags, relTime } from "../components/platfor
 import { purgeKycFiles } from "../utils/kycPurge";
 import { useOnlineNow } from "../hooks/useOnlineNow";
 import { useLiveSellers } from "../hooks/useLiveSellers";
+
+// The console's own session pauses live updates on a hidden tab too (IO-6).
+installRealtimeIdle(supabase);
 
 function MktSection({ label, hint, children }) {
   return (

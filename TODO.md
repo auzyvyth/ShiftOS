@@ -81,6 +81,27 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   from DB triggers (`realtime.broadcast_changes`), then drop the tables from the
   `supabase_realtime` publication. Needs DB triggers + private-channel authorization
   (migration, after-midnight slot) and a careful click-through of every live-updating screen.
+- **FREEZE 2026-10-22 (owner confirmed Disk IO 100%).** From ~21:00 UTC Oct 21: checkpoints writing
+  4-8 buffers took 46-221 s, pg_cron "job startup timeout" (jobs 7, 12, 13, 17, 18), API 504s at 5 s
+  (public_car_listings, /auth/v1/token, storefront RPCs). 24h API volume was only ~7.8k requests,
+  so the writes are internal. Clue: checkpoint `distance=32768 kB` every ~5 min (~9 GB WAL/day on a
+  57 MB DB): suspected archive_timeout segment switches, each tiny cron write forcing a 16 MB WAL
+  segment to be archived. UNVERIFIED until the DB answers.
+- [ ] **IO-4 Measure first (read-only, no freeze):** `show archive_timeout`, `pg_stat_archiver`,
+  `pg_stat_wal`, cron runs per job last 24h (`cron.job_run_details`), `pg_stat_user_tables` top
+  n_tup_ins/upd/del, `pg_stat_statements` by wal_bytes, `realtime.subscription` count. Confirm or
+  drop the WAL-switch theory before cutting.
+- [ ] **IO-5 Quiet cron — APPLIED 2026-10-22 ~02:10 UTC (owner: "apply it now"): appointment-reminder v19
+  (look-back 20 min) deployed first, then `20261022a_cron_align.sql`. Remaining: compare the archive
+  rate (pg_stat_archiver.archived_count per hour) against the 24/h measured before, then delete.** Measured: archive_timeout=2min,
+  188 kB WAL vs 18 segments archived in 44 min. Was: `20261021d_cron_diet.sql` IS applied
+  (job 12 went 4/h -> 2/h, job 3 2/h -> every 3 h, from ~15:00 UTC Oct 21, 6 h before the freeze); appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
+  widened 10 -> 20 min (`supabase/functions/appointment-reminder/index.ts:42`) in the same change;
+  same review for 17 (15 min), ask-viewing-outcomes (hourly 1-13), sweep-premium-lapses (18, hourly).
+- [ ] **IO-6 Drop realtime on hidden tabs — BUILT 2026-10-22 (`src/lib/realtimeIdle.js`), on staging; owner
+  click-test (leave a seller tab hidden 3+ min, send a lead, come back) then ship.** Was: disconnect realtime
+  after a tab / phone is hidden 2+ min, reconnect + refetch on visible. Seller panels stay open
+  24/7, and list_changes polling runs while any subscriber is connected. Do before IO-2.
 - [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
   subscribes to `lead_activities`, which is not in the publication (never fires).
 
