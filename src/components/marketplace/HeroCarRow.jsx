@@ -18,8 +18,12 @@ function chunk(arr, size) {
 
 const fmtPrice = (car) => {
   const p = Number(car.selling_price);
-  return p > 0 ? 'RM ' + p.toLocaleString('en-MY') : 'P.O.R';
+  // A new-car model card's price is its cheapest variant (ShowroomCard says the same).
+  return p > 0 ? (car.is_model_card ? 'From RM ' : 'RM ') + p.toLocaleString('en-MY') : 'P.O.R';
 };
+
+// Without a name, three similar photos at similar prices told a buyer nothing.
+const carName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(' ');
 
 // One titled row of 3 car tiles (photo + price only) inside the marketplace
 // hero, replacing the old "Browse by Budget" grid.
@@ -167,7 +171,10 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
                 draggable={false}
               >
                 <div className="mp-carrow-img" style={img ? { backgroundImage: `url(${img})` } : undefined} />
-                <span className="mp-carrow-price">{fmtPrice(car)}</span>
+                <span className="mp-carrow-meta">
+                  <span className="mp-carrow-name">{carName(car)}</span>
+                  <span className="mp-carrow-price">{fmtPrice(car)}</span>
+                </span>
               </Link>
             );
           })}

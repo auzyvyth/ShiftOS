@@ -18,6 +18,8 @@ import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import HeroCarRow from '../components/marketplace/HeroCarRow';
+import NewCarPicker, { NEW_CAR_PICKER_CSS } from '../components/marketplace/NewCarPicker';
+import { liveNewCarBrands } from '../utils/newCars';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import StaleListingsNotice from '../components/StaleListingsNotice';
@@ -41,6 +43,10 @@ const PER_PAGE = 12;
    critical path) — the full CAR_FIELDS (29 cols) is for detail-heavy grids,
    not warranted here. */
 const HERO_ROW_FIELDS = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,images,created_at,is_model_card';
+// The hero rows are used + recon stock only. New-car advisor cards have their
+// own way in (the New tab -> /new-cars/:brand/:model): left in, they filled every
+// "All cars" slot (the newest 14 live listings were all model cards, 2026-10-22).
+const notModelCard = (c) => !c.is_model_card;
 
 /* sanitizePrice depends on PRICE_STEPS from PriceDrumPicker so lives here */
 function sanitizePrice(val) {
@@ -148,9 +154,13 @@ export default function MarketplacePage() {
   // src/utils/serverSeed.js): it is the same newest-first live cars row 1
   // fetches, so the top of the page has photos on its first paint. The fetches
   // below still run and replace them.
-  const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).slice(0, 12));
+  const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter(notModelCard).slice(0, 12));
   const [row1Mode, setRow1Mode] = useState('all'); // 'all' | 'hot'
-  const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => c.body_type === 'MPV').slice(0, 12));
+  const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => notModelCard(c) && c.body_type === 'MPV').slice(0, 12));
+  // Hero "New" mode: brands + models that have a live advisor card. Empty until
+  // loaded, and the New tab only renders once it has a brand (an entry point
+  // over an empty view is a dead end).
+  const [newBrands, setNewBrands] = useState([]);
 
   useEffect(() => {
     // On a failed or timed-out read, fill the row from the device's saved copy
@@ -169,20 +179,33 @@ export default function MarketplacePage() {
       publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
+        .eq('is_model_card', false)
         .order('created_at', { ascending: false })
         .limit(12),
-      setRow1Pool, (cars) => cars,
+      setRow1Pool, (cars) => cars.filter(notModelCard),
     );
 
     load(
       publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
+        .eq('is_model_card', false)
         .eq('body_type', 'MPV')
         .order('created_at', { ascending: false })
         .limit(12),
-      setRow2Pool, (cars) => cars.filter((c) => c.body_type === 'MPV'),
+      setRow2Pool, (cars) => cars.filter((c) => notModelCard(c) && c.body_type === 'MPV'),
     );
+
+    // Three short columns over the live model cards; the picker groups them.
+    withTimeout(
+      publicClient.from('public_car_listings')
+        .select('brand,model,selling_price,images')
+        .in('status', ['available', 'reserved'])
+        .eq('is_model_card', true)
+        .limit(500),
+    )
+      .then(({ data, error: err }) => { if (!err) setNewBrands(liveNewCarBrands(data)); })
+      .catch(() => {});
   }, []);
 
   /* Row 1 upgrades to "Hot Deals" the moment any exist. Still gated on the
@@ -195,6 +218,7 @@ export default function MarketplacePage() {
     publicClient.from('public_car_listings')
       .select(HERO_ROW_FIELDS)
       .in('status', ['available', 'reserved'])
+      .eq('is_model_card', false)
       .eq('is_hot_deal', true)
       .order('created_at', { ascending: false })
       .limit(30)
@@ -795,28 +819,6 @@ export default function MarketplacePage() {
         .mp-hero-left  { width: 100%; }
         .mp-hero-right { display: block; width: 100%; margin-top: 24px; }
 
-        /* Tabs — scrollable on mobile */
-        /* The hero's controls are LIGHT. Dark was tried three ways here — a
-           filled panel behind them, then near-black controls, then charcoal
-           controls — and each one turned the hero into a dark band sitting in a
-           light page. The masthead is the page's only dark surface now; below it
-           the hero is one continuous light surface and the search bar earns
-           attention by being the one INSET field on it, not by being a dark
-           object. */
-        .mp-hero-tabs {
-          display: flex;
-          gap: 4px;
-          background: #F2F0EC;
-          border: 1px solid #E7E4DB;
-          border-radius: 12px;
-          padding: 4px;
-          margin-bottom: 12px;
-          overflow-x: auto;
-          scrollbar-width: none;
-          -ms-overflow-style: none;
-          width: 100%;
-        }
-        .mp-hero-tabs::-webkit-scrollbar { display: none }
 
         /* Trust strip */
         .mp-trust-strip { padding: 16px 0; border-top: 1px solid rgba(0,0,0,.07); flex-shrink: 0; position: relative; z-index: 1; }
@@ -844,7 +846,9 @@ export default function MarketplacePage() {
         .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
         @media (hover:hover) and (pointer:fine) { .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); } }
         .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
-        .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #111827; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(0,0,0,.06); }
+        .mp-carrow-meta { display: block; padding: 6px 9px 8px; border-top: 1px solid rgba(0,0,0,.06); font-family: 'Outfit',sans-serif; min-width: 0; }
+        .mp-carrow-name { display: block; font-size: 10.5px; font-weight: 500; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+        .mp-carrow-price { display: block; font-size: 11px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
         @media (prefers-reduced-motion: reduce) {
@@ -874,7 +878,6 @@ export default function MarketplacePage() {
              hero — so the left column carries the extra width. */
           .mp-hero-left     { flex: 1.15; min-width: 0; width: auto; }
           .mp-hero-right    { flex: 0.85; min-width: 0; margin-top: 0; }
-          .mp-hero-tabs     { width: fit-content; overflow-x: visible; }
           .mp-trust-strip   { padding: 20px 0; }
           .mp-trust-grid    { grid-template-columns: repeat(4,1fr); padding: 0 clamp(20px,4vw,48px); row-gap: 0; }
           .mp-trust-item    { padding: 0 28px; }
@@ -955,6 +958,21 @@ export default function MarketplacePage() {
           .mp-agent-cta     { width:100%; }
           .mp-agent-trust   { justify-content:flex-start; }
         }
+        /* Used & Recon | New: an Apple-style segmented control. A white thumb on
+           a grey track, never a coloured fill: red is kept for the page's one
+           primary action (Find Cars), and ink fill read as a second button. */
+        .mp-mode { display:inline-flex; gap:2px; padding:3px; margin-bottom:14px; background:rgba(118,118,128,.12); border-radius:12px; }
+        .mp-mode-btn { min-height:36px; padding:0 20px; border:none; border-radius:9px; background:transparent; color:#3a3a3c;
+          font-family:'Outfit',sans-serif; font-size:13.5px; font-weight:500; letter-spacing:-.005em; cursor:pointer; white-space:nowrap;
+          transition:background-color .25s cubic-bezier(.22,1,.36,1), color .25s cubic-bezier(.22,1,.36,1), box-shadow .25s cubic-bezier(.22,1,.36,1); }
+        .mp-mode-btn[aria-pressed="true"] { background:#fff; color:#1d1d1f; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.10), 0 0 0 .5px rgba(0,0,0,.04); }
+        @media (hover:hover) and (pointer:fine) { .mp-mode-btn[aria-pressed="false"]:hover { color:#1d1d1f; } }
+        .mp-mode-btn:focus-visible { outline:2px solid #1d1d1f; outline-offset:2px; }
+        .mp-hero-links { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
+        .mp-hero-links > button, .mp-hero-links > a { display:inline-flex; align-items:center; gap:6px; min-height:28px; background:none; border:none; padding:0;
+          color:#4b5563; font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+        @media (hover:hover) and (pointer:fine) { .mp-hero-links > button:hover, .mp-hero-links > a:hover { color:#0f1115; } }
+        ${NEW_CAR_PICKER_CSS}
       `}</style>
 
       <MarketplaceHeader />
@@ -1027,34 +1045,27 @@ export default function MarketplacePage() {
                 New &middot; Used &middot; Recon &mdash; from dealers and agents across Malaysia.
               </p>
 
-              {/* Tabs — "Browse Hot Deals" is hidden while there are no hot
-                  deals to browse. It set hot_deals=true and scrolled to the
-                  grid, so with an empty shelf every tap landed the visitor on
-                  "No cars match your filters" — an advertised dead end on the
-                  first screen. Tabs carry explicit ids rather than map indexes
-                  so hiding one can't shift another's active state. */}
-              <div className="mp-hero-tabs">
-                {[
-                  { id:'find', label:'Find a Car', action:() => setHeroTab('find') },
-                  stats.hotDeals > 0 && { id:'hot', label:'Browse Hot Deals', action:() => { setHeroTab('hot'); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
-                  { id:'calc', label:'Finance Calculator', action:() => { setHeroTab('calc'); navigate('/calculator'); } },
-                ].filter(Boolean).map(({ id, label, action }) => (
-                  <button
-                    key={id}
-                    onClick={() => action()}
-                    style={{
-                      padding:'8px 16px', borderRadius:'9px', fontSize:'12px', fontWeight:'600',
-                      fontFamily:"'Outfit',sans-serif", cursor:'pointer', border:'none',
-                      background: heroTab === id ? '#dc2626' : 'transparent',
-                      color: heroTab === id ? '#fff' : '#4b5563',
-                      transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)', whiteSpace:'nowrap',
-                    }}
-                  >{label}</button>
-                ))}
-              </div>
+              {/* Used & Recon | New: a MODE switch, so it is one two-sided pill and
+                  nothing else (owner, 2026-10-22). Hot Deals and the calculator are
+                  ACTIONS, not modes; they moved to the link row under the search.
+                  The pill only exists once a live new-car card does (an entry
+                  point over an empty view is a dead end). */}
+              {newBrands.length > 0 && (
+                <div className="mp-mode" role="group" aria-label="Car condition">
+                  {[['find', 'Used & Recon'], ['new', 'New']].map(([id, label]) => (
+                    <button key={id} type="button" aria-pressed={heroTab === id}
+                      className="mp-mode-btn" onClick={() => setHeroTab(id)}>{label}</button>
+                  ))}
+                </div>
+              )}
 
-              {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
-                  nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
+              {/* New mode swaps the search bar for the brand -> model -> state
+                  picker; Used & Recon (and the action tabs) keep the search. */}
+              {heroTab === 'new' && newBrands.length > 0 ? (
+                <NewCarPicker brands={newBrands} />
+              ) : (
+              /* Search bar — no wrapping <form> (SearchAutocomplete has its own;
+                  nested forms broke navigation). Each entry point navigates via runHeroSearch. */
               <div>
                 {/* Dimmed white (#F4F3EF on a ground that ramps #FFF -> #F7F6F2),
                     so the field reads as INSET on the hero rather than as another
@@ -1098,15 +1109,25 @@ export default function MarketplacePage() {
                     plain text link, which carries no pill chrome and does not
                     compete with the search bar above it. Budget and state are
                     applied on /showroom, which has the full filter UI. */}
-                <button type="button" onClick={() => setAdvancedOpen(true)}
-                  style={{ display:'inline-flex', alignItems:'center', gap:'6px', background:'none', border:'none', padding:0, color:'#4b5563', fontSize:'12.5px', fontWeight:'600', cursor:'pointer', fontFamily:"'Outfit',sans-serif", textDecoration:'underline', textUnderlineOffset:'3px' }}>
-                  <SlidersHorizontal size={12}/> More filters
-                </button>
+                {/* "Browse Hot Deals" stays hidden while there are no hot deals:
+                    it filtered the grid, so an empty shelf made it a dead end. */}
+                <div className="mp-hero-links">
+                  <button type="button" onClick={() => setAdvancedOpen(true)}>
+                    <SlidersHorizontal size={12}/> More filters
+                  </button>
+                  {stats.hotDeals > 0 && (
+                    <button type="button" onClick={() => { setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); }}>
+                      Hot deals
+                    </button>
+                  )}
+                  <Link to="/calculator">Finance calculator</Link>
+                </div>
                 {/* No "every listing verified" line here — the subhead above says
                     it and the trust strip below PROVES it with real counts. Three
                     statements of one claim in one viewport is the clutter, and it
                     was also what pushed the proof off the fold. */}
               </div>
+              )}
             </div>
 
             {/* RIGHT: live inventory rows — proof of real, moving stock reads as
@@ -1116,7 +1137,7 @@ export default function MarketplacePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <HeroCarRow
                   eyebrow="Shop Smarter"
-                  title={row1Mode === 'hot' ? 'HOT DEALS' : 'ALL CARS'}
+                  title={row1Mode === 'hot' ? 'HOT DEALS' : 'USED & RECON'}
                   cars={row1Pool}
                   viewAllHref={row1Mode === 'hot' ? '/showroom?hot_deals=true' : '/showroom'}
                 />

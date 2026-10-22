@@ -320,7 +320,13 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   per variant (`NewCarForm.jsx`, migration `20261008b`, QUEUED after 20261008a). Research:
   Carlist = SA ads with typed prices; Autotrader/Edmunds/CarDekho = official layer + dealer
   listing. Not yet clicked through on staging: create a card, mark a lead won on it, undo.
-- [ ] An entry point to the model pages (marketplace nav / footer), gated on rows existing.
+- [x] 2026-10-22 Entry point to the model pages: marketplace hero "New" tab (brand -> model ->
+  state -> `/new-cars/:brand/:model?state=`), shown only when a live model card exists
+  (`src/components/marketplace/NewCarPicker.jsx`). Hero rows now exclude model cards.
+  Next: the advisor card design on the model page (owner: "we decide later").
+- [ ] OWNER: send the CURRENT Proton and BYD logos (SVG preferred) for `public/brands/`;
+  until then the New picker shows those two as wordmarks. Then add them to `LOGOS` in
+  `src/components/marketplace/NewCarPicker.jsx`.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
 - [ ] **Won flips the listing to sold.** `auto_create_customer_on_won` marks the car
