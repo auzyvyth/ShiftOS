@@ -1464,7 +1464,8 @@ button on `SalesmanProfilePage.jsx` (every seller plan, Lite included, since 202
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
-  (owner, 2026-10-04: top-bar contact button, tap the box to hide). TikTok can strike a
+  (owner, 2026-10-04: top-bar contact button). The box itself is NOT tappable (owner,
+  2026-10-22: tapping it hid it mid-live); the top-bar button is the one switch. TikTok can strike a
   live for a phone number (checked 2026-10-03), so never default it on or persist it.
   NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
   mini-page link) must not be the live tool.
@@ -1477,22 +1478,24 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   and on desktop. Designed on the canvas https://claude.ai/artifact/LCNR7RxPnyHxMHnkAeqEvC.
 - **Controls and answers are kept apart (owner, 2026-10-22).** A VIEWER's question is a tap
   on stage: deposit chips, tenure tiles, variant, NCD. What the SELLER sets lives in Adjust,
-  in three tabs by WHEN it is needed (owner, 2026-10-22: one long list was "leceh"): **This car**
-  (rebate, target monthly, this car's insurance; the default, mid-live), **Live** (the rates,
-  insurance on/off, every car's rebate; once before a live), **Look** (colour, comment line,
-  offer). Budget has no This car tab and opens on Live. Hints are one short line each.
+  a POP-UP over the stage (`.lp-modal`: blurred backdrop, red close top right; owner,
+  2026-10-22: the in-page panel was "leceh"). Three tabs: **Financing** (the rates, then
+  "Monthly budget" right under them, insurance, this car's insurance), **Rebates** (every car),
+  **Look** (colour, comment line, offer). "Monthly budget" (BM "Bajet bulanan") fills the
+  deposit; it was "Target monthly", which confused sellers. Hints are one short line each.
   The working is read-only. Never make a result row editable again: tapping a row to type
   (2026-10-17, `EditCell`) left nobody able to tell a setting from a result. The one
   exception is Rebate (owner, 2026-10-22, after a seller said opening Adjust for one car was
   slower): tapping its line turns the number into a box typed in place (`rebateEdit`, Enter
   or tapping away sets it). Adjust > Rebates stays for setting every car before a live.
   Do not extend this to deposit, rate or loan.
-- **ONE close button, top right, always (owner, 2026-10-22, `requestExit`).** The top bar's X
-  closes whatever is open first (full photo, then Adjust); only with nothing open does it end
-  the live, and ending ALWAYS asks (`confirmEnd`, "Keep presenting" focused). Esc follows the
-  same order. Adjust had its own close a row lower; a seller aiming for it hit the live's X and
-  ended the stream. Never add a second close button in another spot. A control that opens
-  Adjust carries `data-adjust-open`, or its own click closes it again.
+- **Ending the live ALWAYS asks** (`confirmEnd`, "Keep presenting" focused; owner,
+  2026-10-22). A seller aiming for Adjust's close ended the stream: the in-page panel's X sat a
+  row below the live's X. Now Adjust is a pop-up whose backdrop COVERS the top bar, so while it
+  is open the live's X cannot be hit; its red close and a backdrop tap close only Settings.
+  Esc and Back close the top layer first (photo, Settings), then ask (`requestExit`). Never put
+  an end-the-live control where a Settings close could be. A control that opens Adjust carries
+  `data-adjust-open`, or its own click closes it again.
 - **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed
   into IN PLACE (same slot, same size, the sheet follows each keystroke, Enter or tapping
   away sets it); empty or 0 = the None chip. Budget uses the same chip: `[RM x ✎] None
