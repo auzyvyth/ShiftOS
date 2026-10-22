@@ -28,17 +28,23 @@ const en = {
   adjust: 'Adjust financing',
   exit: 'Exit live presentation',
   rateQuoted: 'How the rate is quoted',
-  flatBrochure: 'Flat (brochure)',
-  rateFlat: 'Rate (flat % a year)',
-  rateEir: 'Rate (EIR % a year)',
   customDeposit: 'Deposit in RM',
   other: 'Other',
-  adjSettings: 'Live settings',
+  adjFin: 'Financing',
   adjRebates: 'Rebates',
+  adjLook: 'Look',
+  rateLabel: 'Interest rate',
+  rateLocal: 'New Proton & Perodua',
+  rateOther: 'Other cars',
+  carRateNote: (n, r) => `${n} is worked at ${r}.`,
   closeAdjust: 'Close settings',
+  endTitle: 'End the live?',
+  endBody: 'The presentation closes and your live report shows.',
+  endYes: 'End live',
+  endKeep: 'Keep presenting',
   rebateEdit: 'Set the rebate for this car',
   rebatesTitle: 'Rebates this month',
-  rebatesHint: (d) => `Money off the price, per car. Saved on this device until ${d}, then cleared so an old promo never shows on a live.`,
+  rebatesHint: (d) => `Money off the price. Saved on this device until ${d}.`,
   rebatesHintDemo: 'Money off the price, per car.',
   savedUntil: (d) => `saved until ${d}`,
   clear: 'Clear',
@@ -88,8 +94,8 @@ const en = {
   interest: 'Interest',
   interestHow: (r) => `at ${r}% EIR`,
   topUp: (rm) => `+${rm} deposit and it fits`,
-  targetMonthly: 'Target monthly (RM)',
-  targetHint: 'Type the monthly a viewer wants. The deposit it needs fills in on the first deposit chip.',
+  targetMonthly: 'Monthly budget (RM)',
+  targetHint: 'Fills in the deposit this monthly needs.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
   ctaLabel: 'Comment line',
   insurance: 'Insurance',
@@ -97,13 +103,13 @@ const en = {
   insuranceLabel: 'Insurance',
   insOff: 'Off',
   insInLoan: 'In the loan',
-  insuranceHint: 'Estimate from the old motor tariff, by engine cc and NCD. Pick the viewer\'s NCD under the car.',
+  insuranceHint: 'An estimate by engine cc. Pick the viewer\'s NCD under the car.',
   insuranceThisCar: 'Insurance on this car (RM)',
   ncd: 'NCD',
   offer: 'Offer',
   offerLabel: 'Your offer (free extras)',
-  offerHint: 'Shown on every car, e.g. free tint, dashcam. Leave empty to hide.',
-  ctaHint: 'Type # where the car number goes. Leave empty for the standard line.',
+  offerHint: 'Shown on every car. Leave empty to hide.',
+  ctaHint: '# becomes the car number. Empty = the standard line.',
   budgetIs: 'Budget is',
   budgetTitle: 'What fits your budget',
   budgetCta: 'Comment your budget',
@@ -160,17 +166,23 @@ const ms = {
   adjust: 'Ubah pembiayaan',
   exit: 'Keluar dari paparan live',
   rateQuoted: 'Cara kadar disebut',
-  flatBrochure: 'Flat (brosur)',
-  rateFlat: 'Kadar (flat % setahun)',
-  rateEir: 'Kadar (EIR % setahun)',
   customDeposit: 'Deposit dalam RM',
   other: 'Lain',
-  adjSettings: 'Tetapan live',
+  adjFin: 'Pembiayaan',
   adjRebates: 'Rebat',
+  adjLook: 'Rupa',
+  rateLabel: 'Kadar faedah',
+  rateLocal: 'Proton & Perodua baru',
+  rateOther: 'Kereta lain',
+  carRateNote: (n, r) => `${n} dikira pada ${r}.`,
   closeAdjust: 'Tutup tetapan',
+  endTitle: 'Tamatkan live?',
+  endBody: 'Paparan ditutup dan laporan live anda dipaparkan.',
+  endYes: 'Tamat live',
+  endKeep: 'Teruskan',
   rebateEdit: 'Tetapkan rebat kereta ini',
   rebatesTitle: 'Rebat bulan ini',
-  rebatesHint: (d) => `Potongan harga, setiap kereta. Disimpan pada peranti ini hingga ${d}, kemudian dipadam supaya promo lama tidak muncul semasa live.`,
+  rebatesHint: (d) => `Potongan harga. Disimpan pada peranti ini hingga ${d}.`,
   rebatesHintDemo: 'Potongan harga, setiap kereta.',
   savedUntil: (d) => `disimpan hingga ${d}`,
   clear: 'Padam',
@@ -220,8 +232,8 @@ const ms = {
   interest: 'Faedah',
   interestHow: (r) => `pada ${r}% EIR`,
   topUp: (rm) => `+${rm} deposit, terus muat`,
-  targetMonthly: 'Sasaran bulanan (RM)',
-  targetHint: 'Taip bayaran bulanan yang penonton mahu. Deposit yang diperlukan diisi pada cip deposit pertama.',
+  targetMonthly: 'Bajet bulanan (RM)',
+  targetHint: 'Isi deposit yang diperlukan untuk bayaran bulanan ini.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
   ctaLabel: 'Ayat komen',
   insurance: 'Insurans',
@@ -229,13 +241,13 @@ const ms = {
   insuranceLabel: 'Insurans',
   insOff: 'Tidak',
   insInLoan: 'Dalam pinjaman',
-  insuranceHint: 'Anggaran ikut tarif motor lama, ikut cc enjin dan NCD. Pilih NCD penonton di bawah kereta.',
+  insuranceHint: 'Anggaran ikut cc enjin. Pilih NCD penonton di bawah kereta.',
   insuranceThisCar: 'Insurans kereta ini (RM)',
   ncd: 'NCD',
   offer: 'Tawaran',
   offerLabel: 'Tawaran anda (hadiah percuma)',
-  offerHint: 'Ditunjuk pada setiap kereta, cth. tinted percuma, dashcam. Biarkan kosong untuk sorok.',
-  ctaHint: 'Taip # di tempat nombor kereta. Biarkan kosong untuk ayat biasa.',
+  offerHint: 'Ditunjuk pada setiap kereta. Biarkan kosong untuk sorok.',
+  ctaHint: '# jadi nombor kereta. Kosong = ayat biasa.',
   budgetIs: 'Bajet ialah',
   budgetTitle: 'Kereta ikut bajet anda',
   budgetCta: 'Komen bajet anda',
@@ -348,6 +360,28 @@ export function saveLiveIns(on) {
     if (on) window.localStorage.setItem(LIVE_INS_KEY, '1');
     else window.localStorage.removeItem(LIVE_INS_KEY);
   } catch { /* storage blocked */ }
+}
+
+// The rate and how it was quoted (EIR | flat), remembered per device (owner,
+// 2026-10-22). One rate covers every car; the seller sets it once and it is
+// still there next live. Changing it in Adjust saves the new number.
+// New Proton/Perodua keep their own rate (liveMaths isLocalNew), under its own key.
+export const LIVE_RATE_KEY = 'xd_live_rate';
+export const LIVE_RATE_LOCAL_KEY = 'xd_live_rate_local';
+
+export function initialLiveRate(fallback, max, key = LIVE_RATE_KEY) {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(key) || 'null');
+    const n = Number(v?.eir);
+    if (!(n > 0 && n <= max)) return { eir: String(fallback), basis: 'eir' };
+    return { eir: String(n), basis: v.basis === 'flat' ? 'flat' : 'eir' };
+  } catch { return { eir: String(fallback), basis: 'eir' }; }
+}
+
+export function saveLiveRate(eir, basis, key = LIVE_RATE_KEY) {
+  // An empty or zero box is mid-typing, not a rate: keep the last good one.
+  if (!(Number(eir) > 0)) return;
+  try { window.localStorage.setItem(key, JSON.stringify({ eir: String(eir), basis })); } catch { /* storage blocked */ }
 }
 
 export function ctaLine(custom, n, fallback) {

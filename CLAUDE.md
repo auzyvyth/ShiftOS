@@ -1464,7 +1464,8 @@ button on `SalesmanProfilePage.jsx` (every seller plan, Lite included, since 202
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
-  (owner, 2026-10-04: top-bar contact button, tap the box to hide). TikTok can strike a
+  (owner, 2026-10-04: top-bar contact button). The box itself is NOT tappable (owner,
+  2026-10-22: tapping it hid it mid-live); the top-bar button is the one switch. TikTok can strike a
   live for a phone number (checked 2026-10-03), so never default it on or persist it.
   NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
   mini-page link) must not be the live tool.
@@ -1476,14 +1477,25 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   (totals, salary guide, notes, offer, contact). Must fit the stage with no scroll at 375x667
   and on desktop. Designed on the canvas https://claude.ai/artifact/LCNR7RxPnyHxMHnkAeqEvC.
 - **Controls and answers are kept apart (owner, 2026-10-22).** A VIEWER's question is a tap
-  on stage: deposit chips, tenure tiles, variant, NCD. What the SELLER sets once lives in
-  Adjust: rate (EIR/flat), rebates, insurance, offer, "Target monthly" (fills the deposit).
+  on stage: deposit chips, tenure tiles, variant, NCD. What the SELLER sets lives in Adjust,
+  a POP-UP over the stage (`.lp-modal`: blurred backdrop, red close top right; owner,
+  2026-10-22: the in-page panel was "leceh"). Three tabs: **Financing** (the rates, then
+  "Monthly budget" right under them, insurance, this car's insurance), **Rebates** (every car),
+  **Look** (colour, comment line, offer). "Monthly budget" (BM "Bajet bulanan") fills the
+  deposit; it was "Target monthly", which confused sellers. Hints are one short line each.
   The working is read-only. Never make a result row editable again: tapping a row to type
   (2026-10-17, `EditCell`) left nobody able to tell a setting from a result. The one
-  tappable row is Rebate, and it OPENS Adjust > Rebates on that car's box (`openRebates`);
-  it never turns into an input. Adjust has a close button (`.lp-adjclose`, the accent
-  colour): on a phone the panel fills the screen, so "tap outside" was no way out. A
-  control that opens Adjust carries `data-adjust-open`, or its own click closes it again.
+  exception is Rebate (owner, 2026-10-22, after a seller said opening Adjust for one car was
+  slower): tapping its line turns the number into a box typed in place (`rebateEdit`, Enter
+  or tapping away sets it). Adjust > Rebates stays for setting every car before a live.
+  Do not extend this to deposit, rate or loan.
+- **Ending the live ALWAYS asks** (`confirmEnd`, "Keep presenting" focused; owner,
+  2026-10-22). A seller aiming for Adjust's close ended the stream: the in-page panel's X sat a
+  row below the live's X. Now Adjust is a pop-up whose backdrop COVERS the top bar, so while it
+  is open the live's X cannot be hit; its red close and a backdrop tap close only Settings.
+  Esc and Back close the top layer first (photo, Settings), then ask (`requestExit`). Never put
+  an end-the-live control where a Settings close could be. A control that opens Adjust carries
+  `data-adjust-open`, or its own click closes it again.
 - **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed
   into IN PLACE (same slot, same size, the sheet follows each keystroke, Enter or tapping
   away sets it); empty or 0 = the None chip. Budget uses the same chip: `[RM x ✎] None
@@ -1559,6 +1571,12 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   **No OTR line, on any car (owner, 2026-10-22):** used/recon OTR varies by dealer, and the 4 brands'
   official price is already on the road without insurance, so an OTR amount would double-count. A typed deposit >= price stays as typed and reads "no loan needed" (it used to fall back to
   10% silently). "No deposit" stays (owner: new-car rebates cover the deposit).
+  **TWO rates, each set once and remembered per device** (owner 2026-10-22): NEW Proton/Perodua
+  (`isLocalNew` in liveMaths.js, starts at `LOCAL_NEW_EIR` 4.8% EIR, key `xd_live_rate_local`) and
+  every other car (starts at `DEFAULT_EIR`, key `xd_live_rate`). Used Protons stay on the other
+  rate: 4.8% on a used Saga quotes a monthly lower than banks give. Each car, and each Budget row
+  (`budgetMatches` `rateOf`), is worked on its own group's rate. Adjust > Live shows only the
+  groups this live has. An empty box mid-typing never overwrites the last good rate.
   The rate box stops at 17 (`RATE_MAX` / `clampRateInput`, the legal EIR ceiling; a typo like 65
   for 6.5 becomes 17) and the "Rate" label has an info button (`lp-info`, hover with a mouse,
   tap on a phone; `pointerType === 'mouse'` only, or a tap opens and closes it at once) that

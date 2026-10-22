@@ -8,11 +8,12 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
   initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
+  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -161,6 +162,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [rateInfo, setRateInfo] = useState(false);
   const photoTouchX = useRef(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  // ONE close button, top right, always (owner, 2026-10-22). It closes what is
+  // open first (full photo, then Adjust); only with nothing open does it offer
+  // to end the live, and that asks first. A seller aiming for Adjust's own
+  // close hit the live's X a row above it and ended the stream.
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const requestExit = () => {
+    if (photoFull) setPhotoFull(false);
+    else if (adjustOpen) setAdjustOpen(false);
+    else setConfirmEnd(true);
+  };
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
   // 'click', not 'pointerdown': the tapped control acts first, then the panel
   // closes, so the layout never shifts under a finger mid-tap. Anything that
@@ -176,7 +187,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       const opener = path.some((n) => n?.dataset?.adjustOpen !== undefined);
       if (!path.includes(adjustRef.current) && !opener) setAdjustOpen(false);
     };
-    const onKey = (e) => { if (e.key === 'Escape') setAdjustOpen(false); };
+    // Esc closes Adjust and stops there: React re-renders between listeners,
+    // so the presenter's own Esc (on window) would otherwise see Adjust shut
+    // and offer to end the live.
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setAdjustOpen(false); } };
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -185,8 +199,30 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
   }, [adjustOpen]);
   const [showContact, setShowContact] = useState(false); // off every time: see header
-  const [eir, setEir] = useState(String(DEFAULT_EIR));
-  const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
+  // Two rates, each set once and remembered per device (liveCopy.js
+  // initialLiveRate): new Proton/Perodua (isLocalNew, 4.8% EIR to start) and
+  // every other car. Each car is worked on its own group's rate.
+  const [rates, setRates] = useState(() => {
+    const std = { eir: String(DEFAULT_EIR), basis: 'eir' };
+    const local = { eir: String(LOCAL_NEW_EIR), basis: 'eir' };
+    if (embedded) return { std, local };
+    return { std: initialLiveRate(DEFAULT_EIR, RATE_MAX), local: initialLiveRate(LOCAL_NEW_EIR, RATE_MAX, LIVE_RATE_LOCAL_KEY) };
+  });
+  const setRate = (group, patch) => setRates((r) => ({ ...r, [group]: { ...r[group], ...patch } }));
+  useEffect(() => {
+    if (embedded) return;
+    saveLiveRate(rates.std.eir, rates.std.basis);
+    saveLiveRate(rates.local.eir, rates.local.basis, LIVE_RATE_LOCAL_KEY);
+  }, [rates, embedded]);
+  // The rate rows Adjust shows: only the groups this live actually has.
+  const rateGroups = [
+    listings.some(isLocalNew) && 'local',
+    (!listings.length || listings.some((c) => !isLocalNew(c))) && 'std',
+  ].filter(Boolean);
+  const rateOf = (c) => {
+    const r = rates[isLocalNew(c) ? 'local' : 'std'];
+    return { rate: Math.max(0, Number(r.eir) || 0), basis: r.basis };
+  };
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, never saved to the listing (promos change monthly). Every
   // car's rebate is remembered on this device until the month ends, Malaysia
@@ -204,16 +240,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
   // The first deposit chip is typed into, in place.
   const [depEdit, setDepEdit] = useState(false);
-  const [adjustTab, setAdjustTab] = useState('settings'); // 'settings' | 'rebates'
-  // The Rebate line on the sheet opens Adjust > Rebates on that car's box.
-  const [rebateFocus, setRebateFocus] = useState(null);
-  const openRebates = (id) => { setAdjustTab('rebates'); setAdjustOpen(true); setRebateFocus(id); };
-  useEffect(() => {
-    if (!adjustOpen || adjustTab !== 'rebates' || !rebateFocus) return;
-    const el = document.getElementById(`lp-reb-${rebateFocus}`);
-    if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
-    setRebateFocus(null);
-  }, [adjustOpen, adjustTab, rebateFocus]);
+  const [adjustTab, setAdjustTab] = useState('fin'); // 'fin' | 'rebates' | 'look'
+  // The Rebate line on the sheet is typed into in place (owner, 2026-10-22: a
+  // seller found opening Adjust for one car's rebate slower than the old way).
+  // Adjust > Rebates stays for setting every car before a live.
+  const [rebateEdit, setRebateEdit] = useState(false);
   // Adjust > "Fit a monthly": a target monthly works out the deposit it needs.
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
@@ -243,6 +274,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useModalHistory(!embedded && !!report, onClose);
   // Back closes the photo first, then (asking) the live.
   useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
+  useModalHistory(!embedded && confirmEnd, () => setConfirmEnd(false));
+  // Back closes the Settings pop-up, never the live.
+  useModalHistory(!embedded && adjustOpen, () => setAdjustOpen(false));
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
@@ -345,7 +379,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   }, [idx, listings]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
-  const rate = Math.max(0, Number(eir) || 0);
+  // This car's rate group, its rate and how it was quoted.
+  const rateGroup = isLocalNew(shown) ? 'local' : 'std';
+  const { rate, basis } = rateOf(shown);
   // Insurance for a car: typed figure first, else the tariff estimate off the
   // price before rebate (the car's value) and its engine cc (a model card's
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
@@ -364,6 +400,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setImgIdx(0);
     setPhotoFull(false);
     setDepEdit(false);
+    setRebateEdit(false);
   }, [listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -413,14 +450,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         else if (e.key === 'ArrowLeft') stepPhoto(-1);
         return;
       }
-      if (e.key === 'Escape') finish();
+      if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
+      if (e.key === 'Escape') { if (adjustOpen) setAdjustOpen(false); else setConfirmEnd(true); }
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, finish, report, mode, embedded, photoFull, stepPhoto]);
+  }, [go, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -552,7 +590,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     }));
   });
   const matches = budgetMatches(budgetCars, {
-    maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
+    maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates, rateOf,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
     // The same tenure rows the Cars screen offers this car, so the row and the
     // car it opens show the same monthly.
@@ -717,7 +755,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
         .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; cursor: pointer; min-width: 0; }
+        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
         .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
         .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -745,8 +783,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjhead { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
         .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
-        .lp-adjclose { flex-shrink: 0; width: 42px; height: 42px; border: none; border-radius: 10px; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        /* Settings pop-up: over the whole stage, top bar included, so the live's
+           X cannot be hit while it is open. */
+        .lp-modal { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-start; justify-content: center; padding: 12px; background: rgba(15,17,21,.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); overflow-y: auto; }
+        .lp-modal .lp-adjust { width: 100%; max-width: 560px; margin: auto 0; box-shadow: 0 16px 40px rgba(0,0,0,.25); }
+        .lp-adjclose { flex-shrink: 0; width: 44px; height: 44px; border: none; border-radius: 10px; background: #dc2626; color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-rate { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; }
+        .lp-rate-row { display: flex; gap: 8px; align-items: center; }
+        .lp-rate-in { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; background: #fff; }
+        .lp-rate-in input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 16px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+        .lp-rate-in span { font-size: 14px; font-weight: 700; color: #6b7280; }
+        .lp-rate-row .lp-seg { flex-shrink: 0; }
+        .lp-confirm { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,17,21,.45); }
+        .lp-confirm-card { width: 100%; max-width: 320px; padding: 18px; border-radius: 14px; background: #fff; color: #0f1115; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
+        .lp-confirm-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+        .lp-confirm-card p { margin: 0 0 14px; font-size: 14px; color: #4b5563; }
+        .lp-confirm-btns { display: flex; gap: 8px; }
+        .lp-confirm-btns button { flex: 1; height: 44px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .lp-confirm-keep { border: none; background: var(--lp-a); color: #fff; }
+        .lp-confirm-end { border: 1.5px solid #d1d5db; background: #fff; color: #0f1115; }
         .lp-brk tr.lp-tap { cursor: pointer; }
+        .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         /* Tailwind preflight makes every svg display:block, which dropped the pen onto
            its own line under the number. Inline, and BEFORE the number so the
            figures keep one right edge. */
@@ -770,13 +827,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-reb { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #EFEEEC; }
         .lp-badge { flex-shrink: 0; min-width: 34px; padding: 5px 5px 3px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: 19px; line-height: 1; text-align: center; }
         .lp-adjust .lp-reb-car { flex: 1; gap: 1px; min-width: 0; }
-        .lp-reb-car b { font-size: 14px; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-reb-car b { font-size: 14px; line-height: 1.25; color: #0f1115; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .lp-reb-car small { font-size: 12px; font-weight: 500; color: #6b7280; }
         .lp-reb-in { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; flex-shrink: 0; }
         .lp-reb-in.lp-on { border-color: #047857; background: rgba(4,120,87,.06); }
         .lp-reb-in span { font-size: 13px; font-weight: 700; color: #6b7280; white-space: nowrap; }
         .lp-reb-in input { width: 64px; padding: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 15px; font-weight: 700; color: #0f1115; text-align: right; font-variant-numeric: tabular-nums; }
-        .lp-reb-x { flex-shrink: 0; width: 56px; height: 36px; border-radius: 9px; border: 1px solid #E5E7EB; background: #fff; color: #374151; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .lp-reb-x { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #E5E7EB; background: #fff; color: #374151; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         span.lp-reb-x { border: none; background: none; cursor: default; }
         .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .lp-colours > span { flex-basis: 100%; font-size: 12px; font-weight: 700; color: #4b5563; }
@@ -885,7 +942,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </button>
           )}
           {!embedded && (
-            <button className="lp-iconbtn" onClick={report ? onClose : finish} aria-label={t.exit}><X size={18} /></button>
+            <button className="lp-iconbtn" onClick={report ? onClose : requestExit}
+              aria-label={!report && adjustOpen ? t.closeAdjust : t.exit}><X size={18} /></button>
           )}
         </div>
       </div>
@@ -893,120 +951,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       {report ? <LiveReport report={report} onDone={onClose} t={t} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
-        {adjustOpen && mode !== 'docs' && (
-          <div ref={adjustRef} className="lp-card lp-adjust">
-            {/* Two tabs: this live's settings, and every car's rebate in one list. */}
-            <div className="lp-adjhead">
-              <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
-                <button type="button" aria-pressed={adjustTab === 'settings'} onClick={() => setAdjustTab('settings')}>{t.adjSettings}</button>
-                <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
-                  {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
-                </button>
-              </div>
-              {/* Close (owner, 2026-10-22): a tap outside also closes it, but on a
-                  phone the panel fills the screen and there is no "outside". */}
-              <button type="button" className="lp-adjclose" onClick={() => setAdjustOpen(false)} aria-label={t.closeAdjust}>
-                <X size={18} />
-              </button>
-            </div>
-            {adjustTab === 'rebates' ? (
-              <div className="lp-wide lp-rebs">
-                <p className="lp-rebs-h"><b>{t.rebatesTitle}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
-                {listings.map((c, i) => {
-                  const v = rebates[c.id] ?? '';
-                  const on = Number(v) > 0;
-                  const kind = c.is_model_card ? t.allVariants
-                    : c.condition === 'new' ? t.newTag : c.condition === 'recon' ? t.recon : t.used;
-                  return (
-                    <div className="lp-reb" key={c.id}>
-                      <span className="lp-badge">#{i + 1}</span>
-                      <label className="lp-reb-car" htmlFor={`lp-reb-${c.id}`}>
-                        <b>{carLabel(c)}</b>
-                        <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
-                      </label>
-                      <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
-                        <span>- RM</span>
-                        <input id={`lp-reb-${c.id}`} type="text" inputMode="numeric" placeholder="0" value={v}
-                          onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [c.id]: d })); }} />
-                      </span>
-                      {on
-                        ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[c.id]; return n; })}
-                            aria-label={`${t.clear} ${carLabel(c)}`}>{t.clear}</button>
-                        : <span className="lp-reb-x" aria-hidden="true" />}
-                    </div>
-                  );
-                })}
-                <p className="lp-hint">{t.rebateModelNote}</p>
-              </div>
-            ) : (<>
-            <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
-              <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
-              <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
-            </div>
-            <label style={mode === 'budget' ? { gridColumn: '1 / -1' } : undefined}>
-              {basis === 'flat' ? t.rateFlat : t.rateEir}
-              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX} value={eir} onChange={(e) => setEir(clampRateInput(e.target.value))} />
-            </label>
-            {mode === 'cars' && (
-              <label>
-                {t.targetMonthly}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
-                  disabled={!canLoan} onChange={(e) => applyTarget(e.target.value)} />
-              </label>
-            )}
-            {mode === 'cars' && <p className="lp-hint">{t.targetHint}</p>}
-            <div className="lp-wide lp-insadj">
-              <span>{t.insuranceLabel}</span>
-              <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
-                <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
-                <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
-              </div>
-              <small className="lp-hint">{t.insuranceHint}</small>
-            </div>
-            {mode === 'cars' && insOn && price > 0 && (
-              <label className="lp-wide">
-                {t.insuranceThisCar}
-                <input className="lp-in" type="number" inputMode="numeric" min="0"
-                  placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
-                  onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
-              </label>
-            )}
-            {mode === 'cars' && (
-              <label className="lp-wide">
-                {t.ctaLabel}
-                <input className="lp-in" type="text" maxLength={CTA_MAX} placeholder={t.cta('')}
-                  value={ctaCustom} onChange={(e) => changeCta(e.target.value)} />
-                <small className="lp-hint">{t.ctaHint}</small>
-              </label>
-            )}
-            {mode === 'cars' && (
-              <label className="lp-wide">
-                {t.offerLabel}
-                <input className="lp-in" type="text" maxLength={OFFER_MAX} value={offer} onChange={(e) => changeOffer(e.target.value)} />
-                <small className="lp-hint">{t.offerHint}</small>
-              </label>
-            )}
-            <div className="lp-colours" role="group" aria-label={t.colour}>
-              <span>{t.colour}</span>
-              {ACCENT_PRESETS.map((c) => (
-                <button key={c} type="button" className="lp-sw" style={{ background: accentTheme(c).accent }}
-                  aria-label={c} aria-pressed={theme.accent === accentTheme(c).accent} onClick={() => pickAccent(c)} />
-              ))}
-              {/* Any colour; a too-light pick is darkened so white text stays readable. */}
-              <label className="lp-sw lp-sw-any" aria-label={t.colourAny}
-                data-on={ACCENT_PRESETS.every((c) => accentTheme(c).accent !== theme.accent) ? '1' : '0'}>
-                <input type="color" value={theme.accent.toLowerCase()} onChange={(e) => pickAccent(e.target.value)} />
-              </label>
-            </div>
-            {basis === 'flat' && (
-              <p className="lp-hint">
-                {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(rateFor(y))}%`).join(', '))}
-              </p>
-            )}
-            </>)}
-          </div>
-        )}
-
         {mode === 'cars' ? (
         <div className="lp-card lp-sheet">
           <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
@@ -1105,7 +1049,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             )}
 
             {/* The working, line by line: price - rebate - deposit = loan, at this rate.
-                Read-only: rebate and rate are set in Adjust, the deposit on the chips. */}
+                Rebate is typed in place on its line; rate is set in Adjust, the deposit on the chips. */}
             <div className="lp-brkwrap">
               <table className="lp-brk">
                 <tbody>
@@ -1114,14 +1058,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     <tr><td>{(insTyped[car.id] ?? '') === '' ? t.insuranceEst : t.insurance}</td><td>+ <Money n={ins} /></td></tr>
                   )}
                   {/* New cars always show the Rebate line (brands run promos every
-                      month); tapping it opens Adjust > Rebates on this car's box. */}
-                  {price > 0 && (rebate > 0 || shown.condition === 'new') && (
-                    <tr className="lp-r-reb lp-tap" data-adjust-open="" role="button" tabIndex={0} aria-label={t.rebateEdit}
-                      onClick={() => openRebates(rk)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRebates(rk); } }}>
-                      <td>{t.rebate}</td>
-                      <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
-                    </tr>
+                      month); tapping it turns the number into a box, typed in place. */}
+                  {price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
+                    rebateEdit ? (
+                      <tr className="lp-r-reb">
+                        <td>{t.rebate}</td>
+                        <td>
+                          <input className="lp-cellin" autoFocus type="text" inputMode="numeric" placeholder="0"
+                            aria-label={t.rebateEdit} value={rebates[rk] ?? ''}
+                            onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [rk]: d })); }}
+                            onBlur={() => setRebateEdit(false)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr className="lp-r-reb lp-tap" role="button" tabIndex={0} aria-label={t.rebateEdit}
+                        onClick={() => setRebateEdit(true)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRebateEdit(true); } }}>
+                        <td>{t.rebate}</td>
+                        <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
+                      </tr>
+                    )
                   )}
                   {financeable && (<>
                     <tr><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
@@ -1151,7 +1108,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {rateWarn && (
                 <p className="lp-warn">
                   {rateWarn === 'looksFlat'
-                    ? <>{t.looksFlat}<button type="button" onClick={() => setBasis('flat')}>{t.switchFlat}</button></>
+                    ? <>{t.looksFlat}<button type="button" onClick={() => setRate(rateGroup, { basis: 'flat' })}>{t.switchFlat}</button></>
                     : t.aboveCap(eirCap(pickYears))}
                 </p>
               )}
@@ -1186,10 +1143,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
               {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
               {showContact && contact && (
-                <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
+                // Not a button (owner, 2026-10-22): tapping the box hid it mid-live.
+                // The top-bar contact button is the one switch.
+                <div className="lp-contact">
                   <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
                   {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
-                </button>
+                </div>
               )}
             </div>
           </div>
@@ -1318,6 +1277,160 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </>)}
           </div>
           {images.length > 1 && <p className="lp-full-count">{imgIdx + 1} / {images.length}</p>}
+        </div>
+      )}
+
+        {adjustOpen && mode !== 'docs' && !report && (
+          // A pop-up over the stage (owner, 2026-10-22): blurred backdrop, its own
+          // red close. The backdrop covers the top bar, so a miss-tap can only
+          // close Settings, never end the live. A tap on the backdrop closes it.
+          <div className="lp-modal">
+          <div ref={adjustRef} className="lp-card lp-adjust" role="dialog" aria-modal="true" aria-label={t.adjust}>
+            {/* Three tabs: Financing (rates, monthly budget, insurance), Rebates
+                (every car), Look (colour, comment line, offer). */}
+            <div className="lp-adjhead">
+              <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
+                <button type="button" aria-pressed={adjustTab === 'fin'} onClick={() => setAdjustTab('fin')}>{t.adjFin}</button>
+                <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
+                  {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
+                </button>
+                <button type="button" aria-pressed={adjustTab === 'look'} onClick={() => setAdjustTab('look')}>{t.adjLook}</button>
+              </div>
+              <button type="button" className="lp-adjclose" onClick={() => setAdjustOpen(false)} aria-label={t.closeAdjust}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {adjustTab === 'fin' && (<>
+              {/* One row per rate group the seller actually has on this live. */}
+              {rateGroups.map((g) => {
+                const r = rates[g];
+                return (
+                  <div className="lp-wide lp-rate" key={g}>
+                    <label htmlFor={`lp-rate-${g}`}>{rateGroups.length > 1 ? (g === 'local' ? t.rateLocal : t.rateOther) : t.rateLabel}</label>
+                    <div className="lp-rate-row">
+                      <span className="lp-rate-in">
+                        <input id={`lp-rate-${g}`} type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX}
+                          value={r.eir} onChange={(e) => setRate(g, { eir: clampRateInput(e.target.value) })} />
+                        <span>%</span>
+                      </span>
+                      <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
+                        <button type="button" aria-pressed={r.basis === 'eir'} onClick={() => setRate(g, { basis: 'eir' })}>EIR</button>
+                        <button type="button" aria-pressed={r.basis === 'flat'} onClick={() => setRate(g, { basis: 'flat' })}>{t.flat}</button>
+                      </div>
+                    </div>
+                    {r.basis === 'flat' && (
+                      <small className="lp-hint">
+                        {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(eirForTenure(Math.max(0, Number(r.eir) || 0), 'flat', y))}%`).join(', '))}
+                      </small>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Monthly budget sits under the rates (owner, 2026-10-22): type what the
+                  viewer can pay, the deposit it needs fills the first chip. */}
+              {mode === 'cars' && (
+                <label className="lp-wide">
+                  {t.targetMonthly}
+                  <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
+                    disabled={!canLoan} onChange={(e) => applyTarget(e.target.value)} />
+                  <small className="lp-hint">{t.targetHint}</small>
+                </label>
+              )}
+              <div className="lp-wide lp-insadj">
+                <span>{t.insuranceLabel}</span>
+                <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
+                  <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
+                  <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
+                </div>
+                <small className="lp-hint">{t.insuranceHint}</small>
+              </div>
+              {mode === 'cars' && car && (<>
+                {insOn && price > 0 && (
+                  <label className="lp-wide">
+                    {t.insuranceThisCar}
+                    <input className="lp-in" type="number" inputMode="numeric" min="0"
+                      placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
+                      onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
+                  </label>
+                )}
+                <p className="lp-hint">{t.carRateNote(`#${idx + 1}`, `${fmtRate(rate)}% ${basis === 'flat' ? t.flat : 'EIR'}`)}</p>
+              </>)}
+            </>)}
+
+            {adjustTab === 'rebates' && (
+              <div className="lp-wide lp-rebs">
+                <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
+                {listings.map((c, i) => {
+                  const v = rebates[c.id] ?? '';
+                  const on = Number(v) > 0;
+                  const kind = c.is_model_card ? t.allVariants
+                    : c.condition === 'new' ? t.newTag : c.condition === 'recon' ? t.recon : t.used;
+                  return (
+                    <div className="lp-reb" key={c.id}>
+                      <span className="lp-badge">#{i + 1}</span>
+                      <label className="lp-reb-car" htmlFor={`lp-reb-${c.id}`}>
+                        <b>{carLabel(c)}</b>
+                        <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
+                      </label>
+                      <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
+                        <span>- RM</span>
+                        <input id={`lp-reb-${c.id}`} type="text" inputMode="numeric" placeholder="0" value={v}
+                          onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [c.id]: d })); }} />
+                      </span>
+                      {on
+                        ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[c.id]; return n; })}
+                            aria-label={`${t.clear} ${carLabel(c)}`}><X size={15} /></button>
+                        : <span className="lp-reb-x" aria-hidden="true" />}
+                    </div>
+                  );
+                })}
+                <p className="lp-hint">{t.rebateModelNote}</p>
+              </div>
+            )}
+
+            {adjustTab === 'look' && (<>
+              <div className="lp-colours" role="group" aria-label={t.colour}>
+                <span>{t.colour}</span>
+                {ACCENT_PRESETS.map((c) => (
+                  <button key={c} type="button" className="lp-sw" style={{ background: accentTheme(c).accent }}
+                    aria-label={c} aria-pressed={theme.accent === accentTheme(c).accent} onClick={() => pickAccent(c)} />
+                ))}
+                {/* Any colour; a too-light pick is darkened so white text stays readable. */}
+                <label className="lp-sw lp-sw-any" aria-label={t.colourAny}
+                  data-on={ACCENT_PRESETS.every((c) => accentTheme(c).accent !== theme.accent) ? '1' : '0'}>
+                  <input type="color" value={theme.accent.toLowerCase()} onChange={(e) => pickAccent(e.target.value)} />
+                </label>
+              </div>
+              <label className="lp-wide">
+                {t.ctaLabel}
+                <input className="lp-in" type="text" maxLength={CTA_MAX} placeholder={t.cta('')}
+                  value={ctaCustom} onChange={(e) => changeCta(e.target.value)} />
+                <small className="lp-hint">{t.ctaHint}</small>
+              </label>
+              <label className="lp-wide">
+                {t.offerLabel}
+                <input className="lp-in" type="text" maxLength={OFFER_MAX} value={offer} onChange={(e) => changeOffer(e.target.value)} />
+                <small className="lp-hint">{t.offerHint}</small>
+              </label>
+            </>)}
+          </div>
+          </div>
+        )}
+
+      {/* Ending the live always asks. Keep presenting is the focused, accent
+          button, so a stray Enter or second tap keeps the stream going. */}
+      {confirmEnd && !report && (
+        <div className="lp-confirm" role="alertdialog" aria-modal="true" aria-labelledby="lp-confirm-h"
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmEnd(false); }}>
+          <div className="lp-confirm-card">
+            <h2 id="lp-confirm-h">{t.endTitle}</h2>
+            <p>{t.endBody}</p>
+            <div className="lp-confirm-btns">
+              <button type="button" className="lp-confirm-end" onClick={() => { setConfirmEnd(false); finish(); }}>{t.endYes}</button>
+              <button type="button" className="lp-confirm-keep" autoFocus onClick={() => setConfirmEnd(false)}>{t.endKeep}</button>
+            </div>
+          </div>
         </div>
       )}
       </div>
