@@ -848,13 +848,13 @@ export default function SalesmanOnboarding() {
                 {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
                     <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {NEW_CAR_BRANDS.map((b) => {
                         const on = form.newCarBrand === b;
                         return (
                           <button key={b} type="button" onClick={() => upd('newCarBrand')(b)}
                             style={{
-                              flex: 1, minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                              flex: '1 1 72px', minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
                               fontSize: 12.5, fontWeight: 700,
                               background: on ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
                               border: `1px solid ${on ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
