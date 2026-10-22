@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, Info, Maximize2, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Info, Lock, Maximize2, Pencil, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel, rebatesForMonth, myMonth, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, carLabel, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -35,14 +35,23 @@ import { cdnImg, imgFallback } from '../../utils/img';
 // set_live_listing). The #number is the shared language: a viewer comments
 // "#3", the seller says "tap my profile, car #3".
 //
-// The Cars screen is laid out like the quotation poster salesmen already hold
-// up on lives: title, photo | price - deposit = loan at rate, then (contact |)
-// tenure rows with the monthly, then a "comment #N" bar. One formula
+// The Cars screen (redesign, owner 2026-10-22): one big number, the picked
+// monthly, at the top beside the photo, out of TikTok's comment area (it
+// covers the bottom-left of the stream). Under it the deposit chips, then the
+// working (price - rebate - deposit = loan at rate) and the rest. One formula
 // (financing.js). The default (10% down, 7 years) is the same estimate the
 // mini page card shows, so the two never disagree.
 //
-// Every number in the working is tappable (owner, 2026-10-17): tap Rebate,
-// Deposit or Rate and type, in place, mid-pitch. Adjust still holds them too.
+// Controls and answers are kept apart (owner, 2026-10-22). What a VIEWER asks
+// about is a tap on stage: deposit chips (the first chip takes a typed amount,
+// in place), tenure tiles, variant, NCD. What the SELLER sets once is in
+// Adjust: rate, rebates (one list for every car), insurance, offer. The
+// working is read-only. It used to turn into input boxes when tapped
+// (2026-10-17), so nobody could tell a setting from a result.
+//
+// One accent colour (the seller's pick) on exactly what is selected and the
+// big monthly; everything else is ink on white. The tinted rows and the
+// gradient (2026-10-13) read as six colours fighting on one screen.
 //
 // A new-car MODEL card (is_model_card, 20261017c) covers every variant: a
 // variant row under the title switches price and spec, the same store the car
@@ -115,6 +124,8 @@ const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
 const DOWN_ROWS = [DEFAULT_DOWN, 20, 30];
+// Budget deposit chips after the typed one: none, RM 10k, RM 20k.
+const BUDGET_DOWNS = [0, 10000, 20000];
 const DEFAULT_TENURE = 7;
 const HEARTBEAT_MS = 4 * 60 * 1000; // live_until window is 10 min server-side
 const REPORT_MIN_MS = 60 * 1000;     // a quick peek at the presenter is not a live
@@ -176,21 +187,24 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [eir, setEir] = useState(String(DEFAULT_EIR));
   const [basis, setBasis] = useState('eir'); // 'eir' | 'flat' — how the seller typed the rate
   const [customDown, setCustomDown] = useState('');
-  // Rebate per car, typed during this live only. Promos change monthly, so it
-  // is not saved to the listing.
-  // A new-car model card's rebate is remembered until the month ends (liveCopy.js);
-  // every other car's rebate lasts this live only.
+  // Rebate per car, never saved to the listing (promos change monthly). Every
+  // car's rebate is remembered on this device until the month ends, Malaysia
+  // time (owner, 2026-10-22; it was model cards only), so the seller types
+  // this month's numbers once in Adjust > Rebates, not every live.
   const [rebates, setRebates] = useState(() => (embedded ? {} : initialLiveRebates(rebatesForMonth)));
-  const modelCardIds = listings.filter((c) => c.is_model_card).map((c) => c.id).join(',');
+  const listingIds = listings.map((c) => c.id).join(',');
   useEffect(() => {
-    if (embedded) return;
-    const ids = new Set(modelCardIds ? modelCardIds.split(',') : []);
+    // No cars yet = nothing to compare against; saving now would wipe the list.
+    if (embedded || !listingIds) return;
+    const ids = new Set(listingIds.split(','));
     const keep = Object.fromEntries(Object.entries(rebates).filter(([id, v]) => ids.has(id) && Number(v) > 0));
     saveLiveRebates(keep, myMonth());
-  }, [rebates, modelCardIds, embedded]);
+  }, [rebates, listingIds, embedded]);
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
-  const [editing, setEditing] = useState(null); // null | 'rebate' | 'deposit' | 'rate' | 'ins' | 'monthly'
-  // Tapping the picked monthly and typing a target works out the deposit it needs.
+  // The first deposit chip is typed into, in place.
+  const [depEdit, setDepEdit] = useState(false);
+  const [adjustTab, setAdjustTab] = useState('settings'); // 'settings' | 'rebates'
+  // Adjust > "Fit a monthly": a target monthly works out the deposit it needs.
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
   // the NCD is the viewer's, picked on the pills under the working; a typed
@@ -202,7 +216,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
-  const [budgetDown, setBudgetDown] = useState('');
+  // Budget deposit: a preset (RM, 0 = none) or 'c', the typed first chip.
+  const [budgetDep, setBudgetDep] = useState(0);
+  const [budgetCustom, setBudgetCustom] = useState('');
+  const [budgetDepEdit, setBudgetDepEdit] = useState(false);
   const [budgetYears, setBudgetYears] = useState(DEFAULT_TENURE);
   // Variant picked on a model card's Budget row, by #N. Only a variant that
   // fits can be picked; one that stops fitting falls back to the row's own.
@@ -336,7 +353,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setIdx((i) => (i + d + listings.length) % listings.length);
     setImgIdx(0);
     setPhotoFull(false);
-    setEditing(null);
+    setDepEdit(false);
   }, [listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -445,10 +462,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // A deposit at or above the price stays on screen as typed and the loan
   // reads zero; it used to drop the row and quietly fall back to 10%, so the
   // box and the working showed two different deposits.
+  // Chips: the typed amount first, then None, then the percentages.
   const custom = customDown === '' ? null : Math.max(0, Number(customDown) || 0);
   const rows = [
-    ...(custom !== null
-      ? [{ key: 'c', label: custom > 0 ? `RM ${fmt(custom)}` : t.noDeposit, down: custom, custom: true }] : []),
+    ...(custom !== null ? [{ key: 'c', down: custom, custom: true }] : []),
+    { key: 0, down: 0 },
     ...DOWN_ROWS.map((pct) => ({ key: pct, down: net * pct / 100 })),
   ];
   const financeable = net > 0;
@@ -456,12 +474,19 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const rateFor = (y) => eirForTenure(rate, basis, y);
   const monthlyFor = (down, y) => monthlyPayment(net + insAmt - down, rateFor(y), y * 12);
   const picked = rows.find((r) => r.key === pick.row) || rows.find((r) => r.key === DEFAULT_DOWN);
-  // Tapping the deposit row starts the box at the deposit on screen.
-  const openDeposit = () => {
-    if (editing === 'deposit') return;
-    setCustomDown(String(Math.round(picked.down)));
-    setPick((p) => ({ ...p, row: 'c' }));
-    setEditing('deposit');
+  // Typing in the first chip picks it as soon as there is a number. Leaving it
+  // empty, or typing 0, means no deposit: that is the None chip.
+  const typeDeposit = (v) => {
+    const d = String(v).replace(/\D/g, '').slice(0, 7);
+    setCustomDown(d);
+    if (d !== '') setPick((p) => ({ ...p, row: 'c' }));
+  };
+  const closeDeposit = () => {
+    setDepEdit(false);
+    if (!(Number(customDown) > 0)) {
+      setCustomDown('');
+      setPick((p) => (p.row === 'c' ? { ...p, row: 0 } : p));
+    }
   };
   const loanAmt = Math.max(0, net + insAmt - picked.down);
   const noLoan = financeable && loanAmt <= 0;
@@ -492,7 +517,19 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // always prints that rule, the same way the tenure pick does.
   const amount = Math.max(0, Number(budgetAmount) || 0);
   const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
-  const bDown = Math.max(0, Number(budgetDown) || 0);
+  const bDown = budgetDep === 'c' ? Math.max(0, Number(budgetCustom) || 0) : budgetDep;
+  const typeBudgetDeposit = (v) => {
+    const d = String(v).replace(/\D/g, '').slice(0, 7);
+    setBudgetCustom(d);
+    if (d !== '') setBudgetDep('c');
+  };
+  const closeBudgetDeposit = () => {
+    setBudgetDepEdit(false);
+    if (!(Number(budgetCustom) > 0)) {
+      setBudgetCustom('');
+      setBudgetDep((k) => (k === 'c' ? 0 : k));
+    }
+  };
   // A model card is priced once per variant, each named, so "fits" says WHICH
   // X50 the budget buys, not the cheapest one under the model's name. Its cc
   // rides along from the variant's specs so insurance is added here too.
@@ -516,72 +553,176 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setIdx(m.n - 1);
     setImgIdx(0);
     // A "just above" car opens with the extra deposit that makes it fit.
-    setCustomDown(String(bDown + (m.topUp || 0)));
-    setPick({ row: 'c', years: m.years });
+    const dep = bDown + (m.topUp || 0);
+    setCustomDown(dep > 0 ? String(dep) : '');
+    setPick({ row: dep > 0 ? 'c' : 0, years: m.years });
+    setDepEdit(false);
     setMode('cars');
   };
   const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
+  // Adjust > Rebates: how many cars have one, and the day the saved list clears.
+  const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
+  const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 
   const screen = (
-    <div className={`lp${embedded ? ' lp-embed' : ''}${deskZoom ? ' lp-desk' : ''}`} style={{ '--lp-a': theme.accent, '--lp-a1': theme.light, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
-      {/* Near-white glass cards with ink #0f1115 text over the brand cream stage with a red glow;
-          one accent gradient (--lp-grad) marks what is selected or tappable.
-          Phones and tablets: ONE portrait stage, 9:16 at most, sized in
+    <div className={`lp${embedded ? ' lp-embed' : ''}${deskZoom ? ' lp-desk' : ''}`} style={{ '--lp-a': theme.accent, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
+      {/* Phones and tablets: ONE portrait stage, 9:16 at most, sized in
           container units so it fits a 375px phone with no scroll.
           Desktop (mouse, 1024px+): the phone's height, TWICE its width
           (DESK_W x STAGE_H, about square), magnified with CSS zoom to the
           monitor's full height. Sellers film the monitor with a phone held
           upright: the 2026-10-04 full-screen wide sheet spilled out of that
           frame, and the phone-shaped column (2026-10-18) was too small to read
-          on camera. Owner, 2026-10-18: double the width, no wider. Two
-          columns (.lp-cols): car + working left, deposit/tenure/rest right. */}
+          on camera. Owner, 2026-10-18: double the width, no wider. */}
       <style>{`
-        .lp { --lp-grad: linear-gradient(120deg, var(--lp-a1) 0%, var(--lp-a) 45%, var(--lp-a2) 100%); position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
+        .lp { position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
         /* Embedded demo: fills its parent box instead of the viewport. */
         .lp.lp-embed { position: absolute; z-index: auto; }
         .lp-embed .lp-stage { width: 100%; }
-        /* Owner, 2026-10-05: the flat beige felt dead on stream. Colour lives in
-           the stage BEHIND the cards (the brand's red glow in the corners of
-           brand cream #EBEAE8, marketing/brand/brand.md; owner, 2026-10-05:
-           red and cream only, no dark) and in one red gradient; the numbers stay dark on near-white glass so they still
-           read through a phone camera filming a monitor. */
-        .lp-stage { position: relative; height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto;
-          background:
-            radial-gradient(75% 45% at 0% 0%, rgba(var(--lp-rgb),.30), transparent 70%),
-            radial-gradient(70% 45% at 100% 100%, rgba(var(--lp-rgb),.28), transparent 70%),
-            radial-gradient(50% 30% at 100% 10%, rgba(var(--lp-rgb),.10), transparent 70%),
-            #EBEAE8; display: flex; flex-direction: column; container-type: size; }
-        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
+        /* One neutral stage, ink on white cards (owner, 2026-10-22). The seller's
+           colour (--lp-a) marks exactly three things: the #N badge, whatever is
+           selected, and the big monthly. The red corner glow (2026-10-05) and
+           the tinted rows (2026-10-13) put six colours on one screen. */
+        .lp-stage { position: relative; height: 100%; width: min(100%, calc(100dvh * 9 / 16)); margin: 0 auto; background: #EEEDEA; display: flex; flex-direction: column; container-type: size; }
+        .lp-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; background: #EEEDEA; border-bottom: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-count { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #6b7280; }
-        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid rgba(33,31,30,.12); background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+        .lp-iconbtn { width: 40px; height: 40px; border-radius: 10px; border: 1px solid #E5E7EB; background: #fff; color: #111827; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
         .lp-lang { font-size: 13px; font-weight: 800; letter-spacing: .04em; font-family: inherit; }
-        .lp-iconbtn[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
+        .lp-iconbtn[aria-pressed="true"] { background: #0f1115; border-color: transparent; color: #fff; }
         .lp-body { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
         .lp-body > * { flex-shrink: 0; }
-        .lp-card { background: rgba(255,255,255,.88); -webkit-backdrop-filter: blur(20px) saturate(1.4); backdrop-filter: blur(20px) saturate(1.4); border-radius: 16px; border: 1px solid rgba(255,255,255,.7); box-shadow: 0 12px 40px rgba(var(--lp-rgb),.14), 0 1px 2px rgba(33,31,30,.08); }
-        /* The quotation sheet (the poster sellers hold up on lives): title, then
-           photo | price breakdown, then contact | tenure table, then the comment
-           bar. Sized in container units so it fits the stage with no scroll. */
-        .lp-sheet { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .lp-card { background: #fff; border-radius: 16px; border: 1px solid rgba(33,31,30,.06); box-shadow: 0 1px 2px rgba(17,24,39,.06); }
+        .lp-fit { display: flex; flex-direction: column; gap: 10px; }
+
+        /* Head: #N + title, and the comment line. Phone: the comment line is a
+           bar under the title. Desktop: a pill on the title's right. Either way
+           it is at the TOP: the bottom of the stream is under the comments. */
+        .lp-sheet { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+        .lp-desk .lp-sheet { padding: 12px 16px; gap: 10px; }
+        .lp-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
+        .lp-head > .lp-title, .lp-head > .lp-name { flex: 1 1 55%; min-width: 0; }
         .lp-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 44px); line-height: 1; letter-spacing: .02em; color: #fff; background: var(--lp-grad); border-radius: 8px; padding: 6px 10px 3px; box-shadow: 0 4px 14px rgba(var(--lp-rgb),.35); flex-shrink: 0; }
+        .lp-num { font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7cqw, 40px); line-height: 1; letter-spacing: .02em; color: #fff; background: var(--lp-a); border-radius: 8px; padding: 6px 9px 3px; flex-shrink: 0; }
         .lp-tt { min-width: 0; }
-        .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(24px, 7.4cqw, 44px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-spec { font-size: clamp(11px, 3cqw, 15px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-pair { display: grid; grid-template-columns: minmax(0, 42fr) minmax(0, 58fr); gap: 10px; align-items: center; }
+        .lp-name { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(22px, 6.8cqw, 38px); line-height: .95; letter-spacing: .015em; margin: 0; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* Year + make + model + variant can be long ("2022 Lexus IS 300 2.0L(T) F-Sport"): two lines, never cut mid-name. */
+        .lp-name-car { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .lp-var { color: #6b7280; }
+        .lp-spec { font-size: clamp(11px, 3cqw, 14px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-cta { flex: 1 1 100%; margin: 0; padding: 7px 12px; border-radius: 999px; background: #0f1115; color: #fff; text-align: center; font-size: clamp(11px, 3cqw, 14px); font-weight: 800; letter-spacing: .06em; line-height: 1.25; text-transform: uppercase; overflow-wrap: anywhere; }
+        .lp-desk .lp-head > .lp-cta { flex: 0 1 auto; max-width: 44%; padding: 9px 16px; font-size: 13px; }
+        .lp-desk .lp-name { font-size: 34px; }
+        .lp-desk .lp-num { font-size: 32px; }
+        .lp-desk .lp-spec { font-size: 14px; }
+        /* A model card's variant chips name the variant, so the title drops it. */
+        .lp-has-vars .lp-var { display: none; }
+
+        /* The Cars grid. Phone: answer, chips, photo | working, the rest.
+           Desktop: photo | answer, chips across, working | the rest. */
+        .lp-grid { display: grid; grid-template-columns: minmax(0, 36fr) minmax(0, 64fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; gap: 8px 10px; align-items: start; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "photo ans" "dep dep" "work rest"; column-gap: 18px; row-gap: 12px; }
         /* The frame is a fixed size; the photo fits INSIDE it, never cropped
-           (owner, 2026-10-21: the desktop 2:1 frame cut the roof and wheels off
-           a 4:3 photo). The bars are white so they melt into the light sheet
-           and into studio shots, which have a white backdrop; the hairline
-           keeps the frame's edge visible on camera. */
-        .lp-photo { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
+           (owner, 2026-10-21). White bars melt into studio shots. */
+        .lp-photo { grid-area: photo; position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
+        .lp-desk .lp-photo { aspect-ratio: 2 / 1; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-        /* New-car variant with no photo: the model name, not a grey "no photo". */
-        .lp-brkwrap { position: relative; min-width: 0; }
+        .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+        .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
+        .lp-dots span[data-on="1"] { background: #fff; }
+
+        /* The answer: the one big number on the sheet, then the three tenures. */
+        .lp-ans { grid-area: ans; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .lp-desk .lp-ans { align-self: stretch; justify-content: space-between; gap: 8px; }
+        .lp-ans-lbl { margin: 0; font-size: clamp(12px, 3.5cqw, 15px); font-weight: 600; color: #4b5563; font-variant-numeric: tabular-nums; }
+        .lp-ans-msg { margin: 0; font-size: clamp(14px, 4cqw, 18px); font-weight: 700; color: #0f1115; line-height: 1.35; }
+        .lp-big { margin: 0; display: flex; align-items: baseline; color: var(--lp-a); font-size: clamp(40px, 14cqw, 60px); font-weight: 800; line-height: .95; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-big .lp-rm { font-size: .32em; opacity: 1; margin-right: .3em; }
+        .lp-big small { margin-left: .35em; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #6b7280; }
+        .lp-desk .lp-big { font-size: 76px; }
+        .lp-desk .lp-ans-lbl { font-size: 15px; }
+        .lp-tens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+        .lp-ten { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 10px; border: 1.5px solid #F4F3F1; background: #F4F3F1; color: #111827; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+        .lp-ten span { font-size: clamp(10px, 2.8cqw, 12px); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+        .lp-ten b { font-size: clamp(14px, 4.2cqw, 18px); font-weight: 800; white-space: nowrap; }
+        .lp-ten[aria-pressed="true"] { background: rgba(var(--lp-rgb),.10); border-color: var(--lp-a); color: var(--lp-a2); }
+        .lp-desk .lp-ten { padding: 8px 10px; }
+        .lp-desk .lp-ten span { font-size: 12px; }
+        .lp-desk .lp-ten b { font-size: 18px; }
+
+        /* Chips: one row, equal heights. The first deposit chip is wider: it
+           holds a typed amount. Selected = the accent, filled. */
+        .lp-deprow { grid-area: dep; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        .lp-desk .lp-deprow { flex-direction: row; align-items: center; gap: 10px; }
+        .lp-desk .lp-deprow > .lp-lbl { width: 76px; flex-shrink: 0; }
+        .lp-desk .lp-deprow > .lp-chips { flex: 1; }
+        .lp-lbl { font-size: clamp(10px, 2.8cqw, 12px); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
+        .lp-desk .lp-lbl { font-size: 12px; }
+        .lp-chips { display: grid; gap: 5px; min-width: 0; }
+        .lp-chips2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .lp-chips3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .lp-chips4 { grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); }
+        .lp-chips5 { grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); }
+        .lp-chips.lp-vars { display: flex; flex-wrap: wrap; }
+        .lp-vars .lp-chip { flex: 1 1 auto; width: auto; padding: 4px 12px; }
+        .lp-chip { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-width: 0; min-height: 34px; padding: 4px 6px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; text-align: center; cursor: pointer; font-variant-numeric: tabular-nums; }
+        .lp-chip[aria-pressed="true"] { background: var(--lp-a); border-color: var(--lp-a); color: #fff; }
+        .lp-chip svg { flex-shrink: 0; opacity: .7; }
+        .lp-chip-edit { justify-content: flex-start; padding: 0 8px; border-color: var(--lp-a); cursor: text; }
+        .lp-chip-edit span { color: #6b7280; }
+        .lp-chip-edit input { flex: 1; width: 100%; min-width: 0; padding: 0; border: none; outline: none; background: transparent; font: inherit; color: #0f1115; }
+        .lp-desk .lp-chip { min-height: 40px; font-size: 15px; }
+
+        /* The working: read-only lines, a receipt's rule above the loan. */
+        .lp-brkwrap { grid-area: work; position: relative; min-width: 0; }
+        .lp-brk { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+        .lp-brk td { padding: 3px 0; font-size: clamp(12px, 3.5cqw, 16px); color: #4b5563; border-bottom: 1px solid #EFEEEC; }
+        .lp-brk td:last-child { text-align: right; font-weight: 700; color: #0f1115; white-space: nowrap; }
+        .lp-brk tr.lp-r-reb td:last-child { color: #047857; }
+        .lp-brk tr.lp-loan td { padding-top: 6px; border-top: 2px solid #0f1115; border-bottom: none; font-weight: 700; color: #0f1115; }
+        .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 20px); font-weight: 800; }
+        .lp-brk tr.lp-r-rate td { padding-top: 1px; border-bottom: none; font-size: clamp(11px, 3cqw, 14px); color: #6b7280; }
+        .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 600; }
+        .lp-desk .lp-brk td { padding: 4px 0; font-size: 16px; }
+        .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 20px; }
+        .lp-desk .lp-brk tr.lp-r-rate td { font-size: 14px; }
+        /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
+        .lp-rm { font-size: .7em; font-weight: 700; opacity: .62; margin-right: .22em; letter-spacing: .02em; }
         .lp-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 4px; padding: 0; border: none; border-radius: 50%; background: rgba(15,17,21,.08); color: #4b5563; vertical-align: middle; cursor: pointer; }
         .lp-tip { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 4; margin: 0; padding: 10px 12px; border-radius: 10px; background: #0f1115; color: #fff; font-size: clamp(12px, 3.2cqw, 15px); font-weight: 500; line-height: 1.45; box-shadow: 0 10px 30px rgba(15,17,21,.3); }
-        .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+
+        /* Everything else: smaller, quieter, and fine to sit under the comments. */
+        .lp-rest { grid-area: rest; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .lp-desk .lp-rest { gap: 8px; }
+        .lp-totals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
+        .lp-totals > div { display: flex; flex-direction: column; min-width: 0; padding: 6px 10px; border-radius: 8px; background: #F4F3F1; }
+        .lp-totals span { font-size: clamp(10px, 2.7cqw, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; }
+        .lp-totals b { font-size: clamp(14px, 4.2cqw, 18px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
+        /* Phone: the two figures only; how they are made up is on desktop. */
+        .lp:not(.lp-desk) .lp-totals small { display: none; }
+        .lp-salary { font-size: clamp(12px, 3.1cqw, 14px); color: #4b5563; margin: 0; line-height: 1.4; }
+        .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
+        .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
+        .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+        .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
+        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; cursor: pointer; min-width: 0; }
+        .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
+        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
+        .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
+        .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
+        /* NCD pills: the viewer's pick, six on one phone row. */
+        .lp-seg.lp-ncd { align-items: center; padding: 3px; }
+        .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .08em; color: #4b5563; }
+        .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 13px); }
+        .lp-seg.lp-ncd button[aria-pressed="true"] { background: var(--lp-a); color: #fff; }
+        .lp-desk .lp-salary { font-size: 14px; line-height: 1.35; }
+        .lp-desk .lp-note { font-size: 12px; }
+
+        /* Full photo: fills the stage, never the window (owner, 2026-10-22). */
         .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
         .lp-full-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; flex-shrink: 0; }
         .lp-full-top span { min-width: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(20px, 6cqw, 32px); letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -589,128 +730,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-full-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .lp-full-half { position: absolute; top: 0; bottom: 0; width: 50%; display: flex; align-items: center; padding: 0 8px; border: none; background: none; color: rgba(255,255,255,.85); filter: drop-shadow(0 1px 3px rgba(0,0,0,.7)); cursor: pointer; }
         .lp-full-count { margin: 0; padding: 8px 0 calc(10px + env(safe-area-inset-bottom)); text-align: center; font-size: 14px; font-weight: 700; color: rgba(255,255,255,.7); font-variant-numeric: tabular-nums; }
-        .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
-        .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
-        .lp-dots span[data-on="1"] { background: #fff; }
-        /* The working, one tinted row per number the viewer asks about, so each
-           reads as its own field on camera (owner, 2026-10-13, from the Excel
-           posters sellers hold up): price neutral, rebate green, deposit blue,
-           loan a dark result tile. Low-saturation tints, never a side bar. The
-           answer (monthly) is the one accent-coloured thing on the sheet. */
-        .lp-brk { width: 100%; border-collapse: separate; border-spacing: 0 4px; margin: -4px 0; font-variant-numeric: tabular-nums; }
-        .lp-brk td { padding: 5px 9px; font-size: clamp(12px, 3.3cqw, 19px); font-weight: 600; color: #4b5563; background: #F4F3F1; }
-        .lp-brk td:first-child { border-radius: 8px 0 0 8px; }
-        .lp-brk td:last-child { border-radius: 0 8px 8px 0; text-align: right; font-weight: 800; color: #0f1115; white-space: nowrap; }
-        .lp-brk tr.lp-r-reb td { background: rgba(16,185,129,.11); color: #047857; }
-        .lp-brk tr.lp-r-reb td:last-child { color: #047857; }
-        .lp-brk tr.lp-r-dep td { background: rgba(59,130,246,.10); color: #1d4ed8; }
-        .lp-brk tr.lp-r-dep td:last-child { color: #1d4ed8; }
-        .lp-brk tr.lp-loan td { padding-block: 8px; background: #0f1115; color: rgba(255,255,255,.72); }
-        .lp-brk tr.lp-loan td:last-child { color: #fff; font-size: clamp(16px, 4.8cqw, 26px); }
-        .lp-brk tr.lp-r-ins td { background: rgba(245,158,11,.10); color: #b45309; }
-        .lp-brk tr.lp-r-ins td:last-child { color: #b45309; }
-        /* NCD pills: six on one phone row, so they shrink and the label leads. */
-        .lp-seg.lp-ncd { align-items: center; }
-        .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 13px); font-weight: 800; letter-spacing: .08em; color: #b45309; }
-        .lp-seg.lp-ncd { padding: 3px; }
-        .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 14px); }
-        /* Insurance adds two rows; the photo gives the room back so the sheet
-           still fits the camera frame without shrinking. */
-        .lp-desk .lp-ins-on .lp-photo { aspect-ratio: 5 / 2; }
-        .lp-ins-on .lp-pair { align-items: start; }
-        /* Phone: six rows beside the photo; tighter rows keep the sheet on one screen. */
-        .lp:not(.lp-desk) .lp-ins-on .lp-brk { border-spacing: 0 2px; margin: -2px 0; }
-        .lp:not(.lp-desk) .lp-ins-on .lp-brk td { padding-block: 3px; }
-        .lp:not(.lp-desk) .lp-ins-on .lp-brk tr.lp-loan td { padding-block: 5px; }
-        .lp:not(.lp-desk) .lp-ins-on .lp-ten td { padding-block: 4px; }
-        .lp-insadj { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; }
-        .lp-brk tr.lp-r-rate td { background: none; padding-block: 1px; font-size: clamp(11px, 2.9cqw, 15px); color: #6b7280; }
-        .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 700; }
-        /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
-        .lp-rm { font-size: .7em; font-weight: 700; opacity: .62; margin-right: .22em; letter-spacing: .02em; }
-        /* Four chips must share one phone-width row: "Tanpa deposit" + three
-           "Deposit N%" in BM is ~470px of unbreakable text, which pushed the
-           whole sheet sideways. Chips shrink equally and wrap onto two lines. */
-        .lp-seg.lp-deps button { flex: 1 1 0; min-width: 0; height: auto; min-height: 34px; padding: 4px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 13px); }
-        .lp-low { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: stretch; }
-        .lp-end { display: flex; flex-direction: column; gap: 6px; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-grad); box-shadow: 0 6px 20px rgba(var(--lp-rgb),.4); font: inherit; color: #fff; text-align: left; cursor: pointer; min-width: 0; }
-        .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
-        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
-        .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: rgba(16,185,129,.11); color: #065f46; font-size: clamp(12px, 3.3cqw, 18px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
-        .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #047857; }
-        .lp-seg.lp-vars { flex-wrap: wrap; }
-        .lp-seg.lp-vars button { flex: 1 1 auto; height: auto; min-height: 34px; padding: 4px 10px; white-space: normal; line-height: 1.15; font-size: clamp(11px, 3.3cqw, 14px); }
-        .lp-brk tr.lp-tap { cursor: pointer; }
-        .lp-brk tr.lp-tap td:last-child { text-decoration: underline dotted rgba(0,0,0,.25); text-underline-offset: 3px; }
-        .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
-        .lp-ten { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
-        .lp-ten th { font-size: clamp(10px, 2.7cqw, 14px); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #9ca3af; padding: 0 10px 4px; text-align: right; }
-        .lp-ten th:first-child { text-align: left; }
-        .lp-ten td { padding: 6px 10px; font-size: clamp(13px, 3.8cqw, 20px); font-weight: 600; color: #4b5563; border-top: 1px solid rgba(0,0,0,.06); }
-        .lp-ten td:last-child { text-align: right; font-size: clamp(17px, 5.2cqw, 28px); font-weight: 800; color: #111827; letter-spacing: -.01em; }
-        .lp-ten tr.lp-t { cursor: pointer; }
-        .lp-ten tr.lp-t:hover td { background: rgba(15,17,21,.04); }
-        /* The picked tenure: the seller's colour as a soft tint, same treatment
-           as the rebate row (owner, 2026-10-13: no gradient here). */
-        .lp-ten tr.lp-def td, .lp-ten tr.lp-def:hover td { background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); border-top-color: transparent; }
-        .lp-ten tr.lp-def td:first-child { font-weight: 800; }
-        .lp-ten tr.lp-def td:last-child { color: var(--lp-a2); font-size: clamp(22px, 7cqw, 40px); }
-        .lp-ten tr.lp-def td:first-child { border-radius: 8px 0 0 8px; }
-        .lp-ten tr.lp-def td:last-child { border-radius: 0 8px 8px 0; }
-        .lp-salary { font-size: clamp(12px, 3.1cqw, 16px); color: #4b5563; margin: 0; line-height: 1.4; }
-        .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
-        .lp-totals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
-        .lp-totals > div { display: flex; flex-direction: column; min-width: 0; padding: 6px 10px; border-radius: 8px; background: #F4F3F1; }
-        .lp-totals span { font-size: clamp(10px, 2.7cqw, 13px); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #6b7280; }
-        .lp-totals b { font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
-        .lp-work { font-size: clamp(13px, 3.4cqw, 18px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.45; }
-        .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
-        .lp-cta { margin: 0; padding: 8px 10px; border-radius: 8px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); overflow-wrap: anywhere; text-align: center; font-size: clamp(11px, 3.1cqw, 16px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-        .lp-note { font-size: clamp(11px, 2.8cqw, 14px); color: #6b7280; line-height: 1.45; margin: 8px 0 0; }
-        .lp-fit { display: flex; flex-direction: column; gap: 10px; }
-        /* Column wrappers vanish on a phone (the sheet stays one column) and
-           become two columns on the desktop stage. */
-        .lp-cols, .lp-col { display: contents; }
-        .lp-desk .lp-sheet { padding: 12px 16px; gap: 8px; }
-        .lp-desk .lp-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
-        .lp-desk .lp-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-        .lp-desk .lp-pair { grid-template-columns: minmax(0, 1fr); gap: 8px; }
-        .lp-desk .lp-photo { aspect-ratio: 2 / 1; }
-        .lp-desk .lp-brk { border-spacing: 0 4px; }
-        .lp-desk .lp-brk td { padding: 5px 12px; font-size: 20px; }
-        .lp-desk .lp-brk tr.lp-loan td { padding-block: 8px; }
-        .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 30px; }
-        .lp-desk .lp-brk tr.lp-r-rate td { font-size: 16px; }
-        .lp-desk .lp-seg.lp-deps button { font-size: 15px; min-height: 36px; }
-        .lp-desk .lp-ten td { font-size: 20px; padding: 4px 12px; }
-        .lp-desk .lp-ten td:last-child { font-size: 28px; }
-        .lp-desk .lp-ten tr.lp-def td:last-child { font-size: 40px; }
-        .lp-desk .lp-name { font-size: 38px; }
-        .lp-desk .lp-num { font-size: 40px; }
-        .lp-desk .lp-seg.lp-vars button { font-size: 15px; }
-        /* Desktop: the variant switch sits on the title's line, to its right
-           (owner, 2026-10-18), so a model card costs no extra row. Phone: the
-           wrapper vanishes and the switch stays under the title. */
-        .lp-head { display: contents; }
-        .lp-desk .lp-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
-        .lp-desk .lp-head .lp-title { flex: 1 1 auto; }
-        .lp-desk .lp-head .lp-vars { flex: 0 1 auto; max-width: 60%; justify-content: flex-end; }
-        .lp-desk .lp-head .lp-vars button { flex: 0 1 auto; padding: 4px 12px; font-size: 14px; }
-        /* The picked button names the variant, so the title drops it here and
-           both stay on one line. */
-        .lp-desk .lp-has-vars .lp-var { display: none; }
-        .lp-desk .lp-cta { font-size: 15px; letter-spacing: .06em; }
-        .lp-desk .lp-salary { font-size: 15px; line-height: 1.35; }
-        .lp-desk .lp-note { font-size: 13px; line-height: 1.35; }
-        .lp-desk .lp-cta { padding-block: 7px; }
+
+        /* Adjust: the seller's settings, never on the viewer's screen for long. */
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
         .lp-in { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-in:focus { outline: none; border-color: #0f1115; }
+        .lp-in:disabled { opacity: .5; }
         .lp-seg { display: flex; gap: 4px; padding: 4px; background: rgba(33,31,30,.08); border-radius: 10px; }
         .lp-adjust .lp-seg { grid-column: 1 / -1; }
         .lp-seg button { flex: 1; height: 34px; padding: 0 12px; border: none; border-radius: 7px; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #4b5563; cursor: pointer; white-space: nowrap; }
@@ -718,54 +744,81 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjust .lp-wide { grid-column: 1 / -1; }
         .lp-adjust .lp-wide .lp-hint { font-weight: 500; }
         .lp-hint { grid-column: 1 / -1; font-size: 12px; color: #6b7280; line-height: 1.5; margin: 0; }
-        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(243,242,240,.6); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
-        .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
-        .lp-navbtn.lp-next { background: var(--lp-grad); border-color: transparent; color: #fff; box-shadow: 0 6px 20px rgba(var(--lp-rgb),.4); }
-        .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-        .lp-money { display: flex; align-items: center; gap: 8px; height: clamp(56px, 15cqw, 80px); padding: 0 14px; border: 1px solid rgba(0,0,0,.12); border-radius: 12px; background: #fff; }
-        .lp-money:focus-within { border-color: #0f1115; }
-        .lp-money span { font-size: clamp(20px, 6cqw, 32px); font-weight: 700; color: #9ca3af; }
-        .lp-money input { flex: 1; min-width: 0; height: 100%; border: none; outline: none; background: transparent; font: inherit; font-size: clamp(28px, 9cqw, 48px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
-        .lp-budrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: end; }
-        .lp-budrow label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
-        .lp-budrow .lp-seg button { padding: 0 6px; height: 36px; }
-        .lp-res { padding: 6px 14px; }
-        .lp-res h3 { font-size: clamp(11px, 2.8cqw, 14px); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; margin: 8px 0 2px; }
-        .lp-rowwrap { border-top: 1px solid rgba(0,0,0,.06); }
-        .lp-res h3 + .lp-rowwrap { border-top: none; }
-        .lp-vchips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
-        .lp-vchips button { min-height: 30px; padding: 3px 10px; border-radius: 8px; border: 1.5px solid var(--lp-a); background: #fff; color: var(--lp-a2); font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; cursor: pointer; }
-        .lp-vchips button[aria-pressed="true"] { background: var(--lp-grad); border-color: transparent; color: #fff; }
-        .lp-vchips button:disabled { border: 1px dashed rgba(0,0,0,.18); background: transparent; color: #9ca3af; text-decoration: line-through; font-weight: 600; cursor: default; }
-        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-row img, .lp-row .lp-noimg { width: clamp(52px, 15cqw, 88px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #EDEAE3; flex-shrink: 0; }
-        .lp-row .lp-n { font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.5cqw, 38px); line-height: 1; color: #0f1115; flex-shrink: 0; }
-        .lp-row .lp-rn { flex: 1; min-width: 0; }
-        .lp-row .lp-rn b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(13px, 3.8cqw, 18px); font-weight: 700; line-height: 1.25; color: #111827; }
-        .lp-row .lp-rn span { display: block; font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
-        .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 24px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
-        .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #9ca3af; }
-        .lp-rowwrap.lp-over { opacity: .62; }
-        .lp-row .lp-rn .lp-fitdep { color: #047857; font-weight: 700; }
-        .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
-        .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 15px); font-weight: 700; line-height: 1.35; }
-        .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
+        .lp-insadj { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; }
+        /* Adjust > Rebates: every car, one box each, set before the live. */
+        .lp-rebs { display: flex; flex-direction: column; }
+        .lp-rebs-h { margin: 0 0 6px; font-size: 12px; color: #4b5563; line-height: 1.45; }
+        .lp-rebs-h b { display: block; margin-bottom: 2px; font-size: 15px; color: #0f1115; }
+        .lp-reb { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #EFEEEC; }
+        .lp-badge { flex-shrink: 0; min-width: 34px; padding: 5px 5px 3px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: 19px; line-height: 1; text-align: center; }
+        .lp-adjust .lp-reb-car { flex: 1; gap: 1px; min-width: 0; }
+        .lp-reb-car b { font-size: 14px; color: #0f1115; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-reb-car small { font-size: 12px; font-weight: 500; color: #6b7280; }
+        .lp-reb-in { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; flex-shrink: 0; }
+        .lp-reb-in.lp-on { border-color: #047857; background: rgba(4,120,87,.06); }
+        .lp-reb-in span { font-size: 13px; font-weight: 700; color: #6b7280; white-space: nowrap; }
+        .lp-reb-in input { width: 64px; padding: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 15px; font-weight: 700; color: #0f1115; text-align: right; font-variant-numeric: tabular-nums; }
+        .lp-reb-x { flex-shrink: 0; width: 56px; height: 36px; border-radius: 9px; border: 1px solid #E5E7EB; background: #fff; color: #374151; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+        span.lp-reb-x { border: none; background: none; cursor: default; }
         .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
         .lp-colours > span { flex-basis: 100%; font-size: 12px; font-weight: 700; color: #4b5563; }
         .lp-sw { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.15); cursor: pointer; padding: 0; flex-shrink: 0; position: relative; overflow: hidden; }
         .lp-sw[aria-pressed="true"], .lp-sw[data-on="1"] { box-shadow: 0 0 0 2px #0f1115; }
         .lp-sw-any { background: conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444); }
         .lp-sw-any input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
-        .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 760px; margin: 0 auto; box-sizing: border-box; }
+
+        /* Docs: the privacy line first, then the list as tiles. */
+        .lp-docs { padding: 14px; display: flex; flex-direction: column; gap: 12px; width: 100%; }
         .lp-docs .lp-name { white-space: normal; }
-        /* Year + make + model + variant can be long ("2022 Lexus IS 300 2.0L(T) F-Sport"): two lines, never cut mid-name. */
-        .lp-name-car { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-        .lp-var { color: #6b7280; }
-        .lp-docs ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-        .lp-docs li { display: flex; align-items: center; gap: 12px; font-size: clamp(16px, 4.8cqw, 26px); font-weight: 700; color: #0f1115; line-height: 1.25; }
-        .lp-docs li span { flex-shrink: 0; width: 1.6em; height: 1.6em; border-radius: 8px; background: var(--lp-grad); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .8em; font-variant-numeric: tabular-nums; }
-        .lp-top > .lp-seg { min-width: 0; }
+        .lp-docs .lp-head > .lp-chips { flex: 1 1 220px; }
+        .lp-privacy { margin: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: #0f1115; color: #fff; font-size: clamp(13px, 3.8cqw, 16px); font-weight: 700; line-height: 1.3; }
+        .lp-privacy svg { flex-shrink: 0; }
+        .lp-docs ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+        .lp-desk .lp-docs ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .lp-docs li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: #F4F3F1; font-size: clamp(15px, 4.4cqw, 18px); font-weight: 700; color: #0f1115; line-height: 1.25; }
+        .lp-desk .lp-docs li { min-height: 60px; font-size: 18px; }
+        .lp-docs li span { flex-shrink: 0; width: 1.8em; height: 1.8em; border-radius: 50%; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: .85em; font-variant-numeric: tabular-nums; }
+
+        /* Budget: the viewer's number is the big one, then the cars that fit. */
+        .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+        .lp-bgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+        .lp-desk .lp-bgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 16px; }
+        .lp-bcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+        .lp-money { display: flex; align-items: center; gap: 8px; height: clamp(56px, 15cqw, 76px); padding: 0 14px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; }
+        .lp-money:focus-within { border-color: var(--lp-a); }
+        .lp-money span { font-size: clamp(18px, 5.6cqw, 24px); font-weight: 700; color: var(--lp-a); }
+        .lp-money input { flex: 1; min-width: 0; height: 100%; border: none; outline: none; background: transparent; font: inherit; font-size: clamp(30px, 11cqw, 56px); font-weight: 800; letter-spacing: -.02em; color: var(--lp-a); font-variant-numeric: tabular-nums; }
+        .lp-desk .lp-money { height: 76px; }
+        .lp-desk .lp-money input { font-size: 52px; }
+        .lp-work { font-size: clamp(13px, 3.6cqw, 17px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.6; }
+        .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
+        /* The result of the 35% sum (or the budget itself): the number the list is cut at. */
+        .lp-hl { padding: 2px 8px; border-radius: 6px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); font-weight: 800; white-space: nowrap; }
+        .lp-res { border-top: 1px solid #EFEEEC; padding-top: 2px; }
+        .lp-res h3 { font-size: clamp(11px, 2.8cqw, 13px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #374151; margin: 8px 0 2px; }
+        .lp-rowwrap { border-top: 1px solid #EFEEEC; }
+        .lp-res h3 + .lp-rowwrap { border-top: none; }
+        .lp-vchips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
+        .lp-vchips button { min-height: 30px; padding: 3px 10px; border-radius: 8px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; cursor: pointer; }
+        .lp-vchips button[aria-pressed="true"] { background: var(--lp-a); border-color: var(--lp-a); color: #fff; }
+        .lp-vchips button:disabled { border: 1px dashed rgba(0,0,0,.18); background: transparent; color: #9ca3af; text-decoration: line-through; font-weight: 600; cursor: default; }
+        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+        .lp-row img, .lp-row .lp-noimg { width: clamp(52px, 15cqw, 72px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #EDEAE3; flex-shrink: 0; }
+        .lp-row .lp-n { flex-shrink: 0; min-width: 34px; padding: 5px 5px 3px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: clamp(17px, 5cqw, 21px); line-height: 1; text-align: center; }
+        .lp-row .lp-rn { flex: 1; min-width: 0; }
+        .lp-row .lp-rn b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(13px, 3.8cqw, 16px); font-weight: 700; line-height: 1.25; color: #111827; }
+        .lp-row .lp-rn span { display: block; font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
+        .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 20px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
+        .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #6b7280; }
+        .lp-rowwrap.lp-over { opacity: .62; }
+        .lp-row .lp-rn .lp-fitdep { color: #0f1115; font-weight: 700; }
+        .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
+        .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
+
+        /* Top bar + nav: ink for what is picked, never the accent. */
+        .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
         .lp-top > .lp-seg button { flex: 1 1 auto; padding: 0 8px; font-size: 13px; }
+        .lp-top > .lp-seg button[aria-pressed="true"] { background: #0f1115; color: #fff; box-shadow: none; }
         .lp-tools { display: flex; gap: 8px; flex-shrink: 0; }
         /* Three mode labels + four buttons must share one row on a 360px phone
            (BM "Dokumen" is the longest label), so the bar tightens there. */
@@ -776,7 +829,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           .lp-top > .lp-seg { padding: 3px; gap: 2px; }
           .lp-top > .lp-seg button { padding: 0 6px; font-size: 12px; }
         }
-        .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
+        .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #EEEDEA; border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
+        .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid #E5E7EB; background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
+        .lp-navbtn.lp-next { background: #0f1115; border-color: transparent; color: #fff; }
         .lp-report { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
         .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #0f1115; margin: 0; }
         .lp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -822,6 +877,43 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         <div className="lp-fit" ref={fitRef}>
         {adjustOpen && mode !== 'docs' && (
           <div ref={adjustRef} className="lp-card lp-adjust">
+            {/* Two tabs: this live's settings, and every car's rebate in one list. */}
+            <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
+              <button type="button" aria-pressed={adjustTab === 'settings'} onClick={() => setAdjustTab('settings')}>{t.adjSettings}</button>
+              <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
+                {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
+              </button>
+            </div>
+            {adjustTab === 'rebates' ? (
+              <div className="lp-wide lp-rebs">
+                <p className="lp-rebs-h"><b>{t.rebatesTitle}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
+                {listings.map((c, i) => {
+                  const v = rebates[c.id] ?? '';
+                  const on = Number(v) > 0;
+                  const kind = c.is_model_card ? t.allVariants
+                    : c.condition === 'new' ? t.newTag : c.condition === 'recon' ? t.recon : t.used;
+                  return (
+                    <div className="lp-reb" key={c.id}>
+                      <span className="lp-badge">#{i + 1}</span>
+                      <label className="lp-reb-car" htmlFor={`lp-reb-${c.id}`}>
+                        <b>{carLabel(c)}</b>
+                        <small>{kind}{on && !embedded ? ` · ${t.savedUntil(endLabel)}` : ''}</small>
+                      </label>
+                      <span className={on ? 'lp-reb-in lp-on' : 'lp-reb-in'}>
+                        <span>- RM</span>
+                        <input id={`lp-reb-${c.id}`} type="text" inputMode="numeric" placeholder="0" value={v}
+                          onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [c.id]: d })); }} />
+                      </span>
+                      {on
+                        ? <button type="button" className="lp-reb-x" onClick={() => setRebates((r) => { const n = { ...r }; delete n[c.id]; return n; })}
+                            aria-label={`${t.clear} ${carLabel(c)}`}>{t.clear}</button>
+                        : <span className="lp-reb-x" aria-hidden="true" />}
+                    </div>
+                  );
+                })}
+                <p className="lp-hint">{t.rebateModelNote}</p>
+              </div>
+            ) : (<>
             <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
               <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
               <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
@@ -832,18 +924,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </label>
             {mode === 'cars' && (
               <label>
-                {t.rebateThisCar}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder="0" value={rebates[rk] ?? ''}
-                  onChange={(e) => { const v = e.target.value; setRebates((r) => ({ ...r, [rk]: v })); }} />
+                {t.targetMonthly}
+                <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
+                  disabled={!canLoan} onChange={(e) => applyTarget(e.target.value)} />
               </label>
             )}
-            {mode === 'cars' && (
-              <label>
-                {t.customDeposit}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder={t.noDepositHint} value={customDown}
-                  onChange={(e) => { setCustomDown(e.target.value); if (e.target.value !== '') setPick((p) => ({ ...p, row: 'c' })); }} />
-              </label>
-            )}
+            {mode === 'cars' && <p className="lp-hint">{t.targetHint}</p>}
             <div className="lp-wide lp-insadj">
               <span>{t.insuranceLabel}</span>
               <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
@@ -852,6 +938,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </div>
               <small className="lp-hint">{t.insuranceHint}</small>
             </div>
+            {mode === 'cars' && insOn && price > 0 && (
+              <label className="lp-wide">
+                {t.insuranceThisCar}
+                <input className="lp-in" type="number" inputMode="numeric" min="0"
+                  placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
+                  onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
+              </label>
+            )}
             {mode === 'cars' && (
               <label className="lp-wide">
                 {t.ctaLabel}
@@ -867,7 +961,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 <small className="lp-hint">{t.offerHint}</small>
               </label>
             )}
-            {mode === 'cars' && <p className="lp-hint">{t.monthlyTip}</p>}
             <div className="lp-colours" role="group" aria-label={t.colour}>
               <span>{t.colour}</span>
               {ACCENT_PRESETS.map((c) => (
@@ -885,40 +978,35 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(rateFor(y))}%`).join(', '))}
               </p>
             )}
+            </>)}
           </div>
         )}
 
         {mode === 'cars' ? (
-        <div className={insOn && price > 0 ? 'lp-card lp-sheet lp-ins-on' : 'lp-card lp-sheet'}>
+        <div className="lp-card lp-sheet">
           <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
-          <div className="lp-title">
-            <span className="lp-num">#{idx + 1}</span>
-            <div className="lp-tt">
-              {/* The variant sits in the title, next to the model (owner, 2026-10-18):
-                  "2.5" alone on the spec line read as a stray number. */}
-              <h2 className="lp-name lp-name-car">{carName(car)}{shown.variant ? <span className="lp-var"> {shown.variant}</span> : null}</h2>
-              <p className="lp-spec">
-                {(shown.condition === 'new'
-                  ? [t.newTag, shown.transmission]
-                  : [shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
-                ).filter(Boolean).join(' · ') || '\u00a0'}
-              </p>
+            <div className="lp-title">
+              <span className="lp-num">#{idx + 1}</span>
+              <div className="lp-tt">
+                {/* The variant sits in the title, next to the model (owner, 2026-10-18):
+                    "2.5" alone on the spec line read as a stray number. */}
+                <h2 className="lp-name lp-name-car">{carName(car)}{shown.variant ? <span className="lp-var"> {shown.variant}</span> : null}</h2>
+                <p className="lp-spec">
+                  {(shown.condition === 'new'
+                    ? [t.newTag, shown.transmission]
+                    : [shown.mileage ? `${fmt(shown.mileage)} km` : null, shown.transmission]
+                  ).filter(Boolean).join(' · ') || ' '}
+                </p>
+              </div>
             </div>
+            {/* The comment line sits at the top: the bottom of the stream is under TikTok's comments. */}
+            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
           </div>
 
-          {variants.length > 1 && (
-            <div className="lp-seg lp-vars" role="group" aria-label={t.variant}>
-              {variants.map((v) => (
-                <button key={v.model_id} type="button" aria-pressed={v.model_id === variant?.model_id}
-                  onClick={() => chooseVariant(v.model_id)}>{v.variant}</button>
-              ))}
-            </div>
-          )}
-          </div>
-
-          <div className="lp-cols">
-          <div className="lp-col">
-          <div className="lp-pair">
+          {/* One grid, two arrangements. Desktop: photo | answer, the deposit
+              chips across, working | the rest. Phone: answer, chips, then photo |
+              working, then the rest (grid-template-areas in the styles). */}
+          <div className="lp-grid">
             {/* Photo: tap the left / right half to step through this car's photos. */}
             <div className="lp-photo">
               {images[imgIdx]
@@ -945,224 +1033,223 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
             </div>
 
-            {/* The working, line by line: price - rebate - deposit = loan, at this rate.
-                Rebate, deposit and rate: tap the row to type a new number in place. */}
-            <div className="lp-brkwrap">
-            <table className="lp-brk">
-              <tbody>
-                <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
-                {price > 0 && insOn && (
-                  <tr className="lp-r-ins lp-tap" onClick={() => setEditing('ins')}>
-                    <td>{t.insuranceEst}</td>
-                    <td>{editing === 'ins' && !embedded
-                      ? <EditCell value={insTyped[car.id] ?? (ins ? String(ins) : '')} aria={t.insuranceThisCar} onDone={() => setEditing(null)}
-                          onChange={(v) => setInsTyped((m) => ({ ...m, [car.id]: v }))} />
-                      : ins ? <>+ <Money n={ins} /></> : t.insTap}</td>
-                  </tr>
-                )}
-                {price > 0 && (rebate > 0 || shown.condition === 'new' || editing === 'rebate') && (
-                  <tr className="lp-r-reb lp-tap" onClick={() => setEditing('rebate')}>
-                    <td>{t.rebate}</td>
-                    <td>{editing === 'rebate' && !embedded
-                      ? <EditCell value={rebates[rk] ?? ''} aria={t.rebateThisCar} onDone={() => setEditing(null)}
-                          onChange={(v) => setRebates((r) => ({ ...r, [rk]: v }))} />
-                      : rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
-                  </tr>
-                )}
-                {financeable && (<>
-                  <tr className="lp-r-dep lp-tap" onClick={openDeposit}>
-                    <td>{t.deposit}</td>
-                    <td>{editing === 'deposit' && !embedded
-                      ? <EditCell value={customDown} aria={t.customDeposit} onDone={() => setEditing(null)}
-                          onChange={(v) => { setCustomDown(v); setPick((p) => ({ ...p, row: 'c' })); }} />
-                      : picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td>
-                  </tr>
-                  <tr className="lp-loan"><td>{t.loan}</td><td><Money n={loanAmt} /></td></tr>
-                  <tr className="lp-r-rate lp-tap" onClick={() => setEditing('rate')}>
-                    <td>
-                      {t.rate}
-                      {/* What the rate means: hover on a mouse, tap on a phone. Its
-                          own click stops here so it never opens the rate box. */}
-                      <button type="button" className="lp-info" aria-label={t.rateInfoLabel} aria-expanded={rateInfo}
-                        onClick={(e) => { e.stopPropagation(); setRateInfo((v) => !v); }}
-                        onPointerEnter={(e) => { if (e.pointerType === 'mouse') setRateInfo(true); }}
-                        onPointerLeave={(e) => { if (e.pointerType === 'mouse') setRateInfo(false); }}>
-                        <Info size={13} />
+            {/* The answer: the picked monthly, big, and the three tenures under it. */}
+            <div className="lp-ans">
+              {variants.length > 1 && (
+                <div className="lp-chips lp-vars" role="group" aria-label={t.variant}>
+                  {variants.map((v) => (
+                    <button key={v.model_id} type="button" className="lp-chip" aria-pressed={v.model_id === variant?.model_id}
+                      onClick={() => chooseVariant(v.model_id)}>{v.variant}</button>
+                  ))}
+                </div>
+              )}
+              {!financeable ? null
+                : noLoan ? <p className="lp-ans-msg">{t.depositCovers}</p>
+                : !tenures.length ? <p className="lp-ans-msg">{t.tooOld(MAX_CAR_AGE_AT_END)}</p> : (<>
+                  <p className="lp-ans-lbl">
+                    {t.years(pickYears)} · {picked.down > 0 ? t.depositAmt(`RM ${fmt(picked.down)}`) : t.noDeposit}
+                  </p>
+                  <p className="lp-big"><span className="lp-rm">RM</span>{fmt(answer)}<small>{t.perMonth}</small></p>
+                  <div className="lp-tens" role="group" aria-label={t.tenure}>
+                    {tenuresDesc.map((y) => (
+                      <button key={y} type="button" className="lp-ten" aria-pressed={y === pickYears}
+                        onClick={() => setPick((p) => ({ ...p, years: y }))}>
+                        <span>{t.years(y)}</span>
+                        <b><Money n={monthlyFor(picked.down, y)} /></b>
                       </button>
-                    </td>
-                    <td>{editing === 'rate' && !embedded
-                      ? <EditCell value={eir} decimal aria={basis === 'flat' ? t.rateFlat : t.rateEir} onDone={() => setEditing(null)} onChange={(v) => setEir(clampRateInput(v))} />
-                      : <>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</>}</td>
-                  </tr>
+                    ))}
+                  </div>
                 </>)}
-              </tbody>
-            </table>
-            {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
-            </div>
-          </div>
-          {/* A typed rate that is probably a mistake: a flat number on the EIR
-              switch, or above the Hire-Purchase Act cap. */}
-          {rateWarn && (
-            <p className="lp-warn">
-              {rateWarn === 'looksFlat'
-                ? <>{t.looksFlat}<button type="button" onClick={() => setBasis('flat')}>{t.switchFlat}</button></>
-                : t.aboveCap(eirCap(pickYears))}
-            </p>
-          )}
-          {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
-              for this car (the typed quote already has its NCD in it). */}
-          {price > 0 && insOn && (insTyped[car.id] ?? '') === '' && ins !== null && (
-            <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
-              <span>{t.ncd}</span>
-              {NCD_TIERS.map((n) => (
-                <button key={n} type="button" aria-pressed={n === ncd} onClick={() => setNcd(n)}>{ncdLabel(n)}</button>
-              ))}
-            </div>
-          )}
-          </div>
-
-          <div className="lp-col">
-          {financeable && (<>
-            <div className="lp-seg lp-deps" role="group" aria-label={t.deposit}>
-              {rows.map((r) => (
-                <button key={r.key} type="button" aria-pressed={r.key === picked.key}
-                  onClick={() => setPick((p) => ({ ...p, row: r.key }))}>
-                  {r.custom ? r.label : t.pctDown(r.key)}
-                </button>
-              ))}
             </div>
 
-            {noLoan ? <p className="lp-salary"><b>{t.depositCovers}</b></p>
-              : !tenures.length ? <p className="lp-salary"><b>{t.tooOld(MAX_CAR_AGE_AT_END)}</b></p> : (
-            <div className="lp-low">
-              <table className="lp-ten">
-                <thead><tr><th>{t.tenure}</th><th>{t.monthly}</th></tr></thead>
-                <tbody>
-                  {tenuresDesc.map((y) => {
-                    const on = y === pickYears;
-                    // The picked row's monthly is tappable: type a target and the deposit fills in.
-                    const tap = () => {
-                      if (!on) { setPick((p) => ({ ...p, years: y })); return; }
-                      if (embedded || editing === 'monthly') return;
-                      setTarget(String(Math.round(answer)));
-                      setEditing('monthly');
-                    };
-                    return (
-                      <tr key={y} className={on ? 'lp-t lp-def' : 'lp-t'} onClick={tap}
-                        role="button" aria-pressed={on}>
-                        <td>{t.years(y)}</td>
-                        <td>{on && editing === 'monthly'
-                          ? <EditCell value={target} aria={t.targetMonthly} onDone={() => setEditing(null)} onChange={applyTarget} />
-                          : <Money n={monthlyFor(picked.down, y)} />}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            )}
-
-            {salary && (
-              <p className="lp-salary">
-                {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
-              </p>
-            )}
-            {/* Total counter (owner, 2026-10-22): what the buyer pays in all,
-                deposit + every instalment, and the interest inside it. */}
-            {totals && (
-              <div className="lp-totals">
-                <div><span>{t.totalPay}</span><b><Money n={picked.down + totals.totalRepayment} /></b><small>{t.totalPayHow(pickYears * 12)}</small></div>
-                <div><span>{t.interest}</span><b><Money n={totals.totalInterest} /></b><small>{t.interestHow(fmtRate(rateFor(pickYears)))}</small></div>
+            {financeable && (
+              <div className="lp-deprow">
+                <span className="lp-lbl">{t.deposit}</span>
+                <div className="lp-chips lp-chips5" role="group" aria-label={t.deposit}>
+                  <DepositChip editing={depEdit} value={customDown} pressed={picked.custom === true}
+                    label={custom > 0 ? `RM ${fmt(custom)}` : t.other} aria={t.customDeposit}
+                    onOpen={() => setDepEdit(true)} onType={typeDeposit} onClose={closeDeposit} />
+                  {rows.filter((r) => !r.custom).map((r) => (
+                    <button key={r.key} type="button" className="lp-chip" aria-pressed={r.key === picked.key}
+                      onClick={() => { setDepEdit(false); setPick((p) => ({ ...p, row: r.key })); }}>
+                      {r.key === 0 ? t.none : `${r.key}%`}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
-            <p className="lp-note" style={{ margin: 0 }}>
-              {tenureCapped ? `${t.tenureCap(Math.max(...tenures), MAX_CAR_AGE_AT_END)} ` : ''}{officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
-              {highValue ? t.highValue : t.subjectBank}
-            </p>
-          </>)}
 
-          {/* Contact (tap to hide) sits on the comment bar's line: one slim row
-              in the working's own style, not a box squeezing the tenure table. */}
-          <div className="lp-end">
-            {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
-            {showContact && contact && (
-              <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
-                <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
-                {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
-              </button>
-            )}
-            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
-          </div>
-          </div>
+            {/* The working, line by line: price - rebate - deposit = loan, at this rate.
+                Read-only: rebate and rate are set in Adjust, the deposit on the chips. */}
+            <div className="lp-brkwrap">
+              <table className="lp-brk">
+                <tbody>
+                  <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
+                  {price > 0 && insOn && ins > 0 && (
+                    <tr><td>{(insTyped[car.id] ?? '') === '' ? t.insuranceEst : t.insurance}</td><td>+ <Money n={ins} /></td></tr>
+                  )}
+                  {price > 0 && rebate > 0 && (
+                    <tr className="lp-r-reb"><td>{t.rebate}</td><td>- <Money n={rebate} /></td></tr>
+                  )}
+                  {financeable && (<>
+                    <tr><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
+                    <tr className="lp-loan"><td>{t.loan}</td><td><Money n={loanAmt} /></td></tr>
+                    <tr className="lp-r-rate">
+                      <td>
+                        {t.rate}
+                        {/* What the rate means: hover on a mouse, tap on a phone. */}
+                        <button type="button" className="lp-info" aria-label={t.rateInfoLabel} aria-expanded={rateInfo}
+                          onClick={() => setRateInfo((v) => !v)}
+                          onPointerEnter={(e) => { if (e.pointerType === 'mouse') setRateInfo(true); }}
+                          onPointerLeave={(e) => { if (e.pointerType === 'mouse') setRateInfo(false); }}>
+                          <Info size={13} />
+                        </button>
+                      </td>
+                      <td>{fmtRate(rate)}% {basis === 'flat' ? t.flat : 'EIR'}</td>
+                    </tr>
+                  </>)}
+                </tbody>
+              </table>
+              {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
+            </div>
+
+            <div className="lp-rest">
+              {/* A typed rate that is probably a mistake: a flat number on the EIR
+                  switch, or above the Hire-Purchase Act cap. */}
+              {rateWarn && (
+                <p className="lp-warn">
+                  {rateWarn === 'looksFlat'
+                    ? <>{t.looksFlat}<button type="button" onClick={() => setBasis('flat')}>{t.switchFlat}</button></>
+                    : t.aboveCap(eirCap(pickYears))}
+                </p>
+              )}
+              {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
+                  for this car (the typed quote already has its NCD in it). */}
+              {price > 0 && insOn && (insTyped[car.id] ?? '') === '' && ins !== null && (
+                <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
+                  <span>{t.ncd}</span>
+                  {NCD_TIERS.map((n) => (
+                    <button key={n} type="button" aria-pressed={n === ncd} onClick={() => setNcd(n)}>{ncdLabel(n)}</button>
+                  ))}
+                </div>
+              )}
+              {/* Total counter (owner, 2026-10-22): what the buyer pays in all,
+                  deposit + every instalment, and the interest inside it. */}
+              {totals && (
+                <div className="lp-totals">
+                  <div><span>{t.totalPay}</span><b><Money n={picked.down + totals.totalRepayment} /></b><small>{t.totalPayHow(pickYears * 12)}</small></div>
+                  <div><span>{t.interest}</span><b><Money n={totals.totalInterest} /></b><small>{t.interestHow(fmtRate(rateFor(pickYears)))}</small></div>
+                </div>
+              )}
+              {salary && (
+                <p className="lp-salary">
+                  {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
+                </p>
+              )}
+              {financeable && (
+                <p className="lp-note">
+                  {tenureCapped ? `${t.tenureCap(Math.max(...tenures), MAX_CAR_AGE_AT_END)} ` : ''}{officialNew && car.condition === 'new' ? `${t.newPriceNote} ` : ''}{t.reducing}{basis === 'flat' ? t.flatAsEir(pickYears, fmtRate(rateFor(pickYears))) : ''}.{' '}
+                  {highValue ? t.highValue : t.subjectBank}
+                </p>
+              )}
+              {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
+              {showContact && contact && (
+                <button type="button" className="lp-contact" onClick={() => setShowContact(false)} aria-label={t.hideContact}>
+                  <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
+                  {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
+                </button>
+              )}
+            </div>
           </div>
         </div>
         ) : mode === 'docs' ? (
         /* Docs: what the bank asks the BUYER for. The car (new, used, recon)
-           does not change it; how the buyer earns does. */
+           does not change it; how the buyer earns does. The privacy line sits
+           at the top, where TikTok's comments do not cover it. */
         <div className="lp-card lp-docs">
-          <h2 className="lp-name">{t.docsTitle}</h2>
-          <div className="lp-seg" role="group" aria-label={t.docsTitle}>
-            <button type="button" aria-pressed={docsKind === 'employee'} onClick={() => setDocsKind('employee')}>{t.docsEmployee}</button>
-            <button type="button" aria-pressed={docsKind === 'self'} onClick={() => setDocsKind('self')}>{t.docsSelf}</button>
+          <div className="lp-head">
+            <h2 className="lp-name">{t.docsTitle}</h2>
+            <div className="lp-chips lp-chips2" role="group" aria-label={t.docsTitle}>
+              <button type="button" className="lp-chip" aria-pressed={docsKind === 'employee'} onClick={() => setDocsKind('employee')}>{t.docsEmployee}</button>
+              <button type="button" className="lp-chip" aria-pressed={docsKind === 'self'} onClick={() => setDocsKind('self')}>{t.docsSelf}</button>
+            </div>
           </div>
+          <p className="lp-privacy"><Lock size={18} aria-hidden="true" />{t.docsPrivacy}</p>
           <ol>
             {t.docsList[docsKind].map((d, i) => <li key={d}><span>{i + 1}</span>{d}</li>)}
           </ol>
-          <p className="lp-note" style={{ margin: 0 }}>{t.docsAnyCar} {t.docsNote}</p>
-          <p className="lp-salary" style={{ margin: 0 }}><b>{t.docsPrivacy}</b></p>
+          <p className="lp-note">{t.docsAnyCar} {t.docsNote}</p>
         </div>
-        ) : (<>
-        {/* Budget: the viewer's number in, the cars that fit out. */}
+        ) : (
+        /* Budget: the viewer's number in, the cars that fit out. */
         <div className="lp-card lp-bud">
-          <div className="lp-seg" role="group" aria-label={t.budgetIs}>
-            <button type="button" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
-            <button type="button" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
+          <div className="lp-head">
+            <h2 className="lp-name">{t.budgetTitle}</h2>
+            <p className="lp-cta">{t.budgetCta}</p>
           </div>
-          <label className="lp-money">
-            <span>RM</span>
-            <input type="number" inputMode="numeric" min="0" value={budgetAmount} placeholder="0"
-              aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
-              onChange={(e) => setBudgetAmount(e.target.value)} />
-          </label>
-          <div className="lp-budrow">
-            <label>
-              {t.depositRm}
-              <input className="lp-in" type="number" inputMode="numeric" min="0" placeholder={t.noDepositHint} value={budgetDown}
-                onChange={(e) => setBudgetDown(e.target.value)} />
-            </label>
-            <div className="lp-seg" role="group" aria-label={t.yearsAria}>
-              {TENURES.map((y) => (
-                <button key={y} type="button" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.yrsShort(y)}</button>
-              ))}
+          <div className="lp-bgrid">
+            <div className="lp-bcol">
+              <div className="lp-chips lp-chips2" role="group" aria-label={t.budgetIs}>
+                <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
+                <button type="button" className="lp-chip" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
+              </div>
+              <label className="lp-money">
+                <span>RM</span>
+                <input type="number" inputMode="numeric" min="0" value={budgetAmount} placeholder="0"
+                  aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
+                  onChange={(e) => setBudgetAmount(e.target.value)} />
+              </label>
+              {maxMonthly ? (<>
+                {/* The answer to "what can they pay a month", highlighted: for
+                    take-home pay it is the 35% share, worked out in front of them. */}
+                <p className="lp-work">
+                  {budgetKind === 'pay' && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}% <em>=</em> </>}
+                  <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
+                </p>
+                <p className="lp-salary">
+                  {bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}
+                  {budgetKind === 'pay' ? <><br />{t.roughRule(Math.round(SALARY_SHARE * 100))}</> : null}
+                </p>
+              </>) : null}
+            </div>
+            <div className="lp-bcol">
+              <span className="lp-lbl">{t.deposit}</span>
+              <div className="lp-chips lp-chips4" role="group" aria-label={t.deposit}>
+                <DepositChip editing={budgetDepEdit} value={budgetCustom} pressed={budgetDep === 'c'}
+                  label={Number(budgetCustom) > 0 ? `RM ${fmt(budgetCustom)}` : t.other} aria={t.customDeposit}
+                  onOpen={() => setBudgetDepEdit(true)} onType={typeBudgetDeposit} onClose={closeBudgetDeposit} />
+                {BUDGET_DOWNS.map((d) => (
+                  <button key={d} type="button" className="lp-chip" aria-pressed={budgetDep === d}
+                    onClick={() => { setBudgetDepEdit(false); setBudgetDep(d); }}>
+                    {d === 0 ? t.none : `RM ${d / 1000}k`}
+                  </button>
+                ))}
+              </div>
+              <span className="lp-lbl">{t.yearsAria}</span>
+              <div className="lp-chips lp-chips3" role="group" aria-label={t.yearsAria}>
+                {[...TENURES].reverse().map((y) => (
+                  <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
+                ))}
+              </div>
             </div>
           </div>
-          {maxMonthly ? (
-            <p className="lp-work" style={{ margin: 0 }}>
-              {budgetKind === 'pay' && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}% <em>=</em> </>}
-              {t.upTo}<b>RM {fmt(maxMonthly)}{t.perMonth}</b>
-              <br />{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}
-            </p>
-          ) : null}
-          {budgetKind === 'pay' && maxMonthly ? (
-            <p className="lp-salary" style={{ margin: 0 }}>{t.roughRule(Math.round(SALARY_SHARE * 100))}</p>
-          ) : null}
-        </div>
 
-        <div className="lp-card lp-res">
-          {!maxMonthly ? (
-            <p className="lp-empty">{t.budgetEmpty}</p>
-          ) : (<>
-            <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-            {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-            {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-            {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-            <p className="lp-note" style={{ marginBottom: 8 }}>
-              {t.budgetNote}
-              {anyHighValue ? t.budgetHigh : ''}
-            </p>
-          </>)}
+          <div className="lp-res">
+            {!maxMonthly ? (
+              <p className="lp-empty">{t.budgetEmpty}</p>
+            ) : (<>
+              <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
+              {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+              {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
+              {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+              <p className="lp-note">
+                {t.budgetNote}
+                {anyHighValue ? t.budgetHigh : ''}
+              </p>
+            </>)}
+          </div>
         </div>
-        </>)}
+        )}
         </div>
       </div>
 
@@ -1275,15 +1362,23 @@ function LiveReport({ report, onDone, t }) {
   );
 }
 
-// One number typed in place on the working (rebate / deposit / rate). Enter or
-// tapping away closes it; the value is live while typing. The row's own click
-// opens it, so the input stops the click from reaching the row again.
-function EditCell({ value, onChange, onDone, aria, decimal = false }) {
+// The first deposit chip: shows the typed amount (or "Other") with a pencil;
+// tapped, it turns into an RM box the same size, in the same slot, so the row
+// never moves. The sheet follows each keystroke; Enter or tapping away sets it.
+function DepositChip({ editing, value, pressed, label, aria, onOpen, onType, onClose }) {
+  if (editing) {
+    return (
+      <label className="lp-chip lp-chip-edit">
+        <span>RM</span>
+        <input autoFocus type="text" inputMode="numeric" aria-label={aria} value={value} placeholder="0"
+          onChange={(e) => onType(e.target.value)} onBlur={onClose}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+      </label>
+    );
+  }
   return (
-    <input className="lp-cellin" autoFocus type="number" min="0" step={decimal ? '0.01' : '1'}
-      inputMode={decimal ? 'decimal' : 'numeric'} aria-label={aria} value={value}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onChange(e.target.value)} onBlur={onDone}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+    <button type="button" className="lp-chip" aria-pressed={pressed} onClick={onOpen}>
+      {label}<Pencil size={13} aria-hidden="true" />
+    </button>
   );
 }

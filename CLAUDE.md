@@ -1464,9 +1464,22 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   live for a phone number (checked 2026-10-03), so never default it on or persist it.
   NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
   mini-page link) must not be the live tool.
-- **Cars screen = the poster layout** (owner, 2026-10-04): title, small photo | price -
-  deposit = loan at rate, deposit chips, (contact |) tenure rows 9/7/5 with the monthly,
-  "Comment #N" bar. Must fit the stage with no scroll at 375x667 and on desktop.
+- **Cars screen = one big number, at the top (LIVE-UI, owner 2026-10-22).** TikTok's comments
+  cover the bottom-left of the stream, so the top holds what a viewer must read: #N + title
+  with the "Comment #N" line beside it (a bar under it on a phone), then the picked monthly
+  (`.lp-big`, the ONLY big number) over three tenure tiles. Then the deposit chips, then the
+  read-only working (price - rebate - deposit = loan, a rule above the loan) and the rest
+  (totals, salary guide, notes, offer, contact). Must fit the stage with no scroll at 375x667
+  and on desktop. Designed on the canvas https://claude.ai/artifact/LCNR7RxPnyHxMHnkAeqEvC.
+- **Controls and answers are kept apart (owner, 2026-10-22).** A VIEWER's question is a tap
+  on stage: deposit chips, tenure tiles, variant, NCD. What the SELLER sets once lives in
+  Adjust: rate (EIR/flat), rebates, insurance, offer, "Target monthly" (fills the deposit).
+  The working is read-only. Never make a result row editable again: tapping a row to type
+  (2026-10-17, `EditCell`) left nobody able to tell a setting from a result.
+- **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed
+  into IN PLACE (same slot, same size, the sheet follows each keystroke, Enter or tapping
+  away sets it); empty or 0 = the None chip. Budget uses the same chip: `[RM x ✎] None
+  RM 10k RM 20k`. No +/- steppers: 30 taps to reach RM30k on camera.
 - The bridge is the bio link: `set_live_listing` (presenter, debounced + 4-min
   heartbeat, 10-min window) -> `seller_live_state` -> `get_salesman_live(slug)` polled
   by the mini page -> "Live now" card. Never let a client write that table directly.
@@ -1484,12 +1497,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Phone: one portrait stage (9:16 max). Desktop: phone height, TWICE its width**
   (owner, 2026-10-18). Sellers film their monitor with a phone held upright. The
   stage is laid out at `DESK_W` x `STAGE_H` (750x667, about square) and magnified
-  with CSS zoom to the screen height (`deskZoom`, `.lp-desk`). Two columns
-  (`.lp-cols`): car photo + price working on the left, deposit chips, tenure and
-  everything under it on the right. The full-screen wide sheet (2026-10-04)
-  spilled out of the camera frame; the phone-width column (morning of 2026-10-18)
-  was too small to read on camera. Do not go wider than DESK_W. On a phone the
-  column wrappers are `display: contents`, so the phone layout is untouched.
+  with CSS zoom to the screen height (`deskZoom`, `.lp-desk`). ONE grid, `.lp-grid`,
+  two arrangements by `grid-template-areas`: desktop = photo | answer, chips across,
+  working | rest; phone = answer, chips, photo | working, rest. The full-screen wide
+  sheet (2026-10-04) spilled out of the camera frame; the phone-width column (morning
+  of 2026-10-18) was too small to read on camera. Do not go wider than DESK_W.
   Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
   (80% floor, then it scrolls). Check the desktop sheet renders at zoom ~1.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
@@ -1497,16 +1509,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
-- **Numbers change in place (owner, 2026-10-17):** tap Rebate, Deposit or Rate in the
-  working and type (`EditCell`); Adjust still holds them. Contact, once switched on, is a
-  loud accent "Contact me" banner, but stays OFF by default (TikTok rule above).
+- Contact, once switched on, is a loud accent "Contact me" banner, but stays OFF by
+  default (TikTok rule above).
   The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
   per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
-  On the desktop stage it sits on the title's line, to the right (`.lp-head`), and
-  the title drops the variant name there (the picked button names it); on a phone
-  it stays under the title.
+  Its chips sit at the top of the answer block (`.lp-ans`), and the title drops the
+  variant name (the picked chip names it).
 - **Insurance in the loan (owner, 2026-10-18)**: Adjust > Insurance (Off | In the loan),
   remembered per device (`xd_live_ins`), starts Off. On: an "Insurance (est.)" row under
   Price and NCD pills under the working (0/25/30/38⅓/45/55, the viewer's, never typed).
@@ -1514,8 +1524,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   figure is ONE formula, `src/utils/motorInsurance.js` (the former PIAM tariff: first
   RM1,000 by cc + RM26/RM1,000 Peninsular, RM20.30 Sabah/Sarawak/Labuan, - NCD, + 8% SST
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
-  ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
-  says "Tap to type"; a typed figure wins for that car and hides the pills. Budget adds
+  ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate and no
+  row; the seller types the figure in Adjust > "Insurance on this car", which wins for
+  that car and hides the pills. Budget adds
   the same insurance (`budgetMatches` `extraFor`), a model card's with its variant's cc.
   `npm run test:live`.
 - **Every car the presenter names carries its VARIANT** (owner, 2026-10-21: "details is
@@ -1533,7 +1544,7 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   tenures follow the car's age (`tenuresFor`: about 15 years old at loan end, bank policy, the note
   says "usually"; new cars uncapped; Budget prices each car on the SAME rows the Cars screen offers,
   or the row and the car it opens disagree); `rateWarning` flags an EIR under 4% (a flat number on
-  the wrong switch) or over the HP Act cap (17% <=5y, 16% >5y); tapping the PICKED monthly takes a
+  the wrong switch) or over the HP Act cap (17% <=5y, 16% >5y); Adjust > "Target monthly" takes a
   target and fills the deposit (`depositToFit`, rounded UP to RM100); "just above" Budget rows say
   "+RM x deposit and it fits" and open with it; a TOTAL COUNTER under the salary guide (owner,
   2026-10-22: two tiles, "Total you pay" = deposit + every instalment, and "Interest"; `.lp-totals`).
@@ -1555,23 +1566,29 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   `.lp-stage`), never the browser window, so it is never wider than the calculator (owner,
   2026-10-22). Uncropped (`object-fit: contain`), tap halves / swipe / arrow keys step photos, X /
   Esc / Back close it (it registers `useModalHistory`). Not portalled: the presenter already is.
-- **Rebate = money off the price, per car, per live** (`netPrice`, liveMaths.js).
-  Typed in Adjust, never saved to the listing (promos change monthly). On a new-car model card
-  ONE rebate covers every variant (keyed by the listing; owner 2026-10-22: brands run one promo
-  per model) and it is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
-  (`xd_live_rebates`, `rebatesForMonth`), so the seller types this month's promo once. Rebates on
-  cars from the normal form are per live only, never saved. Loan =
+- **Rebate = money off the price, per car** (`netPrice`, liveMaths.js). Typed in Adjust >
+  Rebates (one list, every car, one box each), never saved to the listing or the server.
+  EVERY car's rebate is REMEMBERED ON THE DEVICE until the month ends, Malaysia time
+  (`xd_live_rebates`, `rebatesForMonth`, `monthEnd`; owner 2026-10-22, it was model cards
+  only). On a new-car model card ONE rebate covers every variant (keyed by the listing).
+  On another device the list starts empty (device storage, by design). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
   never counted as the buyer's deposit.
 - **Docs screen = what the bank asks the BUYER for** (top-bar "Docs", list in
   `liveCopy.js docsList`). One list for new, used and recon: the car does not change
   it, how the buyer earns does (Employee | Own business). Always says each bank sets
-  its own list, and "never post your IC or payslip in the comments". The top bar must
+  its own list, and "never post your IC or payslip in the comments", as the dark bar at
+  the TOP of the screen (`.lp-privacy`), out of the comment area. The top bar must
   fit three labels + four buttons at 360px in BM; check it after adding a button.
+- **ONE accent, on exactly three things (owner, 2026-10-22):** the #N badge, whatever is
+  selected (chips, tenure tile, NCD, variant), and the big monthly. Everything else is ink
+  on white on a neutral stage: no tinted rows, no gradient, no red corner glow, and the
+  top-bar tab, comment line and next button are ink, not accent. The rebate keeps green TEXT
+  only. Budget highlights the 35% result (`.lp-hl`).
 - **Accent colour is the seller's pick** (Adjust > Colour: 8 presets + any colour,
-  remembered per device, `xd_live_accent`). Every red in the presenter CSS is a
-  variable (`--lp-a`, `--lp-a1`, `--lp-a2`, `--lp-rgb`) set from
+  remembered per device, `xd_live_accent`). Every accent in the presenter CSS is a
+  variable (`--lp-a`, `--lp-a2`, `--lp-rgb`) set from
   `accentTheme()` in `src/utils/liveAccent.js`, which darkens a too-light pick until
   white text passes 3:1 (bold text) at the gradient's light end. Never hardcode a
   colour back into the presenter CSS, and never skip `accentTheme` for a new pick.

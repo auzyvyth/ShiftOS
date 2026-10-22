@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, clampRateInput, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
+  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -184,6 +184,8 @@ is('clamp: empty untouched', clampRateInput(''), '');
 // Saved rebates last the month, Malaysia time.
 is('month: MYT, not UTC', myMonth('2026-10-31T17:00:00Z'), '2026-11');
 is('month: same month', myMonth('2026-10-31T15:59:00Z'), '2026-10');
+is('month end: October', monthEnd('2026-10').toISOString().slice(0, 10), '2026-10-31');
+is('month end: February', monthEnd('2028-02').toISOString().slice(0, 10), '2028-02-29');
 is('saved: this month kept', rebatesForMonth({ month: '2026-10', rebates: { a: '3000', b: 0, c: 'x' } }, '2026-10'), { a: '3000' });
 is('saved: last month dropped', rebatesForMonth({ month: '2026-09', rebates: { a: '3000' } }, '2026-10'), {});
 is('saved: junk is empty', [rebatesForMonth(null, '2026-10'), rebatesForMonth({ month: '2026-10' }, '2026-10')], [{}, {}]);
