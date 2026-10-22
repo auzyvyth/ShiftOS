@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NEW_CAR_BRANDS } from '../utils/newCars';
+import StarterModelPicker, { useStarterModels } from '../components/newcar/StarterModelPicker';
 import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
@@ -258,11 +259,14 @@ export default function SalesmanOnboarding() {
     // Only when sells includes 'new_car' (NEWCAR-1): which brand's price list their
     // page shows. Prices come from the platform table, never typed by the seller.
     newCarBrand: '',
+    // NEWCAR-2: the models they tick get a card each, with the platform's photos.
+    newCarModels: [],
   });
 
   const slugTimer = useRef(null);
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
+  const starterModels = useStarterModels(form.sells.includes('new_car') ? form.newCarBrand : '');
 
   // SIGNUP-1: keep what they typed on steps 3-5 on this device as they go.
   useEffect(() => {
@@ -586,6 +590,13 @@ export default function SalesmanOnboarding() {
         const { error: icErr } = await supabase.rpc('set_my_ic', { p_ic: icDigits });
         if (icErr) throw icErr;
       }
+      // NEWCAR-2: the ticked models become cards now that state/city are saved
+      // (the price is per area). A failure here never blocks the signup: the
+      // seller can add them from Settings > New cars.
+      const ticked = form.sells.includes('new_car') ? (form.newCarModels || []) : [];
+      if (ticked.length) {
+        try { await supabase.rpc('new_car_add_cards', { p_models: ticked }); } catch { /* added later from Settings */ }
+      }
       sessionStorage.removeItem('ob_agreed');
       sessionStorage.removeItem('ob_plan_slug');
       sessionStorage.removeItem('ob_account_type');
@@ -607,7 +618,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
-    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sells: ['broker'], newCarBrand: '' });
+    setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sells: ['broker'], newCarBrand: '', newCarModels: [] });
     setStep(0);
   };
 
@@ -848,13 +859,13 @@ export default function SalesmanOnboarding() {
                 {form.sells.includes('new_car') ? (
                   <div style={{ marginBottom: 18 }}>
                     <label className="eo-label" style={{ marginTop: 10 }}>WHICH BRAND DO YOU SELL?</label>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {NEW_CAR_BRANDS.map((b) => {
                         const on = form.newCarBrand === b;
                         return (
-                          <button key={b} type="button" onClick={() => upd('newCarBrand')(b)}
+                          <button key={b} type="button" onClick={() => { upd('newCarBrand')(b); if (b !== form.newCarBrand) upd('newCarModels')([]); }}
                             style={{
-                              flex: 1, minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                              flex: '1 1 72px', minWidth: 0, padding: '9px 8px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
                               fontSize: 12.5, fontWeight: 700,
                               background: on ? 'rgba(220,38,38,0.1)' : 'rgba(255,255,255,0.03)',
                               border: `1px solid ${on ? 'rgba(220,38,38,0.45)' : 'rgba(255,255,255,0.09)'}`,
@@ -865,9 +876,20 @@ export default function SalesmanOnboarding() {
                         );
                       })}
                     </div>
-                    <p className="eo-hint" style={{ marginTop: 6 }}>
-                      You add the {form.newCarBrand || 'brand'} models you sell, one by one, with your own photos. The official price for your area fills in by itself.
-                    </p>
+                    {starterModels?.length ? (
+                      <>
+                        <label className="eo-label" style={{ marginTop: 14 }}>WHICH MODELS DO YOU SELL?</label>
+                        <StarterModelPicker brand={form.newCarBrand} models={starterModels}
+                          value={form.newCarModels} onChange={upd('newCarModels')} />
+                        <p className="eo-hint" style={{ marginTop: 6 }}>
+                          The ones you tick go on your page with photos, ready to share. The official price for your area fills in by itself. Add your own photos any time.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="eo-hint" style={{ marginTop: 6 }}>
+                        You add the {form.newCarBrand || 'brand'} models you sell from Add car. The official price for your area fills in by itself.
+                      </p>
+                    )}
                   </div>
                 ) : (
                 <p className="eo-hint" style={{ marginBottom: 18 }}>

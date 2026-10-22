@@ -15,9 +15,12 @@ import { newModelPath, readBuyerState } from '../../utils/newCars';
 // models with a live advisor card, so no tap lands on an empty page.
 
 // Logo files in /public/brands. A brand is listed here only once its CURRENT
-// logo is in that folder; the rest render as a wordmark. (proton.svg was the
-// ProtonMail logo and was deleted, 2026-10-22; BYD has no file.)
-const LOGOS = { Perodua: '/brands/perodua.svg', Toyota: '/brands/toyota.svg', Honda: '/brands/honda.svg' };
+// logo is in that folder; the rest render as a wordmark. (The old proton.svg was
+// the ProtonMail logo; proton.png + byd.png came from the owner, 2026-10-22.)
+const LOGOS = {
+  Proton: '/brands/proton.png', Perodua: '/brands/perodua.svg', Toyota: '/brands/toyota.svg',
+  BYD: '/brands/byd.png', Honda: '/brands/honda.svg',
+};
 
 const rmFrom = (n) => (n ? `From RM ${Number(n).toLocaleString('en-MY')}` : 'See prices');
 // A brand tile's price is its cheapest live model: the one number a buyer
@@ -86,7 +89,7 @@ export const NEW_CAR_PICKER_CSS = `
     transition:transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s cubic-bezier(.22,1,.36,1); }
   .mp-ncp-brand { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; min-height:118px; padding:18px 12px 14px; }
   .mp-ncp-mark { height:48px; display:flex; align-items:center; justify-content:center; }
-  .mp-ncp-mark img { max-height:48px; max-width:120px; object-fit:contain; }
+  .mp-ncp-mark img { max-height:48px; max-width:132px; object-fit:contain; }
   .mp-ncp-word { font-family:'Bebas Neue',sans-serif; font-size:34px; letter-spacing:.03em; line-height:1; color:#1d1d1f; }
   .mp-ncp-sub { font-size:12.5px; font-weight:500; color:#6e6e73; font-variant-numeric:tabular-nums; letter-spacing:.005em; }
   .mp-ncp-models { display:grid; grid-auto-flow:column; grid-auto-columns:minmax(140px,1fr); gap:12px; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; padding:4px 4px 10px; margin:-4px -4px 0; }

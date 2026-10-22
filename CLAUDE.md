@@ -465,7 +465,8 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   the model page's "Near" picker (device-remembered, `readBuyerState`) only SORTS advisors
   (that state, then its price zone), never filters, so no pick lands on an empty list.
   Brand logos: `LOGOS` in NewCarPicker, files in `public/brands/`; a brand without a CURRENT
-  logo file renders as a wordmark (the old proton.svg was the ProtonMail logo). Brands come from live model cards (`liveNewCarBrands`,
+  logo file renders as a wordmark (the old proton.svg was the ProtonMail logo; proton.png +
+  byd.png are the owner's files, trimmed onto a transparent background). Brands come from live model cards (`liveNewCarBrands`,
   `src/utils/newCars.js`), so Perodua/Toyota/Honda appear by themselves once an advisor
   posts. The hero car rows filter `is_model_card = false`: model cards had taken every
   "All cars" slot.
@@ -1377,14 +1378,22 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   calculator back into Lite without `src/utils/financing.js`.
 
 ## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
-Brand sales advisors (Proton/Perodua/Toyota/BYD) sell cars whose price the BRAND sets, per
+Brand sales advisors (Proton/Perodua/Toyota/BYD/Honda) sell cars whose price the BRAND sets, per
 variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,
-console > Marketplace > New car prices). **An advisor's page starts EMPTY like every
-account (owner, 2026-10-08, migration 20261008d):** nothing from the catalogue is listed
-for them; they add a CARD per variant they sell (below), and only cards show. Do not
-bring back an automatic price list on the mini page (it was built twice: opt-in ticks,
-then default-on; the owner rejected both as clutter). Settings > New cars is a brand
-picker + READ-ONLY price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
+console > Marketplace > New car prices). Only CARDS ever show on an advisor's page, never
+an automatic price list (built twice, rejected twice as clutter). **Since NEWCAR-2 (owner,
+2026-10-22, migration 20261022e, reverses "the page starts EMPTY") the advisor TICKS the
+models they sell** (`StarterModelPicker`, at signup and in Settings > New cars) and
+`new_car_add_cards()` makes a card each, carrying the platform's photos from
+`new_car_model_media` (uploaded per model in the console price tab). Such a card has
+`stock_photos = true`: it shows on the mini page and `/new-cars/:brand/:model`, but NOT in
+the showroom grid (CarListingPage, api/shell.js, api/og.js filter it), or twenty advisors
+put twenty identical cards of one model there. The flag drops when the seller changes the
+card's photos; a client can never set it (`trg_new_car_stock_photos`). A console photo
+change re-syncs every card still on stock photos. Only models with photos are offered.
+Photos must be ones the owner took or has the brand's written permission to use
+(Copyright Act 1987 s.36). Settings > New cars is otherwise a brand picker + READ-ONLY
+price list. `seller_hidden_models` is no longer written. Rebates are NOT stored on the server: promos expire (the ones in the owner's 2026-10-08
 file had); the presenter's rebate box is where a current one goes (kept on the device to month end). Never copy a new car into `car_listings`: it blows the listing cap,
 floods the marketplace with identical cards, goes stale when the brand changes a price,
 and the won-trigger marks it sold on the first deal.
