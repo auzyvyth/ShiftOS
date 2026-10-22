@@ -1,4 +1,4 @@
-// NEWCAR-1: shared wording + helpers for new-car advisors (Proton / Perodua / Toyota / BYD).
+// NEWCAR-1: shared wording + helpers for new-car advisors (Proton / Perodua / Toyota / BYD / Honda).
 //
 // The price itself is never worked out here. The zone (Peninsular, Sabah/Sarawak,
 // Labuan, Langkawi) and the zone price come from the DB (new_car_price_zone /
@@ -6,7 +6,7 @@
 // never disagree about which number a buyer sees. A null price means "not entered
 // for this zone" and must render as "ask", never as the Peninsular number.
 
-export const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD"];
+export const NEW_CAR_BRANDS = ["Proton", "Perodua", "Toyota", "BYD", "Honda"];
 
 export const PRICE_ZONES = [
   { key: "peninsular",    col: "price_peninsular",    label: "Peninsular" },

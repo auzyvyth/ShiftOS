@@ -1190,7 +1190,7 @@
       },
       "newcars": {
         "label": "New Cars",
-        "desc": "Proton, Perodua, Toyota & BYD prices"
+        "desc": "Proton, Perodua, Toyota, BYD & Honda prices"
       },
       "alerts": {
         "label": "Alerts",
@@ -2498,7 +2498,7 @@
     "recon": "Recon",
     "reconHint": "Imported, reconditioned, auction graded",
     "new": "New",
-    "newHint": "Proton, Perodua, Toyota or BYD, from the official price list",
+    "newHint": "Proton, Perodua, Toyota, BYD or Honda, from the official price list",
     "back": "Change car type",
     "which": "Which brand?",
     "whichHint": "The model list and the official price for your area fill in by themselves.",

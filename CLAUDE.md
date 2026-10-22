@@ -1377,7 +1377,7 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   calculator back into Lite without `src/utils/financing.js`.
 
 ## New-car advisors (NEWCAR-1, 2026-10-07) -- a price LIST, never listings
-Brand sales advisors (Proton/Perodua/Toyota/BYD) sell cars whose price the BRAND sets, per
+Brand sales advisors (Proton/Perodua/Toyota/BYD/Honda) sell cars whose price the BRAND sets, per
 variant, per zone. So there is ONE platform table, `new_car_models` (superadmin-write,
 console > Marketplace > New car prices). **An advisor's page starts EMPTY like every
 account (owner, 2026-10-08, migration 20261008d):** nothing from the catalogue is listed

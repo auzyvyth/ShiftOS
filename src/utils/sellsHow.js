@@ -12,7 +12,7 @@
 
 export const SELLS_OPTIONS = [
   { key: 'broker', title: 'Broker / Agent', sub: 'I sell for others, on commission' },
-  { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua, Toyota or BYD' },
+  { key: 'new_car', title: 'New car advisor', sub: 'I sell new Proton, Perodua, Toyota, BYD or Honda' },
   { key: 'private', title: 'Private Seller', sub: 'Just my own car' },
 ];
 
