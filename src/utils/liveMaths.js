@@ -173,10 +173,15 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
   };
 }
 
-// Saved rebates (new-car model cards only, liveCopy.js) last until the month
-// ends, Malaysia time: brand promos run by the month, and a rebate that
-// quietly outlived its promo would put a wrong price on stream.
+// Saved rebates (every car, liveCopy.js) last until the month ends, Malaysia
+// time: promos run by the month, and a rebate that quietly outlived its promo
+// would put a wrong price on stream.
 export const myMonth = (d = new Date()) => new Date(new Date(d).getTime() + 8 * 3600 * 1000).toISOString().slice(0, 7);
+// The last day of a 'YYYY-MM' month, as a UTC date (format it with timeZone UTC).
+export function monthEnd(month) {
+  const [y, m] = String(month).split('-').map(Number);
+  return new Date(Date.UTC(y, m, 0));
+}
 export function rebatesForMonth(saved, month = myMonth()) {
   if (!saved || saved.month !== month || typeof saved.rebates !== 'object' || !saved.rebates) return {};
   const out = {};
