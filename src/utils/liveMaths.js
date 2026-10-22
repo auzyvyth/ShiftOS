@@ -120,6 +120,15 @@ export function netPrice(car, rebates) {
 // The name a viewer hears: year, brand, model AND variant. "2022 Lexus IS"
 // is three different cars at three prices; the variant is the detail that
 // tells them which one this is (owner, 2026-10-21).
+// New Proton and Perodua cars start on their own rate (owner, 2026-10-22: 4.8%
+// EIR is what their loans usually run at). Used Protons and every other car
+// keep the standard rate: a used Saga at 4.8% would quote a monthly lower than
+// banks give. The seller can change both in Adjust.
+export const LOCAL_BRANDS = ['proton', 'perodua'];
+export const LOCAL_NEW_EIR = 4.8;
+export const isLocalNew = (c) => c?.condition === 'new'
+  && LOCAL_BRANDS.includes(String(c?.brand || '').trim().toLowerCase());
+
 export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(Boolean).join(' ');
 
 // A new-car model card can arrive here once per variant (the presenter expands
@@ -132,7 +141,8 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // A model card's row also carries `options`: every priced variant, cheapest
 // first, each with `fits`, so the Budget row can show which variants this
 // budget buys and let the seller switch between them (owner, 2026-10-22).
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor }) {
+// rateOf(car) -> { rate, basis }: the car's own rate (isLocalNew), else rate/basis.
+export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
   const down = Math.max(0, Number(deposit) || 0);
@@ -146,7 +156,8 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     const limit = yearsFor ? yearsFor(car) : years;
     const y = Math.min(years, limit || 0);
     if (y < 1) return;
-    const eir = eirForTenure(rate, basis, y);
+    const r = rateOf ? rateOf(car) : { rate, basis };
+    const eir = eirForTenure(r.rate, r.basis, y);
     const monthly = monthlyPayment(price + extra - down, eir, y * 12);
     const row = { n: car._n ?? i + 1, car, price, monthly, years: y };
     if (car._variantId) {

@@ -8,12 +8,12 @@ import {
 } from '../../utils/financing';
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
-  netPrice, carLabel, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
   initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
-  initialLiveRate, saveLiveRate,
+  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -187,7 +187,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       const opener = path.some((n) => n?.dataset?.adjustOpen !== undefined);
       if (!path.includes(adjustRef.current) && !opener) setAdjustOpen(false);
     };
-    const onKey = (e) => { if (e.key === 'Escape') setAdjustOpen(false); };
+    // Esc closes Adjust and stops there: React re-renders between listeners,
+    // so the presenter's own Esc (on window) would otherwise see Adjust shut
+    // and offer to end the live.
+    const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setAdjustOpen(false); } };
     document.addEventListener('click', onClick);
     document.addEventListener('keydown', onKey);
     return () => {
@@ -196,11 +199,30 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
   }, [adjustOpen]);
   const [showContact, setShowContact] = useState(false); // off every time: see header
-  // One rate for every car, remembered per device (liveCopy.js initialLiveRate).
-  const [savedRate] = useState(() => (embedded ? { eir: String(DEFAULT_EIR), basis: 'eir' } : initialLiveRate(DEFAULT_EIR, RATE_MAX)));
-  const [eir, setEir] = useState(savedRate.eir);
-  const [basis, setBasis] = useState(savedRate.basis); // 'eir' | 'flat' — how the seller typed the rate
-  useEffect(() => { if (!embedded) saveLiveRate(eir, basis); }, [eir, basis, embedded]);
+  // Two rates, each set once and remembered per device (liveCopy.js
+  // initialLiveRate): new Proton/Perodua (isLocalNew, 4.8% EIR to start) and
+  // every other car. Each car is worked on its own group's rate.
+  const [rates, setRates] = useState(() => {
+    const std = { eir: String(DEFAULT_EIR), basis: 'eir' };
+    const local = { eir: String(LOCAL_NEW_EIR), basis: 'eir' };
+    if (embedded) return { std, local };
+    return { std: initialLiveRate(DEFAULT_EIR, RATE_MAX), local: initialLiveRate(LOCAL_NEW_EIR, RATE_MAX, LIVE_RATE_LOCAL_KEY) };
+  });
+  const setRate = (group, patch) => setRates((r) => ({ ...r, [group]: { ...r[group], ...patch } }));
+  useEffect(() => {
+    if (embedded) return;
+    saveLiveRate(rates.std.eir, rates.std.basis);
+    saveLiveRate(rates.local.eir, rates.local.basis, LIVE_RATE_LOCAL_KEY);
+  }, [rates, embedded]);
+  // The rate rows Adjust shows: only the groups this live actually has.
+  const rateGroups = [
+    listings.some(isLocalNew) && 'local',
+    (!listings.length || listings.some((c) => !isLocalNew(c))) && 'std',
+  ].filter(Boolean);
+  const rateOf = (c) => {
+    const r = rates[isLocalNew(c) ? 'local' : 'std'];
+    return { rate: Math.max(0, Number(r.eir) || 0), basis: r.basis };
+  };
   const [customDown, setCustomDown] = useState('');
   // Rebate per car, never saved to the listing (promos change monthly). Every
   // car's rebate is remembered on this device until the month ends, Malaysia
@@ -218,7 +240,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [pick, setPick] = useState({ row: DEFAULT_DOWN, years: DEFAULT_TENURE });
   // The first deposit chip is typed into, in place.
   const [depEdit, setDepEdit] = useState(false);
-  const [adjustTab, setAdjustTab] = useState('settings'); // 'settings' | 'rebates'
+  const [adjustTab, setAdjustTab] = useState('car'); // 'car' | 'live' | 'look'
+  // Budget has no "this car", so it lands on Live.
+  const adjTab = mode !== 'cars' && adjustTab === 'car' ? 'live' : adjustTab;
   // The Rebate line on the sheet is typed into in place (owner, 2026-10-22: a
   // seller found opening Adjust for one car's rebate slower than the old way).
   // Adjust > Rebates stays for setting every car before a live.
@@ -355,7 +379,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   }, [idx, listings]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
-  const rate = Math.max(0, Number(eir) || 0);
+  // This car's rate group, its rate and how it was quoted.
+  const rateGroup = isLocalNew(shown) ? 'local' : 'std';
+  const { rate, basis } = rateOf(shown);
   // Insurance for a car: typed figure first, else the tariff estimate off the
   // price before rebate (the car's value) and its engine cc (a model card's
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
@@ -564,7 +590,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     }));
   });
   const matches = budgetMatches(budgetCars, {
-    maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates,
+    maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates, rateOf,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
     // The same tenure rows the Cars screen offers this car, so the row and the
     // car it opens show the same monthly.
@@ -757,6 +783,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .lp-adjhead { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
         .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
+        .lp-adjcar { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; margin: 0; font-size: 15px; color: #0f1115; min-width: 0; }
+        .lp-adjcar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-reb-in.lp-reb-big { height: 44px; }
+        .lp-reb-big input { flex: 1; width: auto; min-width: 0; font-size: 16px; }
+        .lp-rate { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; }
+        .lp-rate-row { display: flex; gap: 8px; align-items: center; }
+        .lp-rate-in { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; background: #fff; }
+        .lp-rate-in input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 16px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
+        .lp-rate-in span { font-size: 14px; font-weight: 700; color: #6b7280; }
+        .lp-rate-row .lp-seg { flex-shrink: 0; }
         .lp-confirm { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15,17,21,.45); }
         .lp-confirm-card { width: 100%; max-width: 320px; padding: 18px; border-radius: 14px; background: #fff; color: #0f1115; box-shadow: 0 12px 32px rgba(0,0,0,.25); }
         .lp-confirm-card h2 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
@@ -916,20 +952,85 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         <div className="lp-fit" ref={fitRef}>
         {adjustOpen && mode !== 'docs' && (
           <div ref={adjustRef} className="lp-card lp-adjust">
-            {/* Two tabs: this live's settings, and every car's rebate in one list. */}
+            {/* Three tabs, by WHEN the seller needs them (owner, 2026-10-22: one long
+                list was "leceh"). This car = mid-live; Live = once before going
+                live; Look = rarely. No close button of its own: the top bar's X
+                closes Adjust (requestExit), and so does a tap outside. */}
             <div className="lp-adjhead">
               <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
-                <button type="button" aria-pressed={adjustTab === 'settings'} onClick={() => setAdjustTab('settings')}>{t.adjSettings}</button>
-                <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
-                  {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
-                </button>
+                {mode === 'cars' && (
+                  <button type="button" aria-pressed={adjTab === 'car'} onClick={() => setAdjustTab('car')}>{t.adjCar}</button>
+                )}
+                <button type="button" aria-pressed={adjTab === 'live'} onClick={() => setAdjustTab('live')}>{t.adjLive}</button>
+                <button type="button" aria-pressed={adjTab === 'look'} onClick={() => setAdjustTab('look')}>{t.adjLook}</button>
               </div>
-              {/* No close button of its own: the top bar's X closes Adjust while it
-                  is open (one close spot, see requestExit), and so does a tap outside. */}
             </div>
-            {adjustTab === 'rebates' ? (
+
+            {adjTab === 'car' && car && (<>
+              <p className="lp-adjcar"><span className="lp-badge">#{idx + 1}</span><b>{carLabel(shown)}</b></p>
+              {price > 0 && (
+                <label className="lp-wide">
+                  {t.rebate}
+                  <span className={rebate > 0 ? 'lp-reb-in lp-reb-big lp-on' : 'lp-reb-in lp-reb-big'}>
+                    <span>- RM</span>
+                    <input type="text" inputMode="numeric" placeholder="0" value={rebates[rk] ?? ''}
+                      onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [rk]: d })); }} />
+                  </span>
+                </label>
+              )}
+              <label className="lp-wide">
+                {t.targetMonthly}
+                <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
+                  disabled={!canLoan} onChange={(e) => applyTarget(e.target.value)} />
+                <small className="lp-hint">{t.targetHint}</small>
+              </label>
+              {insOn && price > 0 && (
+                <label className="lp-wide">
+                  {t.insuranceThisCar}
+                  <input className="lp-in" type="number" inputMode="numeric" min="0"
+                    placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
+                    onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
+                </label>
+              )}
+              <p className="lp-hint">{t.carRateNote(`${fmtRate(rate)}% ${basis === 'flat' ? t.flat : 'EIR'}`)}</p>
+            </>)}
+
+            {adjTab === 'live' && (<>
+              {/* One row per rate group the seller actually has on this live. */}
+              {rateGroups.map((g) => {
+                const r = rates[g];
+                return (
+                  <div className="lp-wide lp-rate" key={g}>
+                    <label htmlFor={`lp-rate-${g}`}>{rateGroups.length > 1 ? (g === 'local' ? t.rateLocal : t.rateOther) : t.rateLabel}</label>
+                    <div className="lp-rate-row">
+                      <span className="lp-rate-in">
+                        <input id={`lp-rate-${g}`} type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX}
+                          value={r.eir} onChange={(e) => setRate(g, { eir: clampRateInput(e.target.value) })} />
+                        <span>%</span>
+                      </span>
+                      <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
+                        <button type="button" aria-pressed={r.basis === 'eir'} onClick={() => setRate(g, { basis: 'eir' })}>EIR</button>
+                        <button type="button" aria-pressed={r.basis === 'flat'} onClick={() => setRate(g, { basis: 'flat' })}>{t.flat}</button>
+                      </div>
+                    </div>
+                    {r.basis === 'flat' && (
+                      <small className="lp-hint">
+                        {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(eirForTenure(Math.max(0, Number(r.eir) || 0), 'flat', y))}%`).join(', '))}
+                      </small>
+                    )}
+                  </div>
+                );
+              })}
+              <div className="lp-wide lp-insadj">
+                <span>{t.insuranceLabel}</span>
+                <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
+                  <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
+                  <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
+                </div>
+                <small className="lp-hint">{t.insuranceHint}</small>
+              </div>
               <div className="lp-wide lp-rebs">
-                <p className="lp-rebs-h"><b>{t.rebatesTitle}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
+                <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
                 {listings.map((c, i) => {
                   const v = rebates[c.id] ?? '';
                   const on = Number(v) > 0;
@@ -956,71 +1057,32 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 })}
                 <p className="lp-hint">{t.rebateModelNote}</p>
               </div>
-            ) : (<>
-            <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
-              <button type="button" aria-pressed={basis === 'eir'} onClick={() => setBasis('eir')}>EIR</button>
-              <button type="button" aria-pressed={basis === 'flat'} onClick={() => setBasis('flat')}>{t.flatBrochure}</button>
-            </div>
-            <label style={mode === 'budget' ? { gridColumn: '1 / -1' } : undefined}>
-              {basis === 'flat' ? t.rateFlat : t.rateEir}
-              <input className="lp-in" type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX} value={eir} onChange={(e) => setEir(clampRateInput(e.target.value))} />
-            </label>
-            {mode === 'cars' && (
-              <label>
-                {t.targetMonthly}
-                <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
-                  disabled={!canLoan} onChange={(e) => applyTarget(e.target.value)} />
-              </label>
-            )}
-            {mode === 'cars' && <p className="lp-hint">{t.targetHint}</p>}
-            <div className="lp-wide lp-insadj">
-              <span>{t.insuranceLabel}</span>
-              <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
-                <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
-                <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
+            </>)}
+
+            {adjTab === 'look' && (<>
+              <div className="lp-colours" role="group" aria-label={t.colour}>
+                <span>{t.colour}</span>
+                {ACCENT_PRESETS.map((c) => (
+                  <button key={c} type="button" className="lp-sw" style={{ background: accentTheme(c).accent }}
+                    aria-label={c} aria-pressed={theme.accent === accentTheme(c).accent} onClick={() => pickAccent(c)} />
+                ))}
+                {/* Any colour; a too-light pick is darkened so white text stays readable. */}
+                <label className="lp-sw lp-sw-any" aria-label={t.colourAny}
+                  data-on={ACCENT_PRESETS.every((c) => accentTheme(c).accent !== theme.accent) ? '1' : '0'}>
+                  <input type="color" value={theme.accent.toLowerCase()} onChange={(e) => pickAccent(e.target.value)} />
+                </label>
               </div>
-              <small className="lp-hint">{t.insuranceHint}</small>
-            </div>
-            {mode === 'cars' && insOn && price > 0 && (
-              <label className="lp-wide">
-                {t.insuranceThisCar}
-                <input className="lp-in" type="number" inputMode="numeric" min="0"
-                  placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
-                  onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
-              </label>
-            )}
-            {mode === 'cars' && (
               <label className="lp-wide">
                 {t.ctaLabel}
                 <input className="lp-in" type="text" maxLength={CTA_MAX} placeholder={t.cta('')}
                   value={ctaCustom} onChange={(e) => changeCta(e.target.value)} />
                 <small className="lp-hint">{t.ctaHint}</small>
               </label>
-            )}
-            {mode === 'cars' && (
               <label className="lp-wide">
                 {t.offerLabel}
                 <input className="lp-in" type="text" maxLength={OFFER_MAX} value={offer} onChange={(e) => changeOffer(e.target.value)} />
                 <small className="lp-hint">{t.offerHint}</small>
               </label>
-            )}
-            <div className="lp-colours" role="group" aria-label={t.colour}>
-              <span>{t.colour}</span>
-              {ACCENT_PRESETS.map((c) => (
-                <button key={c} type="button" className="lp-sw" style={{ background: accentTheme(c).accent }}
-                  aria-label={c} aria-pressed={theme.accent === accentTheme(c).accent} onClick={() => pickAccent(c)} />
-              ))}
-              {/* Any colour; a too-light pick is darkened so white text stays readable. */}
-              <label className="lp-sw lp-sw-any" aria-label={t.colourAny}
-                data-on={ACCENT_PRESETS.every((c) => accentTheme(c).accent !== theme.accent) ? '1' : '0'}>
-                <input type="color" value={theme.accent.toLowerCase()} onChange={(e) => pickAccent(e.target.value)} />
-              </label>
-            </div>
-            {basis === 'flat' && (
-              <p className="lp-hint">
-                {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(rateFor(y))}%`).join(', '))}
-              </p>
-            )}
             </>)}
           </div>
         )}
@@ -1182,7 +1244,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {rateWarn && (
                 <p className="lp-warn">
                   {rateWarn === 'looksFlat'
-                    ? <>{t.looksFlat}<button type="button" onClick={() => setBasis('flat')}>{t.switchFlat}</button></>
+                    ? <>{t.looksFlat}<button type="button" onClick={() => setRate(rateGroup, { basis: 'flat' })}>{t.switchFlat}</button></>
                     : t.aboveCap(eirCap(pickYears))}
                 </p>
               )}

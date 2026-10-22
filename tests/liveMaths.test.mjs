@@ -1,7 +1,7 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap } from '../src/utils/liveMaths.js';
+  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -201,6 +201,20 @@ is('options: row is the dearest that fits', vb.fits[0].car._variantId, 'v2');
 is('options: every variant, cheapest first', vb.fits[0].options.map((o) => o.car._variantId), ['v1', 'v2', 'v3']);
 is('options: fits flags', vb.fits[0].options.map((o) => o.fits), [true, true, false]);
 is('options: a plain car has none', budgetMatches([{ id: 'p', selling_price: 30000 }], { maxMonthly: 5000, years: 7, rate: 6.5, basis: 'eir' }).fits[0].options, undefined);
+
+// New Proton / Perodua start on their own rate; used ones and other brands do not.
+is('local: new Proton', isLocalNew({ brand: 'Proton', condition: 'new' }), true);
+is('local: new PERODUA', isLocalNew({ brand: ' PERODUA ', condition: 'new' }), true);
+is('local: used Proton', isLocalNew({ brand: 'Proton', condition: 'used' }), false);
+is('local: new Toyota', isLocalNew({ brand: 'Toyota', condition: 'new' }), false);
+is('local: default rate', LOCAL_NEW_EIR, 4.8);
+// Budget prices each car on its own rate when rateOf is given.
+const twoCars = [{ id: 'a', brand: 'Proton', condition: 'new', selling_price: 80000 }, { id: 'b', brand: 'Honda', condition: 'used', selling_price: 80000 }];
+const rbLocal = budgetMatches(twoCars, { maxMonthly: 5000, years: 7, rate: 6.5, basis: 'eir',
+  rateOf: (c) => (isLocalNew(c) ? { rate: 4.8, basis: 'eir' } : { rate: 6.5, basis: 'eir' }) });
+const mOf = (id) => rbLocal.fits.find((r) => r.car.id === id).monthly;
+is('budget rateOf: Proton at 4.8', Math.round(mOf('a')), Math.round(monthlyPayment(80000, 4.8, 84)));
+is('budget rateOf: Honda at 6.5', Math.round(mOf('b')), Math.round(monthlyPayment(80000, 6.5, 84)));
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
