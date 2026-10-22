@@ -1531,7 +1531,7 @@ export default function SalesmanLite() {
 
       const { data: profileData, error: profileErr } = await supabase
         .from("profiles")
-        .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done, seller_type, new_car_brand")
+        .select("id, email, role, is_active, plan_expires_at, payment_status, slug, dealership, site_name, whatsapp_number, brand_color, avatar_url, cover_url, job_title, telegram_chat_id, dealer_id, full_name, plan, city, state, location, bio, starter_tasks, ic_hash, ic_last4, ic_verified_at, ic_deadline, created_at, account_status, approval_status, rejection_reason, is_verified, kyc_submitted_at, deleted_at, instagram, tiktok, facebook, website, lite_goal, onboarding_complete, onboarding_tour_done, seller_type, new_car_brand")
         .eq("id", uid)
         .maybeSingle();
 
@@ -6612,7 +6612,7 @@ export default function SalesmanLite() {
           </div>
               </>
             )}
-            {snav === "premium" && <PremiumUpgradeCard profile={profile} onRefer={() => setSettingsNav("refer")} />}
+            {snav === "premium" && <PremiumUpgradeCard profile={profile} cars={myListings} onRefer={() => setSettingsNav("refer")} />}
             {snav === "refer" && <ReferralCard slug={profile?.slug} />}
             {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
             {snav === "account" && (
