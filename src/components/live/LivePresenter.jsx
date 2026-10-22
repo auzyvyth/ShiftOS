@@ -163,17 +163,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [adjustOpen, setAdjustOpen] = useState(false);
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
   // 'click', not 'pointerdown': the tapped control acts first, then the panel
-  // closes, so the layout never shifts under a finger mid-tap. The sliders
-  // button is excluded or its own toggle would reopen the panel.
+  // closes, so the layout never shifts under a finger mid-tap. Anything that
+  // OPENS the panel (the sliders button, the Rebate line) carries
+  // data-adjust-open, or the click that opened it would close it again.
   const adjustRef = useRef(null);
-  const adjustBtnRef = useRef(null);
   useEffect(() => {
     if (!adjustOpen) return undefined;
     // composedPath is fixed at dispatch, so a control that re-renders out of
     // the DOM during its own click still counts as inside.
     const onClick = (e) => {
       const path = e.composedPath();
-      if (!path.includes(adjustRef.current) && !path.includes(adjustBtnRef.current)) setAdjustOpen(false);
+      const opener = path.some((n) => n?.dataset?.adjustOpen !== undefined);
+      if (!path.includes(adjustRef.current) && !opener) setAdjustOpen(false);
     };
     const onKey = (e) => { if (e.key === 'Escape') setAdjustOpen(false); };
     document.addEventListener('click', onClick);
@@ -204,6 +205,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // The first deposit chip is typed into, in place.
   const [depEdit, setDepEdit] = useState(false);
   const [adjustTab, setAdjustTab] = useState('settings'); // 'settings' | 'rebates'
+  // The Rebate line on the sheet opens Adjust > Rebates on that car's box.
+  const [rebateFocus, setRebateFocus] = useState(null);
+  const openRebates = (id) => { setAdjustTab('rebates'); setAdjustOpen(true); setRebateFocus(id); };
+  useEffect(() => {
+    if (!adjustOpen || adjustTab !== 'rebates' || !rebateFocus) return;
+    const el = document.getElementById(`lp-reb-${rebateFocus}`);
+    if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
+    setRebateFocus(null);
+  }, [adjustOpen, adjustTab, rebateFocus]);
   // Adjust > "Fit a monthly": a target monthly works out the deposit it needs.
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
@@ -733,6 +743,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         /* Adjust: the seller's settings, never on the viewer's screen for long. */
         .lp-adjust { padding: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .lp-adjhead { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; }
+        .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
+        .lp-adjclose { flex-shrink: 0; width: 42px; height: 42px; border: none; border-radius: 10px; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lp-brk tr.lp-tap { cursor: pointer; }
+        .lp-brk .lp-pen { margin-left: 6px; vertical-align: -1px; opacity: .55; }
         .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
         .lp-in { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-in:focus { outline: none; border-color: #0f1115; }
@@ -862,7 +877,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </button>
           )}
           {!report && mode !== 'docs' && (
-            <button ref={adjustBtnRef} className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
+            <button data-adjust-open="" className="lp-iconbtn" onClick={() => setAdjustOpen((v) => !v)} aria-label={t.adjust} aria-pressed={adjustOpen}>
               <SlidersHorizontal size={17} />
             </button>
           )}
@@ -878,10 +893,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         {adjustOpen && mode !== 'docs' && (
           <div ref={adjustRef} className="lp-card lp-adjust">
             {/* Two tabs: this live's settings, and every car's rebate in one list. */}
-            <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
-              <button type="button" aria-pressed={adjustTab === 'settings'} onClick={() => setAdjustTab('settings')}>{t.adjSettings}</button>
-              <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
-                {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
+            <div className="lp-adjhead">
+              <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
+                <button type="button" aria-pressed={adjustTab === 'settings'} onClick={() => setAdjustTab('settings')}>{t.adjSettings}</button>
+                <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
+                  {t.adjRebates}{rebateCount > 0 ? ` · ${rebateCount}` : ''}
+                </button>
+              </div>
+              {/* Close (owner, 2026-10-22): a tap outside also closes it, but on a
+                  phone the panel fills the screen and there is no "outside". */}
+              <button type="button" className="lp-adjclose" onClick={() => setAdjustOpen(false)} aria-label={t.closeAdjust}>
+                <X size={18} />
               </button>
             </div>
             {adjustTab === 'rebates' ? (
@@ -1088,8 +1110,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   {price > 0 && insOn && ins > 0 && (
                     <tr><td>{(insTyped[car.id] ?? '') === '' ? t.insuranceEst : t.insurance}</td><td>+ <Money n={ins} /></td></tr>
                   )}
-                  {price > 0 && rebate > 0 && (
-                    <tr className="lp-r-reb"><td>{t.rebate}</td><td>- <Money n={rebate} /></td></tr>
+                  {/* New cars always show the Rebate line (brands run promos every
+                      month); tapping it opens Adjust > Rebates on this car's box. */}
+                  {price > 0 && (rebate > 0 || shown.condition === 'new') && (
+                    <tr className="lp-r-reb lp-tap" data-adjust-open="" role="button" tabIndex={0} aria-label={t.rebateEdit}
+                      onClick={() => openRebates(rk)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRebates(rk); } }}>
+                      <td>{t.rebate}</td>
+                      <td>{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}<Pencil size={12} aria-hidden="true" className="lp-pen" /></td>
+                    </tr>
                   )}
                   {financeable && (<>
                     <tr><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>

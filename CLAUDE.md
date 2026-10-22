@@ -1475,7 +1475,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   on stage: deposit chips, tenure tiles, variant, NCD. What the SELLER sets once lives in
   Adjust: rate (EIR/flat), rebates, insurance, offer, "Target monthly" (fills the deposit).
   The working is read-only. Never make a result row editable again: tapping a row to type
-  (2026-10-17, `EditCell`) left nobody able to tell a setting from a result.
+  (2026-10-17, `EditCell`) left nobody able to tell a setting from a result. The one
+  tappable row is Rebate, and it OPENS Adjust > Rebates on that car's box (`openRebates`);
+  it never turns into an input. Adjust has a close button (`.lp-adjclose`, the accent
+  colour): on a phone the panel fills the screen, so "tap outside" was no way out. A
+  control that opens Adjust carries `data-adjust-open`, or its own click closes it again.
 - **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed
   into IN PLACE (same slot, same size, the sheet follows each keystroke, Enter or tapping
   away sets it); empty or 0 = the None chip. Budget uses the same chip: `[RM x ✎] None
@@ -1574,7 +1578,8 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   On another device the list starts empty (device storage, by design). Loan =
   price - rebate - deposit; deposit % chips and the Budget tab use the net price.
   Shown as a "- RM x" line under the price: never a crossed-out "was" price, and
-  never counted as the buyer's deposit.
+  never counted as the buyer's deposit. A NEW car always shows the line, "None" until
+  set (owner, 2026-10-22: brands run a promo every month); other cars only once set.
 - **Docs screen = what the bank asks the BUYER for** (top-bar "Docs", list in
   `liveCopy.js docsList`). One list for new, used and recon: the car does not change
   it, how the buyer earns does (Employee | Own business). Always says each bank sets
