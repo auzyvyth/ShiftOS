@@ -1480,8 +1480,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Adjust: rate (EIR/flat), rebates, insurance, offer, "Target monthly" (fills the deposit).
   The working is read-only. Never make a result row editable again: tapping a row to type
   (2026-10-17, `EditCell`) left nobody able to tell a setting from a result. The one
-  tappable row is Rebate, and it OPENS Adjust > Rebates on that car's box (`openRebates`);
-  it never turns into an input. Adjust has a close button (`.lp-adjclose`, the accent
+  exception is Rebate (owner, 2026-10-22, after a seller said opening Adjust for one car was
+  slower): tapping its line turns the number into a box typed in place (`rebateEdit`, Enter
+  or tapping away sets it). Adjust > Rebates stays for setting every car before a live.
+  Do not extend this to deposit, rate or loan. Adjust has a close button (`.lp-adjclose`, the accent
   colour): on a phone the panel fills the screen, so "tap outside" was no way out. A
   control that opens Adjust carries `data-adjust-open`, or its own click closes it again.
 - **Deposit chips: `[RM x ✎] None 10% 20% 30%`** (`DepositChip`). The first chip is typed

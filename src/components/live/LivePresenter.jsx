@@ -209,15 +209,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // The first deposit chip is typed into, in place.
   const [depEdit, setDepEdit] = useState(false);
   const [adjustTab, setAdjustTab] = useState('settings'); // 'settings' | 'rebates'
-  // The Rebate line on the sheet opens Adjust > Rebates on that car's box.
-  const [rebateFocus, setRebateFocus] = useState(null);
-  const openRebates = (id) => { setAdjustTab('rebates'); setAdjustOpen(true); setRebateFocus(id); };
-  useEffect(() => {
-    if (!adjustOpen || adjustTab !== 'rebates' || !rebateFocus) return;
-    const el = document.getElementById(`lp-reb-${rebateFocus}`);
-    if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
-    setRebateFocus(null);
-  }, [adjustOpen, adjustTab, rebateFocus]);
+  // The Rebate line on the sheet is typed into in place (owner, 2026-10-22: a
+  // seller found opening Adjust for one car's rebate slower than the old way).
+  // Adjust > Rebates stays for setting every car before a live.
+  const [rebateEdit, setRebateEdit] = useState(false);
   // Adjust > "Fit a monthly": a target monthly works out the deposit it needs.
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
@@ -368,6 +363,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setImgIdx(0);
     setPhotoFull(false);
     setDepEdit(false);
+    setRebateEdit(false);
   }, [listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -751,6 +747,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
         .lp-adjclose { flex-shrink: 0; width: 42px; height: 42px; border: none; border-radius: 10px; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-brk tr.lp-tap { cursor: pointer; }
+        .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         /* Tailwind preflight makes every svg display:block, which dropped the pen onto
            its own line under the number. Inline, and BEFORE the number so the
            figures keep one right edge. */
@@ -1109,7 +1106,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             )}
 
             {/* The working, line by line: price - rebate - deposit = loan, at this rate.
-                Read-only: rebate and rate are set in Adjust, the deposit on the chips. */}
+                Rebate is typed in place on its line; rate is set in Adjust, the deposit on the chips. */}
             <div className="lp-brkwrap">
               <table className="lp-brk">
                 <tbody>
@@ -1118,14 +1115,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     <tr><td>{(insTyped[car.id] ?? '') === '' ? t.insuranceEst : t.insurance}</td><td>+ <Money n={ins} /></td></tr>
                   )}
                   {/* New cars always show the Rebate line (brands run promos every
-                      month); tapping it opens Adjust > Rebates on this car's box. */}
-                  {price > 0 && (rebate > 0 || shown.condition === 'new') && (
-                    <tr className="lp-r-reb lp-tap" data-adjust-open="" role="button" tabIndex={0} aria-label={t.rebateEdit}
-                      onClick={() => openRebates(rk)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRebates(rk); } }}>
-                      <td>{t.rebate}</td>
-                      <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
-                    </tr>
+                      month); tapping it turns the number into a box, typed in place. */}
+                  {price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
+                    rebateEdit ? (
+                      <tr className="lp-r-reb">
+                        <td>{t.rebate}</td>
+                        <td>
+                          <input className="lp-cellin" autoFocus type="text" inputMode="numeric" placeholder="0"
+                            aria-label={t.rebateEdit} value={rebates[rk] ?? ''}
+                            onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setRebates((r) => ({ ...r, [rk]: d })); }}
+                            onBlur={() => setRebateEdit(false)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr className="lp-r-reb lp-tap" role="button" tabIndex={0} aria-label={t.rebateEdit}
+                        onClick={() => setRebateEdit(true)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setRebateEdit(true); } }}>
+                        <td>{t.rebate}</td>
+                        <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
+                      </tr>
+                    )
                   )}
                   {financeable && (<>
                     <tr><td>{t.deposit}</td><td>{picked.down > 0 ? <>- <Money n={picked.down} /></> : t.none}</td></tr>
