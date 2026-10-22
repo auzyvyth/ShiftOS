@@ -91,8 +91,8 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   `pg_stat_wal`, cron runs per job last 24h (`cron.job_run_details`), `pg_stat_user_tables` top
   n_tup_ins/upd/del, `pg_stat_statements` by wal_bytes, `realtime.subscription` count. Confirm or
   drop the WAL-switch theory before cutting.
-- [ ] **IO-5 Quiet cron (after-midnight slot, one migration):** check `20261021d_cron_diet.sql` is
-  applied; appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
+- [ ] **IO-5 Quiet cron (after-midnight slot, one migration):** `20261021d_cron_diet.sql` IS applied
+  (job 12 went 4/h -> 2/h, job 3 2/h -> every 3 h, from ~15:00 UTC Oct 21, 6 h before the freeze); appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
   widened 10 -> 20 min (`supabase/functions/appointment-reminder/index.ts:42`) in the same change;
   same review for 17 (15 min), ask-viewing-outcomes (hourly 1-13), sweep-premium-lapses (18, hourly).
 - [ ] **IO-6 Drop realtime on hidden tabs (client only, staging any time):** disconnect realtime
