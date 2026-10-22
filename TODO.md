@@ -91,8 +91,9 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   `pg_stat_wal`, cron runs per job last 24h (`cron.job_run_details`), `pg_stat_user_tables` top
   n_tup_ins/upd/del, `pg_stat_statements` by wal_bytes, `realtime.subscription` count. Confirm or
   drop the WAL-switch theory before cutting.
-- [ ] **IO-5 Quiet cron — WRITTEN 2026-10-22, NOT APPLIED: `20261022a_cron_align.sql` + appointment-reminder
-  look-back 20 min (deploy the function FIRST, then the migration).** Measured: archive_timeout=2min,
+- [ ] **IO-5 Quiet cron — APPLIED 2026-10-22 ~02:10 UTC (owner: "apply it now"): appointment-reminder v19
+  (look-back 20 min) deployed first, then `20261022a_cron_align.sql`. Remaining: compare the archive
+  rate (pg_stat_archiver.archived_count per hour) against the 24/h measured before, then delete.** Measured: archive_timeout=2min,
   188 kB WAL vs 18 segments archived in 44 min. Was: `20261021d_cron_diet.sql` IS applied
   (job 12 went 4/h -> 2/h, job 3 2/h -> every 3 h, from ~15:00 UTC Oct 21, 6 h before the freeze); appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
   widened 10 -> 20 min (`supabase/functions/appointment-reminder/index.ts:42`) in the same change;

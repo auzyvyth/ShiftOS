@@ -37,8 +37,8 @@ Deno.serve(async (req) => {
     // Window: remind_at is between now-20min and now. The lookback covers the cron
     // cadence (every 15 min since 20261022a_cron_align.sql, IO-5) plus a late tick,
     // so no reminder falls between two runs. The cron job's own guard uses the same
-    // 20 min; change both together. The remind_sent=false filter guarantees each appointment is only
-    // notified once even though 2 consecutive ticks may both see it in-window.
+    // 20 min; change both together. The remind_sent=false filter guarantees each
+    // appointment is only notified once even though 2 ticks may both see it in-window.
     const now = new Date();
     const windowStart = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
     const windowEnd = now.toISOString();
