@@ -465,7 +465,8 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   the model page's "Near" picker (device-remembered, `readBuyerState`) only SORTS advisors
   (that state, then its price zone), never filters, so no pick lands on an empty list.
   Brand logos: `LOGOS` in NewCarPicker, files in `public/brands/`; a brand without a CURRENT
-  logo file renders as a wordmark (the old proton.svg was the ProtonMail logo). Brands come from live model cards (`liveNewCarBrands`,
+  logo file renders as a wordmark (the old proton.svg was the ProtonMail logo; proton.png +
+  byd.png are the owner's files, trimmed onto a transparent background). Brands come from live model cards (`liveNewCarBrands`,
   `src/utils/newCars.js`), so Perodua/Toyota/Honda appear by themselves once an advisor
   posts. The hero car rows filter `is_model_card = false`: model cards had taken every
   "All cars" slot.
