@@ -2548,6 +2548,18 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-20: Make Drevo readable by AI agents, not only people (owner, 2026-10-22)** —
+  buyers are starting to shop through ChatGPT/Claude (CarMax launched a ChatGPT app,
+  Feb 2026; a US buyer had an open-source agent negotiate a car with dealers). Idea:
+  a read-only agent door (MCP server / Auto Agent Protocol-style "search inventory" +
+  "submit lead") over `public_car_listings`, plus clean structured data on car pages
+  (already half there via `api/og.js` + JSON-LD). Constraints: an agent's lead goes
+  to a HUMAN seller (AI trust boundary); never expose seller numbers (CDP-3); agent
+  payments for a RM100k car are not real yet (agent rails are card tokens / x402
+  stablecoin micropayments, built for API calls, not HP loans); rate-limit it like
+  `/api/wa`. Cheapest first step: check what ChatGPT/Claude say today when asked for
+  a used car in Malaysia, and whether xdrive.my shows up.
+
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
   sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and
