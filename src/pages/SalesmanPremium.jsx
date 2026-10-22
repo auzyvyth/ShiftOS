@@ -5600,7 +5600,7 @@ export default function SalesmanPremium() {
  )}
  {nav === "password" && <ChangePasswordCard />}
  {nav === "refer" && <ReferralCard slug={profile?.slug} />}
- {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
+ {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
  {nav === "dealership" && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a
