@@ -365,7 +365,7 @@ the DB was busy, and stripped the car off buyers' chats and leads. `archived` is
 excluded by `public_car_listings`, the listing cap and the one-card-per-model index; the
 panels load listings with `.neq("status","archived")`. A won-deal car is refused
 (`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
-with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
+with no ON DELETE rule (`ai_caption_logs`, `service_packages`; `broadcast_logs` is dropped in `20261022c`): the
 dealer dashboard and the console.
 - **The update must `.select("id")` and check a row came back, and the device copy
   (`sp_listings_` / `slite_listings_`) must be rewritten** (2026-10-19). RLS refuses as "0 rows,
@@ -761,8 +761,9 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   secrets, subject hardcoded `mailto:support@xdrive.my`. Deletes subscriptions on a 410
   response (that is the correct way to clear dead ones).
 - Storage: `push_subscriptions` (user_id, endpoint, subscription jsonb, created_at).
-- Producers: DB triggers `trg_push_on_enquiry` (on `whatsapp_enquiries`) and
-  `trg_push_on_appointment` (on `appointments`) POST to send-push via `net.http_post`.
+- Producers: the old `trg_push_on_enquiry` / `trg_push_on_appointment` triggers are
+  gone (their functions were dropped in `20261022c_drop_dead_sql.sql`); every push now
+  comes from a notification row, below.
 - **Also (found 2026-08-21, undocumented until now):** `trg_push_on_dealer_notification`
   (on `dealer_notifications`) and `trg_push_on_salesman_notification` (on
   `salesman_notifications`) — both AFTER INSERT triggers that call SECURITY DEFINER
@@ -970,8 +971,7 @@ own device. One DB fanout drives both, so they can never disagree.
   Producers: `notify_admin_on_new_signup`, `notify_admin_on_pending_listing`,
   `trg_notify_error_log`, `trg_notify_activity_anomaly`. Do NOT add a fifth ops
   alert that only posts to Telegram — call `notify_ops`.
-  `notify_ops_telegram(p_key, p_text)` still exists as a thin shim (deployed-only
-  edge functions may call it by name); new code must not use it.
+  The old `notify_ops_telegram` shim is dropped (`20261022c`): nothing called it.
 - The push title is the FIRST LINE of the message and the body is the rest, so
   keep writing ops messages as "headline\ndetail...". URL is always `/platform`;
   tag is the key's family (`ops:err`, `ops:new_signup`, …) so repeats replace.
