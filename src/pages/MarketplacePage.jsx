@@ -958,15 +958,16 @@ export default function MarketplacePage() {
           .mp-agent-cta     { width:100%; }
           .mp-agent-trust   { justify-content:flex-start; }
         }
-        /* Used & Recon | New mode pill. Ink fill on the picked side: red is kept
-           for the page's one primary action (Find Cars). */
-        .mp-mode { display:inline-flex; gap:2px; padding:3px; margin-bottom:12px; background:#ECEAE3; border-radius:11px; }
-        .mp-mode-btn { min-height:36px; padding:0 18px; border:none; border-radius:8px; background:transparent; color:#4b5563;
-          font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
-          transition:background-color .2s var(--xd-ease-out, ease), color .2s var(--xd-ease-out, ease), box-shadow .2s var(--xd-ease-out, ease); }
-        .mp-mode-btn[aria-pressed="true"] { background:#0f1115; color:#fff; box-shadow:0 1px 2px rgba(15,17,21,.2); }
-        @media (hover:hover) and (pointer:fine) { .mp-mode-btn[aria-pressed="false"]:hover { color:#0f1115; } }
-        .mp-mode-btn:focus-visible { outline:2px solid #0f1115; outline-offset:2px; }
+        /* Used & Recon | New: an Apple-style segmented control. A white thumb on
+           a grey track, never a coloured fill: red is kept for the page's one
+           primary action (Find Cars), and ink fill read as a second button. */
+        .mp-mode { display:inline-flex; gap:2px; padding:3px; margin-bottom:14px; background:rgba(118,118,128,.12); border-radius:12px; }
+        .mp-mode-btn { min-height:36px; padding:0 20px; border:none; border-radius:9px; background:transparent; color:#3a3a3c;
+          font-family:'Outfit',sans-serif; font-size:13.5px; font-weight:500; letter-spacing:-.005em; cursor:pointer; white-space:nowrap;
+          transition:background-color .25s cubic-bezier(.22,1,.36,1), color .25s cubic-bezier(.22,1,.36,1), box-shadow .25s cubic-bezier(.22,1,.36,1); }
+        .mp-mode-btn[aria-pressed="true"] { background:#fff; color:#1d1d1f; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.10), 0 0 0 .5px rgba(0,0,0,.04); }
+        @media (hover:hover) and (pointer:fine) { .mp-mode-btn[aria-pressed="false"]:hover { color:#1d1d1f; } }
+        .mp-mode-btn:focus-visible { outline:2px solid #1d1d1f; outline-offset:2px; }
         .mp-hero-links { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
         .mp-hero-links > button, .mp-hero-links > a { display:inline-flex; align-items:center; gap:6px; min-height:28px; background:none; border:none; padding:0;
           color:#4b5563; font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
