@@ -73,10 +73,10 @@ export default function MyNewModels({ profile, onProfileChange }) {
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         {profile?.new_car_brand
           ? "Your page shows only the models you add. Go to Add car, pick a model, add your photo, done. The price comes from this list and XDrive keeps it up to date."
-          : "Sell new Proton, Perodua, Toyota or BYD? Pick your brand, then add the models you sell from Add car. You never type a price."}
+          : "Sell new Proton, Perodua, Toyota, BYD or Honda? Pick your brand, then add the models you sell from Add car. You never type a price."}
       </p>
 
-      <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
         {NEW_CAR_BRANDS.map((b) => (
           <button key={b} type="button" disabled={busy === "brand"} onClick={() => chooseBrand(b)} style={pill(b === brand)}>{b}</button>
         ))}

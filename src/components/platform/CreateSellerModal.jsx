@@ -197,7 +197,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
                 })}
               </div>
               {form.sells.includes("new_car") && (
-                <div style={{ display: "grid", gridTemplateColumns: `repeat(${NEW_CAR_BRANDS.length}, minmax(0, 1fr))`, gap: 8, marginTop: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(80px, 1fr))", gap: 8, marginTop: 8 }}>
                   {NEW_CAR_BRANDS.map((b) => {
                     const on = form.new_car_brand === b;
                     return (
