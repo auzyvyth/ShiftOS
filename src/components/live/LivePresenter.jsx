@@ -747,7 +747,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-adjhead .lp-adjtabs { flex: 1; min-width: 0; }
         .lp-adjclose { flex-shrink: 0; width: 42px; height: 42px; border: none; border-radius: 10px; background: var(--lp-a); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-brk tr.lp-tap { cursor: pointer; }
-        .lp-brk .lp-pen { margin-left: 6px; vertical-align: -1px; opacity: .55; }
+        /* Tailwind preflight makes every svg display:block, which dropped the pen onto
+           its own line under the number. Inline, and BEFORE the number so the
+           figures keep one right edge. */
+        .lp-brk .lp-pen { display: inline-block; margin-right: 6px; vertical-align: -1px; opacity: .55; }
         .lp-adjust label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #4b5563; min-width: 0; }
         .lp-in { width: 100%; height: 44px; background: #fff; border: 1px solid rgba(0,0,0,.12); border-radius: 10px; color: #111827; padding: 0 12px; font-size: 16px; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-in:focus { outline: none; border-color: #0f1115; }
@@ -1117,7 +1120,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                       onClick={() => openRebates(rk)}
                       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRebates(rk); } }}>
                       <td>{t.rebate}</td>
-                      <td>{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}<Pencil size={12} aria-hidden="true" className="lp-pen" /></td>
+                      <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{rebate > 0 ? <>- <Money n={rebate} /></> : t.none}</td>
                     </tr>
                   )}
                   {financeable && (<>
