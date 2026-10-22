@@ -539,7 +539,13 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
 - **A cron job that calls an edge function sits behind `where exists (...)`** that is a
   superset of what the function selects (migration `20261021d_cron_diet.sql`, pattern from
   appointment-reminders). Idle runs then cost one in-memory check, no function call.
-  Never slow `appointment-reminders`: the function only looks back 10 min for due reminders.
+- **Every frequent cron job runs on :00/:15/:30/:45 ONLY (IO-5, 2026-10-22,
+  `20261022a_cron_align.sql`).** Supabase's `archive_timeout` = 2min seals and archives a whole
+  16 MB WAL segment for ANY 2-minute window with a write, and every cron run writes its own log
+  row even when guarded (`cron.log_run` is Supabase's, not ours). Measured: 188 kB real WAL vs
+  ~288 MB archived in 44 min. Scattered minutes froze the DB on 2026-10-22. A new job picks one
+  of those four minutes, never its own. appointment-reminders is every 15 min; its edge function
+  AND its cron guard look back 20 min. Change cadence and look-back together or reminders drop.
 - **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
   the device (a delete + insert) on every open; it now saves at most once a day per account
   + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
@@ -732,14 +738,14 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
 - expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road
   tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also
   notifies salesman_notifications. 24h dedup.
-- appointment-reminder — cron every 5 min (`*/5 * * * *`, jobid 7). Two independent jobs:
+- appointment-reminder — cron every 15 min (`*/15 * * * *`, jobid 7; was 5 min until IO-5). Two independent jobs:
   (1) Telegram "1 hour before" reminder for CONFIRMED bookings, opt-in via `remind_at`
   (set by "Schedule Telegram Reminder" in the Bookings tab), dedup via `remind_sent`.
   (2) Push nag for PENDING (unconfirmed) bookings whose appointment_date is within
   -2h..+5h of now — inserts one `salesman_notifications` row (type=`booking_unconfirmed`,
   ref_id=appointment id) per booking, which auto-fires a PWA push (see Web push below).
   Dedup is by ref_id already existing in salesman_notifications, so each pending booking
-  gets exactly one nag, not one per 5-min tick.
+  gets exactly one nag, not one per tick.
 - ai-proxy — proxies Claude API calls for AI features
 - delete-account / purge-deleted-accounts — LITE-3 self-service deletion + 30-day purge
 - import-drive-images — rehosts Google Drive folder images into the car-images bucket

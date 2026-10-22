@@ -34,12 +34,13 @@ Deno.serve(async (req) => {
   if (!botToken) {
     console.error("appointment-reminder: TELEGRAM_BOT_TOKEN not set — skipping Job 1");
   } else {
-    // Window: remind_at is between now-10min and now. The lookback covers the cron
-    // cadence (every 5 min) plus one missed tick, so a coarser schedule never drops
-    // a reminder. The remind_sent=false filter guarantees each appointment is only
+    // Window: remind_at is between now-20min and now. The lookback covers the cron
+    // cadence (every 15 min since 20261022a_cron_align.sql, IO-5) plus a late tick,
+    // so no reminder falls between two runs. The cron job's own guard uses the same
+    // 20 min; change both together. The remind_sent=false filter guarantees each appointment is only
     // notified once even though 2 consecutive ticks may both see it in-window.
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+    const windowStart = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
     const windowEnd = now.toISOString();
 
     const { data: appointments, error } = await supabase
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
   // may show up to nothing. Window is -2h (still nag a bit after the slot
   // passed, since an unconfirmed booking that came and went is exactly what
   // the salesman needs to know about) to +5h (start nagging once the slot is
-  // close enough to matter). Runs every tick this function fires (every 5 min
+  // close enough to matter). Runs every tick this function fires (every 15 min
   // per the pg_cron schedule), so dedup is by ref_id existing in
   // salesman_notifications rather than a time window — each pending booking
   // gets exactly one nag, not one per tick.
