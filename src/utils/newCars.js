@@ -15,6 +15,37 @@ export const PRICE_ZONES = [
   { key: "langkawi",      col: "price_langkawi",      label: "Langkawi" },
 ];
 
+// The price zone a buyer's STATE falls in. Mirrors new_car_price_zone() for the
+// state half only: Langkawi is a city in Kedah, so a state alone can never say
+// "langkawi" (the model page's zone buttons cover that case).
+export function zoneForState(state) {
+  if (state === "Sabah" || state === "Sarawak") return "sabah_sarawak";
+  if (state === "Labuan") return "labuan";
+  return "peninsular";
+}
+
+// Live model cards (public_car_listings rows with is_model_card) grouped for the
+// marketplace hero's New picker: [{ brand, models: [{ model, from }] }], brands in
+// NEW_CAR_BRANDS order, models cheapest first. Only brands with a live card
+// appear, so the picker never offers a brand that opens an empty page.
+export function liveNewCarBrands(rows) {
+  const byBrand = new Map();
+  for (const r of rows || []) {
+    const brand = NEW_CAR_BRANDS.find((b) => b.toLowerCase() === String(r.brand || "").toLowerCase());
+    if (!brand || !r.model) continue;
+    if (!byBrand.has(brand)) byBrand.set(brand, new Map());
+    const models = byBrand.get(brand);
+    const p = Number(r.selling_price) > 0 ? Number(r.selling_price) : null;
+    const prev = models.get(r.model);
+    if (!prev) models.set(r.model, { model: r.model, from: p });
+    else if (p && (!prev.from || p < prev.from)) prev.from = p;
+  }
+  return NEW_CAR_BRANDS.filter((b) => byBrand.has(b)).map((brand) => ({
+    brand,
+    models: [...byBrand.get(brand).values()].sort((a, b) => (a.from ?? Infinity) - (b.from ?? Infinity)),
+  }));
+}
+
 export function zoneLabel(key) {
   return PRICE_ZONES.find((z) => z.key === key)?.label || "Peninsular";
 }

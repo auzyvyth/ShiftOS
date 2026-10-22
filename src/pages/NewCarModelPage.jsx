@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet";
 import { supabase } from "../supabaseClient";
 import MarketplaceHeader from "../components/MarketplaceHeader";
@@ -9,9 +9,10 @@ import { isSubdomain } from "../hooks/useTenant";
 import { sellerWaUrl } from "../utils/sellerWhatsApp";
 import { replyTimeLabel } from "../utils/agentTrust";
 import { trackEvent } from "../utils/analytics";
+import { sanitizeState } from "../config/marketplaceConfig";
 import { SITE_URL } from "../config/site";
 import {
-  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning,
+  PRICE_ZONES, rm, fmtDate, brandFromSlug, modelRows, newModelCopy, newModelPath, payWarning, zoneForState,
 } from "../utils/newCars";
 
 // /new-cars/:brand/:model -- NEWCAR-1, "the salesman is the product".
@@ -35,7 +36,12 @@ export default function NewCarModelPage() {
   const [loadError, setLoadError] = useState(false);
   const [advisors, setAdvisors] = useState(null);
   const [advError, setAdvError] = useState(false);
-  const [zone, setZone] = useState("peninsular");
+  // ?state= comes from the marketplace hero's New picker. It only ORDERS the
+  // advisors (that state first, then its price zone, then everyone else) and
+  // picks the starting zone; it never hides anyone.
+  const [params] = useSearchParams();
+  const buyerState = sanitizeState(params.get("state") || "");
+  const [zone, setZone] = useState(() => zoneForState(buyerState));
 
   useEffect(() => {
     if (!brand) return;
@@ -68,12 +74,14 @@ export default function NewCarModelPage() {
   }, [brand, model]);
 
   const zoneCol = PRICE_ZONES.find((z) => z.key === zone)?.col || "price_peninsular";
-  // Advisors in the buyer's chosen zone first; the RPC already ranks verified
-  // + fastest measured reply at the top within that.
+  // Advisors in the buyer's state first, then the chosen zone; the RPC already
+  // ranks verified + fastest measured reply at the top within each group.
   const sorted = useMemo(() => {
     const list = advisors || [];
-    return [...list.filter((a) => a.price_zone === zone), ...list.filter((a) => a.price_zone !== zone)];
-  }, [advisors, zone]);
+    const rank = (a) => (buyerState && a.state === buyerState ? 0 : a.price_zone === zone ? 1 : 2);
+    return list.map((a, i) => [a, i]).sort((x, y) => rank(x[0]) - rank(y[0]) || x[1] - y[1]).map(([a]) => a);
+  }, [advisors, zone, buyerState]);
+  const nearCount = buyerState ? sorted.filter((a) => a.state === buyerState).length : 0;
 
   if (isSubdomain()) return <Navigate to="/cars" replace />;
   if (!brand || (rows && rows.length === 0)) return <NotFoundPage />;
@@ -137,6 +145,13 @@ export default function NewCarModelPage() {
 
               <section className="ncm-sec">
                 <h2 className="ncm-h2">Advisors who sell it {sorted.length > 0 && <span className="ncm-count">{sorted.length}</span>}</h2>
+                {buyerState && sorted.length > 0 && (
+                  <p className="ncm-note ncm-near">
+                    {nearCount > 0
+                      ? `${nearCount} in ${buyerState}, listed first.`
+                      : `None in ${buyerState} yet. These advisors are in other states.`}
+                  </p>
+                )}
                 {advisors === null ? (
                   <p className="ncm-note">Loading advisors...</p>
                 ) : sorted.length === 0 ? (
@@ -221,5 +236,6 @@ const CSS = `
   .ncm-a-btns { display: flex; gap: 8px; }
   .ncm-a-btns a { flex: 1; min-width: 0; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; border: 1px solid rgba(0,0,0,0.12); color: #111827; }
   .ncm-a-btns a.ncm-primary { background: #dc2626; border-color: #dc2626; color: #fff; }
+  .ncm-near { margin: -4px 0 12px; }
   .ncm-foot { margin-top: 40px; font-size: 14px; color: #6b7280; }
 `;

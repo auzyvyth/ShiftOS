@@ -459,6 +459,13 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   the card renders (`cdnImg(url, 480, 72)` ShowroomCard, `cdnImg(url, 300, 65)`
   HeroCarRow): change one size, change `PHOTO` in api/shell.js or the photo
   downloads twice. Never put anything private in that block: it is public HTML.
+- **New cars enter through the hero's "New" tab, never the car rows (2026-10-22).**
+  `NewCarPicker` (brand -> model -> state) opens `/new-cars/:brand/:model?state=`; the
+  state only SORTS advisors there (that state, then its price zone), never filters, so
+  no pick lands on an empty list. Brands come from live model cards (`liveNewCarBrands`,
+  `src/utils/newCars.js`), so Perodua/Toyota/Honda appear by themselves once an advisor
+  posts. The hero car rows filter `is_model_card = false`: model cards had taken every
+  "All cars" slot.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.

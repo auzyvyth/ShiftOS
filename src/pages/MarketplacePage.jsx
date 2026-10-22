@@ -18,6 +18,8 @@ import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import HeroCarRow from '../components/marketplace/HeroCarRow';
+import NewCarPicker, { NEW_CAR_PICKER_CSS } from '../components/marketplace/NewCarPicker';
+import { liveNewCarBrands } from '../utils/newCars';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import useMarketplaceStats from '../hooks/useMarketplaceStats';
 import StaleListingsNotice from '../components/StaleListingsNotice';
@@ -41,6 +43,10 @@ const PER_PAGE = 12;
    critical path) — the full CAR_FIELDS (29 cols) is for detail-heavy grids,
    not warranted here. */
 const HERO_ROW_FIELDS = 'id,slug,listing_title,brand,model,variant,year,selling_price,original_price,images,created_at,is_model_card';
+// The hero rows are used + recon stock only. New-car advisor cards have their
+// own way in (the New tab -> /new-cars/:brand/:model): left in, they filled every
+// "All cars" slot (the newest 14 live listings were all model cards, 2026-10-22).
+const notModelCard = (c) => !c.is_model_card;
 
 /* sanitizePrice depends on PRICE_STEPS from PriceDrumPicker so lives here */
 function sanitizePrice(val) {
@@ -148,9 +154,13 @@ export default function MarketplacePage() {
   // src/utils/serverSeed.js): it is the same newest-first live cars row 1
   // fetches, so the top of the page has photos on its first paint. The fetches
   // below still run and replace them.
-  const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).slice(0, 12));
+  const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter(notModelCard).slice(0, 12));
   const [row1Mode, setRow1Mode] = useState('all'); // 'all' | 'hot'
-  const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => c.body_type === 'MPV').slice(0, 12));
+  const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => notModelCard(c) && c.body_type === 'MPV').slice(0, 12));
+  // Hero "New" mode: brands + models that have a live advisor card. Empty until
+  // loaded, and the New tab only renders once it has a brand (an entry point
+  // over an empty view is a dead end).
+  const [newBrands, setNewBrands] = useState([]);
 
   useEffect(() => {
     // On a failed or timed-out read, fill the row from the device's saved copy
@@ -169,20 +179,33 @@ export default function MarketplacePage() {
       publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
+        .eq('is_model_card', false)
         .order('created_at', { ascending: false })
         .limit(12),
-      setRow1Pool, (cars) => cars,
+      setRow1Pool, (cars) => cars.filter(notModelCard),
     );
 
     load(
       publicClient.from('public_car_listings')
         .select(HERO_ROW_FIELDS)
         .in('status', ['available', 'reserved'])
+        .eq('is_model_card', false)
         .eq('body_type', 'MPV')
         .order('created_at', { ascending: false })
         .limit(12),
-      setRow2Pool, (cars) => cars.filter((c) => c.body_type === 'MPV'),
+      setRow2Pool, (cars) => cars.filter((c) => notModelCard(c) && c.body_type === 'MPV'),
     );
+
+    // Three short columns over the live model cards; the picker groups them.
+    withTimeout(
+      publicClient.from('public_car_listings')
+        .select('brand,model,selling_price')
+        .in('status', ['available', 'reserved'])
+        .eq('is_model_card', true)
+        .limit(500),
+    )
+      .then(({ data, error: err }) => { if (!err) setNewBrands(liveNewCarBrands(data)); })
+      .catch(() => {});
   }, []);
 
   /* Row 1 upgrades to "Hot Deals" the moment any exist. Still gated on the
@@ -195,6 +218,7 @@ export default function MarketplacePage() {
     publicClient.from('public_car_listings')
       .select(HERO_ROW_FIELDS)
       .in('status', ['available', 'reserved'])
+      .eq('is_model_card', false)
       .eq('is_hot_deal', true)
       .order('created_at', { ascending: false })
       .limit(30)
@@ -844,7 +868,9 @@ export default function MarketplacePage() {
         .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
         @media (hover:hover) and (pointer:fine) { .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); } }
         .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
-        .mp-carrow-price { display: block; padding: 7px 9px 8px; font-size: 11px; font-weight: 700; color: #111827; font-family: 'Outfit',sans-serif; border-top: 1px solid rgba(0,0,0,.06); }
+        .mp-carrow-meta { display: block; padding: 6px 9px 8px; border-top: 1px solid rgba(0,0,0,.06); font-family: 'Outfit',sans-serif; min-width: 0; }
+        .mp-carrow-name { display: block; font-size: 10.5px; font-weight: 500; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
+        .mp-carrow-price { display: block; font-size: 11px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
         .mp-carrow-progress { position: absolute; opacity: 0; width: 0; animation-name: mp-carrow-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
         @keyframes mp-carrow-fill { from { width: 0; } to { width: 100%; } }
         @media (prefers-reduced-motion: reduce) {
@@ -955,6 +981,7 @@ export default function MarketplacePage() {
           .mp-agent-cta     { width:100%; }
           .mp-agent-trust   { justify-content:flex-start; }
         }
+        ${NEW_CAR_PICKER_CSS}
       `}</style>
 
       <MarketplaceHeader />
@@ -1035,7 +1062,8 @@ export default function MarketplacePage() {
                   so hiding one can't shift another's active state. */}
               <div className="mp-hero-tabs">
                 {[
-                  { id:'find', label:'Find a Car', action:() => setHeroTab('find') },
+                  { id:'find', label: newBrands.length > 0 ? 'Used & Recon' : 'Find a Car', action:() => setHeroTab('find') },
+                  newBrands.length > 0 && { id:'new', label:'New', action:() => setHeroTab('new') },
                   stats.hotDeals > 0 && { id:'hot', label:'Browse Hot Deals', action:() => { setHeroTab('hot'); setParam('hot_deals','true'); document.getElementById('mp-results')?.scrollIntoView({ behavior:'smooth', block:'start' }); } },
                   { id:'calc', label:'Finance Calculator', action:() => { setHeroTab('calc'); navigate('/calculator'); } },
                 ].filter(Boolean).map(({ id, label, action }) => (
@@ -1053,8 +1081,13 @@ export default function MarketplacePage() {
                 ))}
               </div>
 
-              {/* Search bar — no wrapping <form> (SearchAutocomplete has its own;
-                  nested forms broke navigation). Each entry point navigates via runHeroSearch. */}
+              {/* New mode swaps the search bar for the brand -> model -> state
+                  picker; Used & Recon (and the action tabs) keep the search. */}
+              {heroTab === 'new' && newBrands.length > 0 ? (
+                <NewCarPicker brands={newBrands} />
+              ) : (
+              /* Search bar — no wrapping <form> (SearchAutocomplete has its own;
+                  nested forms broke navigation). Each entry point navigates via runHeroSearch. */
               <div>
                 {/* Dimmed white (#F4F3EF on a ground that ramps #FFF -> #F7F6F2),
                     so the field reads as INSET on the hero rather than as another
@@ -1107,6 +1140,7 @@ export default function MarketplacePage() {
                     statements of one claim in one viewport is the clutter, and it
                     was also what pushed the proof off the fold. */}
               </div>
+              )}
             </div>
 
             {/* RIGHT: live inventory rows — proof of real, moving stock reads as
@@ -1116,7 +1150,7 @@ export default function MarketplacePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 <HeroCarRow
                   eyebrow="Shop Smarter"
-                  title={row1Mode === 'hot' ? 'HOT DEALS' : 'ALL CARS'}
+                  title={row1Mode === 'hot' ? 'HOT DEALS' : 'USED & RECON'}
                   cars={row1Pool}
                   viewAllHref={row1Mode === 'hot' ? '/showroom?hot_deals=true' : '/showroom'}
                 />
