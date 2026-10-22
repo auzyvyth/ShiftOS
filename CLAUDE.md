@@ -1336,6 +1336,10 @@ Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around t
   tomorrow; owner: "make it not annoying"). Pay screen is ONE component, `PremiumPayBox.jsx`.
 - No standalone seller has `payment_status='received'` any more: it never expires. Only
   `record_subscription_payment` grants Premium time.
+- **`salesman_has_full_page` must never let a NULL through** (2026-10-22, `20261022b`). Its
+  `coalesce(..., true)` is for "no salesman row"; `payment_status = 'received'` on a NULL
+  status made a lapsed seller NULL, so it read TRUE and kept the full page, unlimited posters
+  and Telegram reminders. Wrap every nullable test inside it in `coalesce(..., false)`.
 
 ## Lite vs Premium split (owner, 2026-10-13) -- "get found" vs "work the lead"
 Lite (free) = get found and get the lead: up to 10 live cars (`plan_config`; cut to 5, then back to 10 on 2026-10-14), a
