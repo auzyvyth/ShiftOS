@@ -547,6 +547,14 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   (`select tablename from pg_publication_tables where pubname='supabase_realtime'`). A
   subscription to any other table never fires but still opens a socket and writes
   `realtime.subscription` rows. `useTenant` had one on `profiles` for every storefront visitor.
+- **A hidden screen drops its live updates and catches up on return (IO-6, 2026-10-22,
+  `src/lib/realtimeIdle.js`).** After 2 min hidden a client disconnects its realtime socket; on
+  return it reconnects (phoenix rejoins every channel itself) and REPLAYS what it missed: each
+  `postgres_changes` listener's table, under its own `col=eq.val` filter, rows changed since the
+  disconnect, fed to the SAME callback as INSERT/UPDATE. Installed once per client (App.jsx: main +
+  public; AdminPage: platformClient), never per screen. A new listener needs nothing extra, but
+  its filter must stay `col=eq.val` (anything else is not replayed) and its table needs one of
+  `updated_at` / `last_message_at` / `created_at`. Missed DELETEs are not replayed.
 - Biggest remaining cost: Realtime's change polling (`realtime.list_changes`, ~100k
   calls / 2 days) runs while ANY `postgres_changes` subscriber is connected. Moving the seller
   panels to Broadcast-from-trigger would remove it; not done yet (TODO IO-2).

@@ -95,7 +95,8 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   (job 12 went 4/h -> 2/h, job 3 2/h -> every 3 h, from ~15:00 UTC Oct 21, 6 h before the freeze); appointment-reminders (7) every 15 min instead of 5 WITH the edge function's look-back
   widened 10 -> 20 min (`supabase/functions/appointment-reminder/index.ts:42`) in the same change;
   same review for 17 (15 min), ask-viewing-outcomes (hourly 1-13), sweep-premium-lapses (18, hourly).
-- [ ] **IO-6 Drop realtime on hidden tabs (client only, staging any time):** disconnect realtime
+- [ ] **IO-6 Drop realtime on hidden tabs — BUILT 2026-10-22 (`src/lib/realtimeIdle.js`), on staging; owner
+  click-test (leave a seller tab hidden 3+ min, send a lead, come back) then ship.** Was: disconnect realtime
   after a tab / phone is hidden 2+ min, reconnect + refetch on visible. Seller panels stay open
   24/7, and list_changes polling runs while any subscriber is connected. Do before IO-2.
 - [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
