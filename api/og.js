@@ -166,7 +166,8 @@ function carHref(c) {
 }
 
 async function getRecentListings(dealerId, limit = 48) {
-  const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "";
+  // The showroom list leaves out new-car cards on platform photos (NEWCAR-2).
+  const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "&stock_photos=eq.false";
   return sbFetch(
     `public_car_listings?status=eq.available${filter}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
