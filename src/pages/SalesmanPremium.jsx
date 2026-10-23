@@ -5441,6 +5441,7 @@ export default function SalesmanPremium() {
  profile={settingsForm}
  slug={profile?.slug}
  carCount={myListings.filter((l) => l.status === "available" || l.status === "reserved").length}
+ cars={myListings.filter((l) => l.status === "available" || l.status === "reserved")}
  />
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.slug")}</label>

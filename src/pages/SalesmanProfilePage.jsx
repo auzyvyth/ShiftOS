@@ -551,8 +551,8 @@ export default function SalesmanProfilePage() {
   // Title + description from agentSeo.js, the same functions the crawler
   // render (api/og.js) and the Premium settings preview run, so Google, a
   // WhatsApp link preview and the agent's own preview never disagree.
-  const metaDescription = agentPageDescription(profile, listings.length);
-  const pageTitle = agentPageTitle(profile);
+  const metaDescription = agentPageDescription(profile, listings.length, listings);
+  const pageTitle = agentPageTitle(profile, listings);
 
   // "#N" is fixed to the query order (newest first), the same array the live
   // presenter walks, so re-sorting by price never renumbers a car mid-live.

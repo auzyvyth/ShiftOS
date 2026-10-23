@@ -21,21 +21,34 @@ export function agentLocation(p) {
   return [p?.city, p?.state].map(clean).filter(Boolean).join(", ");
 }
 
-export function agentPageTitle(p) {
+// What the agent sells, read from the cars on the page (owner, 2026-10-23): a
+// page of nothing but new cars of ONE brand is a "<Brand> Sales Advisor", which
+// is what buyers search ("Proton Selayang"). "Sales advisor" is the seller's own
+// claim (nothing checks brand employment), so never "official" or "authorised".
+// Any used/recon car, or two brands, keeps the plain "Car Agent".
+export function agentRole(cars) {
+  const list = Array.isArray(cars) ? cars : [];
+  if (!list.length || list.some((c) => c?.condition !== "new")) return null;
+  const brands = new Set(list.map((c) => clean(c?.brand)).filter(Boolean));
+  return brands.size === 1 ? `${[...brands][0]} Sales Advisor` : null;
+}
+
+export function agentPageTitle(p, cars) {
   const loc = agentLocation(p);
-  return `${agentName(p)} — Car Agent${loc ? ` in ${loc}` : ""} | XDrive`;
+  return `${agentName(p)} — ${agentRole(cars) || "Car Agent"}${loc ? ` in ${loc}` : ""} | XDrive`;
 }
 
 // The agent's own bio, else a sentence built only from facts we hold.
 // `bio` only — `about_text` is the DEALER's "About us", never the agent's.
-export function agentPageDescription(p, carCount = 0) {
+export function agentPageDescription(p, carCount = 0, carList) {
   const bio = clean(p?.bio);
   if (bio) return bio.length > DESC_LIMIT ? `${bio.slice(0, DESC_LIMIT - 3).trimEnd()}...` : bio;
   const loc = agentLocation(p);
   const cars = carCount > 0
     ? ` Browse ${carCount} ${carCount === 1 ? "car" : "cars"} for sale and message them directly.`
     : "";
-  return `${agentName(p)} is a car sales agent${loc ? ` in ${loc}` : ""} on XDrive.${cars}`;
+  const role = agentRole(carList);
+  return `${agentName(p)} is a ${role ? `${role.replace(/Sales Advisor$/, "sales advisor")}` : "car sales agent"}${loc ? ` in ${loc}` : ""} on XDrive.${cars}`;
 }
 
 // Plain-English problems with how the result will read, worst first. Each is
