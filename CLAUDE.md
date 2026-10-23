@@ -1539,7 +1539,11 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   exception is Rebate (owner, 2026-10-22, after a seller said opening Adjust for one car was
   slower): tapping its line turns the number into a box typed in place (`rebateEdit`, Enter
   or tapping away sets it). Adjust > Rebates stays for setting every car before a live.
-  Do not extend this to deposit, rate or loan.
+  **Insurance and Rate now work the same way (owner, 2026-10-24)**: tap the line, type, and the
+  figure is kept on the device until changed (`xd_live_insfig`, `xd_live_carrate`). A car's own
+  rate (`carRates`, per listing, with the basis it was typed in) wins over its group's rate in
+  `rateOf`, so Budget uses it too; clearing the box returns the car to the group rate. Do not
+  extend this to deposit or loan: deposit is the viewer's chips, loan is a result.
 - **Ending the live ALWAYS asks** (`confirmEnd`, "Keep presenting" focused; owner,
   2026-10-22). A seller aiming for Adjust's close ended the stream: the in-page panel's X sat a
   row below the live's X. Now Adjust is a pop-up whose backdrop COVERS the top bar, so while it

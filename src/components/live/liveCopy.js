@@ -36,7 +36,8 @@ const en = {
   rateLabel: 'Interest rate',
   rateLocal: 'New Proton & Perodua',
   rateOther: 'Other cars',
-  carRateNote: (n, r) => `${n} is worked at ${r}.`,
+  carRateNote: (n, r) => `${n} is worked at ${r}. Tap the Rate line to give one car its own rate.`,
+  rateEdit: 'Set the rate for this car',
   closeAdjust: 'Close settings',
   endTitle: 'End the live?',
   endBody: 'The presentation closes and your live report shows.',
@@ -185,7 +186,8 @@ const ms = {
   rateLabel: 'Kadar faedah',
   rateLocal: 'Proton & Perodua baru',
   rateOther: 'Kereta lain',
-  carRateNote: (n, r) => `${n} dikira pada ${r}.`,
+  carRateNote: (n, r) => `${n} dikira pada ${r}. Tap baris Kadar untuk kadar khas satu kereta.`,
+  rateEdit: 'Tetapkan kadar kereta ini',
   closeAdjust: 'Tutup tetapan',
   endTitle: 'Tamatkan live?',
   endBody: 'Paparan ditutup dan laporan live anda dipaparkan.',
@@ -406,6 +408,26 @@ export function saveLiveInsFigures(figures) {
   try {
     if (Object.keys(figures).length) window.localStorage.setItem(LIVE_INS_FIG_KEY, JSON.stringify(figures));
     else window.localStorage.removeItem(LIVE_INS_FIG_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// A rate typed for ONE car on the Rate line (owner, 2026-10-24: brands run a
+// different promo rate per model), remembered on this device until changed.
+// { [listingId]: { r: '2.3', b: 'eir' | 'flat' } }; a car without one uses
+// its group's rate from Adjust. Never saved to the listing or the server.
+export const LIVE_CAR_RATE_KEY = 'xd_live_carrate';
+
+export function initialLiveCarRates() {
+  try {
+    const m = JSON.parse(window.localStorage.getItem(LIVE_CAR_RATE_KEY) || 'null');
+    return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+  } catch { return {}; }
+}
+
+export function saveLiveCarRates(rates) {
+  try {
+    if (Object.keys(rates).length) window.localStorage.setItem(LIVE_CAR_RATE_KEY, JSON.stringify(rates));
+    else window.localStorage.removeItem(LIVE_CAR_RATE_KEY);
   } catch { /* storage blocked */ }
 }
 
