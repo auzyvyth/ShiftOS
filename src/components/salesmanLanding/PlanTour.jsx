@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useSpring,
 } from "framer-motion";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 // "What you get with each plan" — one section per dashboard tab, screenshot
 // alternating left/right, joined by a circuit trace that draws itself as the
@@ -11,8 +11,9 @@ import { ArrowRight, Check } from "lucide-react";
 // A section with `img: null` renders a placeholder frame until the owner
 // supplies that screenshot.
 //
-// Copy rule: no invented numbers. Nothing here promises an income figure;
-// the "why it pays" line argues from behaviour (follow-up happens), not RM.
+// One title + one line per screenshot (owner, 2026-10-23): the picture does the
+// explaining. It had four paragraphs per tab, which nobody reads on a phone.
+// Copy rule: no invented numbers, no income figure.
 // Every word comes from `copy` (landingCopy(lang).tour, salesmanLandingCopy.js),
 // both languages in one place; this file only holds the images and the order.
 //
@@ -225,14 +226,7 @@ export default function PlanTour({ copy }) {
                   <div className="pt-copy">
                     <p className="pt-tab"><span>{String(i + 1).padStart(2, "0")}</span> {s.tab}</p>
                     <h3 className="pt-title">{s.title}</h3>
-                    <p className="pt-label">{copy.problemLabel}</p>
-                    <p className="pt-body">{s.pain}</p>
-                    <p className="pt-label">{copy.momentLabel}</p>
-                    <p className="pt-body">{s.moment}</p>
-                    <ul className="pt-points">
-                      {s.points.map((x) => <li key={x}><Check size={15} /> {x}</li>)}
-                    </ul>
-                    <p className="pt-pays">{s.pays}</p>
+                    <p className="pt-body">{s.line}</p>
                   </div>
                   <Shot s={s} pending={copy.shotPending} shotRef={(el) => { shotRefs.current[i] = el; }} />
                 </article>
@@ -276,13 +270,8 @@ const CSS = `
   .pt-copy { min-width: 0; }
   .pt-tab { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin: 0 0 12px; }
   .pt-tab span { color: #f87171; margin-right: 6px; }
-  .pt-title { font-size: clamp(22px, 2.8vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; margin: 0 0 20px; color: #fff; }
-  .pt-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin: 0 0 6px; }
-  .pt-body { font-size: 15px; line-height: 1.65; color: rgba(255,255,255,0.68); margin: 0 0 16px; }
-  .pt-points { list-style: none; padding: 0; margin: 4px 0 20px; }
-  .pt-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.5; color: #fff; padding: 5px 0; }
-  .pt-points svg { color: #dc2626; flex-shrink: 0; margin-top: 3px; }
-  .pt-pays { font-size: 15px; font-weight: 700; line-height: 1.5; color: #fff; margin: 0; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+  .pt-title { font-size: clamp(22px, 2.8vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.12; margin: 0 0 12px; color: #fff; }
+  .pt-body { font-size: 16px; line-height: 1.55; color: rgba(255,255,255,0.72); margin: 0; }
 
   .pt-shot { justify-self: center; width: 100%; max-width: 380px; padding: 8px; border-radius: 18px; background: #11151c; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 24px 60px rgba(0,0,0,0.5); }
   .pt-shot img { display: block; width: 100%; height: auto; border-radius: 12px; }

@@ -12,7 +12,7 @@ import {
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
   initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
@@ -132,6 +132,10 @@ const DEFAULT_TENURE = 7;
 const HEARTBEAT_MS = 4 * 60 * 1000; // live_until window is 10 min server-side
 const REPORT_MIN_MS = 60 * 1000;     // a quick peek at the presenter is not a live
 
+// The key a typed insurance figure is saved under: the listing, plus the
+// variant on a model card (each variant's premium differs with its price).
+const insKey = (c, variantId) => (variantId ? `${c?.id}:${variantId}` : c?.id);
+
 // Title only: the Cars screen prints the variant beside it in grey (and the
 // desktop variant switch names it). Everywhere else uses carLabel, with the variant.
 const carName = (c) => [c.year, c.brand, c.model].filter(Boolean).join(' ');
@@ -250,11 +254,23 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [target, setTarget] = useState('');
   // Insurance in the loan (motorInsurance.js): on/off remembered per device;
   // the NCD is the viewer's, picked on the pills under the working; a typed
-  // figure (the seller's insurer quote, or an EV) wins for that car, this live.
+  // figure (the seller's insurer quote, or an EV) wins for that car. Typed on
+  // the Insurance line in place, like the rebate, and remembered on this
+  // device until changed (owner, 2026-10-24). A model card keeps one figure
+  // per VARIANT (insKey): the premium follows the variant's price.
   const [insOn, setInsOn] = useState(() => (embedded ? false : initialLiveIns()));
   const changeIns = (on) => { setInsOn(on); if (!embedded) saveLiveIns(on); };
   const [ncd, setNcd] = useState(0);
-  const [insTyped, setInsTyped] = useState({});
+  const [insTyped, setInsTyped] = useState(() => (embedded ? {} : initialLiveInsFigures()));
+  const [insEdit, setInsEdit] = useState(false);
+  useEffect(() => {
+    // Same guard as rebates: no cars yet = nothing to compare against.
+    if (embedded || !listingIds) return;
+    const ids = new Set(listingIds.split(','));
+    const keep = Object.fromEntries(Object.entries(insTyped)
+      .filter(([k, v]) => ids.has(k.split(':')[0]) && Number(v) > 0));
+    saveLiveInsFigures(keep);
+  }, [insTyped, listingIds, embedded]);
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -389,14 +405,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Insurance for a car: typed figure first, else the tariff estimate off the
   // price before rebate (the car's value) and its engine cc (a model card's
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
-  const insFor = (c, value, cc) => {
+  const insFor = (c, value, cc, variantId) => {
     if (!insOn) return 0;
-    const typed = insTyped[c?.id];
+    const typed = insTyped[insKey(c, variantId)];
     if (typed !== undefined && typed !== '') return Math.max(0, Number(typed) || 0);
     const est = motorPremium({ sumInsured: value, cc, ncd, region: insuranceRegion(c?.state) });
     return est ? est.total : null;
   };
-  const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc);
+  const insK = insKey(car, variant?.model_id);
+  const insIsTyped = (insTyped[insK] ?? '') !== '';
+  const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
   const insAmt = ins || 0;
 
   const go = useCallback((d) => {
@@ -405,6 +423,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setPhotoFull(false);
     setDepEdit(false);
     setRebateEdit(false);
+    setInsEdit(false);
   }, [listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
@@ -595,7 +614,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   });
   const matches = budgetMatches(budgetCars, {
     maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates, rateOf,
-    extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc) || 0,
+    extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc, c._variantId) || 0,
     // The same tenure rows the Cars screen offers this car, so the row and the
     // car it opens show the same monthly.
     yearsFor: (c) => { const ok = tenuresFor(TENURES, c); return ok.filter((y) => y <= budgetYears).pop() ?? ok[0] ?? 0; },
@@ -1061,8 +1080,28 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <table className="lp-brk">
                 <tbody>
                   <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
-                  {price > 0 && insOn && ins > 0 && (
-                    <tr><td>{(insTyped[car.id] ?? '') === '' ? t.insuranceEst : t.insurance}</td><td>+ <Money n={ins} /></td></tr>
+                  {/* Insurance is typed in place too, and the figure stays on this
+                      device until changed (per variant on a model card). */}
+                  {price > 0 && insOn && (
+                    insEdit ? (
+                      <tr>
+                        <td>{t.insurance}</td>
+                        <td>
+                          <input className="lp-cellin" autoFocus type="text" inputMode="numeric" placeholder={ins ? String(ins) : '0'}
+                            aria-label={t.insuranceEdit} value={insTyped[insK] ?? ''}
+                            onChange={(e) => { const d = e.target.value.replace(/\D/g, '').slice(0, 6); setInsTyped((m) => ({ ...m, [insK]: d })); }}
+                            onBlur={() => setInsEdit(false)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur(); }} />
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr className="lp-tap" role="button" tabIndex={0} aria-label={t.insuranceEdit}
+                        onClick={() => setInsEdit(true)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInsEdit(true); } }}>
+                        <td>{insIsTyped ? t.insurance : t.insuranceEst}</td>
+                        <td><Pencil size={12} aria-hidden="true" className="lp-pen" />{ins > 0 ? <>+ <Money n={ins} /></> : '-'}</td>
+                      </tr>
+                    )
                   )}
                   {/* New cars always show the Rebate line (brands run promos every
                       month); tapping it turns the number into a box, typed in place. */}
@@ -1121,7 +1160,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
               {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
                   for this car (the typed quote already has its NCD in it). */}
-              {price > 0 && insOn && (insTyped[car.id] ?? '') === '' && ins !== null && (
+              {price > 0 && insOn && !insIsTyped && ins !== null && (
                 <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                   <span>{t.ncd}</span>
                   {NCD_TIERS.map((n) => (
@@ -1357,8 +1396,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <label className="lp-wide">
                     {t.insuranceThisCar}
                     <input className="lp-in" type="number" inputMode="numeric" min="0"
-                      placeholder={ins ? String(ins) : ''} value={insTyped[car.id] ?? ''}
-                      onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [car.id]: v })); }} />
+                      placeholder={ins ? String(ins) : ''} value={insTyped[insK] ?? ''}
+                      onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [insK]: v })); }} />
                   </label>
                 )}
                 <p className="lp-hint">{t.carRateNote(`#${idx + 1}`, `${fmtRate(rate)}% ${basis === 'flat' ? t.flat : 'EIR'}`)}</p>
