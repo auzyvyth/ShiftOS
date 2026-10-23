@@ -108,7 +108,8 @@ const en = {
   insuranceLabel: 'Insurance',
   insOff: 'Off',
   insInLoan: 'In the loan',
-  insuranceHint: 'An estimate by engine cc. Pick the viewer\'s NCD under the car.',
+  insuranceHint: 'An estimate by engine cc. Tap the insurance line to type your own: it stays until you change it.',
+  insuranceEdit: 'Set the insurance for this car',
   insuranceThisCar: 'Insurance on this car (RM)',
   ncd: 'NCD',
   offer: 'Offer',
@@ -256,7 +257,8 @@ const ms = {
   insuranceLabel: 'Insurans',
   insOff: 'Tidak',
   insInLoan: 'Dalam pinjaman',
-  insuranceHint: 'Anggaran ikut cc enjin. Pilih NCD penonton di bawah kereta.',
+  insuranceHint: 'Anggaran ikut cc enjin. Tap baris insurans untuk taip angka sendiri: ia kekal sampai anda tukar.',
+  insuranceEdit: 'Tetapkan insurans kereta ini',
   insuranceThisCar: 'Insurans kereta ini (RM)',
   ncd: 'NCD',
   offer: 'Tawaran',
@@ -383,6 +385,27 @@ export function saveLiveBio(on) {
   try {
     if (on) window.localStorage.removeItem(LIVE_BIO_KEY);
     else window.localStorage.setItem(LIVE_BIO_KEY, '0');
+  } catch { /* storage blocked */ }
+}
+
+// Insurance FIGURES the seller typed, per car (a model card per variant),
+// remembered on this device until the seller changes them (owner, 2026-10-24:
+// a Proton advisor quotes his insurer's number for every model and would not
+// retype it each live). No month end, unlike rebates: a premium only moves at
+// renewal-rate changes. Never saved to the listing or the server.
+export const LIVE_INS_FIG_KEY = 'xd_live_insfig';
+
+export function initialLiveInsFigures() {
+  try {
+    const m = JSON.parse(window.localStorage.getItem(LIVE_INS_FIG_KEY) || 'null');
+    return m && typeof m === 'object' && !Array.isArray(m) ? m : {};
+  } catch { return {}; }
+}
+
+export function saveLiveInsFigures(figures) {
+  try {
+    if (Object.keys(figures).length) window.localStorage.setItem(LIVE_INS_FIG_KEY, JSON.stringify(figures));
+    else window.localStorage.removeItem(LIVE_INS_FIG_KEY);
   } catch { /* storage blocked */ }
 }
 
