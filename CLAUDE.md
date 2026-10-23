@@ -1710,6 +1710,7 @@ cross-origin isolation). Used by the Studio's Remove BG (`TikTokStudioV3.jsx rem
   not JS eval). A new model = a NEW filename (`-v2`): `/models/*` is cached immutable for a year.
 - Licence: BRIA RMBG (1.4/2.0) is NON-commercial and @imgly/background-removal is AGPL;
   do not swap either in. BiRefNet is MIT but too heavy for phones (115 MB, crashes).
+- **Photos are fetched with `?cors=1`** (`fetchPhoto`): the service worker holds car photos as opaque <img> copies and a CORS fetch of one fails as "Failed to fetch" (first staging test, 2026-10-23).
 - Speed: about 15 s a photo on a slow CPU in headless Chromium; not yet timed on a phone.
 
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild

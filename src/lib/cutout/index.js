@@ -48,9 +48,26 @@ export async function isCutoutModelSaved() {
   } catch { return false; }
 }
 
+// fetch -> blob avoids a tainted canvas for cross-origin (Supabase) photos.
+// The service worker keeps car photos (`car-images-v1`, CacheFirst) as OPAQUE
+// copies from <img> tags, and handing one to a CORS fetch fails as "Failed to
+// fetch". A cache-busting param misses that copy and gets a readable one
+// (same trick as the Studio's own image loader; Supabase ignores the param).
+async function fetchPhoto(src) {
+  if (/^(blob|data):/.test(src)) return (await fetch(src)).blob();
+  const busted = src + (src.includes('?') ? '&' : '?') + 'cors=1';
+  let res;
+  try {
+    res = await fetch(busted);
+  } catch {
+    res = await fetch(busted, { cache: 'reload' }).catch(() => null);
+  }
+  if (!res || !res.ok) throw new Error('photo_load_failed');
+  return res.blob();
+}
+
 async function toBitmap(src) {
-  // fetch -> blob avoids a tainted canvas for cross-origin (Supabase) photos
-  const blob = typeof src === 'string' ? await (await fetch(src)).blob() : src;
+  const blob = typeof src === 'string' ? await fetchPhoto(src) : src;
   if (typeof createImageBitmap === 'function') return createImageBitmap(blob);
   const url = URL.createObjectURL(blob);
   try {
@@ -148,6 +165,9 @@ export async function cutOutBackground(src, { onProgress } = {}) {
 /** Plain words for whatever went wrong. */
 export function cutoutErrorText(err) {
   const m = String(err?.message || err || '');
+  if (/photo_load_failed/.test(m)) {
+    return "Couldn't open this photo. Try again, or pick the photo again with Change.";
+  }
   if (/model_http_|Failed to fetch|NetworkError|network/i.test(m)) {
     return "Couldn't download the cut-out tool. Check your connection and try again.";
   }
