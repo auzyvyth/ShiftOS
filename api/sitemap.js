@@ -205,7 +205,7 @@ export default async function handler(req) {
   if (!subdomain) {
     try {
       const hubRows = await fetchJson(
-        `${SUPABASE_URL}/rest/v1/public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&select=${HUB_ROW_COLS}&limit=5000`,
+        `${SUPABASE_URL}/rest/v1/public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&is_model_card=eq.false&select=${HUB_ROW_COLS}&limit=5000`,
       );
       const hubs = buildHubs(Array.isArray(hubRows) ? hubRows : []);
       if (hubs.length) staticRoutes.push({ path: HUB_BASE, changefreq: "daily", priority: "0.8" });
@@ -269,7 +269,9 @@ export default async function handler(req) {
           ? `&dealer_id=not.in.(${subdomainDealerIds.join(",")})`
           : "";
       cars = await fetchJson(
-        `${SUPABASE_URL}/rest/v1/public_car_listings?status=eq.available&select=${select}${excludeFilter}&order=created_at.desc&limit=5000`,
+        // Model cards are left out: near-identical pages, one per advisor; the
+        // /new-cars/:brand/:model page is the one that should rank.
+        `${SUPABASE_URL}/rest/v1/public_car_listings?status=eq.available&is_model_card=eq.false&select=${select}${excludeFilter}&order=created_at.desc&limit=5000`,
       );
     }
   } catch (_) {}
