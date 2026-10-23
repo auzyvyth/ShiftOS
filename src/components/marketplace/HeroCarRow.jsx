@@ -3,6 +3,7 @@ import { carWarmProps } from '../../utils/carPrefetch';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { cdnImg } from '../../utils/img';
+import ViewProgressBar from '../ViewProgressBar';
 
 const SLIDE_MS = 420;
 // After a manual swipe, hold the auto-timer off for a while so the set the
@@ -38,7 +39,10 @@ const carName = (car) => [car.year, car.brand, car.model].filter(Boolean).join('
 // Auto-advance still rides the CSS animationend timer (mirrors
 // HeroCarousel.jsx: no setInterval, auto-throttles on hidden tabs). A pool of
 // 3 or fewer never renders the timer — there's nothing new to cycle to.
-export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
+// autoAdvance={false} keeps the row still (the "Continue looking" row: the
+// buyer is looking for one car they already know, a moving row hides it).
+// headerAction replaces "View All" with the caller's own control.
+export default function HeroCarRow({ eyebrow, title, cars, viewAllHref, autoAdvance = true, headerAction = null }) {
   const chunks = useMemo(() => chunk(cars, 3), [cars]);
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState(0);          // 0 idle | -1 → next | +1 → prev
@@ -170,7 +174,9 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
                 onClick={onTileClick}
                 draggable={false}
               >
-                <div className="mp-carrow-img" style={img ? { backgroundImage: `url(${img})` } : undefined} />
+                <div className="mp-carrow-img" style={img ? { backgroundImage: `url(${img})` } : undefined}>
+                  <ViewProgressBar carId={car.id} />
+                </div>
                 <span className="mp-carrow-meta">
                   <span className="mp-carrow-name">{carName(car)}</span>
                   <span className="mp-carrow-price">{fmtPrice(car)}</span>
@@ -190,7 +196,8 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
           <p style={{ margin: '0 0 2px', fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', color: '#dc2626', fontFamily: "'Outfit',sans-serif" }}>{eyebrow}</p>
           <h3 style={{ margin: 0, fontFamily: "'Bebas Neue',sans-serif", fontSize: 'clamp(16px,1.6vw,20px)', color: '#111827', letterSpacing: '0.02em', lineHeight: 1 }}>{title}</h3>
         </div>
-        {viewAllHref && (
+        {headerAction}
+        {!headerAction && viewAllHref && (
           <Link
             to={viewAllHref}
             style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#6b7280', textDecoration: 'none', fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}
@@ -225,7 +232,7 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref }) {
         </div>
       )}
 
-      {len > 1 && (
+      {len > 1 && autoAdvance && (
         <div
           key={animKey}
           className="mp-carrow-progress"

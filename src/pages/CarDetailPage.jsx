@@ -55,6 +55,7 @@ import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
 import AffordabilityCheck from "../components/AffordabilityCheck";
 import SimilarCars from "../components/car/SimilarCars";
+import { recordCarProgress, scrollProgress } from "../utils/viewProgress";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
 import { fetchCarRow, getCarPreview } from "../utils/carPrefetch";
 import Turnstile from "../components/Turnstile";
@@ -1533,6 +1534,40 @@ export default function CarDetailPage() {
       if (raf) cancelAnimationFrame(raf);
     };
   }, [car]);
+
+  /* ── Reading progress (REVISIT-1): how far down this car the buyer got, for
+     the red line on its card and the marketplace's "Continue looking" row.
+     The end of the car is the top of "You might also like" (whichever copy
+     the layout shows). Device only, see src/utils/viewProgress.js. ── */
+  useEffect(() => {
+    if (!car?.id) return;
+    const id = car.id;
+    recordCarProgress(id);
+    let best = 0;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const end = [simRefMobile.current, simRefDesktop.current].find((el) => el && el.offsetParent !== null);
+      const endTop = end
+        ? end.getBoundingClientRect().top + window.scrollY
+        : document.documentElement.scrollHeight;
+      const p = scrollProgress(window.scrollY, window.innerHeight, endTop);
+      // Write only on real gains: a scroll event fires many times a second.
+      if (p >= best + 0.02 || (p === 1 && best < 1)) {
+        best = p;
+        recordCarProgress(id, p);
+      }
+    };
+    const onScroll = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // A car short enough to read without scrolling counts once it has settled.
+    const settle = setTimeout(onScroll, 1500);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(settle);
+      if (frame) cancelAnimationFrame(frame);
+    };
+  }, [car?.id]);
 
   /* ── "You might also like" buckets — fetched only once the section nears the
      viewport (same lazy pattern as the marketplace body-type carousels). Four
