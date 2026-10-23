@@ -9,19 +9,26 @@
 
 export const CUTOUT_MODEL_URL = '/models/isnet-wq8-v1.onnx';
 export const CUTOUT_MODEL_BYTES = 46728969;
-const CUTOUT_CACHE = 'xd-cutout-v1'; // same name as the worker's
+const CUTOUT_CACHE = 'xd-cutout-v1'; // same name as cutout.core.js
 const SIZE = 1024;      // the model's fixed input; other sizes fail inside it
 const MAX_SIDE = 2048;  // bigger photos are scaled down first, to spare phone memory
 
-let worker = null;
-let nextId = 1;
-const pending = new Map();
-let progressListener = null;
+const NO_GPU_KEY = 'xd_cutout_nogpu'; // set on a device where the GPU path failed once
 
-function getWorker() {
-  if (worker) return worker;
-  worker = new Worker(new URL('./cutout.worker.js', import.meta.url), { type: 'module' });
-  worker.onmessage = (e) => {
+// One worker per engine. Vite needs each `new Worker(new URL(...))` written
+// out literally to bundle it, hence the two branches.
+const workers = { gpu: null, cpu: null };
+let nextId = 1;
+const pending = new Map(); // id -> { resolve, reject, kind }
+let progressListener = null;
+let gpuOk = null;          // null = not checked yet on this page
+
+function getWorker(kind) {
+  if (workers[kind]) return workers[kind];
+  const w = kind === 'gpu'
+    ? new Worker(new URL('./cutout.gpu.worker.js', import.meta.url), { type: 'module' })
+    : new Worker(new URL('./cutout.worker.js', import.meta.url), { type: 'module' });
+  w.onmessage = (e) => {
     const m = e.data;
     if (m.type === 'progress' || m.type === 'working') { progressListener?.(m); return; }
     const p = pending.get(m.id);
@@ -30,15 +37,47 @@ function getWorker() {
     if (m.type === 'done') p.resolve(m.mask);
     else p.reject(new Error(m.message));
   };
-  worker.onerror = (e) => {
-    // a crashed worker (usually out of memory) takes every pending job with it
-    for (const p of pending.values()) p.reject(new Error(e.message || 'cutout_worker_crashed'));
-    pending.clear();
-    worker.terminate();
-    worker = null;
+  w.onerror = (e) => {
+    // a crashed worker (usually out of memory) takes its pending jobs with it
+    for (const [id, p] of pending) {
+      if (p.kind === kind) { p.reject(new Error(e.message || 'cutout_worker_crashed')); pending.delete(id); }
+    }
+    w.terminate();
+    workers[kind] = null;
   };
-  return worker;
+  workers[kind] = w;
+  return w;
 }
+
+/** The graphics chip is used when the browser offers one and it has never failed here. */
+async function canUseGpu() {
+  if (gpuOk !== null) return gpuOk;
+  try { if (localStorage.getItem(NO_GPU_KEY)) return (gpuOk = false); } catch { /* storage blocked */ }
+  try {
+    gpuOk = !!(navigator.gpu && (await navigator.gpu.requestAdapter()));
+  } catch {
+    gpuOk = false;
+  }
+  return gpuOk;
+}
+
+function giveUpOnGpu() {
+  gpuOk = false;
+  try { localStorage.setItem(NO_GPU_KEY, '1'); } catch { /* storage blocked */ }
+  workers.gpu?.terminate();
+  workers.gpu = null;
+}
+
+function runJob(kind, input) {
+  const id = nextId++;
+  return new Promise((resolve, reject) => {
+    pending.set(id, { resolve, reject, kind });
+    // a copy, not a transfer: the processor path may need the same input after a GPU failure
+    getWorker(kind).postMessage({ id, modelUrl: CUTOUT_MODEL_URL, modelBytes: CUTOUT_MODEL_BYTES, input, size: SIZE });
+  });
+}
+
+const isNetworkError = (err) => /model_http_|Failed to fetch|NetworkError|network/i.test(String(err?.message || err));
 
 /** True once the model is on this device, so the UI can skip the download warning. */
 export async function isCutoutModelSaved() {
@@ -117,19 +156,25 @@ export async function cutOutBackground(src, { onProgress } = {}) {
     input[2 * plane + p] = px[i + 2] / max - 0.5;
   }
 
-  const id = nextId++;
   progressListener = (m) => onProgress?.(m.type === 'progress'
     ? { stage: 'download', loaded: m.loaded, total: m.total }
     : { stage: 'working' });
   let mask;
   try {
-    mask = await new Promise((resolve, reject) => {
-      pending.set(id, { resolve, reject });
-      getWorker().postMessage(
-        { id, modelUrl: CUTOUT_MODEL_URL, modelBytes: CUTOUT_MODEL_BYTES, input, size: SIZE },
-        [input.buffer],
-      );
-    });
+    if (await canUseGpu()) {
+      try {
+        mask = await runJob('gpu', input);
+        // a bad GPU driver can return garbage without an error: NaN, or one flat value
+        let lo = Infinity, hi = -Infinity;
+        for (let i = 0; i < mask.length; i += 97) { const v = mask[i]; if (v !== v) throw new Error('gpu_bad_output'); if (v < lo) lo = v; if (v > hi) hi = v; }
+        if (!(hi > lo)) throw new Error('gpu_bad_output');
+      } catch (err) {
+        mask = null;
+        if (isNetworkError(err)) throw err; // a download problem, not the GPU's fault
+        giveUpOnGpu();                      // this device's GPU path is broken: processor from now on
+      }
+    }
+    if (!mask) mask = await runJob('cpu', input);
   } finally {
     progressListener = null;
   }

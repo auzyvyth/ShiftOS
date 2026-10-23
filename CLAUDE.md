@@ -1696,8 +1696,14 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
 `src/lib/cutout/index.js` (`cutOutBackground(src) -> PNG Blob`) + `cutout.worker.js`. Model:
 ISNet (DIS project, Apache-2.0) at `public/models/isnet-wq8-v1.onnx`, Conv weights stored
 8-bit and dequantized to float32 at load (47 MB, 97-99% mask match to the full model; the
-dynamic 8-bit version lost car edges). Run by `onnxruntime-web/wasm`, single thread (no
-cross-origin isolation). Used by the Studio's Remove BG (`TikTokStudioV3.jsx removeBg`).
+dynamic 8-bit version lost car edges). Used by the Studio's Remove BG (`TikTokStudioV3.jsx removeBg`),
+which only paid accounts can open (Premium, dealers, dealer-linked salesmen; Lite has no Studio).
+- **Two engines, one per device** (2026-10-23): `cutout.gpu.worker.js` (`onnxruntime-web/webgpu`,
+  graphics chip, ~6.7 MB gzipped engine) when `navigator.gpu` gives an adapter, else
+  `cutout.worker.js` (`onnxruntime-web/wasm`, processor, single thread, 3.7 MB). Both run
+  `cutout.core.js`. If the GPU path throws or returns garbage (NaN / flat mask), that photo is
+  redone on the processor and the device stops trying the GPU for good (`xd_cutout_nogpu`).
+  A download error never flips that flag.
 - **The car's pixels are the seller's photo; the model only picks which to keep.** Never
   swap this for an image-generation model (Gemini etc.): it redraws the car. Gemini is for
   the scene BEHIND a cut-out (next step), never the cut-out itself.
