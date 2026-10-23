@@ -14,15 +14,30 @@ export function useLiveSellers(client, enabled) {
   useEffect(() => {
     if (!enabled || !client) return undefined;
     let cancelled = false;
+    // A hidden console tab skips the read and catches up when shown, and only
+    // one read runs at a time: a frozen DB made each hang (IO-7, 2026-10-22).
+    let inFlight = false;
+    let stale = false;
     const load = () => {
+      if (document.visibilityState !== 'visible') { stale = true; return; }
+      if (inFlight) return;
+      inFlight = true;
+      stale = false;
       client.rpc('get_live_sellers').then(({ data, error }) => {
+        inFlight = false;
         if (cancelled) return;
         setRows(error ? null : (data || []));
-      });
+      }, () => { inFlight = false; });
     };
+    const onVisible = () => { if (document.visibilityState === 'visible' && stale) load(); };
     load();
     const t = setInterval(load, REFRESH_MS);
-    return () => { cancelled = true; clearInterval(t); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [client, enabled]);
 
   return rows;

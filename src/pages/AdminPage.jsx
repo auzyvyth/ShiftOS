@@ -377,7 +377,28 @@ export default function AdminPage() {
   useEffect(() => {
     if (!meId) return;
     let timer = null;
-    const bump = () => { clearTimeout(timer); timer = setTimeout(() => loadAll(true), 400); };
+    // Background refreshes are polite to a struggling DB (IO-7). A hidden tab
+    // skips them and catches up once when it is looked at again; only one
+    // runs at a time (a frozen DB makes each one hang, and they stacked up);
+    // after a failure the next one waits 1, 2, 4 ... up to 15 minutes.
+    let inFlight = false;
+    let stale = false;
+    let fails = 0;
+    let notBefore = 0;
+    const refresh = async () => {
+      if (document.visibilityState !== "visible") { stale = true; return; }
+      if (inFlight || Date.now() < notBefore) return;
+      inFlight = true;
+      stale = false;
+      let ok = false;
+      try { ok = await loadAll(true); } catch { ok = false; }
+      inFlight = false;
+      fails = ok ? 0 : fails + 1;
+      notBefore = fails ? Date.now() + Math.min(60000 * 2 ** (fails - 1), 900000) : 0;
+    };
+    const onVisible = () => { if (document.visibilityState === "visible" && stale) refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    const bump = () => { clearTimeout(timer); timer = setTimeout(refresh, 400); };
     const channel = supabase
       .channel("platform-approval-queues")
       .on(
@@ -393,11 +414,12 @@ export default function AdminPage() {
     // publishing it would put every subscriber's RLS in the path of every
     // profile update. A slow poll is the cheaper trade here; push covers the
     // case where this console is closed.
-    const poll = setInterval(() => loadAll(true), 60000);
+    const poll = setInterval(refresh, 60000);
 
     return () => {
       clearTimeout(timer);
       clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
       supabase.removeChannel(channel);
     };
   }, [meId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -551,11 +573,20 @@ export default function AdminPage() {
     //
     // ic_number is deliberately NOT selected: the console shows ic_last4, and
     // a full IC has no business crossing the wire to build a table.
-    const { data: accountData } = await supabase
+    const { data: accountData, error: accountErr } = await supabase
       .from("profiles")
       .select("id, full_name, email, phone, dealership, subdomain, slug, role, dealer_id, subscription_status, trial_ends_at, created_at, is_active, account_status, deleted_at, city, state, whatsapp_number, business_type, payment_status, plan, is_verified, verified_at, ssm_number, ic_last4, ic_verified_at, kyc_submitted_at, suspension_reason, suspended_at, approval_status, rejection_reason, onboarding_complete, setup_complete, pdpa_consent, signup_reminder_sent_at, plan_expires_at, premium_trial_started_at")
       .in("role", ["dealer", "owner", "superadmin", "salesman"])
       .order("created_at", { ascending: false });
+
+    // A failed first read means the database is struggling (IO-7: on
+    // 2026-10-22 this console kept firing all 14 reads into a frozen DB).
+    // Stop here: the other 13 would fail too, and writing [] over the
+    // accounts would blank a console that was showing good data.
+    if (accountErr) {
+      if (!silent) setLoading(false);
+      return false;
+    }
 
     const allAccounts = accountData || [];
     setAccounts(allAccounts);
@@ -708,6 +739,7 @@ export default function AdminPage() {
         if (error) { console.warn("[listing_reports count]", error.message); return; }
         setOpenReportCount(count || 0);
       });
+    return true;
   }
 
   // ── Listing decisions ────────────────────────────────────────────────────
