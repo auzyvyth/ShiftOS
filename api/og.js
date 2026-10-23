@@ -166,8 +166,9 @@ function carHref(c) {
 }
 
 async function getRecentListings(dealerId, limit = 48) {
-  // The showroom list leaves out new-car cards on platform photos (NEWCAR-2).
-  const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "&stock_photos=eq.false";
+  // The showroom list leaves out new-car model cards (one per advisor per model;
+  // they live on /new-cars/:brand/:model). A dealer's own storefront keeps them.
+  const filter = dealerId ? `&dealer_id=eq.${dealerId}` : "&is_model_card=eq.false";
   return sbFetch(
     `public_car_listings?status=eq.available${filter}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state&order=created_at.desc&limit=${limit}`,
   );
@@ -197,14 +198,14 @@ async function getSalesmanCars(id) {
 // All grouping + copy lives in src/utils/modelHubs.js (shared with the SPA page
 // and the sitemap). Here: fetch the rows, render crawler HTML.
 async function getHubs() {
-  const rows = await sbFetch(`public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&select=${HUB_ROW_COLS}&limit=5000`);
+  const rows = await sbFetch(`public_car_listings?status=in.(${[...HUB_LIVE, "sold"].join(",")})&is_model_card=eq.false&select=${HUB_ROW_COLS}&limit=5000`);
   return buildHubs(rows);
 }
 
 async function getHubCars(brand, model) {
   const or = encodeURIComponent(`(${hubCarFilter(brand, model)})`);
   return sbFetch(
-    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&or=${or}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
+    `public_car_listings?status=in.(${HUB_LIVE.join(",")})&is_model_card=eq.false&or=${or}&select=slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images&order=created_at.desc&limit=48`,
   );
 }
 

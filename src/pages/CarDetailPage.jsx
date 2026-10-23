@@ -1549,6 +1549,7 @@ export default function CarDetailPage() {
         .from("public_car_listings")
         .select(SIM_FIELDS)
         .in("status", ["available", "reserved"])
+        .eq("is_model_card", false)
         .neq("id", car.id)
         .order("created_at", { ascending: false })
         .limit(12);

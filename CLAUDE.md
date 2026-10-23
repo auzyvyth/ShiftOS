@@ -1386,10 +1386,14 @@ an automatic price list (built twice, rejected twice as clutter). **Since NEWCAR
 models they sell** (`StarterModelPicker`, at signup and in Settings > New cars) and
 `new_car_add_cards()` makes a card each, carrying the platform's photos from
 `new_car_model_media` (uploaded per model in the console price tab). Such a card has
-`stock_photos = true`: it shows on the mini page and `/new-cars/:brand/:model`, but NOT in
-the showroom grid (CarListingPage, api/shell.js, api/og.js filter it), or twenty advisors
-put twenty identical cards of one model there. The flag drops when the seller changes the
-card's photos; a client can never set it (`trg_new_car_stock_photos`). A console photo
+`stock_photos = true`. **No model card (`is_model_card`) is ever in a used/recon surface,
+stock photos or the seller's own** (owner, 2026-10-23): marketplace grid + body-type rows,
+`/showroom`, similar cars, `/used-cars` hubs, `api/shell.js`, `api/og.js`, the sitemap and
+`get_marketplace_stats`. Filtering on `stock_photos` let every card with the seller's own
+photo through, and the main grid filtered nothing, so ten Proton advisors were ten identical
+Sagas. New cars are reached ONLY through the hero's New pill (`/new-cars/:brand/:model`) and
+the advisor's mini page; `CONDITION_OPTIONS` has no 'new'. The flag drops when the seller
+changes the card's photos; a client can never set it (`trg_new_car_stock_photos`). A console photo
 change re-syncs every card still on stock photos. Only models with photos are offered.
 Photos must be ones the owner took or has the brand's written permission to use
 (Copyright Act 1987 s.36). Settings > New cars is otherwise a brand picker + READ-ONLY

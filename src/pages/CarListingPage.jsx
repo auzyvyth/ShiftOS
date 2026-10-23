@@ -539,9 +539,10 @@ export default function CarListingPage() {
         .in('status', ['available', 'reserved']);
 
       if (!isMarketplace && tenant?.id) query = query.eq('dealer_id', tenant.id);
-      // A new-car card still on the platform's photos stays out of the grid
-      // (NEWCAR-2): it shows on the advisor's mini page and the model page only.
-      if (isMarketplace) query = query.eq('stock_photos', false);
+      // New-car model cards stay out of the grid, stock photos or the advisor's
+      // own (owner, 2026-10-23): one per advisor per model, so the grid filled with
+      // copies. They show on the advisor's mini page and /new-cars/:brand/:model.
+      if (isMarketplace) query = query.eq('is_model_card', false);
 
       if (q) {
         q.trim().split(/\s+/).filter(Boolean).slice(0,6).forEach(t => {

@@ -39,9 +39,10 @@ export const MILEAGE_OPTIONS = [
   { label: 'Under 80,000 km',  value: '80000' },
   { label: 'Under 150,000 km', value: '150000' },
 ];
+// No 'new' here (owner, 2026-10-23): new cars are reached through the hero's
+// Used & Recon | New pill, never filtered into the used/recon grid.
 export const CONDITION_OPTIONS = [
   { value: 'used',  label: 'Used' },
-  { value: 'new',   label: 'New' },
   { value: 'recon', label: 'Recon / Import' },
 ];
 export const FUEL_TYPES = ['Petrol','Diesel','Electric','Hybrid','Mild Hybrid'];

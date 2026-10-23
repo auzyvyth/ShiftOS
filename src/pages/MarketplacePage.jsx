@@ -249,6 +249,7 @@ export default function MarketplacePage() {
             .from('public_car_listings')
             .select(CAR_FIELDS)
             .in('status', ['available', 'reserved'])
+            .eq('is_model_card', false)
             .eq('body_type', type)
             .order('created_at', { ascending: false })
             .limit(10)
@@ -286,7 +287,10 @@ export default function MarketplacePage() {
       let query = publicClient
         .from('public_car_listings')
         .select(`${CAR_FIELDS}, ${DEALER_JOIN}`, loadPage === 1 ? { count: 'exact' } : undefined)
-        .in('status', ['available', 'reserved']);
+        .in('status', ['available', 'reserved'])
+        // New-car model cards live behind the hero's New pill only: every advisor has
+        // one per model, so in this grid ten Proton advisors were ten identical Sagas.
+        .eq('is_model_card', false);
 
       if (q) {
         const tokens = q.trim().split(/\s+/).filter(Boolean).slice(0, 6);
@@ -1196,7 +1200,6 @@ export default function MarketplacePage() {
                 { groupLabel: 'Condition', pills: [
                   { label: 'Used',          paramKey: 'condition', paramVal: 'used' },
                   { label: 'Recon / Import',paramKey: 'condition', paramVal: 'recon' },
-                  { label: 'New',           paramKey: 'condition', paramVal: 'new' },
                 ]},
                 { groupLabel: 'Body Type', pills: [
                   { label: 'Sedan',     paramKey: 'body_type', paramVal: 'Sedan' },
