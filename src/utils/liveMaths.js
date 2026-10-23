@@ -142,15 +142,18 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // first, each with `fits`, so the Budget row can show which variants this
 // budget buys and let the seller switch between them (owner, 2026-10-22).
 // rateOf(car) -> { rate, basis }: the car's own rate (isLocalNew), else rate/basis.
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
+// depositFor(car, price) -> RM: a deposit per car (the Premium page's budget
+// finder takes a %, so each car's deposit differs). Absent = `deposit` for all.
+export function budgetMatches(listings, { maxMonthly, deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
-  const down = Math.max(0, Number(deposit) || 0);
+  const fixedDown = Math.max(0, Number(deposit) || 0);
   const fits = [];
   const above = [];
   const byN = new Map();
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
+    const down = depositFor ? Math.max(0, Number(depositFor(car, price)) || 0) : fixedDown;
     if (price <= 0 || down >= price) return;
     const extra = Math.max(0, Number(extraFor?.(car, price)) || 0);
     const limit = yearsFor ? yearsFor(car) : years;
@@ -167,7 +170,8 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     if (monthly <= cap) fits.push(row);
     else if (monthly <= cap * (1 + ABOVE_MARGIN)) {
       const need = depositToFit({ price, extra, cap, eir, years: y });
-      above.push({ ...row, topUp: need == null ? null : Math.max(0, need - down) });
+      // Rounded UP to RM100 again: `need` is, but a % deposit (RM8,980) is not.
+      above.push({ ...row, topUp: need == null ? null : Math.max(0, Math.ceil((need - down) / 100) * 100) });
     }
   });
   fits.sort((a, b) => b.price - a.price);

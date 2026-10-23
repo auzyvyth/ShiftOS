@@ -17,6 +17,7 @@ import ReportListingButton from '../components/ReportListingButton';
 import { calcMonthly } from '../utils/financing';
 import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
+import BudgetFinder from '../components/agent/BudgetFinder';
 import { hasStoredSession } from '../utils/panelCache';
 
 // Seller-only, so buyers never download it.
@@ -957,6 +958,23 @@ export default function SalesmanProfilePage() {
               {/* Only cars a superadmin checked (car_listings.docs_verified). */}
               {docsLine && (
                 <p className="ap-docs"><ShieldCheck size={14} style={{ flexShrink: 0, color: '#15803d' }} />{docsLine}</p>
+              )}
+
+              {/* Premium only (BUDGET-1): a closed drop-down until the buyer opens it.
+                  A Lite page (page_basic) shows exactly what it showed before. */}
+              {!profile.page_basic && listings.length > 0 && (
+                <BudgetFinder
+                  listings={listings}
+                  firstName={firstName}
+                  hasWa={hasWa}
+                  waUrlFor={(text) => sellerWaUrl({ slug: profile.slug, text })}
+                  onWhatsApp={(car) => trackEvent(supabase, 'whatsapp_click', {
+                    car_id: car.id,
+                    dealer_id: car.dealer_id || profile?.dealer_id || profile?.id || null,
+                    salesman_slug: slug,
+                    metadata: { source: 'budget_finder' },
+                  })}
+                />
               )}
 
               {loading && listings.length === 0 ? (

@@ -1461,6 +1461,17 @@ and the won-trigger marks it sold on the first deal.
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.
 
+## Premium page budget finder (BUDGET-1, 2026-10-23) — the Premium page's edge
+"What fits your budget?" on `/s/:slug`, Premium only (`!profile.page_basic`), a DROP-DOWN closed
+on landing (owner: never fill the page with it). `src/components/agent/BudgetFinder.jsx` +
+`src/utils/pageBudget.js` (`npm run test:pagebudget`). It runs the Live presenter's engine
+(`budgetMatches`, which takes `depositFor` for a per-car % deposit), so page and live quote the
+same monthly. Rates are DEFAULTS (new Proton/Perodua 4.8%, else `DEFAULT_EIR`): the seller's own
+rates live on their device and a buyer's browser cannot read them. Cars over RM300k are left out,
+matching the card's "financing on request". A tap opens WhatsApp via `/api/wa` with the buyer's
+budget in the text (tracked as `whatsapp_click`, `metadata.source = 'budget_finder'`). Never word
+a fit as approval; the fine print always says the bank decides.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.
