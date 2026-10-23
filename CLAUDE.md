@@ -1597,7 +1597,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
   ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate and no
   row; the seller types the figure in Adjust > "Insurance on this car", which wins for
-  that car and hides the pills. Budget adds
+  that car and hides the pills. **The Insurance line is typed in place like Rebate, and a typed
+  figure is REMEMBERED on the device until changed** (owner, 2026-10-24, a Proton advisor quotes
+  his insurer's number per model): `xd_live_insfig`, keyed by listing, `<listing>:<variant>` on a
+  model card (`insKey`), no month end. Never saved to the listing or the server. Budget adds
   the same insurance (`budgetMatches` `extraFor`), a model card's with its variant's cc.
   `npm run test:live`.
 - **Every car the presenter names carries its VARIANT** (owner, 2026-10-21: "details is
