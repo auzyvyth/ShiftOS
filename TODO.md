@@ -2543,6 +2543,12 @@ derived meta description, and a two-column mini page at 1024px+.
 Built: "Kiraan Loan" poster from a car's menu in Lite / Premium / linked-salesman panel,
 Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to SA Studio X
 (sastudiox.my): RM108/yr, 3 free, background removal, flat-rate maths.
+- [ ] **CUTOUT-2: is the WebGPU path actually faster?** (staging `d4a2f37`, not in prod)
+  Processor-only timings (owner, 2026-10-23): Reno 10 5G ~30 s, 4 GB Chromebook ~80 s. After
+  the WebGPU switch the owner reported "about a minute" (device and first-vs-second photo not
+  said). Next: time the SECOND photo on each device. If the GPU path is slower anywhere, make
+  the processor the default (set `xd_cutout_nogpu` logic to opt-in) rather than shipping a regression.
+  CUTOUT-1 (on-phone cut-out, Studio Remove BG) is on staging too and also not yet in prod.
 - [ ] **POSTER-2b: offer "clean background" on the loan poster** (real photo only). The
   Studio's Remove BG works again (CUTOUT-1, on the phone, `src/lib/cutout`); the loan poster
   does not use it yet. Needs a design call: the poster is a full-width photo today.
