@@ -49,6 +49,13 @@ is('report: top car is #2', r.topCar, { n: 2, name: '2019 Proton X70', taps: 2 }
 is('report: leads', r.newLeads, 2);
 is('report: failed leads read is null', liveReport({ events: [], newLeads: undefined, listings, startedAt: 0, endedAt: 0 }).newLeads, null);
 is('report: one tap is not a "most tapped"', liveReport({ events: [{ event_type: 'minipage_card_click', car_id: 'a' }], listings, startedAt: 0, endedAt: 0 }).topCar, null);
+is('report: bio visits count TikTok + Instagram sessions once', liveReport({ events: [
+  { event_type: 'minipage_view', session_id: 's1', metadata: { channel: 'tiktok' } },
+  { event_type: 'minipage_view', session_id: 's1', metadata: { channel: 'tiktok' } },
+  { event_type: 'minipage_view', session_id: 's2', metadata: { channel: 'instagram' } },
+  { event_type: 'minipage_view', session_id: 's3', metadata: { channel: 'whatsapp' } },
+  { event_type: 'minipage_view', session_id: 's4' },
+], listings, startedAt: 0, endedAt: 0 }).fromBio, 2);
 
 // Budget mode: the 35% rule backwards.
 is('budget: RM3,500 pay -> RM1,225', maxMonthlyFromPay(3500), 1225);

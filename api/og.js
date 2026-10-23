@@ -177,7 +177,7 @@ async function getRecentListings(dealerId, limit = 48) {
 // does: cars they own + cars assigned to them + dealer cars they feature via
 // salesman_listings. Owned-only missed the last two, so a salesman under a
 // dealer showed Google "New listings coming soon" over a page full of cars.
-const SALESMAN_CAR_COLS = "id,slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images,status";
+const SALESMAN_CAR_COLS = "id,slug,dealer_id,brand,model,variant,year,selling_price,mileage,state,images,status,condition";
 async function getSalesmanCars(id) {
   const live = "status=in.(available,reserved)";
   const [owned, assigned, featured, stats] = await Promise.all([
@@ -616,8 +616,8 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   const jobTitle = s.job_title || "Car Sales Agent";
   // Title + description come from agentSeo.js — the Premium settings preview
   // runs the same functions, so what the agent sees is what Google gets.
-  const title = agentPageTitle(s);
-  const description = agentPageDescription(s, cars.length);
+  const title = agentPageTitle(s, cars);
+  const description = agentPageDescription(s, cars.length, cars);
   // The agent's own profiles elsewhere. sameAs is how a search engine ties
   // this page to the same person's Facebook/Instagram/TikTok, which is what
   // makes a search for their NAME land here.

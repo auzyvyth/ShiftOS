@@ -7,9 +7,9 @@ import { agentPageTitle, agentPageDescription, agentSeoIssues, TITLE_LIMIT } fro
 
 const cut = (s, n) => (s.length > n ? `${s.slice(0, n - 3).trimEnd()}...` : s);
 
-export default function AgentSearchPreview({ profile, slug, carCount = 0 }) {
-  const title = cut(agentPageTitle({ ...profile, slug }), TITLE_LIMIT);
-  const description = agentPageDescription({ ...profile, slug }, carCount);
+export default function AgentSearchPreview({ profile, slug, carCount = 0, cars }) {
+  const title = cut(agentPageTitle({ ...profile, slug }, cars), TITLE_LIMIT);
+  const description = agentPageDescription({ ...profile, slug }, carCount, cars);
   const issues = agentSeoIssues(profile);
 
   return (

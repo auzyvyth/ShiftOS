@@ -1,5 +1,7 @@
 import React, { useMemo } from "react";
-import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck, BadgeCheck } from "lucide-react";
+import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck, BadgeCheck, Link2 } from "lucide-react";
+import { toast } from "sonner";
+import { SITE_URL } from "../../config/site";
 
 // The seller's first three wins, shared by Salesman Lite and Salesman Premium.
 //
@@ -28,8 +30,25 @@ import { Check, ChevronRight, Plus, ExternalLink, PenLine, Camera, UserCheck, Ba
 // Teaching order is deliberate: put a car up, go look at the page buyers will
 // land on, then fix what you saw was missing on it. Task 3 lands right after
 // task 2 shows them an empty bio, which is when the ask makes sense.
+//
+//   biolink  -> MEASURED, never a tap (BIOLINK-1, 2026-10-23): ticks once a
+//               visitor reaches the page from TikTok or Instagram. A live's
+//               viewers reach the seller's page only through the bio link
+//               (the presenter may not show a URL: TikTok LIVE rules), so this
+//               is the step that turns live views into page visits. Last in
+//               the list: it is done outside the app, and it is the one a
+//               seller who never posts on TikTok/IG cannot finish.
 
-export const STARTER_TASK_KEYS = ["listing", "minipage", "bio"];
+export const STARTER_TASK_KEYS = ["listing", "minipage", "bio", "biolink"];
+
+// Visits from these channels prove the link is in a bio. The in-app browsers
+// self-identify (src/utils/detectChannel.js), so the copied link carries no
+// ?src= tag: a tag of "tiktok" would mislabel every Instagram visit.
+const BIO_CHANNELS = ["tiktok", "instagram"];
+// rows = minipageStats.byChannel (get_salesman_minipage_stats), which both
+// panels already load for the dashboard. No new query.
+export const hasBioLinkVisit = (rows) =>
+  Array.isArray(rows) && rows.some((r) => BIO_CHANNELS.includes(r?.channel) && Number(r?.visits) > 0);
 
 // Premium's list (owner, 2026-10-18), shaped on Shopify's setup guide and the
 // endowed-progress finding (a list that starts with one real step already done
@@ -38,12 +57,12 @@ export const STARTER_TASK_KEYS = ["listing", "minipage", "bio"];
 // buyer trusts after a car. "verified" was its own card above this one (the
 // SellerIdCard invite) until the owner folded it in, 2026-10-18; it is last
 // because it is the most work (MyKad photos). Six rows, five real asks.
-export const PREMIUM_TASK_KEYS = ["account", "listing", "minipage", "photo", "bio", "verified"];
+export const PREMIUM_TASK_KEYS = ["account", "listing", "minipage", "photo", "bio", "verified", "biolink"];
 
 // Non-empty and not just whitespace. A bio of " " is not a bio.
 export const hasBio = (profile) => !!String(profile?.bio || "").trim();
 
-export const starterTaskState = ({ profile, listingCount }) => ({
+export const starterTaskState = ({ profile, listingCount, bioLinkSeen }) => ({
   account: true,
   listing: (listingCount || 0) > 0,
   minipage: !!profile?.starter_tasks?.minipage_visited,
@@ -52,6 +71,7 @@ export const starterTaskState = ({ profile, listingCount }) => ({
   // Their part is done once the photos are in; the badge itself waits on a
   // person (SellerIdCard says "we're checking" again once this list retires).
   verified: !!profile?.is_verified || !!profile?.kyc_submitted_at,
+  biolink: !!bioLinkSeen,
 });
 
 // Lite's page is the basic page (no bio, 2026-10-13), so Lite passes
@@ -66,8 +86,9 @@ export const starterTasksAllDone = (args) =>
 // in list order. The owner's strip on their own mini page reads this, so the
 // page and the dashboard never ask for different things ("one list"). The
 // account step is always done and the mini page step is the page they are on.
+// The bio link is left out: the page has no channel counts to tick it with.
 export const starterTodoKeys = (args) =>
-  starterTaskKeys(args).filter((k) => k !== "account" && k !== "minipage" && !starterTaskState(args)[k]);
+  starterTaskKeys(args).filter((k) => k !== "account" && k !== "minipage" && k !== "biolink" && !starterTaskState(args)[k]);
 
 export default function StarterTasks({
   profile,
@@ -78,6 +99,7 @@ export default function StarterTasks({
   onEditPhoto,
   onVerify,
   onDismiss,
+  bioLinkSeen = false,
   noBio = false,
   premium = false,
   t,
@@ -99,8 +121,8 @@ export default function StarterTasks({
   };
 
   const done = useMemo(
-    () => starterTaskState({ profile, listingCount }),
-    [profile, listingCount],
+    () => starterTaskState({ profile, listingCount, bioLinkSeen }),
+    [profile, listingCount, bioLinkSeen],
   );
   const keys = starterTaskKeys({ premium, noBio });
   const doneCount = keys.filter((k) => done[k]).length;
@@ -111,6 +133,18 @@ export default function StarterTasks({
   const tr = (key, fallback) => {
     const out = t ? t(`starterTasks.${key}`, { defaultValue: fallback }) : fallback;
     return out === `starterTasks.${key}` ? fallback : out;
+  };
+
+  const copyBioLink = async () => {
+    if (!profile?.slug) return;
+    try {
+      await navigator.clipboard.writeText(`${SITE_URL}/s/${profile.slug}`);
+      // TikTok shows the Website box only to Business accounts or 1,000+
+      // followers (checked 2026-10-23), so the hint names the free switch.
+      toast.success(tr("biolinkCopied", "Link copied. Paste it into Website on your TikTok and Instagram profile. No Website box on TikTok? Switch to a free Business account: Settings > Account."), { duration: 8000 });
+    } catch {
+      toast.error(tr("biolinkCopyFailed", "Couldn't copy. Your link is on your dashboard under Share."));
+    }
   };
 
   const ALL_TASKS = [
@@ -158,6 +192,14 @@ export default function StarterTasks({
       sub: tr("verifiedSub", "The Verified badge on your page and cars. Photos of your MyKad, about 2 minutes."),
       cta: tr("verifiedCta", "Get verified"),
       action: onVerify,
+    },
+    {
+      key: "biolink",
+      icon: Link2,
+      title: tr("biolinkTitle", "Put your page link in your TikTok bio"),
+      sub: tr("biolinkSub", "Live viewers tap your profile, then this link, and land on all your cars. Ticks itself when the first visitor arrives from TikTok or Instagram."),
+      cta: tr("biolinkCta", "Copy my link"),
+      action: profile?.slug ? copyBioLink : undefined,
     },
   ];
   const TASKS = ALL_TASKS.filter((task) => keys.includes(task.key));

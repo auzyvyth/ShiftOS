@@ -2562,6 +2562,19 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-20: Sell the loan calculator on its own, ~RM25 one-time (owner, 2026-10-23)** —
+  owner met a seller who paid RM300 for a bare Excel file (basic instalment maths, no
+  insurance). Proof sellers pay for a calculator. Ours (Live presenter: EIR, insurance
+  estimate, rebates, budget reverse maths, posters) is far better. Open questions before
+  building: (1) Live is FREE on Lite today (owner, 2026-10-18), so "sell the calculator"
+  means re-gating it or a separate standalone product; (2) RM25 one-time sits under
+  Premium's RM35/month and can pull buyers away from it; (3) payment is still manual
+  (WhatsApp + DuitNow + console log, PAY-2 parked), which makes each RM25 sale costly to
+  collect. Alternative raised: use "the RM300 calculator, free" as the Lite signup hook.
+  Owner's ceiling if sold alone: RM20 ("it's just code, no API no auth"). Catch: with no
+  login, the first buyer can forward the file or link to every seller group, so it sells
+  once per group chat; locking it to an account turns it back into a Lite signup.
+
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
   sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and

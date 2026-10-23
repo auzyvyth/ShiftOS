@@ -12,7 +12,7 @@ import {
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveRebates, saveLiveRebates,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
   initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
@@ -21,6 +21,7 @@ import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } fr
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
 import { cdnImg, imgFallback } from '../../utils/img';
+import { SITE_URL } from '../../config/site';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -288,6 +289,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // The seller's own comment line, remembered per device (liveCopy.js ctaLine).
   const [ctaCustom, setCtaCustom] = useState(() => (embedded ? '' : initialLiveCta()));
   const changeCta = (v) => { const next = v.slice(0, CTA_MAX); setCtaCustom(next); if (!embedded) saveLiveCta(next); };
+  // "Link in bio" under the comment line, on unless switched off (liveCopy.js).
+  const [bioOn, setBioOn] = useState(() => (embedded ? true : initialLiveBio()));
+  const changeBio = (on) => { setBioOn(on); if (!embedded) saveLiveBio(on); };
   // The seller's standing offer (free extras), remembered per device (liveCopy.js).
   const [offer, setOffer] = useState(() => (embedded ? '' : initialLiveOffer()));
   const changeOffer = (v) => { const next = v.slice(0, OFFER_MAX); setOffer(next); if (!embedded) saveLiveOffer(next); };
@@ -411,7 +415,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     const since = startedAt.current.toISOString();
     const [ev, ld] = await Promise.all([
       supabase.from('analytics_events')
-        .select('event_type,session_id,car_id')
+        .select('event_type,session_id,car_id,metadata')
         .eq('salesman_slug', slug)
         .gte('created_at', since)
         .in('event_type', ['minipage_view', 'minipage_card_click', 'whatsapp_click'])
@@ -660,6 +664,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-spec { font-size: clamp(11px, 3cqw, 14px); color: #6b7280; margin: 3px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-cta { flex: 1 1 100%; margin: 0; padding: 7px 12px; border-radius: 999px; background: #0f1115; color: #fff; text-align: center; font-size: clamp(11px, 3cqw, 14px); font-weight: 800; letter-spacing: .06em; line-height: 1.25; text-transform: uppercase; overflow-wrap: anywhere; }
         .lp-desk .lp-head > .lp-cta { flex: 0 1 auto; max-width: 44%; padding: 9px 16px; font-size: 13px; }
+        /* Second line of the same pill: quieter, never the accent (one accent rule). */
+        .lp-bio { display: block; margin-top: 2px; font-size: .78em; font-weight: 700; letter-spacing: .04em; opacity: .72; }
         .lp-desk .lp-name { font-size: 34px; }
         .lp-desk .lp-num { font-size: 32px; }
         .lp-desk .lp-spec { font-size: 14px; }
@@ -913,6 +919,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
+        .lp-copy { margin-top: 12px; height: 40px; padding: 0 16px; border: none; border-radius: 10px; background: #0f1115; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
       `}</style>
 
       <div className="lp-stage" style={deskZoom ? { width: DESK_W, height: STAGE_H, zoom: deskZoom } : undefined}>
@@ -948,7 +955,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       </div>
 
-      {report ? <LiveReport report={report} onDone={onClose} t={t} /> : (<>
+      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
@@ -969,7 +976,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </div>
             </div>
             {/* The comment line sits at the top: the bottom of the stream is under TikTok's comments. */}
-            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}</p>
+            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}{bioOn && <span className="lp-bio">{t.bioLine}</span>}</p>
           </div>
 
           {/* One grid, two arrangements. Desktop: photo | answer, the deposit
@@ -1408,6 +1415,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   value={ctaCustom} onChange={(e) => changeCta(e.target.value)} />
                 <small className="lp-hint">{t.ctaHint}</small>
               </label>
+              <div className="lp-wide lp-insadj">
+                <span>{t.bioLabel}</span>
+                <div className="lp-seg" role="group" aria-label={t.bioLabel}>
+                  <button type="button" aria-pressed={!bioOn} onClick={() => changeBio(false)}>{t.bioOff}</button>
+                  <button type="button" aria-pressed={bioOn} onClick={() => changeBio(true)}>{t.bioOn}</button>
+                </div>
+                <small className="lp-hint">{t.bioHint}</small>
+              </div>
               <label className="lp-wide">
                 {t.offerLabel}
                 <input className="lp-in" type="text" maxLength={OFFER_MAX} value={offer} onChange={(e) => changeOffer(e.target.value)} />
@@ -1478,7 +1493,11 @@ function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
 
 // After the live. Counts only: this can still be on the stream, so no buyer
 // name, phone or message ever renders here.
-function LiveReport({ report, onDone, t }) {
+function LiveReport({ report, onDone, t, slug }) {
+  const [copied, setCopied] = useState(false);
+  const copyLink = () => {
+    navigator.clipboard?.writeText(`${SITE_URL}/s/${slug}`).then(() => setCopied(true), () => {});
+  };
   if (report.loading) {
     return <div className="lp-report"><p className="lp-note">{t.adding}</p></div>;
   }
@@ -1499,6 +1518,17 @@ function LiveReport({ report, onDone, t }) {
           <span>{t.topTaps(report.topCar.taps)}</span>
         </div>
       )}
+      {/* Where the viewers came from. None from TikTok/IG = the bio link is
+          probably missing, so the fix is offered right here. */}
+      {!report.eventsFailed && (report.fromBio > 0 ? (
+        <p className="lp-note"><b>{fmt(report.fromBio)}</b> {t.fromBio}</p>
+      ) : slug ? (
+        <div className="lp-card lp-tile">
+          <span>{t.noBioTitle}</span>
+          <span>{t.noBioBody}</span>
+          <button type="button" className="lp-copy" onClick={copyLink}>{copied ? t.bioCopied : t.bioCopy}</button>
+        </div>
+      ) : null)}
       <p className="lp-note">
         {t.reportNote}
       </p>

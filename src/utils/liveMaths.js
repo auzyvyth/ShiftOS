@@ -142,15 +142,18 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // first, each with `fits`, so the Budget row can show which variants this
 // budget buys and let the seller switch between them (owner, 2026-10-22).
 // rateOf(car) -> { rate, basis }: the car's own rate (isLocalNew), else rate/basis.
-export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
+// depositFor(car, price) -> RM: a deposit per car (the Premium page's budget
+// finder takes a %, so each car's deposit differs). Absent = `deposit` for all.
+export function budgetMatches(listings, { maxMonthly, deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
   const cap = Number(maxMonthly);
   if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
-  const down = Math.max(0, Number(deposit) || 0);
+  const fixedDown = Math.max(0, Number(deposit) || 0);
   const fits = [];
   const above = [];
   const byN = new Map();
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
+    const down = depositFor ? Math.max(0, Number(depositFor(car, price)) || 0) : fixedDown;
     if (price <= 0 || down >= price) return;
     const extra = Math.max(0, Number(extraFor?.(car, price)) || 0);
     const limit = yearsFor ? yearsFor(car) : years;
@@ -167,7 +170,8 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, years, rate, 
     if (monthly <= cap) fits.push(row);
     else if (monthly <= cap * (1 + ABOVE_MARGIN)) {
       const need = depositToFit({ price, extra, cap, eir, years: y });
-      above.push({ ...row, topUp: need == null ? null : Math.max(0, need - down) });
+      // Rounded UP to RM100 again: `need` is, but a % deposit (RM8,980) is not.
+      above.push({ ...row, topUp: need == null ? null : Math.max(0, Math.ceil((need - down) / 100) * 100) });
     }
   });
   fits.sort((a, b) => b.price - a.price);
@@ -216,12 +220,17 @@ export const fmtRate = (n) => {
 export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
   const rows = Array.isArray(events) ? events : [];
   const sessions = new Set();
+  // Visitors who came through a TikTok / Instagram in-app browser: in practice
+  // the bio link, the one way a live viewer can reach the page (BIOLINK-1).
+  const bioSessions = new Set();
   let carTaps = 0;
   let whatsappTaps = 0;
   const tapsByCar = new Map();
   for (const e of rows) {
     if (e.event_type === 'minipage_view') {
       if (e.session_id) sessions.add(e.session_id);
+      const ch = e.metadata && e.metadata.channel;
+      if (e.session_id && (ch === 'tiktok' || ch === 'instagram')) bioSessions.add(e.session_id);
     } else if (e.event_type === 'minipage_card_click') {
       carTaps += 1;
       if (e.car_id) tapsByCar.set(e.car_id, (tapsByCar.get(e.car_id) || 0) + 1);
@@ -242,6 +251,7 @@ export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
   return {
     minutes,
     visitors: sessions.size,
+    fromBio: bioSessions.size,
     carTaps,
     whatsappTaps,
     newLeads: Number.isFinite(newLeads) ? newLeads : null,

@@ -951,20 +951,24 @@ export default function SalesmanOnboarding() {
                   )}
                 </div>
                 <p className="eo-hint">xdrive.my/s/{form.slug || 'yourname'} &middot; Letters and numbers, 3–20 chars</p>
-                <label className="eo-label">STATE</label>
+                {/* Public: this is the page header, the Google title and the advisor
+                    list. People typed their HOME here (owner, 2026-10-23), so it
+                    asks for where buyers meet them. */}
+                <label className="eo-label">STATE WHERE YOU SELL</label>
                 <select className="eo-select" value={form.state}
                   onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
                   <option value="">Select state</option>
                   {MY_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <label className="eo-label">
-                  CITY / AREA <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>— OPTIONAL</span>
+                  AREA WHERE YOU SELL <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400 }}>— OPTIONAL</span>
                 </label>
                 <select className="eo-select" value={form.city} disabled={!form.state}
                   onChange={e => upd('city')(e.target.value)}>
                   <option value="">{form.state ? 'Select city / area' : 'Select a state first'}</option>
                   {cityOptionsFor(form.state, form.city).map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
+                <p className="eo-hint">Your showroom or office, where buyers meet you. Shown on your page and on Google, so never your home.</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" disabled={!canSlugContinue || loading}
                   onClick={() => { setErr(''); setStep(5); }}>

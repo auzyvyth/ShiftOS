@@ -1461,6 +1461,17 @@ and the won-trigger marks it sold on the first deal.
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.
 
+## Premium page budget finder (BUDGET-1, 2026-10-23) — the Premium page's edge
+"What fits your budget?" on `/s/:slug`, Premium only (`!profile.page_basic`), a DROP-DOWN closed
+on landing (owner: never fill the page with it). `src/components/agent/BudgetFinder.jsx` +
+`src/utils/pageBudget.js` (`npm run test:pagebudget`). It runs the Live presenter's engine
+(`budgetMatches`, which takes `depositFor` for a per-car % deposit), so page and live quote the
+same monthly. Rates are DEFAULTS (new Proton/Perodua 4.8%, else `DEFAULT_EIR`): the seller's own
+rates live on their device and a buyer's browser cannot read them. Cars over RM300k are left out,
+matching the card's "financing on request". A tap opens WhatsApp via `/api/wa` with the buyer's
+budget in the text (tracked as `whatsapp_click`, `metadata.source = 'budget_finder'`). Never word
+a fit as approval; the fine print always says the bank decides.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.
@@ -1488,6 +1499,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   live for a phone number (checked 2026-10-03), so never default it on or persist it.
   NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
   mini-page link) must not be the live tool.
+- **The way from a live to the page is the seller's TikTok BIO LINK (BIOLINK-1, 2026-10-23).**
+  TikTok's LIVE rules bar QR codes and third-party links on screen (checked 2026-10-23), so the
+  presenter never shows a URL or our brand: the comment pill carries a second line "All my cars:
+  link in bio" (`.lp-bio`, on unless switched off in Adjust > Look, `xd_live_bio`). The setup list
+  has a `biolink` step that ticks only when a TikTok/Instagram visit is MEASURED
+  (`hasBioLinkVisit`, StarterTasks.jsx), and the live report counts those visits (`fromBio`,
+  liveMaths.js) and offers the link to copy when there were none. The copied link has no `?src=`:
+  the in-app browsers tag themselves, and `?src=tiktok` would mislabel Instagram.
 - **Cars screen = one big number, at the top (LIVE-UI, owner 2026-10-22).** TikTok's comments
   cover the bottom-left of the stream, so the top holds what a viewer must read: #N + title
   with the "Comment #N" line beside it (a bar under it on a phone), then the picked monthly

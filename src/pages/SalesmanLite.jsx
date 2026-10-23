@@ -51,7 +51,7 @@ import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import StarterTasks, { starterTasksAllDone } from "../components/onboarding/StarterTasks";
+import StarterTasks, { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
 import { hasUnreadRejection } from "../utils/listingReview";
@@ -1237,9 +1237,9 @@ export default function SalesmanLite() {
   useEffect(() => {
     if (!userId || !listingsLoaded) return;
     if (profile?.starter_tasks?.dismissed) return;
-    if (!starterTasksAllDone({ profile, listingCount: myListings.length, noBio: true })) return;
+    if (!starterTasksAllDone({ profile, listingCount: myListings.length, noBio: true, bioLinkSeen: hasBioLinkVisit(minipageStats.byChannel) })) return;
     markStarterTask(userId, "dismissed", profile?.starter_tasks);
-  }, [userId, listingsLoaded, profile, myListings.length]);
+  }, [userId, listingsLoaded, profile, myListings.length, minipageStats.byChannel]);
 
   // Opening your own mini page is the one starter task nothing else can prove,
   // so the click that does it is what records it. Used by the starter card AND
@@ -3274,6 +3274,7 @@ export default function SalesmanLite() {
           <StarterTasks
             profile={profile}
             listingCount={myListings.length}
+            bioLinkSeen={hasBioLinkVisit(minipageStats.byChannel)}
             t={t}
             palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
             onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}

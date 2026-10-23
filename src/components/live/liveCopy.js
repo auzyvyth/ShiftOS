@@ -98,6 +98,11 @@ const en = {
   targetHint: 'Fills in the deposit this monthly needs.',
   cta: (n) => `Comment #${n}, your deposit & tenure`,
   ctaLabel: 'Comment line',
+  bioLine: 'All my cars: link in bio',
+  bioLabel: 'Link in bio line',
+  bioOff: 'Off',
+  bioOn: 'On',
+  bioHint: 'Under the comment line. Viewers reach your page through the link in your TikTok bio.',
   insurance: 'Insurance',
   insuranceEst: 'Insurance (est.)',
   insuranceLabel: 'Insurance',
@@ -132,6 +137,11 @@ const en = {
   adding: 'Adding up your live...',
   yourLive: (m) => `Your live, ${m} min`,
   openedPage: 'opened your page',
+  fromBio: 'of them came from TikTok or Instagram (your bio link).',
+  noBioTitle: 'Nobody came from TikTok this live',
+  noBioBody: 'Viewers reach your cars through the link in your TikTok bio. Copy it and paste it into Website on your profile.',
+  bioCopy: 'Copy my page link',
+  bioCopied: 'Copied',
   carTaps: 'car taps',
   waTaps: 'WhatsApp taps',
   newLeads: 'new leads in your pipeline',
@@ -236,6 +246,11 @@ const ms = {
   targetHint: 'Isi deposit yang diperlukan untuk bayaran bulanan ini.',
   cta: (n) => `Komen #${n}, deposit & tempoh anda`,
   ctaLabel: 'Ayat komen',
+  bioLine: 'Semua kereta saya: link di bio',
+  bioLabel: 'Ayat link di bio',
+  bioOff: 'Tidak',
+  bioOn: 'Ya',
+  bioHint: 'Di bawah ayat komen. Penonton sampai ke page anda melalui link di bio TikTok anda.',
   insurance: 'Insurans',
   insuranceEst: 'Insurans (anggaran)',
   insuranceLabel: 'Insurans',
@@ -270,6 +285,11 @@ const ms = {
   adding: 'Mengira live anda...',
   yourLive: (m) => `Live anda, ${m} minit`,
   openedPage: 'buka page anda',
+  fromBio: 'daripadanya datang dari TikTok atau Instagram (link di bio anda).',
+  noBioTitle: 'Tiada yang datang dari TikTok dalam live ini',
+  noBioBody: 'Penonton sampai ke kereta anda melalui link di bio TikTok. Salin dan tampal di Website profil anda.',
+  bioCopy: 'Salin link page saya',
+  bioCopied: 'Disalin',
   carTaps: 'tekan kereta',
   waTaps: 'tekan WhatsApp',
   newLeads: 'lead baharu dalam pipeline',
@@ -349,6 +369,23 @@ export function saveLiveRebates(rebates, month) {
 // Insurance in the loan: on or off, remembered per device (owner, 2026-10-18).
 // Some sellers always quote with it (Proton advisors), most used-car sellers
 // never do, so it starts off and the seller's choice sticks between lives.
+// "Link in bio" under the comment line (BIOLINK-1, 2026-10-23): ON unless the
+// seller switched it off on this device. It names TikTok's own bio feature,
+// never a URL or our name: TikTok LIVE rules bar QR codes and third-party
+// links on screen, so the bio link is the one safe way from a live to the page.
+export const LIVE_BIO_KEY = 'xd_live_bio';
+
+export function initialLiveBio() {
+  try { return window.localStorage.getItem(LIVE_BIO_KEY) !== '0'; } catch { return true; }
+}
+
+export function saveLiveBio(on) {
+  try {
+    if (on) window.localStorage.removeItem(LIVE_BIO_KEY);
+    else window.localStorage.setItem(LIVE_BIO_KEY, '0');
+  } catch { /* storage blocked */ }
+}
+
 export const LIVE_INS_KEY = 'xd_live_ins';
 
 export function initialLiveIns() {
