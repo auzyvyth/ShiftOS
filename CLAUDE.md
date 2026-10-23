@@ -466,10 +466,19 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   (that state, then its price zone), never filters, so no pick lands on an empty list.
   Brand logos: `LOGOS` in NewCarPicker, files in `public/brands/`; a brand without a CURRENT
   logo file renders as a wordmark (the old proton.svg was the ProtonMail logo; proton.png +
-  byd.png are the owner's files, trimmed onto a transparent background). Brands come from live model cards (`liveNewCarBrands`,
+  byd.png + perodua.png are the owner's files, trimmed onto a transparent background). Brands come from live model cards (`liveNewCarBrands`,
   `src/utils/newCars.js`), so Perodua/Toyota/Honda appear by themselves once an advisor
   posts. The hero car rows filter `is_model_card = false`: model cards had taken every
   "All cars" slot.
+- **"Continue looking" + the red line under a car's photo (REVISIT-1, 2026-10-23)** is the
+  buyer's OWN history, kept on the device only (`src/utils/viewProgress.js`, key
+  `xd_view_progress`, 40 cars, 30 days). Progress = scroll depth on the car page up to the
+  top of "You might also like", the MAX ever reached (`CarDetailPage.jsx`, REVISIT-1 effect).
+  The line is ONE component, `ViewProgressBar`, in ShowroomCard, CarCard and HeroCarRow; a
+  new car card adds it, never a second bar. The hero row shows only when a viewed car is
+  still live, and replaces the MPV row so the hero keeps its height. It sits under the
+  cookie banner's `preferences` tier: off = nothing recorded and `setConsent` wipes it.
+  Never send it to the server or into `analytics_events`.
 - The marketplace header/footer live on a LIGHT surface. `body` is `#080C14`,
   so a translucent background in the site chrome composites over near-black —
   which is how the announcement bar ended up a dark band above a white header.
@@ -1386,10 +1395,14 @@ an automatic price list (built twice, rejected twice as clutter). **Since NEWCAR
 models they sell** (`StarterModelPicker`, at signup and in Settings > New cars) and
 `new_car_add_cards()` makes a card each, carrying the platform's photos from
 `new_car_model_media` (uploaded per model in the console price tab). Such a card has
-`stock_photos = true`: it shows on the mini page and `/new-cars/:brand/:model`, but NOT in
-the showroom grid (CarListingPage, api/shell.js, api/og.js filter it), or twenty advisors
-put twenty identical cards of one model there. The flag drops when the seller changes the
-card's photos; a client can never set it (`trg_new_car_stock_photos`). A console photo
+`stock_photos = true`. **No model card (`is_model_card`) is ever in a used/recon surface,
+stock photos or the seller's own** (owner, 2026-10-23): marketplace grid + body-type rows,
+`/showroom`, similar cars, `/used-cars` hubs, `api/shell.js`, `api/og.js`, the sitemap and
+`get_marketplace_stats`. Filtering on `stock_photos` let every card with the seller's own
+photo through, and the main grid filtered nothing, so ten Proton advisors were ten identical
+Sagas. New cars are reached ONLY through the hero's New pill (`/new-cars/:brand/:model`) and
+the advisor's mini page; `CONDITION_OPTIONS` has no 'new'. The flag drops when the seller
+changes the card's photos; a client can never set it (`trg_new_car_stock_photos`). A console photo
 change re-syncs every card still on stock photos. Only models with photos are offered.
 Photos must be ones the owner took or has the brand's written permission to use
 (Copyright Act 1987 s.36). Settings > New cars is otherwise a brand picker + READ-ONLY
@@ -1691,6 +1704,33 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
   SQL and `LITE_POSTERS_PER_MONTH`.
 - The seller's own number on their own poster is fine (they send it); this is NOT a public
   page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
+
+## Background cut-out runs ON THE PHONE (CUTOUT-1, 2026-10-23)
+`src/lib/cutout/index.js` (`cutOutBackground(src) -> PNG Blob`) + `cutout.worker.js`. Model:
+ISNet (DIS project, Apache-2.0) at `public/models/isnet-wq8-v1.onnx`, Conv weights stored
+8-bit and dequantized to float32 at load (47 MB, 97-99% mask match to the full model; the
+dynamic 8-bit version lost car edges). Used by the Studio's Remove BG (`TikTokStudioV3.jsx removeBg`),
+which only paid accounts can open (Premium, dealers, dealer-linked salesmen; Lite has no Studio).
+- **Two engines, one per device** (2026-10-23): `cutout.gpu.worker.js` (`onnxruntime-web/webgpu`,
+  graphics chip, ~6.7 MB gzipped engine) when `navigator.gpu` gives an adapter, else
+  `cutout.worker.js` (`onnxruntime-web/wasm`, processor, single thread, 3.7 MB). Both run
+  `cutout.core.js`. If the GPU path throws or returns garbage (NaN / flat mask), that photo is
+  redone on the processor and the device stops trying the GPU for good (`xd_cutout_nogpu`).
+  A download error never flips that flag.
+- **The car's pixels are the seller's photo; the model only picks which to keep.** Never
+  swap this for an image-generation model (Gemini etc.): it redraws the car. Gemini is for
+  the scene BEHIND a cut-out (next step), never the cut-out itself.
+- remove.bg (the old provider) shuts its self-service API 1 Dec 2026; its server route is gone.
+- First use downloads 47 MB + a 14 MB engine (3.7 MB gzipped), then Cache Storage
+  (`xd-cutout-v1`) serves it offline. The UI says so before the first download.
+- The input is FIXED at 1024x1024 (sizes are baked into the graph; 512/768 fail). Photos
+  over 2048 px are scaled down first to spare phone memory.
+- `vercel.json` CSP carries `'wasm-unsafe-eval'` in script-src for this (WebAssembly only,
+  not JS eval). A new model = a NEW filename (`-v2`): `/models/*` is cached immutable for a year.
+- Licence: BRIA RMBG (1.4/2.0) is NON-commercial and @imgly/background-removal is AGPL;
+  do not swap either in. BiRefNet is MIT but too heavy for phones (115 MB, crashes).
+- **Photos are fetched with `?cors=1`** (`fetchPhoto`): the service worker holds car photos as opaque <img> copies and a CORS fetch of one fails as "Failed to fetch" (first staging test, 2026-10-23).
+- Speed (owner, 2026-10-23): about 30 s on an Oppo Reno 10 5G, 1 min 20 s on a 4 GB Chromebook. Faster path if needed: WebGPU (`onnxruntime-web/webgpu`, +~7 MB gzipped engine).
 
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up

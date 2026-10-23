@@ -8,6 +8,7 @@ import React, {
 import { supabase } from "../supabaseClient";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { calcMonthly } from "../utils/financing";
+import { cutOutBackground, cutoutErrorText, isCutoutModelSaved, CUTOUT_MODEL_BYTES } from "../lib/cutout";
 import {
   Undo2,
   Redo2,
@@ -2123,6 +2124,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [removeBgError, setRemoveBgError] = useState(null);
+  const [removeBgStatus, setRemoveBgStatus] = useState(null); // "Downloading 12 of 47 MB" / "Removing..."
+  const [cutoutSaved, setCutoutSaved] = useState(true); // tool already on this phone? (checked below)
+  useEffect(() => { isCutoutModelSaved().then(setCutoutSaved); }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sheetPanel, setSheetPanel] = useState(null); // mobile bottom sheet
@@ -3217,38 +3221,28 @@ export default function TikTokStudioV3({ listing, onClose }) {
   }, []);
 
   // ── Remove Background ────────────────────────────────────────────────────
+  // Runs on the phone (src/lib/cutout): the photo is never uploaded, and the
+  // car's pixels are the real photo. The tool downloads once (~47 MB).
   const removeBg = useCallback(async () => {
     const url = slide?.imageUrl;
     if (!url) return;
     setRemovingBg(true);
     setRemoveBgError(null);
+    setRemoveBgStatus(null);
     try {
-      const REMOVEBG_PROXY = `${import.meta.env.VITE_API_URL || 'http://localhost:4000'}/ai/removebg`;
-      const imgResp = await fetch(url);
-      const imgBlob = await imgResp.blob();
-      // Convert blob to base64 so it can be sent as JSON to the server proxy
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(imgBlob);
+      const resultBlob = await cutOutBackground(url, {
+        onProgress: (p) => setRemoveBgStatus(p.stage === "download"
+          ? `Getting the tool, once only: ${Math.round(p.loaded / 1e6)} of ${Math.round(p.total / 1e6)} MB`
+          : "Removing the background..."),
       });
-      const resp = await fetch(REMOVEBG_PROXY, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image_base64: base64 }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        throw new Error(err?.error || `remove.bg error ${resp.status}`);
-      }
-      const resultBlob = await resp.blob();
       const resultUrl = URL.createObjectURL(resultBlob);
       patchSlide({ originalImageUrl: url, imageUrl: resultUrl });
+      setCutoutSaved(true);
     } catch (e) {
-      setRemoveBgError(e.message);
+      setRemoveBgError(cutoutErrorText(e));
     } finally {
       setRemovingBg(false);
+      setRemoveBgStatus(null);
     }
   }, [slide?.imageUrl, patchSlide]);
 
@@ -4896,6 +4890,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
         onRestoreBg={restoreBg}
         removingBg={removingBg}
         removeBgError={removeBgError}
+        removeBgStatus={removeBgStatus}
+        cutoutSaved={cutoutSaved}
       />
     );
   };
@@ -5021,7 +5017,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
   }
 
-  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError }) {
+  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved }) {
     const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
     const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
     const sliders = [
@@ -5033,7 +5029,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
       { key: "vignette",   label: "Vignette",   min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
     ];
     const bgRemoved = !!originalImageUrl;
-    const REMOVEBG_KEY = true; // key lives server-side; always available
     return (
       <div style={{ padding: "10px 16px 18px" }}>
         {/* Header row */}
@@ -5058,7 +5053,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
               <div>
                 <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)", margin: 0 }}>Remove Background</p>
                 <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>
-                  {bgRemoved ? "Background removed — place on any scene" : "Powered by remove.bg"}
+                  {bgRemoved ? "Background removed. Place it on any scene."
+                    : cutoutSaved ? "Done on your phone. Your photo is not uploaded."
+                    : `Done on your phone. First use downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
                 </p>
               </div>
               {bgRemoved ? (
@@ -5067,12 +5064,13 @@ export default function TikTokStudioV3({ listing, onClose }) {
                   Restore
                 </button>
               ) : (
-                <button onClick={onRemoveBg} disabled={!REMOVEBG_KEY || removingBg}
-                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "none", background: REMOVEBG_KEY ? (removingBg ? "rgba(37,99,235,0.5)" : "#2563eb") : "rgba(255,255,255,0.06)", color: !REMOVEBG_KEY ? "rgba(255,255,255,0.3)" : "#fff", cursor: REMOVEBG_KEY && !removingBg ? "pointer" : "default", fontWeight: 700, whiteSpace: "nowrap", minWidth: 76, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-                  {removingBg ? <><span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⏳</span> Removing…</> : "✂️ Remove BG"}
+                <button onClick={onRemoveBg} disabled={removingBg}
+                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "none", background: removingBg ? "rgba(37,99,235,0.5)" : "#2563eb", color: "#fff", cursor: removingBg ? "default" : "pointer", fontWeight: 700, whiteSpace: "nowrap", minWidth: 76, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                  {removingBg ? "Working..." : "Remove BG"}
                 </button>
               )}
             </div>
+            {removingBg && removeBgStatus && <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 6, marginBottom: 0 }}>{removeBgStatus}</p>}
             {removeBgError && <p style={{ fontSize: 10, color: "#f87171", marginTop: 6, marginBottom: 0 }}>{removeBgError}</p>}
           </div>
         )}
@@ -5162,7 +5160,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         );
       }
       if (sheetPanel === "photo") {
-        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} />;
+        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} removeBgStatus={removeBgStatus} cutoutSaved={cutoutSaved} />;
       }
       if (sheetPanel === "shapes") {
         return (

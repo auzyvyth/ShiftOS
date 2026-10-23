@@ -10,6 +10,7 @@ import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { isSubdomain } from '../hooks/useTenant';
 import ContactGate from './ContactGate';
+import ViewProgressBar from './ViewProgressBar';
 import { useSavedCars } from '../hooks/useSavedCars';
 import { useCompare } from '../hooks/useCompare';
 import { calcMonthly, HIGH_VALUE_THRESHOLD } from '../utils/financing';
@@ -416,6 +417,9 @@ const CarCard = ({ car, showDiscountBadge = true, ctaContext, priority = false, 
               <span style={{ fontSize: 10, color: xd.noImg }}>No photo</span>
             </div>
           )}
+
+          {/* How much of this car's page the buyer has read (REVISIT-1). */}
+          <ViewProgressBar carId={car.id} />
 
           {/* Top-left: condition + deal badges */}
           <div style={{

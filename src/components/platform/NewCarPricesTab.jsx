@@ -87,10 +87,15 @@ function ModelPhotos({ brand, model, images, onChange }) {
               style={{ display: "block", width: "100%", height: "100%", padding: 0, border: "none", cursor: i === 0 ? "default" : "pointer", background: "#111827" }}>
               <img src={cdnImg(u, 160, 60)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             </button>
-            <button type="button" aria-label="Remove photo" disabled={busy} onClick={() => save(images.filter((x) => x !== u))}
-              style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: 999, border: "none", padding: 0, cursor: "pointer", background: "rgba(0,0,0,0.6)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <X size={11} />
-            </button>
+            {/* Never remove the LAST photo: deleting the media row does not touch the
+                cards (only insert/update syncs them), so every card kept showing the
+                photo the console said was gone. Replace = add the new one, then remove. */}
+            {images.length > 1 && (
+              <button type="button" aria-label="Remove photo" disabled={busy} onClick={() => save(images.filter((x) => x !== u))}
+                style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: 999, border: "none", padding: 0, cursor: "pointer", background: "rgba(0,0,0,0.6)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X size={11} />
+              </button>
+            )}
           </div>
         ))}
         {images.length < MAX_MODEL_PHOTOS && (
@@ -103,7 +108,9 @@ function ModelPhotos({ brand, model, images, onChange }) {
       </div>
       <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
       <p style={{ margin: "6px 0 0", fontSize: 11, color: err ? "#f87171" : "#6b7280" }}>
-        {err || (images.length
+        {err || (images.length === 1
+          ? "To replace this photo, add the new one first, then remove this one. Advisors' cards follow."
+          : images.length
           ? "Red outline = cover. Advisors who tick this model get these photos on their card."
           : "No photos yet, so advisors can't tick this model at signup. Use photos you took or have the brand's written permission to use.")}
       </p>

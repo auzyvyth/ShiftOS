@@ -38,6 +38,7 @@ export default function UsedCarsHubPage() {
       .from("public_car_listings")
       .select(HUB_ROW_COLS)
       .in("status", [...HUB_LIVE, "sold"])
+      .eq("is_model_card", false)
       .limit(5000)
       .then(({ data, error: e }) => {
         if (!alive) return;
@@ -58,6 +59,7 @@ export default function UsedCarsHubPage() {
       .from("public_car_listings")
       .select(CAR_FIELDS)
       .in("status", HUB_LIVE)
+      .eq("is_model_card", false)
       .or(hubCarFilter(brand, model))
       .order("created_at", { ascending: false })
       .limit(60)

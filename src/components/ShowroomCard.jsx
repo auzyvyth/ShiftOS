@@ -7,6 +7,7 @@ import GradeBadge from './GradeBadge';
 import { buildWaUrl } from '../hooks/useCTAContext';
 import { supabase } from '../supabaseClient';
 import { cdnImg } from '../utils/img';
+import ViewProgressBar from './ViewProgressBar';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { useSavedCars } from '../hooks/useSavedCars';
@@ -300,6 +301,7 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             {price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
           </div>
         </div>
+        <ViewProgressBar carId={car.id} />
 
         {/* Top badge row */}
         <div style={{ position: 'absolute', top: 6, left: 6, right: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 4 }}>

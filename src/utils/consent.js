@@ -2,7 +2,8 @@
 // cookies are used anywhere. Categories:
 //   - necessary   : always on (auth session, Turnstile/security, load). Not gated.
 //   - analytics   : trackEvent -> analytics_events (car_view, whatsapp_click, ...).
-//   - preferences : "remember my details" prefill on the WhatsApp/enquiry popups.
+//   - preferences : "remember my details" prefill on the WhatsApp/enquiry popups,
+//                   and the cars-you-opened history (src/utils/viewProgress.js).
 //
 // Model: opt-OUT. Until the visitor decides, analytics + preferences are treated
 // as granted so the dealer's metrics and the prefill convenience keep working; an
@@ -11,6 +12,7 @@
 
 const KEY = 'xdrive_cookie_consent';
 const DETAILS_KEY = 'xdrive_buyer_details';
+const VIEW_PROGRESS_KEY = 'xd_view_progress'; // = PROGRESS_KEY, viewProgress.js (imports this file)
 const VERSION = 1;
 const DEFAULT_GRANTED = true; // opt-out default; set false for strict opt-in
 
@@ -43,8 +45,12 @@ export function setConsent({ analytics, preferences }) {
       v: VERSION, analytics: !!analytics, preferences: !!preferences, ts: Date.now(),
     }));
   } catch { /* private mode / quota — non-fatal */ }
-  // If preferences was withdrawn, drop any remembered buyer details.
-  if (!preferences) clearBuyerDetails();
+  // If preferences was withdrawn, drop any remembered buyer details and the
+  // cars-opened history.
+  if (!preferences) {
+    clearBuyerDetails();
+    try { ls && ls.removeItem(VIEW_PROGRESS_KEY); } catch { /* ignore */ }
+  }
   try { window.dispatchEvent(new Event(CHANGE_EVENT)); } catch { /* ignore */ }
 }
 
