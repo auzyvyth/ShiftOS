@@ -6614,7 +6614,7 @@ export default function SalesmanLite() {
             )}
             {snav === "premium" && <PremiumUpgradeCard profile={profile} cars={myListings} onRefer={() => setSettingsNav("refer")} />}
             {snav === "refer" && <ReferralCard slug={profile?.slug} />}
-            {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
+            {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
             {snav === "account" && (
               <>
           <ChangePasswordCard />

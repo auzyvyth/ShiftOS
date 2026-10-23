@@ -39,7 +39,7 @@ async function fetchNewestCars() {
   try {
     const select = encodeURIComponent(`${CAR_FIELDS}, ${DEALER_JOIN}`);
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/public_car_listings?select=${select}&status=in.(available,reserved)&order=created_at.desc&limit=${SEED_ROWS}`,
+      `${SUPABASE_URL}/rest/v1/public_car_listings?select=${select}&status=in.(available,reserved)&stock_photos=eq.false&order=created_at.desc&limit=${SEED_ROWS}`,
       {
         headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, Prefer: "count=exact" },
         signal: ctrl.signal,

@@ -1,6 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ImagePlus, X } from "lucide-react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, isHttpUrl } from "../../utils/newCars";
+import { compressListingPhoto } from "../../utils/compressImage";
+import { cdnImg } from "../../utils/img";
 
 // NEWCAR-1: the one place official new-car prices are typed in.
 //
@@ -8,6 +11,10 @@ import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, i
 // the public model pages read it, so a price fixed here is fixed everywhere.
 // Rows are HIDDEN, never deleted: a delete cascades through seller_hidden_models
 // and drops every advisor's choice to hide it (it would come back on their page if re-added).
+//
+// Photos (NEWCAR-2) are per MODEL, in new_car_model_media. A new-car advisor
+// who ticks a model at signup gets a card carrying them; changing them here
+// updates every card still on these photos (trigger new_car_media_sync).
 //
 // Only Peninsular is required. A zone left blank shows buyers there "ask the
 // advisor" -- never the Peninsular number, which they cannot get.
@@ -25,6 +32,85 @@ const inp = {
 };
 const lbl = { display: "block", margin: "0 0 4px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#6b7280" };
 
+const MAX_MODEL_PHOTOS = 12;
+
+// One model's photos. The first is the cover the cards and the signup picker show;
+// tapping another makes it the cover.
+function ModelPhotos({ brand, model, images, onChange }) {
+  const fileRef = useRef(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const save = async (next) => {
+    setBusy(true);
+    setErr("");
+    const q = next.length
+      ? supabase.from("new_car_model_media").upsert({ brand, model, images: next }, { onConflict: "brand,model" })
+      : supabase.from("new_car_model_media").delete().eq("brand", brand).eq("model", model);
+    const { error: e } = await q;
+    setBusy(false);
+    if (e) { setErr("Couldn't save the photos. Try again."); return; }
+    onChange(next);
+  };
+
+  const addFiles = async (files) => {
+    const list = Array.from(files || []).slice(0, MAX_MODEL_PHOTOS - images.length);
+    if (!list.length) return;
+    setBusy(true);
+    setErr("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const urls = [];
+    for (const file of list) {
+      try {
+        const small = await compressListingPhoto(file);
+        // Storage lets a user write only under their own id folder.
+        const path = `${user.id}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: "image/jpeg", cacheControl: "31536000" });
+        if (e) throw e;
+        urls.push(supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl);
+      } catch {
+        setErr("A photo failed to upload. Add it again.");
+      }
+    }
+    if (urls.length) await save([...images, ...urls]);
+    else setBusy(false);
+  };
+
+  const thumb = { position: "relative", width: 76, aspectRatio: "4 / 3", borderRadius: 7, overflow: "hidden", flexShrink: 0 };
+  return (
+    <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", alignItems: "stretch" }}>
+        {images.map((u, i) => (
+          <div key={u} style={{ ...thumb, outline: i === 0 ? "2px solid #dc2626" : "none", outlineOffset: -2 }}>
+            <button type="button" disabled={busy || i === 0} onClick={() => save([u, ...images.filter((x) => x !== u)])}
+              title={i === 0 ? "Cover photo" : "Make this the cover"}
+              style={{ display: "block", width: "100%", height: "100%", padding: 0, border: "none", cursor: i === 0 ? "default" : "pointer", background: "#111827" }}>
+              <img src={cdnImg(u, 160, 60)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </button>
+            <button type="button" aria-label="Remove photo" disabled={busy} onClick={() => save(images.filter((x) => x !== u))}
+              style={{ position: "absolute", top: 3, right: 3, width: 18, height: 18, borderRadius: 999, border: "none", padding: 0, cursor: "pointer", background: "rgba(0,0,0,0.6)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <X size={11} />
+            </button>
+          </div>
+        ))}
+        {images.length < MAX_MODEL_PHOTOS && (
+          <button type="button" disabled={busy} onClick={() => fileRef.current?.click()}
+            style={{ ...thumb, border: "1.5px dashed rgba(255,255,255,0.18)", background: "transparent", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit", fontSize: 11, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3 }}>
+            <ImagePlus size={15} />
+            {busy ? "Saving..." : images.length ? "Add" : "Add photos"}
+          </button>
+        )}
+      </div>
+      <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
+      <p style={{ margin: "6px 0 0", fontSize: 11, color: err ? "#f87171" : "#6b7280" }}>
+        {err || (images.length
+          ? "Red outline = cover. Advisors who tick this model get these photos on their card."
+          : "No photos yet, so advisors can't tick this model at signup. Use photos you took or have the brand's written permission to use.")}
+      </p>
+    </div>
+  );
+}
+
 function toNum(v) {
   const s = String(v ?? "").replace(/[^\d.]/g, "");
   return s ? Number(s) : null;
@@ -37,6 +123,7 @@ export default function NewCarPricesTab() {
   const [brand, setBrand] = useState("Perodua");
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [media, setMedia] = useState({}); // "brand|model" -> images
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -47,6 +134,8 @@ export default function NewCarPricesTab() {
       .order("model").order("sort_order").order("price_peninsular");
     if (e) setError(e.message);
     else setRows(data || []);
+    const { data: m } = await supabase.from("new_car_model_media").select("brand, model, images");
+    setMedia(Object.fromEntries((m || []).map((r) => [`${r.brand}|${r.model}`, r.images || []])));
     setLoading(false);
   }, []);
 
@@ -209,6 +298,8 @@ export default function NewCarPricesTab() {
                   <a href={newModelPath(brand, g.model)} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: "#f87171", textDecoration: "none", flexShrink: 0 }}>Public page</a>
                 )}
               </div>
+              <ModelPhotos brand={brand} model={g.model} images={media[`${brand}|${g.model}`] || []}
+                onChange={(next) => setMedia((m) => ({ ...m, [`${brand}|${g.model}`]: next }))} />
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                   <thead>

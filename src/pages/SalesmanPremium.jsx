@@ -242,7 +242,7 @@ const SETTINGS_GROUPS = [
  { group: "Selling", items: [
  { key: "availability", icon: Clock, label: "Viewing Hours", desc: "When buyers can book you" },
  { key: "terms", icon: DollarSign, label: "Selling Terms", desc: "Deposit policy & your fees" },
- { key: "newcars", icon: CarFront, label: "New Cars", desc: "Proton, Perodua, Toyota & BYD prices" },
+ { key: "newcars", icon: CarFront, label: "New Cars", desc: "Proton, Perodua, Toyota, BYD & Honda prices" },
  ]},
  { group: "Notifications", items: [
  { key: "alerts", icon: Bell, label: "Alerts", desc: "Push & Telegram" },
@@ -5600,7 +5600,7 @@ export default function SalesmanPremium() {
  )}
  {nav === "password" && <ChangePasswordCard />}
  {nav === "refer" && <ReferralCard slug={profile?.slug} />}
- {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} />}
+ {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
  {nav === "dealership" && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a

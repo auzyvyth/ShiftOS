@@ -5,7 +5,7 @@ import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { groupByModel, rm, priceBasis } from "../../utils/newCars";
 import { compressListingPhoto } from "../../utils/compressImage";
 
-// NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota / BYD).
+// NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota / BYD / Honda).
 // Rendered by CarForm and CarFormFast in place of the used-car form when
 // profile.seller_type === 'new_car' (owner, 2026-10-08).
 //
@@ -176,7 +176,7 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
     return (
       <div style={{ ...box, padding: 16 }}>
         <p style={h}>Pick your brand first</p>
-        <p style={sub}>Choose Proton, Perodua, Toyota or BYD in Settings &gt; New cars, then come back.</p>
+        <p style={sub}>Choose Proton, Perodua, Toyota, BYD or Honda in Settings &gt; New cars, then come back.</p>
         {onOpenNewCars && <button type="button" onClick={onOpenNewCars} style={{ ...tile(true), marginTop: 12, justifyContent: "center", fontWeight: 600 }}>Open New cars settings</button>}
       </div>
     );
