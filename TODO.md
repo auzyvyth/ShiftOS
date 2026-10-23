@@ -2571,6 +2571,9 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   Premium's RM35/month and can pull buyers away from it; (3) payment is still manual
   (WhatsApp + DuitNow + console log, PAY-2 parked), which makes each RM25 sale costly to
   collect. Alternative raised: use "the RM300 calculator, free" as the Lite signup hook.
+  Owner's ceiling if sold alone: RM20 ("it's just code, no API no auth"). Catch: with no
+  login, the first buyer can forward the file or link to every seller group, so it sells
+  once per group chat; locking it to an account turns it back into a Lite signup.
 
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
