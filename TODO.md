@@ -2562,6 +2562,21 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
+  their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
+  PRO RM47/mo "early bird" RM14/mo (RM42/3 mo, RM108/yr, no auto-renew): unlimited, 10
+  templates (cash, car colour swap, buyer's name on poster, compare 2/3/4 cars), uploaded
+  dealer pricelist, WhatsApp bot that does the sums, live calculator with a viewer request
+  queue, AI ad posters at RM2.50-3.50 a credit (1-3 cars + FB/IG caption). Claims 35k
+  posters. Their samples print "full loan" and RM0 deposit, which our POSTER-1 rules ban.
+  Cheap AI path checked 2026-10-23: background cut-out in the BROWSER (open model, free
+  per image, licence must allow commercial use: BRIA RMBG is non-commercial, BiRefNet
+  claims MIT, confirm upstream) or Photoroom API ~US$0.02/image; AI scene behind the REAL
+  car ~US$0.02-0.04/image (Gemini 2.5 Flash Image / FLUX Kontext); caption via ai-proxy.
+  Never let AI draw the car or print the numbers (wrong car = misleading ad; numbers come
+  from financing.js). remove.bg self-service API shuts 1 Dec 2026, so POSTER-2 must not
+  be fixed on remove.bg. Our edge they lack: seller page, leads, chat, marketplace, EIR maths.
+
 - **IDEA-20: Sell the loan calculator on its own, ~RM25 one-time (owner, 2026-10-23)** —
   owner met a seller who paid RM300 for a bare Excel file (basic instalment maths, no
   insurance). Proof sellers pay for a calculator. Ours (Live presenter: EIR, insurance
