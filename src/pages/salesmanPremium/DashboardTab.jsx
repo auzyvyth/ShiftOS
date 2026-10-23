@@ -12,7 +12,7 @@ import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import ThisWeek from "../../components/crm/ThisWeek";
 import FollowUpRow from "../../components/crm/FollowUpRow";
-import StarterTasks from "../../components/onboarding/StarterTasks";
+import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/StarterTasks";
 import {
  CARD_HEADER, EYEBROW, STAT, SOFT, ROW_LINE, LEAD_STAGES, stageLabel,
 } from "./shared";
@@ -275,6 +275,7 @@ export default function DashboardTab({
  t={t}
  profile={profile}
  listingCount={myListings.length}
+ bioLinkSeen={hasBioLinkVisit(minipageStats.byChannel)}
  palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
  onAddListing={() => { switchTab("listings"); setTimeout(() => setShowAddForm(true), 100); }}
  onVisitMinipage={onVisitMinipage}

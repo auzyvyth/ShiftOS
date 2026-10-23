@@ -1488,6 +1488,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   live for a phone number (checked 2026-10-03), so never default it on or persist it.
   NEVER a URL, QR code or messaging-app logo. The quotation poster (it prints the
   mini-page link) must not be the live tool.
+- **The way from a live to the page is the seller's TikTok BIO LINK (BIOLINK-1, 2026-10-23).**
+  TikTok's LIVE rules bar QR codes and third-party links on screen (checked 2026-10-23), so the
+  presenter never shows a URL or our brand: the comment pill carries a second line "All my cars:
+  link in bio" (`.lp-bio`, on unless switched off in Adjust > Look, `xd_live_bio`). The setup list
+  has a `biolink` step that ticks only when a TikTok/Instagram visit is MEASURED
+  (`hasBioLinkVisit`, StarterTasks.jsx), and the live report counts those visits (`fromBio`,
+  liveMaths.js) and offers the link to copy when there were none. The copied link has no `?src=`:
+  the in-app browsers tag themselves, and `?src=tiktok` would mislabel Instagram.
 - **Cars screen = one big number, at the top (LIVE-UI, owner 2026-10-22).** TikTok's comments
   cover the bottom-left of the stream, so the top holds what a viewer must read: #N + title
   with the "Comment #N" line beside it (a bar under it on a phone), then the picked monthly

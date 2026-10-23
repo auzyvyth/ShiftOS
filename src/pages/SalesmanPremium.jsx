@@ -141,7 +141,7 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import { AI_FEATURES_ENABLED } from "../utils/aiFeatureFlag";
 import { markStarterTask } from "../utils/starterTasks";
-import { starterTasksAllDone } from "../components/onboarding/StarterTasks";
+import { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/StarterTasks";
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const loadLoanDesk = () => import("../components/loans/LoanDesk");
 const LoanDesk = React.lazy(loadLoanDesk);
@@ -630,15 +630,6 @@ export default function SalesmanPremium() {
  markStarterTask(userId, "dismissed", profile?.starter_tasks);
  };
 
- // Finishing all three retires it for good. Does not write back to local
- // `profile`, so the seller still sees the "you're set up" state they earned;
- // it is gone on the next load.
- useEffect(() => {
- if (!userId || !listingsLoaded) return;
- if (profile?.starter_tasks?.dismissed) return;
- if (!starterTasksAllDone({ profile, listingCount: myListings.length, premium: true })) return;
- markStarterTask(userId, "dismissed", profile?.starter_tasks);
- }, [userId, listingsLoaded, profile, myListings.length]);
 
  // Opening your own mini page is the one starter task no other data can prove
  // (analytics_events counts buyer views too), so the click records it.
@@ -755,6 +746,17 @@ export default function SalesmanPremium() {
  const [minipageStats, setMinipageStats, minipageCached] = usePersistentState(
  userId ? `sp_minipage:${userId}` : null, { visits: 0, cardClicks: 0, byChannel: [], daily: [] },
  );
+
+ // Finishing the setup list retires it for good (here, below minipageStats,
+ // because the bio-link step reads it). Does not write back to local
+ // `profile`, so the seller still sees the "you're set up" state they earned;
+ // it is gone on the next load.
+ useEffect(() => {
+ if (!userId || !listingsLoaded) return;
+ if (profile?.starter_tasks?.dismissed) return;
+ if (!starterTasksAllDone({ profile, listingCount: myListings.length, premium: true, bioLinkSeen: hasBioLinkVisit(minipageStats.byChannel) })) return;
+ markStarterTask(userId, "dismissed", profile?.starter_tasks);
+ }, [userId, listingsLoaded, profile, myListings.length, minipageStats.byChannel]);
  // The traffic numbers show together: the saved copy if there is one, else
  // placeholders until every request behind them has answered (trafficFetched).
  const [trafficFetched, setTrafficFetched] = useState(false);

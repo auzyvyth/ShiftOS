@@ -216,12 +216,17 @@ export const fmtRate = (n) => {
 export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
   const rows = Array.isArray(events) ? events : [];
   const sessions = new Set();
+  // Visitors who came through a TikTok / Instagram in-app browser: in practice
+  // the bio link, the one way a live viewer can reach the page (BIOLINK-1).
+  const bioSessions = new Set();
   let carTaps = 0;
   let whatsappTaps = 0;
   const tapsByCar = new Map();
   for (const e of rows) {
     if (e.event_type === 'minipage_view') {
       if (e.session_id) sessions.add(e.session_id);
+      const ch = e.metadata && e.metadata.channel;
+      if (e.session_id && (ch === 'tiktok' || ch === 'instagram')) bioSessions.add(e.session_id);
     } else if (e.event_type === 'minipage_card_click') {
       carTaps += 1;
       if (e.car_id) tapsByCar.set(e.car_id, (tapsByCar.get(e.car_id) || 0) + 1);
@@ -242,6 +247,7 @@ export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
   return {
     minutes,
     visitors: sessions.size,
+    fromBio: bioSessions.size,
     carTaps,
     whatsappTaps,
     newLeads: Number.isFinite(newLeads) ? newLeads : null,
