@@ -5,20 +5,23 @@ import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import {
-  ArrowRight, Check, Globe, Car, MessageCircle, Bell,
-  Link2, Wallet, ChevronDown, Share2, ShieldCheck, X as XIcon,
-  Smartphone, Zap, Lock, Eye, ListChecks, ExternalLink, Languages,
+  ArrowRight, Check, MessageCircle, Wallet, ChevronDown, Share2, ShieldCheck,
+  X as XIcon, ExternalLink, Languages, Calculator, Repeat, Clock,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
-import LiveSellingSection from "../components/salesmanLanding/LiveSellingSection";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
+import PosterDemo from "../components/salesmanLanding/PosterDemo";
+import { ROOT_DOMAIN } from "../config/site";
 import {
   CANON, SEO_KEYWORDS, SOFTWARE_LD, FAQ_LD, FAQ_LD_EN, webpageLd, EXAMPLE_PAGE,
   DEFAULT_LANG, LANG_KEY, LANDING_COPY, landingCopy,
 } from "../config/salesmanLandingCopy";
 
+// Short on purpose (owner, 2026-10-23): one line per idea with a real picture
+// beside it (the live presenter, a loan poster drawn by the real renderer, the
+// page, real screenshots). The long copy lives on for the crawler (api/og.js).
 // Audience (owner, 2026-10-06): agents who work out instalments on TikTok /
 // Facebook lives. The hero sells Live presentation (free on Lite, owner 2026-10-18);
 // Lite is the free way in, one button over. Every claim on this page must match
@@ -53,10 +56,17 @@ const staggerParent = {
 const PREMIUM_SIGNUP = "/salesman-onboarding/premium";
 const LITE_SIGNUP = "/salesman-onboarding/lite";
 
-// Index-matched to copy.features.items / copy.why.items.
-const FEATURE_ICONS = [Globe, Car, MessageCircle, Bell, ListChecks, Link2, Wallet];
-const WHY_ICONS = [Smartphone, Zap, Eye, Lock];
+// Index-matched to copy.short.pains.
+const PAIN_ICONS = [Calculator, Repeat, Clock];
 const FINAL_TRUST_ICONS = [Wallet, ShieldCheck, Share2];
+
+function Chips({ items }) {
+  return (
+    <ul className="sll-chips">
+      {items.map((x) => <li key={x}><Check size={14} /> {x}</li>)}
+    </ul>
+  );
+}
 
 function Faq({ q, a }) {
   const [open, setOpen] = useState(false);
@@ -75,6 +85,7 @@ export default function SalesmanLiteLanding() {
   const reduceMotion = useReducedMotion();
   const [lang, setLang] = useState(readLang);
   const t = landingCopy(lang);
+  const s = t.short;
   const switchLang = () => { const next = t.switchTo; saveLang(next); setLang(next); };
   const reveal = reduceMotion
     ? {}
@@ -132,7 +143,7 @@ export default function SalesmanLiteLanding() {
                   );
                 })}
               </h1>
-              <p className="sll-lead">{t.heroIntro}</p>
+              <p className="sll-lead">{s.heroLine}</p>
               <div className="sll-cta-row">
                 <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
                   {t.liveCta} <ArrowRight size={17} />
@@ -160,97 +171,79 @@ export default function SalesmanLiteLanding() {
           </div>
         </div>
 
-        {/* ── Live presentation, point by point ── */}
-        <LiveSellingSection reveal={reveal} fadeUp={fadeUp} copy={t.live} cta={t.liveCta} href={LITE_SIGNUP} />
-
-        {/* ── Pain → comparison: the poster by hand vs Live presentation ── */}
-        <motion.section className="sll-section sll-section-alt" variants={fadeUp} {...reveal}>
-          <div className="sll-wrap">
-            <p className="sll-kicker">{t.compare.kicker}</p>
-            <h2 className="sll-h2">{t.compare.title}</h2>
-            <div className="sll-compare-list">
-              {t.compare.rows.map((r) => (
-                <div key={r.label} className="sll-compare-item">
-                  <p className="sll-compare-label">{r.label}</p>
-                  <div className="sll-compare-row sll-compare-row-old">
-                    <XIcon size={14} className="sll-compare-x" />
-                    <span><strong>{t.compare.oldLabel}:</strong> {r.old}</span>
-                  </div>
-                  <div className="sll-compare-row sll-compare-row-new">
-                    <Check size={14} className="sll-tick" />
-                    <span><strong>{t.compare.newLabel}:</strong> {r.now}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="sll-pain-fix">{t.compare.fix}</p>
-          </div>
-        </motion.section>
-
-        {/* ── What you get with each plan: one real screenshot per tab ── */}
-        <PlanTour copy={t.tour} />
-
-        {/* ── Features (free on Lite) ── */}
+        {/* ── Pain: three short lines, then the fix ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">{t.features.kicker}</p>
-            <h2 className="sll-h2">{t.features.title}</h2>
-            <motion.div className="sll-grid" variants={staggerParent} {...reveal}>
-              {t.features.items.map((f, i) => {
-                const Icon = FEATURE_ICONS[i] || Check;
+            <p className="sll-kicker">{s.painKicker}</p>
+            <motion.div className="sll-pains" variants={staggerParent} {...reveal}>
+              {s.pains.map((line, i) => {
+                const Icon = PAIN_ICONS[i] || XIcon;
                 return (
-                  <motion.div key={f.title} className="sll-card" variants={fadeUp}>
-                    <div className="sll-card-ic"><Icon size={20} /></div>
-                    <h3 className="sll-card-t">{f.title}</h3>
-                    <p className="sll-card-b">{f.body}</p>
+                  <motion.div key={line} className="sll-pain" variants={fadeUp}>
+                    <div className="sll-pain-ic"><Icon size={18} /></div>
+                    <p>{line}</p>
                   </motion.div>
                 );
               })}
             </motion.div>
+            <p className="sll-pain-fix">{s.painFix}</p>
           </div>
         </section>
 
-        {/* ── Page showcase ── */}
-        <motion.section className="sll-section" variants={fadeUp} {...reveal}>
-          <div className="sll-wrap sll-showcase">
-            <div className="sll-showcase-copy">
-              <p className="sll-kicker">{t.showcase.kicker}</p>
-              <h2 className="sll-h2">{t.showcase.title}</h2>
-              <p className="sll-showcase-lead">{t.showcase.lead}</p>
-              <ul className="sll-showcase-list">
-                {t.showcase.list.map((x) => (
-                  <li key={x}><Check size={16} className="sll-tick" /> {x}</li>
-                ))}
-              </ul>
-              <Link to={EXAMPLE_PAGE.path} className="sll-example">
-                {t.showcase.example} <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
-              </Link>
-            </div>
-            <figure className="sll-phone" aria-label={t.showcase.phoneAria}>
-              <div className="sll-phone-top">
-                <span className="sll-phone-url">xdrive.my/s/<strong>ahmad</strong></span>
+        {/* ── What you get: a real picture beside one line each ── */}
+        <section className="sll-section">
+          <div className="sll-wrap">
+            <p className="sll-kicker">{s.getKicker}</p>
+
+            <motion.div className="sll-feat" variants={fadeUp} {...reveal}>
+              <div className="sll-feat-copy">
+                <h2 className="sll-h2 sll-feat-h">{s.poster.title}</h2>
+                <p className="sll-feat-line">{s.poster.line}</p>
+                <Chips items={s.poster.chips} />
               </div>
-              <div className="sll-phone-hero">
-                <div className="sll-phone-avatar">A</div>
-                <div>
-                  <div className="sll-phone-name">Ahmad · {t.showcase.phoneRole}</div>
-                  <div className="sll-phone-sub">{t.showcase.phoneArea}</div>
+              <div className="sll-feat-pic">
+                <PosterDemo copy={s.poster} lang={lang} role={t.showcase.phoneRole} />
+              </div>
+            </motion.div>
+
+            <motion.div className="sll-feat sll-feat-flip" variants={fadeUp} {...reveal}>
+              <div className="sll-feat-copy">
+                <h2 className="sll-h2 sll-feat-h">{s.page.title}</h2>
+                <p className="sll-feat-line">{s.page.line}</p>
+                <Chips items={s.page.chips} />
+                <Link to={EXAMPLE_PAGE.path} className="sll-example">
+                  {t.showcase.example} <strong>{EXAMPLE_PAGE.label}</strong> <ExternalLink size={14} />
+                </Link>
+              </div>
+              <figure className="sll-phone sll-feat-pic" aria-label={t.showcase.phoneAria}>
+                <div className="sll-phone-top">
+                  <span className="sll-phone-url">{ROOT_DOMAIN}/s/<strong>ahmad</strong></span>
                 </div>
-              </div>
-              {t.showcase.cars.map((c) => (
-                <div key={c.name} className="sll-phone-car">
-                  <div className="sll-phone-thumb" />
-                  <div className="sll-phone-carinfo">
-                    <div className="sll-phone-cn">{c.name}</div>
-                    <div className="sll-phone-cp">{c.price} <span>· {c.tag}</span></div>
+                <div className="sll-phone-hero">
+                  <div className="sll-phone-avatar">A</div>
+                  <div>
+                    <div className="sll-phone-name">Ahmad · {t.showcase.phoneRole}</div>
+                    <div className="sll-phone-sub">{t.showcase.phoneArea}</div>
                   </div>
-                  <div className="sll-phone-wa"><MessageCircle size={14} /></div>
                 </div>
-              ))}
-              <figcaption className="sll-phone-cap">{t.showcase.caption}</figcaption>
-            </figure>
+                {t.showcase.cars.map((c) => (
+                  <div key={c.name} className="sll-phone-car">
+                    <div className="sll-phone-thumb" />
+                    <div className="sll-phone-carinfo">
+                      <div className="sll-phone-cn">{c.name}</div>
+                      <div className="sll-phone-cp">{c.price} <span>· {c.tag}</span></div>
+                    </div>
+                    <div className="sll-phone-wa"><MessageCircle size={14} /></div>
+                  </div>
+                ))}
+                <figcaption className="sll-phone-cap">{t.showcase.caption}</figcaption>
+              </figure>
+            </motion.div>
           </div>
-        </motion.section>
+        </section>
+
+        {/* ── What you get with each plan: one real screenshot per tab ── */}
+        <PlanTour copy={t.tour} />
 
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
@@ -258,11 +251,11 @@ export default function SalesmanLiteLanding() {
             <p className="sll-kicker sll-kicker-light">{t.how.kicker}</p>
             <h2 className="sll-h2 sll-h2-light">{t.how.title}</h2>
             <motion.div className="sll-steps" variants={staggerParent} {...reveal}>
-              {t.how.steps.map((s) => (
-                <motion.div key={s.n} className="sll-step" variants={fadeUp}>
-                  <span className="sll-step-n">{s.n}</span>
-                  <h3 className="sll-step-t">{s.title}</h3>
-                  <p className="sll-step-b">{s.body}</p>
+              {t.how.steps.map((st) => (
+                <motion.div key={st.n} className="sll-step" variants={fadeUp}>
+                  <span className="sll-step-n">{st.n}</span>
+                  <h3 className="sll-step-t">{st.title}</h3>
+                  <p className="sll-step-b">{st.body}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -274,46 +267,11 @@ export default function SalesmanLiteLanding() {
           </div>
         </section>
 
-        {/* ── Why it works ── */}
-        <section className="sll-section">
-          <div className="sll-wrap">
-            <p className="sll-kicker">{t.why.kicker}</p>
-            <h2 className="sll-h2">{t.why.title}</h2>
-            <motion.div className="sll-why" variants={staggerParent} {...reveal}>
-              {t.why.items.map((w, i) => {
-                const Icon = WHY_ICONS[i] || Check;
-                return (
-                  <motion.div key={w.title} className="sll-why-item" variants={fadeUp}>
-                    <div className="sll-why-ic"><Icon size={18} /></div>
-                    <div>
-                      <h3 className="sll-why-t">{w.title}</h3>
-                      <p className="sll-why-b">{w.body}</p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </motion.div>
-          </div>
-        </section>
-
-        {/* ── Mid CTA band ── */}
-        <motion.section className="sll-midcta" variants={fadeUp} {...reveal}>
-          <div className="sll-wrap sll-midcta-inner">
-            <div>
-              <h3 className="sll-midcta-h">{t.midcta.title}</h3>
-              <p className="sll-midcta-p">{t.midcta.body}</p>
-            </div>
-            <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
-              {t.liveCta} <ArrowRight size={17} />
-            </Link>
-          </div>
-        </motion.section>
-
         {/* ── Lite vs Premium ── */}
         <section className="sll-section sll-section-alt">
           <div className="sll-wrap">
-            <p className="sll-kicker">{t.plans.kicker}</p>
-            <h2 className="sll-h2">{t.plans.title}</h2>
+            <p className="sll-kicker">{s.plansKicker}</p>
+            <h2 className="sll-h2">{s.plansTitle}</h2>
             <div className="sll-plans">
               <div className="sll-plan sll-plan-alt">
                 <div className="sll-plan-head">
@@ -322,9 +280,10 @@ export default function SalesmanLiteLanding() {
                   <span className="sll-plan-note">{t.plans.premiumNote}</span>
                 </div>
                 <ul className="sll-plan-list">
-                  {t.plans.premiumBullets.map((x) => (
+                  {s.premiumBullets.map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
+                  <li className="sll-plan-more">{s.more}</li>
                 </ul>
                 <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">{t.premiumCta}</Link>
               </div>
@@ -334,7 +293,7 @@ export default function SalesmanLiteLanding() {
                   <span className="sll-plan-price">RM0<span>{t.plans.litePer}</span></span>
                 </div>
                 <ul className="sll-plan-list">
-                  {t.plans.liteBullets.map((x) => (
+                  {s.liteBullets.map((x) => (
                     <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
                   ))}
                 </ul>
@@ -437,38 +396,37 @@ const CSS = `
   .sll-h2 { font-size: clamp(28px, 4.5vw, 44px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 40px; }
   .sll-h2-light { color: #fff; }
 
-  /* Pain → comparison list (stacked, never needs a sideways scroll) */
-  .sll-compare-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 26px; }
-  .sll-compare-item { border: 1px solid #eceaea; border-radius: 12px; padding: 16px 18px; }
-  .sll-compare-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #9ca3af; margin: 0 0 10px; }
-  .sll-compare-row { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; line-height: 1.5; padding: 5px 0; }
-  .sll-compare-row-old { color: #6b7280; }
-  .sll-compare-row-old strong { color: #4b5563; font-weight: 600; }
-  .sll-compare-row-new { color: #0a0a0a; font-weight: 600; }
-  .sll-compare-x { color: #9ca3af; flex-shrink: 0; margin-top: 3px; }
-  .sll-pain-fix { font-size: clamp(18px, 2.4vw, 24px); font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+
+  /* Pain: three short cards, then the fix */
+  .sll-pains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 30px; }
+  .sll-pain { display: flex; align-items: flex-start; gap: 14px; background: #fff; border: 1px solid #eceaea; border-radius: 14px; padding: 20px; }
+  .sll-pain p { font-size: 16px; line-height: 1.45; color: #1f2733; margin: 0; }
+  .sll-pain-ic { width: 38px; height: 38px; border-radius: 10px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-pain-fix { font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; margin: 0; }
+
+  /* What you get: copy | real picture, alternating */
+  .sll-feat { display: grid; grid-template-columns: 1fr 380px; gap: 56px; align-items: center; padding: 28px 0 44px; }
+  .sll-feat + .sll-feat { border-top: 1px solid #eceaea; padding-top: 56px; }
+  .sll-feat-flip { grid-template-columns: 380px 1fr; }
+  .sll-feat-flip .sll-feat-copy { order: 2; }
+  .sll-feat-flip .sll-feat-pic { order: 1; }
+  .sll-feat-copy { min-width: 0; }
+  .sll-feat-pic { justify-self: center; width: 100%; }
+  .sll-feat-h { margin-bottom: 14px; }
+  .sll-feat-line { font-size: 18px; line-height: 1.5; color: #4b5563; margin: 0 0 20px; max-width: 520px; }
+  .sll-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  .sll-chips li { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #1f2733; background: #f5f5f4; border: 1px solid #eceaea; border-radius: 999px; padding: 7px 13px; }
+  .sll-chips svg { color: #dc2626; flex-shrink: 0; }
+  .sll-plan-more { color: #6b7280 !important; font-weight: 600; padding-left: 24px !important; }
 
   /* Last-updated stamp (FAQ) */
   .sll-updated { font-size: 12.5px; color: #9ca3af; margin: 0 0 28px; }
 
-  /* Features grid */
-  .sll-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  .sll-card { border: 1px solid #eceaea; border-radius: 16px; padding: 26px 24px; transition: border-color .18s, box-shadow .18s, transform .18s; background: #fff; }
-  .sll-card:hover { border-color: #0a0a0a; box-shadow: 0 12px 34px rgba(10,10,10,0.06); transform: translateY(-2px); }
-  .sll-card-ic { width: 44px; height: 44px; border-radius: 12px; background: #0a0a0a; color: #fff; display: flex; align-items: center; justify-content: center; margin-bottom: 18px; }
-  .sll-card-t { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; margin: 0 0 8px; }
-  .sll-card-b { font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0; }
 
-  /* Showcase */
-  .sll-showcase { display: grid; grid-template-columns: 1fr 340px; gap: 48px; align-items: center; }
-  .sll-showcase-copy .sll-h2 { margin-bottom: 18px; }
-  .sll-showcase-lead { font-size: 16px; line-height: 1.65; color: #4b5563; margin: 0 0 20px; }
-  .sll-showcase-list { list-style: none; padding: 0; margin: 0; }
-  .sll-example { display: inline-flex; align-items: center; gap: 6px; margin-top: 18px; font-size: 15px; font-weight: 600; color: #0a0a0a; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
+  .sll-example { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 20px; font-size: 15px; font-weight: 600; color: #0a0a0a; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
   .sll-example:hover { text-decoration-color: #0a0a0a; }
   .sll-example strong { font-weight: 800; }
-  .sll-showcase-list li { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 500; color: #1f2733; padding: 7px 0; }
-  .sll-phone { margin: 0; border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
+  .sll-phone { margin: 0; max-width: 360px; border: 1px solid #e5e7eb; border-radius: 22px; padding: 14px; background: #fff; box-shadow: 0 24px 60px rgba(10,10,10,0.10); }
   .sll-phone-top { text-align: center; padding: 4px 0 12px; }
   .sll-phone-url { font-size: 12px; color: #9ca3af; background: #f3f4f6; padding: 5px 12px; border-radius: 20px; }
   .sll-phone-url strong { color: #0a0a0a; }
@@ -495,18 +453,7 @@ const CSS = `
   .sll-step-b { font-size: 14px; line-height: 1.6; color: rgba(255,255,255,0.6); margin: 0; }
   .sll-dark-cta { margin-top: 44px; }
 
-  /* Why */
-  .sll-why { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px 40px; }
-  .sll-why-item { display: flex; gap: 15px; align-items: flex-start; }
-  .sll-why-ic { width: 40px; height: 40px; border-radius: 10px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .sll-why-t { font-size: 17px; font-weight: 700; margin: 2px 0 6px; }
-  .sll-why-b { font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0; }
 
-  /* Mid CTA */
-  .sll-midcta { background: #0a0a0a; color: #fff; padding: 40px 0; }
-  .sll-midcta-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-  .sll-midcta-h { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 4px; color: #fff; }
-  .sll-midcta-p { font-size: 15px; color: rgba(255,255,255,0.6); margin: 0; }
 
   /* Plans */
   .sll-plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
@@ -538,13 +485,16 @@ const CSS = `
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
-    .sll-grid, .sll-steps, .sll-plans, .sll-why, .sll-showcase, .sll-hero-inner { grid-template-columns: 1fr; }
+    .sll-steps, .sll-plans, .sll-pains, .sll-feat, .sll-feat-flip, .sll-hero-inner { grid-template-columns: 1fr; }
+    .sll-feat { gap: 28px; padding: 8px 0 36px; }
+    .sll-feat + .sll-feat { padding-top: 36px; }
+    .sll-feat-flip .sll-feat-copy, .sll-feat-flip .sll-feat-pic { order: 0; }
+    .sll-feat-line { font-size: 16px; }
     .sll-hero { padding: 16px 0 48px; }
     .sll-langbar { margin-bottom: 24px; }
     .sll-hero-inner { gap: 36px; }
     .sll-hero-mock { max-width: 400px; width: 100%; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
-    .sll-midcta-inner { flex-direction: column; align-items: flex-start; }
     /* Three items in one wrapped inline row read as clanky on narrow screens
        (a checkmark stranding itself on the next line from its own text) —
        one clean item per line instead. */

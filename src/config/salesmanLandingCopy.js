@@ -39,9 +39,11 @@
 
 import { SALESMAN_PREMIUM_FEATURES, SALESMAN_PREMIUM_FEATURES_MS } from "../utils/plans.js";
 import { PLAN_CONFIG } from "../utils/planConfig.js";
+import { LITE_POSTERS_PER_MONTH } from "../utils/loanPoster.js";
 
 const LITE_CAP = PLAN_CONFIG.salesman_lite.listingCap;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full.listingCap;
+const LITE_POSTERS = LITE_POSTERS_PER_MONTH;
 
 export const DEFAULT_LANG = "ms";
 // Per-device memory of the visitor's choice on THIS page only.
@@ -50,7 +52,7 @@ export const LANG_KEY = "xd_for_salesmen_lang";
 export const CANON = "https://xdrive.my/for-salesmen";
 // Bump when the copy changes: it feeds dateModified (webpageLd) and the
 // "last reviewed" line, a freshness signal search and AI answers both read.
-export const REVIEWED_ISO = "2026-10-18";
+export const REVIEWED_ISO = "2026-10-23";
 // XDrive's own example Salesman Premium page, linked so agents and crawlers can
 // see the product rather than a mock-up. Must stay an active account with cars.
 export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
@@ -109,7 +111,6 @@ const EN = {
       "The car on screen is pinned on your page as \"Live now\" for viewers who tap your bio",
     ],
     note: "Estimates on the reducing balance (EIR). Subject to bank approval.",
-    exampleLink: "See an example page",
   },
 
   // "Sound familiar?" — the poster by hand vs Live presentation. Owner's call
@@ -125,7 +126,6 @@ const EN = {
       { label: "Bank quotes a flat rate", old: "Work out the conversion yourself", now: "Type the flat rate, it is converted to EIR for you" },
       { label: "Your phone number", old: "Printed on the poster for the whole live", now: "Hidden until you tap to show it" },
     ],
-    fix: "Live presentation fixes all four.",
   },
 
   // "What you get with each plan" (PlanTour.jsx). Text only; images and order
@@ -136,8 +136,6 @@ const EN = {
     toggleAria: "Choose a plan",
     plus: "Everything in Lite, plus more on every tab.",
     seeLite: "See Lite",
-    problemLabel: "The problem",
-    momentLabel: "When you'd use it",
     shotPending: "Screenshot coming",
     plans: {
       lite: { label: "Lite", price: "Free", cta: "Sign up free" },
@@ -148,85 +146,37 @@ const EN = {
         tab: "Leads",
         alt: "Lead list of 37 buyers with source breakdown, stage filters and buyer cards showing warm tags and a WhatsApp button",
         title: "Every buyer in a stage, not lost in a chat.",
-        pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
-        moment: "A buyer messages you about the Vellfire from the marketplace. Your phone alerts you, and they land in your lead list with the car and price attached, flagged \"Never contacted\" until you reply.",
-        points: [
-          "Buyers from WhatsApp, chat and bookings, all in one list",
-          "Stages from New through Contacted, Viewing and Test drive to Won",
-          "Flags buyers nobody has replied to, and how long they have waited",
-          "An alert on your phone when a new buyer comes in",
-        ],
-        pays: "Most lost deals are not lost on price. They are lost because the other agent replied first.",
+        line: "An alert on your phone when a new buyer comes in.",
       },
       dashboard: {
         tab: "Dashboard",
         alt: "Salesman Premium dashboard showing 4 overdue follow-ups, 30-day views, page visits and WhatsApp taps, and a 7-day traffic chart",
         title: "Open the app. Know who needs you today.",
-        pain: "Buyers are spread across forty WhatsApp chats. The one who was ready to book a viewing goes cold while you answer someone else, and you notice two weeks later.",
-        moment: "8am, before you reach the lot. The first line says 4 leads are waiting on a follow-up. Below it: how many people opened your page this week, and your link ready to copy into today's WhatsApp status.",
-        points: [
-          "Overdue follow-ups counted for you, right at the top",
-          "Views, page visits and WhatsApp taps for the last 30 days",
-          "Your page link: copy, share or open it in one tap",
-          "Where visitors came from: Instagram, Facebook or direct",
-        ],
-        pays: "The buyer you remember to call back is the deal you close.",
+        line: "Overdue follow-ups counted for you, right at the top.",
       },
       carPerformance: {
         tab: "Dashboard",
         alt: "Per-car performance list showing views, WhatsApp taps and conversion rate, with one car tagged Rising",
         title: "See which car pulls buyers, and which one is stuck.",
-        pain: "You post every car the same way and hope. The car that has sat for a month gets as much of your time as the one buyers keep asking about.",
-        moment: "Friday, deciding what to push on your status this weekend. The Lexus RX has buyers tapping WhatsApp and is marked Rising, so it goes first. The Vellfire has 16 views and no taps, so it needs a new price or better photos.",
-        points: [
-          "Views, WhatsApp taps and conversion rate for every car",
-          "A Rising tag on the cars buyers are warming to",
-          "Views with no taps point to a price or photo problem",
-          "A 30-day window, so you see what works right now",
-        ],
-        pays: "Put your effort behind the cars buyers already want, and fix the stuck ones before they cost you the month.",
+        line: "Views and WhatsApp taps for every car, last 30 days.",
       },
       premiumLeads: {
         tab: "Leads",
         alt: "Lead pipeline with stage filters and buyer cards flagged Never contacted with the number of days waiting",
         title: "Every buyer in a stage, not lost in a chat.",
-        pain: "A buyer asks about a car at 11pm. You mean to reply in the morning. By then they have bought from the agent who answered first.",
-        moment: "A buyer messages you about the Vellfire from the marketplace. They land in your pipeline with the car and price attached, and a flag says \"Never contacted · 9d\" until somebody replies.",
-        points: [
-          "Stages from New through Contacted, Viewing and Test drive to Won",
-          "Flags buyers nobody has replied to, and how long they have waited",
-          "Move the deal forward or open the chat from the card",
-          "Queue a follow-up reminder with the message already drafted",
-        ],
-        pays: "Most lost deals are not lost on price. They are lost because nobody followed up.",
+        line: "Buyers nobody replied to are flagged, with how long they waited.",
       },
       sold: {
         tab: "Sold",
         alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
         title: "Won is not done. The handover, step by step.",
-        pain: "After the deal comes loan settlement, insurance, Puspakom, the JPJ transfer and road tax. Miss one and the buyer calls you angry instead of recommending you.",
-        moment: "You mark a deal Won. An 8-step handover checklist appears in the right order with the official fees filled in. Tick insurance done and next year's renewal date is saved.",
-        points: [
-          "An 8-step checklist created the moment a deal is won",
-          "Puspakom, JPJ transfer and road tax in the right order",
-          "The buyer saved as a customer with their car and price",
-          "Insurance and road tax dates kept for the renewal reminder",
-        ],
-        pays: "A smooth handover is how one sale turns into the buyer's brother, cousin and colleague.",
+        line: "A won deal gets its 8-step handover checklist.",
       },
       analytics: {
         tab: "Analytics",
         alt: "Close rate funnel showing where deals stop, with Contacted marked as the weakest step, plus median reply speed",
         title: "Find out where you are losing deals.",
-        pain: "You know you closed three this month. You do not know whether you lost the rest at the first reply, the viewing or the test drive.",
-        moment: "End of the month. The funnel shows most of your lost buyers dropped after booking a viewing. That is what you fix next month, not your ads.",
-        points: [
-          "The stage each lost deal actually died at",
-          "Close rate with a 30-day trend",
-          "How fast you reply, and why deals were lost",
-          "Which lead sources turn into sales",
-        ],
-        pays: "Fix the one step where you lose the most people and every lead you already get is worth more.",
+        line: "Close rate, reply speed and why deals were lost.",
       },
     },
   },
@@ -247,10 +197,6 @@ const EN = {
   },
 
   showcase: {
-    kicker: "Your page does the selling",
-    title: "Send one link. They see everything.",
-    lead: "No more forwarding photos car by car. Your XDrive page shows your whole stock, your prices and a WhatsApp button on every listing, open on any phone, ready to share the second a buyer asks.",
-    list: ["Your name at the top, every car below", "Every car with photos, price and specs", "Tap-to-WhatsApp on each listing"],
     example: "See an example page:",
     phoneAria: "Sample agent page",
     phoneRole: "Car Agent",
@@ -267,29 +213,55 @@ const EN = {
     kicker: "How it works",
     title: "Live in three steps.",
     steps: [
-      { n: "01", title: "Sign up", body: "Email or Google, your phone and a name for your link. Lite is free, no card needed." },
-      { n: "02", title: "Add your cars", body: "Photos, price and specs. We check each car, then it's on your page, on the marketplace and in your presentation." },
-      { n: "03", title: "Go live", body: "Open Live presentation, film your screen and answer \"monthly berapa?\" with one tap." },
+      { n: "01", title: "Sign up", body: "Email or Google. Free, no card." },
+      { n: "02", title: "Add your cars", body: "Photos, price, specs. We check each one first." },
+      { n: "03", title: "Go live", body: "Open Live presentation. Answer \"monthly berapa?\" with one tap." },
     ],
   },
 
   // Order matches WHY_ICONS in SalesmanLiteLanding.jsx.
-  why: {
-    kicker: "Built for how you actually sell",
-    title: "Made for agents, not office desks.",
-    items: [
-      { title: "Built for your phone", body: "Add a car and snap photos from the phone that's already in your hand at the lot." },
-      { title: "Set up in minutes", body: "No website, no designer. Sign up, add your cars, and each one goes public once we've checked it." },
-      { title: "You look established", body: "A proper page beats a folder of screenshots. Buyers trust an agent with a real presence." },
-      { title: "Yours to keep", body: "Your page, your link, your leads. Move between Lite and Premium and everything comes with you." },
+  // The visible page (owner, 2026-10-23, after SA Studio's page): one short
+  // line per idea, a real picture beside it. The long sections above (live,
+  // compare, features) are what the crawler render reads (api/og.js); the
+  // SPA no longer prints them.
+  short: {
+    heroLine: "Every car you list gets its monthly instalments worked out. A viewer asks, you tap.",
+    painKicker: "Sound familiar?",
+    pains: [
+      "Working out the loan by hand every time a buyer asks.",
+      "Retyping the instalment poster for every car.",
+      "A viewer wants a different deposit, and the live waits while you redo it.",
     ],
+    painFix: "Now: one tap, every number ready.",
+    getKicker: "What you get, free",
+    poster: {
+      title: "A loan poster in seconds.",
+      line: "Price, deposit and the 9, 7 and 5 year monthly, with your name and number on it.",
+      chips: [`Lite: ${LITE_POSTERS} cars a month`, "Premium: unlimited", "Flat rate converted to EIR"],
+      caption: "Drawn live by the app from a real car. Sample seller, number hidden.",
+      aria: "Sample loan poster",
+    },
+    page: {
+      title: "One link. All your cars.",
+      line: "Put it in your TikTok bio or WhatsApp status. Buyers tap a car and reach you.",
+      chips: ["Your own page", "On the marketplace", "WhatsApp, chat, booking"],
+    },
+    plansKicker: "Pricing",
+    plansTitle: "Start free. Upgrade when it pays.",
+    liteBullets: [
+      `Up to ${LITE_CAP} cars, your own page`,
+      "Live presentation for TikTok / FB lives",
+      `Loan posters for ${LITE_POSTERS} cars a month`,
+      "Buyers by WhatsApp, chat and booking",
+      "Lead alerts and a lead list",
+    ],
+    premiumBullets: [
+      "Everything in Lite",
+      `Up to ${PREMIUM_CAP} cars, unlimited loan posters`,
+      ...SALESMAN_PREMIUM_FEATURES.slice(0, 4),
+    ],
+    more: "And more",
   },
-
-  midcta: {
-    title: "Ready for your next live?",
-    body: "Live presentation is free on Lite. No card, nothing billed.",
-  },
-
   plans: {
     kicker: "Pick your plan",
     title: "Go live free on Lite. Premium to follow up every lead.",
@@ -405,7 +377,6 @@ const MS = {
       "Kereta yang tengah di skrin di-pin di page anda sebagai \"Live now\" untuk penonton yang tap link bio anda",
     ],
     note: "Anggaran atas baki berkurangan (EIR). Tertakluk kepada kelulusan bank.",
-    exampleLink: "Tengok contoh page",
   },
 
   compare: {
@@ -419,7 +390,6 @@ const MS = {
       { label: "Bank bagi kadar flat", old: "Kena convert sendiri", now: "Masukkan kadar flat, sistem tukar ke EIR untuk anda" },
       { label: "Nombor telefon anda", old: "Terpampang atas poster sepanjang live", now: "Tersembunyi sampai anda tap untuk tunjuk" },
     ],
-    fix: "Live presentation selesaikan keempat-empat masalah ni.",
   },
 
   tour: {
@@ -428,8 +398,6 @@ const MS = {
     toggleAria: "Pilih pelan",
     plus: "Semua yang ada dalam Lite, dan lebih lagi di setiap tab.",
     seeLite: "Tengok Lite",
-    problemLabel: "Masalahnya",
-    momentLabel: "Bila anda guna",
     shotPending: "Screenshot akan datang",
     plans: {
       lite: { label: "Lite", price: "Percuma", cta: "Daftar percuma" },
@@ -440,85 +408,37 @@ const MS = {
         tab: "Leads",
         alt: "Senarai 37 pembeli dengan pecahan sumber, filter stage dan kad pembeli yang tunjuk tag warm serta butang WhatsApp",
         title: "Setiap pembeli ada stage, tak hilang dalam chat.",
-        pain: "Pembeli tanya pasal kereta pukul 11 malam. Anda niat nak balas pagi esok. Bila pagi, dia dah beli dari salesman yang balas dulu.",
-        moment: "Seorang pembeli mesej anda pasal Vellfire dari marketplace. Telefon anda dapat alert, dan dia masuk senarai lead anda siap dengan kereta dan harga, ditanda \"Never contacted\" sampai anda balas.",
-        points: [
-          "Pembeli dari WhatsApp, chat dan booking, semua dalam satu senarai",
-          "Stage dari New, Contacted, Viewing dan Test drive sampai Won",
-          "Tanda pembeli yang belum dibalas, dan berapa lama dia dah tunggu",
-          "Alert di telefon anda bila ada pembeli baru masuk",
-        ],
-        pays: "Kebanyakan deal terlepas bukan sebab harga. Terlepas sebab salesman lain balas dulu.",
+        line: "Alert di telefon bila pembeli baru masuk.",
       },
       dashboard: {
         tab: "Dashboard",
         alt: "Dashboard Salesman Premium yang tunjuk 4 follow-up tertunggak, views 30 hari, lawatan page dan tap WhatsApp, serta carta trafik 7 hari",
         title: "Buka app. Terus tahu siapa perlukan anda hari ni.",
-        pain: "Pembeli bersepah dalam empat puluh chat WhatsApp. Yang dah sedia nak book viewing jadi sejuk masa anda layan orang lain, dan anda cuma perasan dua minggu kemudian.",
-        moment: "Pukul 8 pagi, sebelum sampai lot. Baris pertama cakap 4 lead sedang tunggu follow up. Di bawahnya: berapa ramai buka page anda minggu ni, dan link anda sedia untuk copy ke status WhatsApp hari ni.",
-        points: [
-          "Follow up yang tertunggak dikira untuk anda, terus di atas",
-          "Views, lawatan page dan tap WhatsApp untuk 30 hari lepas",
-          "Link page anda: copy, share atau buka dengan satu tap",
-          "Dari mana pelawat datang: Instagram, Facebook atau terus",
-        ],
-        pays: "Pembeli yang anda ingat untuk call balik, itulah deal yang anda close.",
+        line: "Follow up yang tertunggak dikira untuk anda, paling atas.",
       },
       carPerformance: {
         tab: "Dashboard",
         alt: "Senarai prestasi setiap kereta yang tunjuk views, tap WhatsApp dan kadar conversion, dengan satu kereta ditanda Rising",
         title: "Tengok kereta mana yang tarik pembeli, dan mana yang tersangkut.",
-        pain: "Anda post semua kereta dengan cara sama dan berharap. Kereta yang dah sebulan duduk dapat masa anda sama banyak dengan kereta yang pembeli asyik tanya.",
-        moment: "Hari Jumaat, tengah fikir kereta mana nak tolak di status hujung minggu ni. Lexus RX ramai pembeli tap WhatsApp dan ditanda Rising, jadi itu dulu. Vellfire ada 16 views tapi tiada tap, jadi perlu harga baru atau gambar yang lebih cantik.",
-        points: [
-          "Views, tap WhatsApp dan kadar conversion untuk setiap kereta",
-          "Tag Rising untuk kereta yang pembeli mula minat",
-          "Ada views tapi tiada tap, tandanya masalah harga atau gambar",
-          "Tempoh 30 hari, jadi anda nampak apa yang jalan sekarang",
-        ],
-        pays: "Fokus pada kereta yang pembeli memang nak, dan betulkan yang tersangkut sebelum ia makan sebulan anda.",
+        line: "Views dan tap WhatsApp untuk setiap kereta, 30 hari terakhir.",
       },
       premiumLeads: {
         tab: "Leads",
         alt: "Pipeline lead dengan filter stage dan kad pembeli ditanda Never contacted berserta bilangan hari menunggu",
         title: "Setiap pembeli ada stage, tak hilang dalam chat.",
-        pain: "Pembeli tanya pasal kereta pukul 11 malam. Anda niat nak balas pagi esok. Bila pagi, dia dah beli dari salesman yang balas dulu.",
-        moment: "Seorang pembeli mesej anda pasal Vellfire dari marketplace. Dia masuk pipeline anda siap dengan kereta dan harga, dan ada tanda \"Never contacted · 9d\" sampai ada orang balas.",
-        points: [
-          "Stage dari New, Contacted, Viewing dan Test drive sampai Won",
-          "Tanda pembeli yang belum dibalas, dan berapa lama dia dah tunggu",
-          "Gerakkan deal ke depan atau buka chat terus dari kad",
-          "Set reminder follow up dengan mesej yang dah siap ditulis",
-        ],
-        pays: "Kebanyakan deal terlepas bukan sebab harga. Terlepas sebab tiada siapa follow up.",
+        line: "Pembeli yang belum dibalas ditanda, dengan berapa hari dia tunggu.",
       },
       sold: {
         tab: "Sold",
         alt: "Senarai semak handover 8 langkah untuk deal yang dah Won, dengan loan settlement dan insurans selesai dan pemeriksaan Puspakom seterusnya",
         title: "Won belum bermakna selesai. Handover, langkah demi langkah.",
-        pain: "Lepas deal ada loan settlement, insurans, Puspakom, tukar nama JPJ dan road tax. Tertinggal satu, pembeli call anda dengan marah, bukan recommend anda.",
-        moment: "Anda tanda deal sebagai Won. Senarai semak handover 8 langkah keluar ikut susunan yang betul dengan yuran rasmi dah diisi. Tick insurans selesai, dan tarikh renew tahun depan terus disimpan.",
-        points: [
-          "Senarai semak 8 langkah dibuat sebaik deal Won",
-          "Puspakom, tukar nama JPJ dan road tax ikut susunan yang betul",
-          "Pembeli disimpan sebagai customer dengan kereta dan harga",
-          "Tarikh insurans dan road tax disimpan untuk reminder renew",
-        ],
-        pays: "Handover yang lancar, itulah cara satu jualan jadi abang, sepupu dan kawan sepejabat pembeli.",
+        line: "Deal won terus dapat senarai semak handover 8 langkah.",
       },
       analytics: {
         tab: "Analytics",
         alt: "Funnel close rate yang tunjuk di mana deal berhenti, dengan Contacted ditanda sebagai langkah paling lemah, serta median kelajuan balas",
         title: "Cari di mana anda terlepas deal.",
-        pain: "Anda tahu bulan ni close tiga. Tapi anda tak tahu yang lain terlepas masa balasan pertama, masa viewing atau masa test drive.",
-        moment: "Hujung bulan. Funnel tunjuk kebanyakan pembeli yang terlepas hilang lepas book viewing. Itu yang anda betulkan bulan depan, bukan iklan anda.",
-        points: [
-          "Stage sebenar di mana setiap deal terlepas",
-          "Close rate dengan trend 30 hari",
-          "Berapa cepat anda balas, dan kenapa deal terlepas",
-          "Sumber lead mana yang jadi jualan",
-        ],
-        pays: "Betulkan satu langkah di mana anda paling ramai terlepas pembeli, dan setiap lead yang anda dah dapat jadi lebih bernilai.",
+        line: "Close rate, kelajuan balas dan sebab deal terlepas.",
       },
     },
   },
@@ -538,10 +458,6 @@ const MS = {
   },
 
   showcase: {
-    kicker: "Page anda yang buat kerja jual",
-    title: "Hantar satu link. Pembeli nampak semua.",
-    lead: "Tak perlu lagi forward gambar kereta satu-satu. Page XDrive anda tunjuk semua stok, harga dan butang WhatsApp di setiap listing, boleh buka di mana-mana telefon, sedia untuk share sebaik pembeli tanya.",
-    list: ["Nama anda di atas, semua kereta di bawah", "Setiap kereta dengan gambar, harga dan spec", "Tap terus ke WhatsApp di setiap listing"],
     example: "Tengok contoh page:",
     phoneAria: "Contoh page ejen",
     phoneRole: "Ejen Kereta",
@@ -558,28 +474,50 @@ const MS = {
     kicker: "Cara ia berfungsi",
     title: "Sedia live dalam tiga langkah.",
     steps: [
-      { n: "01", title: "Daftar", body: "Guna email atau Google, nombor telefon dan nama untuk link anda. Lite percuma, tak perlu kad." },
-      { n: "02", title: "Masukkan kereta anda", body: "Gambar, harga dan spec. Kami semak setiap kereta, lepas tu ia keluar di page anda, di marketplace dan dalam presentation anda." },
-      { n: "03", title: "Mula live", body: "Buka Live presentation, rakam skrin anda dan jawab \"monthly berapa?\" dengan satu tap." },
+      { n: "01", title: "Daftar", body: "Email atau Google. Percuma, tak perlu kad." },
+      { n: "02", title: "Masukkan kereta anda", body: "Gambar, harga, spec. Kami semak dulu setiap satu." },
+      { n: "03", title: "Mula live", body: "Buka Live presentation. Jawab \"monthly berapa?\" dengan satu tap." },
     ],
   },
 
-  why: {
-    kicker: "Ikut cara anda betul-betul jual",
-    title: "Untuk salesman di lot, bukan orang pejabat.",
-    items: [
-      { title: "Dibina untuk telefon anda", body: "Masukkan kereta dan ambil gambar guna telefon yang memang dah ada di tangan anda di lot." },
-      { title: "Siap dalam beberapa minit", body: "Tak perlu website, tak perlu designer. Daftar, masukkan kereta, dan setiap satu keluar untuk umum lepas kami semak." },
-      { title: "Nampak lebih profesional", body: "Page yang proper lagi meyakinkan daripada folder screenshot. Pembeli lebih percaya salesman yang ada presence sebenar." },
-      { title: "Kekal milik anda", body: "Page anda, link anda, lead anda. Tukar antara Lite dan Premium, semuanya ikut anda." },
+  short: {
+    heroLine: "Setiap kereta yang anda listing dah siap kiraan ansuran. Penonton tanya, anda tap.",
+    painKicker: "Bunyi macam anda?",
+    pains: [
+      "Kira loan manual setiap kali customer tanya.",
+      "Taip semula poster ansuran untuk setiap kereta.",
+      "Penonton minta deposit lain, live tunggu anda kira semula.",
     ],
+    painFix: "Sekarang: satu tap, semua nombor siap.",
+    getKicker: "Apa anda dapat, percuma",
+    poster: {
+      title: "Poster loan dalam beberapa saat.",
+      line: "Harga, deposit dan monthly 9, 7 dan 5 tahun, dengan nama dan nombor anda.",
+      chips: [`Lite: ${LITE_POSTERS} kereta sebulan`, "Premium: tanpa had", "Kadar flat ditukar ke EIR"],
+      caption: "Dilukis terus oleh app dari kereta sebenar. Contoh seller, nombor disorok.",
+      aria: "Contoh poster loan",
+    },
+    page: {
+      title: "Satu link. Semua kereta anda.",
+      line: "Letak di bio TikTok atau status WhatsApp. Pembeli tap kereta, terus sampai ke anda.",
+      chips: ["Page anda sendiri", "Masuk marketplace", "WhatsApp, chat, booking"],
+    },
+    plansKicker: "Harga",
+    plansTitle: "Mula percuma. Naik taraf bila dah untung.",
+    liteBullets: [
+      `Sampai ${LITE_CAP} kereta, page anda sendiri`,
+      "Live presentation untuk TikTok / FB live",
+      `Poster loan untuk ${LITE_POSTERS} kereta sebulan`,
+      "Pembeli melalui WhatsApp, chat dan booking",
+      "Alert lead dan senarai lead",
+    ],
+    premiumBullets: [
+      "Semua dalam Lite",
+      `Sampai ${PREMIUM_CAP} kereta, poster loan tanpa had`,
+      ...SALESMAN_PREMIUM_FEATURES_MS.slice(0, 4),
+    ],
+    more: "Dan banyak lagi",
   },
-
-  midcta: {
-    title: "Dah sedia untuk live seterusnya?",
-    body: "Live presentation percuma dengan Lite. Tak perlu kad, tiada caj.",
-  },
-
   plans: {
     kicker: "Pilih pelan anda",
     title: "Live percuma dengan Lite. Premium untuk follow up setiap lead.",
