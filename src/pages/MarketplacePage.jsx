@@ -18,6 +18,8 @@ import { PRICE_STEPS } from '../components/PriceDrumPicker';
 import SearchAutocomplete from '../components/SearchAutocomplete';
 import BodyTypeCarousel from '../components/marketplace/BodyTypeCarousel';
 import HeroCarRow from '../components/marketplace/HeroCarRow';
+import { useViewProgress } from '../hooks/useViewProgress';
+import { clearCarProgress } from '../utils/viewProgress';
 import NewCarPicker, { NEW_CAR_PICKER_CSS } from '../components/marketplace/NewCarPicker';
 import { liveNewCarBrands } from '../utils/newCars';
 import SkeletonCard from '../components/ui/SkeletonCard';
@@ -157,6 +159,32 @@ export default function MarketplacePage() {
   const [row1Pool, setRow1Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter(notModelCard).slice(0, 12));
   const [row1Mode, setRow1Mode] = useState('all'); // 'all' | 'hot'
   const [row2Pool, setRow2Pool] = useState(() => (readCache(DEFAULT_GRID_CACHE_KEY, CACHE_TTL)?.cars || []).filter((c) => notModelCard(c) && c.body_type === 'MPV').slice(0, 12));
+  /* "Continue looking" (REVISIT-1): the cars this buyer opened on this device,
+     newest first, still for sale. Ids come from the device
+     (src/utils/viewProgress.js); the cars are re-read live so a sold or
+     removed car simply drops out. Empty = the row does not render. */
+  const { list: viewed } = useViewProgress();
+  const viewedKey = viewed.slice(0, 12).map((e) => e.id).join(',');
+  const [revisitPool, setRevisitPool] = useState([]);
+  useEffect(() => {
+    const ids = viewedKey ? viewedKey.split(',') : [];
+    if (!ids.length) { setRevisitPool([]); return; }
+    let alive = true;
+    withTimeout(
+      publicClient.from('public_car_listings')
+        .select(HERO_ROW_FIELDS)
+        .in('id', ids)
+        .in('status', ['available', 'reserved']),
+    )
+      .then(({ data, error: err }) => {
+        if (!alive || err) return;
+        const rank = new Map(ids.map((id, i) => [id, i]));
+        setRevisitPool((data || []).slice().sort((a, b) => rank.get(a.id) - rank.get(b.id)));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, [viewedKey]);
+
   // Hero "New" mode: brands + models that have a live advisor card. Empty until
   // loaded, and the New tab only renders once it has a brand (an entry point
   // over an empty view is a dead end).
@@ -845,7 +873,7 @@ export default function MarketplacePage() {
            backgrounds; they sit on white far better than on near-black. */
         .mp-carrow-item { display: block; text-decoration: none; border-radius: 10px; overflow: hidden; background: #ffffff; border: 1px solid #ECEAE3; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); }
         @media (hover:hover) and (pointer:fine) { .mp-carrow-item:hover { transform: translateY(-3px); border-color: rgba(220,38,38,.4); box-shadow: 0 12px 32px rgba(15,23,42,.14); } }
-        .mp-carrow-img { height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
+        .mp-carrow-img { position: relative; height: 62px; background-size: cover; background-position: center; background-color: #F0EEE8; }
         .mp-carrow-meta { display: block; padding: 6px 9px 8px; border-top: 1px solid rgba(0,0,0,.06); font-family: 'Outfit',sans-serif; min-width: 0; }
         .mp-carrow-name { display: block; font-size: 10.5px; font-weight: 500; color: #4b5563; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 1px; }
         .mp-carrow-price { display: block; font-size: 11px; font-weight: 700; color: #111827; font-variant-numeric: tabular-nums; }
@@ -1134,19 +1162,41 @@ export default function MarketplacePage() {
                 more trustworthy than a static price-shortcut grid (the budget
                 <select> in the search bar above already covers that filter). */}
             <div className="mp-hero-right">
+              {/* A returning buyer with cars to come back to gets them first;
+                  the MPV row makes room so the hero keeps its height and the
+                  deals row stays. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {revisitPool.length > 0 && (
+                  <HeroCarRow
+                    eyebrow="Pick up where you left off"
+                    title="CONTINUE LOOKING"
+                    cars={revisitPool}
+                    autoAdvance={false}
+                    headerAction={(
+                      <button
+                        type="button"
+                        onClick={clearCarProgress}
+                        style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', fontSize: 11, fontWeight: 600, color: '#6b7280', fontFamily: "'Outfit',sans-serif", flexShrink: 0 }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  />
+                )}
                 <HeroCarRow
                   eyebrow="Shop Smarter"
                   title={row1Mode === 'hot' ? 'HOT DEALS' : 'USED & RECON'}
                   cars={row1Pool}
                   viewAllHref={row1Mode === 'hot' ? '/showroom?hot_deals=true' : '/showroom'}
                 />
-                <HeroCarRow
-                  eyebrow="Popular in Malaysia"
-                  title="MPV"
-                  cars={row2Pool}
-                  viewAllHref="/showroom?body_type=MPV"
-                />
+                {revisitPool.length === 0 && (
+                  <HeroCarRow
+                    eyebrow="Popular in Malaysia"
+                    title="MPV"
+                    cars={row2Pool}
+                    viewAllHref="/showroom?body_type=MPV"
+                  />
+                )}
               </div>
             </div>
 
