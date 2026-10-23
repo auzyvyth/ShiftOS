@@ -222,18 +222,18 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               </p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <div style={{ minWidth: 0 }}><label style={label}>State</label>
+              <div style={{ minWidth: 0 }}><label style={label}>State where they sell</label>
                 <select value={form.state} onChange={(e) => { set("state", e.target.value); set("city", ""); }} style={input}>
                   <option value="">Choose</option>
                   {MY_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select></div>
-              <div style={{ minWidth: 0 }}><label style={label}>City</label>
+              <div style={{ minWidth: 0 }}><label style={label}>Area where they sell</label>
                 <select value={form.city} onChange={(e) => set("city", e.target.value)} style={input} disabled={!form.state}>
                   <option value="">Choose</option>
                   {cityOptionsFor(form.state, form.city).map((c) => <option key={c} value={c}>{c}</option>)}
                 </select></div>
             </div>
-            <div><label style={label}>Shop address (optional)</label>
+            <div><label style={label}>Shop address (optional, public: never a home)</label>
               <input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={input} autoComplete="off" maxLength={200} /></div>
             {premium && (
               <>
