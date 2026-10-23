@@ -2543,11 +2543,9 @@ derived meta description, and a two-column mini page at 1024px+.
 Built: "Kiraan Loan" poster from a car's menu in Lite / Premium / linked-salesman panel,
 Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to SA Studio X
 (sastudiox.my): RM108/yr, 3 free, background removal, flat-rate maths.
-- [ ] **POSTER-2: Background removal does not work in prod.** Studio's Remove BG
-  (`TikTokStudioV3.jsx:3212`) calls `VITE_API_URL || localhost:4000` `/ai/removebg`, served
-  only by `server/routes/anthropic.js:80`, and `.vercelignore` drops `server/`. Needs an
-  `api/removebg.js` (signed-in, rate-limited). Owner: which provider has the 5k free, and
-  where is the key set? Then offer "clean background" on the loan poster too (real photo only).
+- [ ] **POSTER-2b: offer "clean background" on the loan poster** (real photo only). The
+  Studio's Remove BG works again (CUTOUT-1, on the phone, `src/lib/cutout`); the loan poster
+  does not use it yet. Needs a design call: the poster is a full-width photo today.
 - [ ] **POSTER-3 (owner call): the public calculator's poster button.** It sits on the car
   page and /calculator, where buyers (not sellers) see it, plus dealer dashboard + F&I.
   Decide who keeps it, then draw it with the POSTER-1 engine so there is one poster maker.

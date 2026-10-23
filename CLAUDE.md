@@ -1692,6 +1692,26 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
 - The seller's own number on their own poster is fine (they send it); this is NOT a public
   page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
 
+## Background cut-out runs ON THE PHONE (CUTOUT-1, 2026-10-23)
+`src/lib/cutout/index.js` (`cutOutBackground(src) -> PNG Blob`) + `cutout.worker.js`. Model:
+ISNet (DIS project, Apache-2.0) at `public/models/isnet-wq8-v1.onnx`, Conv weights stored
+8-bit and dequantized to float32 at load (47 MB, 97-99% mask match to the full model; the
+dynamic 8-bit version lost car edges). Run by `onnxruntime-web/wasm`, single thread (no
+cross-origin isolation). Used by the Studio's Remove BG (`TikTokStudioV3.jsx removeBg`).
+- **The car's pixels are the seller's photo; the model only picks which to keep.** Never
+  swap this for an image-generation model (Gemini etc.): it redraws the car. Gemini is for
+  the scene BEHIND a cut-out (next step), never the cut-out itself.
+- remove.bg (the old provider) shuts its self-service API 1 Dec 2026; its server route is gone.
+- First use downloads 47 MB + a 14 MB engine (3.7 MB gzipped), then Cache Storage
+  (`xd-cutout-v1`) serves it offline. The UI says so before the first download.
+- The input is FIXED at 1024x1024 (sizes are baked into the graph; 512/768 fail). Photos
+  over 2048 px are scaled down first to spare phone memory.
+- `vercel.json` CSP carries `'wasm-unsafe-eval'` in script-src for this (WebAssembly only,
+  not JS eval). A new model = a NEW filename (`-v2`): `/models/*` is cached immutable for a year.
+- Licence: BRIA RMBG (1.4/2.0) is NON-commercial and @imgly/background-removal is AGPL;
+  do not swap either in. BiRefNet is MIT but too heavy for phones (115 MB, crashes).
+- Speed: about 15 s a photo on a slow CPU in headless Chromium; not yet timed on a phone.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

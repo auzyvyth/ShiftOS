@@ -79,6 +79,7 @@
     "konva": "^9.3.22",
     "lucide-react": "^0.469.0",
     "nanoid": "^5.1.7",
+    "onnxruntime-web": "1.30.0",
     "pdfjs-dist": "^6.3.289",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
