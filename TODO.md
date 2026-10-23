@@ -102,6 +102,23 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   click-test (leave a seller tab hidden 3+ min, send a lead, come back) then ship.** Was: disconnect realtime
   after a tab / phone is hidden 2+ min, reconnect + refetch on visible. Seller panels stay open
   24/7, and list_changes polling runs while any subscriber is connected. Do before IO-2.
+- [ ] **IO-7 Freeze #3 (2026-10-22 18:38 UTC -> restart 00:08 UTC Oct 23).** Audit 2026-10-23 (read-only):
+  - Onset was sudden with no change in OUR load: 17:00-18:30 UTC checkpoints wrote 2-31 buffers, cron
+    runs took 0.2 s, ~1,000 API requests/h; at 18:38 PostgREST threads start timing out and at 18:44
+    `SELECT count(*) FROM pg_settings` (pure memory/CPU, no disk) took 13.8 s. That points at the
+    HOST starving the database (CPU or memory/swap on the free Nano: shared CPU, 0.5 GB RAM).
+  - CORRECTION: slow checkpoint "write=" times are NOT disk proof (Postgres spreads checkpoint
+    writes on purpose). Postgres' own IO since restart: 99.9% cache hits, ~300 block writes.
+  - Amplifiers inside our code: /platform `loadAll` = 14 queries every 60 s per open console tab,
+    with no hidden-tab pause (`src/pages/AdminPage.jsx:396`); during the freeze its tables were the
+    top 5xx paths and 533 polls hit in the 00:00 UTC hour. Supabase Studio/MCP schema queries took
+    21-55 s each during the freeze (opening the dashboard while frozen adds load).
+  - Owner: Dashboard > Reports > Database (CPU, Memory, Swap, Disk IO budget) for 18:00-00:00 UTC
+    Oct 22 decides it. Fix options: Pro plan + switch compute to Micro (free projects STAY on Nano
+    after upgrading unless compute is changed), or keep Nano and cut the console poll.
+  Cron diet (solo salesman first): `20261023a_cron_pause_marketplace_dealer.sql`
+  (pauses 3, 4, 8, 9; 18 daily; 16 twice a day) - APPLIED 2026-10-23 00:32 UTC, verified in cron.job. Undo with
+  cron.alter_job(id, active := true).
 - [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
   subscribes to `lead_activities`, which is not in the publication (never fires).
 
@@ -324,9 +341,6 @@ for RM199.90 one-off (price anchor vs RM35/month Premium). Their sheets show
   state -> `/new-cars/:brand/:model?state=`), shown only when a live model card exists
   (`src/components/marketplace/NewCarPicker.jsx`). Hero rows now exclude model cards.
   Next: the advisor card design on the model page (owner: "we decide later").
-- [ ] OWNER: send the CURRENT Proton and BYD logos (SVG preferred) for `public/brands/`;
-  until then the New picker shows those two as wordmarks. Then add them to `LOGOS` in
-  `src/components/marketplace/NewCarPicker.jsx`.
 - [x] Stopgap 2026-10-07: CarForm "New" no longer asks for mileage, geran, damage,
   loan-on-car, and cost is optional (`isNewCar`, src/components/CarForm.jsx).
 - [ ] **Won flips the listing to sold.** `auto_create_customer_on_won` marks the car
