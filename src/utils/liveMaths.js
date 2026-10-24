@@ -144,13 +144,13 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // rateOf(car) -> { rate, basis }: the car's own rate (isLocalNew), else rate/basis.
 // depositFor(car, price) -> RM: a deposit per car (the Premium page's budget
 // finder takes a %, so each car's deposit differs). Absent = `deposit` for all.
-export function budgetMatches(listings, { maxMonthly, deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
-  const cap = Number(maxMonthly);
-  if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
+// The one pricing loop behind budgetMatches AND budgetAll, so the Budget list
+// and the All cars grid can never quote two different monthlies for one car.
+// Each row: the car at its tenure, its monthly, and the extra deposit that
+// would bring it under `cap` (topUp, RM100 steps; 0 when it already fits).
+function priceBudgetRows(listings, cap, { deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
   const fixedDown = Math.max(0, Number(deposit) || 0);
-  const fits = [];
-  const above = [];
-  const byN = new Map();
+  const rows = [];
   (listings || []).forEach((car, i) => {
     const { net: price } = netPrice(car, rebates);
     const down = depositFor ? Math.max(0, Number(depositFor(car, price)) || 0) : fixedDown;
@@ -162,30 +162,75 @@ export function budgetMatches(listings, { maxMonthly, deposit = 0, depositFor, y
     const r = rateOf ? rateOf(car) : { rate, basis };
     const eir = eirForTenure(r.rate, r.basis, y);
     const monthly = monthlyPayment(price + extra - down, eir, y * 12);
-    const row = { n: car._n ?? i + 1, car, price, monthly, years: y };
-    if (car._variantId) {
-      if (!byN.has(row.n)) byN.set(row.n, []);
-      byN.get(row.n).push({ ...row, fits: monthly <= cap });
-    }
-    if (monthly <= cap) fits.push(row);
-    else if (monthly <= cap * (1 + ABOVE_MARGIN)) {
+    const fits = monthly <= cap;
+    let topUp = 0;
+    if (!fits) {
       const need = depositToFit({ price, extra, cap, eir, years: y });
       // Rounded UP to RM100 again: `need` is, but a % deposit (RM8,980) is not.
-      above.push({ ...row, topUp: need == null ? null : Math.max(0, Math.ceil((need - down) / 100) * 100) });
+      topUp = need == null ? null : Math.max(0, Math.ceil((need - down) / 100) * 100);
     }
+    rows.push({ n: car._n ?? i + 1, car, price, monthly, years: y, fits, topUp });
   });
+  return rows;
+}
+
+export function budgetMatches(listings, opts) {
+  const cap = Number(opts?.maxMonthly);
+  if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
+  const fits = [];
+  const above = [];
+  const byN = new Map();
+  for (const { fits: ok, topUp, ...row } of priceBudgetRows(listings, cap, opts)) {
+    if (row.car._variantId) {
+      if (!byN.has(row.n)) byN.set(row.n, []);
+      byN.get(row.n).push({ ...row, fits: ok });
+    }
+    if (ok) fits.push(row);
+    else if (row.monthly <= cap * (1 + ABOVE_MARGIN)) above.push({ ...row, topUp });
+  }
   fits.sort((a, b) => b.price - a.price);
   above.sort((a, b) => a.monthly - b.monthly);
   const once = (rows, skip = new Set()) => rows.filter((r) => !skip.has(r.n) && (skip.add(r.n), true));
   const fitOnce = once(fits);
   const withOptions = (r) => {
-    const opts = byN.get(r.n);
-    return opts && opts.length > 1 ? { ...r, options: [...opts].sort((a, b) => a.price - b.price) } : r;
+    const vs = byN.get(r.n);
+    return vs && vs.length > 1 ? { ...r, options: [...vs].sort((a, b) => a.price - b.price) } : r;
   };
   return {
     fits: fitOnce.map(withOptions),
     above: once(above, new Set(fitOnce.map((r) => r.n))).slice(0, 2).map(withOptions),
   };
+}
+
+// Every car once, for the Budget tab's "All cars" grid (owner, 2026-10-24: a
+// Proton advisor wanted every model on screen with a verdict, the way a rival
+// tool shows it). Same rows as budgetMatches, so the grid and the list agree.
+//   status 'fit':  within budget; a model card shows its dearest variant that fits
+//   status 'near': within ABOVE_MARGIN; topUp = the extra deposit that fits it
+//   status 'over': further out; never given a deposit figure (noise on camera)
+// A car with no row (no price, too old for a loan, deposit covers it) is left
+// out, same as the list. Order: fits dearest first, then near and over by
+// monthly, cheapest first, so the screen reads best answer to worst.
+export const BUDGET_STATUS = ['fit', 'near', 'over'];
+export function budgetAll(listings, opts) {
+  const cap = Number(opts?.maxMonthly);
+  if (!Number.isFinite(cap) || cap <= 0) return [];
+  const best = new Map();
+  for (const row of priceBudgetRows(listings, cap, opts)) {
+    const status = row.fits ? 'fit' : (row.monthly <= cap * (1 + ABOVE_MARGIN) ? 'near' : 'over');
+    const cur = best.get(row.n);
+    const rank = BUDGET_STATUS.indexOf(status);
+    const better = !cur || rank < cur.rank
+      || (rank === cur.rank && (status === 'fit' ? row.price > cur.price : row.monthly < cur.monthly));
+    if (better) {
+      best.set(row.n, {
+        n: row.n, car: row.car, price: row.price, monthly: row.monthly, years: row.years,
+        status, rank, topUp: status === 'near' ? row.topUp : null,
+      });
+    }
+  }
+  return [...best.values()]
+    .sort((a, b) => a.rank - b.rank || (a.status === 'fit' ? b.price - a.price : a.monthly - b.monthly));
 }
 
 // Saved rebates (every car, liveCopy.js) last until the month ends, Malaysia

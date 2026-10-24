@@ -1580,6 +1580,15 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
+  **"All cars" view (BUDGET-GRID, 2026-10-24)**: a `Fits only | All cars` switch over the
+  results, remembered per device (`xd_live_budview`). All cars = every car once as a tile
+  with a verdict, `Sesuai` / `Hampir` (+ the top-up deposit line) / `Lebih bajet`
+  (`budgetAll`, liveMaths.js). Built for a Proton advisor who wanted every model on screen
+  like a rival's tool. `budgetMatches` and `budgetAll` share ONE pricing loop
+  (`priceBudgetRows`): never give the grid its own maths. Tags are ink, never
+  green/amber/red (one-accent rule); tiles have no photo (it cost the car's name).
+  Still the 35% rule only: no "existing commitments" box (a second affordability rule
+  on stream beside the 35% one would contradict it).
 - Contact, once switched on, is a loud accent "Contact me" banner, but stays OFF by
   default (TikTok rule above).
   The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
