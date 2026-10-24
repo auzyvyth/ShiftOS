@@ -740,6 +740,31 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     const r = rates[g];
     return `${fmtRate(Math.max(0, Number(r.eir) || 0))}% ${r.basis === 'flat' ? t.flat : 'EIR'}`;
   }).join(' / ');
+  // The viewer's number and commitments, shared by the phone and desktop layouts.
+  const moneyIn = (
+    <label className="lp-money">
+      <span>RM</span>
+      <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
+        aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
+        onChange={(e) => setBudgetAmount(digits(e.target.value, 6))} />
+    </label>
+  );
+  const commitIn = (
+    <label className="lp-money lp-money-sm">
+      <small>{t.commitShort}</small>
+      <span className="lp-money-in"><span>RM</span>
+        <input type="text" inputMode="numeric" value={budgetCommit} placeholder="0" aria-label={t.commitments}
+          onChange={(e) => setBudgetCommit(digits(e.target.value, 6))} />
+      </span>
+    </label>
+  );
+  // The seller's settings are one line; Change opens them in a pop-up.
+  const budgetSetLine = (
+    <div className="lp-bsetline">
+      <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
+      <button type="button" className="lp-bchange" onClick={() => setBudgetSetOpen(true)}>{t.changeSet}</button>
+    </div>
+  );
   const stLabel = (st) => (payMode ? t.dsrSt[st] : { fit: t.stFit, near: t.stNear, over: t.stOver }[st]);
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
@@ -854,9 +879,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            viewer reads sits there: title, comment line, monthly, tenures,
            deposit. Photo and working go to the bottom, where losing them costs
            nothing. */
-        .lp-desk .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
-        .lp-desk .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
-        .lp-desk .lp-head > .lp-cta { flex: none; max-width: 64%; }
+        /* Cars sheet only: a column head on Budget or Docs turns every flex
+           basis into a HEIGHT (the 340px-tall kind switch, 2026-10-24). */
+        .lp-desk .lp-sheet .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
+        .lp-desk .lp-sheet .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
+        .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
         .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 10px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
@@ -948,7 +975,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
-        .lp-desk .lp-head > .lp-contact { flex: none; width: 64%; }
+        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: 64%; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
@@ -1082,9 +1109,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* Budget input: the kind switch, then the viewer's number (and
            commitments); one row on the desktop stage. */
         .lp-bin { display: flex; flex-direction: column; gap: 8px; }
-        .lp-desk .lp-bud .lp-head > .lp-bkind { flex: 0 1 340px; }
-        .lp-desk .lp-bud .lp-head > .lp-cta { margin-left: auto; }
-        .lp-desk .lp-bin > .lp-moneys { flex: 1; }
+        /* Desktop: one centred sum, [pay] x 35% - [commitments] = [up to],
+           then the comment line beside the settings line (the mockup). */
+        .lp-bsum { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+        .lp-bsum > .lp-bkind { display: flex; flex-direction: column; gap: 3px; flex: none; padding: 3px; border-radius: 10px; background: #F4F3F1; }
+        .lp-bsum > .lp-bkind .lp-chip { min-height: 28px; padding: 2px 10px; border: none; font-size: 12px; white-space: nowrap; }
+        .lp-bsum > .lp-money { flex: 1 1 240px; max-width: 330px; min-width: 0; height: 64px; padding: 0 10px; border: 2px solid #0f1115; }
+        .lp-bsum > .lp-money input { min-width: 4ch; font-size: 38px; }
+        .lp-bsum > .lp-money-sm { flex: 0 0 136px; max-width: none; overflow: hidden; border-width: 1.5px; border-color: #D1D5DB; }
+        .lp-bsum > .lp-money-sm input { min-width: 0; font-size: 22px; }
+        .lp-bop { flex: none; font-size: 17px; font-weight: 700; color: #9ca3af; white-space: nowrap; }
+        .lp-bop small { font-size: 15px; }
+        .lp-bres { flex: none; display: flex; flex-direction: column; justify-content: center; min-height: 64px; padding: 4px 12px; border-radius: 12px; background: var(--lp-a); color: #fff; line-height: 1.1; font-variant-numeric: tabular-nums; }
+        .lp-bres small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
+        .lp-bres b { font-size: 25px; font-weight: 800; white-space: nowrap; }
+        .lp-bres b span { font-size: 13px; font-weight: 600; }
+        .lp-bres em { font-style: normal; font-size: 12px; font-weight: 600; opacity: .9; white-space: nowrap; }
+        .lp-bsetrow { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .lp-bsetrow > .lp-cta { flex: none; max-width: 42%; padding: 8px 16px; font-size: 13px; }
+        .lp-bsetrow > .lp-bsetline { flex: 1; min-width: 0; }
         /* The seller's settings as one line; Change opens the pop-up. */
         .lp-bsetline { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 5px 5px 12px; border-radius: 10px; background: #F4F3F1; font-size: clamp(12px, 3.4cqw, 14px); color: #374151; font-variant-numeric: tabular-nums; }
         .lp-bsetline > span { min-width: 0; }
@@ -1456,30 +1499,46 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* Budget: the viewer's number in, the cars that fit out. Take-home
            pay mode also takes their commitments and scores every car by DSR. */
         <div className="lp-card lp-bud">
-          {/* Desktop: the Monthly | Take-home switch sits where the title was,
-              beside the comment line, so the cars get that row's height. */}
+          {deskZoom ? (<>
+            {/* Desktop (the mockup): the sum on one centred line, then the
+                comment line beside the seller's settings. */}
+            <div className="lp-bsum">
+              {budgetKindSwitch}
+              {moneyIn}
+              {budgetKind === 'pay' && <>
+                <span className="lp-bop">× {Math.round(SALARY_SHARE * 100)}% −</span>
+                {commitIn}
+              </>}
+              {budgetOn && <>
+                <span className="lp-bop">=</span>
+                {payMode || !carBudget ? (
+                  <div className="lp-bres">
+                    <small>{t.upTo.trim()}</small>
+                    <b>RM {fmt(maxMonthly)}<span>{t.perMonth}</span></b>
+                    {carBudget ? <em>{t.carBudget} RM {fmt(carBudget)}</em> : null}
+                  </div>
+                ) : (
+                  <div className="lp-bres">
+                    <small>{t.carBudget}</small>
+                    <b>RM {fmt(carBudget)}</b>
+                  </div>
+                )}
+              </>}
+            </div>
+            <div className="lp-bsetrow">
+              <p className="lp-cta">{t.budgetCta}</p>
+              {budgetSetLine}
+            </div>
+          </>) : (<>
           <div className="lp-head">
-            {deskZoom ? budgetKindSwitch : <h2 className="lp-name">{t.budgetTitle}</h2>}
+            <h2 className="lp-name">{t.budgetTitle}</h2>
             <p className="lp-cta">{t.budgetCta}</p>
           </div>
           <div className="lp-bin">
-            {!deskZoom && budgetKindSwitch}
+            {budgetKindSwitch}
             <div className={budgetKind === 'pay' ? 'lp-moneys lp-moneys2' : 'lp-moneys'}>
-              <label className="lp-money">
-                <span>RM</span>
-                <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
-                  aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
-                  onChange={(e) => setBudgetAmount(digits(e.target.value, 6))} />
-              </label>
-              {budgetKind === 'pay' && (
-                <label className="lp-money lp-money-sm">
-                  <small>{t.commitShort}</small>
-                  <span className="lp-money-in"><span>RM</span>
-                    <input type="text" inputMode="numeric" value={budgetCommit} placeholder="0" aria-label={t.commitments}
-                      onChange={(e) => setBudgetCommit(digits(e.target.value, 6))} />
-                  </span>
-                </label>
-              )}
+              {moneyIn}
+              {budgetKind === 'pay' && commitIn}
             </div>
           </div>
           {budgetOn && (
@@ -1492,11 +1551,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {carBudget ? <> <span className="lp-cb"><em>·</em> {t.carBudget} <b>RM {fmt(carBudget)}</b></span></> : null}
             </p>
           )}
-          {/* The seller's settings are one line; Change opens them in a pop-up. */}
-          <div className="lp-bsetline">
-            <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
-            <button type="button" className="lp-bchange" onClick={() => setBudgetSetOpen(true)}>{t.changeSet}</button>
-          </div>
+          {budgetSetLine}
+          </>)}
 
           <div className="lp-res">
             {!budgetOn ? (
