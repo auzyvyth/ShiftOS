@@ -9,7 +9,7 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
-  tightCapFromPay, priceForMonthly, shortVariantNames,
+  tightCapFromPay, priceForMonthly, shortVariantNames, dsrOf, DSR_TIGHT,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -676,6 +676,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     key: pageKey, fit: curPage('fit'), near: curPage('near'), [st]: (Math.min(curPage(st), pages - 1) + 1) % pages,
   });
   const OVER_SHOWN = 6;
+  // Take-home pay mode: each row's commitments as a share of pay, coloured by
+  // its own band (it follows the variant a model card row is switched to).
+  const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
   const budgetKindSwitch = (
     <div className="lp-chips lp-chips2 lp-ink lp-bkind" role="group" aria-label={t.budgetIs}>
       <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
@@ -1066,13 +1069,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* One car: the photo fills the row's height, so no row is mostly blank. */
         .lp-brow { border: 1.5px solid #E5E7EB; border-radius: 12px; overflow: hidden; background: #fff; }
         .lp-brow.lp-over { background: #FBF8F1; }
-        .lp-brow-main { display: flex; align-items: stretch; gap: 10px; width: 100%; min-height: clamp(62px, 17cqw, 70px); padding: 0 10px 0 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+        .lp-brow-main { display: flex; align-items: stretch; gap: 10px; width: 100%; min-height: clamp(62px, 17cqw, 70px); padding: 7px 10px 7px 7px; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
         .lp-desk .lp-brow-main { min-height: 64px; }
-        .lp-bimg { position: relative; flex: 0 0 clamp(96px, 28cqw, 116px); background: #EDEAE3; }
+        /* The photo sits inset in the card with its own rounded frame, never
+           flush against the card's edge. */
+        .lp-bimg { position: relative; flex: 0 0 clamp(92px, 27cqw, 112px); min-height: clamp(56px, 16cqw, 66px); border-radius: 9px; overflow: hidden; background: #EDEAE3; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
         .lp-desk .lp-bimg { flex-basis: 104px; }
         .lp-bimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
         .lp-bimg .lp-n { position: absolute; top: 4px; left: 4px; min-width: 28px; padding: 3px 4px 1px; border-radius: 6px; background: rgba(255,255,255,.94); color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: clamp(15px, 4.4cqw, 18px); line-height: 1; text-align: center; }
-        .lp-brow-main .lp-rn { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; padding: 6px 0; }
+        .lp-brow-main .lp-rn { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; padding: 1px 0; }
+        .lp-bdsr { font-size: 12px; font-weight: 800; color: var(--st); font-variant-numeric: tabular-nums; }
         .lp-brow-main .lp-rn b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(13px, 3.6cqw, 15px); font-weight: 700; line-height: 1.2; color: #111827; }
         .lp-bfoot { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 8px; min-width: 0; flex-wrap: wrap; }
         .lp-bfoot > span:first-child { min-width: 0; font-size: 12px; line-height: 1.3; color: #6b7280; font-variant-numeric: tabular-nums; }
@@ -1080,7 +1086,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bfoot > .lp-fitdep { color: #0f1115; font-weight: 700; }
         .lp-bfoot .lp-m { flex-shrink: 0; font-size: clamp(16px, 4.6cqw, 19px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-bfoot .lp-m small { font-size: 11px; font-weight: 600; color: #6b7280; }
-        .lp-brow .lp-vchips { padding: 0 8px 8px; }
+        .lp-brow .lp-vchips { padding: 0 7px 8px; }
         /* Over budget: a short list; nobody studies a car they cannot afford. */
         .lp-bover { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
         .lp-bover-list { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -1471,7 +1477,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                         )}
                       </div>
                       {rows.map((m) => (
-                        <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over={st !== 'fit'} years={budgetYears}
+                        <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over={st !== 'fit'} years={budgetYears} dsrFor={dsrFor}
                           pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />
                       ))}
                       {st === 'near' && groups.over.length > 0 && (
@@ -1738,7 +1744,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 // name (a model card names the variant it is priced at, and lists the others
 // that fit as chips), the price, and the monthly. A tight / just-above row
 // says what would make it fit instead of the price.
-function BudgetRow({ m, over, years, pay, pick, onPick, onOpen, t }) {
+function BudgetRow({ m, over, years, dsrFor, pay, pick, onPick, onOpen, t }) {
   const row = m.options?.find((o) => o.car._variantId === pick && o.fits) || m;
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
   const names = m.options ? shortVariantNames(m.options.map((o) => o.car.variant)) : [];
@@ -1746,6 +1752,8 @@ function BudgetRow({ m, over, years, pay, pick, onPick, onOpen, t }) {
     : row.fitYears ? t.fitIfYears(row.fitYears, pay)
     : row.topUp > 0 ? (pay ? t.topUpComfort(`RM ${fmt(row.topUp)}`) : t.topUp(`RM ${fmt(row.topUp)}`))
     : null;
+  const dsr = dsrFor(row.monthly);
+  const band = dsr == null ? null : dsr <= SALARY_SHARE ? 'fit' : dsr <= DSR_TIGHT ? 'near' : 'over';
   return (
     <div className={over ? 'lp-brow lp-over' : 'lp-brow'}>
       <button type="button" className="lp-brow-main" onClick={() => onOpen(row)}>
@@ -1757,6 +1765,7 @@ function BudgetRow({ m, over, years, pay, pick, onPick, onOpen, t }) {
             price, or what would make it fit, shares the last line with the monthly. */}
         <span className="lp-rn">
           <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
+          {band && <span className={`lp-bdsr lp-s-${band}`}>{t.dsrLine(Math.round(dsr * 100))}</span>}
           <span className="lp-bfoot">
             <span className={fix ? 'lp-fitdep' : undefined}>
               {fix || `RM ${fmt(row.price)}`}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}
