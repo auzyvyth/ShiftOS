@@ -1,6 +1,6 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
-import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, netPrice, carLabel,
+import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, carLabel,
   maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
@@ -222,6 +222,20 @@ const rbLocal = budgetMatches(twoCars, { maxMonthly: 5000, years: 7, rate: 6.5, 
 const mOf = (id) => rbLocal.fits.find((r) => r.car.id === id).monthly;
 is('budget rateOf: Proton at 4.8', Math.round(mOf('a')), Math.round(monthlyPayment(80000, 4.8, 84)));
 is('budget rateOf: Honda at 6.5', Math.round(mOf('b')), Math.round(monthlyPayment(80000, 6.5, 84)));
+
+// All cars grid (budgetAll): every car once, with a verdict, same numbers as the list.
+const all = budgetAll(cars, { maxMonthly: Math.ceil(at(75000, 5000)), deposit: 5000, years: 9, rate: 3, basis: 'eir' });
+is('all: every priced car once, fits first', all.map((x) => [x.n, x.status]), [[4, 'fit'], [1, 'fit'], [2, 'near']]);
+is('all: same monthly as the list', all[0].monthly, b.fits[0].monthly);
+is('all: a near car has the list\'s top-up', all[2].topUp, b.above[0].topUp);
+const allNear = budgetAll(many, { maxMonthly: near(49000), years: 7, rate: 3, basis: 'eir' });
+is('all: near cars carry their top-up, over ones do not', allNear.map((x) => [x.n, x.status, x.topUp > 0 || x.topUp]), [[1, 'near', true], [2, 'near', true], [3, 'near', true], [4, 'over', null]]);
+is('all: near top-up matches the list', allNear[0].topUp, budgetMatches(many, { maxMonthly: near(49000), years: 7, rate: 3, basis: 'eir' }).above[0].topUp);
+const allCard = budgetAll([{ id: 'saga', selling_price: 40000 }, ...card], { maxMonthly: near(63000), years: 7, rate: 3, basis: 'eir' });
+is('all: model card once, its dearest variant that fits', allCard.map((x) => [x.n, x.car.variant, x.status]), [[2, 'V1', 'fit'], [1, undefined, 'fit']]);
+const allCardNo = budgetAll(card, { maxMonthly: near(30000), years: 7, rate: 3, basis: 'eir' });
+is('all: no variant fits -> cheapest variant shown', allCardNo.map((x) => [x.car.variant, x.status]), [['V0', 'over']]);
+is('all: no budget, no tiles', budgetAll(cars, { maxMonthly: 0, years: 7, rate: 3, basis: 'eir' }), []);
 
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

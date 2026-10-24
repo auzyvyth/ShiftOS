@@ -7,13 +7,13 @@ import {
   monthlyPayment, loanTotals, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
 } from '../../utils/financing';
 import {
-  salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches,
+  salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
   initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
-  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
+  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY, initialLiveBudgetView, saveLiveBudgetView,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -282,6 +282,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Variant picked on a model card's Budget row, by #N. Only a variant that
   // fits can be picked; one that stops fitting falls back to the row's own.
   const [budgetPick, setBudgetPick] = useState({});
+  // Results as the list of what fits, or every car as a tile ("All cars"),
+  // remembered per device (liveCopy initialLiveBudgetView).
+  const [budgetView, setBudgetView] = useState(initialLiveBudgetView);
+  const chooseBudgetView = (v) => { setBudgetView(v); saveLiveBudgetView(v); };
   const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
@@ -612,13 +616,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       engine_cc: v.specs?.engine_cc ?? c.engine_cc,
     }));
   });
-  const matches = budgetMatches(budgetCars, {
+  const budgetOpts = {
     maxMonthly, deposit: bDown, years: budgetYears, rate, basis, rebates, rateOf,
     extraFor: (c) => insFor(c, Number(c.selling_price) || 0, c.engine_cc, c._variantId) || 0,
     // The same tenure rows the Cars screen offers this car, so the row and the
     // car it opens show the same monthly.
     yearsFor: (c) => { const ok = tenuresFor(TENURES, c); return ok.filter((y) => y <= budgetYears).pop() ?? ok[0] ?? 0; },
-  });
+  };
+  const matches = budgetMatches(budgetCars, budgetOpts);
+  // The "All cars" grid: every car once, same rows as the list (liveMaths budgetAll).
+  const tiles = budgetView === 'all' ? budgetAll(budgetCars, budgetOpts) : [];
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
@@ -630,7 +637,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setDepEdit(false);
     setMode('cars');
   };
-  const anyHighValue = [...matches.fits, ...matches.above].some((m) => m.price > HIGH_VALUE_THRESHOLD);
+  const anyHighValue = [...matches.fits, ...matches.above, ...tiles].some((m) => m.price > HIGH_VALUE_THRESHOLD);
   // Adjust > Rebates: how many cars have one, and the day the saved list clears.
   const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
   const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -914,6 +921,28 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-row .lp-rn .lp-fitdep { color: #0f1115; font-weight: 700; }
         .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
         .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
+        /* Results header: the count, then the Fits only | All cars switch. */
+        .lp-reshead { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding-top: 8px; }
+        .lp-reshead h3 { margin: 0; }
+        .lp-reshead + .lp-rowwrap { border-top: none; }
+        .lp-viewsw { flex: 0 1 260px; }
+        /* All cars: every car as a tile, 2 across on a phone, 4 on the desktop stage. */
+        .lp-tgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; }
+        .lp-desk .lp-tgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .lp-tcard { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+        .lp-tcard.lp-t-fit { border-color: #0f1115; }
+        .lp-tcard.lp-t-over { opacity: .6; }
+        .lp-ttop { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+        .lp-tcard .lp-n { flex-shrink: 0; min-width: 32px; padding: 4px 5px 2px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 20px); line-height: 1; text-align: center; }
+        .lp-tst { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; border-radius: 6px; font-size: clamp(11px, 3cqw, 13px); font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+        .lp-t-fit .lp-tst { background: #0f1115; color: #fff; text-transform: uppercase; }
+        .lp-t-near .lp-tst { border: 1.5px solid #0f1115; color: #0f1115; text-transform: uppercase; }
+        .lp-t-over .lp-tst { color: #4b5563; text-transform: uppercase; }
+        .lp-tname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; font-size: clamp(13px, 3.6cqw, 16px); font-weight: 700; line-height: 1.2; color: #111827; }
+        .lp-tm { font-size: clamp(19px, 5.6cqw, 24px); font-weight: 800; line-height: 1; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-tm small { font-size: 12px; font-weight: 600; color: #6b7280; }
+        .lp-tp { font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
+        .lp-tfix { color: #0f1115; font-weight: 700; }
 
         /* Top bar + nav: ink for what is picked, never the accent. */
         .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
@@ -1275,10 +1304,22 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {!maxMonthly ? (
               <p className="lp-empty">{t.budgetEmpty}</p>
             ) : (<>
-              <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-              {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-              {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-              {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+              <div className="lp-reshead">
+                <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
+                <div className="lp-chips lp-chips2 lp-viewsw" role="group" aria-label={t.budgetView}>
+                  <button type="button" className="lp-chip" aria-pressed={budgetView === 'fits'} onClick={() => chooseBudgetView('fits')}>{t.viewFits}</button>
+                  <button type="button" className="lp-chip" aria-pressed={budgetView === 'all'} onClick={() => chooseBudgetView('all')}>{t.viewAll}</button>
+                </div>
+              </div>
+              {budgetView === 'all' ? (
+                <div className="lp-tgrid">
+                  {tiles.map((m) => <BudgetTile key={m.n} m={m} years={budgetYears} onOpen={openFromBudget} t={t} />)}
+                </div>
+              ) : (<>
+                {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+                {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
+                {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+              </>)}
               <p className="lp-note">
                 {t.budgetNote}
                 {anyHighValue ? t.budgetHigh : ''}
@@ -1527,6 +1568,28 @@ function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
         <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
       </button>
     </div>
+  );
+}
+
+// One car in the "All cars" grid: #N, a verdict, the monthly. Ink only, no
+// traffic-light colours (one accent, owner 2026-10-22): a fit is a solid ink
+// tag, a near car says the deposit that fits it on its own line, an over car
+// is dimmed. No photo: on a quarter-width tile it cost the car's name, and the
+// name (with its variant) is what the viewer comments on. A tap opens it like
+// a list row, with the top-up deposit already in.
+function BudgetTile({ m, years, onOpen, t }) {
+  const tag = m.status === 'fit' ? t.stFit : m.status === 'near' ? t.stNear : t.stOver;
+  return (
+    <button type="button" className={`lp-tcard lp-t-${m.status}`} onClick={() => onOpen(m)}>
+      <span className="lp-ttop">
+        <span className="lp-n">#{m.n}</span>
+        <span className="lp-tst">{tag}</span>
+      </span>
+      <b className="lp-tname">{carLabel(m.car)}</b>
+      <span className="lp-tm">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
+      <span className="lp-tp">RM {fmt(m.price)}{m.years !== years ? ` · ${t.yrsShort(m.years)}` : ''}</span>
+      {m.status === 'near' && m.topUp > 0 && <span className="lp-tp lp-tfix">{t.topUp(`RM ${fmt(m.topUp)}`)}</span>}
+    </button>
   );
 }
 

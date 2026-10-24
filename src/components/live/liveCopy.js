@@ -133,6 +133,12 @@ const en = {
   fits: (n) => (n === 1 ? '1 car fits' : `${n} cars fit`),
   noneFit: 'None fit this budget yet',
   justAbove: 'Just above',
+  budgetView: 'Show',
+  viewFits: 'Fits only',
+  viewAll: 'All cars',
+  stFit: 'Fits',
+  stNear: 'Close',
+  stOver: 'Over budget',
   budgetNote: 'RM per month, reducing balance. Subject to bank approval.',
   budgetHigh: ' Above RM300k banks decide case by case, so treat those as a rough guide.',
   adding: 'Adding up your live...',
@@ -282,6 +288,12 @@ const ms = {
   fits: (n) => `${n} kereta sesuai`,
   noneFit: 'Belum ada yang sesuai dengan bajet ini',
   justAbove: 'Sedikit melebihi',
+  budgetView: 'Papar',
+  viewFits: 'Yang sesuai',
+  viewAll: 'Semua kereta',
+  stFit: 'Sesuai',
+  stNear: 'Hampir',
+  stOver: 'Lebih bajet',
   budgetNote: 'RM sebulan, baki berkurangan. Tertakluk kepada kelulusan bank.',
   budgetHigh: ' Melebihi RM300k, bank menilai setiap kes, jadi itu anggaran kasar sahaja.',
   adding: 'Mengira live anda...',
@@ -406,6 +418,22 @@ export function saveLiveInsFigures(figures) {
   try {
     if (Object.keys(figures).length) window.localStorage.setItem(LIVE_INS_FIG_KEY, JSON.stringify(figures));
     else window.localStorage.removeItem(LIVE_INS_FIG_KEY);
+  } catch { /* storage blocked */ }
+}
+
+// Budget results as a list (what fits) or every car as a tile with a verdict
+// (owner, 2026-10-24), remembered per device: an advisor with eight model
+// cards wants the grid every live, a dealer with thirty cars wants the list.
+export const LIVE_BUDGET_VIEW_KEY = 'xd_live_budview';
+
+export function initialLiveBudgetView() {
+  try { return window.localStorage.getItem(LIVE_BUDGET_VIEW_KEY) === 'all' ? 'all' : 'fits'; } catch { return 'fits'; }
+}
+
+export function saveLiveBudgetView(view) {
+  try {
+    if (view === 'all') window.localStorage.setItem(LIVE_BUDGET_VIEW_KEY, 'all');
+    else window.localStorage.removeItem(LIVE_BUDGET_VIEW_KEY);
   } catch { /* storage blocked */ }
 }
 
