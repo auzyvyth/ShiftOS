@@ -2579,6 +2579,12 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   monthly, or setup fee credited against the DMS subscription; (3) owner's hours per
   dealer cap it at a handful — a wedge to learn and seed stock, not the business;
   (4) check the law on taking sales commission as a non-employee before signing anyone.
+  Owner's main reason (added 2026-10-24): field research. Listing their stock by hand
+  shows the real pain of posting cars to classifieds, and being in the shop shows what
+  the salesmen and managers struggle with, so the product gets built from that.
+  Caveat: doing it yourself shows YOUR pain; watching them do their usual routine
+  (Mudah, Carlist, FB groups, WhatsApp status) without helping shows THEIRS. Do both,
+  and write down minutes per car + where each step stalls.
 
 - **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
   their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
