@@ -1604,7 +1604,9 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   sheet (2026-10-04) spilled out of the camera frame; the phone-width column (morning
   of 2026-10-18) was too small to read on camera. Do not go wider than DESK_W.
   Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
-  (80% floor, then it scrolls). Check the desktop sheet renders at zoom ~1.
+  (80% floor on a phone, 65% on desktop, then it scrolls; owner 2026-10-24: never scroll).
+  The working's FIGURES are large and its labels quiet (owner, 2026-10-24: the seller reads
+  them aloud mid-live, "rebat berapa?"); NCD sits under the photo on desktop (`ncd` grid area). Check the desktop sheet renders at zoom ~1.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
   **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
@@ -1613,8 +1615,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   **One screen, no scrolling (BUDGET-2, owner 2026-10-24; replaces the "All cars" grid, its
   switch and `xd_live_budview`, the counts strip and the per-car "Komitmen x% gaji" line).**
   Every car once (`budgetAll`) in two columns on the desktop stage: left = fits (dearest
-  first), right = tight / just above, then over budget as a short row of #N chips. One column
-  on a phone. A column longer than a page (desktop 4 fit / 3 tight, phone 3 / 2) pages with
+  first), right = tight / just above, then over budget ("Heavy"), as full rows with their
+  commitments % (owner, 2026-10-24: the #N chips said nothing). The right column pages tight +
+  over as ONE list (`groups.side`). One column
+  on a phone. A column longer than a page (desktop 4 fit / 3 right, phone 3 / 2) pages with
   a "1/3 >" button, ONE tap, never a scroll. Rows: the photo fills the row's height (owner:
   no empty space), the name gets the full width, the price (or what makes it fit) shares the
   last line with the monthly. A model card's row keeps its variant chips (`options`, lent by
