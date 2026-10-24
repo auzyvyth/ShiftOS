@@ -1764,15 +1764,28 @@ export default function SalesmanLite() {
           }
         }, trafficDone);
 
-      // fetch leads
-      supabase
+      // fetch leads. A failed read (a stalled DB times out, 2026-10-24) keeps the
+      // leads already on screen and on the device: it used to set [] and write []
+      // over the saved copy, so a seller's pipeline vanished mid-stall. One quiet
+      // retry first.
+      const leadsQuery = () => supabase
         .from("leads")
         .select(LEAD_SELECT)
         .eq("salesman_id", uid)
         .or("is_deleted.eq.false,is_deleted.is.null")
-        .order("updated_at", { ascending: false })
-        .then(({ data: lds, error: ldsErr }) => {
-          if (ldsErr) console.error("fetchLeads:", ldsErr);
+        .order("updated_at", { ascending: false });
+      leadsQuery()
+        .then(async (first) => {
+          let { data: lds, error: ldsErr } = first;
+          if (ldsErr) {
+            await new Promise((r) => setTimeout(r, 4000));
+            ({ data: lds, error: ldsErr } = await leadsQuery());
+          }
+          if (ldsErr) {
+            console.error("fetchLeads:", ldsErr);
+            setLeadsLoading(false);
+            return;
+          }
           const fetchedLeads = lds || [];
           setLeads(fetchedLeads);
           setLeadsLoading(false);
