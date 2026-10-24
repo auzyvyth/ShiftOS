@@ -603,6 +603,12 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
 (`vercel.json` `regions`, 2026-10-21). They ran in Vercel's default `iad1` (Washington):
 every database call crossed the Pacific and a buyer's booking took ~15s. Never move them
 away from the database region; the edge middleware and `api/shell.js` run near the user.
+**The squash commit on `main` must carry NO `Co-authored-by:` line (2026-10-24).** Vercel's
+Hobby plan blocks a production build when any author or co-author of the commit is not the
+account owner ("commit author did not have contributing access"), and the owner's Redeploy
+button needs Pro. GitHub copies every branch commit's co-author trailer into the default squash
+message, so #538-#541 were all blocked. Always merge with an explicit `commit_message` that has
+no trailers.
 **Vercel builds exactly TWO branches: `main` (prod) and `staging` (the one preview).**
 `vercel.json` `git.deploymentEnabled` = `"**": false` + those two (owner, 2026-10-03:
 the free plan was being flooded by a build per session branch). Never add a branch
