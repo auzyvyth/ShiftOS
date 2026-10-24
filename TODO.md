@@ -2566,6 +2566,20 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-22: Done-for-you dealer onboarding, paid on commission (owner, 2026-10-24)** —
+  owner visits a local dealer who doesn't understand websites, lists every car for them,
+  markets and sells; takes a commission on any sale that came through Drevo. Optional
+  website for the dealer at RM2-3k one-time, "they own it all". Why: dealers won't
+  self-serve; this fills the marketplace with real stock. Open points raised: (1) proof
+  of attribution (dealer can close offline and call it a walk-in) -> commission only on
+  leads the system logged (owner as a linked salesman under the dealer: leads attribute
+  via `resolve_lead_salesman`, `car_listings.commission_amount` already exists), in a
+  signed agreement; (2) "own it all" for a one-time fee clashes with a hosted subdomain
+  on our platform (hosting + support forever, no recurring revenue) -> setup fee +
+  monthly, or setup fee credited against the DMS subscription; (3) owner's hours per
+  dealer cap it at a handful — a wedge to learn and seed stock, not the business;
+  (4) check the law on taking sales commission as a non-employee before signing anyone.
+
 - **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
   their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
   PRO RM47/mo "early bird" RM14/mo (RM42/3 mo, RM108/yr, no auto-renew): unlimited, 10
