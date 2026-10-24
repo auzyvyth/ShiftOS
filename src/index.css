@@ -87,9 +87,12 @@
   }
   /* iOS zooms the page into any field under 16px and never zooms back out.
      !important because almost every field here sets fontSize inline (13-15px).
-     Touch screens only, so desktop keeps the denser sizes. */
+     Touch screens only, so desktop keeps the denser sizes.
+     Not inside the Live presenter (.lp): its budget box is meant to be 30-56px
+     on camera and this pinned it to 16px. The presenter sets its own 16px
+     floor (max(16px, ...)) so iOS still never zooms there. */
   @media (pointer: coarse) {
-    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+    input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not(.lp input),
     textarea,
     select {
       font-size: 16px !important;

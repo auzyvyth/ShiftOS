@@ -9,6 +9,7 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
+  dsrOf, tightCapFromPay, priceForMonthly, shortVariantNames,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -274,6 +275,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Budget mode: what the viewer said in the chat.
   const [budgetKind, setBudgetKind] = useState('monthly'); // 'monthly' | 'pay'
   const [budgetAmount, setBudgetAmount] = useState('');
+  // What the viewer already pays a month (take-home mode only): it comes off
+  // the same 35%, and every car gets a DSR verdict (owner, 2026-10-24).
+  const [budgetCommit, setBudgetCommit] = useState('');
+  // Phone: once a budget is typed, deposit + years fold into one line so the
+  // cars move up out of TikTok's comment area. Tap the line to change them.
+  const [budgetSetOpen, setBudgetSetOpen] = useState(false);
   // Budget deposit: a preset (RM, 0 = none) or 'c', the typed first chip.
   const [budgetDep, setBudgetDep] = useState(0);
   const [budgetCustom, setBudgetCustom] = useState('');
@@ -387,6 +394,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const phoneText = fmtPhone(sellerPhone);
   const contact = !embedded && (sellerName || phoneText)
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
+  // One row of chips on a phone: the words every variant shares are dropped.
+  const variantChips = shortVariantNames(variants.map((v) => v.variant));
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
   const nImages = images.length;
   const stepPhoto = useCallback((d) => {
@@ -591,7 +600,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Budget mode. "pay" runs the 35% rule backwards; the line under the input
   // always prints that rule, the same way the tenure pick does.
   const amount = Math.max(0, Number(budgetAmount) || 0);
-  const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount) : (amount || null);
+  const budgetOn = amount > 0;
+  const payMode = budgetKind === 'pay' && budgetOn;
+  const commit = payMode ? Math.max(0, Number(budgetCommit) || 0) : 0;
+  // Pay mode: 35% of pay minus commitments, which can be 0 (no comfortable room
+  // left; the cars still get a tight / heavy verdict).
+  const maxMonthly = budgetKind === 'pay' ? maxMonthlyFromPay(amount, commit) : (amount || null);
+  const digits = (v, n) => String(v).replace(/\D/g, '').slice(0, n);
   const bDown = budgetDep === 'c' ? Math.max(0, Number(budgetCustom) || 0) : budgetDep;
   const typeBudgetDeposit = (v) => {
     const d = String(v).replace(/\D/g, '').slice(0, 7);
@@ -622,10 +637,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     // The same tenure rows the Cars screen offers this car, so the row and the
     // car it opens show the same monthly.
     yearsFor: (c) => { const ok = tenuresFor(TENURES, c); return ok.filter((y) => y <= budgetYears).pop() ?? ok[0] ?? 0; },
+    // "Fits at 9 years": the longer tenures this car can still take.
+    tenureOptions: TENURES,
+    maxYearsFor: (c) => Math.max(0, ...tenuresFor(TENURES, c)),
+    // Pay mode: "just above" / tight ends at a 60% DSR, not 25% over budget.
+    nearCap: payMode ? tightCapFromPay(amount, commit) : undefined,
   };
   const matches = budgetMatches(budgetCars, budgetOpts);
-  // The "All cars" grid: every car once, same rows as the list (liveMaths budgetAll).
-  const tiles = budgetView === 'all' ? budgetAll(budgetCars, budgetOpts) : [];
+  // Every car once with a verdict (liveMaths budgetAll): the "All cars" grid,
+  // and the counts in the strip above the results whichever view is on.
+  const allRows = budgetOn ? budgetAll(budgetCars, budgetOpts) : [];
+  const tiles = budgetView === 'all' ? allRows : [];
+  const counts = { fit: 0, near: 0, over: 0 };
+  allRows.forEach((m) => { counts[m.status] += 1; });
+  const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
+  // The dearest price the budget buys at the line's rate and deposit. Left out
+  // with insurance in the loan: it would read more generous than the cars do.
+  const carBudget = maxMonthly > 0 && !insOn
+    ? priceForMonthly({ monthly: maxMonthly, eir: eirForTenure(rate, basis, budgetYears), years: budgetYears, deposit: bDown })
+    : null;
+  const stLabel = (st) => (payMode ? t.dsrSt[st] : { fit: t.stFit, near: t.stNear, over: t.stOver }[st]);
+  const showBudgetSet = !budgetOn || budgetSetOpen || !!deskZoom;
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
@@ -655,6 +687,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <style>{`
         .lp { position: fixed; inset: 0; z-index: 1000; background: #DEDCD8; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; }
         .lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+        /* Inputs: never under 16px (iOS zooms the page into a smaller field and
+           never zooms back, mid-live), and no number-box arrows on camera. */
+        .lp input { font-size: max(16px, 1em); }
+        .lp input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+        .lp input::-webkit-inner-spin-button, .lp input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         /* Embedded demo: fills its parent box instead of the viewport. */
         .lp.lp-embed { position: absolute; z-index: auto; }
         .lp-embed .lp-stage { width: 100%; }
@@ -678,6 +715,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            it is at the TOP: the bottom of the stream is under the comments. */
         .lp-sheet { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
         .lp-desk .lp-sheet { padding: 12px 16px; gap: 10px; }
+        .lp:not(.lp-desk) .lp-sheet { gap: 6px; padding: 9px 11px; }
+        .lp:not(.lp-desk) .lp-body { padding: 10px; }
+        .lp:not(.lp-desk) .lp-grid { row-gap: 6px; }
+        .lp:not(.lp-desk) .lp-ans { gap: 4px; }
         .lp-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-width: 0; }
         .lp-head > .lp-title, .lp-head > .lp-name { flex: 1 1 55%; min-width: 0; }
         .lp-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -705,7 +746,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* The frame is a fixed size; the photo fits INSIDE it, never cropped
            (owner, 2026-10-21). White bars melt into studio shots. */
         .lp-photo { grid-area: photo; position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: inset 0 0 0 1px rgba(33,31,30,.10); }
-        .lp-desk .lp-photo { aspect-ratio: 2 / 1; }
+        /* Desktop: the photo fills its column's height, so no empty band sits
+           under it beside a taller answer (a model card's variants). */
+        .lp-desk .lp-photo { aspect-ratio: auto; align-self: stretch; min-height: 200px; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
@@ -744,14 +787,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-chips3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         .lp-chips4 { grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)); }
         .lp-chips5 { grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr)); }
-        .lp-chips.lp-vars { display: flex; flex-wrap: wrap; }
-        .lp-vars .lp-chip { flex: 1 1 auto; width: auto; padding: 4px 12px; }
+        /* Variants: ONE row (a second row pushed the model card off a phone),
+           scrolling sideways if they still do not fit. */
+        .lp-chips.lp-vars { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+        .lp-chips.lp-vars::-webkit-scrollbar { display: none; }
+        .lp-vars .lp-chip { flex: 1 0 auto; width: auto; padding: 4px 12px; white-space: nowrap; }
+        .lp-desk .lp-chips.lp-vars { flex-wrap: wrap; overflow: visible; }
         .lp-chip { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-width: 0; min-height: 34px; padding: 4px 6px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; text-align: center; cursor: pointer; font-variant-numeric: tabular-nums; }
         .lp-chip[aria-pressed="true"] { background: var(--lp-a); border-color: var(--lp-a); color: #fff; }
         .lp-chip svg { flex-shrink: 0; opacity: .7; }
         .lp-chip-edit { justify-content: flex-start; padding: 0 8px; border-color: var(--lp-a); cursor: text; }
         .lp-chip-edit span { color: #6b7280; }
-        .lp-chip-edit input { flex: 1; width: 100%; min-width: 0; padding: 0; border: none; outline: none; background: transparent; font: inherit; color: #0f1115; }
+        .lp-chip-edit input { flex: 1; width: 100%; min-width: 0; padding: 0; border: none; outline: none; background: transparent; font: inherit; font-size: max(16px, 1em); color: #0f1115; }
+        /* The seller's settings (Budget deposit / years / view, Docs): picked =
+           ink. The accent stays on the viewer's number and the answer. */
+        .lp-ink .lp-chip[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
         .lp-desk .lp-chip { min-height: 40px; font-size: 15px; }
 
         /* The working: read-only lines, a receipt's rule above the loan. */
@@ -787,6 +837,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
         .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
+        .lp-head > .lp-contact { flex: 1 1 100%; }
         .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
         .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
         .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
@@ -835,7 +886,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-confirm-keep { border: none; background: var(--lp-a); color: #fff; }
         .lp-confirm-end { border: 1.5px solid #d1d5db; background: #fff; color: #0f1115; }
         .lp-brk tr.lp-tap { cursor: pointer; }
-        .lp-cellin { box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
+        .lp-cellin { font-size: max(16px, 1em) !important; box-sizing: border-box; width: 100%; min-width: 0; max-width: 7.5em; height: 1.9em; padding: 0 6px; border: 2px solid var(--lp-a); border-radius: 6px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
         /* Tailwind preflight makes every svg display:block, which dropped the pen onto
            its own line under the number. Inline, and BEFORE the number so the
            figures keep one right edge. */
@@ -864,7 +915,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-reb-in { display: flex; align-items: center; gap: 4px; height: 40px; padding: 0 10px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; flex-shrink: 0; }
         .lp-reb-in.lp-on { border-color: #047857; background: rgba(4,120,87,.06); }
         .lp-reb-in span { font-size: 13px; font-weight: 700; color: #6b7280; white-space: nowrap; }
-        .lp-reb-in input { width: 64px; padding: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 15px; font-weight: 700; color: #0f1115; text-align: right; font-variant-numeric: tabular-nums; }
+        .lp-reb-in input { width: 64px; padding: 0; border: none; outline: none; background: transparent; font: inherit; font-size: 16px; font-weight: 700; color: #0f1115; text-align: right; font-variant-numeric: tabular-nums; }
         .lp-reb-x { flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #E5E7EB; background: #fff; color: #374151; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         span.lp-reb-x { border: none; background: none; cursor: default; }
         .lp-colours { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -896,6 +947,29 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-money span { font-size: clamp(18px, 5.6cqw, 24px); font-weight: 700; color: var(--lp-a); }
         .lp-money input { flex: 1; min-width: 0; height: 100%; border: none; outline: none; background: transparent; font: inherit; font-size: clamp(30px, 11cqw, 56px); font-weight: 800; letter-spacing: -.02em; color: var(--lp-a); font-variant-numeric: tabular-nums; }
         .lp-desk .lp-money { height: 76px; }
+        /* Take-home pay mode: pay and commitments side by side. */
+        .lp-moneys { display: flex; gap: 8px; min-width: 0; }
+        .lp-moneys > .lp-money { flex: 1 1 0; min-width: 0; }
+        .lp-moneys2 > .lp-money:first-child { flex-grow: 1.4; }
+        .lp-money.lp-money-sm { flex-direction: column; align-items: stretch; justify-content: center; gap: 0; padding: 4px 12px; }
+        .lp-money-sm small { font-size: clamp(10px, 2.7cqw, 12px); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lp-money-in { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .lp-money-sm .lp-money-in > span { font-size: clamp(13px, 3.8cqw, 16px); color: #4b5563; }
+        .lp .lp-money.lp-money-sm input { height: auto; font-size: clamp(20px, 6.5cqw, 32px); color: #0f1115; }
+        .lp-desk .lp-money.lp-money-sm input { font-size: 32px; }
+        /* Phone: deposit + years folded into one tappable line. */
+        .lp-bset { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: 10px; background: #F4F3F1; font: inherit; font-size: clamp(12px, 3.4cqw, 14px); color: #374151; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
+        .lp-bset b { flex-shrink: 0; font-weight: 800; color: #0f1115; text-decoration: underline; text-underline-offset: 3px; }
+        /* Verdict colours: muted, and only on the tag, the bar and the counts. */
+        .lp-s-fit { --st: #15803d; --st-bg: rgba(21,128,61,.12); }
+        .lp-s-near { --st: #b45309; --st-bg: rgba(180,83,9,.13); }
+        .lp-s-over { --st: #b91c1c; --st-bg: rgba(185,28,28,.10); }
+        .lp-bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+        .lp-bstat { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 6px 10px; border-radius: 10px; background: var(--st-bg, #F4F3F1); }
+        .lp-bstat span { font-size: clamp(10px, 2.9cqw, 13px); font-weight: 700; color: var(--st, #4b5563); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lp-bstat b { font-size: clamp(18px, 5.6cqw, 26px); font-weight: 800; line-height: 1.05; color: var(--st, #0f1115); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-work .lp-cb { white-space: nowrap; }
+        .lp-work .lp-cb b { color: var(--lp-a2); font-weight: 800; }
         .lp-desk .lp-money input { font-size: 52px; }
         .lp-work { font-size: clamp(13px, 3.6cqw, 17px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.6; }
         .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
@@ -925,24 +999,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-reshead { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding-top: 8px; }
         .lp-reshead h3 { margin: 0; }
         .lp-reshead + .lp-rowwrap { border-top: none; }
-        .lp-viewsw { flex: 0 1 260px; }
+        .lp-viewsw { flex: 1 1 100%; }
+        .lp-desk .lp-viewsw { flex: 0 1 300px; margin-left: auto; }
         /* All cars: every car as a tile, 2 across on a phone, 4 on the desktop stage. */
         .lp-tgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; }
         .lp-desk .lp-tgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        .lp-tcard { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-tcard.lp-t-fit { border-color: #0f1115; }
-        .lp-tcard.lp-t-over { opacity: .6; }
-        .lp-ttop { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
-        .lp-tcard .lp-n { flex-shrink: 0; min-width: 32px; padding: 4px 5px 2px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 20px); line-height: 1; text-align: center; }
-        .lp-tst { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; border-radius: 6px; font-size: clamp(11px, 3cqw, 13px); font-weight: 800; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
-        .lp-t-fit .lp-tst { background: #0f1115; color: #fff; text-transform: uppercase; }
-        .lp-t-near .lp-tst { border: 1.5px solid #0f1115; color: #0f1115; text-transform: uppercase; }
-        .lp-t-over .lp-tst { color: #4b5563; text-transform: uppercase; }
+        .lp-tcard { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 0 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; overflow: hidden; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+        .lp-tcard > :not(.lp-tphoto) { margin-left: 10px; margin-right: 10px; }
+        .lp-tphoto { position: relative; display: block; aspect-ratio: 2 / 1; margin-bottom: 4px; background: #F1F0EE; }
+        .lp-tphoto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .lp-tphoto .lp-n { position: absolute; top: 6px; left: 6px; min-width: 32px; padding: 4px 5px 2px; border-radius: 7px; background: rgba(255,255,255,.94); color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 20px); line-height: 1; text-align: center; }
+        .lp-tst { position: absolute; top: 6px; right: 6px; max-width: calc(100% - 50px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; border-radius: 6px; background: #fff; color: var(--st); box-shadow: inset 0 0 0 1.5px var(--st); font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+        .lp-dsrbar { display: block; height: 5px; margin-top: 3px; border-radius: 3px; background: #EFEEEC; overflow: hidden; }
+        .lp-dsrbar i { display: block; height: 100%; border-radius: inherit; background: var(--st); }
+        .lp-tfix { margin-top: auto; padding-top: 4px; font-size: clamp(11px, 3cqw, 13px); font-weight: 700; line-height: 1.3; color: #0f1115; }
+        .lp-row .lp-rn .lp-dsrtxt { color: var(--st); font-weight: 700; }
         .lp-tname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; font-size: clamp(13px, 3.6cqw, 16px); font-weight: 700; line-height: 1.2; color: #111827; }
         .lp-tm { font-size: clamp(19px, 5.6cqw, 24px); font-weight: 800; line-height: 1; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-tm small { font-size: 12px; font-weight: 600; color: #6b7280; }
         .lp-tp { font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
-        .lp-tfix { color: #0f1115; font-weight: 700; }
 
         /* Top bar + nav: ink for what is picked, never the accent. */
         .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
@@ -1025,6 +1100,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             </div>
             {/* The comment line sits at the top: the bottom of the stream is under TikTok's comments. */}
             <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}{bioOn && <span className="lp-bio">{t.bioLine}</span>}</p>
+            {/* Contact sits at the TOP, under the comment line (2026-10-24): at
+                the foot of the card it fell below the fold on a model card and
+                sat under TikTok's comments on every other car. Not a button
+                (owner, 2026-10-22): the top-bar contact button is the one switch. */}
+            {showContact && contact && (
+              <div className="lp-contact">
+                <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
+                {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
+              </div>
+            )}
           </div>
 
           {/* One grid, two arrangements. Desktop: photo | answer, the deposit
@@ -1061,9 +1146,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-ans">
               {variants.length > 1 && (
                 <div className="lp-chips lp-vars" role="group" aria-label={t.variant}>
-                  {variants.map((v) => (
+                  {variants.map((v, i) => (
                     <button key={v.model_id} type="button" className="lp-chip" aria-pressed={v.model_id === variant?.model_id}
-                      onClick={() => chooseVariant(v.model_id)}>{v.variant}</button>
+                      onClick={() => chooseVariant(v.model_id)}>{variantChips[i]}</button>
                   ))}
                 </div>
               )}
@@ -1074,11 +1159,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     {t.years(pickYears)} · {picked.down > 0 ? t.depositAmt(`RM ${fmt(picked.down)}`) : t.noDeposit}
                   </p>
                   <p className="lp-big"><span className="lp-rm">RM</span>{fmt(answer)}<small>{t.perMonth}</small></p>
-                  <div className="lp-tens" role="group" aria-label={t.tenure}>
+                  {/* As many columns as tenures: an old car's lone "1 year" tile
+                      fills the row and says it is the most a bank gives. */}
+                  <div className="lp-tens" role="group" aria-label={t.tenure}
+                    style={{ gridTemplateColumns: `repeat(${tenuresDesc.length}, minmax(0, 1fr))` }}>
                     {tenuresDesc.map((y) => (
                       <button key={y} type="button" className="lp-ten" aria-pressed={y === pickYears}
                         onClick={() => setPick((p) => ({ ...p, years: y }))}>
-                        <span>{t.years(y)}</span>
+                        <span>{tenuresDesc.length === 1 && tenureCapped ? t.yearsMax(y) : t.years(y)}</span>
                         <b><Money n={monthlyFor(picked.down, y)} /></b>
                       </button>
                     ))}
@@ -1217,14 +1305,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 </p>
               )}
               {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
-              {showContact && contact && (
-                // Not a button (owner, 2026-10-22): tapping the box hid it mid-live.
-                // The top-bar contact button is the one switch.
-                <div className="lp-contact">
-                  <span className="lp-c-who"><small>{t.contactMe}</small>{contact.name && <b>{contact.name}</b>}</span>
-                  {contact.phone && <span className="lp-c-ph">{contact.phone}</span>}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1235,7 +1315,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         <div className="lp-card lp-docs">
           <div className="lp-head">
             <h2 className="lp-name">{t.docsTitle}</h2>
-            <div className="lp-chips lp-chips2" role="group" aria-label={t.docsTitle}>
+            <div className="lp-chips lp-chips2 lp-ink" role="group" aria-label={t.docsTitle}>
               <button type="button" className="lp-chip" aria-pressed={docsKind === 'employee'} onClick={() => setDocsKind('employee')}>{t.docsEmployee}</button>
               <button type="button" className="lp-chip" aria-pressed={docsKind === 'self'} onClick={() => setDocsKind('self')}>{t.docsSelf}</button>
             </div>
@@ -1247,7 +1327,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           <p className="lp-note">{t.docsAnyCar} {t.docsNote}</p>
         </div>
         ) : (
-        /* Budget: the viewer's number in, the cars that fit out. */
+        /* Budget: the viewer's number in, the cars that fit out. Take-home
+           pay mode also takes their commitments and scores every car by DSR. */
         <div className="lp-card lp-bud">
           <div className="lp-head">
             <h2 className="lp-name">{t.budgetTitle}</h2>
@@ -1255,74 +1336,103 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           </div>
           <div className="lp-bgrid">
             <div className="lp-bcol">
-              <div className="lp-chips lp-chips2" role="group" aria-label={t.budgetIs}>
+              <div className="lp-chips lp-chips2 lp-ink" role="group" aria-label={t.budgetIs}>
                 <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
                 <button type="button" className="lp-chip" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
               </div>
-              <label className="lp-money">
-                <span>RM</span>
-                <input type="number" inputMode="numeric" min="0" value={budgetAmount} placeholder="0"
-                  aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
-                  onChange={(e) => setBudgetAmount(e.target.value)} />
-              </label>
-              {maxMonthly ? (<>
-                {/* The answer to "what can they pay a month", highlighted: for
-                    take-home pay it is the 35% share, worked out in front of them. */}
+              <div className={budgetKind === 'pay' ? 'lp-moneys lp-moneys2' : 'lp-moneys'}>
+                <label className="lp-money">
+                  <span>RM</span>
+                  <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
+                    aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
+                    onChange={(e) => setBudgetAmount(digits(e.target.value, 6))} />
+                </label>
+                {budgetKind === 'pay' && (
+                  <label className="lp-money lp-money-sm">
+                    <small>{t.commitShort}</small>
+                    <span className="lp-money-in"><span>RM</span>
+                      <input type="text" inputMode="numeric" value={budgetCommit} placeholder="0" aria-label={t.commitments}
+                        onChange={(e) => setBudgetCommit(digits(e.target.value, 6))} />
+                    </span>
+                  </label>
+                )}
+              </div>
+              {budgetOn && (<>
+                {/* What they can pay a month, worked out in front of them: for
+                    take-home pay, 35% of it minus what they already pay. */}
                 <p className="lp-work">
-                  {budgetKind === 'pay' && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}% <em>=</em> </>}
+                  {payMode && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}%{commit > 0 && <> <em>−</em> RM {fmt(commit)} {t.commitWord}</>} <em>=</em> </>}
                   <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
+                  {/* What that monthly buys, at this deposit, years and rate. */}
+                  {carBudget ? <> <span className="lp-cb"><em>·</em> {t.carBudget} <b>RM {fmt(carBudget)}</b></span></> : null}
                 </p>
-                <p className="lp-salary">
-                  {bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}
-                  {budgetKind === 'pay' ? <><br />{t.roughRule(Math.round(SALARY_SHARE * 100))}</> : null}
-                </p>
-              </>) : null}
-            </div>
-            <div className="lp-bcol">
-              <span className="lp-lbl">{t.deposit}</span>
-              <div className="lp-chips lp-chips4" role="group" aria-label={t.deposit}>
-                <DepositChip editing={budgetDepEdit} value={budgetCustom} pressed={budgetDep === 'c'}
-                  label={Number(budgetCustom) > 0 ? `RM ${fmt(budgetCustom)}` : t.other} aria={t.customDeposit}
-                  onOpen={() => setBudgetDepEdit(true)} onType={typeBudgetDeposit} onClose={closeBudgetDeposit} />
-                {BUDGET_DOWNS.map((d) => (
-                  <button key={d} type="button" className="lp-chip" aria-pressed={budgetDep === d}
-                    onClick={() => { setBudgetDepEdit(false); setBudgetDep(d); }}>
-                    {d === 0 ? t.none : `RM ${d / 1000}k`}
+                {/* Phone: deposit and years as one line; tap it to change them. */}
+                {deskZoom ? (
+                  <p className="lp-salary">{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}</p>
+                ) : (
+                  <button type="button" className="lp-bset" aria-expanded={budgetSetOpen} onClick={() => setBudgetSetOpen((v) => !v)}>
+                    <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}</span>
+                    <b>{t.changeSet}</b>
                   </button>
-                ))}
-              </div>
-              <span className="lp-lbl">{t.yearsAria}</span>
-              <div className="lp-chips lp-chips3" role="group" aria-label={t.yearsAria}>
-                {[...TENURES].reverse().map((y) => (
-                  <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
-                ))}
-              </div>
+                )}
+              </>)}
             </div>
+            {showBudgetSet && (
+              <div className="lp-bcol">
+                <span className="lp-lbl">{t.deposit}</span>
+                <div className="lp-chips lp-chips4 lp-ink" role="group" aria-label={t.deposit}>
+                  <DepositChip editing={budgetDepEdit} value={budgetCustom} pressed={budgetDep === 'c'}
+                    label={Number(budgetCustom) > 0 ? `RM ${fmt(budgetCustom)}` : t.other} aria={t.customDeposit}
+                    onOpen={() => setBudgetDepEdit(true)} onType={typeBudgetDeposit} onClose={closeBudgetDeposit} />
+                  {BUDGET_DOWNS.map((d) => (
+                    <button key={d} type="button" className="lp-chip" aria-pressed={budgetDep === d}
+                      onClick={() => { setBudgetDepEdit(false); setBudgetDep(d); }}>
+                      {d === 0 ? t.none : `RM ${d / 1000}k`}
+                    </button>
+                  ))}
+                </div>
+                <span className="lp-lbl">{t.yearsAria}</span>
+                <div className="lp-chips lp-chips3 lp-ink" role="group" aria-label={t.yearsAria}>
+                  {[...TENURES].reverse().map((y) => (
+                    <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="lp-res">
-            {!maxMonthly ? (
+            {!budgetOn ? (
               <p className="lp-empty">{t.budgetEmpty}</p>
             ) : (<>
+              {payMode && maxMonthly === 0 && <p className="lp-warn">{t.noRoom(Math.round(SALARY_SHARE * 100))}</p>}
+              {/* The answer in one strip: what the budget buys, and how many
+                  cars land in each verdict. */}
+              <div className="lp-bstats">
+                {['fit', 'near', 'over'].map((st) => (
+                  <div key={st} className={`lp-bstat lp-s-${st}`}><b>{counts[st]}</b><span>{stLabel(st)}</span></div>
+                ))}
+              </div>
               <div className="lp-reshead">
-                <h3>{matches.fits.length ? t.fits(matches.fits.length) : t.noneFit}</h3>
-                <div className="lp-chips lp-chips2 lp-viewsw" role="group" aria-label={t.budgetView}>
+                {/* The counts strip above already says how many fit. */}
+                <div className="lp-chips lp-chips2 lp-viewsw lp-ink" role="group" aria-label={t.budgetView}>
                   <button type="button" className="lp-chip" aria-pressed={budgetView === 'fits'} onClick={() => chooseBudgetView('fits')}>{t.viewFits}</button>
                   <button type="button" className="lp-chip" aria-pressed={budgetView === 'all'} onClick={() => chooseBudgetView('all')}>{t.viewAll}</button>
                 </div>
               </div>
               {budgetView === 'all' ? (
                 <div className="lp-tgrid">
-                  {tiles.map((m) => <BudgetTile key={m.n} m={m} years={budgetYears} onOpen={openFromBudget} t={t} />)}
+                  {tiles.map((m) => <BudgetTile key={m.n} m={m} years={budgetYears} dsr={dsrFor(m.monthly)} label={stLabel(m.status)} pay={payMode} onOpen={openFromBudget} t={t} />)}
                 </div>
               ) : (<>
-                {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-                {matches.above.length > 0 && <h3>{t.justAbove}</h3>}
-                {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+                {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} dsrFor={dsrFor} pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
+                {matches.above.length > 0 && <h3>{payMode ? t.dsrSt.near : t.justAbove}</h3>}
+                {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} dsrFor={dsrFor} pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
               </>)}
               <p className="lp-note">
                 {t.budgetNote}
                 {anyHighValue ? t.budgetHigh : ''}
+                {budgetKind === 'pay' ? ` ${t.dsrRule(Math.round(SALARY_SHARE * 100))}` : ''}
               </p>
             </>)}
           </div>
@@ -1537,22 +1647,25 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 // One budget result. Tapping it opens that car on the Cars screen with the
 // same deposit and years picked, so the big number matches this row.
 // A car the budget's tenure is too long for is priced at its own limit, and
-// the row says which; a "just above" car says the deposit that makes it fit.
+// the row says which; a "just above" car says the longer tenure, or else the
+// deposit, that makes it fit. In take-home pay mode it also says its DSR.
 // A model card shows its variants on top: the ones this budget buys are
 // tappable (the row's price and monthly follow the pick, and so does the car
 // it opens); the rest are dimmed and struck through. Never blurred: on a
 // camera filming a screen, blur reads as a glitch.
-function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
+function BudgetRow({ m, over, years, dsrFor, pay, pick, onPick, onOpen, t }) {
   const row = m.options?.find((o) => o.car._variantId === pick && o.fits) || m;
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
+  const names = m.options ? shortVariantNames(m.options.map((o) => o.car.variant)) : [];
+  const dsr = dsrFor(row.monthly);
   return (
     <div className={over ? 'lp-rowwrap lp-over' : 'lp-rowwrap'}>
       {m.options && (
         <div className="lp-vchips" role="group" aria-label={t.variant}>
-          {m.options.map((o) => (
+          {m.options.map((o, i) => (
             <button key={o.car._variantId} type="button" disabled={!o.fits}
               aria-pressed={o.car._variantId === row.car._variantId}
-              onClick={() => onPick(m.n, o.car._variantId)}>{o.car.variant}</button>
+              onClick={() => onPick(m.n, o.car._variantId)}>{names[i]}</button>
           ))}
         </div>
       )}
@@ -1563,7 +1676,10 @@ function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
           {/* With the variant buttons above, the title leaves the variant to them. */}
           <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
           <span>RM {fmt(row.price)}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}</span>
-          {over && row.topUp > 0 && <span className="lp-fitdep">{t.topUp(`RM ${fmt(row.topUp)}`)}</span>}
+          {dsr != null && <span className={`lp-dsrtxt lp-s-${over ? 'near' : 'fit'}`}>{t.dsrLine(Math.round(dsr * 100))}</span>}
+          {over && (row.fitYears
+            ? <span className="lp-fitdep">{t.fitIfYears(row.fitYears, pay)}</span>
+            : row.topUp > 0 && <span className="lp-fitdep">{pay ? t.topUpComfort(`RM ${fmt(row.topUp)}`) : t.topUp(`RM ${fmt(row.topUp)}`)}</span>)}
         </span>
         <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
       </button>
@@ -1571,24 +1687,34 @@ function BudgetRow({ m, over, years, pick, onPick, onOpen, t }) {
   );
 }
 
-// One car in the "All cars" grid: #N, a verdict, the monthly. Ink only, no
-// traffic-light colours (one accent, owner 2026-10-22): a fit is a solid ink
-// tag, a near car says the deposit that fits it on its own line, an over car
-// is dimmed. No photo: on a quarter-width tile it cost the car's name, and the
-// name (with its variant) is what the viewer comments on. A tap opens it like
-// a list row, with the top-up deposit already in.
-function BudgetTile({ m, years, onOpen, t }) {
-  const tag = m.status === 'fit' ? t.stFit : m.status === 'near' ? t.stNear : t.stOver;
+// One car in the "All cars" grid, laid out like the rival tool the owner sent
+// (2026-10-24): verdict tag + photo, name, year and price, the monthly, then
+// (take-home pay mode) the DSR as a bar and a line, and at the foot what
+// would make it comfortable. The verdict colours are muted and live only on
+// the tag and the bar (owner's call, 2026-10-24, over the ink-only tags).
+// The name sits under the photo at full width, so the photo costs it nothing.
+function BudgetTile({ m, years, dsr, label, pay, onOpen, t }) {
+  const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
+  const name = [m.car.brand, m.car.model, m.car.variant].filter(Boolean).join(' ');
+  const fix = m.status === 'fit' ? null
+    : m.fitYears ? t.fitIfYears(m.fitYears, pay)
+    : m.status === 'near' && m.topUp > 0 ? (pay ? t.topUpComfort(`RM ${fmt(m.topUp)}`) : t.topUp(`RM ${fmt(m.topUp)}`))
+    : m.status === 'over' && pay ? t.outOfComfort : null;
   return (
-    <button type="button" className={`lp-tcard lp-t-${m.status}`} onClick={() => onOpen(m)}>
-      <span className="lp-ttop">
+    <button type="button" className={`lp-tcard lp-s-${m.status}`} onClick={() => onOpen(m)}>
+      <span className="lp-tphoto">
+        {img ? <img src={cdnImg(img, 360, 70)} alt="" decoding="async" loading="lazy" onError={imgFallback(img)} /> : null}
         <span className="lp-n">#{m.n}</span>
-        <span className="lp-tst">{tag}</span>
+        <span className="lp-tst">{label}</span>
       </span>
-      <b className="lp-tname">{carLabel(m.car)}</b>
+      <b className="lp-tname">{name}</b>
+      <span className="lp-tp">{[m.car.year, `RM ${fmt(m.price)}`].filter(Boolean).join(' · ')}{m.years !== years ? ` · ${t.yrsShort(m.years)}` : ''}</span>
       <span className="lp-tm">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
-      <span className="lp-tp">RM {fmt(m.price)}{m.years !== years ? ` · ${t.yrsShort(m.years)}` : ''}</span>
-      {m.status === 'near' && m.topUp > 0 && <span className="lp-tp lp-tfix">{t.topUp(`RM ${fmt(m.topUp)}`)}</span>}
+      {dsr != null && (<>
+        <span className="lp-dsrbar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round(dsr * 100))}%` }} /></span>
+        <span className="lp-tp">{t.dsrLine(Math.round(dsr * 100))}</span>
+      </>)}
+      {fix && <span className="lp-tfix">{fix}</span>}
     </button>
   );
 }

@@ -1581,16 +1581,26 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
   **"All cars" view (BUDGET-GRID, 2026-10-24)**: a `Fits only | All cars` switch over the
-  results, remembered per device (`xd_live_budview`). All cars = every car once as a tile
-  with a verdict, `Sesuai` / `Hampir` (+ the top-up deposit line) / `Lebih bajet`
-  (`budgetAll`, liveMaths.js). Built for a Proton advisor who wanted every model on screen
-  like a rival's tool. `budgetMatches` and `budgetAll` share ONE pricing loop
-  (`priceBudgetRows`): never give the grid its own maths. Tags are ink, never
-  green/amber/red (one-accent rule); tiles have no photo (it cost the car's name).
-  Still the 35% rule only: no "existing commitments" box (a second affordability rule
-  on stream beside the 35% one would contradict it).
-- Contact, once switched on, is a loud accent "Contact me" banner, but stays OFF by
-  default (TikTok rule above).
+  results, remembered per device (`xd_live_budview`). All cars = every car once as a card
+  with its photo and a verdict (`budgetAll`, liveMaths.js). `budgetMatches` and `budgetAll`
+  share ONE pricing loop (`priceBudgetRows`): never give the grid its own maths.
+  **DSR in Budget (owner, 2026-10-24; reverses "no commitments box", "ink tags" and "no
+  photo", layout from a rival tool the owner sent)**: take-home pay mode has a "Komitmen" box.
+  Commitments come off the SAME 35% (`maxMonthlyFromPay(pay, commitments)`), so there is still
+  ONE comfort rule: with no commitments it equals the Cars screen's salary guide. Bands: Selesa
+  <= 35% DSR, Ketat <= 60% (`DSR_TIGHT`; also the list's "just above" line, via `nearCap`),
+  Membebankan above. Bank Negara sets no DSR cap; most banks sit around 60-70% (checked
+  2026-10-24) and the note says each bank decides. Cards show the DSR (bar + "Komitmen x%
+  gaji") and what would make the car comfortable: a longer tenure first (`fitYears`), else the
+  deposit. A counts strip sits above the results; "Bajet kereta" (`priceForMonthly`) rides on
+  the working line and hides when insurance is in the loan (it would read too generous).
+  Verdict colours are MUTED green / amber / red on the tag, the bar and the counts only. The
+  seller's own settings (deposit, years, view, Docs kind) are ink when picked; the accent stays
+  on the viewer's number. On a phone, deposit + years fold into one tappable line once a budget
+  is typed, so the cars sit above TikTok's comments. `npm run test:live`.
+- Contact, once switched on, is a loud accent "Contact me" banner UNDER THE COMMENT LINE at
+  the top (2026-10-24: at the foot it fell below the fold on a model card), OFF by default
+  (TikTok rule above).
   The seller's standing **Offer** (free tint, dashcam...) is typed in Adjust, remembered
   per device (`xd_live_offer`), and shown above the comment bar on every car.
 - **A new-car model card gets a variant row** (`is_model_card`): it shares

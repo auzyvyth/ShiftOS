@@ -1,7 +1,8 @@
 // Live presentation: salary guide, flat-rate conversion, after-live report.
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, carLabel,
-  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR } from '../src/utils/liveMaths.js';
+  maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
+  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -237,5 +238,39 @@ const allCardNo = budgetAll(card, { maxMonthly: near(30000), years: 7, rate: 3, 
 is('all: no variant fits -> cheapest variant shown', allCardNo.map((x) => [x.car.variant, x.status]), [['V0', 'over']]);
 is('all: no budget, no tiles', budgetAll(cars, { maxMonthly: 0, years: 7, rate: 3, basis: 'eir' }), []);
 
+// DSR in Budget (pay mode): commitments come off the same 35%, bands at 35% / 60%.
+is('dsr: commitments come off the 35%', maxMonthlyFromPay(3500, 600), 625);
+is('dsr: no commitments = the old rule', maxMonthlyFromPay(3500, 0), maxMonthlyFromPay(3500));
+is('dsr: commitments over 35% leave 0, not negative', maxMonthlyFromPay(3000, 2000), 0);
+is('dsr: ratio includes the car', Math.round(dsrOf(625, 600, 3500) * 100), 35);
+is('dsr: no pay, no ratio', dsrOf(500, 0, 0), null);
+is('dsr: tight line is 60% minus commitments', tightCapFromPay(3500, 600), 3500 * DSR_TIGHT - 600);
+const dCars = [{ id: 'a', selling_price: 30000 }, { id: 'b', selling_price: 60000 }, { id: 'c', selling_price: 150000 }];
+const dOpts = { maxMonthly: maxMonthlyFromPay(3500, 600), nearCap: tightCapFromPay(3500, 600), years: 7, rate: 6.5, basis: 'eir', tenureOptions: [5, 7, 9] };
+const dAll = budgetAll(dCars, dOpts);
+is('dsr: bands come from the 35% and 60% lines', dAll.map((x) => [x.n, x.status]), [[1, 'fit'], [2, 'near'], [3, 'over']]);
+is('dsr: every verdict agrees with its own ratio', dAll.every((x) => {
+  const r = dsrOf(x.monthly, 600, 3500);
+  return x.status === 'fit' ? r <= SALARY_SHARE + 1e-9 : x.status === 'near' ? r > SALARY_SHARE && r <= DSR_TIGHT + 1e-9 : r > DSR_TIGHT;
+}), true);
+is('dsr: list "just above" uses the same 60% line', budgetMatches(dCars, dOpts).above.map((x) => x.n), [2]);
+const zero = budgetAll(dCars, { ...dOpts, maxMonthly: maxMonthlyFromPay(3000, 1100), nearCap: tightCapFromPay(3000, 1100) });
+is('dsr: nothing comfortable left still gives verdicts', zero.length, 3);
+is('dsr: ... and none of them fit', zero.some((x) => x.status === 'fit'), false);
+// fitYears: the shortest longer tenure that brings a car under the budget.
+const fy = budgetAll([{ id: 'f', selling_price: 50000 }], { maxMonthly: monthlyPayment(50000, 6.5, 108) + 1, years: 7, rate: 6.5, basis: 'eir', tenureOptions: [5, 7, 9] });
+is('fit years: 9 years fits a car 7 years does not', [fy[0].status, fy[0].fitYears], ['near', 9]);
+is('fit years: a fitting car has none', budgetAll([{ id: 'g', selling_price: 10000 }], { maxMonthly: 5000, years: 7, rate: 6.5, basis: 'eir', tenureOptions: [5, 7, 9] })[0].fitYears, null);
+is('fit years: never past the car\'s own limit', budgetAll([{ id: 'h', selling_price: 50000, year: 2016 }], { maxMonthly: monthlyPayment(50000, 6.5, 108) + 1, years: 7, rate: 6.5, basis: 'eir', tenureOptions: [5, 7, 9], yearsFor: (c) => maxTenureYears(c, 2026) })[0].fitYears, null);
+// The car price a monthly buys, forwards again.
+const pf = priceForMonthly({ monthly: 800, eir: 6.5, years: 7, deposit: 5000 });
+is('car budget: its loan repays at no more than the monthly', monthlyPayment(pf - 5000, 6.5, 84) <= 800, true);
+is('car budget: rounded down to RM10', pf % 10, 0);
+is('car budget: zero monthly is null', priceForMonthly({ monthly: 0, eir: 6.5, years: 7 }), null);
+
+is('variants: shared first word dropped', shortVariantNames(['1.3 Standard MT', '1.3 Standard AT', '1.3 Premium S AT', '1.3 MC2 AT']), ['Standard MT', 'Standard AT', 'Premium S AT', 'MC2 AT']);
+is('variants: nothing shared, unchanged', shortVariantNames(['1.5 V', '1.5T Exec']), ['1.5 V', '1.5T Exec']);
+is('variants: never empties a name', shortVariantNames(['1.3 MT', '1.3 MT']), ['MT', 'MT']);
+is('variants: one name, unchanged', shortVariantNames(['1.3 Standard MT']), ['1.3 Standard MT']);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
