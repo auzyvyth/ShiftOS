@@ -534,6 +534,11 @@ live can stall it in front of their audience. So:
   PR, verify the Vercel production deploy is READY, apply any queued migrations in the same
   slot, and leave the owner a short summary. If someone is live, check again every 30 min;
   give up at 03:00 and say so (never release after that without asking).
+- **The owner tests Live on their own seller accounts** (owner, 2026-10-24): a live on
+  `premiummotors` or `airymotors` is the owner, not a seller, and does NOT hold a release.
+  Read who is live with `select p.slug from seller_live_state s join profiles p on p.id =
+  s.seller_id where s.live_until > now();`. Other `airy*` slugs (airyproton, airybyd,
+  airyauzy...) look like the owner's too but are unconfirmed: ask before treating them so.
 - **Emergency fix (something broken for users):** only on the owner's explicit "ship now",
   and say first if anyone is live.
 - What a release does to an open page: nothing until it reloads (`registerType: 'prompt'`,
