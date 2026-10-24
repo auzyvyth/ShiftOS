@@ -295,7 +295,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // that holds more cars than fit shows them a page at a time, one tap per page.
   // Pages belong to one budget: `key` is the inputs they were turned under, and
   // a new number or setting starts every column on its first page again.
-  const [budgetPage, setBudgetPage] = useState({ key: '', fit: 0, near: 0 });
+  const [budgetPage, setBudgetPage] = useState({ key: '', fit: 0, side: 0 });
   const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
@@ -361,11 +361,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   // Fit the Cars screen to the stage: a seller cannot scroll mid-pitch, and a
   // phone filming a monitor cannot see below the fold. Shrinks to 80% at most
-  // (any smaller and the camera cannot read it), then lets the page scroll.
+  // on a phone, 70% on desktop (any smaller and the camera cannot read it),
+  // then lets the page scroll.
   // Budget fits the same way: its cars page, they never scroll (2026-10-24).
   // Style is set directly so the measurement never costs a re-render.
   const fit = useRef(() => {});
   fit.current = () => {
+    // Desktop goes to 70%: the stage is magnified to the screen, so 70% of it
+    // still reads on camera, and the owner wants it never to scroll (2026-10-24).
+    const MIN = deskZoom ? 0.7 : 0.8;
     const el = fitRef.current;
     const body = el?.parentElement;
     if (!el || !body) return;
@@ -377,11 +381,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     if (need > avail && avail > 0) {
       // Shrinking widens the columns, which makes aspect-ratio boxes (the
       // photo) taller, so one measurement undershoots: step down until
-      // nothing spills, never under the 80% floor.
-      let z = Math.max(0.8, avail / need);
+      // nothing spills, never under the floor.
+      let z = Math.max(MIN, avail / need);
       el.style.zoom = String(z);
-      while (z > 0.8 && body.scrollHeight > body.clientHeight) {
-        z = Math.max(0.8, z - 0.01);
+      while (z > MIN && body.scrollHeight > body.clientHeight) {
+        z = Math.max(MIN, z - 0.01);
         el.style.zoom = String(z);
       }
       // Wider columns also unwrap long names, so the first guess can land
@@ -390,8 +394,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         z = Math.min(1, z + 0.01);
         el.style.zoom = String(z);
       }
-      if (body.scrollHeight > body.clientHeight && z > 0.8) {
-        z = Math.max(0.8, z - 0.01);
+      if (body.scrollHeight > body.clientHeight && z > MIN) {
+        z = Math.max(MIN, z - 0.01);
         el.style.zoom = String(z);
       }
     }
@@ -677,8 +681,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const allRows = budgetOn ? budgetAll(budgetCars, budgetOpts) : [];
   const groups = { fit: [], near: [], over: [] };
   allRows.forEach((m) => { groups[m.status].push(optionsByN.has(m.n) ? { ...m, options: optionsByN.get(m.n) } : m); });
+  // The right column pages tight and over-budget rows as one list.
+  groups.side = [...groups.near, ...groups.over];
   // Rows per page: what fits the stage with no scroll (desktop stage vs phone).
-  const pageSize = deskZoom ? { fit: 4, near: 3 } : { fit: 3, near: 2 };
+  const pageSize = deskZoom ? { fit: 4, side: 3 } : { fit: 3, side: 2 };
   const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears].join('|');
   const curPage = (st) => (budgetPage.key === pageKey ? budgetPage[st] : 0);
   const pageOf = (st) => {
@@ -687,9 +693,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return { p, pages, rows: groups[st].slice(p * pageSize[st], (p + 1) * pageSize[st]) };
   };
   const nextPage = (st, pages) => setBudgetPage({
-    key: pageKey, fit: curPage('fit'), near: curPage('near'), [st]: (Math.min(curPage(st), pages - 1) + 1) % pages,
+    key: pageKey, fit: curPage('fit'), side: curPage('side'), [st]: (Math.min(curPage(st), pages - 1) + 1) % pages,
   });
-  const OVER_SHOWN = 6;
   // Take-home pay mode: each row's commitments as a share of pay, coloured by
   // its own band (it follows the variant a model card row is switched to).
   const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
@@ -822,7 +827,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            bar under the title. Desktop: a pill on the title's right. Either way
            it is at the TOP: the bottom of the stream is under the comments. */
         .lp-sheet { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-        .lp-desk .lp-sheet { padding: 12px 16px; gap: 10px; }
+        .lp-desk .lp-sheet { padding: 10px 16px; gap: 6px; }
         .lp:not(.lp-desk) .lp-sheet { gap: 6px; padding: 9px 11px; }
         .lp:not(.lp-desk) .lp-body { padding: 10px; }
         .lp:not(.lp-desk) .lp-grid { row-gap: 6px; }
@@ -871,7 +876,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-big { margin: 0; display: flex; align-items: baseline; color: var(--lp-a); font-size: clamp(40px, 14cqw, 60px); font-weight: 800; line-height: .95; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-big .lp-rm { font-size: .32em; opacity: 1; margin-right: .3em; }
         .lp-big small { margin-left: .35em; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #6b7280; }
-        .lp-desk .lp-big { font-size: 76px; }
+        .lp-desk .lp-big { font-size: 64px; }
         /* Camera-safe desktop (LIVE-CAM, owner 2026-10-24). Sellers either film
            the monitor with a phone held upright (the sides get cut) or put the
            screen under their camera in a split (TikTok's comments cover the
@@ -884,12 +889,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-sheet .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
         .lp-desk .lp-sheet .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
         .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
-        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 10px; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 6px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
         .lp-desk .lp-ans > .lp-vars { justify-content: center; }
         .lp-desk .lp-deprow { justify-self: center; width: 64%; }
-        .lp-desk .lp-photo { min-height: 150px; }
+        .lp-desk .lp-photo { min-height: 120px; }
         /* Under photo | working: totals beside the salary guide, notes across. */
         .lp-desk .lp-rest { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 18px; align-items: center; }
         .lp-desk .lp-rest > * { grid-column: 1 / -1; }
@@ -901,7 +906,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten span { font-size: clamp(10px, 2.8cqw, 12px); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
         .lp-ten b { font-size: clamp(14px, 4.2cqw, 18px); font-weight: 800; white-space: nowrap; }
         .lp-ten[aria-pressed="true"] { background: rgba(var(--lp-rgb),.10); border-color: var(--lp-a); color: var(--lp-a2); }
-        .lp-desk .lp-ten { padding: 8px 10px; }
+        .lp-desk .lp-ten { padding: 5px 10px; }
         .lp-desk .lp-ten span { font-size: 12px; }
         .lp-desk .lp-ten b { font-size: 18px; }
 
@@ -933,7 +938,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* The seller's settings (Budget deposit / years / view, Docs): picked =
            ink. The accent stays on the viewer's number and the answer. */
         .lp-ink .lp-chip[aria-pressed="true"] { background: #0f1115; border-color: #0f1115; color: #fff; }
-        .lp-desk .lp-chip { min-height: 40px; font-size: 15px; }
+        .lp-desk .lp-chip { min-height: 36px; font-size: 15px; }
 
         /* The working: read-only lines, a receipt's rule above the loan. */
         .lp-brkwrap { grid-area: work; position: relative; min-width: 0; }
@@ -945,7 +950,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 20px); font-weight: 800; }
         .lp-brk tr.lp-r-rate td { padding-top: 1px; border-bottom: none; font-size: clamp(11px, 3cqw, 14px); color: #6b7280; }
         .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 600; }
-        .lp-desk .lp-brk td { padding: 4px 0; font-size: 16px; }
+        .lp-desk .lp-brk td { padding: 3px 0; font-size: 15px; }
         .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 20px; }
         .lp-desk .lp-brk tr.lp-r-rate td { font-size: 14px; }
         /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
@@ -955,7 +960,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         /* Everything else: smaller, quieter, and fine to sit under the comments. */
         .lp-rest { grid-area: rest; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-        .lp-desk .lp-rest { gap: 8px; }
+        .lp-desk .lp-rest { gap: 6px; }
         .lp-totals { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; }
         .lp-totals > div { display: flex; flex-direction: column; min-width: 0; padding: 6px 10px; border-radius: 8px; background: #F4F3F1; }
         .lp-totals span { font-size: clamp(10px, 2.7cqw, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; }
@@ -963,6 +968,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
         /* Phone: the two figures only; how they are made up is on desktop. */
         .lp:not(.lp-desk) .lp-totals small { display: none; }
+        /* Desktop: label and its note on the left, the figure on the right, two lines not three. */
+        .lp-desk .lp-totals > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 4px 10px; }
+        .lp-desk .lp-totals > div > b { grid-column: 2; grid-row: 1 / span 2; }
+        .lp-desk .lp-totals > div > span, .lp-desk .lp-totals > div > small { grid-column: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 14px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
@@ -975,7 +984,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
-        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: 64%; }
+        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: 64%; padding: 5px 14px; }
+        /* Desktop: one slim line, "CONTACT ME  NAME ... PHONE" (owner, 2026-10-24:
+           the two-line banner pushed the sheet past the stage). */
+        .lp-desk .lp-c-who { flex-direction: row; align-items: baseline; gap: 10px; }
+        .lp-desk .lp-c-who small { font-size: 20px; }
+        .lp-desk .lp-c-who b { font-size: 13px; }
+        .lp-desk .lp-c-ph { font-size: 26px; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
@@ -1117,7 +1132,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bsum > .lp-money { flex: 1 1 240px; max-width: 330px; min-width: 0; height: 64px; padding: 0 10px; border: 2px solid #0f1115; }
         .lp-bsum > .lp-money input { min-width: 4ch; font-size: 38px; }
         .lp-bsum > .lp-money-sm { flex: 0 0 136px; max-width: none; overflow: hidden; border-width: 1.5px; border-color: #D1D5DB; }
-        .lp-bsum > .lp-money-sm input { min-width: 0; font-size: 22px; }
+        .lp .lp-bsum > .lp-money-sm input { min-width: 0; height: 28px; font-size: 22px; }
+        /* The label must keep its line: in a fixed-height column the box
+           shrank it to 0px and viewers saw a bare "RM 0" (2026-10-24). */
+        .lp-money-sm small, .lp-money-sm .lp-money-in { flex: none; }
         .lp-bop { flex: none; font-size: 17px; font-weight: 700; color: #9ca3af; white-space: nowrap; }
         .lp-bop small { font-size: 15px; }
         .lp-bres { flex: none; display: flex; flex-direction: column; justify-content: center; min-height: 64px; padding: 4px 12px; border-radius: 12px; background: var(--lp-a); color: #fff; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -1143,7 +1161,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-bcols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; }
         .lp-bcolr { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .lp-bh { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
-        .lp-bh h3, .lp-bover h3 { display: flex; align-items: center; gap: 6px; margin: 0; }
+        .lp-bh h3 { display: flex; align-items: center; gap: 6px; margin: 0; }
         .lp-res h3 i { width: 8px; height: 8px; border-radius: 50%; background: var(--st); flex-shrink: 0; }
         .lp-bmore { display: inline-flex; align-items: center; gap: 2px; min-height: 30px; padding: 0 8px 0 12px; border: 1.5px solid #0f1115; border-radius: 999px; background: #fff; color: #0f1115; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; font-variant-numeric: tabular-nums; }
         /* One car: the photo fills the row's height, so no row is mostly blank. */
@@ -1167,18 +1185,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bfoot .lp-m { flex-shrink: 0; font-size: clamp(16px, 4.6cqw, 19px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-bfoot .lp-m small { font-size: 11px; font-weight: 600; color: #6b7280; }
         .lp-brow .lp-vchips { padding: 0 7px 8px; }
-        /* Over budget: a short list; nobody studies a car they cannot afford. */
-        .lp-bover { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-        .lp-bover-list { display: flex; flex-wrap: wrap; gap: 4px; }
-        .lp-bover-list button { min-height: 28px; padding: 2px 8px; border: 1px solid #E5E7EB; border-radius: 8px; background: #fff; font: inherit; font-size: clamp(12px, 3.3cqw, 13px); color: #6b7280; cursor: pointer; white-space: nowrap; }
-        .lp-bover-list button b { color: #374151; }
-        .lp-bover-list > span { align-self: center; font-size: 12px; color: #9ca3af; }
         /* Desktop stage: a smaller title and tighter gaps, so the cars get the height. */
         .lp-desk .lp-bud { gap: 8px; padding: 12px 14px; }
         .lp-desk .lp-bud .lp-name { font-size: 26px; }
         .lp-desk .lp-bud .lp-work { font-size: 15px; line-height: 1.4; }
-        .lp-desk .lp-bud .lp-money { height: 64px; }
-        .lp-desk .lp-bud .lp-money input { font-size: 44px; }
         .lp-desk .lp-bud .lp-bkind .lp-chip { min-height: 30px; font-size: 14px; }
         .lp-desk .lp-bcols { padding-top: 4px; }
         .lp-desk .lp-bud .lp-note { margin: 0; }
@@ -1562,35 +1572,38 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {/* Every car on one screen: fits on the left, tight / just above
                   and over on the right. A long column pages, it never scrolls. */}
               <div className="lp-bcols">
-                {['fit', 'near'].map((st) => {
+                {['fit', 'side'].map((st) => {
                   const { p, pages, rows } = pageOf(st);
-                  return (
-                    <div key={st} className={`lp-bcolr lp-s-${st}`}>
-                      <div className="lp-bh">
-                        <h3><i aria-hidden="true" />{stLabel(st)} · {groups[st].length}</h3>
-                        {pages > 1 && (
-                          <button type="button" className="lp-bmore" aria-label={t.morePage} onClick={() => nextPage(st, pages)}>
-                            {p + 1}/{pages}<ChevronRight size={14} aria-hidden="true" />
-                          </button>
-                        )}
+                  const head = (g) => <h3><i aria-hidden="true" />{stLabel(g)} · {groups[g].length}</h3>;
+                  const more = pages > 1 && (
+                    <button type="button" className="lp-bmore" aria-label={t.morePage} onClick={() => nextPage(st, pages)}>
+                      {p + 1}/{pages}<ChevronRight size={14} aria-hidden="true" />
+                    </button>
+                  );
+                  const rowOf = (m) => (
+                    <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over={m.status !== 'fit'} years={budgetYears} dsrFor={dsrFor}
+                      pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />
+                  );
+                  if (st === 'fit') {
+                    return (
+                      <div key={st} className="lp-bcolr lp-s-fit">
+                        <div className="lp-bh">{head('fit')}{more}</div>
+                        {rows.map(rowOf)}
                       </div>
-                      {rows.map((m) => (
-                        <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over={st !== 'fit'} years={budgetYears} dsrFor={dsrFor}
-                          pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />
-                      ))}
-                      {st === 'near' && groups.over.length > 0 && (
-                        <div className="lp-s-over lp-bover">
-                          <h3><i aria-hidden="true" />{stLabel('over')} · {groups.over.length}</h3>
-                          <div className="lp-bover-list">
-                            {groups.over.slice(0, OVER_SHOWN).map((m) => (
-                              <button key={`${m.car.id}-${m.car._variantId || ''}`} type="button" onClick={() => openFromBudget(m)}>
-                                <b>#{m.n}</b> {[m.car.model, m.car.variant].filter(Boolean).join(' ')}
-                              </button>
-                            ))}
-                            {groups.over.length > OVER_SHOWN && <span>{t.moreN(groups.over.length - OVER_SHOWN)}</span>}
-                          </div>
-                        </div>
+                    );
+                  }
+                  // Right column: tight rows, then over-budget rows, as full
+                  // rows (owner, 2026-10-24: the over list was only #N chips).
+                  const near = rows.filter((m) => m.status === 'near');
+                  const over = rows.filter((m) => m.status === 'over');
+                  return (
+                    <div key={st} className="lp-bcolr">
+                      <div className="lp-s-near lp-bh">{head('near')}{more}</div>
+                      {near.map(rowOf)}
+                      {groups.over.length > 0 && (near.length < rows.length || p === pages - 1) && (
+                        <div className="lp-s-over lp-bh">{head('over')}</div>
                       )}
+                      {over.map(rowOf)}
                     </div>
                   );
                 })}
