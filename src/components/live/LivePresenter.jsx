@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, Info, Lock, Maximize2, Pencil, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Expand, Info, Lock, Maximize2, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -335,6 +335,20 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Desktop: magnify the phone-sized stage to fill the screen height (see the
   // note above the styles). null = phone/tablet, the stage sizes itself.
   const [deskZoom, setDeskZoom] = useState(null);
+  // Full screen (desktop): hides the browser's tabs and address bar so the
+  // stage the camera films gets that height too. The zoom follows on resize.
+  const canFull = !embedded && typeof document !== 'undefined' && !!document.fullscreenEnabled;
+  const [isFull, setIsFull] = useState(false);
+  useEffect(() => {
+    if (!canFull) return undefined;
+    const on = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, [canFull]);
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  };
   useEffect(() => {
     if (embedded || typeof window === 'undefined' || !window.matchMedia) return undefined;
     const mq = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
@@ -833,6 +847,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-big .lp-rm { font-size: .32em; opacity: 1; margin-right: .3em; }
         .lp-big small { margin-left: .35em; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #6b7280; }
         .lp-desk .lp-big { font-size: 76px; }
+        /* Camera-safe desktop (LIVE-CAM, owner 2026-10-24). Sellers either film
+           the monitor with a phone held upright (the sides get cut) or put the
+           screen under their camera in a split (TikTok's comments cover the
+           bottom half). Only the top-centre is safe in both, so everything a
+           viewer reads sits there: title, comment line, monthly, tenures,
+           deposit. Photo and working go to the bottom, where losing them costs
+           nothing. */
+        .lp-desk .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
+        .lp-desk .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
+        .lp-desk .lp-head > .lp-cta { flex: none; max-width: 64%; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 10px; }
+        .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
+        .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
+        .lp-desk .lp-ans > .lp-vars { justify-content: center; }
+        .lp-desk .lp-deprow { justify-self: center; width: 64%; }
+        .lp-desk .lp-photo { min-height: 150px; }
+        /* Under photo | working: totals beside the salary guide, notes across. */
+        .lp-desk .lp-rest { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 18px; align-items: center; }
+        .lp-desk .lp-rest > * { grid-column: 1 / -1; }
+        .lp-desk .lp-rest > .lp-totals { grid-column: 1; }
+        .lp-desk .lp-rest > .lp-salary { grid-column: 2; margin: 0; }
         .lp-desk .lp-ans-lbl { font-size: 15px; }
         .lp-tens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
         .lp-ten { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 10px; border: 1.5px solid #F4F3F1; background: #F4F3F1; color: #111827; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -912,6 +947,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
+        .lp-desk .lp-head > .lp-contact { flex: none; width: 64%; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
@@ -1148,6 +1185,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <button className="lp-iconbtn" onClick={() => setShowContact((v) => !v)}
               aria-label={showContact ? t.hideContact : t.showContact} aria-pressed={showContact}>
               <Contact size={17} />
+            </button>
+          )}
+          {deskZoom && canFull && (
+            <button className="lp-iconbtn" onClick={toggleFull} aria-label={isFull ? t.exitFullScreen : t.fullScreen} aria-pressed={isFull}>
+              {isFull ? <Shrink size={17} /> : <Expand size={17} />}
             </button>
           )}
           {!report && mode !== 'docs' && (

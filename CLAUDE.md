@@ -1582,8 +1582,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   (owner, 2026-10-18). Sellers film their monitor with a phone held upright. The
   stage is laid out at `DESK_W` x `STAGE_H` (750x667, about square) and magnified
   with CSS zoom to the screen height (`deskZoom`, `.lp-desk`). ONE grid, `.lp-grid`,
-  two arrangements by `grid-template-areas`: desktop = photo | answer, chips across,
-  working | rest; phone = answer, chips, photo | working, rest. The full-screen wide
+  two arrangements by `grid-template-areas`: phone = answer, chips, photo | working, rest.
+  **Desktop is CAMERA-SAFE (LIVE-CAM, owner 2026-10-24):** sellers either film the monitor
+  with an upright phone (the sides get cut) or put the screen under their camera in a split
+  (TikTok's comments cover the bottom half), so everything a viewer reads sits in the
+  TOP-CENTRE 64%: title, comment line, contact, monthly, tenure tiles, deposit chips. Photo |
+  working go below, then totals beside the salary guide, then notes. Never move a viewer's
+  number to the edges or the bottom half again. Desktop also has a Full screen button
+  (`toggleFull`, hides the browser's tabs and address bar). The full-screen wide
   sheet (2026-10-04) spilled out of the camera frame; the phone-width column (morning
   of 2026-10-18) was too small to read on camera. Do not go wider than DESK_W.
   Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
