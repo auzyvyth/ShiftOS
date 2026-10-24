@@ -9,11 +9,11 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
-  tightCapFromPay, priceForMonthly, shortVariantNames, dsrOf, DSR_TIGHT,
+  tightCapFromPay, shortVariantNames, dsrOf, DSR_TIGHT,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
-  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
+  initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
   initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
@@ -260,8 +260,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // the Insurance line in place, like the rebate, and remembered on this
   // device until changed (owner, 2026-10-24). A model card keeps one figure
   // per VARIANT (insKey): the premium follows the variant's price.
-  const [insOn, setInsOn] = useState(() => (embedded ? false : initialLiveIns()));
-  const changeIns = (on) => { setInsOn(on); if (!embedded) saveLiveIns(on); };
   const [ncd, setNcd] = useState(0);
   const [insTyped, setInsTyped] = useState(() => (embedded ? {} : initialLiveInsFigures()));
   const [insEdit, setInsEdit] = useState(false);
@@ -452,7 +450,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // price before rebate (the car's value) and its engine cc (a model card's
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
   const insFor = (c, value, cc, variantId) => {
-    if (!insOn) return 0;
     const typed = insTyped[insKey(c, variantId)];
     if (typed !== undefined && typed !== '') return Math.max(0, Number(typed) || 0);
     const est = motorPremium({ sumInsured: value, cc, ncd, region: insuranceRegion(c?.state) });
@@ -705,14 +702,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <button type="button" className="lp-chip" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
     </div>
   );
-  // The dearest price the budget buys at the line's rate and deposit. Left out
-  // with insurance in the loan: it would read more generous than the cars do.
-  // Worked on the "other cars" rate when this live has any (the higher one, so
-  // never the generous figure), else the new Proton/Perodua rate.
-  const cbRate = rates[rateGroups.includes('std') ? 'std' : 'local'];
-  const carBudget = maxMonthly > 0 && !insOn
-    ? priceForMonthly({ monthly: maxMonthly, eir: eirForTenure(Math.max(0, Number(cbRate.eir) || 0), cbRate.basis, budgetYears), years: budgetYears, deposit: bDown })
-    : null;
   // The rate settings, one row per rate group on this live. ONE store (rates,
   // saved per device) shown in two places: Adjust > Financing and the Budget
   // tab's Change panel (owner, 2026-10-24), so the two can never disagree.
@@ -1115,8 +1104,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-s-fit { --st: #15803d; --st-bg: rgba(21,128,61,.12); }
         .lp-s-near { --st: #b45309; --st-bg: rgba(180,83,9,.13); }
         .lp-s-over { --st: #b91c1c; --st-bg: rgba(185,28,28,.10); }
-        .lp-work .lp-cb { white-space: nowrap; }
-        .lp-work .lp-cb b { color: var(--lp-a2); font-weight: 800; }
         .lp-desk .lp-money input { font-size: 52px; }
         .lp-work { font-size: clamp(13px, 3.6cqw, 17px); font-weight: 600; color: #374151; margin: 0; font-variant-numeric: tabular-nums; line-height: 1.6; }
         .lp-work em { font-style: normal; color: #9ca3af; font-weight: 500; }
@@ -1151,7 +1138,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bres small { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .85; }
         .lp-bres b { font-size: 25px; font-weight: 800; white-space: nowrap; }
         .lp-bres b span { font-size: 13px; font-weight: 600; }
-        .lp-bres em { font-style: normal; font-size: 12px; font-weight: 600; opacity: .9; white-space: nowrap; }
         .lp-bsetrow { display: flex; align-items: center; gap: 10px; min-width: 0; }
         .lp-bsetrow > .lp-cta { flex: none; max-width: 42%; padding: 8px 16px; font-size: 13px; }
         .lp-bsetrow > .lp-bsetline { flex: 1; min-width: 0; }
@@ -1387,7 +1373,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
                   {/* Insurance is typed in place too, and the figure stays on this
                       device until changed (per variant on a model card). */}
-                  {price > 0 && insOn && (
+                  {price > 0 && (
                     insEdit ? (
                       <tr>
                         <td>{t.insurance}</td>
@@ -1457,7 +1443,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 for this car (the typed quote already has its NCD in it). Its own grid
                 area: under the working on desktop, so the photo keeps the whole row
                 (under the photo it shrank the photo, 2026-10-24). */}
-            {price > 0 && insOn && !insIsTyped && ins !== null && (
+            {price > 0 && !insIsTyped && ins !== null && (
               <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                 <span>{t.ncd}</span>
                 {NCD_TIERS.map((n) => (
@@ -1533,18 +1519,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </>}
               {budgetOn && <>
                 <span className="lp-bop">=</span>
-                {payMode || !carBudget ? (
-                  <div className="lp-bres">
-                    <small>{t.upTo.trim()}</small>
-                    <b>RM {fmt(maxMonthly)}<span>{t.perMonth}</span></b>
-                    {carBudget ? <em>{t.carBudget} RM {fmt(carBudget)}</em> : null}
-                  </div>
-                ) : (
-                  <div className="lp-bres">
-                    <small>{t.carBudget}</small>
-                    <b>RM {fmt(carBudget)}</b>
-                  </div>
-                )}
+                <div className="lp-bres">
+                  <small>{t.upTo.trim()}</small>
+                  <b>RM {fmt(maxMonthly)}<span>{t.perMonth}</span></b>
+                </div>
               </>}
             </div>
             <div className="lp-bsetrow">
@@ -1569,8 +1547,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <p className="lp-work">
               {payMode && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}%{commit > 0 && <> <em>−</em> RM {fmt(commit)} {t.commitWord}</>} <em>=</em> </>}
               <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
-              {/* What that monthly buys, at this deposit, years and rate. */}
-              {carBudget ? <> <span className="lp-cb"><em>·</em> {t.carBudget} <b>RM {fmt(carBudget)}</b></span></> : null}
             </p>
           )}
           {budgetSetLine}
@@ -1744,23 +1720,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <small className="lp-hint">{t.targetHint}</small>
                 </label>
               )}
-              <div className="lp-wide lp-insadj">
-                <span>{t.insuranceLabel}</span>
-                <div className="lp-seg" role="group" aria-label={t.insuranceLabel}>
-                  <button type="button" aria-pressed={!insOn} onClick={() => changeIns(false)}>{t.insOff}</button>
-                  <button type="button" aria-pressed={insOn} onClick={() => changeIns(true)}>{t.insInLoan}</button>
-                </div>
-                <small className="lp-hint">{t.insuranceHint}</small>
-              </div>
               {mode === 'cars' && car && (<>
-                {insOn && price > 0 && (
-                  <label className="lp-wide">
-                    {t.insuranceThisCar}
-                    <input className="lp-in" type="number" inputMode="numeric" min="0"
-                      placeholder={ins ? String(ins) : ''} value={insTyped[insK] ?? ''}
-                      onChange={(e) => { const v = e.target.value; setInsTyped((m) => ({ ...m, [insK]: v })); }} />
-                  </label>
-                )}
                 <p className="lp-hint">{t.carRateNote(`#${idx + 1}`, `${fmtRate(rate)}% ${basis === 'flat' ? t.flat : 'EIR'}`)}</p>
               </>)}
             </>)}

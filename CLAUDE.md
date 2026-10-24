@@ -1638,8 +1638,8 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Membebankan above; they name the columns. Bank Negara sets no DSR cap; most banks sit around
   60-70% (checked 2026-10-24) and the note says each bank decides. A tight row says what would
   make it fit: a longer tenure first (`fitYears`), else the deposit. "Bajet kereta"
-  (`priceForMonthly`) rides on the working line and hides when insurance is in the loan (it
-  would read too generous). Verdict colours are MUTED green / amber / red, on the column dots
+  (`priceForMonthly`) was removed with the insurance switch: it left insurance out and read
+  too generous. Verdict colours are MUTED green / amber / red, on the column dots
   only. The seller's own settings are ink when picked; the accent stays on the viewer's
   number. `npm run test:live`.
 - Contact, once switched on, is a loud accent "Contact me" banner UNDER THE COMMENT LINE at
@@ -1651,16 +1651,18 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
   Its chips sit at the top of the answer block (`.lp-ans`), and the title drops the
   variant name (the picked chip names it).
-- **Insurance in the loan (owner, 2026-10-18)**: Adjust > Insurance (Off | In the loan),
-  remembered per device (`xd_live_ins`), starts Off. On: an "Insurance (est.)" row under
-  Price and NCD pills under the working (0/25/30/38⅓/45/55, the viewer's, never typed).
+- **Insurance is ALWAYS in the loan (owner, 2026-10-24; was an Off | In the loan switch in
+  Adjust, `xd_live_ins`, removed).** Without the row the working was shorter and the photo beside
+  it shrank. An "Insurance (est.)" row sits under Price and NCD pills under the working
+  (0/25/30/38⅓/45/55, the viewer's, never typed). With it always on, Budget's "Car budget" line
+  is gone (it read more generous than the cars, insurance not being in it).
   Loan = price + insurance - rebate - deposit; deposit % stays on the net price. The
   figure is ONE formula, `src/utils/motorInsurance.js` (the former PIAM tariff: first
   RM1,000 by cc + RM26/RM1,000 Peninsular, RM20.30 Sabah/Sarawak/Labuan, - NCD, + 8% SST
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
-  ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate and no
-  row; the seller types the figure in Adjust > "Insurance on this car", which wins for
-  that car and hides the pills. **The Insurance line is typed in place like Rebate, and a typed
+  ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
+  shows "-" and the seller taps it to type the figure, which wins for that car and hides
+  the pills (Adjust no longer has its own insurance box: one place to set it). **The Insurance line is typed in place like Rebate, and a typed
   figure is REMEMBERED on the device until changed** (owner, 2026-10-24, a Proton advisor quotes
   his insurer's number per model): `xd_live_insfig`, keyed by listing, `<listing>:<variant>` on a
   model card (`insKey`), no month end. Never saved to the listing or the server. Budget adds

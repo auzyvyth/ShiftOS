@@ -107,12 +107,7 @@ const en = {
   bioHint: 'Under the comment line. Viewers reach your page through the link in your TikTok bio.',
   insurance: 'Insurance',
   insuranceEst: 'Insurance (est.)',
-  insuranceLabel: 'Insurance',
-  insOff: 'Off',
-  insInLoan: 'In the loan',
-  insuranceHint: 'An estimate by engine cc. Tap the insurance line to type your own: it stays until you change it.',
   insuranceEdit: 'Set the insurance for this car',
-  insuranceThisCar: 'Insurance on this car (RM)',
   ncd: 'NCD',
   offer: 'Offer',
   offerLabel: 'Your offer (free extras)',
@@ -144,7 +139,6 @@ const en = {
   commitWord: 'commitments',
   commitShort: 'Commitments',
   comfortMonthly: 'Comfortable instalment',
-  carBudget: 'Car budget',
   dsrSt: { fit: 'Comfortable', near: 'Tight', over: 'Heavy' },
   dsrLine: (pct) => `Commitments ${pct}% of pay`,
   fitIfYears: (y, pay) => (pay ? `Comfortable at ${y} years` : `Fits at ${y} years`),
@@ -274,12 +268,7 @@ const ms = {
   bioHint: 'Di bawah ayat komen. Penonton sampai ke page anda melalui link di bio TikTok anda.',
   insurance: 'Insurans',
   insuranceEst: 'Insurans (anggaran)',
-  insuranceLabel: 'Insurans',
-  insOff: 'Tidak',
-  insInLoan: 'Dalam pinjaman',
-  insuranceHint: 'Anggaran ikut cc enjin. Tap baris insurans untuk taip angka sendiri: ia kekal sampai anda tukar.',
   insuranceEdit: 'Tetapkan insurans kereta ini',
-  insuranceThisCar: 'Insurans kereta ini (RM)',
   ncd: 'NCD',
   offer: 'Tawaran',
   offerLabel: 'Tawaran anda (hadiah percuma)',
@@ -310,7 +299,6 @@ const ms = {
   commitWord: 'komitmen',
   commitShort: 'Komitmen',
   comfortMonthly: 'Ansuran selesa',
-  carBudget: 'Bajet kereta',
   dsrSt: { fit: 'Selesa', near: 'Ketat', over: 'Membebankan' },
   dsrLine: (pct) => `Komitmen ${pct}% gaji`,
   fitIfYears: (y, pay) => (pay ? `Selesa jika pilih ${y} tahun` : `Sesuai jika pilih ${y} tahun`),
@@ -441,19 +429,6 @@ export function saveLiveInsFigures(figures) {
   try {
     if (Object.keys(figures).length) window.localStorage.setItem(LIVE_INS_FIG_KEY, JSON.stringify(figures));
     else window.localStorage.removeItem(LIVE_INS_FIG_KEY);
-  } catch { /* storage blocked */ }
-}
-
-export const LIVE_INS_KEY = 'xd_live_ins';
-
-export function initialLiveIns() {
-  try { return window.localStorage.getItem(LIVE_INS_KEY) === '1'; } catch { return false; }
-}
-
-export function saveLiveIns(on) {
-  try {
-    if (on) window.localStorage.setItem(LIVE_INS_KEY, '1');
-    else window.localStorage.removeItem(LIVE_INS_KEY);
   } catch { /* storage blocked */ }
 }
 
