@@ -1582,8 +1582,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   (owner, 2026-10-18). Sellers film their monitor with a phone held upright. The
   stage is laid out at `DESK_W` x `STAGE_H` (750x667, about square) and magnified
   with CSS zoom to the screen height (`deskZoom`, `.lp-desk`). ONE grid, `.lp-grid`,
-  two arrangements by `grid-template-areas`: desktop = photo | answer, chips across,
-  working | rest; phone = answer, chips, photo | working, rest. The full-screen wide
+  two arrangements by `grid-template-areas`: phone = answer, chips, photo | working, rest.
+  **Desktop is CAMERA-SAFE (LIVE-CAM, owner 2026-10-24):** sellers either film the monitor
+  with an upright phone (the sides get cut) or put the screen under their camera in a split
+  (TikTok's comments cover the bottom half), so everything a viewer reads sits in the
+  TOP-CENTRE 64%: title, comment line, contact, monthly, tenure tiles, deposit chips. Photo |
+  working go below, then totals beside the salary guide, then notes. Never move a viewer's
+  number to the edges or the bottom half again. Desktop also has a Full screen button
+  (`toggleFull`, hides the browser's tabs and address bar). The full-screen wide
   sheet (2026-10-04) spilled out of the camera frame; the phone-width column (morning
   of 2026-10-18) was too small to read on camera. Do not go wider than DESK_W.
   Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
@@ -1593,27 +1599,34 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
   the cars that fit by #N; "Just above" only within 25%. Tapping one opens it with
   that deposit + tenure, so the numbers match. Never word a fit as approval.
-  **"All cars" view (BUDGET-GRID, 2026-10-24)**: a `Fits only | All cars` switch over the
-  results, remembered per device (`xd_live_budview`). All cars = every car once as a card
-  with its photo and a verdict (`budgetAll`, liveMaths.js). `budgetMatches` and `budgetAll`
-  share ONE pricing loop (`priceBudgetRows`): never give the grid its own maths.
-  **DSR in Budget (owner, 2026-10-24; reverses "no commitments box", "ink tags" and "no
-  photo", layout from a rival tool the owner sent)**: take-home pay mode has a "Komitmen" box.
+  **One screen, no scrolling (BUDGET-2, owner 2026-10-24; replaces the "All cars" grid, its
+  switch and `xd_live_budview`, the counts strip and the per-car "Komitmen x% gaji" line).**
+  Every car once (`budgetAll`) in two columns on the desktop stage: left = fits (dearest
+  first), right = tight / just above, then over budget as a short row of #N chips. One column
+  on a phone. A column longer than a page (desktop 4 fit / 3 tight, phone 3 / 2) pages with
+  a "1/3 >" button, ONE tap, never a scroll. Rows: the photo fills the row's height (owner:
+  no empty space), the name gets the full width, the price (or what makes it fit) shares the
+  last line with the monthly. A model card's row keeps its variant chips (`options`, lent by
+  `budgetMatches`). `budgetMatches` and `budgetAll` share ONE pricing loop (`priceBudgetRows`):
+  never give a view its own maths. The auto-fit (`fit.current`) now runs on Budget too, and
+  grows back after shrinking (a narrower zoom unwraps names).
+  **The seller's settings are a POP-UP, on every screen size** (owner, 2026-10-24: the panel
+  that stayed open on desktop pushed the cars down). One summary line ("No deposit · 7 years
+  at 4.8% / 6.5% EIR") with a Change button opens it (`budgetSetOpen`, `.lp-bsetpop`): deposit,
+  years, and the interest rates, the SAME saved setting as Adjust > Financing (`rateRow`, one
+  store, `xd_live_rate` / `xd_live_rate_local`), never a second copy. On desktop the
+  Monthly | Take-home switch sits in the title's place, beside the comment line.
+  **DSR in Budget (owner, 2026-10-24)**: take-home pay mode has a "Komitmen" box.
   Commitments come off the SAME 35% (`maxMonthlyFromPay(pay, commitments)`), so there is still
   ONE comfort rule: with no commitments it equals the Cars screen's salary guide. Bands: Selesa
-  <= 35% DSR, Ketat <= 60% (`DSR_TIGHT`; also the list's "just above" line, via `nearCap`),
-  Membebankan above. Bank Negara sets no DSR cap; most banks sit around 60-70% (checked
-  2026-10-24) and the note says each bank decides. Cards show the DSR (bar + "Komitmen x%
-  gaji") and what would make the car comfortable: a longer tenure first (`fitYears`), else the
-  deposit. A counts strip sits above the results; "Bajet kereta" (`priceForMonthly`) rides on
-  the working line and hides when insurance is in the loan (it would read too generous).
-  Verdict colours are MUTED green / amber / red on the tag, the bar and the counts only. The
-  seller's own settings (deposit, years, view, Docs kind) are ink when picked; the accent stays
-  on the viewer's number. On a phone, deposit + years fold into one tappable line once a budget
-  is typed, so the cars sit above TikTok's comments. That panel also holds the interest
-  rates (owner, 2026-10-24): the SAME saved setting as Adjust > Financing (`rateRow`, one
-  store, `xd_live_rate` / `xd_live_rate_local`), never a second copy; the summary line names
-  every rate in play ("4.8% / 6.5% EIR"). `npm run test:live`.
+  <= 35% DSR, Ketat <= 60% (`DSR_TIGHT`; also the "just above" line, via `nearCap`),
+  Membebankan above; they name the columns. Bank Negara sets no DSR cap; most banks sit around
+  60-70% (checked 2026-10-24) and the note says each bank decides. A tight row says what would
+  make it fit: a longer tenure first (`fitYears`), else the deposit. "Bajet kereta"
+  (`priceForMonthly`) rides on the working line and hides when insurance is in the loan (it
+  would read too generous). Verdict colours are MUTED green / amber / red, on the column dots
+  only. The seller's own settings are ink when picked; the accent stays on the viewer's
+  number. `npm run test:live`.
 - Contact, once switched on, is a loud accent "Contact me" banner UNDER THE COMMENT LINE at
   the top (2026-10-24: at the foot it fell below the fold on a model card), OFF by default
   (TikTok rule above).

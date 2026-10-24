@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, Info, Lock, Maximize2, Pencil, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Expand, Info, Lock, Maximize2, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -9,12 +9,12 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
-  dsrOf, tightCapFromPay, priceForMonthly, shortVariantNames,
+  tightCapFromPay, priceForMonthly, shortVariantNames, dsrOf, DSR_TIGHT,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
   initialLiveOffer, saveLiveOffer, OFFER_MAX, initialLiveIns, saveLiveIns, initialLiveInsFigures, saveLiveInsFigures, initialLiveBio, saveLiveBio, initialLiveRebates, saveLiveRebates,
-  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY, initialLiveBudgetView, saveLiveBudgetView,
+  initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
 import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
@@ -176,6 +176,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const requestExit = () => {
     if (photoFull) setPhotoFull(false);
     else if (adjustOpen) setAdjustOpen(false);
+    else if (budgetSetOpen) setBudgetSetOpen(false);
     else setConfirmEnd(true);
   };
   // Adjust closes on a tap anywhere outside it, or Escape (owner, 2026-10-21).
@@ -278,8 +279,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // What the viewer already pays a month (take-home mode only): it comes off
   // the same 35%, and every car gets a DSR verdict (owner, 2026-10-24).
   const [budgetCommit, setBudgetCommit] = useState('');
-  // Phone: once a budget is typed, deposit + years fold into one line so the
-  // cars move up out of TikTok's comment area. Tap the line to change them.
+  // Budget settings (deposit, years, rates) are a pop-up behind the Change
+  // button on the summary line, on every screen size (owner, 2026-10-24: the
+  // panel that stayed open on desktop pushed the cars below the fold).
   const [budgetSetOpen, setBudgetSetOpen] = useState(false);
   // Budget deposit: a preset (RM, 0 = none) or 'c', the typed first chip.
   const [budgetDep, setBudgetDep] = useState(0);
@@ -289,10 +291,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Variant picked on a model card's Budget row, by #N. Only a variant that
   // fits can be picked; one that stops fitting falls back to the row's own.
   const [budgetPick, setBudgetPick] = useState({});
-  // Results as the list of what fits, or every car as a tile ("All cars"),
-  // remembered per device (liveCopy initialLiveBudgetView).
-  const [budgetView, setBudgetView] = useState(initialLiveBudgetView);
-  const chooseBudgetView = (v) => { setBudgetView(v); saveLiveBudgetView(v); };
+  // Every car is on one screen, never a scroll (owner, 2026-10-24): a column
+  // that holds more cars than fit shows them a page at a time, one tap per page.
+  // Pages belong to one budget: `key` is the inputs they were turned under, and
+  // a new number or setting starts every column on its first page again.
+  const [budgetPage, setBudgetPage] = useState({ key: '', fit: 0, near: 0 });
   const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
@@ -305,6 +308,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useModalHistory(!embedded && confirmEnd, () => setConfirmEnd(false));
   // Back closes the Settings pop-up, never the live.
   useModalHistory(!embedded && adjustOpen, () => setAdjustOpen(false));
+  useModalHistory(!embedded && budgetSetOpen, () => setBudgetSetOpen(false));
   // Presenter language, separate from the app's (liveCopy.js).
   const { i18n } = useTranslation();
   // `initialLang` lets a host page (the /for-salesmen demo) start it in its own language.
@@ -331,6 +335,20 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Desktop: magnify the phone-sized stage to fill the screen height (see the
   // note above the styles). null = phone/tablet, the stage sizes itself.
   const [deskZoom, setDeskZoom] = useState(null);
+  // Full screen (desktop): hides the browser's tabs and address bar so the
+  // stage the camera films gets that height too. The zoom follows on resize.
+  const canFull = !embedded && typeof document !== 'undefined' && !!document.fullscreenEnabled;
+  const [isFull, setIsFull] = useState(false);
+  useEffect(() => {
+    if (!canFull) return undefined;
+    const on = () => setIsFull(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', on);
+    return () => document.removeEventListener('fullscreenchange', on);
+  }, [canFull]);
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  };
   useEffect(() => {
     if (embedded || typeof window === 'undefined' || !window.matchMedia) return undefined;
     const mq = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
@@ -344,15 +362,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Fit the Cars screen to the stage: a seller cannot scroll mid-pitch, and a
   // phone filming a monitor cannot see below the fold. Shrinks to 80% at most
   // (any smaller and the camera cannot read it), then lets the page scroll.
-  // Budget is a list, so it scrolls like one. Style is set directly so the
-  // measurement never costs a re-render.
+  // Budget fits the same way: its cars page, they never scroll (2026-10-24).
+  // Style is set directly so the measurement never costs a re-render.
   const fit = useRef(() => {});
   fit.current = () => {
     const el = fitRef.current;
     const body = el?.parentElement;
     if (!el || !body) return;
     el.style.zoom = '1';
-    if (mode !== 'cars') return;
+    if (mode === 'docs') return;
     const pad = parseFloat(getComputedStyle(body).paddingTop) * 2 || 0;
     const avail = body.clientHeight - pad;
     const need = el.offsetHeight;
@@ -363,6 +381,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       let z = Math.max(0.8, avail / need);
       el.style.zoom = String(z);
       while (z > 0.8 && body.scrollHeight > body.clientHeight) {
+        z = Math.max(0.8, z - 0.01);
+        el.style.zoom = String(z);
+      }
+      // Wider columns also unwrap long names, so the first guess can land
+      // smaller than needed: grow back while nothing spills.
+      while (z < 1 && body.scrollHeight <= body.clientHeight) {
+        z = Math.min(1, z + 0.01);
+        el.style.zoom = String(z);
+      }
+      if (body.scrollHeight > body.clientHeight && z > 0.8) {
         z = Math.max(0.8, z - 0.01);
         el.style.zoom = String(z);
       }
@@ -487,14 +515,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         return;
       }
       if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
-      if (e.key === 'Escape') { if (adjustOpen) setAdjustOpen(false); else setConfirmEnd(true); }
+      if (e.key === 'Escape') { if (adjustOpen) setAdjustOpen(false); else if (budgetSetOpen) setBudgetSetOpen(false); else setConfirmEnd(true); }
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen]);
+  }, [go, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -640,14 +668,37 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     // Pay mode: "just above" / tight ends at a 60% DSR, not 25% over budget.
     nearCap: payMode ? tightCapFromPay(amount, commit) : undefined,
   };
+  // Every car once with a verdict (liveMaths budgetAll), split into the three
+  // groups the screen shows side by side: fits (dearest first), tight / just
+  // above, and over (a short list). budgetMatches only lends a model card's
+  // variants (`options`), so its row can still switch variant.
   const matches = budgetMatches(budgetCars, budgetOpts);
-  // Every car once with a verdict (liveMaths budgetAll): the "All cars" grid,
-  // and the counts in the strip above the results whichever view is on.
+  const optionsByN = new Map([...matches.fits, ...matches.above].filter((m) => m.options).map((m) => [m.n, m.options]));
   const allRows = budgetOn ? budgetAll(budgetCars, budgetOpts) : [];
-  const tiles = budgetView === 'all' ? allRows : [];
-  const counts = { fit: 0, near: 0, over: 0 };
-  allRows.forEach((m) => { counts[m.status] += 1; });
+  const groups = { fit: [], near: [], over: [] };
+  allRows.forEach((m) => { groups[m.status].push(optionsByN.has(m.n) ? { ...m, options: optionsByN.get(m.n) } : m); });
+  // Rows per page: what fits the stage with no scroll (desktop stage vs phone).
+  const pageSize = deskZoom ? { fit: 4, near: 3 } : { fit: 3, near: 2 };
+  const pageKey = [budgetAmount, budgetCommit, budgetKind, bDown, budgetYears].join('|');
+  const curPage = (st) => (budgetPage.key === pageKey ? budgetPage[st] : 0);
+  const pageOf = (st) => {
+    const pages = Math.max(1, Math.ceil(groups[st].length / pageSize[st]));
+    const p = Math.min(curPage(st), pages - 1);
+    return { p, pages, rows: groups[st].slice(p * pageSize[st], (p + 1) * pageSize[st]) };
+  };
+  const nextPage = (st, pages) => setBudgetPage({
+    key: pageKey, fit: curPage('fit'), near: curPage('near'), [st]: (Math.min(curPage(st), pages - 1) + 1) % pages,
+  });
+  const OVER_SHOWN = 6;
+  // Take-home pay mode: each row's commitments as a share of pay, coloured by
+  // its own band (it follows the variant a model card row is switched to).
   const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
+  const budgetKindSwitch = (
+    <div className="lp-chips lp-chips2 lp-ink lp-bkind" role="group" aria-label={t.budgetIs}>
+      <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
+      <button type="button" className="lp-chip" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
+    </div>
+  );
   // The dearest price the budget buys at the line's rate and deposit. Left out
   // with insurance in the loan: it would read more generous than the cars do.
   // Worked on the "other cars" rate when this live has any (the higher one, so
@@ -690,7 +741,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return `${fmtRate(Math.max(0, Number(r.eir) || 0))}% ${r.basis === 'flat' ? t.flat : 'EIR'}`;
   }).join(' / ');
   const stLabel = (st) => (payMode ? t.dsrSt[st] : { fit: t.stFit, near: t.stNear, over: t.stOver }[st]);
-  const showBudgetSet = !budgetOn || budgetSetOpen || !!deskZoom;
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
@@ -702,7 +752,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setDepEdit(false);
     setMode('cars');
   };
-  const anyHighValue = [...matches.fits, ...matches.above, ...tiles].some((m) => m.price > HIGH_VALUE_THRESHOLD);
+  const anyHighValue = allRows.some((m) => m.status !== 'over' && m.price > HIGH_VALUE_THRESHOLD);
   // Adjust > Rebates: how many cars have one, and the day the saved list clears.
   const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
   const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
@@ -797,6 +847,27 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-big .lp-rm { font-size: .32em; opacity: 1; margin-right: .3em; }
         .lp-big small { margin-left: .35em; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #6b7280; }
         .lp-desk .lp-big { font-size: 76px; }
+        /* Camera-safe desktop (LIVE-CAM, owner 2026-10-24). Sellers either film
+           the monitor with a phone held upright (the sides get cut) or put the
+           screen under their camera in a split (TikTok's comments cover the
+           bottom half). Only the top-centre is safe in both, so everything a
+           viewer reads sits there: title, comment line, monthly, tenures,
+           deposit. Photo and working go to the bottom, where losing them costs
+           nothing. */
+        .lp-desk .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
+        .lp-desk .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
+        .lp-desk .lp-head > .lp-cta { flex: none; max-width: 64%; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 10px; }
+        .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
+        .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
+        .lp-desk .lp-ans > .lp-vars { justify-content: center; }
+        .lp-desk .lp-deprow { justify-self: center; width: 64%; }
+        .lp-desk .lp-photo { min-height: 150px; }
+        /* Under photo | working: totals beside the salary guide, notes across. */
+        .lp-desk .lp-rest { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 18px; align-items: center; }
+        .lp-desk .lp-rest > * { grid-column: 1 / -1; }
+        .lp-desk .lp-rest > .lp-totals { grid-column: 1; }
+        .lp-desk .lp-rest > .lp-salary { grid-column: 2; margin: 0; }
         .lp-desk .lp-ans-lbl { font-size: 15px; }
         .lp-tens { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
         .lp-ten { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 10px; border: 1.5px solid #F4F3F1; background: #F4F3F1; color: #111827; font: inherit; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
@@ -876,6 +947,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
         .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
+        .lp-desk .lp-head > .lp-contact { flex: none; width: 64%; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
@@ -972,9 +1045,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         /* Budget: the viewer's number is the big one, then the cars that fit. */
         .lp-bud { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
-        .lp-bgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-        .lp-desk .lp-bgrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 16px; }
-        .lp-bcol { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
         .lp-money { display: flex; align-items: center; gap: 8px; height: clamp(56px, 15cqw, 76px); padding: 0 14px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; }
         .lp-money:focus-within { border-color: var(--lp-a); }
         .lp-money span { font-size: clamp(18px, 5.6cqw, 24px); font-weight: 700; color: var(--lp-a); }
@@ -990,17 +1060,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-money-sm .lp-money-in > span { font-size: clamp(13px, 3.8cqw, 16px); color: #4b5563; }
         .lp .lp-money.lp-money-sm input { height: auto; font-size: clamp(20px, 6.5cqw, 32px); color: #0f1115; }
         .lp-desk .lp-money.lp-money-sm input { font-size: 32px; }
-        /* Phone: deposit + years folded into one tappable line. */
-        .lp-bset { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 8px 12px; border: none; border-radius: 10px; background: #F4F3F1; font: inherit; font-size: clamp(12px, 3.4cqw, 14px); color: #374151; text-align: left; cursor: pointer; font-variant-numeric: tabular-nums; }
-        .lp-bset b { flex-shrink: 0; font-weight: 800; color: #0f1115; text-decoration: underline; text-underline-offset: 3px; }
-        /* Verdict colours: muted, and only on the tag, the bar and the counts. */
+        /* Verdict colours: muted, and only on the column dots. */
         .lp-s-fit { --st: #15803d; --st-bg: rgba(21,128,61,.12); }
         .lp-s-near { --st: #b45309; --st-bg: rgba(180,83,9,.13); }
         .lp-s-over { --st: #b91c1c; --st-bg: rgba(185,28,28,.10); }
-        .lp-bstats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
-        .lp-bstat { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 6px 10px; border-radius: 10px; background: var(--st-bg, #F4F3F1); }
-        .lp-bstat span { font-size: clamp(10px, 2.9cqw, 13px); font-weight: 700; color: var(--st, #4b5563); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .lp-bstat b { font-size: clamp(18px, 5.6cqw, 26px); font-weight: 800; line-height: 1.05; color: var(--st, #0f1115); font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-work .lp-cb { white-space: nowrap; }
         .lp-work .lp-cb b { color: var(--lp-a2); font-weight: 800; }
         .lp-desk .lp-money input { font-size: 52px; }
@@ -1010,47 +1073,72 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-hl { padding: 2px 8px; border-radius: 6px; background: rgba(var(--lp-rgb),.12); color: var(--lp-a2); font-weight: 800; white-space: nowrap; }
         .lp-res { border-top: 1px solid #EFEEEC; padding-top: 2px; }
         .lp-res h3 { font-size: clamp(11px, 2.8cqw, 13px); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #374151; margin: 8px 0 2px; }
-        .lp-rowwrap { border-top: 1px solid #EFEEEC; }
-        .lp-res h3 + .lp-rowwrap { border-top: none; }
         .lp-vchips { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; }
         .lp-vchips button { min-height: 30px; padding: 3px 10px; border-radius: 8px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; cursor: pointer; }
         .lp-vchips button[aria-pressed="true"] { background: var(--lp-a); border-color: var(--lp-a); color: #fff; }
         .lp-vchips button:disabled { border: 1px dashed rgba(0,0,0,.18); background: transparent; color: #9ca3af; text-decoration: line-through; font-weight: 600; cursor: default; }
-        .lp-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 0; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-row img, .lp-row .lp-noimg { width: clamp(52px, 15cqw, 72px); aspect-ratio: 4 / 3; object-fit: cover; border-radius: 8px; background: #EDEAE3; flex-shrink: 0; }
-        .lp-row .lp-n { flex-shrink: 0; min-width: 34px; padding: 5px 5px 3px; border-radius: 7px; background: #F1F0EE; color: #374151; font-family: 'Bebas Neue', sans-serif; font-size: clamp(17px, 5cqw, 21px); line-height: 1; text-align: center; }
-        .lp-row .lp-rn { flex: 1; min-width: 0; }
-        .lp-row .lp-rn b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(13px, 3.8cqw, 16px); font-weight: 700; line-height: 1.25; color: #111827; }
-        .lp-row .lp-rn span { display: block; font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
-        .lp-row .lp-m { text-align: right; flex-shrink: 0; font-size: clamp(16px, 4.8cqw, 20px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; }
-        .lp-row .lp-m small { display: block; font-size: 11px; font-weight: 600; color: #6b7280; }
-        .lp-rowwrap.lp-over { opacity: .62; }
-        .lp-row .lp-rn .lp-fitdep { color: #0f1115; font-weight: 700; }
-        .lp-rowwrap.lp-over:has(.lp-fitdep) { opacity: .85; }
         .lp-empty { font-size: 14px; color: #6b7280; line-height: 1.5; margin: 10px 0; }
-        /* Results header: the count, then the Fits only | All cars switch. */
-        .lp-reshead { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding-top: 8px; }
-        .lp-reshead h3 { margin: 0; }
-        .lp-reshead + .lp-rowwrap { border-top: none; }
-        .lp-viewsw { flex: 1 1 100%; }
-        .lp-desk .lp-viewsw { flex: 0 1 300px; margin-left: auto; }
-        /* All cars: every car as a tile, 2 across on a phone, 4 on the desktop stage. */
-        .lp-tgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding-top: 10px; }
-        .lp-desk .lp-tgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-        .lp-tcard { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 0 0 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #fff; overflow: hidden; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-        .lp-tcard > :not(.lp-tphoto) { margin-left: 10px; margin-right: 10px; }
-        .lp-tphoto { position: relative; display: block; aspect-ratio: 2 / 1; margin-bottom: 4px; background: #F1F0EE; }
-        .lp-tphoto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-        .lp-tphoto .lp-n { position: absolute; top: 6px; left: 6px; min-width: 32px; padding: 4px 5px 2px; border-radius: 7px; background: rgba(255,255,255,.94); color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 20px); line-height: 1; text-align: center; }
-        .lp-tst { position: absolute; top: 6px; right: 6px; max-width: calc(100% - 50px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 7px; border-radius: 6px; background: #fff; color: var(--st); box-shadow: inset 0 0 0 1.5px var(--st); font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
-        .lp-dsrbar { display: block; height: 5px; margin-top: 3px; border-radius: 3px; background: #EFEEEC; overflow: hidden; }
-        .lp-dsrbar i { display: block; height: 100%; border-radius: inherit; background: var(--st); }
-        .lp-tfix { margin-top: auto; padding-top: 4px; font-size: clamp(11px, 3cqw, 13px); font-weight: 700; line-height: 1.3; color: #0f1115; }
-        .lp-row .lp-rn .lp-dsrtxt { color: var(--st); font-weight: 700; }
-        .lp-tname { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 0; font-size: clamp(13px, 3.6cqw, 16px); font-weight: 700; line-height: 1.2; color: #111827; }
-        .lp-tm { font-size: clamp(19px, 5.6cqw, 24px); font-weight: 800; line-height: 1; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .lp-tm small { font-size: 12px; font-weight: 600; color: #6b7280; }
-        .lp-tp { font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
+
+        /* Budget input: the kind switch, then the viewer's number (and
+           commitments); one row on the desktop stage. */
+        .lp-bin { display: flex; flex-direction: column; gap: 8px; }
+        .lp-desk .lp-bud .lp-head > .lp-bkind { flex: 0 1 340px; }
+        .lp-desk .lp-bud .lp-head > .lp-cta { margin-left: auto; }
+        .lp-desk .lp-bin > .lp-moneys { flex: 1; }
+        /* The seller's settings as one line; Change opens the pop-up. */
+        .lp-bsetline { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 5px 5px 5px 12px; border-radius: 10px; background: #F4F3F1; font-size: clamp(12px, 3.4cqw, 14px); color: #374151; font-variant-numeric: tabular-nums; }
+        .lp-bsetline > span { min-width: 0; }
+        .lp-bchange { flex-shrink: 0; min-height: 34px; padding: 0 16px; border: 1.5px solid #0f1115; border-radius: 999px; background: #fff; color: #0f1115; font: inherit; font-weight: 800; cursor: pointer; }
+        .lp-modal .lp-bsetpop { max-width: 460px; }
+        .lp-bsetpop > .lp-wide { display: flex; flex-direction: column; gap: 6px; }
+        .lp-bsettitle { flex: 1; margin: 0; font-size: 18px; font-weight: 800; color: #0f1115; }
+        .lp-bsetpop > .lp-bdone { display: flex; align-items: center; justify-content: center; }
+        .lp-bdone { min-height: 46px; border: none; border-radius: 12px; background: #0f1115; color: #fff; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; }
+        /* Results: fits | tight + over, side by side on the desktop stage, one
+           column on a phone. A long column pages (lp-bmore), never scrolls. */
+        .lp-bcols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; padding-top: 8px; }
+        .lp-desk .lp-bcols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 14px; }
+        .lp-bcolr { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .lp-bh { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
+        .lp-bh h3, .lp-bover h3 { display: flex; align-items: center; gap: 6px; margin: 0; }
+        .lp-res h3 i { width: 8px; height: 8px; border-radius: 50%; background: var(--st); flex-shrink: 0; }
+        .lp-bmore { display: inline-flex; align-items: center; gap: 2px; min-height: 30px; padding: 0 8px 0 12px; border: 1.5px solid #0f1115; border-radius: 999px; background: #fff; color: #0f1115; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; font-variant-numeric: tabular-nums; }
+        /* One car: the photo fills the row's height, so no row is mostly blank. */
+        .lp-brow { border: 1.5px solid #E5E7EB; border-radius: 12px; overflow: hidden; background: #fff; }
+        .lp-brow.lp-over { background: #FBF8F1; }
+        .lp-brow-main { display: flex; align-items: stretch; gap: 10px; width: 100%; min-height: clamp(62px, 17cqw, 70px); padding: 7px 10px 7px 7px; border: none; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+        .lp-desk .lp-brow-main { min-height: 64px; }
+        /* The photo sits inset in the card with its own rounded frame, never
+           flush against the card's edge. */
+        .lp-bimg { position: relative; flex: 0 0 clamp(92px, 27cqw, 112px); min-height: clamp(56px, 16cqw, 66px); border-radius: 9px; overflow: hidden; background: #EDEAE3; box-shadow: inset 0 0 0 1px rgba(0,0,0,.06); }
+        .lp-desk .lp-bimg { flex-basis: 104px; }
+        .lp-bimg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .lp-bimg .lp-n { position: absolute; top: 4px; left: 4px; min-width: 28px; padding: 3px 4px 1px; border-radius: 6px; background: rgba(255,255,255,.94); color: #111827; font-family: 'Bebas Neue', sans-serif; font-size: clamp(15px, 4.4cqw, 18px); line-height: 1; text-align: center; }
+        .lp-brow-main .lp-rn { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; padding: 1px 0; }
+        .lp-bdsr { font-size: 12px; font-weight: 800; color: var(--st); font-variant-numeric: tabular-nums; }
+        .lp-brow-main .lp-rn b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(13px, 3.6cqw, 15px); font-weight: 700; line-height: 1.2; color: #111827; }
+        .lp-bfoot { display: flex; align-items: baseline; justify-content: space-between; gap: 2px 8px; min-width: 0; flex-wrap: wrap; }
+        .lp-bfoot > span:first-child { min-width: 0; font-size: 12px; line-height: 1.3; color: #6b7280; font-variant-numeric: tabular-nums; }
+        .lp-bfoot .lp-m { margin-left: auto; }
+        .lp-bfoot > .lp-fitdep { color: #0f1115; font-weight: 700; }
+        .lp-bfoot .lp-m { flex-shrink: 0; font-size: clamp(16px, 4.6cqw, 19px); font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-bfoot .lp-m small { font-size: 11px; font-weight: 600; color: #6b7280; }
+        .lp-brow .lp-vchips { padding: 0 7px 8px; }
+        /* Over budget: a short list; nobody studies a car they cannot afford. */
+        .lp-bover { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+        .lp-bover-list { display: flex; flex-wrap: wrap; gap: 4px; }
+        .lp-bover-list button { min-height: 28px; padding: 2px 8px; border: 1px solid #E5E7EB; border-radius: 8px; background: #fff; font: inherit; font-size: clamp(12px, 3.3cqw, 13px); color: #6b7280; cursor: pointer; white-space: nowrap; }
+        .lp-bover-list button b { color: #374151; }
+        .lp-bover-list > span { align-self: center; font-size: 12px; color: #9ca3af; }
+        /* Desktop stage: a smaller title and tighter gaps, so the cars get the height. */
+        .lp-desk .lp-bud { gap: 8px; padding: 12px 14px; }
+        .lp-desk .lp-bud .lp-name { font-size: 26px; }
+        .lp-desk .lp-bud .lp-work { font-size: 15px; line-height: 1.4; }
+        .lp-desk .lp-bud .lp-money { height: 64px; }
+        .lp-desk .lp-bud .lp-money input { font-size: 44px; }
+        .lp-desk .lp-bud .lp-bkind .lp-chip { min-height: 30px; font-size: 14px; }
+        .lp-desk .lp-bcols { padding-top: 4px; }
+        .lp-desk .lp-bud .lp-note { margin: 0; }
 
         /* Top bar + nav: ink for what is picked, never the accent. */
         .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
@@ -1097,6 +1185,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <button className="lp-iconbtn" onClick={() => setShowContact((v) => !v)}
               aria-label={showContact ? t.hideContact : t.showContact} aria-pressed={showContact}>
               <Contact size={17} />
+            </button>
+          )}
+          {deskZoom && canFull && (
+            <button className="lp-iconbtn" onClick={toggleFull} aria-label={isFull ? t.exitFullScreen : t.fullScreen} aria-pressed={isFull}>
+              {isFull ? <Shrink size={17} /> : <Expand size={17} />}
             </button>
           )}
           {!report && mode !== 'docs' && (
@@ -1363,77 +1456,46 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         /* Budget: the viewer's number in, the cars that fit out. Take-home
            pay mode also takes their commitments and scores every car by DSR. */
         <div className="lp-card lp-bud">
+          {/* Desktop: the Monthly | Take-home switch sits where the title was,
+              beside the comment line, so the cars get that row's height. */}
           <div className="lp-head">
-            <h2 className="lp-name">{t.budgetTitle}</h2>
+            {deskZoom ? budgetKindSwitch : <h2 className="lp-name">{t.budgetTitle}</h2>}
             <p className="lp-cta">{t.budgetCta}</p>
           </div>
-          <div className="lp-bgrid">
-            <div className="lp-bcol">
-              <div className="lp-chips lp-chips2 lp-ink" role="group" aria-label={t.budgetIs}>
-                <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
-                <button type="button" className="lp-chip" aria-pressed={budgetKind === 'pay'} onClick={() => setBudgetKind('pay')}>{t.takeHome}</button>
-              </div>
-              <div className={budgetKind === 'pay' ? 'lp-moneys lp-moneys2' : 'lp-moneys'}>
-                <label className="lp-money">
-                  <span>RM</span>
-                  <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
-                    aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
-                    onChange={(e) => setBudgetAmount(digits(e.target.value, 6))} />
+          <div className="lp-bin">
+            {!deskZoom && budgetKindSwitch}
+            <div className={budgetKind === 'pay' ? 'lp-moneys lp-moneys2' : 'lp-moneys'}>
+              <label className="lp-money">
+                <span>RM</span>
+                <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
+                  aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
+                  onChange={(e) => setBudgetAmount(digits(e.target.value, 6))} />
+              </label>
+              {budgetKind === 'pay' && (
+                <label className="lp-money lp-money-sm">
+                  <small>{t.commitShort}</small>
+                  <span className="lp-money-in"><span>RM</span>
+                    <input type="text" inputMode="numeric" value={budgetCommit} placeholder="0" aria-label={t.commitments}
+                      onChange={(e) => setBudgetCommit(digits(e.target.value, 6))} />
+                  </span>
                 </label>
-                {budgetKind === 'pay' && (
-                  <label className="lp-money lp-money-sm">
-                    <small>{t.commitShort}</small>
-                    <span className="lp-money-in"><span>RM</span>
-                      <input type="text" inputMode="numeric" value={budgetCommit} placeholder="0" aria-label={t.commitments}
-                        onChange={(e) => setBudgetCommit(digits(e.target.value, 6))} />
-                    </span>
-                  </label>
-                )}
-              </div>
-              {budgetOn && (<>
-                {/* What they can pay a month, worked out in front of them: for
-                    take-home pay, 35% of it minus what they already pay. */}
-                <p className="lp-work">
-                  {payMode && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}%{commit > 0 && <> <em>−</em> RM {fmt(commit)} {t.commitWord}</>} <em>=</em> </>}
-                  <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
-                  {/* What that monthly buys, at this deposit, years and rate. */}
-                  {carBudget ? <> <span className="lp-cb"><em>·</em> {t.carBudget} <b>RM {fmt(carBudget)}</b></span></> : null}
-                </p>
-                {/* Phone: deposit and years as one line; tap it to change them. */}
-                {deskZoom ? (
-                  <p className="lp-salary">{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</p>
-                ) : (
-                  <button type="button" className="lp-bset" aria-expanded={budgetSetOpen} onClick={() => setBudgetSetOpen((v) => !v)}>
-                    <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
-                    <b>{t.changeSet}</b>
-                  </button>
-                )}
-              </>)}
+              )}
             </div>
-            {showBudgetSet && (
-              <div className="lp-bcol">
-                <span className="lp-lbl">{t.deposit}</span>
-                <div className="lp-chips lp-chips4 lp-ink" role="group" aria-label={t.deposit}>
-                  <DepositChip editing={budgetDepEdit} value={budgetCustom} pressed={budgetDep === 'c'}
-                    label={Number(budgetCustom) > 0 ? `RM ${fmt(budgetCustom)}` : t.other} aria={t.customDeposit}
-                    onOpen={() => setBudgetDepEdit(true)} onType={typeBudgetDeposit} onClose={closeBudgetDeposit} />
-                  {BUDGET_DOWNS.map((d) => (
-                    <button key={d} type="button" className="lp-chip" aria-pressed={budgetDep === d}
-                      onClick={() => { setBudgetDepEdit(false); setBudgetDep(d); }}>
-                      {d === 0 ? t.none : `RM ${d / 1000}k`}
-                    </button>
-                  ))}
-                </div>
-                <span className="lp-lbl">{t.yearsAria}</span>
-                <div className="lp-chips lp-chips3 lp-ink" role="group" aria-label={t.yearsAria}>
-                  {[...TENURES].reverse().map((y) => (
-                    <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
-                  ))}
-                </div>
-                {/* Interest rate: the same saved setting as Adjust > Financing. */}
-                {rateGroups.map((g) => rateRow(g, 'lp-brate'))}
-              </div>
-            )}
+          </div>
+          {budgetOn && (
+            /* What they can pay a month, worked out in front of them: for
+               take-home pay, 35% of it minus what they already pay. */
+            <p className="lp-work">
+              {payMode && <>RM {fmt(amount)} <em>×</em> {Math.round(SALARY_SHARE * 100)}%{commit > 0 && <> <em>−</em> RM {fmt(commit)} {t.commitWord}</>} <em>=</em> </>}
+              <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
+              {/* What that monthly buys, at this deposit, years and rate. */}
+              {carBudget ? <> <span className="lp-cb"><em>·</em> {t.carBudget} <b>RM {fmt(carBudget)}</b></span></> : null}
+            </p>
+          )}
+          {/* The seller's settings are one line; Change opens them in a pop-up. */}
+          <div className="lp-bsetline">
+            <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
+            <button type="button" className="lp-bchange" onClick={() => setBudgetSetOpen(true)}>{t.changeSet}</button>
           </div>
 
           <div className="lp-res">
@@ -1441,29 +1503,42 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <p className="lp-empty">{t.budgetEmpty}</p>
             ) : (<>
               {payMode && maxMonthly === 0 && <p className="lp-warn">{t.noRoom(Math.round(SALARY_SHARE * 100))}</p>}
-              {/* The answer in one strip: what the budget buys, and how many
-                  cars land in each verdict. */}
-              <div className="lp-bstats">
-                {['fit', 'near', 'over'].map((st) => (
-                  <div key={st} className={`lp-bstat lp-s-${st}`}><b>{counts[st]}</b><span>{stLabel(st)}</span></div>
-                ))}
+              {/* Every car on one screen: fits on the left, tight / just above
+                  and over on the right. A long column pages, it never scrolls. */}
+              <div className="lp-bcols">
+                {['fit', 'near'].map((st) => {
+                  const { p, pages, rows } = pageOf(st);
+                  return (
+                    <div key={st} className={`lp-bcolr lp-s-${st}`}>
+                      <div className="lp-bh">
+                        <h3><i aria-hidden="true" />{stLabel(st)} · {groups[st].length}</h3>
+                        {pages > 1 && (
+                          <button type="button" className="lp-bmore" aria-label={t.morePage} onClick={() => nextPage(st, pages)}>
+                            {p + 1}/{pages}<ChevronRight size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                      </div>
+                      {rows.map((m) => (
+                        <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over={st !== 'fit'} years={budgetYears} dsrFor={dsrFor}
+                          pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />
+                      ))}
+                      {st === 'near' && groups.over.length > 0 && (
+                        <div className="lp-s-over lp-bover">
+                          <h3><i aria-hidden="true" />{stLabel('over')} · {groups.over.length}</h3>
+                          <div className="lp-bover-list">
+                            {groups.over.slice(0, OVER_SHOWN).map((m) => (
+                              <button key={`${m.car.id}-${m.car._variantId || ''}`} type="button" onClick={() => openFromBudget(m)}>
+                                <b>#{m.n}</b> {[m.car.model, m.car.variant].filter(Boolean).join(' ')}
+                              </button>
+                            ))}
+                            {groups.over.length > OVER_SHOWN && <span>{t.moreN(groups.over.length - OVER_SHOWN)}</span>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <div className="lp-reshead">
-                {/* The counts strip above already says how many fit. */}
-                <div className="lp-chips lp-chips2 lp-viewsw lp-ink" role="group" aria-label={t.budgetView}>
-                  <button type="button" className="lp-chip" aria-pressed={budgetView === 'fits'} onClick={() => chooseBudgetView('fits')}>{t.viewFits}</button>
-                  <button type="button" className="lp-chip" aria-pressed={budgetView === 'all'} onClick={() => chooseBudgetView('all')}>{t.viewAll}</button>
-                </div>
-              </div>
-              {budgetView === 'all' ? (
-                <div className="lp-tgrid">
-                  {tiles.map((m) => <BudgetTile key={m.n} m={m} years={budgetYears} dsr={dsrFor(m.monthly)} label={stLabel(m.status)} pay={payMode} onOpen={openFromBudget} t={t} />)}
-                </div>
-              ) : (<>
-                {matches.fits.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} years={budgetYears} dsrFor={dsrFor} pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-                {matches.above.length > 0 && <h3>{payMode ? t.dsrSt.near : t.justAbove}</h3>}
-                {matches.above.map((m) => <BudgetRow key={`${m.car.id}-${m.car._variantId || ''}`} m={m} over years={budgetYears} dsrFor={dsrFor} pay={payMode} pick={budgetPick[m.n]} onPick={pickBudgetVariant} onOpen={openFromBudget} t={t} />)}
-              </>)}
               <p className="lp-note">
                 {t.budgetNote}
                 {anyHighValue ? t.budgetHigh : ''}
@@ -1511,6 +1586,48 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           {images.length > 1 && <p className="lp-full-count">{imgIdx + 1} / {images.length}</p>}
         </div>
       )}
+
+        {budgetSetOpen && mode === 'budget' && !report && (
+          // Budget settings: the same pop-up as Adjust (it covers the top bar, so
+          // the live's X cannot be hit), opened by Change on the summary line.
+          // A tap on the backdrop or Esc closes it.
+          <div className="lp-modal" onClick={(e) => { if (e.target === e.currentTarget) setBudgetSetOpen(false); }}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setBudgetSetOpen(false); } }}>
+          <div className="lp-card lp-adjust lp-bsetpop" role="dialog" aria-modal="true" aria-label={t.budgetSetTitle}>
+            <div className="lp-adjhead">
+              <h2 className="lp-bsettitle">{t.budgetSetTitle}</h2>
+              <button type="button" className="lp-adjclose" onClick={() => setBudgetSetOpen(false)} aria-label={t.done}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="lp-wide">
+              <span className="lp-lbl">{t.deposit}</span>
+              <div className="lp-chips lp-chips4 lp-ink" role="group" aria-label={t.deposit}>
+                <DepositChip editing={budgetDepEdit} value={budgetCustom} pressed={budgetDep === 'c'}
+                  label={Number(budgetCustom) > 0 ? `RM ${fmt(budgetCustom)}` : t.other} aria={t.customDeposit}
+                  onOpen={() => setBudgetDepEdit(true)} onType={typeBudgetDeposit} onClose={closeBudgetDeposit} />
+                {BUDGET_DOWNS.map((d) => (
+                  <button key={d} type="button" className="lp-chip" aria-pressed={budgetDep === d}
+                    onClick={() => { setBudgetDepEdit(false); setBudgetDep(d); }}>
+                    {d === 0 ? t.none : `RM ${d / 1000}k`}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="lp-wide">
+              <span className="lp-lbl">{t.yearsAria}</span>
+              <div className="lp-chips lp-chips3 lp-ink" role="group" aria-label={t.yearsAria}>
+                {[...TENURES].reverse().map((y) => (
+                  <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
+                ))}
+              </div>
+            </div>
+            {/* Interest rate: the same saved setting as Adjust > Financing. */}
+            {rateGroups.map((g) => rateRow(g, 'lp-brate'))}
+            <button type="button" className="lp-bdone lp-wide" onClick={() => setBudgetSetOpen(false)}>{t.done}</button>
+          </div>
+          </div>
+        )}
 
         {adjustOpen && mode !== 'docs' && !report && (
           // A pop-up over the stage (owner, 2026-10-22): blurred backdrop, its own
@@ -1665,13 +1782,40 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 // tappable (the row's price and monthly follow the pick, and so does the car
 // it opens); the rest are dimmed and struck through. Never blurred: on a
 // camera filming a screen, blur reads as a glitch.
+// One car in a Budget column: a photo that fills the row's height, #N, the
+// name (a model card names the variant it is priced at, and lists the others
+// that fit as chips), the price, and the monthly. A tight / just-above row
+// says what would make it fit instead of the price.
 function BudgetRow({ m, over, years, dsrFor, pay, pick, onPick, onOpen, t }) {
   const row = m.options?.find((o) => o.car._variantId === pick && o.fits) || m;
   const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
   const names = m.options ? shortVariantNames(m.options.map((o) => o.car.variant)) : [];
+  const fix = !over ? null
+    : row.fitYears ? t.fitIfYears(row.fitYears, pay)
+    : row.topUp > 0 ? (pay ? t.topUpComfort(`RM ${fmt(row.topUp)}`) : t.topUp(`RM ${fmt(row.topUp)}`))
+    : null;
   const dsr = dsrFor(row.monthly);
+  const band = dsr == null ? null : dsr <= SALARY_SHARE ? 'fit' : dsr <= DSR_TIGHT ? 'near' : 'over';
   return (
-    <div className={over ? 'lp-rowwrap lp-over' : 'lp-rowwrap'}>
+    <div className={over ? 'lp-brow lp-over' : 'lp-brow'}>
+      <button type="button" className="lp-brow-main" onClick={() => onOpen(row)}>
+        <span className="lp-bimg">
+          {img ? <img src={cdnImg(img, 320, 70)} alt="" decoding="async" onError={imgFallback(img)} /> : null}
+          <span className="lp-n">#{m.n}</span>
+        </span>
+        {/* The name gets the row's full width (it carries the variant); the
+            price, or what would make it fit, shares the last line with the monthly. */}
+        <span className="lp-rn">
+          <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
+          {band && <span className={`lp-bdsr lp-s-${band}`}>{t.dsrLine(Math.round(dsr * 100))}</span>}
+          <span className="lp-bfoot">
+            <span className={fix ? 'lp-fitdep' : undefined}>
+              {fix || `RM ${fmt(row.price)}`}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}
+            </span>
+            <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
+          </span>
+        </span>
+      </button>
       {m.options && (
         <div className="lp-vchips" role="group" aria-label={t.variant}>
           {m.options.map((o, i) => (
@@ -1681,53 +1825,7 @@ function BudgetRow({ m, over, years, dsrFor, pay, pick, onPick, onOpen, t }) {
           ))}
         </div>
       )}
-      <button type="button" className="lp-row" onClick={() => onOpen(row)}>
-        {img ? <img src={cdnImg(img, 240, 70)} alt="" decoding="async" onError={imgFallback(img)} /> : <span className="lp-noimg" />}
-        <span className="lp-n">#{m.n}</span>
-        <span className="lp-rn">
-          {/* With the variant buttons above, the title leaves the variant to them. */}
-          <b>{carLabel(m.options ? { ...row.car, variant: null } : row.car)}</b>
-          <span>RM {fmt(row.price)}{row.years !== years ? ` · ${t.yrsShort(row.years)}` : ''}</span>
-          {dsr != null && <span className={`lp-dsrtxt lp-s-${over ? 'near' : 'fit'}`}>{t.dsrLine(Math.round(dsr * 100))}</span>}
-          {over && (row.fitYears
-            ? <span className="lp-fitdep">{t.fitIfYears(row.fitYears, pay)}</span>
-            : row.topUp > 0 && <span className="lp-fitdep">{pay ? t.topUpComfort(`RM ${fmt(row.topUp)}`) : t.topUp(`RM ${fmt(row.topUp)}`)}</span>)}
-        </span>
-        <span className="lp-m">RM {fmt(row.monthly)}<small>{t.perMonth}</small></span>
-      </button>
     </div>
-  );
-}
-
-// One car in the "All cars" grid, laid out like the rival tool the owner sent
-// (2026-10-24): verdict tag + photo, name, year and price, the monthly, then
-// (take-home pay mode) the DSR as a bar and a line, and at the foot what
-// would make it comfortable. The verdict colours are muted and live only on
-// the tag and the bar (owner's call, 2026-10-24, over the ink-only tags).
-// The name sits under the photo at full width, so the photo costs it nothing.
-function BudgetTile({ m, years, dsr, label, pay, onOpen, t }) {
-  const img = Array.isArray(m.car.images) ? m.car.images.find(Boolean) : null;
-  const name = [m.car.brand, m.car.model, m.car.variant].filter(Boolean).join(' ');
-  const fix = m.status === 'fit' ? null
-    : m.fitYears ? t.fitIfYears(m.fitYears, pay)
-    : m.status === 'near' && m.topUp > 0 ? (pay ? t.topUpComfort(`RM ${fmt(m.topUp)}`) : t.topUp(`RM ${fmt(m.topUp)}`))
-    : m.status === 'over' && pay ? t.outOfComfort : null;
-  return (
-    <button type="button" className={`lp-tcard lp-s-${m.status}`} onClick={() => onOpen(m)}>
-      <span className="lp-tphoto">
-        {img ? <img src={cdnImg(img, 360, 70)} alt="" decoding="async" loading="lazy" onError={imgFallback(img)} /> : null}
-        <span className="lp-n">#{m.n}</span>
-        <span className="lp-tst">{label}</span>
-      </span>
-      <b className="lp-tname">{name}</b>
-      <span className="lp-tp">{[m.car.year, `RM ${fmt(m.price)}`].filter(Boolean).join(' · ')}{m.years !== years ? ` · ${t.yrsShort(m.years)}` : ''}</span>
-      <span className="lp-tm">RM {fmt(m.monthly)}<small>{t.perMonth}</small></span>
-      {dsr != null && (<>
-        <span className="lp-dsrbar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.round(dsr * 100))}%` }} /></span>
-        <span className="lp-tp">{t.dsrLine(Math.round(dsr * 100))}</span>
-      </>)}
-      {fix && <span className="lp-tfix">{fix}</span>}
-    </button>
   );
 }
 
