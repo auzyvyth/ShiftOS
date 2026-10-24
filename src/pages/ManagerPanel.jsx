@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Phone,
 } from "lucide-react";
+import { liveChannel } from "../lib/liveChannel";
 
 const ACCENT = "#f97316";
 
@@ -249,8 +250,7 @@ export default function ManagerPanel() {
           .then(({ data: d }) => setOwnerMessages(d || []));
       loadOwnerMsgs();
 
-      notifChRef.current = supabase
-        .channel("manager_notifs_" + p.id)
+      notifChRef.current = liveChannel(supabase, "manager_notifs_" + p.id)
         .on("postgres_changes", { event: "INSERT", schema: "public", table: "salesman_notifications", filter: `salesman_id=eq.${p.id}` }, loadOwnerMsgs)
         .subscribe();
     });

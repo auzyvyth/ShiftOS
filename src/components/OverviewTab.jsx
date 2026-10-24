@@ -8,6 +8,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
 import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
+import { liveChannel } from "../lib/liveChannel";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Stage names, labels and colours come from the ONE stage list the leads board
@@ -277,8 +278,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
   useEffect(() => {
     if (!dealerId) return;
     const bump = () => refreshRef.current();
-    subRef.current = supabase
-      .channel(`overview-${dealerId}`)
+    subRef.current = liveChannel(supabase, `overview-${dealerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads',          filter: `dealer_id=eq.${dealerId}` }, bump)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_activities', filter: `dealer_id=eq.${dealerId}` }, bump)
       .subscribe();

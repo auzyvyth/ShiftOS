@@ -26,7 +26,6 @@ import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
-import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import { buildListingFacts } from "../utils/listingCopy";
@@ -119,6 +118,7 @@ import {
  Calculator,
  Download,
 } from "lucide-react";
+import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
 const OutreachHub = React.lazy(loadOutreachHub);
@@ -1214,12 +1214,13 @@ export default function SalesmanPremium() {
  // `supabase.channel()` on that same topic, got the already-joined channel
  // back (supabase-js keeps one channel per topic), and `.on("postgres_changes")`
  // threw "cannot add postgres_changes callbacks ... after subscribe()" as an
- // unhandledrejection. `freshChannel` drops any stale holder of the topic, and
- // `cancelled` stops a dead mount from subscribing at all.
+ // unhandledrejection. liveChannel (IO-2, Broadcast instead of postgres_changes)
+ // never adds a callback to an already-joined channel, and `cancelled` stops a
+ // dead mount from subscribing at all.
  // Topic is salesman-PREMIUM-rt: it used to be "salesman-lite-rt-", the exact
  // string SalesmanLite.jsx uses, so the two pages fought over one topic.
  if (!cancelled) {
- const ch = freshChannel("salesman-premium-rt-" + uid)
+ const ch = liveChannel(supabase, "salesman-premium-rt-" + uid)
  .on(
  "postgres_changes",
  {

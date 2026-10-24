@@ -17,6 +17,8 @@
 // Missed DELETEs are not replayed (leads are soft-deleted, an UPDATE). Events
 // before the disconnect were delivered live, so `since` is the disconnect time.
 
+import { liveBindings } from './liveChannel.js';
+
 const HIDDEN_MS = 2 * 60 * 1000;
 const SKEW_MS = 5 * 1000;
 const REPLAY_LIMIT = 200;
@@ -84,6 +86,11 @@ function replayMissed(client, since) {
   const channels = client.realtime?.getChannels?.() || [];
   channels.forEach((ch) => {
     (ch.bindings?.postgres_changes || []).forEach((b) => { replayBinding(client, b, since); });
+  });
+  // IO-2: screens on liveChannel listen by Broadcast; their bindings live in
+  // its registry, in the same { filter, callback } shape replayBinding reads.
+  liveBindings(client).forEach((b) => {
+    replayBinding(client, { filter: { schema: 'public', table: b.table, filter: b.filter, event: b.event }, callback: b.callback }, since);
   });
 }
 

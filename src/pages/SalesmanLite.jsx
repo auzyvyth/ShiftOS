@@ -16,7 +16,6 @@ import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { routeForRole } from "../hooks/useRoleRedirect";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { normalizePhone } from "../lib/phone";
-import { freshChannel } from "../lib/realtime";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import { copyListingCaption } from "../utils/copyListingCaption";
@@ -118,6 +117,7 @@ import {
   Store,
   Download,
 } from "lucide-react";
+import { liveChannel } from "../lib/liveChannel";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import {
@@ -1900,14 +1900,13 @@ export default function SalesmanLite() {
             setEnquiries((p) => p.map((e) => e.id === row.id ? { ...e, status: "converted" } : e));
           };
 
-          // freshChannel drops any stale channel still holding this topic. Without
-          // that, a channel orphaned by an earlier mount (unmounted mid-bootstrap,
-          // so the cleanup ran before channelRef was ever set) is handed back by
-          // supabase.channel() already joined, and the first .on("postgres_changes")
-          // throws "cannot add postgres_changes callbacks ... after subscribe()".
+          // liveChannel (IO-2): Broadcast from the database instead of
+          // postgres_changes, which kept Realtime polling the DB nonstop. It never
+          // adds a callback to an already-joined channel, so an orphaned earlier
+          // mount can no longer make .on() throw (what freshChannel used to fix).
           if (channelRef.current) supabase.removeChannel(channelRef.current);
           if (!rtCancelledRef.current) {
-          const liteChannel = freshChannel("salesman-lite-rt-" + uid)
+          const liteChannel = liveChannel(supabase, "salesman-lite-rt-" + uid)
             .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${uid}` },
               (payload) => {
                 // Dedup the realtime echo: an optimistic insert (e.g.

@@ -8,6 +8,7 @@ import { supabase } from '../supabaseClient';
 import { DEFAULT_EIR, monthlyPayment } from '../utils/financing';
 import FinancingCalculator from '../components/FinancingCalculator';
 import { toast } from 'sonner';
+import { liveChannel } from "../lib/liveChannel";
 
 const ACCENT = '#a855f7';
 
@@ -581,7 +582,7 @@ export default function FIPanel() {
           .order('created_at', { ascending: false }).limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      notifChRef.current = supabase.channel('fi_notifs_' + p.id)
+      notifChRef.current = liveChannel(supabase, 'fi_notifs_' + p.id)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'salesman_notifications', filter: `salesman_id=eq.${p.id}` }, loadNotifs)
         .subscribe();
     });

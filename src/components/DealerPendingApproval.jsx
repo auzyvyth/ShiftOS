@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { getPlanConfig } from '../utils/planConfig';
+import { liveChannel } from "../lib/liveChannel";
 
 // Shown to a dealer whose paid signup is complete but awaiting payment
 // confirmation. Used both right after onboarding and as the dashboard gate.
@@ -14,8 +15,7 @@ export default function DealerPendingApproval({ planKey, dealershipName, email, 
 
   useEffect(() => {
     if (!profileId) return;
-    const ch = supabase
-      .channel('dealer-approval-' + profileId)
+    const ch = liveChannel(supabase, 'dealer-approval-' + profileId)
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${profileId}` },

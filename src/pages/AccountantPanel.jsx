@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { flatToEir, loanTotals } from "../utils/financing";
+import { liveChannel } from "../lib/liveChannel";
 
 const ACCENT = "#22c55e";
 
@@ -270,8 +271,7 @@ export default function AccountantPanel() {
           .limit(20)
           .then(({ data: d }) => setNotifications(d || []));
       loadNotifs();
-      notifChRef.current = supabase
-        .channel("acct_notifs_" + p.id)
+      notifChRef.current = liveChannel(supabase, "acct_notifs_" + p.id)
         .on(
           "postgres_changes",
           {
@@ -403,8 +403,7 @@ export default function AccountantPanel() {
     if (!profile?.dealer_id) return;
     const dealerId = profile.dealer_id;
     const bump = () => setOverviewKey((k) => k + 1);
-    const ch = supabase
-      .channel("acct_overview_" + dealerId)
+    const ch = liveChannel(supabase, "acct_overview_" + dealerId)
       .on(
         "postgres_changes",
         {

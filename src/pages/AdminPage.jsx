@@ -33,6 +33,7 @@ import ListingReviewModal, { listingFlags, relTime } from "../components/platfor
 import { purgeKycFiles } from "../utils/kycPurge";
 import { useOnlineNow } from "../hooks/useOnlineNow";
 import { useLiveSellers } from "../hooks/useLiveSellers";
+import { liveChannel } from "../lib/liveChannel";
 
 // The console's own session pauses live updates on a hidden tab too (IO-6).
 installRealtimeIdle(supabase);
@@ -399,8 +400,7 @@ export default function AdminPage() {
     const onVisible = () => { if (document.visibilityState === "visible" && stale) refresh(); };
     document.addEventListener("visibilitychange", onVisible);
     const bump = () => { clearTimeout(timer); timer = setTimeout(refresh, 400); };
-    const channel = supabase
-      .channel("platform-approval-queues")
+    const channel = liveChannel(supabase, "platform-approval-queues")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: "status=eq.pending_approval" },

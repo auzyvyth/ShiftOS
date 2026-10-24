@@ -5,6 +5,7 @@ import { supabase } from "../supabaseClient";
 import { usePersistentState } from "../hooks/usePersistentState";
 import LeadsPage from "./LeadsPage";
 import OutreachHub from "../components/crm/OutreachHub";
+import { liveChannel } from "../lib/liveChannel";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -120,8 +121,7 @@ function EnquiriesTab({ userId, onOpenDoc }) {
   useEffect(() => {
     if (!userId) return;
     fetchEnquiries();
-    const ch = supabase
-      .channel("enquiries_live_" + userId)
+    const ch = liveChannel(supabase, "enquiries_live_" + userId)
       .on(
         "postgres_changes",
         {
@@ -1348,8 +1348,7 @@ function BookingsTab({ userId, listings, salesmen }) {
   useEffect(() => {
     if (!userId) return;
     fetchBookings();
-    const ch = supabase
-      .channel("bookings_live_" + userId)
+    const ch = liveChannel(supabase, "bookings_live_" + userId)
       .on("postgres_changes", { event: "*", schema: "public", table: "appointments", filter: `dealer_id=eq.${userId}` },
         (payload) => {
           fetchBookings();

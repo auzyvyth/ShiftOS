@@ -33,6 +33,7 @@ import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
+import { liveChannel } from "../lib/liveChannel";
 
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
@@ -4685,8 +4686,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       setTeamSoldCount(count || 0);
     };
     fetchSold();
-    const ch = supabase
-      .channel("team_sold")
+    const ch = liveChannel(supabase, "team_sold")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "car_listings", filter: `dealer_id=eq.${dealerId}` },
@@ -9848,8 +9848,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!userId) return;
-    const ch = supabase
-      .channel("dash_listings")
+    const ch = liveChannel(supabase, "dash_listings")
       .on(
         "postgres_changes",
         {
@@ -9886,7 +9885,7 @@ export default function DashboardPage() {
         .order('created_at', { ascending: false }).limit(20)
         .then(({ data }) => setNotifications(data || []));
     reload();
-    const ch = supabase.channel(`notifs_${userId}`)
+    const ch = liveChannel(supabase, `notifs_${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dealer_notifications', filter: `dealer_id=eq.${userId}` }, reload)
       .subscribe();
     return () => supabase.removeChannel(ch);

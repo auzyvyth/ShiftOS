@@ -569,7 +569,20 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
 - **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
   the device (a delete + insert) on every open; it now saves at most once a day per account
   + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
-- **Only subscribe `postgres_changes` to tables IN the `supabase_realtime` publication**
+- **Live updates go through `liveChannel(client, name)`, never `postgres_changes` directly
+  (IO-2, 2026-10-24, `src/lib/liveChannel.js`, `npm run test:livechannel`).** While ANY
+  postgres_changes listener is connected Realtime polls the DB nonstop (`realtime.list_changes`,
+  ~121k calls / ~30 min DB time a day). DB trigger `rt_notify` (migration `20261024a`) sends
+  `{op, id, key, table}` to private topics `rt:<table>:<column>:<value>` (`rt:<table>:all`
+  unfiltered); the client re-reads the ROW through RLS, so the message never carries buyer data
+  and topic rights (`rt_topic_allowed`, policy `rt_private_receive` on `realtime.messages`) only
+  guard ids. Drop-in: same `.on('postgres_changes', {table, filter}, cb)` / `.subscribe()` /
+  `client.removeChannel(ch)`. A NEW live screen: use `col=eq.val` filters, and if it watches a
+  new table or column, add that column to the table's `rt_notify(...)` trigger arguments in a
+  migration, or nothing ever arrives (a refused topic falls back to postgres_changes, a
+  silent topic does not). Step 2, dropping the tables from `supabase_realtime`
+  (`20261025a`), waits until old tabs are gone.
+- **(Legacy) Only subscribe `postgres_changes` to tables IN the `supabase_realtime` publication**
   (`select tablename from pg_publication_tables where pubname='supabase_realtime'`). A
   subscription to any other table never fires but still opens a socket and writes
   `realtime.subscription` rows. `useTenant` had one on `profiles` for every storefront visitor.
@@ -577,13 +590,13 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   `src/lib/realtimeIdle.js`).** After 2 min hidden a client disconnects its realtime socket; on
   return it reconnects (phoenix rejoins every channel itself) and REPLAYS what it missed: each
   `postgres_changes` listener's table, under its own `col=eq.val` filter, rows changed since the
-  disconnect, fed to the SAME callback as INSERT/UPDATE. Installed once per client (App.jsx: main +
+  disconnect, fed to the SAME callback as INSERT/UPDATE (liveChannel bindings too, via
+  `liveBindings`). Installed once per client (App.jsx: main +
   public; AdminPage: platformClient), never per screen. A new listener needs nothing extra, but
   its filter must stay `col=eq.val` (anything else is not replayed) and its table needs one of
   `updated_at` / `last_message_at` / `created_at`. Missed DELETEs are not replayed.
-- Biggest remaining cost: Realtime's change polling (`realtime.list_changes`, ~100k
-  calls / 2 days) runs while ANY `postgres_changes` subscriber is connected. Moving the seller
-  panels to Broadcast-from-trigger would remove it; not done yet (TODO IO-2).
+- Realtime's change polling (`realtime.list_changes`) is removed by IO-2 (liveChannel, above)
+  once `20261024a` is applied and old tabs reload; `20261025a` then drops the publication.
 
 ## Deployment pipeline — 3 stages
 **API functions run in `syd1` (Sydney), next to the database (Supabase `ap-southeast-2`)**
@@ -1597,7 +1610,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Verdict colours are MUTED green / amber / red on the tag, the bar and the counts only. The
   seller's own settings (deposit, years, view, Docs kind) are ink when picked; the accent stays
   on the viewer's number. On a phone, deposit + years fold into one tappable line once a budget
-  is typed, so the cars sit above TikTok's comments. `npm run test:live`.
+  is typed, so the cars sit above TikTok's comments. That panel also holds the interest
+  rates (owner, 2026-10-24): the SAME saved setting as Adjust > Financing (`rateRow`, one
+  store, `xd_live_rate` / `xd_live_rate_local`), never a second copy; the summary line names
+  every rate in play ("4.8% / 6.5% EIR"). `npm run test:live`.
 - Contact, once switched on, is a loud accent "Contact me" banner UNDER THE COMMENT LINE at
   the top (2026-10-24: at the foot it fell below the fold on a model card), OFF by default
   (TikTok rule above).

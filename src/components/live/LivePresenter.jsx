@@ -593,9 +593,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     setCustomDown(String(dep));
     setPick((p) => ({ ...p, row: 'c' }));
   };
-  const rateTextFor = (y) => (basis === 'flat'
-    ? t.rateFlatText(fmtRate(rate), fmtRate(rateFor(y)))
-    : `${fmtRate(rate)}% EIR`);
 
   // Budget mode. "pay" runs the 35% rule backwards; the line under the input
   // always prints that rule, the same way the tenure pick does.
@@ -653,9 +650,45 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
   // The dearest price the budget buys at the line's rate and deposit. Left out
   // with insurance in the loan: it would read more generous than the cars do.
+  // Worked on the "other cars" rate when this live has any (the higher one, so
+  // never the generous figure), else the new Proton/Perodua rate.
+  const cbRate = rates[rateGroups.includes('std') ? 'std' : 'local'];
   const carBudget = maxMonthly > 0 && !insOn
-    ? priceForMonthly({ monthly: maxMonthly, eir: eirForTenure(rate, basis, budgetYears), years: budgetYears, deposit: bDown })
+    ? priceForMonthly({ monthly: maxMonthly, eir: eirForTenure(Math.max(0, Number(cbRate.eir) || 0), cbRate.basis, budgetYears), years: budgetYears, deposit: bDown })
     : null;
+  // The rate settings, one row per rate group on this live. ONE store (rates,
+  // saved per device) shown in two places: Adjust > Financing and the Budget
+  // tab's Change panel (owner, 2026-10-24), so the two can never disagree.
+  const rateRow = (g, idPrefix) => {
+    const r = rates[g];
+    return (
+      <div className="lp-wide lp-rate" key={g}>
+        <label htmlFor={`${idPrefix}-${g}`}>{rateGroups.length > 1 ? (g === 'local' ? t.rateLocal : t.rateOther) : t.rateLabel}</label>
+        <div className="lp-rate-row">
+          <span className="lp-rate-in">
+            <input id={`${idPrefix}-${g}`} type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX}
+              value={r.eir} onChange={(e) => setRate(g, { eir: clampRateInput(e.target.value) })} />
+            <span>%</span>
+          </span>
+          <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
+            <button type="button" aria-pressed={r.basis === 'eir'} onClick={() => setRate(g, { basis: 'eir' })}>EIR</button>
+            <button type="button" aria-pressed={r.basis === 'flat'} onClick={() => setRate(g, { basis: 'flat' })}>{t.flat}</button>
+          </div>
+        </div>
+        {r.basis === 'flat' && (
+          <small className="lp-hint">
+            {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(eirForTenure(Math.max(0, Number(r.eir) || 0), 'flat', y))}%`).join(', '))}
+          </small>
+        )}
+      </div>
+    );
+  };
+  // Budget prices each car on its own group's rate, so its summary line names
+  // every rate in play ("4.8% / 6.5% EIR"), not just the car on the Cars screen.
+  const budgetRateText = rateGroups.map((g) => {
+    const r = rates[g];
+    return `${fmtRate(Math.max(0, Number(r.eir) || 0))}% ${r.basis === 'flat' ? t.flat : 'EIR'}`;
+  }).join(' / ');
   const stLabel = (st) => (payMode ? t.dsrSt[st] : { fit: t.stFit, near: t.stNear, over: t.stOver }[st]);
   const showBudgetSet = !budgetOn || budgetSetOpen || !!deskZoom;
   const openFromBudget = (m) => {
@@ -1368,10 +1401,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 </p>
                 {/* Phone: deposit and years as one line; tap it to change them. */}
                 {deskZoom ? (
-                  <p className="lp-salary">{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}</p>
+                  <p className="lp-salary">{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</p>
                 ) : (
                   <button type="button" className="lp-bset" aria-expanded={budgetSetOpen} onClick={() => setBudgetSetOpen((v) => !v)}>
-                    <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, rateTextFor(budgetYears))}</span>
+                    <span>{bDown > 0 ? t.depositAmt(`RM ${fmt(bDown)}`) : t.noDeposit} · {t.yearsAt(budgetYears, budgetRateText)}</span>
                     <b>{t.changeSet}</b>
                   </button>
                 )}
@@ -1397,6 +1430,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     <button key={y} type="button" className="lp-chip" aria-pressed={budgetYears === y} onClick={() => setBudgetYears(y)}>{t.years(y)}</button>
                   ))}
                 </div>
+                {/* Interest rate: the same saved setting as Adjust > Financing. */}
+                {rateGroups.map((g) => rateRow(g, 'lp-brate'))}
               </div>
             )}
           </div>
@@ -1500,30 +1535,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
             {adjustTab === 'fin' && (<>
               {/* One row per rate group the seller actually has on this live. */}
-              {rateGroups.map((g) => {
-                const r = rates[g];
-                return (
-                  <div className="lp-wide lp-rate" key={g}>
-                    <label htmlFor={`lp-rate-${g}`}>{rateGroups.length > 1 ? (g === 'local' ? t.rateLocal : t.rateOther) : t.rateLabel}</label>
-                    <div className="lp-rate-row">
-                      <span className="lp-rate-in">
-                        <input id={`lp-rate-${g}`} type="number" inputMode="decimal" step="0.01" min="0" max={RATE_MAX}
-                          value={r.eir} onChange={(e) => setRate(g, { eir: clampRateInput(e.target.value) })} />
-                        <span>%</span>
-                      </span>
-                      <div className="lp-seg" role="group" aria-label={t.rateQuoted}>
-                        <button type="button" aria-pressed={r.basis === 'eir'} onClick={() => setRate(g, { basis: 'eir' })}>EIR</button>
-                        <button type="button" aria-pressed={r.basis === 'flat'} onClick={() => setRate(g, { basis: 'flat' })}>{t.flat}</button>
-                      </div>
-                    </div>
-                    {r.basis === 'flat' && (
-                      <small className="lp-hint">
-                        {t.flatHint(TENURES.map((y) => `${t.yrsShort(y)} ${fmtRate(eirForTenure(Math.max(0, Number(r.eir) || 0), 'flat', y))}%`).join(', '))}
-                      </small>
-                    )}
-                  </div>
-                );
-              })}
+              {rateGroups.map((g) => rateRow(g, 'lp-rate'))}
               {/* Monthly budget sits under the rates (owner, 2026-10-22): type what the
                   viewer can pay, the deposit it needs fills the first chip. */}
               {mode === 'cars' && (

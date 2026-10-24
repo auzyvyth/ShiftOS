@@ -4,6 +4,7 @@ import { usePersistentState } from './usePersistentState';
 import useAuthCaptcha from './useAuthCaptcha';
 import { isRealBuyer } from '../lib/buyerAuth';
 import { isSubdomain } from './useTenant';
+import { liveChannel } from "../lib/liveChannel";
 
 // In-app buyer <-> seller chat.
 //
@@ -67,8 +68,7 @@ export function useChatThread(threadId, role) {
   // the sender so their ticks change without a refetch.
   useEffect(() => {
     if (!threadId) return;
-    const ch = supabase
-      .channel(`chat:${threadId}`)
+    const ch = liveChannel(supabase, `chat:${threadId}`)
       .on('postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `thread_id=eq.${threadId}` },
         ({ new: row }) => {
@@ -193,9 +193,11 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
   // count) re-sorts the list, so the inbox stays live without polling.
   useEffect(() => {
     if (!salesmanId && !dealerId) return;
-    const ch = supabase
-      .channel(`chat-inbox:${salesmanId || dealerId}:${instanceRef.current}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_threads' }, () => load())
+    // IO-2: a Broadcast topic is per filter, so it watches exactly the rows
+    // load() reads: the salesman's threads, else the dealer's.
+    const filter = salesmanId ? `salesman_id=eq.${salesmanId}` : `dealer_id=eq.${dealerId}`;
+    const ch = liveChannel(supabase, `chat-inbox:${salesmanId || dealerId}:${instanceRef.current}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_threads', filter }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [salesmanId, dealerId, load]);
@@ -320,8 +322,7 @@ export function useBuyerThreads() {
   // watching chat_threads keeps the list live without polling.
   useEffect(() => {
     if (!userId) return;
-    const ch = supabase
-      .channel(`buyer-inbox:${userId}:${instanceRef.current}`)
+    const ch = liveChannel(supabase, `buyer-inbox:${userId}:${instanceRef.current}`)
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'chat_threads', filter: `buyer_id=eq.${userId}` },
         () => load())
