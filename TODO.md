@@ -74,12 +74,11 @@
 DB 57 MB, cache hit 100%: every byte of disk IO is a write. IO-1 (shipping tonight):
 guarded cron jobs (`20261021d_cron_diet.sql`), push re-save once a day, dead storefront
 realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
-- [ ] **IO-2 BUILT 2026-10-24 (client on staging; DB `20261024a_realtime_broadcast.sql` QUEUED for the
-  after-midnight slot; `20261025a` publication drop waits a few days).** Every live screen uses
-  `src/lib/liveChannel.js`; until 20261024a is applied each topic is refused and falls back to
-  postgres_changes (console warns "refused, using postgres_changes"). After applying: open a seller
-  panel, send a lead / chat / booking from another device, check it appears live and the console shows
-  no fallback warning; check `select count(*) from realtime.subscription` drops to 0 once tabs reload.
+- [ ] **IO-2 LIVE 2026-10-24: client in prod (#539, 180a266); DB `20261024a_realtime_broadcast.sql`
+  APPLIED by the owner in the SQL Editor (NOT logged in supabase_migrations; triggers/policy verified).
+  Remaining: (1) owner click-test: a lead / chat / booking from another device appears live with no
+  "refused, using postgres_changes" console warning; (2) after a few days with
+  `select count(*) from realtime.subscription` at 0, apply `20261025a` (publication drop).**
   Was: **IO-2 Realtime change polling** (`realtime.list_changes`, ~100k calls in 2 days, the
   single biggest DB cost) runs while any `postgres_changes` subscriber is connected. Replace
   the seller panels' subscriptions (Lite, Premium, Salesmanpanel, dealer dashboard: leads,
