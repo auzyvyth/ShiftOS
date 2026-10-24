@@ -894,7 +894,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-sheet .lp-tt { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: 10px; }
         .lp-desk .lp-sheet .lp-spec { margin: 0; }
         .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
-        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "ncd work" "rest rest"; row-gap: 6px; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "photo ncd" "rest rest"; row-gap: 6px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
         .lp-desk .lp-ans > .lp-vars { justify-content: center; }
@@ -1455,7 +1455,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
             {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
                 for this car (the typed quote already has its NCD in it). Its own grid
-                area: under the photo on desktop, beside the taller working. */}
+                area: under the working on desktop, so the photo keeps the whole row
+                (under the photo it shrank the photo, 2026-10-24). */}
             {price > 0 && insOn && !insIsTyped && ins !== null && (
               <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                 <span>{t.ncd}</span>

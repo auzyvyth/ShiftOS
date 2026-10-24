@@ -1606,7 +1606,7 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   Sizes are container units and `.lp-fit` auto-shrinks the Cars screen to fit
   (80% floor on a phone, 65% on desktop, then it scrolls; owner 2026-10-24: never scroll).
   The working's FIGURES are large and its labels quiet (owner, 2026-10-24: the seller reads
-  them aloud mid-live, "rebat berapa?"); NCD sits under the photo on desktop (`ncd` grid area). Check the desktop sheet renders at zoom ~1.
+  them aloud mid-live, "rebat berapa?"); NCD sits under the working on desktop (`ncd` grid area; under the photo it squeezed the photo). Check the desktop sheet renders at zoom ~1.
 - **Show working** under the big number (price - deposit = loan, months, rate) and
   **Budget tab** (`budgetMatches` / `maxMonthlyFromPay` in liveMaths.js): a viewer's
   monthly budget or take-home pay (35% rule backwards, rule always printed) lists
