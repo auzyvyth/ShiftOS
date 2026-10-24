@@ -361,15 +361,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   // Fit the Cars screen to the stage: a seller cannot scroll mid-pitch, and a
   // phone filming a monitor cannot see below the fold. Shrinks to 80% at most
-  // on a phone, 70% on desktop (any smaller and the camera cannot read it),
+  // on a phone, 65% on desktop (any smaller and the camera cannot read it),
   // then lets the page scroll.
   // Budget fits the same way: its cars page, they never scroll (2026-10-24).
   // Style is set directly so the measurement never costs a re-render.
   const fit = useRef(() => {});
   fit.current = () => {
-    // Desktop goes to 70%: the stage is magnified to the screen, so 70% of it
-    // still reads on camera, and the owner wants it never to scroll (2026-10-24).
-    const MIN = deskZoom ? 0.7 : 0.8;
+    // Desktop goes to 65%: the stage is magnified to the screen and its figures
+    // are drawn large, so 65% still reads on camera; the owner wants it never
+    // to scroll (2026-10-24).
+    const MIN = deskZoom ? 0.65 : 0.8;
     const el = fitRef.current;
     const body = el?.parentElement;
     if (!el || !body) return;
@@ -854,7 +855,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         /* The Cars grid. Phone: answer, chips, photo | working, the rest.
            Desktop: photo | answer, chips across, working | the rest. */
-        .lp-grid { display: grid; grid-template-columns: minmax(0, 36fr) minmax(0, 64fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; gap: 8px 10px; align-items: start; }
+        .lp-grid { display: grid; grid-template-columns: minmax(0, 36fr) minmax(0, 64fr); grid-template-areas: "ans ans" "dep dep" "photo work" "ncd ncd" "rest rest"; gap: 8px 10px; align-items: start; }
         .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "photo ans" "dep dep" "work rest"; column-gap: 18px; row-gap: 12px; }
         /* The frame is a fixed size; the photo fits INSIDE it, never cropped
            (owner, 2026-10-21). White bars melt into studio shots. */
@@ -876,7 +877,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-big { margin: 0; display: flex; align-items: baseline; color: var(--lp-a); font-size: clamp(40px, 14cqw, 60px); font-weight: 800; line-height: .95; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .lp-big .lp-rm { font-size: .32em; opacity: 1; margin-right: .3em; }
         .lp-big small { margin-left: .35em; font-size: .24em; font-weight: 600; letter-spacing: 0; color: #6b7280; }
-        .lp-desk .lp-big { font-size: 64px; }
+        .lp-desk .lp-big { font-size: 72px; }
         /* Camera-safe desktop (LIVE-CAM, owner 2026-10-24). Sellers either film
            the monitor with a phone held upright (the sides get cut) or put the
            screen under their camera in a split (TikTok's comments cover the
@@ -888,8 +889,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            basis into a HEIGHT (the 340px-tall kind switch, 2026-10-24). */
         .lp-desk .lp-sheet .lp-head { flex-direction: column; flex-wrap: nowrap; align-items: center; text-align: center; gap: 8px; }
         .lp-desk .lp-sheet .lp-head > .lp-title { flex: none; max-width: 64%; justify-content: center; }
+        /* The spec line rides beside the name (wraps under it when long): one
+           line less above the monthly. */
+        .lp-desk .lp-sheet .lp-tt { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: 10px; }
+        .lp-desk .lp-sheet .lp-spec { margin: 0; }
         .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
-        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "rest rest"; row-gap: 6px; }
+        .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "ncd work" "rest rest"; row-gap: 6px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
         .lp-desk .lp-ans > .lp-vars { justify-content: center; }
@@ -907,8 +912,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-ten b { font-size: clamp(14px, 4.2cqw, 18px); font-weight: 800; white-space: nowrap; }
         .lp-ten[aria-pressed="true"] { background: rgba(var(--lp-rgb),.10); border-color: var(--lp-a); color: var(--lp-a2); }
         .lp-desk .lp-ten { padding: 5px 10px; }
-        .lp-desk .lp-ten span { font-size: 12px; }
-        .lp-desk .lp-ten b { font-size: 18px; }
+        .lp-desk .lp-ten span { font-size: 13px; }
+        .lp-desk .lp-ten b { font-size: 26px; }
 
         /* Chips: one row, equal heights. The first deposit chip is wider: it
            holds a typed amount. Selected = the accent, filled. */
@@ -928,7 +933,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-chips.lp-vars { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
         .lp-chips.lp-vars::-webkit-scrollbar { display: none; }
         .lp-vars .lp-chip { flex: 1 0 auto; width: auto; padding: 4px 12px; white-space: nowrap; }
-        .lp-desk .lp-chips.lp-vars { flex-wrap: wrap; overflow: visible; }
+        .lp-desk .lp-chips.lp-vars { flex-wrap: wrap; overflow: visible; gap: 5px; }
+        /* Desktop variant chips size to their name: stretched, six of them took
+           two tall rows and pushed the sheet past the stage. */
+        .lp-desk .lp-vars .lp-chip { flex: 0 0 auto; min-height: 30px; padding: 2px 12px; font-size: 14px; }
         .lp-chip { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; min-width: 0; min-height: 34px; padding: 4px 6px; border-radius: 10px; border: 1.5px solid #E5E7EB; background: #fff; color: #111827; font: inherit; font-size: clamp(12px, 3.4cqw, 15px); font-weight: 700; line-height: 1.15; text-align: center; cursor: pointer; font-variant-numeric: tabular-nums; }
         .lp-chip[aria-pressed="true"] { background: var(--lp-a); border-color: var(--lp-a); color: #fff; }
         .lp-chip svg { flex-shrink: 0; opacity: .7; }
@@ -950,9 +958,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-brk tr.lp-loan td:last-child { font-size: clamp(15px, 4.4cqw, 20px); font-weight: 800; }
         .lp-brk tr.lp-r-rate td { padding-top: 1px; border-bottom: none; font-size: clamp(11px, 3cqw, 14px); color: #6b7280; }
         .lp-brk tr.lp-r-rate td:last-child { color: #374151; font-weight: 600; }
-        .lp-desk .lp-brk td { padding: 3px 0; font-size: 15px; }
-        .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 20px; }
+        /* The seller reads these aloud mid-live ("rebat berapa?"): figures large,
+           labels quiet (owner, 2026-10-24, after a rival's sheet read faster). */
+        .lp-desk .lp-brk td { padding: 2px 0; font-size: 15px; }
+        .lp-desk .lp-brk td:last-child { font-size: 21px; }
+        .lp-desk .lp-brk tr.lp-loan td:last-child { font-size: 27px; }
         .lp-desk .lp-brk tr.lp-r-rate td { font-size: 14px; }
+        .lp-desk .lp-brk tr.lp-r-rate td:last-child { font-size: 17px; }
         /* "RM" is a unit, not the number: smaller and lighter so the digits lead. */
         .lp-rm { font-size: .7em; font-weight: 700; opacity: .62; margin-right: .22em; letter-spacing: .02em; }
         .lp-info { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: 4px; padding: 0; border: none; border-radius: 50%; background: rgba(15,17,21,.08); color: #4b5563; vertical-align: middle; cursor: pointer; }
@@ -991,7 +1003,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
-        .lp-seg.lp-ncd { align-items: center; padding: 3px; }
+        .lp-seg.lp-ncd { grid-area: ncd; align-items: center; padding: 3px; }
         .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .08em; color: #4b5563; }
         .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 13px); }
         .lp-seg.lp-ncd button[aria-pressed="true"] { background: var(--lp-a); color: #fff; }
@@ -1441,6 +1453,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
             </div>
 
+            {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
+                for this car (the typed quote already has its NCD in it). Its own grid
+                area: under the photo on desktop, beside the taller working. */}
+            {price > 0 && insOn && !insIsTyped && ins !== null && (
+              <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
+                <span>{t.ncd}</span>
+                {NCD_TIERS.map((n) => (
+                  <button key={n} type="button" aria-pressed={n === ncd} onClick={() => setNcd(n)}>{ncdLabel(n)}</button>
+                ))}
+              </div>
+            )}
+
             <div className="lp-rest">
               {/* A typed rate that is probably a mistake: a flat number on the EIR
                   switch, or above the Hire-Purchase Act cap. */}
@@ -1450,16 +1474,6 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     ? <>{t.looksFlat}<button type="button" onClick={() => setRate(rateGroup, { basis: 'flat' })}>{t.switchFlat}</button></>
                     : t.aboveCap(eirCap(pickYears))}
                 </p>
-              )}
-              {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
-                  for this car (the typed quote already has its NCD in it). */}
-              {price > 0 && insOn && !insIsTyped && ins !== null && (
-                <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
-                  <span>{t.ncd}</span>
-                  {NCD_TIERS.map((n) => (
-                    <button key={n} type="button" aria-pressed={n === ncd} onClick={() => setNcd(n)}>{ncdLabel(n)}</button>
-                  ))}
-                </div>
               )}
               {/* Total counter (owner, 2026-10-22): what the buyer pays in all,
                   deposit + every instalment, and the interest inside it. */}
