@@ -2,7 +2,7 @@
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, carLabel,
   maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
-  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames } from '../src/utils/liveMaths.js';
+  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -272,5 +272,24 @@ is('variants: shared first word dropped', shortVariantNames(['1.3 Standard MT', 
 is('variants: nothing shared, unchanged', shortVariantNames(['1.5 V', '1.5T Exec']), ['1.5 V', '1.5T Exec']);
 is('variants: never empties a name', shortVariantNames(['1.3 MT', '1.3 MT']), ['MT', 'MT']);
 is('variants: one name, unchanged', shortVariantNames(['1.3 Standard MT']), ['1.3 Standard MT']);
+
+// variantExtras: what a variant adds over the next cheaper one, additions only.
+const vLite = { model_id: 'l', variant: '1.5TD Lite', price: 123800, specs: { seats: 7, airbags: 6,
+  safety: ['Cruise control', 'Reverse camera', 'Rear parking sensors'],
+  features: ['LED headlamps', '12.3-inch touchscreen, wireless Apple CarPlay'] } };
+const vPrime = { model_id: 'p', variant: '1.5TD Prime', price: 131800, specs: { seats: 7, airbags: 6,
+  safety: ['360-degree camera', 'Parking sensors (2 front, 4 rear)'],
+  features: ['LED headlamps', 'Auto wipers', '12.3-inch touchscreen, wireless Apple CarPlay', 'Full digital instrument cluster'] } };
+const vX = { model_id: 'x', variant: '1.5TD Prime X', price: 139800, specs: { seats: 6, airbags: 6,
+  safety: ['360-degree camera'], features: ['Auto wipers', 'Ventilated front seats'] } };
+const vv = [vX, vLite, vPrime];
+const ex = variantExtras(vv, vPrime);
+is('extras: over the next cheaper variant', ex.over, '1.5TD Lite');
+is('extras: additions, short labels, nothing it shares', ex.items, ['360 camera', 'Parking sensors', 'Auto wipers', 'Full digital instrument cluster']);
+is('extras: never a removal (Prime has no cruise control listed)', ex.items.includes('Cruise control'), false);
+is('extras: a seat change is its own field, not a +', variantExtras(vv, vX).seats, 6);
+is('extras: cheapest gets headline items', variantExtras(vv, vLite), { over: null, seats: null, items: ['6 airbags', 'Reverse camera', '12.3-inch touchscreen'] });
+is('extras: unknown variant is empty', variantExtras(vv, { model_id: 'z', specs: {} }), { over: null, seats: null, items: [] });
+is('extras: capped', variantExtras(vv, vPrime, 2).items.length, 2);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

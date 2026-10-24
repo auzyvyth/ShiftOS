@@ -1651,6 +1651,14 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   `useNewCarVariant` with the car page, so price + spec follow the pick on both.
   Its chips sit at the top of the answer block (`.lp-ans`), and the title drops the
   variant name (the picked chip names it).
+  **What the variant adds (owner, 2026-10-24: hosts sell on "AV dapat 360 camera")**: a caption
+  strip on the photo (`.lp-extras`, desktop only; on a phone the photo is a thumbnail) from
+  `variantExtras` (liveMaths.js, `npm run test:live`): what the picked variant has over the next
+  cheaper one, from `new_car_models.specs` safety + features, max 4. ADDITIONS ONLY, never "loses
+  X": the spec sheets leave things out (X90 Lite lists cruise control, Prime does not), so a
+  removal would be a false claim on camera. A seat change shows as "6 seats", never "+". The
+  cheapest variant shows headline items (airbags, camera, screen). Wrong item = fix the spec in
+  console > New car prices, never in the presenter.
 - **Insurance is ALWAYS in the loan (owner, 2026-10-24; was an Off | In the loan switch in
   Adjust, `xd_live_ins`, removed).** Without the row the working was shorter and the photo beside
   it shrank. An "Insurance (est.)" row sits under Price and NCD pills under the working

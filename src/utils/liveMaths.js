@@ -370,3 +370,49 @@ export function shortVariantNames(names) {
   while (parts.length > 1 && parts.every((p) => p.length > k + 1 && p[k] === parts[0][k])) k += 1;
   return parts.map((p) => p.slice(k).join(' '));
 }
+
+// What a new-car variant has that the next cheaper one does not (owner,
+// 2026-10-24: live hosts sell on "AV dapat 360 camera"). Read off
+// new_car_models.specs (safety, then features). ADDITIONS ONLY: the spec
+// sheets leave things out (one lists cruise control on Lite but not on
+// Prime), so "loses X" would put a false claim on camera. The cheapest
+// variant has nothing below it and gets its headline items instead.
+// Returns { over: <cheaper variant's name> | null, seats: <n if it differs> | null,
+// items: [short labels] }. Seats are apart: fewer seats is not a "+".
+const specLabel = (s) => String(s || '')
+  .replace(/\s*\([^)]*\)/g, '')
+  .split(',')[0]
+  .replace(/(\d+)-degree/i, '$1')
+  .trim();
+const specKey = (s) => specLabel(s).toLowerCase();
+const specList = (v) => [...(v?.specs?.safety || []), ...(v?.specs?.features || [])];
+
+export function variantExtras(variants, current, max = 4) {
+  const list = (variants || []).filter((v) => v && v.price != null)
+    .slice().sort((a, b) => Number(a.price) - Number(b.price));
+  const i = list.findIndex((v) => v.model_id === current?.model_id);
+  if (i < 0 || !current?.specs) return { over: null, seats: null, items: [] };
+  const mine = specList(current);
+  if (i === 0) {
+    const items = [];
+    if (current.specs.airbags) items.push(`${current.specs.airbags} airbags`);
+    const cam = mine.find((s) => /camera/i.test(s));
+    if (cam) items.push(specLabel(cam));
+    const screen = mine.find((s) => /inch.*(screen|display)|touchscreen/i.test(s));
+    if (screen) items.push(specLabel(screen));
+    return { over: null, seats: null, items: items.slice(0, max) };
+  }
+  const below = list[i - 1];
+  const had = new Set(specList(below).map(specKey));
+  const items = [];
+  const seen = new Set();
+  for (const s of mine) {
+    const k = specKey(s);
+    if (!k || had.has(k) || seen.has(k)) continue;
+    seen.add(k);
+    items.push(specLabel(s));
+  }
+  const seats = current.specs.seats && below.specs?.seats && current.specs.seats !== below.specs.seats
+    ? current.specs.seats : null;
+  return { over: below.variant, seats, items: items.slice(0, seats ? max - 1 : max) };
+}

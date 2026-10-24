@@ -9,7 +9,7 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
-  tightCapFromPay, shortVariantNames, dsrOf, DSR_TIGHT,
+  tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -427,6 +427,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     ? { name: (sellerName || '').trim(), phone: phoneText } : null;
   // One row of chips on a phone: the words every variant shares are dropped.
   const variantChips = shortVariantNames(variants.map((v) => v.variant));
+  // What this variant adds over the next cheaper one, for the seller to read
+  // out ("AV dapat 360 camera"). A strip on the photo: no extra height.
+  const extras = variants.length > 1 && variant ? variantExtras(variants, variant) : null;
+  const extrasOver = extras?.over ? variantChips[variants.findIndex((v) => v.variant === extras.over)] || extras.over : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
   const nImages = images.length;
   const stepPhoto = useCallback((d) => {
@@ -854,9 +858,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-photo { aspect-ratio: auto; align-self: stretch; min-height: 200px; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
         .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-        .lp-dots { position: absolute; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
+        .lp-dots { position: absolute; z-index: 2; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
         .lp-dots span[data-on="1"] { background: #fff; }
+        /* What this variant adds (variantExtras): a caption strip on the photo,
+           read by the seller, so it costs the sheet no height. */
+        .lp-extras { position: absolute; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; flex-direction: column; gap: 1px; padding: 18px 10px 14px; background: linear-gradient(to top, rgba(15,17,21,.86), rgba(15,17,21,.6) 70%, rgba(15,17,21,0)); color: #fff; pointer-events: none; line-height: 1.3; }
+        .lp-extras b { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; opacity: .8; }
+        .lp-extras span { font-size: 13px; font-weight: 700; }
+        /* Phone: the photo is a thumbnail; the strip would cover the car. */
+        .lp:not(.lp-desk) .lp-extras { display: none; }
 
         /* The answer: the one big number on the sheet, then the three tenures. */
         .lp-ans { grid-area: ans; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -1308,6 +1319,15 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                     {images.slice(0, 12).map((_, i) => <span key={i} data-on={i === imgIdx ? '1' : '0'} />)}
                   </div>
                 </>
+              )}
+              {(extras?.items.length > 0 || extras?.seats) && (
+                <div className="lp-extras">
+                  <b>{extrasOver ? t.extrasOver(extrasOver) : t.extrasTop}</b>
+                  <span>{[
+                    ...(extras.seats ? [t.seatsN(extras.seats)] : []),
+                    ...extras.items.map((x) => (extrasOver ? `+ ${x}` : x)),
+                  ].join('  ·  ')}</span>
+                </div>
               )}
               {images[imgIdx] && (
                 <button type="button" className="lp-expand" aria-label={t.fullPhoto} onClick={() => setPhotoFull(true)}>
