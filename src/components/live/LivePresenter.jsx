@@ -968,29 +968,26 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
         /* Phone: the two figures only; how they are made up is on desktop. */
         .lp:not(.lp-desk) .lp-totals small { display: none; }
-        /* Desktop: label and its note on the left, the figure on the right, two lines not three. */
-        .lp-desk .lp-totals > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 8px; padding: 4px 10px; }
-        .lp-desk .lp-totals > div > b { grid-column: 2; grid-row: 1 / span 2; }
-        .lp-desk .lp-totals > div > span, .lp-desk .lp-totals > div > small { grid-column: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lp-desk .lp-totals > div { padding: 4px 10px; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 14px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
         .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
         .lp-head > .lp-contact { flex: 1 1 100%; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 14px; border: none; border-radius: 10px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
+        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 5px 12px; border: none; border-radius: 8px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
         .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
-        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(16px, 4.6cqw, 26px); line-height: 1; letter-spacing: .04em; }
-        .lp-c-who b { min-width: 0; font-size: clamp(11px, 3cqw, 16px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(24px, 7.4cqw, 40px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(14px, 3.8cqw, 18px); line-height: 1; letter-spacing: .04em; }
+        .lp-c-who b { min-width: 0; font-size: clamp(10px, 2.6cqw, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(18px, 5.2cqw, 24px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
-        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: 64%; padding: 5px 14px; }
+        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: auto; max-width: 64%; padding: 4px 14px; gap: 16px; }
         /* Desktop: one slim line, "CONTACT ME  NAME ... PHONE" (owner, 2026-10-24:
            the two-line banner pushed the sheet past the stage). */
-        .lp-desk .lp-c-who { flex-direction: row; align-items: baseline; gap: 10px; }
-        .lp-desk .lp-c-who small { font-size: 20px; }
-        .lp-desk .lp-c-who b { font-size: 13px; }
-        .lp-desk .lp-c-ph { font-size: 26px; }
+        .lp-desk .lp-c-who { flex-direction: row; align-items: baseline; gap: 8px; }
+        .lp-desk .lp-c-who small { font-size: 16px; }
+        .lp-desk .lp-c-who b { font-size: 11px; }
+        .lp-desk .lp-c-ph { font-size: 20px; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
