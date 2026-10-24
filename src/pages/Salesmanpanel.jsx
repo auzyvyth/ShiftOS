@@ -86,6 +86,7 @@ import {
  Film,
  Calculator,
 } from "lucide-react";
+import { liveChannel } from "../lib/liveChannel";
 
 import { callClaude } from "../lib/callClaude";
 import { followUpHoursFor, isLeadStale, lastTouch, localDateKey } from "../lib/leadsHelpers";
@@ -354,8 +355,7 @@ export default function SalesmanPanel() {
      setPoolThreads(map);
    };
    fetchPool();
-   const ch = supabase
-     .channel("incoming_leads_" + poolDealer)
+   const ch = liveChannel(supabase, "incoming_leads_" + poolDealer)
      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `dealer_id=eq.${poolDealer}` }, fetchPool)
      .subscribe();
    return () => { cancelled = true; supabase.removeChannel(ch); };
@@ -408,8 +408,7 @@ export default function SalesmanPanel() {
  useEffect(() => { leadsRef.current = leads; }, [leads]);
  useEffect(() => {
    if (!userId) return;
-   const ch = supabase
-     .channel("my_leads_" + userId)
+   const ch = liveChannel(supabase, "my_leads_" + userId)
      .on("postgres_changes", { event: "*", schema: "public", table: "leads", filter: `salesman_id=eq.${userId}` }, ({ new: row }) => {
        if (!row?.id) return;
        if (row.is_deleted) { setLeads((prev) => prev.filter((l) => l.id !== row.id)); return; }
@@ -843,8 +842,7 @@ export default function SalesmanPanel() {
  setFeaturedIds((featuredRows || []).map((r) => r.listing_id));
  };
  fetchMyListings();
- const listingsCh = supabase
- .channel("my_listings_" + userId)
+ const listingsCh = liveChannel(supabase, "my_listings_" + userId)
  .on(
  "postgres_changes",
  { event: "*", schema: "public", table: "car_listings", filter: `assigned_to=eq.${userId}` },
@@ -879,8 +877,7 @@ export default function SalesmanPanel() {
  };
  fetchAppts();
 
- const apptCh = supabase
- .channel("appts_" + userId)
+ const apptCh = liveChannel(supabase, "appts_" + userId)
  .on(
  "postgres_changes",
  {
@@ -1018,8 +1015,7 @@ Rules:
  .then(({ data }) => setNotifications(data || []));
  loadNotifs();
 
- const notifCh = supabase
- .channel("salesman_notifs_" + userId)
+ const notifCh = liveChannel(supabase, "salesman_notifs_" + userId)
  .on(
  "postgres_changes",
  {

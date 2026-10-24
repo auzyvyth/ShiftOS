@@ -26,7 +26,6 @@ import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
-import { freshChannel } from "../lib/realtime";
 import { compressImageFile } from "../utils/compressImage";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import { buildListingFacts } from "../utils/listingCopy";
@@ -119,6 +118,7 @@ import {
  Calculator,
  Download,
 } from "lucide-react";
+import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
 const loadOutreachHub = () => import("../components/crm/OutreachHub");
 const OutreachHub = React.lazy(loadOutreachHub);
@@ -1214,12 +1214,13 @@ export default function SalesmanPremium() {
  // `supabase.channel()` on that same topic, got the already-joined channel
  // back (supabase-js keeps one channel per topic), and `.on("postgres_changes")`
  // threw "cannot add postgres_changes callbacks ... after subscribe()" as an
- // unhandledrejection. `freshChannel` drops any stale holder of the topic, and
- // `cancelled` stops a dead mount from subscribing at all.
+ // unhandledrejection. liveChannel (IO-2, Broadcast instead of postgres_changes)
+ // never adds a callback to an already-joined channel, and `cancelled` stops a
+ // dead mount from subscribing at all.
  // Topic is salesman-PREMIUM-rt: it used to be "salesman-lite-rt-", the exact
  // string SalesmanLite.jsx uses, so the two pages fought over one topic.
  if (!cancelled) {
- const ch = freshChannel("salesman-premium-rt-" + uid)
+ const ch = liveChannel(supabase, "salesman-premium-rt-" + uid)
  .on(
  "postgres_changes",
  {
@@ -1450,15 +1451,29 @@ export default function SalesmanPremium() {
  }
  }, trafficDone);
 
- // fetch leads
- supabase
+ // fetch leads. A failed read (a stalled DB times out, 2026-10-24) keeps the
+ // leads already on screen and on the device: it used to set [] and write []
+ // over the saved copy, so a seller's pipeline vanished mid-stall. One quiet
+ // retry first; the toast only if that fails too.
+ const leadsQuery = () => supabase
  .from("leads")
  .select(LEAD_SELECT)
  .eq("salesman_id", uid)
  .eq("is_deleted", false)
- .order("updated_at", { ascending: false })
- .then(async ({ data: lds, error: ldsErr }) => {
- if (ldsErr) { console.error("fetchLeads:", ldsErr); toast.error(i18n.t("salesmanPremium.errors.loadLeads")); }
+ .order("updated_at", { ascending: false });
+ leadsQuery()
+ .then(async (first) => {
+ let { data: lds, error: ldsErr } = first;
+ if (ldsErr) {
+ await new Promise((r) => setTimeout(r, 4000));
+ ({ data: lds, error: ldsErr } = await leadsQuery());
+ }
+ if (ldsErr) {
+ console.error("fetchLeads:", ldsErr);
+ toast.error(i18n.t("salesmanPremium.errors.loadLeads"));
+ setLeadsLoading(false);
+ return;
+ }
  const rows = lds || [];
  setLeads(rows);
  setLeadsLoading(false);

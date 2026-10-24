@@ -32,10 +32,44 @@ export function eirForTenure(rate, basis, years) {
 // Budget mode, the reverse question ("gaji RM3,500, boleh ambil kereta apa?"):
 // the same 35% rule run backwards. Rounded DOWN to the ringgit so the budget
 // never reads more generous than the rule.
-export function maxMonthlyFromPay(net) {
+// `commitments` = what the viewer already pays a month (PTPTN, personal loan,
+// card). It comes off the same 35% (owner, 2026-10-24: DSR in Budget), so the
+// app still has ONE comfort rule: with no commitments it is exactly the Cars
+// screen's salary guide. 0 = commitments already use the whole 35%.
+export function maxMonthlyFromPay(net, commitments = 0) {
   const n = Number(net);
   if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.floor(Math.round(n * SALARY_SHARE * 100) / 100);
+  const c = Math.max(0, Number(commitments) || 0);
+  return Math.max(0, Math.floor(Math.round((n * SALARY_SHARE - c) * 100) / 100));
+}
+
+// Debt service ratio: everything the viewer would pay a month, this car
+// included, over take-home pay. Bands (Budget tab, pay mode):
+//   comfortable  <= SALARY_SHARE (35%), the same rule as above
+//   tight        <= DSR_TIGHT (60%)
+//   heavy        above it
+// Bank Negara sets no DSR cap; each bank sets its own, and most sit around
+// 60-70% of net pay (checked 2026-10-24: CIMB, RinggitPlus, StashAway guides).
+// So above 60% is where approvals start to fail, never a promise below it.
+export const DSR_TIGHT = 0.6;
+export function dsrOf(monthly, commitments, net) {
+  const n = Number(net);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return ((Number(monthly) || 0) + Math.max(0, Number(commitments) || 0)) / n;
+}
+// The near-budget line in pay mode: the instalment that takes the DSR to 60%.
+export function tightCapFromPay(net, commitments = 0) {
+  const n = Number(net);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.max(0, n * DSR_TIGHT - Math.max(0, Number(commitments) || 0));
+}
+
+// The dearest car price a monthly buys: the loan it repays plus the deposit.
+// Rounded DOWN to RM10, never more generous than the instalment.
+export function priceForMonthly({ monthly, eir, years, deposit = 0 }) {
+  const loan = principalForPayment(monthly, eir, years * 12);
+  if (!(loan > 0)) return null;
+  return Math.floor((loan + Math.max(0, Number(deposit) || 0)) / 10) * 10;
 }
 
 // Which of the seller's cars fit a monthly budget, with one deposit (RM) and
@@ -148,7 +182,12 @@ export const carLabel = (c) => [c?.year, c?.brand, c?.model, c?.variant].filter(
 // and the All cars grid can never quote two different monthlies for one car.
 // Each row: the car at its tenure, its monthly, and the extra deposit that
 // would bring it under `cap` (topUp, RM100 steps; 0 when it already fits).
-function priceBudgetRows(listings, cap, { deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf }) {
+// tenureOptions (e.g. [5, 7, 9]): a row that misses the cap also says the
+// shortest LONGER tenure that fits it (fitYears), within the car's own limit,
+// so the screen can say "fits at 9 years" before asking for more deposit.
+// maxYearsFor(car): the longest tenure a bank gives that car (yearsFor may
+// already be cut to the budget's tenure); absent = yearsFor, else no limit.
+function priceBudgetRows(listings, cap, { deposit = 0, depositFor, years, rate, basis, rebates, extraFor, yearsFor, rateOf, tenureOptions, maxYearsFor }) {
   const fixedDown = Math.max(0, Number(deposit) || 0);
   const rows = [];
   (listings || []).forEach((car, i) => {
@@ -164,29 +203,45 @@ function priceBudgetRows(listings, cap, { deposit = 0, depositFor, years, rate, 
     const monthly = monthlyPayment(price + extra - down, eir, y * 12);
     const fits = monthly <= cap;
     let topUp = 0;
+    let fitYears = null;
     if (!fits) {
       const need = depositToFit({ price, extra, cap, eir, years: y });
       // Rounded UP to RM100 again: `need` is, but a % deposit (RM8,980) is not.
       topUp = need == null ? null : Math.max(0, Math.ceil((need - down) / 100) * 100);
+      const maxY = maxYearsFor ? maxYearsFor(car) : (yearsFor ? limit : Infinity);
+      fitYears = [...(tenureOptions || [])].sort((a, b) => a - b).find((ty) => ty > y && ty <= (maxY || 0)
+        && monthlyPayment(price + extra - down, eirForTenure(r.rate, r.basis, ty), ty * 12) <= cap) ?? null;
     }
-    rows.push({ n: car._n ?? i + 1, car, price, monthly, years: y, fits, topUp });
+    rows.push({ n: car._n ?? i + 1, car, price, monthly, years: y, fits, topUp, fitYears });
   });
   return rows;
 }
 
+// Where "just above" ends: opts.nearCap when the caller has one (pay mode:
+// the instalment at a 60% DSR), else ABOVE_MARGIN over the budget.
+// A zero budget still has answers in pay mode: commitments that already use
+// the whole 35% leave nothing comfortable, but the tight and heavy cars still
+// need a verdict on screen.
+const hasBudget = (cap, opts) => Number.isFinite(cap) && (cap > 0 || (cap === 0 && Number(opts?.nearCap) > 0));
+const nearLine = (cap, opts) => {
+  const n = Number(opts?.nearCap);
+  return Number.isFinite(n) && n > 0 ? Math.max(n, cap) : cap * (1 + ABOVE_MARGIN);
+};
+
 export function budgetMatches(listings, opts) {
   const cap = Number(opts?.maxMonthly);
-  if (!Number.isFinite(cap) || cap <= 0) return { fits: [], above: [] };
+  if (!hasBudget(cap, opts)) return { fits: [], above: [] };
   const fits = [];
   const above = [];
   const byN = new Map();
-  for (const { fits: ok, topUp, ...row } of priceBudgetRows(listings, cap, opts)) {
+  const nearCap = nearLine(cap, opts);
+  for (const { fits: ok, topUp, fitYears, ...row } of priceBudgetRows(listings, cap, opts)) {
     if (row.car._variantId) {
       if (!byN.has(row.n)) byN.set(row.n, []);
       byN.get(row.n).push({ ...row, fits: ok });
     }
     if (ok) fits.push(row);
-    else if (row.monthly <= cap * (1 + ABOVE_MARGIN)) above.push({ ...row, topUp });
+    else if (row.monthly <= nearCap) above.push({ ...row, topUp, fitYears });
   }
   fits.sort((a, b) => b.price - a.price);
   above.sort((a, b) => a.monthly - b.monthly);
@@ -214,10 +269,11 @@ export function budgetMatches(listings, opts) {
 export const BUDGET_STATUS = ['fit', 'near', 'over'];
 export function budgetAll(listings, opts) {
   const cap = Number(opts?.maxMonthly);
-  if (!Number.isFinite(cap) || cap <= 0) return [];
+  if (!hasBudget(cap, opts)) return [];
   const best = new Map();
+  const nearCap = nearLine(cap, opts);
   for (const row of priceBudgetRows(listings, cap, opts)) {
-    const status = row.fits ? 'fit' : (row.monthly <= cap * (1 + ABOVE_MARGIN) ? 'near' : 'over');
+    const status = row.fits ? 'fit' : (row.monthly <= nearCap ? 'near' : 'over');
     const cur = best.get(row.n);
     const rank = BUDGET_STATUS.indexOf(status);
     const better = !cur || rank < cur.rank
@@ -226,6 +282,7 @@ export function budgetAll(listings, opts) {
       best.set(row.n, {
         n: row.n, car: row.car, price: row.price, monthly: row.monthly, years: row.years,
         status, rank, topUp: status === 'near' ? row.topUp : null,
+        fitYears: status === 'fit' ? null : row.fitYears,
       });
     }
   }
@@ -302,4 +359,14 @@ export function liveReport({ events, newLeads, listings, startedAt, endedAt }) {
     newLeads: Number.isFinite(newLeads) ? newLeads : null,
     topCar: topCar && topCar.taps >= 2 ? topCar : null,
   };
+}
+
+// Variant chips on camera: drop the words every variant starts with ("1.3"
+// on every Saga), so four chips fit one row on a phone. The full name stays
+// in the title and everywhere else (carLabel). Never empties a name.
+export function shortVariantNames(names) {
+  const parts = (names || []).map((n) => String(n || '').trim().split(/\s+/));
+  let k = 0;
+  while (parts.length > 1 && parts.every((p) => p.length > k + 1 && p[k] === parts[0][k])) k += 1;
+  return parts.map((p) => p.slice(k).join(' '));
 }
