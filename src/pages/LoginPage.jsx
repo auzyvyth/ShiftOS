@@ -14,6 +14,11 @@ import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from "../utils/installPrompt";
 import { isPlatformRole, PLATFORM_ONLY_MESSAGE } from "../utils/platformOnly";
 import { refusePlatformAccount, evictPlatformSession } from "../lib/platformEvict";
 import { SITE_URL, isOwnHost } from "../config/site";
+import { withTimeout } from "../config/marketplaceConfig";
+
+// A magic-link send that has not answered in 20s is not coming back.
+const OTP_SEND_TIMEOUT_MS = 20000;
+const OTP_SEND_TIMEOUT_ERROR = { code: "send_timeout", message: "The server took too long to answer. Please try again." };
 
 const Field = ({ id, label, focused, children }) => (
   <div className={`field ${focused === id ? "is-focused" : ""}`}>
@@ -213,7 +218,9 @@ export default function LoginPage() {
     const gate = await emailActionGate(magicEmail, EMAIL_ACTIONS.MAGIC);
     if (!gate.allowed) { setError(gate.message); setMagicLoading(false); return; }
     const captchaToken = await getToken();
-    const { error } = await supabase.auth.signInWithOtp({
+    // Capped: the send waits on the auth lock, and a held lock or a stalled
+    // server hangs it with no error, leaving the button on "Sending..." forever.
+    const { error } = await withTimeout(supabase.auth.signInWithOtp({
       email: magicEmail.trim(),
       options: {
         captchaToken,
@@ -223,7 +230,7 @@ export default function LoginPage() {
         // otherwise creates a profile-less phantom user. New users go to /onboarding.
         shouldCreateUser: false,
       },
-    });
+    }), OTP_SEND_TIMEOUT_MS).catch(() => ({ error: OTP_SEND_TIMEOUT_ERROR }));
     setMagicLoading(false);
     if (error) {
       console.error("[LoginPage] magic link send failed:", error.code, error.message);
