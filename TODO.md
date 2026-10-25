@@ -2592,6 +2592,7 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   counts; adoption metric = % of finance cases with a pre-check before the first bank.
   NOT on the Live presenter: it is on a public stream, and credit questions about a
   named buyer must never be on camera. Lite lead + Premium LoanDesk + a buyer link.
+  Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 - **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
   presenter can be driven by a script in a headless browser and recorded to MP4 (done once for
