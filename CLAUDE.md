@@ -184,7 +184,13 @@ Project ID: lemdkdizdlcirhbzqlos
   WORD carries the colour (pending red, confirmed mint); pending/confirmed cards carry no pill
   (the section heading says it); booking cards grid on desktop; `BookingWeekCalendar` is
   Premium-only and on `PD` (no amber: "needs your OK" = dashed block + red dot). `SubTabs
-  premium` is the premiumDark switch (Inbox, Listings, Sold pass it; Analytics not yet). Sold tab:
+  premium` is the premiumDark switch (Inbox, Listings, Sold, Analytics pass it). Analytics tab
+  (`salesmanPremium/AnalyticsTab.jsx`, own `PD` CARD/EYEBROW/STAT, not shared.jsx's `panel` ones):
+  top card = commission + cars sold ALL TIME with "Recent sales" folded in (it sat under Listings);
+  no "sold this month" (Dashboard tile). Listings = ONE tap-through card (taps + views as its
+  working, views line) where four tiles were (WA taps = Dashboard tile, "Enquiries" = the Inbox
+  count); per-car table lists cars for sale only. `ChannelBreakdown theme="premium"`: neutral bars,
+  mint WA count, no second "Direct" note (Lite + linked panel keep brand colours). Sold tab:
   `SoldCustomers` / `ComingUp` are Premium-only and on `PD`; the shared `PostSaleBoard`,
   `PostSaleChecklist` and `ServicePackages` take `theme="premium"` (dealer = light, linked
   salesman = `dark`, both unchanged). On the Handover pill `ComingUp skipHandover` drops the

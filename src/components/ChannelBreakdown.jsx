@@ -1,6 +1,7 @@
 import React from "react";
 import { MessageCircle, Users, Camera, Music2, Send, AtSign, Search, Copy, Globe, BookOpen } from "lucide-react";
 import { channelMeta } from "../utils/detectChannel";
+import { premiumDark as PD } from "../theme/tokens";
 
 // Icon per traffic source — swapped in for the old plain colour dot so each
 // row reads at a glance instead of relying on a decorative glowing bullet.
@@ -34,7 +35,13 @@ export default function ChannelBreakdown({
   compact = false,
   viewsLabel = "views",
   enquiriesLabel = "WA",
+  // "premium" = Salesman Premium's premiumDark look: neutral bars and icons,
+  // mint for the WhatsApp count only. Nine brand colours side by side (blue,
+  // green, pink, red...) is the stacked-accent look the design rules forbid.
+  // Lite and the linked panel pass nothing and keep the brand colours.
+  theme = null,
 }) {
+  const premium = theme === "premium";
   // Sum by channel in case the caller passes multiple rows per channel.
   const agg = {};
   rows.forEach((r) => {
@@ -67,7 +74,7 @@ export default function ChannelBreakdown({
       )}
 
       {list.length === 0 ? (
-        <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>{emptyHint}</p>
+        <p style={{ margin: 0, fontSize: 12, color: premium ? PD.textMuted : "#475569" }}>{emptyHint}</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: compact ? 8 : 10 }}>
           {list.map((r) => {
@@ -93,7 +100,7 @@ export default function ChannelBreakdown({
                       minWidth: 0,
                       fontSize: 12.5,
                       fontWeight: 600,
-                      color: "#e5e7eb",
+                      color: premium ? PD.text : "#e5e7eb",
                     }}
                   >
                     <span
@@ -104,8 +111,8 @@ export default function ChannelBreakdown({
                         width: 18,
                         height: 18,
                         borderRadius: 5,
-                        background: `${meta.color}1a`,
-                        color: meta.color,
+                        background: premium ? PD.raised : `${meta.color}1a`,
+                        color: premium ? PD.textSec : meta.color,
                         flexShrink: 0,
                       }}
                     >
@@ -121,12 +128,12 @@ export default function ChannelBreakdown({
                       {meta.label}
                     </span>
                   </span>
-                  <span style={{ flexShrink: 0, fontSize: 11.5, color: "#9ca3af" }}>
-                    <strong style={{ color: "#f1f5f9", fontWeight: 700 }}>{r.views}</strong> {viewsLabel}
+                  <span style={{ flexShrink: 0, fontSize: 11.5, color: premium ? PD.textSec : "#9ca3af" }}>
+                    <strong style={{ color: premium ? PD.text : "#f1f5f9", fontWeight: 700 }}>{r.views}</strong> {viewsLabel}
                     {r.enquiries > 0 && (
                       <>
                         {" · "}
-                        <strong style={{ color: "#4ade80", fontWeight: 700 }}>{r.enquiries}</strong> {enquiriesLabel}
+                        <strong style={{ color: premium ? PD.up : "#4ade80", fontWeight: 700 }}>{r.enquiries}</strong> {enquiriesLabel}
                       </>
                     )}
                   </span>
@@ -135,7 +142,7 @@ export default function ChannelBreakdown({
                   style={{
                     height: 6,
                     borderRadius: 4,
-                    background: "rgba(255,255,255,0.05)",
+                    background: premium ? PD.hover : "rgba(255,255,255,0.05)",
                     overflow: "hidden",
                   }}
                 >
@@ -144,8 +151,8 @@ export default function ChannelBreakdown({
                       width: `${pct}%`,
                       height: "100%",
                       borderRadius: 4,
-                      background: meta.color,
-                      opacity: 0.85,
+                      background: premium ? PD.textMuted : meta.color,
+                      opacity: premium ? 1 : 0.85,
                       transition: "width 0.4s ease",
                     }}
                   />
@@ -153,9 +160,12 @@ export default function ChannelBreakdown({
               </div>
             );
           })}
-          <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#475569" }}>
-            Direct = organic or untagged visits we couldn't attribute to a platform.
-          </p>
+          {/* Premium's Analytics prints its own note on Direct under this. */}
+          {!premium && (
+            <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "#475569" }}>
+              Direct = organic or untagged visits we couldn't attribute to a platform.
+            </p>
+          )}
         </div>
       )}
     </div>

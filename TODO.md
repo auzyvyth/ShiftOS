@@ -2612,6 +2612,13 @@ tabs that need to be simpler." Next session:
     processing" (pill badge), "N completed" (Show completed (N)), the checklist's own progress bar,
     the Done/Pending pill beside the round tick. No amber or blue left: due = red text, done = mint.
     "Next:" chip now ends in "…" instead of cutting mid-word. Next: Analytics.
+  - [x] Sold follow-up (2026-10-25, staging): a deal's checklist opens INSTANTLY (board's saved
+    steps, background refresh in parallel) and as a POP-UP in Premium (owner: slow, reloaded on
+    every open, too long inside the card).
+  - [x] Analytics (2026-10-25, staging): premiumDark. Removed: "sold this month" (Dashboard tile),
+    the WA taps + Enquiries tiles (Dashboard tile / Inbox count); four tiles -> one tap-through
+    card; Recent sales moved from Listings into the commission card; sold cars out of the per-car
+    table; platform bars neutral, one "Direct" note. Next: Loans, then Outreach, then Settings.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
