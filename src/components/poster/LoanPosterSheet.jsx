@@ -21,14 +21,28 @@ import {
 } from '../../utils/loanPoster';
 import { renderLoanPoster, posterBlob } from './renderLoanPoster';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { premiumDark as P } from '../../theme/tokens';
 
 const LANG_KEY = 'xd_poster_lang';
 const readLang = () => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ms'; } catch { return 'ms'; } };
 
-const S = {
+const BASE = {
   bg: '#0f141c', panel: '#151b26', border: 'rgba(255,255,255,0.10)',
   text: '#f1f5f9', sub: 'rgba(241,245,249,0.62)', faint: 'rgba(241,245,249,0.4)',
   accent: '#dc2626', field: '#0b1018',
+  onBg: 'rgba(255,255,255,0.10)', onText: '#f1f5f9', onBorder: 'rgba(255,255,255,0.28)',
+  fieldBorder: 'rgba(255,255,255,0.10)', radius: 10, sheetRadius: 18,
+};
+// theme="premium" (SIMPLE-2, 2026-10-25): Salesman Premium's `premiumDark`.
+// Depth by tone instead of outlines; a picked pill is ink (white on dark), so
+// red stays for the Download fill. Lite and the linked-salesman panel pass
+// nothing and keep BASE.
+const PREMIUM = {
+  bg: P.card, panel: P.raised, border: 'transparent',
+  text: P.text, sub: P.textSec, faint: P.textMuted,
+  accent: P.accent, field: P.raised,
+  onBg: P.text, onText: P.card, onBorder: P.text,
+  fieldBorder: 'transparent', radius: P.radius.row, sheetRadius: P.radius.card,
 };
 
 const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.jpg`;
@@ -37,8 +51,9 @@ const fileName = (car) => `loan-${posterTitle(car).toLowerCase().replace(/[^a-z0
 // poster intro ends on it). bottomInset: extra scroll room under the content,
 // so a control at the very bottom can rise above a bar pinned over the screen
 // (the intro's button bar covered half of Download, 2026-10-18).
-export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded, bottomInset = 0 }) {
+export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDownloaded, bottomInset = 0, theme }) {
   useModalHistory(true, onClose);
+  const S = theme === 'premium' ? PREMIUM : BASE;
   const [price, setPrice] = useState(() => String(car?.selling_price || car?.price || ''));
   const [deposit, setDeposit] = useState(() => String(defaultDeposit(car?.selling_price || car?.price)));
   const [rate, setRate] = useState(String(DEFAULT_EIR));
@@ -123,7 +138,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
   const field = (label, value, set, { suffix, hint } = {}) => (
     <label style={{ display: 'block', minWidth: 0 }}>
       <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: S.sub, marginBottom: 6 }}>{label}</span>
-      <div style={{ display: 'flex', alignItems: 'center', background: S.field, border: `1px solid ${S.border}`, borderRadius: 10, padding: '0 12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', background: S.field, border: `1px solid ${S.fieldBorder}`, borderRadius: S.radius, padding: '0 12px' }}>
         {!suffix && <span style={{ color: S.faint, fontSize: 14, marginRight: 6 }}>RM</span>}
         <input
           inputMode="decimal" value={value}
@@ -138,9 +153,9 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
 
   const pill = (active, label, onClick) => (
     <button type="button" onClick={onClick}
-      style={{ flex: 1, padding: '7px 0', fontSize: 12, fontWeight: 700, borderRadius: 8, cursor: 'pointer',
-        border: `1px solid ${active ? 'rgba(255,255,255,0.28)' : S.border}`,
-        background: active ? 'rgba(255,255,255,0.10)' : 'transparent', color: active ? S.text : S.sub }}>
+      style={{ flex: 1, padding: '7px 0', fontSize: 12, fontWeight: 700, borderRadius: theme === 'premium' ? 999 : 8, cursor: 'pointer',
+        border: `1px solid ${active ? S.onBorder : S.border}`,
+        background: active ? S.onBg : (theme === 'premium' ? S.panel : 'transparent'), color: active ? S.onText : S.sub }}>
       {label}
     </button>
   );
@@ -152,8 +167,8 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
     return (
       <button key={pct} type="button" onClick={() => setDeposit(String(value))} disabled={!p}
         style={{ padding: '4px 10px', fontSize: 11, fontWeight: 700, borderRadius: 999, cursor: p ? 'pointer' : 'default',
-          border: `1px solid ${active ? 'rgba(255,255,255,0.28)' : S.border}`,
-          background: active ? 'rgba(255,255,255,0.10)' : 'transparent', color: active ? S.text : S.sub }}>
+          border: `1px solid ${active ? S.onBorder : S.border}`,
+          background: active ? S.onBg : (theme === 'premium' ? S.panel : 'transparent'), color: active ? S.onText : S.sub }}>
         {pct}%
       </button>
     );
@@ -163,14 +178,14 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 880, maxHeight: '94dvh', overflowY: 'auto', background: S.bg, color: S.text,
-          borderRadius: '18px 18px 0 0', border: `1px solid ${S.border}`, borderBottom: 'none', fontFamily: 'var(--xd-font-body)' }} className="xd-poster-sheet">
+          borderRadius: `${S.sheetRadius}px ${S.sheetRadius}px 0 0`, border: `1px solid ${S.border}`, borderBottom: 'none', fontFamily: 'var(--xd-font-body)' }} className="xd-poster-sheet">
         <style>{'.xd-poster-sheet button, .xd-poster-sheet input { font-family: inherit; }'}</style>
-        <div style={{ position: 'sticky', top: 0, zIndex: 1, background: S.bg, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${S.border}` }}>
+        <div style={{ position: 'sticky', top: 0, zIndex: 1, background: S.bg, display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: `1px solid ${theme === 'premium' ? P.line : S.border}` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Loan poster</p>
             <p style={{ margin: 0, fontSize: 12, color: S.sub, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{posterTitle(car)}</p>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, borderRadius: '50%', border: `1px solid ${S.border}`, background: 'transparent', color: S.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={onClose} aria-label="Close" style={{ width: 34, height: 34, borderRadius: '50%', border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.sub, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <X size={16} />
           </button>
         </div>
@@ -180,7 +195,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             {numbers.ok ? (
               <canvas ref={previewRef} style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: '1080 / 1350', borderRadius: 10, background: '#fff', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }} />
             ) : (
-              <div style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: '1080 / 1350', borderRadius: 10, border: `1px dashed ${S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: S.sub, fontSize: 13 }}>
+              <div style={{ width: '100%', maxWidth: 'min(380px, 72vw)', aspectRatio: '1080 / 1350', borderRadius: 10, border: `1px dashed ${theme === 'premium' ? 'rgba(255,255,255,0.14)' : S.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center', color: S.sub, fontSize: 13 }}>
                 {POSTER_ERRORS[numbers.error]}
               </div>
             )}
@@ -212,7 +227,7 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             </div>
 
             {limitHit ? (
-              <div style={{ border: `1px solid ${S.border}`, borderRadius: 12, padding: 14, background: S.panel }}>
+              <div style={{ border: `1px solid ${S.border}`, borderRadius: S.radius, padding: 14, background: S.panel }}>
                 <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}><Lock size={14} /> {LITE_POSTERS_PER_MONTH} free posters used this month</p>
                 <p style={{ margin: '0 0 12px', fontSize: 12, color: S.sub }}>Cars you already made a poster for stay free. Premium makes posters for every car.</p>
                 {onUpgrade && (
@@ -224,13 +239,13 @@ export default function LoanPosterSheet({ car, seller, onClose, onUpgrade, onDow
             ) : (
               <div style={{ display: 'flex', gap: 8 }}>
                 <button data-tour-id="poster-download" onClick={() => run('download')} disabled={!numbers.ok || busy}
-                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: 10, border: 'none',
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '12px 0', borderRadius: theme === 'premium' ? 999 : 10, border: 'none',
                     background: numbers.ok ? S.accent : 'rgba(220,38,38,0.3)', color: '#fff', fontSize: 14, fontWeight: 700, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
                   <Download size={15} /> {busy ? 'Making...' : 'Download poster'}
                 </button>
                 {canShare && (
                   <button onClick={() => run('share')} disabled={!numbers.ok || busy} aria-label="Share poster"
-                    style={{ width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, border: `1px solid ${S.border}`, background: 'transparent', color: S.text, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
+                    style={{ width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: theme === 'premium' ? 999 : 10, border: `1px solid ${S.border}`, background: theme === 'premium' ? S.panel : 'transparent', color: S.text, cursor: numbers.ok && !busy ? 'pointer' : 'default' }}>
                     <Share2 size={16} />
                   </button>
                 )}

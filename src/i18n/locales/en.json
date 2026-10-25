@@ -995,6 +995,7 @@
       "commissionTitle": "Commission and monthly goal",
       "commissionSub": "Track what each sale earned you and how close you are to this month's target. On Premium.",
       "leadTools": "Reminders and call log: Premium",
+      "loanCheck": "Loan check before the bank: Premium",
       "pageTitle": "Banner, bio and social links on your page",
       "pageSub": "Your free page shows your cars, your name, how to reach you and your trust details. Premium adds a banner, a bio and your Instagram, TikTok and Facebook."
     },
@@ -1770,6 +1771,7 @@
       "viewMarket": "View XDrive marketplace",
       "loanCalculator": "Loan calculator",
       "share": "Share",
+      "shareVisits": "visits from shared links",
       "miniByPlatform": "Mini-page traffic by platform",
       "visitsLower": "visits",
       "clicksLower": "clicks",
@@ -1816,7 +1818,24 @@
       "bestToPush": "Best to push",
       "unpin": "Unpin",
       "pin": "Pin",
-      "startingOutNote": "Leads, bookings, your sales goal and follow-ups show up here as soon as your first buyer gets in touch."
+      "startingOutNote": "Leads, bookings, your sales goal and follow-ups show up here as soon as your first buyer gets in touch.",
+      "openCallList": "Open call list",
+      "leadsLabel": "Leads",
+      "inPipeline": "in your pipeline",
+      "tapsShort": "WhatsApp taps",
+      "visitsShort": "Page visits",
+      "last30": "last 30 days",
+      "allTime": "all time",
+      "soldMonth": "Sold this month",
+      "goalLine": "RM {{earned}} of RM {{target}} · {{n}}d left",
+      "nothingBooked": "Nothing booked",
+      "yourPage": "Your page",
+      "more": "More",
+      "openPage": "Open my page",
+      "topCars": "Top cars",
+      "allInAnalytics": "All in Analytics",
+      "carMeta": "{{views}} views · {{taps}} taps",
+      "moreMissed": "+{{n}} more missed bookings"
     },
     "lst": {
       "noImages": "No images on this listing",
@@ -1888,6 +1907,7 @@
       "caption": "Caption",
       "moreActions": "More actions",
       "tiktokPost": "TikTok post",
+      "loanPoster": "Loan poster",
       "downloadPhotos": "Download photos"
     },
     "perf": {
@@ -1942,6 +1962,7 @@
       "moneyWon": "{{amount}} won",
       "sourceNote": "Close rate counts settled deals only, so a source with leads still open is not punished for them.",
       "listingViews": "Listing views",
+      "last7": "Last 7 days",
       "last30": "Last 30 days",
       "waTaps": "WhatsApp taps",
       "tapThrough": "Tap-through",
@@ -2068,16 +2089,12 @@
       },
       "loans": {
         "new": {
-          "title": "New application",
-          "body": "Start from a lead or type the buyer in. Add the car and the deposit, and it works out the monthly and whether the buyer can carry it."
-        },
-        "banks": {
-          "title": "Which banks",
-          "body": "Pick more than one bank. If the first says no, the next one is already on file."
+          "title": "Check a buyer",
+          "body": "Answer a few questions about the buyer’s credit record and income. It shows what to fix before any bank sees the file, then starts the bank application with everything filled in."
         },
         "list": {
           "title": "Applications",
-          "body": "Every application stays here. Update each bank's answer as it comes in."
+          "body": "Every bank application stays here. Record each bank’s answer as it comes in."
         }
       },
       "outreach": {

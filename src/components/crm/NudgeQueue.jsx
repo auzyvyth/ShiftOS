@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BellRing, Clock, MessageCircle, MoreVertical, Sparkles, X } from 'lucide-react';
+import { premiumDark as PD } from '../../theme/tokens';
 
 // RAPTOR-1 — the review queue for follow-up nudges that have come due.
 //
@@ -25,6 +26,13 @@ const PALETTES = {
     accent:'#f87171', accentSoft:'rgba(220,38,38,0.14)',
     okText:'#4ade80', violetText:'#c4b5fd', warnText:'#fbbf24',
   },
+  // Salesman Premium (SIMPLE-2): tone instead of borders, no amber or violet.
+  premium: {
+    surface:PD.card, surfaceAlt:PD.raised, fill:PD.line, border:'transparent',
+    text:PD.text, textSec:PD.textSec, textMuted:PD.textSec, textDim:PD.textMuted,
+    accent:PD.accentText, accentSoft:PD.raised,
+    okText:PD.up, violetText:PD.textSec, warnText:PD.accentText,
+  },
 };
 
 const fmtWhen = (iso) => {
@@ -43,6 +51,8 @@ const fmtDate = (iso) => new Date(iso).toLocaleString('en-MY', {
 
 export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss, theme = 'light' }) {
   const P = PALETTES[theme] || PALETTES.light;
+  const prem = theme === 'premium';
+  const FONT = prem ? 'inherit' : "system-ui,sans-serif";
   const [openId, setOpenId]   = useState(null);   // expanded row (editable draft)
   const [menuId, setMenuId]   = useState(null);   // which row's overflow menu is open
   const [edits, setEdits]     = useState({});     // per-nudge edited draft text
@@ -52,8 +62,8 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
   const draftOf = (n) => (edits[n.id] !== undefined ? edits[n.id] : n.draft_message);
 
   return (
-    <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius:16, marginBottom:20, overflow:'hidden' }}>
-      <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', padding:'13px 16px', borderBottom: due.length ? `1px solid ${P.border}` : 'none' }}>
+    <div style={{ background:P.surface, border:`1px solid ${P.border}`, borderRadius: prem ? PD.radius.card : 16, marginBottom:20, overflow:'hidden' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:9, flexWrap:'wrap', padding:'13px 16px', borderBottom: due.length ? `1px solid ${prem ? PD.line : P.border}` : 'none' }}>
         <BellRing size={15} style={{ color:P.accent, flexShrink:0 }} />
         <p style={{ fontSize:13, fontWeight:700, color:P.text, margin:0, flex:1 }}>
           Follow-ups due
@@ -89,11 +99,11 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap', marginBottom:3 }}>
                   <span style={{ fontSize:13.5, fontWeight:600, color:P.text }}>{lead.buyer_name || 'Unknown'}</span>
-                  <span style={{ fontSize:10, fontWeight:700, color:P.warnText, background:'rgba(217,119,6,0.1)', borderRadius:5, padding:'1px 6px' }}>
+                  <span style={{ fontSize:10, fontWeight:700, color:P.warnText, background: prem ? PD.raised : 'rgba(217,119,6,0.1)', borderRadius:5, padding:'1px 6px' }}>
                     {fmtWhen(n.scheduled_for)}
                   </span>
                   {n.ai_drafted && (
-                    <span style={{ fontSize:10, fontWeight:700, color:P.violetText, background:'rgba(124,58,237,0.09)', borderRadius:5, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3 }}>
+                    <span style={{ fontSize:10, fontWeight:700, color:P.violetText, background: prem ? PD.raised : 'rgba(124,58,237,0.09)', borderRadius:5, padding:'1px 6px', display:'inline-flex', alignItems:'center', gap:3 }}>
                       <Sparkles size={9} /> AI draft
                     </span>
                   )}
@@ -117,7 +127,7 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
                   <>
                     {/* click-catcher so the menu closes on an outside tap */}
                     <div onClick={() => setMenuId(null)} style={{ position:'fixed', inset:0, zIndex:20 }} />
-                    <div style={{ position:'absolute', right:0, top:26, zIndex:21, background:P.surface, border:`1px solid ${P.border}`, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden', minWidth:150 }}>
+                    <div style={{ position:'absolute', right:0, top:26, zIndex:21, background: prem ? PD.hover : P.surface, border:`1px solid ${P.border}`, borderRadius:10, boxShadow:'0 8px 24px rgba(0,0,0,0.12)', overflow:'hidden', minWidth:150 }}>
                       {[
                         { label: 'Snooze 1 day',  days: 1 },
                         { label: 'Snooze 3 days', days: 3 },
@@ -126,12 +136,12 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
                             const d = new Date(); d.setDate(d.getDate() + opt.days); d.setHours(9, 0, 0, 0);
                             setMenuId(null); onSnooze(n.id, d);
                           }}
-                          style={{ display:'flex', alignItems:'center', gap:7, width:'100%', padding:'9px 12px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:P.textSec, textAlign:'left', fontFamily:"system-ui,sans-serif" }}>
+                          style={{ display:'flex', alignItems:'center', gap:7, width:'100%', padding:'9px 12px', background:'none', border:'none', cursor:'pointer', fontSize:12, color:P.textSec, textAlign:'left', fontFamily:FONT }}>
                           <Clock size={12} /> {opt.label}
                         </button>
                       ))}
                       <button onClick={() => { setMenuId(null); onDismiss(n.id); }}
-                        style={{ display:'flex', alignItems:'center', gap:7, width:'100%', padding:'9px 12px', background:'none', border:'none', borderTop:`1px solid ${P.fill}`, cursor:'pointer', fontSize:12, color:P.accent, textAlign:'left', fontFamily:"system-ui,sans-serif" }}>
+                        style={{ display:'flex', alignItems:'center', gap:7, width:'100%', padding:'9px 12px', background:'none', border:'none', borderTop:`1px solid ${P.fill}`, cursor:'pointer', fontSize:12, color:P.accent, textAlign:'left', fontFamily:FONT }}>
                         <X size={12} /> Dismiss
                       </button>
                     </div>
@@ -142,22 +152,22 @@ export default function NudgeQueue({ due, scheduled, onSend, onSnooze, onDismiss
 
             {expanded ? (
               <textarea value={draftOf(n)} onChange={e => setEdits(p => ({ ...p, [n.id]: e.target.value }))} rows={5}
-                style={{ width:'100%', boxSizing:'border-box', margin:'9px 0 0', background:P.surfaceAlt, border:`1px solid ${P.border}`, borderRadius:9, padding:'11px 13px', fontSize:12.5, color:P.text, lineHeight:1.7, fontFamily:"system-ui,sans-serif", resize:'vertical', outline:'none' }} />
+                style={{ width:'100%', boxSizing:'border-box', margin:'9px 0 0', background:P.surfaceAlt, border:`1px solid ${P.border}`, borderRadius:9, padding:'11px 13px', fontSize:12.5, color:P.text, lineHeight:1.7, fontFamily:FONT, resize:'vertical', outline:'none' }} />
             ) : (
               <button onClick={() => setOpenId(n.id)}
-                style={{ width:'100%', textAlign:'left', margin:'9px 0 0', background:P.surfaceAlt, border:`1px solid ${P.border}`, borderRadius:9, padding:'9px 12px', fontSize:12, color:P.textSec, lineHeight:1.6, cursor:'pointer', fontFamily:"system-ui,sans-serif", overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                style={{ width:'100%', textAlign:'left', margin:'9px 0 0', background:P.surfaceAlt, border:`1px solid ${P.border}`, borderRadius:9, padding:'9px 12px', fontSize:12, color:P.textSec, lineHeight:1.6, cursor:'pointer', fontFamily:FONT, overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
                 {draftOf(n)}
               </button>
             )}
 
             <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:9, flexWrap:'wrap' }}>
               <button onClick={() => onSend(n, draftOf(n))}
-                style={{ flex:'1 1 200px', padding:'10px 14px', borderRadius:10, background:'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', color:P.surface, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:"system-ui,sans-serif", display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
+                style={{ flex:'1 1 200px', padding:'10px 14px', borderRadius: prem ? 999 : 10, background: prem ? PD.accent : 'linear-gradient(135deg,#22c55e,#16a34a)', border:'none', color: prem ? PD.onAccent : P.surface, fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:FONT, display:'flex', alignItems:'center', justifyContent:'center', gap:7 }}>
                 <MessageCircle size={14} /> Review &amp; send in WhatsApp
               </button>
               {expanded && (
                 <button onClick={() => setOpenId(null)}
-                  style={{ padding:'10px 14px', borderRadius:10, background:P.surface, border:`1px solid ${P.border}`, color:P.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:"system-ui,sans-serif" }}>
+                  style={{ padding:'10px 14px', borderRadius:10, background:P.surface, border:`1px solid ${P.border}`, color:P.textMuted, fontSize:12, fontWeight:600, cursor:'pointer', fontFamily:FONT }}>
                   Collapse
                 </button>
               )}

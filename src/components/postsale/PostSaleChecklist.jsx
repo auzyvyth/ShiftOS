@@ -2,8 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Check, Clock, Circle, MinusCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { usePostSaleTasks } from '../../hooks/usePostSaleTasks';
 import { POST_SALE_STEPS, OWNER_LABELS, STATUS_CONFIG } from '../../utils/postSaleSteps';
+import { premiumDark as PD } from '../../theme/tokens';
 
 const STEP_META = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s]));
+
+// Salesman Premium (SIMPLE-2): mint for done, neutral otherwise; no amber.
+const PREMIUM_STATUS = {
+  pending:     { ...STATUS_CONFIG.pending,     color: PD.textMuted, bg: PD.hover },
+  in_progress: { ...STATUS_CONFIG.in_progress, color: PD.text,      bg: PD.hover },
+  done:        { ...STATUS_CONFIG.done,        color: PD.up,        bg: 'rgba(110,231,183,0.12)' },
+  na:          { ...STATUS_CONFIG.na,          color: PD.textMuted, bg: PD.hover },
+};
 
 // Malaysian motor policies and road tax both run 12 months, so that is the
 // default the expiry field opens with — a correct guess in the normal case, one
@@ -25,8 +34,12 @@ function StatusIcon({ status }) {
 // Renders the post-sale handover checklist for a won deal. Light-themed to match
 // the dashboard shell. Marking a step done is a single tap on the round button;
 // the row expands (tap anywhere on the title) for notes / due date / cost.
-export default function PostSaleChecklist({ lead, compact = false, dark = false, onTasksChange = null, onExpiryWritten = null }) {
-  const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
+// theme="premium" = Salesman Premium's premiumDark look; `dark` alone is the
+// linked-salesman panel, neither is the light dealer dashboard.
+// initialTasks: the step rows the handover board already holds, so the list
+// paints at once instead of behind a fetch (see usePostSaleTasks).
+export default function PostSaleChecklist({ lead, compact = false, dark = false, theme = null, initialTasks = null, onTasksChange = null, onExpiryWritten = null }) {
+  const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead, { initialTasks });
   const [expanded, setExpanded] = useState(null);
 
   // Writing an expiry changes the CUSTOMER row too (trg_sync_customer_expiry
@@ -50,7 +63,12 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
     if (reportRef.current && tasks.length) reportRef.current(tasks);
   }, [tasks]);
 
-  const th = dark
+  const premium = theme === 'premium';
+  const STATUS = premium ? PREMIUM_STATUS : STATUS_CONFIG;
+  const doneHue = premium ? PD.up : '#059669';
+  const th = premium
+    ? { rowBg: PD.raised, rowDoneBg: PD.raised, border: 'transparent', text: PD.text, sub: PD.textSec, muted: PD.textMuted, track: PD.hover, chip: PD.hover, inputBg: PD.hover, inputBorder: 'transparent', totalBg: PD.raised }
+    : dark
     ? { rowBg: 'rgba(255,255,255,0.03)', rowDoneBg: 'rgba(255,255,255,0.015)', border: 'rgba(255,255,255,0.1)', text: '#f1f5f9', sub: '#9ca3af', muted: 'rgba(255,255,255,0.4)', track: 'rgba(255,255,255,0.1)', chip: 'rgba(255,255,255,0.06)', inputBg: 'rgba(255,255,255,0.05)', inputBorder: 'rgba(255,255,255,0.15)', totalBg: 'rgba(255,255,255,0.03)' }
     : { rowBg: '#fff', rowDoneBg: '#f9fafb', border: '#e5e7eb', text: '#111827', sub: '#6b7280', muted: '#9ca3af', track: '#e5e7eb', chip: '#f3f4f6', inputBg: '#fff', inputBorder: '#d1d5db', totalBg: '#f9fafb' };
 
@@ -60,25 +78,28 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {/* Progress */}
+      {/* Progress. Premium only ever shows this checklist inside a board deal
+          whose header already has the bar and the percentage, so it is left out. */}
+      {!premium && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <div style={{ flex: 1, height: 6, borderRadius: 99, background: th.track, overflow: 'hidden' }}>
-          <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? '#059669' : '#dc2626', transition: 'width 0.3s' }} />
+          <div style={{ width: `${progress}%`, height: '100%', background: progress === 100 ? doneHue : '#dc2626', transition: 'width 0.3s' }} />
         </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? '#059669' : th.sub, minWidth: 64, textAlign: 'right' }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: progress === 100 ? doneHue : th.sub, minWidth: 64, textAlign: 'right' }}>
           {progress === 100 ? 'Completed' : `${progress}%`}
         </span>
       </div>
+      )}
 
       {/* Steps */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {tasks.map((t) => {
           const meta = STEP_META[t.step_key] || { label: t.step_key };
-          const sc = STATUS_CONFIG[t.status] || STATUS_CONFIG.pending;
+          const sc = STATUS[t.status] || STATUS.pending;
           const isOpen = expanded === t.id;
           const isDone = t.status === 'done';
           return (
-            <div key={t.id} style={{ background: isDone ? th.rowDoneBg : th.rowBg, border: `1px solid ${th.border}`, borderRadius: 10, padding: '10px 12px' }}>
+            <div key={t.id} style={{ background: isDone ? th.rowDoneBg : th.rowBg, border: `1px solid ${th.border}`, borderRadius: premium ? PD.radius.row : 10, padding: '10px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 {/* One-tap complete: pending/in-progress -> done, done -> pending */}
                 <button
@@ -107,7 +128,7 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                     else updateTask(t.id, patch);
                   }}
                   title={isDone ? 'Tap to reopen this step' : 'Tap to mark done'}
-                  style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: sc.color, background: sc.bg, border: `1.5px solid ${sc.color}66` }}
+                  style={{ flexShrink: 0, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: sc.color, background: sc.bg, border: premium ? 'none' : `1.5px solid ${sc.color}66` }}
                 >
                   <StatusIcon status={t.status} />
                 </button>
@@ -132,9 +153,13 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                       )}
                     </div>
                   </div>
-                  <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em', padding: '3px 8px', borderRadius: 20, color: sc.color, background: sc.bg }}>
-                    {sc.label}
-                  </span>
+                  {/* Premium: the round button already says pending / done (and done
+                      is struck through), so only the two states it can't show get a pill. */}
+                  {!(premium && (t.status === 'pending' || t.status === 'done')) && (
+                    <span style={{ flexShrink: 0, fontSize: 9, fontWeight: 700, letterSpacing: '0.03em', padding: '3px 8px', borderRadius: 20, color: sc.color, background: sc.bg }}>
+                      {sc.label}
+                    </span>
+                  )}
                   {isOpen ? <ChevronDown size={15} color={th.muted} /> : <ChevronRight size={15} color={th.muted} />}
                 </button>
               </div>
@@ -163,12 +188,12 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     {/* Quick status overrides for the less-common states */}
                     <button onClick={() => updateTask(t.id, { status: 'in_progress' })}
-                      style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'in_progress' ? '#d97706' : th.sub, background: t.status === 'in_progress' ? 'rgba(217,119,6,0.1)' : th.chip, border: `1px solid ${th.border}` }}>
+                      style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'in_progress' ? (premium ? '#fff' : '#d97706') : th.sub, background: t.status === 'in_progress' ? (premium ? PD.accent : 'rgba(217,119,6,0.1)') : th.chip, border: `1px solid ${th.border}` }}>
                       In progress
                     </button>
                     {meta.optional && (
                       <button onClick={() => updateTask(t.id, { status: t.status === 'na' ? 'pending' : 'na' })}
-                        style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'na' ? '#d97706' : th.sub, background: th.chip, border: `1px solid ${th.border}` }}>
+                        style={{ fontSize: 10, fontWeight: 600, padding: '5px 10px', borderRadius: 6, cursor: 'pointer', color: t.status === 'na' ? (premium ? th.text : '#d97706') : th.sub, background: th.chip, border: `1px solid ${th.border}` }}>
                         {t.status === 'na' ? 'Mark applicable' : 'Not applicable'}
                       </button>
                     )}

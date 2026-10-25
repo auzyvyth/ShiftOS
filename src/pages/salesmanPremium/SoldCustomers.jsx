@@ -16,8 +16,7 @@ import { useTranslation } from "react-i18next";
 import {
   CalendarClock, ChevronRight, ClipboardList, MessageCircle, Phone, ShieldCheck, TrendingUp, Wrench,
 } from "lucide-react";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
-import { CARD, SOFT } from "./shared";
+import { premiumDark as PD, panelType as T } from "../../theme/tokens";
 import ServicePackages from "../../components/crm/ServicePackages";
 import { aftercareSummary, buildComingUp, renewalSummary } from "../../utils/aftercare";
 import { usablePhone, waLink } from "../../utils/thisWeek";
@@ -34,16 +33,24 @@ function useFmt() {
   return { t, date, locale };
 }
 
+// premiumDark (SIMPLE-2): depth by tone, no borders, mint the only green, red
+// TEXT for "this needs you". No amber or blue (they were warn + info hues).
+const CARD = { background: PD.card, borderRadius: PD.radius.card, overflow: "hidden" };
+const PILL_BTN = { display: "inline-flex", alignItems: "center", gap: 5, background: PD.raised, border: "none", color: PD.text, borderRadius: PD.radius.pill, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 };
+
 // Hue per state, shared by the journey cells and the Coming up rows.
-const HUE = { ok: C.successText, done: C.successText, active: C.successText, due: C.warnText, soon: C.warnText, overdue: C.dangerText, missing: C.textMuted, none: C.textMuted, open: C.warnText };
+const HUE = { ok: PD.up, done: PD.up, active: PD.up, due: PD.accentText, soon: PD.accentText, overdue: PD.accentText, missing: PD.textMuted, none: PD.textMuted, open: PD.textSec };
 
 // ── Coming up ──────────────────────────────────────────────────────────────
-export function ComingUp({ customers, handover, packagesByCustomer, onPick }) {
+// skipHandover: on the Handover pill the board below already lists every open
+// handover with its progress and next step, so Coming up leaves those out
+// rather than show each deal twice on one screen.
+export function ComingUp({ customers, handover, packagesByCustomer, onPick, skipHandover = false }) {
   const { t, date } = useFmt();
   const [showAll, setShowAll] = useState(false);
   const items = useMemo(() => buildComingUp({
     customers, handoverDeals: handover.deals, statusForLead: handover.statusForLead, packagesByCustomer,
-  }), [customers, handover.deals, handover.statusForLead, packagesByCustomer]);
+  }).filter((it) => !(skipHandover && it.kind === "handover")), [customers, handover.deals, handover.statusForLead, packagesByCustomer, skipHandover]);
 
   const reason = (it) => {
     if (it.kind === "handover") {
@@ -65,44 +72,44 @@ export function ComingUp({ customers, handover, packagesByCustomer, onPick }) {
     return t("salesmanPremium.sold.cuPlanEnding", { plan: it.plan, date: date(it.date), n: it.left, defaultValue: "{{plan}} ends {{date}} · {{n}} unused" });
   };
   const ICON = { handover: ClipboardList, renewal: ShieldCheck, service: Wrench, plan_ending: CalendarClock };
-  const tone = (it) => (it.kind === "renewal" && it.days < 0 ? C.dangerText : it.kind === "handover" ? C.textSec : C.warnText);
+  const tone = (it) => (it.kind === "handover" ? PD.textSec : PD.accentText);
 
   const shown = showAll ? items : items.slice(0, 4);
   return (
     <div style={{ ...CARD, marginBottom: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: items.length ? `1px solid ${C.line}` : "none" }}>
-        <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 16px", borderBottom: items.length ? `1px solid ${PD.line}` : "none" }}>
+        <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: PD.text }}>
           {t("salesmanPremium.sold.comingUp", { defaultValue: "Coming up" })}
-          {items.length > 0 && <span style={{ color: C.textMuted, fontWeight: T.weight.semibold }}> · {items.length}</span>}
+          {items.length > 0 && <span style={{ color: PD.textMuted, fontWeight: T.weight.semibold }}> · {items.length}</span>}
         </span>
         {items.length === 0 && (
-          <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.sold.allClear", { defaultValue: "Nothing due. Every buyer is up to date." })}</span>
+          <span style={{ fontSize: T.size.sm, color: PD.textMuted }}>{t("salesmanPremium.sold.allClear", { defaultValue: "Nothing due. Every buyer is up to date." })}</span>
         )}
       </div>
       {shown.map((it, i) => {
         const Icon = ICON[it.kind];
         return (
           <button key={`${it.kind}-${it.customerId || it.leadId}`} onClick={() => onPick(it)}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "11px 14px", background: "transparent", border: "none", borderTop: i ? `1px solid ${C.line}` : "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-            <span style={{ width: 30, height: 30, borderRadius: R.pill, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "11px 16px", background: "transparent", border: "none", borderTop: i ? `1px solid ${PD.line}` : "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+            <span style={{ width: 30, height: 30, borderRadius: PD.radius.pill, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon size={14} color={tone(it)} />
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {it.name || t("salesmanPremium.sold.unknownBuyer", { defaultValue: "Unknown buyer" })}
               </span>
               <span style={{ display: "block", fontSize: T.size.sm + 1, color: tone(it), marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {reason(it)}
-                {it.also?.length ? <span style={{ color: C.textMuted }}> · {t("salesmanPremium.sold.more", { n: it.also.length, defaultValue: "+{{n}} more" })}</span> : null}
+                {it.also?.length ? <span style={{ color: PD.textMuted }}> · {t("salesmanPremium.sold.more", { n: it.also.length, defaultValue: "+{{n}} more" })}</span> : null}
               </span>
             </span>
-            <ChevronRight size={14} color={C.textDim} style={{ flexShrink: 0 }} />
+            <ChevronRight size={14} color={PD.textMuted} style={{ flexShrink: 0 }} />
           </button>
         );
       })}
       {items.length > 4 && (
         <button onClick={() => setShowAll((v) => !v)}
-          style={{ width: "100%", padding: "10px 14px", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, color: C.textSec, fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}>
+          style={{ width: "100%", padding: "10px 14px", background: "transparent", border: "none", borderTop: `1px solid ${PD.line}`, color: PD.textSec, fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}>
           {showAll ? t("salesmanPremium.sold.showLess", { defaultValue: "Show less" }) : t("salesmanPremium.sold.showAll", { n: items.length, defaultValue: "Show all {{n}}" })}
         </button>
       )}
@@ -114,13 +121,13 @@ export function ComingUp({ customers, handover, packagesByCustomer, onPick }) {
 function JourneyCell({ label, value, sub, hue, active, onClick, last }) {
   return (
     <button onClick={onClick}
-      style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "stretch", textAlign: "left", padding: "9px 10px", background: active ? C.fillStrong : "transparent", border: "none", borderRight: last ? "none" : `1px solid ${C.border}`, cursor: "pointer", fontFamily: "inherit" }}>
-      <span style={{ display: "block", fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.textMuted, textTransform: "uppercase", letterSpacing: T.track.label }}>{label}</span>
+      style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "stretch", textAlign: "left", padding: "9px 10px", background: active ? PD.raised : "transparent", border: "none", borderRight: last ? "none" : `1px solid ${PD.line}`, cursor: "pointer", fontFamily: "inherit" }}>
+      <span style={{ display: "block", fontSize: T.size.xs, fontWeight: T.weight.semibold, color: PD.textMuted, textTransform: "uppercase", letterSpacing: T.track.label }}>{label}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-        <span style={{ width: 6, height: 6, borderRadius: R.pill, background: hue, flexShrink: 0 }} />
-        <span style={{ fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+        <span style={{ width: 6, height: 6, borderRadius: PD.radius.pill, background: hue, flexShrink: 0 }} />
+        <span style={{ fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
       </span>
-      {sub && <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", fontSize: T.size.sm, lineHeight: 1.35, color: C.textMuted, marginTop: 2, overflow: "hidden" }}>{sub}</span>}
+      {sub && <span style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", fontSize: T.size.sm, lineHeight: 1.35, color: PD.textMuted, marginTop: 2, overflow: "hidden" }}>{sub}</span>}
     </button>
   );
 }
@@ -147,7 +154,7 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
     : hs.done ? t("salesmanPremium.sold.done", { defaultValue: "Done" })
     : `${Math.max(0, hs.progress || 0)}%`;
   const hSub = hs && !hs.done && hs.next ? hs.next.label : null;
-  const hHue = !hs ? C.textMuted : hs.done ? C.successText : C.warnText;
+  const hHue = !hs ? PD.textMuted : hs.done ? PD.up : PD.textSec;
 
   // Renewals cell: the soonest of the two dates. The date is the value (it is
   // what fits a third of a phone); which policy and how soon go underneath.
@@ -180,27 +187,27 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
 
   const toggle = (s) => setOpen(open === s ? null : s);
   return (
-    <div id={`customer-${c.id}`} style={{ ...CARD, ...(linked ? { borderColor: withAlpha(C.accent, 0.45) } : null) }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "13px 14px" }}>
-        <div style={{ width: 36, height: 36, borderRadius: R.pill, flexShrink: 0, background: C.fillStrong, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textSec }}>{initials}</span>
+    <div id={`customer-${c.id}`} style={{ ...CARD, ...(linked ? { boxShadow: `0 0 0 1.5px ${PD.accent}` } : null) }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "14px 16px" }}>
+        <div style={{ width: 36, height: 36, borderRadius: PD.radius.pill, flexShrink: 0, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: PD.textSec }}>{initials}</span>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: T.size.lg - 1, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || t("salesmanPremium.sold.unknownBuyer", { defaultValue: "Unknown buyer" })}</p>
-          <p style={{ margin: "2px 0 0", fontSize: T.size.sm + 1, color: C.textMuted, lineHeight: 1.4 }}>
+          <p style={{ margin: 0, fontSize: T.size.lg - 1, fontWeight: T.weight.bold, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.name || t("salesmanPremium.sold.unknownBuyer", { defaultValue: "Unknown buyer" })}</p>
+          <p style={{ margin: "2px 0 0", fontSize: T.size.sm + 1, color: PD.textMuted, lineHeight: 1.4 }}>
             {car}{c.car_plate ? ` · ${c.car_plate}` : ""}{c.purchase_date ? ` · ${new Date(c.purchase_date).toLocaleDateString(locale, { month: "short", year: "numeric" })}` : ""}
           </p>
         </div>
         {c.phone && (
           <a href={`tel:${c.phone.replace(/\D/g, "")}`} aria-label={t("salesmanPremium.sold.call", { defaultValue: "Call" })}
-            style={{ width: 34, height: 34, borderRadius: R.pill, border: `1px solid ${C.border}`, color: C.textSec, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            style={{ width: 34, height: 34, borderRadius: PD.radius.pill, background: PD.raised, color: PD.textSec, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Phone size={14} />
           </a>
         )}
       </div>
 
       {/* The journey. Three stages, left to right, in the order the buyer lives them. */}
-      <div style={{ display: "flex", borderTop: `1px solid ${C.border}` }}>
+      <div style={{ display: "flex", borderTop: `1px solid ${PD.line}` }}>
         <JourneyCell label={t("salesmanPremium.sold.handover", { defaultValue: "Handover" })} value={hValue} sub={hSub} hue={hHue}
           active={false} onClick={() => (hs ? onOpenHandover(c.lead_id) : null)} />
         <JourneyCell label={t("salesmanPremium.sold.renewals", { defaultValue: "Renewals" })} value={rValue} sub={rSub} hue={HUE[ren.key]}
@@ -210,15 +217,15 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
       </div>
 
       {open === "renewals" && (
-        <div style={{ padding: "4px 14px 12px", borderTop: `1px solid ${C.line}` }}>
+        <div style={{ padding: "4px 14px 12px", borderTop: `1px solid ${PD.line}` }}>
           {ren.rows.map((r) => {
             const link = (r.key === "overdue" || r.key === "due") ? waLink(c.phone, remindText(r)) : null;
             return (
-              <div key={r.kind} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: `1px solid ${C.line}` }}>
-                <span style={{ width: 7, height: 7, borderRadius: R.pill, background: HUE[r.key], flexShrink: 0 }} />
+              <div key={r.kind} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: `1px solid ${PD.line}` }}>
+                <span style={{ width: 7, height: 7, borderRadius: PD.radius.pill, background: HUE[r.key], flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: T.size.base, color: C.text, fontWeight: T.weight.semibold }}>{kindLabel(r.kind)}</p>
-                  <p style={{ margin: "1px 0 0", fontSize: T.size.sm + 1, color: r.key === "missing" ? C.textMuted : HUE[r.key] }}>
+                  <p style={{ margin: 0, fontSize: T.size.base, color: PD.text, fontWeight: T.weight.semibold }}>{kindLabel(r.kind)}</p>
+                  <p style={{ margin: "1px 0 0", fontSize: T.size.sm + 1, color: r.key === "missing" ? PD.textMuted : HUE[r.key] }}>
                     {r.key === "missing" ? t("salesmanPremium.sold.notSet", { defaultValue: "Not set" })
                       : r.key === "overdue" ? t("salesmanPremium.sold.expiredOn", { date: date(r.date, true), defaultValue: "Expired {{date}}" })
                       : t("salesmanPremium.sold.expiresOn", { date: date(r.date, true), defaultValue: "Expires {{date}}" })}
@@ -226,7 +233,7 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
                 </div>
                 {link && (
                   <button onClick={() => window.open(link, "_blank")}
-                    style={{ ...SOFT(C.successText), display: "inline-flex", alignItems: "center", gap: 5, fontSize: T.size.sm + 1, fontWeight: T.weight.bold, padding: "6px 10px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+                    style={{ ...PILL_BTN, fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, padding: "7px 12px" }}>
                     <MessageCircle size={13} /> {t("salesmanPremium.sold.remind", { defaultValue: "Remind" })}
                   </button>
                 )}
@@ -235,10 +242,10 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
           })}
           {/* The link between stage 1 and 2: dates come from the handover steps. */}
           {ren.missing > 0 && (
-            <p style={{ margin: "10px 0 0", fontSize: T.size.sm + 1, color: C.textSec, lineHeight: 1.5 }}>
+            <p style={{ margin: "10px 0 0", fontSize: T.size.sm + 1, color: PD.textSec, lineHeight: 1.5 }}>
               {t("salesmanPremium.sold.fromHandover", { defaultValue: "Dates fill in by themselves when you tick the insurance and road tax steps in the handover." })}{" "}
               {hs && (
-                <button onClick={() => onOpenHandover(c.lead_id)} style={{ background: "none", border: "none", padding: 0, color: C.infoText, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit", fontSize: "inherit" }}>
+                <button onClick={() => onOpenHandover(c.lead_id)} style={{ background: "none", border: "none", padding: 0, color: PD.text, textDecoration: "underline", textUnderlineOffset: 2, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit", fontSize: "inherit" }}>
                   {t("salesmanPremium.sold.openHandover", { defaultValue: "Open handover" })}
                 </button>
               )}
@@ -248,22 +255,22 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
       )}
 
       {open === "aftercare" && (
-        <div style={{ padding: "10px 14px 13px", borderTop: `1px solid ${C.line}` }}>
+        <div style={{ padding: "10px 14px 13px", borderTop: `1px solid ${PD.line}` }}>
           {/* Shared with the dealer Customers tab, see components/crm/ServicePackages */}
-          <ServicePackages customer={c} packages={pkgs} theme="dark" {...pkgProps} />
+          <ServicePackages customer={c} packages={pkgs} theme="premium" {...pkgProps} />
         </div>
       )}
 
       {tradeUp && (
-        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 14px", borderTop: `1px solid ${C.line}`, background: withAlpha(C.info, 0.05) }}>
-          <TrendingUp size={13} color={C.infoText} style={{ flexShrink: 0 }} />
-          <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: T.size.sm + 1, color: C.textSec }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 16px", borderTop: `1px solid ${PD.line}` }}>
+          <TrendingUp size={13} color={PD.up} style={{ flexShrink: 0 }} />
+          <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: T.size.sm + 1, color: PD.textSec }}>
             {t("salesmanPremium.sold.tradeUp", { defaultValue: "Trade-up ready" })}
-            <span style={{ color: C.textMuted }}> · {vAge >= VEHICLE_READY_Y ? t("salesmanPremium.sold.carAge", { n: vAge, defaultValue: "{{n}}-year-old car" }) : t("salesmanPremium.sold.ownedYears", { n: Math.floor(owned), defaultValue: "owned {{n}} years" })}</span>
+            <span style={{ color: PD.textMuted }}> · {vAge >= VEHICLE_READY_Y ? t("salesmanPremium.sold.carAge", { n: vAge, defaultValue: "{{n}}-year-old car" }) : t("salesmanPremium.sold.ownedYears", { n: Math.floor(owned), defaultValue: "owned {{n}} years" })}</span>
           </p>
           {usablePhone(c.phone) && (
             <button onClick={() => window.open(waLink(c.phone, tradeText), "_blank")}
-              style={{ ...SOFT(C.infoText), fontSize: T.size.sm, fontWeight: T.weight.bold, padding: "5px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+              style={{ ...PILL_BTN, fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, padding: "6px 12px" }}>
               {t("salesmanPremium.sold.message", { defaultValue: "Message" })}
             </button>
           )}
@@ -299,25 +306,26 @@ export default function SoldCustomers({
   const q = search.trim().toLowerCase();
   const list = customers.filter((c) => (!q || `${c.name || ""} ${c.phone || ""} ${c.car_plate || ""}`.toLowerCase().includes(q)) && (!tradeOnly || isTrade(c)));
 
-  if (loading) return <p style={{ color: C.textMuted, fontSize: 13 }}>{t("salesmanPremium.sold.loading", { defaultValue: "Loading customers..." })}</p>;
+  if (loading) return <p style={{ color: PD.textMuted, fontSize: 13 }}>{t("salesmanPremium.sold.loading", { defaultValue: "Loading customers..." })}</p>;
 
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, alignItems: "center" }}>
         <input value={search} onChange={(e) => setSearch(e.target.value)}
           placeholder={t("salesmanPremium.sold.search", { defaultValue: "Search buyers" })}
-          style={{ flex: 1, minWidth: 0, background: C.fillStrong, border: `1px solid ${C.border}`, borderRadius: R.md, padding: "10px 12px", color: C.text, fontSize: 16, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+          style={{ flex: 1, minWidth: 0, background: PD.card, border: "none", borderRadius: PD.radius.pill, padding: "10px 16px", color: PD.text, fontSize: 16, outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
         {tradeCount > 0 && (
           <button onClick={() => setTradeOnly((v) => !v)}
-            style={{ flexShrink: 0, borderRadius: R.pill, padding: "8px 12px", fontSize: T.size.sm + 1, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
-              ...(tradeOnly ? SOFT(C.infoText) : { background: "transparent", border: `1px solid ${C.border}`, color: C.textSec }) }}>
+            aria-pressed={tradeOnly}
+            style={{ flexShrink: 0, borderRadius: PD.radius.pill, padding: "9px 14px", fontSize: T.size.sm + 1, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit", border: "none",
+              background: tradeOnly ? PD.hover : PD.card, color: tradeOnly ? PD.text : PD.textSec }}>
             {t("salesmanPremium.sold.tradeUp", { defaultValue: "Trade-up ready" })} · {tradeCount}
           </button>
         )}
       </div>
 
       {list.length === 0 ? (
-        <p style={{ textAlign: "center", color: C.textMuted, fontSize: 13, padding: "30px 0", lineHeight: 1.5 }}>
+        <p style={{ textAlign: "center", color: PD.textMuted, fontSize: 13, padding: "30px 0", lineHeight: 1.5 }}>
           {customers.length === 0
             ? t("salesmanPremium.sold.noCustomers", { defaultValue: "No buyers yet. They appear here by themselves once a deal is won." })
             : t("salesmanPremium.sold.noMatch", { defaultValue: "No buyers match." })}

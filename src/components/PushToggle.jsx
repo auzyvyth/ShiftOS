@@ -4,6 +4,7 @@ import { Bell, BellOff, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../supabaseClient';
 import { usePushNotifications, isIOS, isStandalone } from '../hooks/usePushNotifications';
+import { premiumDark as PD } from '../theme/tokens';
 
 /*
  * One notification toggle, shared by every panel — dealer dashboard, Salesman
@@ -16,7 +17,9 @@ import { usePushNotifications, isIOS, isStandalone } from '../hooks/usePushNotif
  *
  * `theme='light'` for the dealer dashboard (white cards), `theme='dark'` for the
  * salesman panels — see the Theme section of CLAUDE.md. Getting this wrong gives
- * light text on a white card.
+ * light text on a white card. `theme='premium'` = Salesman Premium (premiumDark):
+ * no outlines, a solid red "Turn on", and no "On" pill (the "Turn off" button
+ * already says it is on).
  *
  * `client` is the supabase client the subscription is written with. It defaults
  * to the main one, which is right for every panel EXCEPT the /platform console:
@@ -33,7 +36,11 @@ export default function PushToggle({ userId, theme = 'dark', style, client = sup
     usePushNotifications(userId, client);
 
   const light = theme === 'light';
-  const c = {
+  const prem = theme === 'premium';
+  const c = prem ? {
+    cardBg: PD.card, border: 'transparent', btnBg: PD.raised,
+    title: PD.text, body: PD.textSec, muted: PD.textMuted,
+  } : {
     cardBg: light ? '#ffffff' : 'rgba(255,255,255,0.03)',
     border: light ? '#e5e7eb' : 'rgba(255,255,255,0.08)',
     title: light ? '#111827' : '#f1f5f9',
@@ -83,7 +90,7 @@ export default function PushToggle({ userId, theme = 'dark', style, client = sup
 
   return (
     <div style={{
-      background: c.cardBg, border: `1px solid ${c.border}`, borderRadius: 12,
+      background: c.cardBg, border: `1px solid ${c.border}`, borderRadius: prem ? PD.radius.card : 12,
       padding: 14, display: 'flex', flexDirection: 'column', gap: 10,
       ...style,
     }}>
@@ -99,7 +106,7 @@ export default function PushToggle({ userId, theme = 'dark', style, client = sup
             {description || t('push.description')}
           </p>
         </div>
-        {subscribed && (
+        {subscribed && !prem && (
           <span style={{
             flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4,
             fontSize: 10, fontWeight: 600, color: '#16a34a',
@@ -123,9 +130,9 @@ export default function PushToggle({ userId, theme = 'dark', style, client = sup
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600,
             padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit',
-            background: subscribed ? 'transparent' : 'rgba(220,38,38,0.12)',
-            border: `1px solid ${subscribed ? c.border : 'rgba(220,38,38,0.3)'}`,
-            color: subscribed ? c.body : '#f87171',
+            background: prem ? (subscribed ? c.btnBg : PD.accent) : subscribed ? 'transparent' : 'rgba(220,38,38,0.12)',
+            border: prem ? 'none' : `1px solid ${subscribed ? c.border : 'rgba(220,38,38,0.3)'}`,
+            color: prem ? (subscribed ? c.body : PD.onAccent) : subscribed ? c.body : '#f87171',
             cursor: (busy || (blocked && !subscribed)) ? 'not-allowed' : 'pointer',
             opacity: (busy || (blocked && !subscribed)) ? 0.55 : 1,
           }}
@@ -142,7 +149,7 @@ export default function PushToggle({ userId, theme = 'dark', style, client = sup
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600,
               padding: '8px 14px', borderRadius: 8, fontFamily: 'inherit',
-              background: 'transparent', border: `1px solid ${c.border}`, color: c.body,
+              background: prem ? c.btnBg : 'transparent', border: prem ? 'none' : `1px solid ${c.border}`, color: c.body,
               cursor: busy ? 'not-allowed' : 'pointer', opacity: busy ? 0.55 : 1,
             }}
           >

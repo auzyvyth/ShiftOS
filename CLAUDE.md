@@ -162,6 +162,57 @@ Project ID: lemdkdizdlcirhbzqlos
   language — tokens, tabular figures, delta contract, sparkline spec, dense table rules)
   before building any dashboard panel, stat tile, data table or trend. Reference
   implementation is `src/components/MarketDemandTab.jsx`.
+- **Salesman Premium is moving to `premiumDark`** (`src/theme/tokens.js`, owner 2026-10-25:
+  "keep dark, premium, colours that complement"). Depth by tone (card #111318 on the near-black
+  canvas, rows #181b21), no borders on cards, Drevo red for fills only, mint `up` (red's
+  complement, desaturated) as the only green; no blue/purple/amber. Adopted one tab at a time:
+  Dashboard (`salesmanPremium/DashboardTab.jsx`) + `crm/ThisWeek.jsx`, then Listings
+  (`salesmanPremium/ListingsTab.jsx`, `VerifyBadgePrompt theme="premium"`) and its pop-ups:
+  `CarDetailPopup theme="premium"`, `LoanPosterSheet theme="premium"` (Lite and the linked
+  panel pass nothing and keep `panel`), and the add/edit sheet `ListingFormModal`. CarForm is
+  shared with the LIGHT dealer dashboard, so it is themed by `.pd-form`
+  (`salesmanPremium/premiumForm.css`, remaps its Tailwind colour classes, only inside that
+  sheet) plus its `dark` prop (only Premium passes it) for the inline step dots, sticky
+  footers (CarForm + QuickSteps via QuickCarFlow) and `DamageMap theme`. A new colour class
+  in CarForm needs a line in premiumForm.css or it shows light in Premium. Chat tab:
+  `SellerInbox theme="premium"` -> `THEMES.premium` in `chat/ChatThread.jsx` (no bubble glow,
+  neutral AI bar + privacy note; `LEGACY` keeps light/dark exactly as before). Any new colour
+  in the chat components goes in THEMES as a key, never inline, or Premium drifts. Leads tab:
+  cards, rail and `ChatSheet theme="premium"`; the stage buttons KEEP their per-stage hues (owner);
+  one heat pill per card; the desktop grid flows with the page (sticky rail), never an inner
+  scroller. Inbox tab (Bookings | Lead history, owner kept both): status pills are one tone, the
+  WORD carries the colour (pending red, confirmed mint); pending/confirmed cards carry no pill
+  (the section heading says it); booking cards grid on desktop; `BookingWeekCalendar` is
+  Premium-only and on `PD` (no amber: "needs your OK" = dashed block + red dot). `SubTabs
+  premium` is the premiumDark switch (Inbox, Listings, Sold, Analytics pass it). Outreach tab:
+  `OutreachHub` + `NudgeQueue` take `theme="premium"` (dealer = light, linked salesman = `dark`,
+  unchanged). Premium drops the four count tiles (three were the Hot/Cold/All switch counts; one
+  line "N contacted today" stays), the 0-100 ring (it was only time since contact, the age chip
+  says it), the footer count, and the car + price in the open lead's header (the car card has
+  them). Only a lead silent 7+ days is red; WhatsApp buttons are the red fill, no green gradient. Analytics tab
+  (`salesmanPremium/AnalyticsTab.jsx`, own `PD` CARD/EYEBROW/STAT, not shared.jsx's `panel` ones):
+  top card = commission + cars sold ALL TIME with "Recent sales" folded in (it sat under Listings);
+  no "sold this month" (Dashboard tile). Listings = ONE tap-through card (taps + views as its
+  working, views line) where four tiles were (WA taps = Dashboard tile, "Enquiries" = the Inbox
+  count); per-car table lists cars for sale only. Desktop Listings = two half-width columns (left:
+  tap-through, by car, by platform; right: the views chart, 7-day total; owner: "too wide"). `ChannelBreakdown theme="premium"`: neutral bars,
+  mint WA count, no second "Direct" note (Lite + linked panel keep brand colours). Sold tab:
+  `SoldCustomers` / `ComingUp` are Premium-only and on `PD`; the shared `PostSaleBoard`,
+  `PostSaleChecklist` and `ServicePackages` take `theme="premium"` (dealer = light, linked
+  salesman = `dark`, both unchanged). On the Handover pill `ComingUp skipHandover` drops the
+  handover rows (the board below lists them); the board drops "N in processing" (the pill's
+  badge) and the checklist its progress bar (the deal header has it). The rest of
+  Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
+  dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
+  only views total), "visits from shared links" sits under Share in Your page, no platform
+  breakdown (Analytics has it), no second follow-up list (This week is the one), the goal is
+  the bar in "Sold this month". Listings card = photo (state as a pill on it), name + status
+  menu, price + margin (only when computable), specs, one traffic line, ONE "improve" line
+  (`listingScore`'s first fix), Caption + Edit + ···; Link lives in ···. No page-link bar
+  (Dashboard has it) and no "Live on XDrive" strip (the Available pill says it). Settings: each section's name is said once (rail/breadcrumb +
+  header); the shared cards inside take `theme="premium"` and then drop their own heading
+  (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard, MyNewModels);
+  photo + cover are one card; no read-only username box (the Google preview shows the link).
 
 ### Anti-slop UI rules (non-negotiable)
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.
@@ -306,6 +357,13 @@ never said the buyer had moved into handover at all.
   after the write** (see `handleMarkWon`, SalesmanPremium.jsx). The DB trigger has already
   created the customer and the 8 steps by the time the leads UPDATE returns, so one
   refetch lands everything; skipping it puts the split-brain straight back.
+- **`useHandover` loads FULL step rows (`TASK_COLS`) and keeps them on the device**, and the board
+  hands them to the checklist as `initialTasks`, so opening a deal paints at once (2026-10-25: it
+  showed "Loading handover steps..." on every open, behind three queries in a row). The checklist
+  still refreshes in the background, its three reads in parallel; a tap bumps `edits` so a late
+  read never un-ticks a step. Premium opens a deal as a POP-UP (`HandoverSheet` in
+  PostSaleBoard.jsx, `theme="premium"` only; portal, scroll lock, `useModalHistory`); the dealer
+  dashboard and linked panel keep the inline expand.
 - `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
   the percentage on every surface at once. That callback is held in a REF inside the
   checklist — parents pass an inline arrow, so keying the effect on it would re-fire every
@@ -549,8 +607,9 @@ live can stall it in front of their audience. So:
   updates on the hourly token refresh; `analytics_events` skips sellers' devices and anyone
   without analytics consent). **ONLINE-1 (2026-10-21)**: every app tab announces itself on the
   Realtime PRESENCE channel `online-now` (`src/components/OnlineBeacon.jsx`, mounted in
-  App.jsx; payload `{a: seller|buyer|visitor, live}`, one random key per DEVICE, no user id), and
-  console Home counts it (`useOnlineNow`). Presence lives in the realtime server's memory: NO
+  App.jsx; payload `{a: seller|buyer|visitor|team, live}`, one random key per DEVICE, no user id), and
+  console Home counts it (`useOnlineNow`). A guest in chat (anonymous sign-in) is a buyer; a
+  signed-out device of ours (`isInternalDevice`) is `team` and is shown apart, never as a visitor. Presence lives in the realtime server's memory: NO
   database writes. The channel is public and spoofable, so it is a dashboard number, never
   the release gate: `seller_live_state` stays the gate.
   **ONLINE-2**: the NAMES of who is live come from `get_live_sellers()` (superadmin-only,
@@ -1349,9 +1408,16 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
   restore cannot move `plan_expires_at` (escalation guard), so it waits.
 
-## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
-- **The free month is a paid-through date, not a trial flag:** `plan_expires_at =
-  now() + 30 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
+## Lite -> Premium upgrade + the free trial (2026-10-04, migration 20261004b)
+- **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025c).** One
+  number in two places: the trigger `apply_premium_free_month()` and
+  `PLAN_CONFIG.salesman_full.trialDays`. Trials started before that keep their 30 days
+  (the date is stamped at start). Console "Set up a seller" picks 7 days or 1 month
+  (`trial_days` in create-salesman, only 7 or 30 accepted) for prospects promised a
+  month. After it ends: drop to Lite as below, never a full lock (owner's pick).
+  `accountState.js` reads a 7- or 30-day gap as a trial; any other length = paid.
+- **The free trial is a paid-through date, not a trial flag:** `plan_expires_at =
+  now() + 7 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
   `start_premium_trial()` from Lite). `subscription_status='trial'` never granted
   Premium (is_salesman_premium ignores it), which is why Premium signups used to land
   on Lite. `premium_trial_started_at` = the one free month is used.
@@ -1446,6 +1512,14 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
+  2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
+  After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards
+  got ZERO views and their sellers' dashboards read 0. Taps there carry `car_id` (card_click,
+  whatsapp_click) and the page logs a `page_view` (`source: new_model_page`).
+  **A model card's canonical is its model page** (CarDetailPage Helmet + `api/og.js` car branch;
+  `og:url` and the Car schema keep the card's own URL so shares still preview the card). Ten
+  advisors = ten near-identical "Proton X50 for sale" pages otherwise. Cards stay out of the sitemap.
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
 - Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
 - Live presenter: cards are ordinary listings; `officialNew` (seller_type new_car) adds
@@ -1494,7 +1568,7 @@ and the won-trigger marks it sold on the first deal.
   `create-salesman` uses signup's business-name fallback (blank = full name) and tags the login
   `account_type`/`tier` like `signUp()`. The setup email lists every saved field, read back
   from the profile row. A new signup question goes in both, or console accounts drift again.
-- Console "Set up a seller" offers Lite or Premium. Premium = the free month, written
+- Console "Set up a seller" offers Lite or Premium. Premium = the free trial (7 days or 1 month), written
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.
 
@@ -1519,6 +1593,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
+new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
+under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`
+(`src/utils/detectChannel.js`): channels share, copy, whatsapp, telegram only (Facebook / IG /
+TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
+(`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
@@ -1779,6 +1859,32 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   opened. Counts only, never a buyer name: the screen may still be on stream.
   `npm run test:live`.
 
+## Loan check (IDEA-23, 2026-10-25) — fix the file BEFORE any bank sees it
+A Proton SA: buyers go to 4-5 banks, all decline (CTOS, CCRIS, no bank record, late payments,
+new job), then the SA chases documents. Premium only (owner, 2026-10-25): Lite's lead panel shows
+it locked (`premiumRow.loanCheck`), opening `goPremium`.
+Opened from the lead panel ("Loan check"), the Loans tab (walk-in buyer) and, once saved, a
+status row on the lead card (the 3-button row is unchanged). Three steps, credit record FIRST,
+then two tabs: what to fix, what to bring (sent to the buyer on WhatsApp, EN/BM switch, a
+person presses send). Rules + maths: `src/utils/loanReadiness.js` (`npm run test:loancheck`),
+on `financing.js` and the Live presenter's DSR bands. Words: `src/components/loans/loanCheckCopy.js`.
+- **Never an approval, a score or a chance.** It lists what commonly gets a file declined.
+- **One bank first, not five**: pending + approved applications show on CCRIS for 12 months.
+- Saved in `loan_checks` (migration `20261025d`), one row per lead, answers only, never an IC.
+  NOT in `loan_applications`: a row there flips `leads.loan_status` to submitted
+  (`trg_sync_lead_loan`) though nothing went to a bank. Never on the Live presenter.
+- **ONE flow into a bank application (owner, 2026-10-25).** An application starts ONLY from a
+  saved check: the result's "Start the bank application" (`onApply`) closes the check and the
+  Loans tab opens `ApplyFromCheck` (`src/components/loans/LoanDesk.jsx`) with buyer, car, price,
+  deposit, years, income, commitments and how they earn filled in. It asks only phone + IC,
+  banks, documents collected, notes. The old "New application" form (its own buyer/car/income
+  fields, a second DSR with 60/65/70% ceilings, "cars that fit") is GONE: one buyer read "tight"
+  in one and "over the ceiling" in the other. Affordability = `assessReadiness`, nowhere else.
+  The application's document ticks still follow `DOC_SETS` by how the buyer earns, because the
+  buyer's status page (`LoanSharePage.jsx`) must show the same list and has no other source;
+  following the check's own list needs a column on `loan_applications` + the share RPC.
+  LoanCheck + LoanDesk are Premium-only and drawn in `premiumDark` (a local `C` map onto `PD`).
+
 ## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
 Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
 linked-salesman car popup (`Salesmanpanel.jsx`). Seller types price, deposit, rate (EIR or
@@ -1996,15 +2102,16 @@ enquiries. Both were granted to `anon`.
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).
-**The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
-Leads, Settings always; Inbox once a booking/enquiry exists, Sold after the first sale,
-Analytics once there is a car, Loans + Outreach once there is a lead. The tab you are on
-keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
-only setup + greeting + page link (`startingOut`, DashboardTab.jsx) until the first buyer.
-Three new signups called the full panel "too complicated" on day one. A new tab must say
-when it earns its link, or it goes back to ten links for a seller with no car.
-**Lite does the same** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
-Settings always; Leads + Performance once there is a car, Inbox once a booking/enquiry exists.
+**Every Premium tab shows from day one (owner, 2026-10-25, SIMPLE-2, undoing SIMPLE-1).**
+SIMPLE-1 (2026-10-21) hid Inbox, Sold, Analytics, Loans and Outreach until the seller "earned"
+them; the owner rejected it ("it's the tabs that need to be simpler"), so `navTabs` is the fixed
+ten and the simplifying happens INSIDE the tabs. The per-tab intros still wait for real data.
+The Dashboard's `startingOut` (setup + greeting + page link until the first buyer) is unchanged.
+Sidebar + phone drawer rows share ONE style (`navRow` / `navBadge`, SalesmanPremium.jsx): 40px
+rows (44 on a phone), 12px corners, 16px icons; colours are still the old `panel` blue.
+**Lite shows every tab from day one too (owner, 2026-10-25)** (`TABS_DESKTOP` / `TABS_MOBILE` +
+`TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings, Leads, Inbox, Performance, Settings. A
+seller with no car who opens Leads or Inbox gets the "list a car first" screen (`gatedLocked`).
 The tour is built from `TOUR_PLAN` (one list for steps AND anchors; never re-split them into two
 index-matched arrays). Dashboard `startingOut` hides the Chat/Add-ons row and every card below
 it until the first buyer. `gatedLocked` lock screens stay for deep links. The tour never switches tabs: it opens the nav (the drawer

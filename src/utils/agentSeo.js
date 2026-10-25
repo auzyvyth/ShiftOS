@@ -72,11 +72,14 @@ export function agentSeoIssues(p) {
 // it changes, so an edit is a new URL and WhatsApp/Facebook fetch it again
 // instead of showing their cached copy. (The car count is not in it; the image
 // itself is re-made at most a day later.)
-export function agentShareImage(p, siteUrl) {
-  if (!p?.slug) return null;
-  const key = [p.cover_url, p.avatar_url, p.full_name, p.dealership, p.job_title, p.city, p.state, p.is_verified,
-    (Array.isArray(p.specializations) ? p.specializations : []).join(",")].map((v) => String(v ?? "")).join("|");
+export function agentCardVersion(p) {
+  const key = [p?.cover_url, p?.avatar_url, p?.full_name, p?.dealership, p?.job_title, p?.city, p?.state, p?.is_verified,
+    (Array.isArray(p?.specializations) ? p.specializations : []).join(",")].map((v) => String(v ?? "")).join("|");
   let h = 5381;
   for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
-  return `${siteUrl}/api/agent-card?slug=${encodeURIComponent(p.slug)}&v=${h.toString(36)}`;
+  return h.toString(36);
+}
+export function agentShareImage(p, siteUrl) {
+  if (!p?.slug) return null;
+  return `${siteUrl}/api/agent-card?slug=${encodeURIComponent(p.slug)}&v=${agentCardVersion(p)}`;
 }

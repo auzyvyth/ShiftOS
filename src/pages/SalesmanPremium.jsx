@@ -98,7 +98,6 @@ import {
  History,
  Search,
  DollarSign,
- ShieldCheck,
  Globe,
  ThumbsUp,
  ThumbsDown,
@@ -145,6 +144,9 @@ import { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/S
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const loadLoanDesk = () => import("../components/loans/LoanDesk");
 const LoanDesk = React.lazy(loadLoanDesk);
+const loadLoanCheck = () => import("../components/loans/LoanCheck");
+const LoanCheck = React.lazy(loadLoanCheck);
+import { loanCheckCopy } from "../components/loans/loanCheckCopy";
 // Tab code downloaded in the background once the first screen is up, most-used
 // first, one file at a time (src/utils/warmChunks.js). Same loaders as the
 // React.lazy calls above, so a warmed tab opens with no spinner, and offline.
@@ -159,7 +161,7 @@ const WARM_TABS = [
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
-import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
 // to render on first paint, and it pulls no chat code with it.
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
@@ -262,9 +264,8 @@ const SETTINGS_GROUPS = [
  ]},
 ];
 
-// Which tab each tour step rings: `tourTabs` in the component, built from the
-// links the menu is SHOWING (navTabs, SIMPLE-1), so a new seller's tour is as
-// short as their menu. Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
+// Which tab each tour step rings: `tourTabs` in the component, built from
+// navTabs (all ten links). Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
 // the sidebar but was introduced 9th, so the ring jumped back up the menu. One step per sidebar link — exactly the
 // 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
 // anymore (see the tourStep effect): it opens the nav (the drawer on
@@ -724,7 +725,6 @@ export default function SalesmanPremium() {
 
  // enquiry templates
  const [openTemplateId, setOpenTemplateId] = useState(null);
- const [templateToast, setTemplateToast] = useState(null);
  const [expandedEnqId, setExpandedEnqId] = useState(null);
 
  // listings sort/filter
@@ -761,7 +761,6 @@ export default function SalesmanPremium() {
  // placeholders until every request behind them has answered (trafficFetched).
  const [trafficFetched, setTrafficFetched] = useState(false);
  const trafficReady = trafficFetched || (carStatsCached && minipageCached);
- const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
  const [selectedCar, setSelectedCar] = useState(null);
@@ -878,6 +877,21 @@ export default function SalesmanPremium() {
 
  // premium — loans
  const [loanApplications, setLoanApplications] = useState([]);
+ // Loan check (IDEA-23): one row per lead, read by the lead card, the lead
+ // panel and the Loans tab. loanCheck = the open check: { lead, existing }.
+ const [loanChecks, setLoanChecks] = useState([]);
+ const [loanCheck, setLoanCheck] = useState(null);
+ const checkByLead = new Map(loanChecks.filter((c) => c.lead_id).map((c) => [c.lead_id, c]));
+ const lc = loanCheckCopy(i18n.language);
+ const openLoanCheck = (lead) => setLoanCheck({ lead: lead || null, existing: lead ? checkByLead.get(lead.id) || null : null });
+ // A check the seller chose to send to a bank: the Loans tab opens its
+ // application with the check's answers (LoanDesk ApplyFromCheck).
+ const [applyFrom, setApplyFrom] = useState(null);
+ const onLoanCheckSaved = (row) => {
+ setLoanChecks((p) => [row, ...p.filter((c) => c.id !== row.id)]);
+ // Edited from the application screen: keep that screen on the new answers.
+ setApplyFrom((p) => (p && p.check?.id === row.id ? { ...p, check: row } : p));
+ };
  // Persisted (IC stripped) so Customers paints instantly; refreshCustomers
  // and the bootstrap fetch still replace it. Loading = nothing to show yet.
  const [customers, setCustomers, customersCached] = usePersistentState(
@@ -930,7 +944,7 @@ export default function SalesmanPremium() {
  const renderTabBack = () => backTab && (
  <button
  onClick={() => navigate(`/salesman-premium/${backTab}`)}
- style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "6px 11px 6px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "7px 12px 7px 9px", borderRadius: PD.radius.pill, background: PD.card, border: "none", color: PD.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
  >
  <ChevronLeft size={14} />
  {TAB_BACK_LABELS[backTab]}
@@ -1329,6 +1343,14 @@ export default function SalesmanPremium() {
  if (error) { console.error("fetchLoanApplications:", error); toast.error(i18n.t("salesmanPremium.errors.loadLoans")); }
  setLoanApplications(data || []);
  });
+ // Loan checks. Before the 20261025d migration the table does not exist:
+ // stay quiet then, the feature just shows no saved checks.
+ supabase.from("loan_checks").select("*").eq("salesman_id", uid)
+ .order("updated_at", { ascending: false }).limit(200)
+ .then(({ data, error }) => {
+ if (error) { if (!["42P01", "PGRST205"].includes(error.code)) console.error("fetchLoanChecks:", error); return; }
+ setLoanChecks(data || []);
+ });
 
  // premium — customers (post-sale buyer records) + their service packages.
  // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
@@ -1346,7 +1368,7 @@ export default function SalesmanPremium() {
  // Must include every column CarForm's edit prefill reads AND every column
  // CarDetailPopup's Paperwork/Mechanical tabs display, or editing/viewing a
  // listing silently blanks those fields (see overlay rule 4).
- const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id";
+ const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id, new_car_unit";
  Promise.all([
  supabase
  .from("car_listings")
@@ -1630,21 +1652,13 @@ export default function SalesmanPremium() {
  // scroll-room padding and in-content scroll-compensation logic (needed
  // when steps pointed at things buried in page content) is gone — every
  // target is a fixed nav row that doesn't move under its own step.
- // The menu grows with the seller (SIMPLE-1, 2026-10-21). Three new signups
- // in a day said the panel was "too complicated": a seller with no car saw ten
- // links, most of them empty boards (Sold, Inbox, Loans, Analytics, Outreach).
- // A link appears once there is something behind it. The tabs themselves are
- // untouched, so a deep link or a dashboard shortcut still opens one, and the
- // tab you are on always keeps its link.
- const navTabs = [
-  "dashboard", "listings", "chat", "leads",
-  ...((appointments || []).length > 0 || (enquiries || []).length > 0 ? ["enquiries"] : []),
-  ...(handover.deals.length > 0 || soldCount > 0 ? ["sold"] : []),
-  ...(myListings.length > 0 ? ["analytics"] : []),
-  ...(leads.length > 0 ? ["loans", "outreach"] : []),
-  "settings",
- ];
- const navShows = (tab) => navTabs.includes(tab) || activeTab === tab;
+ // Every tab shows from day one (owner, 2026-10-25, SIMPLE-2). SIMPLE-1 hid
+ // Inbox, Sold, Analytics, Loans and Outreach until a seller "earned" them;
+ // the owner rejected that: "it's the tabs that need to be simpler", so the
+ // work went into what is INSIDE each tab instead. The per-tab intros still
+ // wait for real data before they play (TAB_INTROS). Same order as the
+ // sidebar (TABS_DESKTOP), so the tour walks down the menu.
+ const navTabs = ["dashboard", "listings", "chat", "leads", "enquiries", "sold", "analytics", "loans", "outreach", "settings"];
  const tourTabs = [null, ...navTabs];
  const tourTabsKey = tourTabs.join(",");
 
@@ -2161,8 +2175,6 @@ export default function SalesmanPremium() {
  "noopener,noreferrer",
  );
  }
- setTemplateToast(enq.id + "_" + key);
- setTimeout(() => setTemplateToast(null), 2000);
  setOpenTemplateId(null);
  };
 
@@ -2832,16 +2844,40 @@ export default function SalesmanPremium() {
  leads, customers, nudges: dueNudges, packages: servicePackages, repName: profile?.full_name,
  }).filter((i) => i.leadId).length;
 
+ // Sidebar rows, shared by the desktop sidebar and the phone drawer so the two
+ // keep one shape (owner, 2026-10-25: "keep the colour, just shape and
+ // spacing"). Colours are the panel's as before; what changed is the size:
+ // 40px rows (44 on a phone), a rounder 12px corner, a 16px icon with a 12px
+ // gap, one 2px step between rows, and a badge that is a fixed round chip.
+ const navRow = (active, mobile = false) => ({
+ display: "flex", alignItems: "center", gap: 12,
+ width: "100%", minHeight: mobile ? 44 : 40, padding: "0 12px",
+ borderRadius: 12, cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+ background: active ? "rgba(37,99,235,0.15)" : "transparent",
+ border: active ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+ color: active ? "#93c5fd" : mobile ? "#9ca3af" : "#6b7280",
+ fontSize: mobile ? 14.5 : 13.5, fontWeight: active ? 600 : 500,
+ boxSizing: "border-box",
+ });
+ const navBadge = {
+ display: "inline-flex", alignItems: "center", justifyContent: "center",
+ minWidth: 20, height: 20, padding: "0 6px", boxSizing: "border-box",
+ fontSize: 10.5, fontWeight: 600, fontVariantNumeric: "tabular-nums",
+ background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)",
+ color: "#93c5fd", borderRadius: 99,
+ };
+ const navSection = { fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, margin: 0 };
+
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
  label: t("salesmanPremium.tabs.dashboard", { defaultValue: "Dashboard" }),
- icon: <LayoutGrid style={{ width: 14, height: 14 }} />,
+ icon: <LayoutGrid style={{ width: 16, height: 16 }} />,
  },
  {
  tab: "listings",
  label: t("salesmanPremium.tabs.listings", { defaultValue: "My Listings" }),
- icon: <Car style={{ width: 14, height: 14 }} />,
+ icon: <Car style={{ width: 16, height: 16 }} />,
  badge: myListings.length || null,
  },
  {
@@ -2852,19 +2888,19 @@ export default function SalesmanPremium() {
  // the distinction the nav never applied — MessageSquare for Inbox (:5998),
  // MessageCircle for Chat (:6003) — so it is applied here rather than a
  // third icon being picked.
- icon: <MessageCircle style={{ width: 14, height: 14 }} />,
+ icon: <MessageCircle style={{ width: 16, height: 16 }} />,
  badge: chatUnread || null,
  },
  {
  tab: "leads",
  label: t("salesmanPremium.tabs.leads", { defaultValue: "Leads" }),
- icon: <User style={{ width: 14, height: 14 }} />,
+ icon: <User style={{ width: 16, height: 16 }} />,
  badge: leadsNeedingFollowUp || null,
  },
  {
  tab: "enquiries",
  label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
- icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ icon: <MessageSquare style={{ width: 16, height: 16 }} />,
  badge: inboxBadge || null,
  },
  {
@@ -2872,30 +2908,30 @@ export default function SalesmanPremium() {
  // no nav slot at all, reachable only from two tiles on the Dashboard.
  tab: "sold",
  label: t("salesmanPremium.tabs.sold", { defaultValue: "Sold" }),
- icon: <ClipboardList style={{ width: 14, height: 14 }} />,
+ icon: <ClipboardList style={{ width: 16, height: 16 }} />,
  badge: handover.activeCount || null,
  },
  {
  tab: "analytics",
  label: t("salesmanPremium.tabs.analytics", { defaultValue: "Analytics" }),
- icon: <TrendingUp style={{ width: 14, height: 14 }} />,
+ icon: <TrendingUp style={{ width: 16, height: 16 }} />,
  },
  {
  tab: "loans",
  label: t("salesmanPremium.tabs.loans", { defaultValue: "Loans" }),
- icon: <Banknote style={{ width: 14, height: 14 }} />,
+ icon: <Banknote style={{ width: 16, height: 16 }} />,
  },
  ...(showOutreach ? [{
  tab: "outreach",
  label: t("salesmanPremium.tabs.outreach", { defaultValue: "Outreach" }),
- icon: <Megaphone style={{ width: 14, height: 14 }} />,
+ icon: <Megaphone style={{ width: 16, height: 16 }} />,
  }] : []),
  {
  tab: "settings",
  label: t("salesmanPremium.tabs.settings", { defaultValue: "Settings" }),
- icon: <Settings style={{ width: 14, height: 14 }} />,
+ icon: <Settings style={{ width: 16, height: 16 }} />,
  },
- ].filter((x) => navShows(x.tab));
+ ];
 
  // NOTIFICATION PANEL — markup lives in the shared component (Lite renders the
  // same one). This page only owns where each notification goes.
@@ -2938,7 +2974,7 @@ export default function SalesmanPremium() {
  style={{
  position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
  paddingBottom: tourStep !== null ? TOUR_BAR_H + 24 : 0,
- width: "min(78vw, 280px)",
+ width: "min(80vw, 288px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
  display: "flex",
@@ -2947,45 +2983,38 @@ export default function SalesmanPremium() {
  boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
  }}
  >
- <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+ <div style={{ padding: "20px 16px 18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
- <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
  </div>
  <button onClick={() => setMobileNavOpen(false)} aria-label={t("salesmanPremium.nav.closeNav")}
  style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
  <X size={18} />
  </button>
  </div>
- <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>{t("salesmanPremium.nav.main")}</p>
+ <p style={{ ...navSection, padding: "18px 24px 8px" }}>{t("salesmanPremium.nav.main")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px 12px" }}>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
  data-tour-id={tab}
  onClick={() => { switchTab(tab); setMobileNavOpen(false); }}
- style={{
- display: "flex", alignItems: "center", gap: 10,
- padding: "10px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer",
- background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
- border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
- color: activeTab === tab ? "#93c5fd" : "#9ca3af",
- fontSize: 14, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left",
- }}
+ style={navRow(activeTab === tab, true)}
  >
  {icon}
- <span style={{ flex: 1 }}>{label}</span>
- {badge ? (
- <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
- ) : null}
+ <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+ {badge ? <span style={navBadge}>{badge}</span> : null}
  </button>
  ))}
+ </div>
  <button
  onClick={() => { setMobileNavOpen(false); setLogoutConfirmOpen(true); }}
  style={{
- display: "flex", alignItems: "center", gap: 10, marginTop: "auto",
- padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
+ display: "flex", alignItems: "center", gap: 12, marginTop: "auto",
+ padding: "16px 24px 20px", borderTop: "1px solid rgba(255,255,255,0.06)",
  background: "none", border: "none", borderTopWidth: 1, cursor: "pointer",
- color: "#6b7280", fontSize: 13, fontWeight: 500, textAlign: "left",
+ color: "#6b7280", fontSize: 14, fontWeight: 500, textAlign: "left", fontFamily: "inherit",
  }}
  >
  <LogOut size={15} /> {t("salesmanPremium.nav.logout")}
@@ -3032,20 +3061,6 @@ export default function SalesmanPremium() {
  })
  : leads;
 
- // lead source breakdown
- const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
- leads.forEach(l => {
- const s = l.lead_source || "manual";
- srcMap[s] = (srcMap[s] || 0) + 1;
- });
- const srcTotal = leads.length;
- const srcCfg = [
- { key: "enquiry", label: "WhatsApp", color: "#4ade80" },
- { key: "booking", label: t("salesmanPremium.leads.srcBooking"), color: "#60a5fa" },
- { key: "xdrive", label: "XDrive", color: "#f87171" },
- { key: "manual", label: t("salesmanPremium.leads.srcManual"), color: "#6b7280" },
- ].filter(s => srcMap[s.key] > 0);
-
  // pre-compute heat scores once
  const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
 
@@ -3076,6 +3091,9 @@ export default function SalesmanPremium() {
  );
  };
 
+ // One button shape for the card's action row (premiumDark: tone, no border).
+ const leadBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "center" };
+
  const renderLeadCard = (lead) => {
  const car = lead.car_listings;
  const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -3103,40 +3121,38 @@ export default function SalesmanPremium() {
  const followUp = followUpStatus(lead);
  const followUpOverdue = followUp.due;
  const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
- const heatStyle = heat.label === "hot"
-? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
- : heat.label === "warm"
-? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" }
- : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+ // ONE heat pill: the AI score when there is one, else the rule-based heat.
+ // The card used to show both, side by side, and they could disagree.
+ const heatKey = lead.ai_score || leadScores[lead.id]?.score || heat.label;
+ const heatColor = heatKey === "hot" ? PD.accentText : heatKey === "warm" ? PD.text : PD.textMuted;
+ // premiumDark pill: a tone, no border (SIMPLE-2).
+ const pill = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, borderRadius: PD.radius.pill, padding: "2px 8px", background: PD.raised, whiteSpace: "nowrap" };
 
  return (
  <div
  key={lead.id}
  className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
- background: "#0d1117",
- // Same token the glow's last keyframe settles back to, so the wave can
- // never land on a border colour the card does not actually rest at.
- border: `1px solid ${C.border}`,
- borderRadius: 10,
+ background: PD.card,
+ borderRadius: PD.radius.card,
  overflow: "hidden",
  }}
  >
  {/* HEADER */}
- <div style={{ padding: "12px 14px 0" }}>
- <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+ <div style={{ padding: "16px 16px 0" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
  {/* Avatar */}
- <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+ <div style={{ width: 36, height: 36, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: PD.textSec }}>
  {initials}
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {lead.buyer_name || "—"}
  </p>
  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
  {leadIdsWithAddons.has(lead.id) && (
- <span title={t("salesmanPremium.leads.addonTitle")} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <span title={t("salesmanPremium.leads.addonTitle")} style={{ ...pill, color: PD.textSec }}>
  <Package size={9} /> {t("salesmanPremium.leads.addonBadge")}
  </span>
  )}
@@ -3145,50 +3161,47 @@ export default function SalesmanPremium() {
      up whichever surface submitted the loan. */}
  {lead.loan_status && lead.loan_status !== "none" && (() => {
  const ls = {
- approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: t("salesmanPremium.leads.loanOk") },
- rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: t("salesmanPremium.leads.loanNo") },
- cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: t("salesmanPremium.leads.loanOff") },
- }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: t("salesmanPremium.leads.loanIn") };
+ approved: { fg: PD.up, label: t("salesmanPremium.leads.loanOk") },
+ rejected: { fg: PD.accentText, label: t("salesmanPremium.leads.loanNo") },
+ cancelled: { fg: PD.textMuted, label: t("salesmanPremium.leads.loanOff") },
+ }[lead.loan_status] || { fg: PD.textSec, label: t("salesmanPremium.leads.loanIn") };
  return (
  <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || t("salesmanPremium.leads.loanTitle")}
- style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ style={{ ...pill, color: ls.fg }}>
  <Banknote size={9} /> {ls.label}
  </span>
  );
  })()}
- <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
- {t(`salesmanPremium.heat.${heat.label}`)}
+ <span style={{ ...pill, color: heatColor }}>
+ {t(`salesmanPremium.heat.${heatKey}`, { defaultValue: heatKey })}
  </span>
- {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
- const score = lead.ai_score || leadScores[lead.id]?.score;
- const c = score === "hot"? {bg:"#dc2626",tx:"#fff"} : score === "warm"? {bg:"#f59e0b",tx:"#000"} : {bg:"#52525b",tx:"#fff"};
- return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{t(`salesmanPremium.heat.${score}`, { defaultValue: score }).toUpperCase()}</span>;
- })()}
  </div>
  </div>
  {(carName || carPrice) && (
  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
- {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
- {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+ {carName && <p style={{ margin: 0, fontSize: 12, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+ {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
  </div>
  )}
  {(() => {
  // Was "Last contact: {timeAgo(lead.updated_at)}", which sat directly above a
  // follow-up badge reading last_contacted_at — so one card could say "Last
  // contact: 2d ago" and "Never contacted · 4d" at the same time.
+ // The follow-up line below already says how long it has waited, so this
+ // only shows when that line does not.
  const lt = lastTouch(lead);
- if (!lt.at) return null;
+ if (!lt.at || followUpOverdue) return null;
  return (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")}: {timeAgo(lt.at)}
+ <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted }}>{lt.contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")}: {timeAgo(lt.at)}
  </p>
  );
  })()}
  {lead.last_call_outcome && (() => {
- const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanPremium.call.answered"), color: "#4ade80" }, no_answer: { icon: PhoneOff, label: t("salesmanPremium.call.noAnswer"), color: "#f87171" }, callback_requested: { icon: RefreshCw, label: t("salesmanPremium.call.callback"), color: "#fbbf24" }, voicemail: { icon: Voicemail, label: t("salesmanPremium.call.voicemail"), color: "#94a3b8" } };
+ const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanPremium.call.answered"), color: PD.up }, no_answer: { icon: PhoneOff, label: t("salesmanPremium.call.noAnswer"), color: PD.textSec }, callback_requested: { icon: RefreshCw, label: t("salesmanPremium.call.callback"), color: PD.textSec }, voicemail: { icon: Voicemail, label: t("salesmanPremium.call.voicemail"), color: PD.textSec } };
  const o = OUTCOME[lead.last_call_outcome];
  if (!o) return null;
  return (
- <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+ <span style={{ ...pill, marginTop: 5, color: o.color }}>
  <o.icon size={10} /> {o.label}
  </span>
  );
@@ -3197,21 +3210,17 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Progress bar — 7 segments */}
- <div style={{ marginBottom: followUpOverdue? 8 : 12 }}>
- <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+ {/* The bar alone: the stage you picked above already names the stage. */}
+ <div title={`${stageLabel(normalizedStage || "new")} · ${currentProgressIdx + 1}/${progressStages.length}`} style={{ display: "flex", gap: 3, marginBottom: 12 }}>
  {progressStages.map((s, i) => (
- <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx? "#9ca3af" : i === currentProgressIdx? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+ <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx? PD.textMuted : i === currentProgressIdx? PD.text : PD.raised }} />
  ))}
- </div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{t("salesmanPremium.leads.stage")}: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{stageLabel(normalizedStage || "new")}</span>
- {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
- </p>
  </div>
 
  {/* Follow-up warning — reason first, then how long it has been waiting.
      "Never contacted · 3d" tells a rep what to do; a bare red ring does not. */}
  {followUpOverdue && (
- <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+ <div style={{ background: PD.raised, borderRadius: PD.radius.row, color: PD.accentText, fontSize: 12, padding: "8px 12px", marginBottom: 12 }}>
  {followUp.reason === 'reminder_due'
  ? t("salesmanPremium.followUp.reminderDueAgo", { ago: timeAgo(lead.follow_up_at) })
  : t("salesmanPremium.followUp.waiting", { reason: t(`salesmanPremium.followUp.${followUp.reason}`, { defaultValue: followUp.label }), n: Math.max(1, Math.round(followUp.sinceHours / 24)) })}
@@ -3222,8 +3231,7 @@ export default function SalesmanPremium() {
  {isWonLead && (() => {
  const done = handoverStatus?.done;
  const pct = handoverStatus?.progress;
- const tint = done ? "34,197,94" : "148,163,184";
- const fg = done ? "#4ade80" : "#cbd5e1";
+ const fg = done ? PD.up : PD.text;
  const detail = done
  ? t("salesmanPremium.handover.complete")
  : pct === undefined || pct === null || pct < 0
@@ -3232,24 +3240,43 @@ export default function SalesmanPremium() {
  return (
  <button
  onClick={() => openHandoverFor(lead.id, "leads")}
- style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.2)`, borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
  <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {t("salesmanPremium.handover.buyerMoved")} · <span style={{ color: "#9ca3af" }}>{detail}</span>
+ {t("salesmanPremium.handover.buyerMoved")} · <span style={{ color: PD.textSec }}>{detail}</span>
  </span>
- <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
+
+ {/* Loan check (IDEA-23): only once one exists; starting one lives in the
+     lead panel and the Loans tab, so the 3-button row stays as it is. */}
+ {!isWonLead && checkByLead.get(lead.id) && (() => {
+ const ck = checkByLead.get(lead.id);
+ const fg = ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
+ return (
+ <button
+ onClick={() => openLoanCheck(lead)}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]} <span style={{ color: PD.textMuted }}>· {lc.checked(timeAgo(ck.updated_at))}</span>
+ </span>
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
  </button>
  );
  })()}
  </div>
 
  {/* ACTIONS — exactly 3 buttons */}
- <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+ <div style={{ display: "flex", gap: 6, padding: "0 16px 16px" }}>
  {lead.stage!== "won" && lead.stage!== "closed_won" && (
  <button
  onClick={() => advanceLeadStage(lead, nextStage)}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
+ style={{ ...leadBtn, flex: 1, background: PD.accent, color: PD.onAccent, fontWeight: 600 }}
  >
  → {stageLabel(nextStage || "won")}
  </button>
@@ -3259,7 +3286,7 @@ export default function SalesmanPremium() {
  href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
  title={t("salesmanPremium.common.call")}
  aria-label={t("salesmanPremium.leads.callLead")}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+ style={{ ...leadBtn, flexShrink: 0, padding: "8px 14px", textDecoration: "none" }}
  >
  <Phone size={13} />
  </a>
@@ -3272,11 +3299,11 @@ export default function SalesmanPremium() {
  <button
  onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || t("salesmanPremium.common.buyer"), carLabel: carName })}
  title={t("salesmanPremium.leads.openChatTitle")}
- style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ ...leadBtn, flex: 1 }}
  >
  <MessageSquare size={12} />{t("salesmanPremium.tabs.chat")}
  {leadThread.seller_unread > 0 && (
- <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+ <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: PD.accent, color: PD.onAccent, fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
  {leadThread.seller_unread}
  </span>
  )}
@@ -3292,20 +3319,20 @@ export default function SalesmanPremium() {
  setWaModalMessage(msg);
  setWaModalLead(lead);
  }}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
- >WA
+ style={{ ...leadBtn, flex: 1 }}
+ >WhatsApp
  </button>
  ) :!lead.car_listing_id? (
  <button
  onClick={() => setLinkCarLeadId(lead.id)}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
+ style={{ ...leadBtn, flex: 1, color: PD.textSec }}
  >{t("salesmanPremium.leads.linkCar")}
  </button>
  ) : null}
  <button
  data-tour-id="leads-more"
  onClick={() => setDrawerLeadId(lead.id)}
- style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
+ style={{ ...leadBtn, flexShrink: 0, fontSize: 13, padding: "8px 12px", color: PD.textSec, letterSpacing: "0.05em", lineHeight: 1 }}
  >
  ···
  </button>
@@ -3327,9 +3354,9 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: 0,
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
+ fontSize: 18,
+ fontWeight: 700,
+ color: PD.text,
  }}
  >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
@@ -3340,13 +3367,13 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 6,
- background: "#dc2626",
+ background: PD.accent,
  border: "none",
- borderRadius: 8,
- color: "#fff",
+ borderRadius: PD.radius.pill,
+ color: PD.onAccent,
  fontSize: 12,
  fontWeight: 600,
- padding: "7px 12px",
+ padding: "8px 14px",
  cursor: "pointer",
  }}
  >
@@ -3354,35 +3381,16 @@ export default function SalesmanPremium() {
  </button>
  </div>
 
- {/* Lead source breakdown */}
- {srcTotal > 0 && srcCfg.length > 1 && (
- <div style={{ marginBottom: 14 }}>
- <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
- {srcCfg.map(({ key, color }) => (
- <div key={key} style={{ flex: srcMap[key], background: color }} />
- ))}
- </div>
- <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
- {srcCfg.map(({ key, label, color }) => (
- <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
- <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
- <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
- </div>
- ))}
- </div>
- </div>
- )}
-
  {/* Search bar */}
  <div style={{ position: "relative", marginBottom: 12 }}>
  <input
  value={leadSearch}
  onChange={(e) => setLeadSearch(e.target.value)}
  placeholder={t("salesmanPremium.leads.searchPh")}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ style={{ width: "100%", background: PD.card, border: "none", borderRadius: PD.radius.pill, color: PD.text, fontSize: 13, padding: "10px 16px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark" }}
  />
  {leadSearch && (
- <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+ <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2 }}>
  <X size={13} />
  </button>
  )}
@@ -3459,12 +3467,10 @@ export default function SalesmanPremium() {
  if (stageLeads.length === 0) {
  return (
  <div style={{
-  height: 96, borderRadius: 12,
-  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
-  border: "1px solid rgba(255,255,255,0.055)",
+  height: 96, borderRadius: PD.radius.card, background: PD.card,
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
- <span style={{ fontSize: 11.5, color: "#4b5563", textTransform: "capitalize" }}>
+ <span style={{ fontSize: 12, color: PD.textMuted }}>
  {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
@@ -3487,7 +3493,7 @@ export default function SalesmanPremium() {
     the grid shows only the stage you picked, scrolling vertically like the
     rest of the page. Stage selection is the same activeLeadStage state
     mobile already used, so the two layouts cannot disagree. */
- <div style={{ display: "flex", gap: 22, alignItems: "stretch" }}>
+ <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
 
  {/* Stage rail -- one panel, same material as the mini page's stat block:
      a dark slate gradient running darker along the diagonal, hairline
@@ -3499,25 +3505,14 @@ export default function SalesmanPremium() {
    width: 226,
    flexShrink: 0,
    alignSelf: "flex-start",
-   borderRadius: 16,
+   // Sticky, so the rail stays beside the cards while the PAGE scrolls.
+   position: "sticky",
+   top: 16,
+   borderRadius: PD.radius.card,
    padding: 12,
-   background: "linear-gradient(158deg, #1b202b 0%, #141822 48%, #0e1219 100%)",
-   border: "1px solid rgba(255,255,255,0.07)",
-   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 30px rgba(0,0,0,0.32)",
+   background: PD.card,
   }}
  >
- {/* Panel header — the pipeline's own total, so the rail leads with a
-     number the way the mini page's stat block does. */}
- <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "4px 6px 14px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 12 }}>
-  <div style={{ minWidth: 0 }}>
-   <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>{t("salesmanPremium.common.pipeline")}</p>
-   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>{t("salesmanPremium.leads.pickStage")}</p>
-  </div>
-  <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, letterSpacing: "-0.01em" }}>
-   {activeStages.reduce((n, st) => n + searchedLeads.filter((l) => l.stage === st).length, 0)}
-  </p>
- </div>
-
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
@@ -3583,19 +3578,6 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
- {/* Hairline between the rail and the board. Fades out top and bottom so
-     it reads as a seam rather than a drawn box edge; the row above is
-     alignItems:"stretch" purely so this has a height to fill. */}
- <div
-  aria-hidden="true"
-  style={{
-   width: 1,
-   flexShrink: 0,
-   alignSelf: "stretch",
-   background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.13) 12%, rgba(255,255,255,0.13) 88%, rgba(255,255,255,0) 100%)",
-  }}
- />
-
  {/* Cards for the selected stage */}
  {(() => {
  const stageLeads = searchedLeads
@@ -3605,12 +3587,10 @@ export default function SalesmanPremium() {
  <div style={{ flex: 1, minWidth: 0 }}>
  {stageLeads.length === 0 ? (
  <div style={{
-  minHeight: 260, borderRadius: 14,
-  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
-  border: "1px solid rgba(255,255,255,0.055)",
+  minHeight: 260, borderRadius: PD.radius.card, background: PD.card,
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
- <span style={{ fontSize: 12, color: "#4b5563", textTransform: "capitalize" }}>
+ <span style={{ fontSize: 12, color: PD.textMuted }}>
  {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
@@ -3619,15 +3599,11 @@ export default function SalesmanPremium() {
  style={{
  display: "grid",
  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
- gap: 10,
+ gap: 12,
  alignItems: "start",
- // The grid scrolls, not the page, so the rail stays put while you
- // work through a stage. minHeight keeps a one-card stage from
- // collapsing to a sliver next to the rail.
- maxHeight: "calc(100vh - 300px)",
- minHeight: 260,
- overflowY: "auto",
- paddingRight: 4,
+ // The PAGE scrolls, not this grid: an inner scroller capped at
+ // 100vh-300px cut the second row off on desktop and nobody found
+ // its scrollbar. The rail is sticky instead, so it stays put.
  }}
  >
  {stageLeads.map((lead) => renderLeadCard(lead))}
@@ -3655,17 +3631,13 @@ export default function SalesmanPremium() {
  >
  <span
  style={{
- fontSize: 10,
- fontWeight: 700,
- color: "#4b5563",
- letterSpacing: "0.08em",
- textTransform: "uppercase",
+ fontSize: 12,
+ fontWeight: 600,
+ color: PD.textSec,
  }}
  >{t("salesmanPremium.stages.lost")} ({lostLeads.length})
  </span>
- <span style={{ fontSize: 12, color: "#374151" }}>
- {lostOpen? "" : ""}
- </span>
+ <ChevronRight size={13} color={PD.textMuted} style={{ transform: lostOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
  </button>
  {lostOpen && (
  <div
@@ -3680,11 +3652,9 @@ export default function SalesmanPremium() {
  <div
  key={lead.id}
  style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.06)",
- borderRadius: 10,
- padding: "10px 12px",
- opacity: 0.65,
+ background: PD.card,
+ borderRadius: PD.radius.row,
+ padding: "12px 14px",
  }}
  >
  <div
@@ -3698,9 +3668,9 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: 0,
- fontSize: 12,
+ fontSize: 13,
  fontWeight: 600,
- color: "#9ca3af",
+ color: PD.textSec,
  flex: 1,
  minWidth: 0,
  overflow: "hidden",
@@ -3724,9 +3694,8 @@ export default function SalesmanPremium() {
  fontSize: 10,
  padding: "1px 7px",
  borderRadius: 99,
- background: "rgba(148,163,184,0.08)",
- border: "1px solid rgba(148,163,184,0.2)",
- color: "#cbd5e1",
+ background: PD.raised,
+ color: PD.textSec,
  whiteSpace: "nowrap",
  }}
  >
@@ -3739,7 +3708,7 @@ export default function SalesmanPremium() {
  style={{
  background: "transparent",
  border: "none",
- color: "#4b5563",
+ color: PD.textMuted,
  cursor: "pointer",
  padding: 2,
  display: "flex",
@@ -3753,8 +3722,8 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: "2px 0 0",
- fontSize: 10,
- color: "#374151",
+ fontSize: 11,
+ color: PD.textMuted,
  }}
  >
  {timeAgo(lead.created_at)}
@@ -3772,7 +3741,7 @@ export default function SalesmanPremium() {
  <span
  style={{
  fontSize: 11,
- color: "#f87171",
+ color: PD.accentText,
  fontWeight: 600,
  }}
  >{t("salesmanPremium.common.deleteQ")}
@@ -3782,10 +3751,10 @@ export default function SalesmanPremium() {
  style={{
  fontSize: 10,
  padding: "6px 11px",
- borderRadius: 5,
- background: "rgba(239,68,68,0.12)",
- border: "1px solid rgba(239,68,68,0.3)",
- color: "#f87171",
+ borderRadius: PD.radius.pill,
+ background: PD.accent,
+ border: "none",
+ color: PD.onAccent,
  cursor: "pointer",
  fontWeight: 600,
  }}
@@ -3796,10 +3765,10 @@ export default function SalesmanPremium() {
  style={{
  fontSize: 10,
  padding: "6px 11px",
- borderRadius: 5,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.08)",
- color: "#6b7280",
+ borderRadius: PD.radius.pill,
+ background: PD.raised,
+ border: "none",
+ color: PD.textSec,
  cursor: "pointer",
  }}
  >{t("salesmanPremium.common.no")}
@@ -3992,7 +3961,8 @@ export default function SalesmanPremium() {
  const plCarPrice = plCar?.selling_price? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
  const plCarImg = Array.isArray(plCar?.images)? plCar.images.find(Boolean) || null : null;
  const plHeat = getHeatScore(pl);
- const plHeatStyle = plHeat.label === "hot"? { bg: "rgba(248,113,113,0.12)", color: "#f87171" } : plHeat.label === "warm"? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" } : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+ const plHeatKey = pl.ai_score || leadScores[pl.id]?.score || plHeat.label;
+ const plHeatColor = plHeatKey === "hot" ? PD.accentText : plHeatKey === "warm" ? PD.text : PD.textMuted;
  const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
  const plThread = threadByLead.get(pl.id) || null;
  const plIsPromptingLost = lostPromptId === pl.id;
@@ -4002,10 +3972,10 @@ export default function SalesmanPremium() {
  const pbStage = pl.stage;
  const sl = (k, o) => t(`salesmanPremium.scripts.${k}`, o);
  const scripts = {
- price: { label: sl("price.label"), color: "#f87171", lines: [sl("price.l1", { monthly: pbCar?.selling_price? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X" }), sl("price.l2"), sl("price.l3", { below: pbCar?.original_price && pbCar.original_price > pbCar.selling_price? sl("price.belowAsking", { amount: (pbCar.original_price - pbCar.selling_price).toLocaleString() }) : sl("price.marketPrice") })] },
- mileage: { label: sl("mileage.label"), color: "#fb923c", lines: [sl("mileage.l1", { car: pbCarName, km: pbCar?.mileage? Number(pbCar.mileage).toLocaleString() + "km" : sl("mileage.thisMileage") }), sl("mileage.l2"), sl("mileage.l3")] },
- timing: { label: sl("timing.label"), color: "#fbbf24", lines: [sl("timing.l1"), sl("timing.l2"), sl("timing.l3")] },
- trust: { label: sl("trust.label"), color: "#f87171", lines: [sl("trust.l1"), sl("trust.l2"), sl("trust.l3")] },
+ price: { label: sl("price.label"), color: PD.text, lines: [sl("price.l1", { monthly: pbCar?.selling_price? Math.round(pbCar.selling_price * 0.9 * 1.245 / 84).toLocaleString() : "X" }), sl("price.l2"), sl("price.l3", { below: pbCar?.original_price && pbCar.original_price > pbCar.selling_price? sl("price.belowAsking", { amount: (pbCar.original_price - pbCar.selling_price).toLocaleString() }) : sl("price.marketPrice") })] },
+ mileage: { label: sl("mileage.label"), color: PD.text, lines: [sl("mileage.l1", { car: pbCarName, km: pbCar?.mileage? Number(pbCar.mileage).toLocaleString() + "km" : sl("mileage.thisMileage") }), sl("mileage.l2"), sl("mileage.l3")] },
+ timing: { label: sl("timing.label"), color: PD.text, lines: [sl("timing.l1"), sl("timing.l2"), sl("timing.l3")] },
+ trust: { label: sl("trust.label"), color: PD.text, lines: [sl("trust.l1"), sl("trust.l2"), sl("trust.l3")] },
  };
  const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setPlaybookLeadId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
  return (
@@ -4013,21 +3983,21 @@ export default function SalesmanPremium() {
  {/* backdrop */}
  <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
  {/* panel */}
- <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: "#0d1117", borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
+ <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: PD.card, display: "flex", flexDirection: "column" }}>
 
  {/* header */}
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${PD.line}`, flexShrink: 0 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
- <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: "#93c5fd" }}>{plInitials}</div>
+ <div style={{ width: 36, height: 36, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: PD.text }}>{plInitials}</div>
  <div style={{ minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
- <p style={{ margin: "1px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanPremium.drawer.noCarLinked")}</p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+ <p style={{ margin: "1px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanPremium.drawer.noCarLinked")}</p>
  </div>
  </div>
  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
- <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{t(`salesmanPremium.heat.${plHeat.label}`)}</span>
- <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 6, padding: "2px 8px", background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
- <button onClick={close} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex" }}>
+ <span style={{ fontSize: 10, fontWeight: 700, borderRadius: 99, padding: "2px 8px", background: PD.raised, color: plHeatColor }}>{t(`salesmanPremium.heat.${plHeatKey}`, { defaultValue: plHeatKey })}</span>
+ <span style={{ fontSize: 10, fontWeight: 600, borderRadius: 99, padding: "2px 8px", background: PD.raised, color: PD.textSec, textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
+ <button onClick={close} aria-label={t("salesmanPremium.common.close", { defaultValue: "Close" })} style={{ background: PD.raised, border: "none", cursor: "pointer", color: PD.textSec, borderRadius: 99, padding: 8, display: "flex" }}>
  <X size={16} />
  </button>
  </div>
@@ -4040,64 +4010,87 @@ export default function SalesmanPremium() {
      used to reduce to a single grey line under the buyer's name. */}
  <div>
  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.car")}</p>
- <button onClick={() => setLinkCarLeadId(pl.id)} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 9px", borderRadius: 6, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.28)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
+ <p style={{ margin: 0, fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.car")}</p>
+ <button onClick={() => setLinkCarLeadId(pl.id)} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, padding: "3px 9px", borderRadius: 99, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}>
  {plCar ? t("salesmanPremium.drawer.change") : <><Plus size={11} /> {t("salesmanPremium.linkCar.title")}</>}
  </button>
  </div>
  {plCar ? (
- <div style={{ display: "flex", gap: 11, padding: 10, borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+ <div style={{ display: "flex", gap: 11, padding: 10, borderRadius: PD.radius.row, background: PD.raised, border: "none" }}>
  {plCarImg ? (
- <img src={plCarImg} alt="" style={{ width: 78, height: 58, objectFit: "cover", borderRadius: 7, flexShrink: 0, background: "rgba(255,255,255,0.04)" }} />
+ <img src={plCarImg} alt="" style={{ width: 78, height: 58, objectFit: "cover", borderRadius: 10, flexShrink: 0, background: PD.raised }} />
  ) : (
- <div style={{ width: 78, height: 58, borderRadius: 7, flexShrink: 0, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <Car size={18} color="#374151" />
+ <div style={{ width: 78, height: 58, borderRadius: 10, flexShrink: 0, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={18} color={PD.textMuted} />
  </div>
  )}
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {plCarName}{plCar.variant ? ` ${plCar.variant}` : ""}
  </p>
- {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: "#60a5fa" }}>{plCarPrice}</p>}
- <p style={{ margin: "3px 0 0", fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {plCarPrice && <p style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 700, color: PD.text }}>{plCarPrice}</p>}
+ <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {[plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission, plCar.colour].filter(Boolean).join(" · ") || t("salesmanPremium.drawer.noSpecs")}
  </p>
  </div>
  </div>
  ) : (
- <p style={{ margin: 0, padding: "12px 10px", borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.1)", fontSize: 12, color: "#4b5563", textAlign: "center" }}>
+ <p style={{ margin: 0, padding: "12px 10px", borderRadius: PD.radius.row, background: PD.raised, border: "none", fontSize: 12, color: PD.textMuted, textAlign: "center" }}>
  {t("salesmanPremium.drawer.noCarYet")}
  </p>
  )}
  </div>
 
+ {/* LOAN CHECK (IDEA-23): what to fix before any bank sees the file. */}
+ {(() => {
+ const ck = checkByLead.get(pl.id);
+ const fg = !ck ? PD.text : ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
+ return (
+ <button
+ onClick={() => { close(); openLoanCheck(pl); }}
+ style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 11px", borderRadius: PD.radius.row, background: PD.raised, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Banknote size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0 }}>
+ <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: fg }}>
+ {!ck ? lc.start : ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]}
+ </span>
+ <span style={{ display: "block", fontSize: 11, color: PD.textMuted, marginTop: 1 }}>
+ {ck ? lc.checked(timeAgo(ck.updated_at)) : lc.newCheckHint}
+ </span>
+ </span>
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
+
  {/* CONTACT + STATUS — everything the card shows, which this panel did not. */}
  <div>
- <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.contact")}</p>
- <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: 9, overflow: "hidden", border: "1px solid rgba(255,255,255,0.07)" }}>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.contact")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: PD.radius.row, overflow: "hidden", border: "none" }}>
  {/* The in-app conversation, when there is one. For a guest buyer this is
      the ONLY way to reach them, so it sits above the phone row. */}
  {plThread && (
  <button
  onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || t("salesmanPremium.common.buyer"), carLabel: plCarName })}
- style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)", border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: PD.raised, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
  >
- <MessageSquare size={12} color="#6b7280" style={{ flexShrink: 0 }} />
- <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb" }}>{t("salesmanPremium.drawer.inAppChat")}</span>
+ <MessageSquare size={12} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: PD.text }}>{t("salesmanPremium.drawer.inAppChat")}</span>
  {plThread.seller_unread > 0 && (
- <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
+ <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: PD.accent, color: "#fff", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
  {plThread.seller_unread}
  </span>
  )}
- <ChevronRight size={13} color="#4b5563" style={{ flexShrink: 0 }} />
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
  </button>
  )}
 
  {/* Phone. Always present, because the row that matters most is the EMPTY
      one: a chat lead arrives with no number, and until this existed the
      only way to add one was to delete the lead and retype it by hand. */}
- <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
- <Phone size={12} color="#6b7280" style={{ flexShrink: 0 }} />
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: PD.raised }}>
+ <Phone size={12} color={PD.textMuted} style={{ flexShrink: 0 }} />
  {editPhoneLeadId === pl.id? (
  <>
  <input
@@ -4109,74 +4102,76 @@ export default function SalesmanPremium() {
  onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
  placeholder="012 345 6789"
  aria-label={t("salesmanPremium.drawer.buyerPhone")}
- style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 12.5, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+ style={{ flex: 1, minWidth: 0, background: PD.hover, border: "none", colorScheme: "dark", borderRadius: 99, color: PD.text, fontSize: 12.5, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
  />
  <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
- style={{ flexShrink: 0, fontSize: 11, padding: "5px 11px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 12px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
  {phoneSavingId === pl.id? "\u2026" : t("salesmanPremium.common.save")}
  </button>
  <button onClick={() => setEditPhoneLeadId(null)}
- style={{ flexShrink: 0, background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.common.cancel")}>
+ style={{ flexShrink: 0, background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.common.cancel")}>
  <X size={13} />
  </button>
  </>
  ) : pl.phone? (
  <>
- <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
+ <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: PD.text, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
  <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }}
- style={{ flexShrink: 0, background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.drawer.editPhone")}>
+ style={{ flexShrink: 0, background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.drawer.editPhone")}>
  <Pencil size={11} />
  </button>
  {String(pl.phone).replace(/\D/g, "").length >= 9 && (
  <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
- style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: 11, padding: "3px 8px", borderRadius: 6, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", textDecoration: "none" }}>
+ style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: 11, padding: "3px 8px", borderRadius: 99, background: PD.raised, border: "none", color: PD.up, textDecoration: "none" }}>
  <MessageCircle size={10} /> WhatsApp
  </a>
  )}
  </>
  ) : (
  <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(""); }}
- style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: "#6b7280", fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+ style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: PD.textMuted, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
  <Plus size={11} />{plThread? t("salesmanPremium.drawer.addNumberChat") : t("salesmanPremium.drawer.addNumber")}
  </button>
  )}
  </div>
  {pl.buyer_email && (
- <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
- <Mail size={12} color="#6b7280" style={{ flexShrink: 0 }} />
- <a href={`mailto:${pl.buyer_email}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_email}</a>
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: PD.raised }}>
+ <Mail size={12} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ <a href={`mailto:${pl.buyer_email}`} style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: PD.text, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_email}</a>
  </div>
  )}
  {pl.follow_up_at && (
- <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: "rgba(255,255,255,0.02)" }}>
- <Calendar size={12} color="#6b7280" style={{ flexShrink: 0 }} />
- <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: new Date(pl.follow_up_at).getTime() <= Date.now() ? "#fb923c" : "#e5e7eb" }}>
- {t("salesmanPremium.drawer.followUpAgo", { ago: timeAgo(pl.follow_up_at) })}
+ <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: PD.raised }}>
+ <Calendar size={12} color={PD.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: new Date(pl.follow_up_at).getTime() <= Date.now() ? PD.accentText : PD.text }}>
+ {t("salesmanPremium.drawer.followUpAgo", { ago: new Date(pl.follow_up_at).getTime() > Date.now()
+ ? new Date(pl.follow_up_at).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" })
+ : timeAgo(pl.follow_up_at) })}
  </span>
  </div>
  )}
- <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: "rgba(255,255,255,0.02)", flexWrap: "wrap" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 11px", background: PD.raised, flexWrap: "wrap" }}>
  {pl.lead_source && (
- <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#9ca3af", textTransform: "capitalize" }}>
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: PD.raised, color: PD.textSec, textTransform: "capitalize" }}>
  {t(`salesmanPremium.source.${pl.lead_source}`, { defaultValue: String(pl.lead_source).replace(/_/g, " ") })}
  </span>
  )}
  {/* Same loan badge as the pipeline card - kept in step by trg_sync_lead_loan. */}
  {pl.loan_status && pl.loan_status !== "none" && (() => {
  const ls = {
- approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: t("salesmanPremium.drawer.loanApproved") },
- rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: t("salesmanPremium.drawer.loanDeclined") },
- cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: t("salesmanPremium.drawer.loanCancelled") },
- }[pl.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: t("salesmanPremium.drawer.loanSubmitted") };
+ approved: { bg: PD.raised, bd: PD.raised, fg: PD.up, label: t("salesmanPremium.drawer.loanApproved") },
+ rejected: { bg: PD.raised, bd: PD.raised, fg: PD.accentText, label: t("salesmanPremium.drawer.loanDeclined") },
+ cancelled: { bg: PD.raised, bd: PD.raised, fg: PD.textMuted, label: t("salesmanPremium.drawer.loanCancelled") },
+ }[pl.loan_status] || { bg: PD.raised, bd: PD.raised, fg: PD.textSec, label: t("salesmanPremium.drawer.loanSubmitted") };
  return (
- <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg }}>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: PD.raised, color: ls.fg }}>
  <Banknote size={10} /> {ls.label}
  {pl.loan_bank ? ` · ${pl.loan_bank}` : ""}
  </span>
  );
  })()}
  {pl.updated_at && (
- <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#4b5563" }}>{lastTouch(pl).contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")} {timeAgo(lastTouch(pl).at)}</span>
+ <span style={{ marginLeft: "auto", fontSize: 10.5, color: PD.textMuted }}>{lastTouch(pl).contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")} {timeAgo(lastTouch(pl).at)}</span>
  )}
  </div>
  </div>
@@ -4184,21 +4179,21 @@ export default function SalesmanPremium() {
 
  {/* Notes */}
  <div>
- <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.notes")}</p>
+ <p style={{ margin: "0 0 6px", fontSize: 10, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanPremium.drawer.notes")}</p>
  {editingNoteId === pl.id? (
  <div>
- <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
+ <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: PD.raised, border: "none", borderRadius: 12, color: PD.text, fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
- <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : t("salesmanPremium.common.save")}</button>
- <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
+ <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : t("salesmanPremium.common.save")}</button>
+ <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  </div>
  ) : pl.notes? (
- <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: "#9ca3af", fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+ <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13, color: PD.textSec, fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
  <Pencil size={12} /> "{pl.notes}"
  </p>
  ) : (
- <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+ <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: 13, padding: "8px 12px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
  <Pencil size={12} />{t("salesmanPremium.drawer.addNote")}
  </button>
  )}
@@ -4206,29 +4201,26 @@ export default function SalesmanPremium() {
 
  {/* Tool row 1 */}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- <button onClick={() => switchTab("loans")} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+ <button onClick={() => switchTab("loans")} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
  <DollarSign size={12} />{t("salesmanPremium.drawer.loanCalc")}
  </button>
- <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+ <button onClick={() => { setLogCallLeadId(pl.id); setCallOutcome("answered"); setCallNote(""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
  <PhoneCall size={12} />{t("salesmanPremium.drawer.logCall")}
  </button>
- <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: pl.follow_up_at? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)", border: pl.follow_up_at? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.08)", color: pl.follow_up_at? "#fbbf24" : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+ <button onClick={() => { setFollowUpModalLead(pl); setFollowUpDate(pl.follow_up_at? pl.follow_up_at.slice(0,10) : ""); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 99, background: PD.raised, border: "none", color: pl.follow_up_at? PD.text : PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
  <Clock size={12} />{t("salesmanPremium.followUpModal.set")}
  </button>
  </div>
 
  {/* Tool row 2 */}
  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: playbookLeadId === pl.id? "rgba(168,85,247,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${playbookLeadId === pl.id? "rgba(168,85,247,0.3)" : "rgba(255,255,255,0.08)"}`, color: playbookLeadId === pl.id? "#c084fc" : "#9ca3af" }}>{t("salesmanPremium.drawer.scripts")}
- </button>
- <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${expandedActivityLeadId === pl.id? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.08)"}`, color: expandedActivityLeadId === pl.id? "#93c5fd" : "#9ca3af" }}>
+ {["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && <button onClick={() => { setExpandedActivityLeadId(null); setPlaybookLeadId(playbookLeadId === pl.id? null : pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", borderRadius: 99, background: playbookLeadId === pl.id? PD.text : PD.raised, border: "none", color: playbookLeadId === pl.id? PD.card : PD.textSec }}>{t("salesmanPremium.drawer.scripts")}
+ </button>}
+ <button onClick={() => { setPlaybookLeadId(null); if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 99, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", borderRadius: 99, background: expandedActivityLeadId === pl.id? PD.text : PD.raised, border: "none", color: expandedActivityLeadId === pl.id? PD.card : PD.textSec }}>
  <History size={12} />{t("salesmanPremium.drawer.history")}
  </button>
- <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: 12, padding: "7px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
- {pl.car_listing_id? t("salesmanPremium.drawer.changeCar") : t("salesmanPremium.leads.linkCar")}
- </button>
  {isPremium && (
- <button onClick={() => rescoreLead(pl)} style={{fontSize:12,padding:"7px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"inherit"}}>
+ <button onClick={() => rescoreLead(pl)} style={{fontSize:12,padding:"7px 12px",borderRadius: 99,background:PD.raised,border:"none",color:PD.textSec,cursor:"pointer",display:"flex",alignItems:"center",gap:6,fontFamily:"inherit"}}>
  {leadScores[pl.id]?.loading? t("salesmanPremium.drawer.scoring") : t("salesmanPremium.drawer.rescore")}
  </button>
  )}
@@ -4236,12 +4228,12 @@ export default function SalesmanPremium() {
 
  {/* Activity timeline */}
  {expandedActivityLeadId === pl.id && (
- <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "12px 14px" }}>
- <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#374151", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.activityHistory")}</p>
+ <div style={{ background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "12px 14px" }}>
+ <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.activityHistory")}</p>
  {activitiesLoadingId === pl.id? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
+ <p style={{ fontSize: 12, color: PD.textMuted, margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
  ) : (leadActivities[pl.id] || []).length === 0? (
- <p style={{ fontSize: 12, color: "#374151", margin: 0 }}>{t("salesmanPremium.drawer.noActivity")}</p>
+ <p style={{ fontSize: 12, color: PD.textMuted, margin: 0 }}>{t("salesmanPremium.drawer.noActivity")}</p>
  ) : (
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {(leadActivities[pl.id] || []).map((act, i) => {
@@ -4250,8 +4242,8 @@ export default function SalesmanPremium() {
  <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
  <span style={{ fontSize: 13, flexShrink: 0 }}>{icon}</span>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, color: "#9ca3af" }}>{act.activity_type === "stage_changed"? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
- <p style={{ margin: 0, fontSize: 11, color: "#374151" }}>{timeAgo(act.created_at)}</p>
+ <p style={{ margin: 0, fontSize: 13, color: PD.textSec }}>{act.activity_type === "stage_changed"? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
+ <p style={{ margin: 0, fontSize: 11, color: PD.textMuted }}>{timeAgo(act.created_at)}</p>
  </div>
  </div>
  );
@@ -4263,8 +4255,8 @@ export default function SalesmanPremium() {
 
  {/* Objection Scripts */}
  {playbookLeadId === pl.id && ["negotiating","viewing_booked","test_drive","contacted"].includes(pbStage) && (
- <div style={{ background: "rgba(168,85,247,0.05)", border: "1px solid rgba(168,85,247,0.15)", borderRadius: 8, padding: "12px 14px" }}>
- <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: "#c084fc", textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.objectionScripts")}</p>
+ <div style={{ background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "12px 14px" }}>
+ <p style={{ margin: "0 0 10px", fontSize: 10, fontWeight: 700, color: PD.text, textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanPremium.drawer.objectionScripts")}</p>
  {Object.entries(scripts).map(([key, s]) => (
  <div key={key} style={{ marginBottom: 10 }}>
  <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: s.color }}>{s.label}</p>
@@ -4273,8 +4265,8 @@ export default function SalesmanPremium() {
  const isCopied = copiedScriptLine === lineKey;
  return (
  <div key={lineIdx} style={{ display: "flex", gap: 8, alignItems: "flex-start", marginBottom: 4, overflowX: "hidden" }}>
- <p style={{ margin: 0, fontSize: 12, color: "#6b7280", lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
- <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied? "#4ade80" : "#4b5563", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <p style={{ margin: 0, fontSize: 12, color: PD.textMuted, lineHeight: 1.55, flex: 1, minWidth: 0, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{line}</p>
+ <button onClick={() => { navigator.clipboard.writeText(line.replace(/^"|"$/g,"")); setCopiedScriptLine(lineKey); setTimeout(() => setCopiedScriptLine(null), 1500); }} style={{ background: "none", border: "none", color: isCopied? PD.up : PD.textMuted, cursor: "pointer", padding: 0, flexShrink: 0 }}>
  {isCopied? <Check size={12} /> : <Copy size={12} />}
  </button>
  </div>
@@ -4287,19 +4279,19 @@ export default function SalesmanPremium() {
 
  {/* AI WA Reply */}
  {isPremium && pl.buyer_name && pl.phone && (
- <div style={{marginTop:12,borderTop:"1px solid rgba(255,255,255,0.05)",paddingTop:12}}>
- <p style={{margin:"0 0 6px",fontSize:11,fontWeight:600,color:"#6b7280",textTransform:"uppercase",letterSpacing:"0.06em"}}>{t("salesmanPremium.drawer.aiWaReply")}</p>
+ <div style={{marginTop:12,borderTop:`1px solid ${PD.line}`,paddingTop:12}}>
+ <p style={{margin:"0 0 6px",fontSize:11,fontWeight:600,color:PD.textMuted,textTransform:"uppercase",letterSpacing:"0.06em"}}>{t("salesmanPremium.drawer.aiWaReply")}</p>
  {!aiWaReplies[pl.id]? (
- <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{fontSize:11,padding:"6px 12px",borderRadius:7,background:"rgba(220,38,38,0.1)",border:"1px solid rgba(220,38,38,0.2)",color:"#fca5a5",cursor:"pointer"}}>
+ <button onClick={() => generateAiWaReply(pl)} disabled={waReplyLoading[pl.id]} style={{fontSize:11,padding:"6px 12px",borderRadius: 99,background:PD.raised,border:"none",color:PD.textSec,cursor:"pointer"}}>
  {waReplyLoading[pl.id]? t("salesmanPremium.drawer.generating") : t("salesmanPremium.drawer.generateReply")}
  </button>
  ) : (
  <div>
- <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{width:"100%",background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,color:"#e5e7eb",fontSize:12,padding:"8px 10px",resize:"none",boxSizing:"border-box"}}/>
+ <textarea readOnly value={aiWaReplies[pl.id]} rows={4} style={{width:"100%",background:PD.raised,border:"none",borderRadius: 12,color:PD.text,fontSize:12,padding:"8px 10px",resize:"none",boxSizing:"border-box"}}/>
  <div style={{display:"flex",gap:6,marginTop:6}}>
- <button onClick={() => {navigator.clipboard.writeText(aiWaReplies[pl.id]);setWaReplyCopied(p=>({...p,[pl.id]:true}));setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500);}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",color:"#9ca3af",cursor:"pointer"}}>{waReplyCopied[pl.id]?t("salesmanPremium.common.copied"):t("salesmanPremium.common.copy")}</button>
- {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(37,211,102,0.1)",border:"1px solid rgba(37,211,102,0.2)",color:"#4ade80",cursor:"pointer"}}>{t("salesmanPremium.drawer.sendViaWa")}</button>}
- <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{fontSize:10,padding:"4px 10px",borderRadius:5,background:"rgba(255,255,255,0.04)",border:"1px solid rgba(255,255,255,0.07)",color:"#6b7280",cursor:"pointer"}}>{t("salesmanPremium.drawer.regenerate")}</button>
+ <button onClick={() => {navigator.clipboard.writeText(aiWaReplies[pl.id]);setWaReplyCopied(p=>({...p,[pl.id]:true}));setTimeout(()=>setWaReplyCopied(p=>({...p,[pl.id]:false})),1500);}} style={{fontSize:10,padding:"4px 10px",borderRadius: 99,background:PD.raised,border:"none",color:PD.textSec,cursor:"pointer"}}>{waReplyCopied[pl.id]?t("salesmanPremium.common.copied"):t("salesmanPremium.common.copy")}</button>
+ {pl.phone && <button onClick={()=>{const ph=pl.phone.replace(/\D/g,"");window.open(`https://wa.me/${ph.startsWith("6")?ph:"6"+ph}?text=${encodeURIComponent(aiWaReplies[pl.id])}`,"_blank");}} style={{fontSize:10,padding:"4px 10px",borderRadius: 99,background:PD.raised,border:"none",color:PD.up,cursor:"pointer"}}>{t("salesmanPremium.drawer.sendViaWa")}</button>}
+ <button onClick={()=>setAiWaReplies(p=>{const n={...p};delete n[pl.id];return n;})} style={{fontSize:10,padding:"4px 10px",borderRadius: 99,background:PD.raised,border:"none",color:PD.textMuted,cursor:"pointer"}}>{t("salesmanPremium.drawer.regenerate")}</button>
  </div>
  </div>
  )}
@@ -4307,7 +4299,7 @@ export default function SalesmanPremium() {
  )}
 
  {/* Divider */}
- <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+ <div style={{ borderTop: `1px solid ${PD.line}` }} />
 
  {/* Deal add-ons — paid upsells from this salesman's own catalogue
      (Listings > Add-ons), attached to this specific deal. This is the
@@ -4315,40 +4307,40 @@ export default function SalesmanPremium() {
      included_services. */}
  <div>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
- <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanPremium.drawer.addons")}</p>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("salesmanPremium.drawer.addons")}</p>
  {dealAddons.length > 0 && (
- <span style={{ fontSize: 12, fontWeight: 700, color: "#93c5fd" }}>
+ <span style={{ fontSize: 12, fontWeight: 700, color: PD.text }}>
  RM {dealAddons.reduce((sum, a) => sum + (Number(a.sold_price) || 0), 0).toLocaleString("en-MY")}
  </span>
  )}
  </div>
  {addonsLoading? (
- <p style={{ fontSize: 12, color: "#4b5563", margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
+ <p style={{ fontSize: 12, color: PD.textMuted, margin: 0 }}>{t("salesmanPremium.common.loading")}</p>
  ) : (
  <>
  {dealAddons.map((a) => (
- <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8 }}>
- <span style={{ fontSize: 12, color: "#e5e7eb", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
- <span style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", flexShrink: 0 }}>RM {Number(a.sold_price || 0).toLocaleString("en-MY")}</span>
- <button onClick={() => handleRemoveAddon(a.id)} title={t("salesmanPremium.drawer.removeAddon")} style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", display: "flex", padding: 2, flexShrink: 0 }}>
+ <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: PD.raised, border: "none", borderRadius: 12 }}>
+ <span style={{ fontSize: 12, color: PD.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+ <span style={{ fontSize: 12, fontWeight: 600, color: PD.text, flexShrink: 0 }}>RM {Number(a.sold_price || 0).toLocaleString("en-MY")}</span>
+ <button onClick={() => handleRemoveAddon(a.id)} title={t("salesmanPremium.drawer.removeAddon")} style={{ background: "none", border: "none", cursor: "pointer", color: PD.textMuted, display: "flex", padding: 2, flexShrink: 0 }}>
  <X size={13} />
  </button>
  </div>
  ))}
  {!showAttachAddon? (
- <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 8, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", cursor: "pointer", fontFamily: "inherit" }}>
+ <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 99, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}>
  <Plus size={12} /> {t("salesmanPremium.drawer.attachAddon")}
  </button>
  ) : (
- <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: 12 }}>
+ <div style={{ background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: 12 }}>
  {addonCatalogue.length === 0? (
- <p style={{ fontSize: 12, color: "#6b7280", margin: "0 0 8px", lineHeight: 1.5 }}>{t("salesmanPremium.drawer.noCatalogue")}</p>
+ <p style={{ fontSize: 12, color: PD.textMuted, margin: "0 0 8px", lineHeight: 1.5 }}>{t("salesmanPremium.drawer.noCatalogue")}</p>
  ) : (
  <>
  <select
  value={addonForm.product_id}
  onChange={(e) => { const sel = addonCatalogue.find((pr) => pr.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel? String(sel.selling_price) : f.sold_price })); }}
- style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+ style={{ width: "100%", background: PD.raised, border: "none", borderRadius: 12, padding: "8px 10px", color: PD.text, fontSize: 12, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
  >
  <option value="">{t("salesmanPremium.drawer.selectProduct")}</option>
  {addonCatalogue.map((pr) => (
@@ -4361,14 +4353,14 @@ export default function SalesmanPremium() {
  value={addonForm.sold_price}
  onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
  placeholder={t("salesmanPremium.drawer.soldAtPh")}
- style={{ width: "100%", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "8px 10px", color: "#e5e7eb", fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+ style={{ width: "100%", background: PD.raised, border: "none", borderRadius: 12, padding: "8px 10px", color: PD.text, fontSize: 12, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
  />
  </>
  )}
  <div style={{ display: "flex", gap: 6 }}>
- <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
+ <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  {addonCatalogue.length > 0 && (
- <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 8, background: "#2563eb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
+ <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 99, background: PD.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
  {attachingAddon? t("salesmanPremium.drawer.attaching") : t("salesmanPremium.drawer.attach")}
  </button>
  )}
@@ -4380,32 +4372,32 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Divider */}
- <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }} />
+ <div style={{ borderTop: `1px solid ${PD.line}` }} />
 
  {/* Lost / Delete zone */}
  {plIsPromptingLost? (
  <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
- <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 600, marginRight: 2 }}>{t("salesmanPremium.drawer.whyLost")}</span>
+ <span style={{ fontSize: 11, color: PD.textSec, fontWeight: 600, marginRight: 2 }}>{t("salesmanPremium.drawer.whyLost")}</span>
  {LOST_REASONS.map(r => (
- <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: "rgba(148,163,184,0.08)", border: "1px solid rgba(148,163,184,0.2)", color: "#cbd5e1", cursor: "pointer", opacity: lostSavingId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>
+ <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: 11, padding: "6px 10px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", opacity: lostSavingId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>
  {lostSavingId === pl.id? "…" : t(`salesmanPremium.lostReasons.${r}`, { defaultValue: r })}
  </button>
  ))}
- <button onClick={() => setLostPromptId(null)} style={{ fontSize: 11, padding: "6px 10px", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer" }}></button>
+ <button onClick={() => setLostPromptId(null)} aria-label={t("salesmanPremium.common.cancel")} style={{ display: "flex", padding: 6, background: "transparent", border: "none", color: PD.textMuted, cursor: "pointer" }}><X size={13} /></button>
  </div>
  ) : plIsConfirmingDelete? (
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
- <span style={{ fontSize: 13, color: "#f87171", fontWeight: 600 }}>{t("salesmanPremium.drawer.deleteThisLead")}</span>
- <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : t("salesmanPremium.common.yesDelete")}</button>
- <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.no")}</button>
+ <span style={{ fontSize: 13, color: PD.accentText, fontWeight: 600 }}>{t("salesmanPremium.drawer.deleteThisLead")}</span>
+ <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : t("salesmanPremium.common.yesDelete")}</button>
+ <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.no")}</button>
  </div>
  ) : (
  <div style={{ display: "flex", gap: 8 }}>
  {pl.stage!== "won" && pl.stage!== "closed_won" && (
- <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>{t("salesmanPremium.drawer.markLost")}
+ <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.accentText, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>{t("salesmanPremium.drawer.markLost")}
  </button>
  )}
- <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#4b5563", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+ <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: 13, padding: "8px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
  <Trash2 size={13} />{t("salesmanPremium.common.delete")}
  </button>
  </div>
@@ -4450,96 +4442,74 @@ export default function SalesmanPremium() {
  });
  const historyItems = [...pureEnquiries, ...leadItems];
 
+ // premiumDark (SIMPLE-2): tone, no borders. The "Lead history (N)" heading
+ // repeated the pill above it, so the list starts straight away.
+ const enqBtn = { fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" };
+ const enqPill = { fontSize: 11, fontWeight: 600, padding: "2px 9px", borderRadius: PD.radius.pill, flexShrink: 0, background: PD.raised, color: PD.textSec, whiteSpace: "nowrap" };
  return (
  <div>
- <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
- {t("salesmanPremium.inbox.leadHistory")} ({historyItems.length})
- </p>
  {historyItems.length === 0 && (
- <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
- <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanPremium.inbox.noLeadHistory")}</p>
- <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanPremium.inbox.noLeadHistorySub")}</p>
- <button onClick={() => switchTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
+ <div style={{ padding: "40px 16px", textAlign: "center", background: PD.card, borderRadius: PD.radius.card }}>
+ <MessageSquare size={28} color={PD.textMuted} style={{ marginBottom: 8 }} />
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text }}>{t("salesmanPremium.inbox.noLeadHistory")}</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: PD.textSec }}>{t("salesmanPremium.inbox.noLeadHistorySub")}</p>
+ <button onClick={() => switchTab("listings")} style={{ ...enqBtn, background: PD.accent, color: PD.onAccent }}>
  {t("salesmanPremium.inbox.goToListings")}
  </button>
  </div>
  )}
- <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {[...historyItems].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).map((enq) => {
  const car = enq.car_listings;
  const isNew = enq.status === "new";
  const matchedLead = enq._lead || leadByPhone.get(normalizePhone(enq.buyer_phone));
  const liveStage = matchedLead?.stage;
+ // Stage pills keep their per-stage colours, same as the Leads tab (owner).
  const stageC = liveStage? (STAGE_COLOR[liveStage] || STAGE_NEUTRAL) : null;
  const isExpanded = expandedEnqId === enq.id;
+ const carName = car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
  return (
  <div
  key={enq.id}
  onClick={() => setExpandedEnqId(isExpanded? null : enq.id)}
- style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.07)",
- borderRadius: 10,
- padding: isNew? "12px 14px" : "8px 14px",
- opacity: isNew? 1 : 0.85,
- cursor: "pointer",
- }}
+ style={{ background: PD.card, borderRadius: PD.radius.row, padding: "12px 14px", cursor: "pointer" }}
  >
- {/* Header */}
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>
+ {/* Name + state on one line, then car · time on one line. */}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {enq.buyer_name || "—"}
  </p>
  {isNew? (
- <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.3)", color: "#93c5fd" }}>
- {t("salesmanPremium.stages.new")}
- </span>
+ <span style={{ ...enqPill, background: PD.accent, color: PD.onAccent }}>{t("salesmanPremium.stages.new")}</span>
  ) : liveStage? (
- <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: stageC.bg, border: `1px solid ${stageC.border}`, color: stageC.tx, textTransform: "capitalize" }}>
- {stageLabel(liveStage)}
- </span>
+ <span style={{ ...enqPill, background: stageC.bg, color: stageC.tx, textTransform: "capitalize" }}>{stageLabel(liveStage)}</span>
  ) : (
- <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", textTransform: "capitalize" }}>
- {t("salesmanPremium.inbox.converted")}
- </span>
+ <span style={{ ...enqPill, color: PD.up }}>{t("salesmanPremium.inbox.converted")}</span>
  )}
  </div>
- {/* Car name */}
- {car && (
- <p style={{ margin: "0 0 4px", fontSize: 12, color: "#9ca3af" }}>
- {[car.year, car.brand, car.model].filter(Boolean).join(" ")}
+ <p style={{ margin: "3px 0 0", fontSize: 12, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {carName ? `${carName} · ` : ""}<span style={{ color: PD.textMuted }}>{preciseAgo(enq.created_at, nowTick, timeLabels)}</span>
  </p>
- )}
- {/* Message — always show when expanded or new */}
+ {/* Message: shown on a new enquiry, or once the row is opened */}
  {(isNew || isExpanded) && enq.buyer_message && (
- <div style={{ margin: "4px 0 8px", padding: "8px 11px", background: "rgba(255,255,255,0.05)", borderRadius: 6 }}>
- <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <p style={{ margin: "10px 0 0", padding: "8px 11px", background: PD.raised, borderRadius: 10, fontSize: 13, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: isExpanded ? "normal" : "nowrap" }}>
  {enq.buyer_message}
  </p>
- </div>
  )}
- {/* Phone — show when new or expanded */}
- {(isNew || isExpanded) && enq.buyer_phone && (
- <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 8px" }}>
- <p style={{ margin: 0, fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {enq.buyer_phone}</p>
- {isExpanded && (
+ {/* Opened row: the phone, with WhatsApp beside it */}
+ {isExpanded && !isNew && enq.buyer_phone && (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+ <span style={{ fontSize: 12, color: PD.textSec, display: "inline-flex", alignItems: "center", gap: 5 }}><Phone size={12} /> {enq.buyer_phone}</span>
  <a
- href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}! 😊`)}`}
+ href={`https://wa.me/${enq.buyer_phone.replace(/\D/g, "").replace(/^0/, "6")}?text=${encodeURIComponent(`Hi ${enq.buyer_name || ""}!`)}`}
  onClick={(e) => e.stopPropagation()}
- style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", textDecoration: "none" }}
- >WA</a>
- )}
+ style={{ ...enqBtn, padding: "4px 10px", fontSize: 11, textDecoration: "none" }}
+ >WhatsApp</a>
  </div>
  )}
- {/* Timestamp */}
- <p style={{ margin: isNew? "0 0 8px" : 0, fontSize: 11, color: "#4b5563" }}>
- {preciseAgo(enq.created_at, nowTick, timeLabels)}
- </p>
- {/* Action buttons — unreplied only, max 2 */}
- {isNew && (
- <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
- {enq.buyer_phone && (
+ {/* New enquiry: reply is the one red button, templates sit beside it */}
+ {isNew && enq.buyer_phone && (
+ <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
  <button
  onClick={async () => {
  const phone = enq.buyer_phone.replace(/\D/g, "");
@@ -4553,42 +4523,36 @@ export default function SalesmanPremium() {
  await autoCreateLeadFromEnq(enq);
  window.location.href = `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${msg}`;
  }}
- style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: "rgba(37,211,102,0.1)", border: "1px solid rgba(37,211,102,0.2)", color: "#4ade80", cursor: "pointer" }}
+ style={{ ...enqBtn, background: PD.accent, color: PD.onAccent, display: "inline-flex", alignItems: "center", gap: 6 }}
  >
- {t("salesmanPremium.inbox.waReply")}
+ <MessageCircle size={13} /> {t("salesmanPremium.inbox.waReply")}
  </button>
- )}
- {enq.buyer_phone && (
  <button
  onClick={() => setOpenTemplateId(openTemplateId === enq.id? null : enq.id)}
- style={{ fontSize: 10, padding: "6px 11px", borderRadius: 6, background: openTemplateId === enq.id? "rgba(220,38,38,0.12)" : "rgba(255,255,255,0.05)", border: `1px solid ${openTemplateId === enq.id? "rgba(220,38,38,0.3)" : "rgba(255,255,255,0.08)"}`, color: openTemplateId === enq.id? "#f87171" : "#6b7280", cursor: "pointer" }}
+ aria-expanded={openTemplateId === enq.id}
+ style={{ ...enqBtn, background: openTemplateId === enq.id ? PD.hover : PD.raised }}
  >
  {t("salesmanPremium.inbox.templates")} ▾
  </button>
- )}
  </div>
  )}
- {/* Template picker */}
+ {/* Template picker: one neutral list, no colour per template */}
  {isNew && openTemplateId === enq.id && (
- <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
  {[
- { key: "chat", label: t("salesmanPremium.inbox.tplChat"), color: "#4ade80" },
- { key: "test_drive", label: t("salesmanPremium.inbox.tplTestDrive"), color: "#60a5fa" },
- { key: "budget", label: t("salesmanPremium.inbox.tplBudget"), color: "#fbbf24" },
- { key: "deposit", label: t("salesmanPremium.inbox.tplDeposit"), color: "#f87171" },
- ].map(({ key, label, color }) => {
- const toastKey = enq.id + "_" + key;
- return (
+ { key: "chat", label: t("salesmanPremium.inbox.tplChat") },
+ { key: "test_drive", label: t("salesmanPremium.inbox.tplTestDrive") },
+ { key: "budget", label: t("salesmanPremium.inbox.tplBudget") },
+ { key: "deposit", label: t("salesmanPremium.inbox.tplDeposit") },
+ ].map(({ key, label }) => (
  <button
  key={key}
  onClick={() => fireTemplate(enq, key)}
- style={{ textAlign: "left", fontSize: 11, padding: "7px 10px", borderRadius: 7, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", color: templateToast === toastKey? color : "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+ style={{ textAlign: "left", fontSize: 12, padding: "9px 12px", borderRadius: 10, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}
  >
- <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
- {templateToast === toastKey? `✓ ${t("salesmanPremium.inbox.sent")}` : label}
+ {label}
  </button>
- );
- })}
+ ))}
  </div>
  )}
  </div>
@@ -4609,14 +4573,24 @@ export default function SalesmanPremium() {
  };
  const aptIsNew = (iso) => iso && Date.now() - new Date(iso).getTime() < 2 * 60 * 60 * 1000;
 
+ // premiumDark (SIMPLE-2): every status pill is the same tone; only the
+ // word's colour changes. Red = waiting on you, mint = confirmed (the one
+ // green), the rest neutral. It was six hues, amber and purple among them.
  const statusColors = {
- pending: { bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.3)", tx: "#fbbf24" },
- confirmed: { bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.3)", tx: "#4ade80" },
- rescheduled: { bg: "rgba(167,139,250,0.12)", border: "rgba(167,139,250,0.3)", tx: "#c084fc" },
- cancelled: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.3)", tx: "#f87171" },
- completed: { bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.3)", tx: "#9ca3af" },
- no_show: { bg: "rgba(251,146,60,0.12)", border: "rgba(251,146,60,0.3)", tx: "#fb923c" },
+ pending: { bg: PD.raised, border: "transparent", tx: PD.accentText },
+ confirmed: { bg: PD.raised, border: "transparent", tx: PD.up },
+ rescheduled: { bg: PD.raised, border: "transparent", tx: PD.text },
+ cancelled: { bg: PD.raised, border: "transparent", tx: PD.textMuted },
+ completed: { bg: PD.raised, border: "transparent", tx: PD.textMuted },
+ no_show: { bg: PD.raised, border: "transparent", tx: PD.textSec },
  };
+ const bkBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textDecoration: "none" };
+ const bkPrimary = { ...bkBtn, flex: 1, background: PD.accent, color: PD.onAccent, fontWeight: 700 };
+ const bkInput = { width: "100%", background: PD.raised, border: "none", borderRadius: 10, color: PD.text, fontSize: 13, padding: "9px 11px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark", marginBottom: 8 };
+ // A card per booking, side by side on desktop (one full-width card made a
+ // thousand-pixel Confirm button), one column on a phone.
+ const bkGrid = { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 340px), 1fr))", gap: 10, alignItems: "start" };
+ const bkEyebrow = { margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 6 };
 
  const setAptStatus = async (apt, status) => {
  const { error } = await supabase.from("appointments").update({ status }).eq("id", apt.id);
@@ -4704,31 +4678,36 @@ export default function SalesmanPremium() {
  const canConfirm = apt.status!== "confirmed" && apt.status!== "cancelled" && apt.status!== "completed";
 
  return (
- <div key={apt.id} style={{ background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, overflow: "hidden" }}>
- <div style={{ padding: "12px 14px 0" }}>
+ <div key={apt.id} style={{ background: PD.card, borderRadius: PD.radius.row, overflow: "hidden" }}>
+ <div style={{ padding: "14px 14px 0" }}>
  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
- <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+ <div style={{ width: 34, height: 34, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: PD.textSec }}>
  {initials}
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#f1f5f9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
  {aptIsNew(apt.created_at) && (
- <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: "rgba(220,38,38,0.15)", border: "1px solid rgba(220,38,38,0.35)", color: "#f87171", flexShrink: 0 }}>{t("salesmanPremium.bookings.newBadge")}</span>
+ <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 99, background: PD.accent, color: PD.onAccent, flexShrink: 0 }}>{t("salesmanPremium.bookings.newBadge")}</span>
  )}
  </div>
- <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
+ {/* The section heading already says Awaiting / Today / Upcoming, so
+ pending and confirmed carry no pill; only a status the heading does not
+ name (rescheduled) gets one. */}
+ {apt.status !== "pending" && apt.status !== "confirmed" && (
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, color: sc.tx, textTransform: "capitalize", flexShrink: 0 }}>
  {STATUS_LABEL[apt.status] || apt.status}
  </span>
+ )}
  </div>
  {(carTitle || carPrice) && (
  <div
  onClick={(e) => { if (car?.slug) { e.stopPropagation(); window.open(`/cars/${car.slug}`, "_blank"); } }}
  style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8, cursor: car?.slug ? "pointer" : "default" }}
  >
- <p style={{ margin: 0, fontSize: 12, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(203,213,225,0.35)" }}>{carTitle}</p>
- {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f8fafc", flexShrink: 0 }}>{carPrice}</p>}
+ <p style={{ margin: 0, fontSize: 12, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(163,169,181,0.35)" }}>{carTitle}</p>
+ {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
  </div>
  )}
  </div>
@@ -4736,25 +4715,25 @@ export default function SalesmanPremium() {
 
  {/* Date line — the one highlighted data element on the card */}
  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
- <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 700, color: isRescheduled? "#c084fc" : "#bfdbfe", padding: "4px 10px", borderRadius: 7, background: isRescheduled? "rgba(167,139,250,0.12)" : "rgba(96,165,250,0.12)", border: `1px solid ${isRescheduled? "rgba(167,139,250,0.35)" : "rgba(96,165,250,0.28)"}` }}>
+ <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: PD.text, padding: "5px 11px", borderRadius: PD.radius.pill, background: PD.raised, fontVariantNumeric: "tabular-nums" }}>
  <Calendar size={13} /> {dateStr}{timeStr? ` · ${timeStr}` : ""}
  </span>
- {isFuture && <span style={{ fontSize: 11, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
- {apt.remind_at &&!apt.remind_sent && <Bell size={12} color="#fbbf24" />}
+ {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: PD.up }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ {apt.remind_at &&!apt.remind_sent && <Bell size={12} color={PD.textSec} />}
  </div>
  </div>
 
  {/* Action row — primary CTA + call + ··· details */}
- <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+ <div style={{ display: "flex", gap: 6, padding: "0 14px 14px" }}>
  {canConfirm && apt.buyer_phone && (
  <button onClick={() => openConfirmBookingModal(apt)} title={t("salesmanPremium.bookings.confirmTitle")}
- style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ style={bkPrimary}>
  <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
  )}
  {canConfirm &&!apt.buyer_phone && (
  <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title={t("salesmanPremium.bookings.markConfirmedTitle")}
- style={{ flex: 1, fontSize: 11, fontWeight: 700, padding: "6px 12px", borderRadius: 7, background: "rgba(34,197,94,0.14)", border: "1px solid rgba(34,197,94,0.38)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ style={bkPrimary}>
  <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
  )}
@@ -4764,18 +4743,18 @@ export default function SalesmanPremium() {
  const msg = buildReminderMessage(apt);
  window.location.href = `https://wa.me/${p.startsWith("6")? p : "6" + p}?text=${encodeURIComponent(msg)}`;
  }} title={t("salesmanPremium.bookings.sendReminderTitle")}
- style={{ flex: 1, fontSize: 11, fontWeight: 600, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.28)", color: "#4ade80", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+ style={{ ...bkBtn, flex: 1 }}>
  <MessageCircle size={13} /> {t("salesmanPremium.bookings.message")}
  </button>
  )}
  {phone && (
  <a href={`tel:${phone}`} title={t("salesmanPremium.common.call")} aria-label={t("salesmanPremium.bookings.callBuyer")}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ style={{ ...bkBtn, flexShrink: 0, padding: "8px 12px" }}>
  <Phone size={13} />
  </a>
  )}
  <button onClick={() => setBookingDetailId(apt.id)} title={t("salesmanPremium.bookings.details")} aria-label={t("salesmanPremium.bookings.details")}
- style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}>
+ style={{ ...bkBtn, flexShrink: 0, color: PD.textSec, letterSpacing: "0.05em", lineHeight: 1 }}>
  ···
  </button>
  </div>
@@ -4787,7 +4766,7 @@ export default function SalesmanPremium() {
  // image + VIN + notes and the secondary actions (reschedule / set reminder /
  // cancel) so the card itself stays compact. Portal + body-scroll-lock per the
  // overlay rules; tapping the backdrop or × closes it.
- const secBtn = { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 0", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#cbd5e1", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+ const secBtn = { ...bkBtn, flex: 1, padding: "10px 0" };
  const renderBookingDetailModal = () => {
  const apt = appointments.find((a) => a.id === bookingDetailId);
  if (!apt) return null;
@@ -4809,12 +4788,12 @@ export default function SalesmanPremium() {
 
  return createPortal(
  <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
- <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: "#1b2431", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "16px 16px 0 0", padding: 20, fontFamily: "system-ui, sans-serif" }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: "92vh", overflowY: "auto", background: PD.card, borderRadius: `${PD.radius.card}px ${PD.radius.card}px 0 0`, padding: 20, fontFamily: "var(--xd-font-body)", color: PD.text }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
  <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 9px", borderRadius: 99, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
  {STATUS_LABEL[apt.status] || apt.status}
  </span>
- <button onClick={close} aria-label={t("salesmanPremium.common.close")} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <button onClick={close} aria-label={t("salesmanPremium.common.close")} style={{ width: 32, height: 32, borderRadius: "50%", background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
  <X size={16} />
  </button>
  </div>
@@ -4827,45 +4806,45 @@ export default function SalesmanPremium() {
  style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14, cursor: car?.slug ? "pointer" : "default" }}
  >
  {carImg? (
- <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 8, flexShrink: 0, border: "1px solid rgba(255,255,255,0.1)" }} />
+ <img src={carImg} alt="" style={{ width: 84, height: 64, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />
  ) : (
- <div style={{ width: 84, height: 64, borderRadius: 8, flexShrink: 0, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <Car size={20} color="#4b5563" />
+ <div style={{ width: 84, height: 64, borderRadius: 10, flexShrink: 0, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={20} color={PD.textMuted} />
  </div>
  )}
  <div style={{ minWidth: 0, flex: 1 }}>
- <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#f1f5f9", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(241,245,249,0.3)" }}>{carTitle}</p>
- {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: "#93c5fd" }}>{carVariant}</p>}
- {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 700, color: "#4ade80" }}>{carPrice}</p>}
- {carVin && <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : `${t("salesmanPremium.bookings.plate")} `}{carVin}</p>}
+ <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: PD.text, textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(242,244,247,0.3)" }}>{carTitle}</p>
+ {carVariant && <p style={{ margin: "0 0 3px", fontSize: 12, color: PD.textSec }}>{carVariant}</p>}
+ {carPrice && <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: PD.text, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
+ {carVin && <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, fontFamily: "ui-monospace, monospace" }}>{car?.vin_number? "VIN " : `${t("salesmanPremium.bookings.plate")} `}{carVin}</p>}
  </div>
  </div>
 
  {/* Buyer */}
  <div style={{ marginBottom: 14 }}>
- <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
- {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: "#cbd5e1", display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
- {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
+ <p style={{ margin: "0 0 4px", fontSize: 16, fontWeight: 700, color: PD.text }}>{apt.buyer_name || t("salesmanPremium.bookings.unknownBuyer")}</p>
+ {apt.buyer_phone && <p style={{ margin: "0 0 4px", fontSize: 13, color: PD.textSec, display: "inline-flex", alignItems: "center", gap: 6 }}><Phone size={13} /> {apt.buyer_phone}</p>}
+ {apt.notes && <p style={{ margin: "4px 0 0", fontSize: 12, color: PD.textSec, fontStyle: "italic" }}>&quot;{apt.notes}&quot;</p>}
  </div>
 
  {/* Date */}
- <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "10px 14px", borderRadius: 10, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.28)", marginBottom: 14 }}>
- <span style={{ fontSize: 14, fontWeight: 700, color: "#bfdbfe", display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> {dateStr}</span>
- {timeStr && <span style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
- {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: "#4ade80" }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
+ <div style={{ display: "flex", flexDirection: "column", gap: 3, padding: "12px 14px", borderRadius: PD.radius.row, background: PD.raised, marginBottom: 14 }}>
+ <span style={{ fontSize: 14, fontWeight: 600, color: PD.textSec, display: "inline-flex", alignItems: "center", gap: 6 }}><Calendar size={14} /> {dateStr}</span>
+ {timeStr && <span style={{ fontSize: 26, fontWeight: 700, color: PD.text, fontFamily: "'Bebas Neue', sans-serif", letterSpacing: 1 }}>{timeStr}</span>}
+ {isFuture && <span style={{ fontSize: 12, fontWeight: 600, color: PD.up }}>{preciseUntil(apt.appointment_date, nowTick, timeLabels)}</span>}
  </div>
 
  {/* Reminder indicator */}
  {apt.remind_at &&!apt.remind_sent? (
- <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 7, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.18)", marginBottom: 12 }}>
- <Bell size={12} color="#4ade80" />
- <span style={{ fontSize: 11, color: "#4ade80", flex: 1 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 10, background: PD.raised, marginBottom: 12 }}>
+ <Bell size={12} color={PD.up} />
+ <span style={{ fontSize: 12, color: PD.text, flex: 1 }}>
  {t("salesmanPremium.bookings.reminderLabel")}: {new Date(apt.remind_at).toLocaleDateString(dateLocale, { weekday: "short", day: "numeric", month: "short" })} {new Date(apt.remind_at).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}
  </span>
- <button onClick={() => clearReminder(apt)} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 11, cursor: "pointer", padding: 0 }}>✕</button>
+ <button onClick={() => clearReminder(apt)} aria-label={t("salesmanPremium.common.close")} style={{ background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 0, display: "flex" }}><X size={14} /></button>
  </div>
  ) : apt.remind_sent? (
- <p style={{ fontSize: 11, color: "#6b7280", margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> {t("salesmanPremium.bookings.reminderSent")}</p>
+ <p style={{ fontSize: 12, color: PD.textMuted, margin: "0 0 12px", display: "inline-flex", alignItems: "center", gap: 4 }}><Check size={11} /> {t("salesmanPremium.bookings.reminderSent")}</p>
  ) : null}
 
  {/* Secondary actions */}
@@ -4880,26 +4859,26 @@ export default function SalesmanPremium() {
  <button style={secBtn} onClick={() => {
  if (!profile?.telegram_chat_id) { toast.error(t("salesmanPremium.bookings.connectTelegram")); return; }
  setReminderPickerAptId(apt.id); setSelectedRemindAt(null); setCancelConfirmId(null); setReschedulingAptId(null);
- }}><Bell size={13} color={apt.remind_at? "#fbbf24" : undefined} /> {t("salesmanPremium.followUpModal.set")}</button>
- <button style={{ ...secBtn, color: "#f87171" }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanPremium.common.cancel")}</button>
+ }}><Bell size={13} color={apt.remind_at? PD.up : undefined} /> {t("salesmanPremium.followUpModal.set")}</button>
+ <button style={{ ...secBtn, color: PD.accentText }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanPremium.common.cancel")}</button>
  </div>
  )}
 
  {/* Expand: reschedule date picker */}
  {isRescheduling && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 8 }}>
+ <div style={{ marginTop: 4, padding: "12px", background: PD.raised, borderRadius: PD.radius.row }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
- <p style={{ margin: 0, fontSize: 11, color: "#c084fc", fontWeight: 600 }}>{t("salesmanPremium.bookings.chooseNew")}</p>
- <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <p style={{ margin: 0, fontSize: 12, color: PD.text, fontWeight: 600 }}>{t("salesmanPremium.bookings.chooseNew")}</p>
+ <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 0, flexShrink: 0 }}>
  <X size={14} />
  </button>
  </div>
  <input type="datetime-local" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 7, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "system-ui, sans-serif", marginBottom: 8 }}
+ style={{ ...bkInput, background: PD.hover }}
  />
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => { setReschedulingAptId(null); setRescheduleDate(""); }}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.common.cancel")}
  </button>
  <button onClick={async () => {
@@ -4912,7 +4891,7 @@ export default function SalesmanPremium() {
  setRescheduleDate("");
  toast.success(t("salesmanPremium.bookings.rescheduled"));
  }}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.35)", color: "#c084fc", cursor: "pointer" }}>
+ style={{ ...bkPrimary, flex: 2 }}>
  {t("salesmanPremium.bookings.saveNewTime")}
  </button>
  </div>
@@ -4921,10 +4900,10 @@ export default function SalesmanPremium() {
 
  {/* Expand: reminder time picker */}
  {isReminderPicking && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8 }}>
+ <div style={{ marginTop: 4, padding: "12px", background: PD.raised, borderRadius: PD.radius.row }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
- <p style={{ margin: 0, fontSize: 10, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("salesmanPremium.bookings.scheduleReminder")}</p>
- <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: "#6b7280", cursor: "pointer", padding: 0, flexShrink: 0 }}>
+ <p style={{ margin: 0, fontSize: 12, color: PD.text, fontWeight: 600 }}>{t("salesmanPremium.bookings.scheduleReminder")}</p>
+ <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }} title={t("salesmanPremium.common.cancel")} style={{ width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 0, flexShrink: 0 }}>
  <X size={14} />
  </button>
  </div>
@@ -4939,10 +4918,9 @@ export default function SalesmanPremium() {
  const active = selectedRemindAt && rt.getTime() === selectedRemindAt.getTime();
  return (
  <button key={key} onClick={() => setSelectedRemindAt(rt)}
- style={{ fontSize: 11, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
- background: active? "rgba(96,165,250,0.15)" : "rgba(255,255,255,0.05)",
- border: active? "1px solid rgba(96,165,250,0.4)" : "1px solid rgba(255,255,255,0.08)",
- color: active? "#93c5fd" : "#6b7280" }}>
+ style={{ fontSize: 12, padding: "6px 12px", borderRadius: 99, cursor: "pointer", border: "none", fontFamily: "inherit",
+ background: active? PD.accent : PD.hover,
+ color: active? PD.onAccent : PD.textSec }}>
  {label}
  </button>
  );
@@ -4951,19 +4929,18 @@ export default function SalesmanPremium() {
  <input type="datetime-local"
  value={selectedRemindAt? selectedRemindAt.toISOString().slice(0, 16) : ""}
  onChange={(e) => e.target.value && setSelectedRemindAt(new Date(e.target.value))}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 7, color: "#e5e7eb", fontSize: 12, padding: "7px 10px", outline: "none", marginBottom: 8, fontFamily: "inherit", boxSizing: "border-box" }}
+ style={{ ...bkInput, background: PD.hover }}
  />
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => { setReminderPickerAptId(null); setSelectedRemindAt(null); }}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.common.cancel")}
  </button>
  <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
  disabled={!selectedRemindAt || reminderSaving}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600,
- background: selectedRemindAt? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.04)",
- border: selectedRemindAt? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(255,255,255,0.08)",
- color: selectedRemindAt? "#4ade80" : "#374151",
+ style={{ ...bkPrimary, flex: 2,
+ background: selectedRemindAt? PD.accent : PD.hover,
+ color: selectedRemindAt? PD.onAccent : PD.textMuted,
  cursor: selectedRemindAt? "pointer" : "not-allowed",
  opacity: reminderSaving? 0.6 : 1 }}>
  {reminderSaving? t("salesmanPremium.common.saving") : t("salesmanPremium.followUpModal.set")}
@@ -4974,15 +4951,15 @@ export default function SalesmanPremium() {
 
  {/* Expand: cancel confirmation */}
  {isCancelConfirm && (
- <div style={{ marginTop: 4, padding: "10px 12px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8 }}>
- <p style={{ margin: "0 0 8px", fontSize: 12, color: "#f87171" }}>{t("salesmanPremium.bookings.cancelQ")}</p>
+ <div style={{ marginTop: 4, padding: "12px", background: PD.raised, borderRadius: PD.radius.row }}>
+ <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: PD.text }}>{t("salesmanPremium.bookings.cancelQ")}</p>
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => setCancelConfirmId(null)}
- style={{ flex: 1, padding: "7px 0", borderRadius: 7, fontSize: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer" }}>
+ style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.bookings.keepIt")}
  </button>
  <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
- style={{ flex: 2, padding: "7px 0", borderRadius: 7, fontSize: 12, fontWeight: 600, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#f87171", cursor: "pointer" }}>
+ style={{ ...bkPrimary, flex: 2 }}>
  {t("salesmanPremium.bookings.yesCancel")}
  </button>
  </div>
@@ -4994,18 +4971,6 @@ export default function SalesmanPremium() {
  );
  };
 
- // Week | List. Same rows, same detail sheet, same actions; the week view
- // (BookingWeekCalendar) is a layout, it never writes on its own.
- const viewToggle = (
- <div role="group" aria-label={t("salesmanPremium.bookings.layout")} style={{ display: "flex", gap: 2, padding: 3, background: C.fill, border: `1px solid ${C.border}`, borderRadius: 8 }}>
- {[["week", t("salesmanPremium.bookings.week")], ["list", t("salesmanPremium.bookings.list")]].map(([k, label]) => (
- <button key={k} type="button" aria-pressed={bookingView === k} onClick={() => setBookingView(k)}
- style={{ padding: "4px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, background: bookingView === k ? C.surfaceRaised : "transparent", color: bookingView === k ? C.text : C.textSec }}>
- {label}
- </button>
- ))}
- </div>
- );
  // Same branch the list card's Confirm button takes: with a phone it opens the
  // drafted WhatsApp confirm (the seller sends it), without one it just confirms.
  const confirmFromCalendar = async (apt) => {
@@ -5017,7 +4982,6 @@ export default function SalesmanPremium() {
  return (
  <div>
  {renderBookingDetailModal()}
- <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>{viewToggle}</div>
  <BookingWeekCalendar
  appointments={appointments}
  hours={bookingHours}
@@ -5034,18 +4998,12 @@ export default function SalesmanPremium() {
  return (
  <div>
  {renderBookingDetailModal()}
- <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 16px" }}>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
- {t("salesmanPremium.inbox.bookings")} ({confirmedApts.length})
- </p>
- {viewToggle}
- </div>
  {appointments.length === 0 && (
- <div style={{ padding: "40px 0", textAlign: "center", color: "#374151" }}>
- <Phone size={32} style={{ marginBottom: 8, opacity: 0.3 }} />
- <p style={{ margin: 0, fontSize: 13 }}>{t("salesmanPremium.bookings.none")}</p>
- <p style={{ margin: "6px 0 14px", fontSize: 12, color: "#374151" }}>{t("salesmanPremium.bookings.noneSub")}</p>
- <button onClick={() => setActiveTab("listings")} style={{ fontSize: 12, fontWeight: 600, padding: "7px 16px", borderRadius: 8, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer" }}>
+ <div style={{ padding: "40px 16px", textAlign: "center", background: PD.card, borderRadius: PD.radius.card }}>
+ <Calendar size={28} color={PD.textMuted} style={{ marginBottom: 8 }} />
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text }}>{t("salesmanPremium.bookings.none")}</p>
+ <p style={{ margin: "6px 0 14px", fontSize: 12, color: PD.textSec }}>{t("salesmanPremium.bookings.noneSub")}</p>
+ <button onClick={() => switchTab("listings")} style={{ ...bkPrimary, display: "inline-flex", flex: "none", padding: "8px 16px" }}>
  {t("salesmanPremium.bookings.shareListing")}
  </button>
  </div>
@@ -5053,10 +5011,10 @@ export default function SalesmanPremium() {
  {/* Awaiting Confirmation — requests, not yet real bookings */}
  {pendingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Clock size={11} color="#fbbf24" /> {t("salesmanPremium.bookings.awaiting")} ({pendingApts.length})
+ <p style={{ ...bkEyebrow, color: PD.accentText }}>
+ <Clock size={11} /> {t("salesmanPremium.bookings.awaiting")} ({pendingApts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ <div style={bkGrid}>
  {pendingApts.map(renderApptCard)}
  </div>
  </div>
@@ -5064,10 +5022,10 @@ export default function SalesmanPremium() {
  {/* Today */}
  {todayApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#fbbf24", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Calendar size={11} color="#fbbf24" /> {t("salesmanPremium.bookings.today")} ({todayApts.length})
+ <p style={bkEyebrow}>
+ <Calendar size={11} /> {t("salesmanPremium.bookings.today")} ({todayApts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ <div style={bkGrid}>
  {todayApts.map(renderApptCard)}
  </div>
  </div>
@@ -5075,10 +5033,10 @@ export default function SalesmanPremium() {
  {/* Confirmed Upcoming */}
  {upcomingApts.length > 0 && (
  <div style={{ marginBottom: 20 }}>
- <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#4ade80", textTransform: "uppercase", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 5 }}>
- <Check size={11} color="#4ade80" /> {t("salesmanPremium.bookings.upcoming")} ({upcomingApts.length})
+ <p style={bkEyebrow}>
+ <Check size={11} /> {t("salesmanPremium.bookings.upcoming")} ({upcomingApts.length})
  </p>
- <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+ <div style={bkGrid}>
  {upcomingApts.map(renderApptCard)}
  </div>
  </div>
@@ -5090,10 +5048,10 @@ export default function SalesmanPremium() {
  onClick={() => setPastOpen((o) =>!o)}
  style={{ display: "flex", alignItems: "center", gap: 8, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", width: "100%" }}
  >
- <span style={{ fontSize: 10, fontWeight: 700, color: "#4b5563", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+ <span style={{ fontSize: 11, fontWeight: 600, color: PD.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>
  {t("salesmanPremium.bookings.past")} ({pastApts.length})
  </span>
- <span style={{ fontSize: 12, color: "#374151" }}>{pastOpen? "▲" : "▼"}</span>
+ <span style={{ fontSize: 11, color: PD.textMuted }}>{pastOpen? "▲" : "▼"}</span>
  </button>
  {pastOpen && (
  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
@@ -5106,24 +5064,24 @@ export default function SalesmanPremium() {
  // state — offer the two real outcomes explicitly.
  const needsOutcome = !["cancelled", "completed", "no_show"].includes(apt.status);
  return (
- <div key={apt.id} style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, padding: "10px 14px", opacity: 0.65 }}>
+ <div key={apt.id} style={{ background: PD.card, borderRadius: PD.radius.row, padding: "10px 14px" }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {apt.buyer_name || "—"}
  </p>
- <span style={{ fontSize: 10, padding: "2px 7px", borderRadius: 99, flexShrink: 0, background: sc.bg, border: `1px solid ${sc.border}`, color: sc.tx, textTransform: "capitalize" }}>
+ <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, flexShrink: 0, background: sc.bg, color: sc.tx, textTransform: "capitalize" }}>
  {STATUS_LABEL[apt.status] || apt.status}
  </span>
  </div>
- <p style={{ margin: "0 0 2px", fontSize: 12, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}>
+ <p style={{ margin: "2px 0 2px", fontSize: 12, color: PD.textMuted, display: "flex", alignItems: "center", gap: 5, fontVariantNumeric: "tabular-nums" }}>
  <Calendar size={12} /> {dateStr}{timeStr && ` · ${timeStr}`}
  </p>
  {(carLabel || apt.buyer_phone) && (
- <p style={{ margin: 0, fontSize: 11, color: "#4b5563", display: "inline-flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+ <p style={{ margin: 0, fontSize: 11, color: PD.textMuted, display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
  {carLabel && (
  <span
  onClick={() => car?.slug && window.open(`/cars/${car.slug}`, "_blank")}
- style={{ cursor: car?.slug ? "pointer" : "default", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(75,85,99,0.6)" }}
+ style={{ cursor: car?.slug ? "pointer" : "default", textDecoration: car?.slug ? "underline" : "none", textDecorationColor: "rgba(132,139,152,0.5)" }}
  >
  {carLabel}
  </span>
@@ -5136,13 +5094,13 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
  <button
  onClick={() => setAptStatus(apt, "completed")}
- style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)", color: "#4ade80", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ ...bkBtn, fontSize: 11, padding: "6px 12px" }}
  >
  {t("salesmanPremium.bookings.markCompleted")}
  </button>
  <button
  onClick={() => setAptStatus(apt, "no_show")}
- style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 6, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.25)", color: "#fb923c", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ ...bkBtn, fontSize: 11, padding: "6px 12px", color: PD.textSec }}
  >
  {t("salesmanPremium.bookingStatus.no_show")}
  </button>
@@ -5159,20 +5117,34 @@ export default function SalesmanPremium() {
  );
  };
 
+ // Week | List. Same rows, same detail sheet, same actions; the week view
+ // (BookingWeekCalendar) is a layout, it never writes on its own.
+ const bookingViewToggle = (
+ <div role="group" aria-label={t("salesmanPremium.bookings.layout")} style={{ display: "flex", gap: 2, padding: 3, marginBottom: 16, background: PD.card, borderRadius: PD.radius.pill }}>
+ {[["week", t("salesmanPremium.bookings.week")], ["list", t("salesmanPremium.bookings.list")]].map(([k, label]) => (
+ <button key={k} type="button" aria-pressed={bookingView === k} onClick={() => setBookingView(k)}
+ style={{ padding: "7px 16px", borderRadius: PD.radius.pill, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", background: bookingView === k ? PD.hover : "transparent", color: bookingView === k ? PD.text : PD.textSec }}>
+ {label}
+ </button>
+ ))}
+ </div>
+ );
+
  // RENDER SETTINGS 
 
  const renderSettings = () => {
  const inputStyle = {
  width: "100%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: 8,
- color: "#e5e7eb",
+ background: PD.raised,
+ border: `1px solid ${PD.line}`,
+ borderRadius: 10,
+ color: PD.text,
  fontSize: 13,
  padding: "10px 12px",
  outline: "none",
  boxSizing: "border-box",
- fontFamily: "system-ui, sans-serif",
+ fontFamily: "inherit",
+ colorScheme: "dark",
  };
 
  const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "");
@@ -5328,8 +5300,23 @@ export default function SalesmanPremium() {
  // push, avatar, cover, viewing hours, twelve profile fields, socials, selling
  // terms and the tour, one after another with nothing dividing them.
  // "verify" was its own section until 2026-10-12; old deep links land on Profile.
+ // premiumDark (SIMPLE-2, 2026-10-25): the section's name is said ONCE, by the
+ // rail/breadcrumb + header; the cards inside carry no second heading, and the
+ // header drops the rail's one-line description (it only listed the fields
+ // that sit right under it). The menu on a phone keeps it: there it is the
+ // only hint at what is inside.
  const nav = (settingsNav === "verify" ? "profile" : settingsNav) || "profile";
  const navItem = SETTINGS_GROUPS.flatMap((g) => g.items).find((i) => i.key === nav);
+
+ const card = { padding: 18, background: PD.card, borderRadius: PD.radius.card };
+ const lbl = { fontSize: 11, color: PD.textMuted, display: "block", marginBottom: 6 };
+ const hint = { margin: "5px 0 0", fontSize: 10.5, color: PD.textMuted, lineHeight: 1.5 };
+ const fieldBox = { display: "flex", alignItems: "center", background: PD.raised, border: `1px solid ${PD.line}`, borderRadius: 10, overflow: "hidden" };
+ const fieldPrefix = { padding: "10px 12px", fontSize: 12, color: PD.textMuted, borderRight: `1px solid ${PD.line}`, whiteSpace: "nowrap", flexShrink: 0 };
+ const bareInput = { ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto", minWidth: 0 };
+ const softBtn = { display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 10, background: PD.raised, border: "none", color: PD.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
+ const spinner = (n) => <div style={{ width: n, height: n, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />;
+ const navLabel = (item) => item && t(`salesmanPremium.settingsNav.${item.key}.label`, { defaultValue: item.label });
 
  // ONE save writes the whole profile row, so every section that owns a field in
  // it shows the same button. The form state lives on the PAGE (settingsForm),
@@ -5341,13 +5328,14 @@ export default function SalesmanPremium() {
  onClick={handleSave}
  disabled={settingsSaving}
  style={{
- padding: "10px 16px",
- borderRadius: 8,
- background: "#2563eb",
+ padding: "11px 18px",
+ borderRadius: 10,
+ background: PD.accent,
  border: "none",
- color: "#fff",
+ color: PD.onAccent,
  fontSize: 13,
  fontWeight: 600,
+ fontFamily: "inherit",
  cursor: settingsSaving ? "not-allowed" : "pointer",
  opacity: settingsSaving ? 0.6 : 1,
  }}
@@ -5358,84 +5346,85 @@ export default function SalesmanPremium() {
  );
 
  const sectionContent = (
- <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 560 }}>
+ <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 560 }}>
  {nav === "profile" && (
  <>
  {/* The ONE place a seller is asked for ID (owner, 2026-10-12), step by
      step: Get verified -> IC number -> MyKad photos. Same component as Lite. */}
  <VerifyIdentity
+ theme="premium"
  profile={profile}
  userId={profile?.id}
  onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString() }))}
  onSubmitted={() => setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))}
  />
- <div id="sp-photo-field" style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
- <div style={{ position: "relative", flexShrink: 0 }}>
+ {/* Photo + cover as ONE card, laid out the way the public page shows them
+     (banner, photo over its corner). They were two cards, and the photo card
+     repeated the name typed in the field below and had two buttons for the
+     same upload. */}
+ <div id="sp-photo-field" style={{ ...card, padding: 0, overflow: "hidden" }}>
+ <button
+ type="button"
+ onClick={() => !coverUploading && coverInputRef.current?.click()}
+ aria-label={coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover")}
+ style={{ position: "relative", display: "block", width: "100%", height: 116, padding: 0, border: "none", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : `linear-gradient(135deg, ${PD.hover} 0%, ${PD.raised} 60%, ${PD.card} 100%)` }}
+ >
+ <span style={{ position: "absolute", right: 12, top: 12, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: PD.radius.pill, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 11, fontWeight: 600 }}>
+ {coverUploading ? spinner(11) : (coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover"))}
+ </span>
+ </button>
+ <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
+ <div style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 14, padding: "0 18px 16px", marginTop: -34 }}>
+ <button
+ type="button"
+ onClick={() => avatarInputRef.current?.click()}
+ disabled={avatarUploading}
+ aria-label={t("salesmanPremium.settings.changePhoto")}
+ style={{ position: "relative", flexShrink: 0, width: 76, height: 76, padding: 0, borderRadius: "50%", border: `3px solid ${PD.card}`, background: PD.hover, overflow: "hidden", cursor: "pointer" }}
+ >
  {avatarUrl
-? <img src={avatarUrl} alt={t("salesmanPremium.settings.profileAlt")} style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)" }} />
- : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>{initials}</div>
- }
- <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
- style={{ position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: "50%", background: "#2563eb", border: "2px solid #05070e", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
- {avatarUploading
-? <div style={{ width: 10, height: 10, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
- : <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
- }
+ ? <img src={avatarUrl} alt={t("salesmanPremium.settings.profileAlt")} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+ : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: 28, fontWeight: 700, color: PD.text }}>{initials}</span>}
+ {avatarUploading && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}>{spinner(16)}</span>}
  </button>
  <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
- </div>
- <div>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || t("salesmanPremium.settings.yourName")}</p>
- <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>{t("salesmanPremium.settings.photoHint")}</p>
- <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
- {avatarUploading? t("salesmanPremium.settings.uploading") : t("salesmanPremium.settings.changePhoto")}
+ <div style={{ minWidth: 0, marginTop: 44 }}>
+ <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ ...softBtn, padding: "7px 12px", fontSize: 12 }}>
+ {avatarUploading ? t("salesmanPremium.settings.uploading") : t("salesmanPremium.settings.changePhoto")}
  </button>
+ <p style={{ ...hint, margin: "6px 0 0" }}>{t("salesmanPremium.settings.photoHint")}</p>
  </div>
  </div>
- <div style={{ padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
- <p style={{ margin: "0 0 3px", fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{t("salesmanPremium.settings.coverPhoto")}</p>
- <p style={{ margin: "0 0 10px", fontSize: 11, color: "#4b5563" }}>{t("salesmanPremium.settings.coverHint")}</p>
- <div
- onClick={() => !coverUploading && coverInputRef.current?.click()}
- style={{ position: "relative", width: "100%", height: 90, borderRadius: 8, overflow: "hidden", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : "linear-gradient(135deg, #2a3142 0%, #1b202b 55%, #10131b 100%)", border: "1px solid rgba(255,255,255,0.08)" }}
- >
- <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: coverUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0.25)" }}>
- {coverUploading
-? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
- : <span style={{ fontSize: 11, fontWeight: 600, color: "#fff" }}>{coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover")}</span>
- }
  </div>
- <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
- </div>
- </div>
+ <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.fullName")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.fullName")}</label>
  <input value={settingsForm.full_name} onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))} placeholder={t("salesmanPremium.settings.fullNamePh")} style={inputStyle} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.jobTitle")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.jobTitle")}</label>
  <input value={settingsForm.job_title} onChange={(e) => setSettingsForm((p) => ({ ...p, job_title: e.target.value }))} placeholder={t("salesmanPremium.settings.jobTitlePh")} maxLength={60} style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.jobTitleHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.jobTitleHint")}</p>
  </div>
  {/* Public-profile extras — Premium's own bio/specializations block, not
  offered to Lite yet. Shown on the public agent page with a Read-more
  toggle and pill tags, same as the linked-salesman panel. */}
  <div id="sp-bio-field">
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.bio")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.bio")}</label>
  <textarea value={settingsForm.bio} onChange={(e) => setSettingsForm((p) => ({ ...p, bio: e.target.value }))}
  placeholder={t("salesmanPremium.settings.bioPh")} rows={4}
  style={{ ...inputStyle, resize: "vertical" }} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.bioHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.bioHint")}</p>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.specializations")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.specializations")}</label>
  {settingsForm.specializations.length > 0 && (
  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
  {settingsForm.specializations.map((tag, i) => (
- <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.2)", color: "#fca5a5", borderRadius: 99, padding: "3px 10px", fontSize: 11, fontWeight: 600 }}>
+ <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: PD.hover, color: PD.text, borderRadius: PD.radius.pill, padding: "4px 6px 4px 11px", fontSize: 11.5, fontWeight: 600 }}>
  {tag}
- <button onClick={() => removeTag(i)} style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", opacity: 0.7 }}>
- <X size={10} />
+ <button onClick={() => removeTag(i)} aria-label={t("salesmanPremium.common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2, display: "flex", alignItems: "center" }}>
+ <X size={11} />
  </button>
  </span>
  ))}
@@ -5444,47 +5433,45 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 8 }}>
  <input value={tagInput} onChange={(e) => setTagInput(e.target.value)} onKeyDown={handleTagKeyDown} placeholder={t("salesmanPremium.settings.tagPh")} style={{ ...inputStyle, flex: 1, minWidth: 0 }} />
  <button type="button" onClick={addTag} disabled={!tagInput.trim()}
- style={{ flexShrink: 0, padding: "0 16px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", color: tagInput.trim() ? "#e5e7eb" : "#4b5563", fontSize: 12, fontWeight: 600, cursor: tagInput.trim() ? "pointer" : "default" }}>
+ style={{ ...softBtn, flexShrink: 0, padding: "0 16px", color: tagInput.trim() ? PD.text : PD.textMuted, cursor: tagInput.trim() ? "pointer" : "default" }}>
  {t("salesmanPremium.common.add")}
  </button>
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.tagHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.tagHint")}</p>
+ </div>
  </div>
  {/* Live Google result preview — reads the unsaved form, so the effect of
- a name or bio edit shows before saving. Same code as api/og.js. */}
+ a name or bio edit shows before saving. Same code as api/og.js. It also
+ shows the page link (… › s › slug), which is why the read-only "Username"
+ box that used to sit under it is gone: same fact, and nothing to edit. */}
  <AgentSearchPreview
  profile={settingsForm}
  slug={profile?.slug}
  carCount={myListings.filter((l) => l.status === "available" || l.status === "reserved").length}
  cars={myListings.filter((l) => l.status === "available" || l.status === "reserved")}
  />
- <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.slug")}</label>
- <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.slugHint")}</p>
- </div>
  <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
  {saveBtn}
  </>
  )}
  {nav === "contact" && (
  <>
+ <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.whatsapp")}</label>
- <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
- <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
- <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789"
- style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ <label style={lbl}>{t("salesmanPremium.settings.whatsapp")}</label>
+ <div style={fieldBox}>
+ <span style={fieldPrefix}>+60</span>
+ <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789" style={bareInput} />
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.whatsappHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.whatsappHint")}</p>
  </div>
- <div style={{ display: "flex", gap: 10 }}>
- <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.city")}</label>
+ <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+ <div style={{ flex: "1 1 150px", minWidth: 0 }}>
+ <label style={lbl}>{t("salesmanPremium.settings.city")}</label>
  <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder="e.g. Petaling Jaya" style={inputStyle} />
  </div>
- <div style={{ flex: 1 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.state")}</label>
+ <div style={{ flex: "1 1 150px", minWidth: 0 }}>
+ <label style={lbl}>{t("salesmanPremium.settings.state")}</label>
  <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
  <option value="">{t("salesmanPremium.settings.selectState")}</option>
  {["Johor","Kedah","Kelantan","Kuala Lumpur","Labuan","Melaka","Negeri Sembilan","Pahang","Penang","Perak","Perlis","Putrajaya","Sabah","Sarawak","Selangor","Terengganu"].map(s => (
@@ -5494,11 +5481,13 @@ export default function SalesmanPremium() {
  </div>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.address")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.address")}</label>
  <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. 12, Jalan Ampang, 50450 Kuala Lumpur" style={inputStyle} />
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.addressHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.addressHint")}</p>
+ </div>
  </div>
  {/* Social links */}
+ <div style={{ ...card, display: "flex", flexDirection: "column", gap: 14 }}>
  {[
  { key: "instagram", label: "Instagram", placeholder: "@yourusername", prefix: "instagram.com/" },
  { key: "tiktok", label: "TikTok", placeholder: "@yourusername", prefix: "tiktok.com/@" },
@@ -5506,22 +5495,22 @@ export default function SalesmanPremium() {
  { key: "website", label: t("salesmanPremium.settings.website"), placeholder: "https://yoursite.com", prefix: null },
  ].map(({ key, label, placeholder, prefix }) => (
  <div key={key}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{label}</label>
- <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
- {prefix && <span style={{ padding: "10px 10px", fontSize: 11, color: "#4b5563", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>{prefix}</span>}
- <input value={settingsForm[key]} onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder}
- style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ <label style={lbl}>{label}</label>
+ <div style={fieldBox}>
+ {prefix && <span style={{ ...fieldPrefix, padding: "10px", fontSize: 11 }}>{prefix}</span>}
+ <input value={settingsForm[key]} onChange={(e) => setSettingsForm((p) => ({ ...p, [key]: e.target.value }))} placeholder={placeholder} style={bareInput} />
  </div>
  </div>
  ))}
+ </div>
  {saveBtn}
  </>
  )}
  {nav === "availability" && (
  <>
  {/* Viewing availability — buyers can only book the days/times set here */}
- <div style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
- <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
+ <div style={card}>
+ <AvailabilityEditor ownerId={userId} dealerId={userId} theme="premium" />
  </div>
  </>
  )}
@@ -5529,28 +5518,29 @@ export default function SalesmanPremium() {
  <>
  {/* Selling terms — you own these listings, so the buyer's questions (is my
  deposit safe, what else do I pay) land on you, not on a dealer. */}
+ <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.depositPolicy")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.depositPolicy")}</label>
  <select value={settingsForm.deposit_policy} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))} style={{ ...inputStyle, appearance: "none" }}>
  <option value="">{t("salesmanPremium.settings.depNone")}</option>
  <option value="refundable">{t("salesmanPremium.settings.depRefundable")}</option>
  <option value="refundable_on_loan_rejection">{t("salesmanPremium.settings.depLoan")}</option>
  <option value="non_refundable">{t("salesmanPremium.settings.depNon")}</option>
  </select>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.depHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.depHint")}</p>
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.depDetails")}</label>
+ <label style={lbl}>{t("salesmanPremium.settings.depDetails")}</label>
  <input value={settingsForm.deposit_terms} onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))} placeholder={t("salesmanPremium.settings.depDetailsPh")} style={inputStyle} />
  </div>
  <div>
- <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanPremium.settings.fee")}</label>
- <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
- <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>RM</span>
- <input value={settingsForm.processing_fee} onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder={t("salesmanPremium.settings.feePh")} inputMode="decimal"
- style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }} />
+ <label style={lbl}>{t("salesmanPremium.settings.fee")}</label>
+ <div style={fieldBox}>
+ <span style={fieldPrefix}>RM</span>
+ <input value={settingsForm.processing_fee} onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))} placeholder={t("salesmanPremium.settings.feePh")} inputMode="decimal" style={bareInput} />
  </div>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanPremium.settings.feeHint")}</p>
+ <p style={hint}>{t("salesmanPremium.settings.feeHint")}</p>
+ </div>
  </div>
  {saveBtn}
  </>
@@ -5559,72 +5549,59 @@ export default function SalesmanPremium() {
  <>
  {/* Push alerts on this device. Own id, not a dealer id — push_subscriptions
      RLS is auth.uid() = user_id. */}
- <div>
- <PushToggle userId={profile?.id} theme="dark"
- style={{ padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }} />
- </div>
- <div>
- <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
- <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> Telegram</label>
+ <PushToggle userId={profile?.id} theme="premium" style={{ padding: 18 }} />
+ <div style={card}>
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+ <span style={{ fontSize: 13, fontWeight: 700, color: PD.text, display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={14} /> Telegram</span>
  {profile?.telegram_chat_id
- ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanPremium.settings.connected")}</span>
- : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanPremium.settings.notSet")}</span>
+ ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: PD.up }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: PD.up, display: "inline-block" }} />{t("salesmanPremium.settings.connected")}</span>
+ : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: PD.textMuted }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: PD.textMuted, display: "inline-block" }} />{t("salesmanPremium.settings.notSet")}</span>
  }
  </div>
  <input value={settingsForm.telegram_chat_id} onChange={(e) => setSettingsForm((p) => ({ ...p, telegram_chat_id: e.target.value }))} placeholder={t("salesmanPremium.tg.idPh")} style={inputStyle} />
  <button type="button" onClick={testTelegramConnection} disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
- style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#93c5fd", fontFamily: "inherit", cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
+ style={{ ...softBtn, marginTop: 10, cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}>
  <Send size={13} /> {tgTesting ? t("salesmanPremium.tg.testing") : t("salesmanPremium.tg.sendTest")}
  </button>
- <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>{t("salesmanPremium.tg.howBefore")} <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a> {t("salesmanPremium.tg.howAfter")}</p>
+ <p style={{ ...hint, margin: "8px 0 0", lineHeight: 1.6 }}>{t("salesmanPremium.tg.howBefore")} <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: PD.text, textDecoration: "underline", textUnderlineOffset: 2 }}>@userinfobot</a> {t("salesmanPremium.tg.howAfter")}</p>
  </div>
  {saveBtn}
  </>
  )}
  {nav === "language" && (
- <div>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>
- {t("salesmanPremium.settings.language", { defaultValue: "Language" })}
- </p>
- <p style={{ margin: "4px 0 12px", fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>
+ <div style={card}>
+ <p style={{ margin: "0 0 12px", fontSize: 12, color: PD.textSec, lineHeight: 1.6 }}>
  {t("salesmanPremium.settings.languageSubtext", { defaultValue: "Choose the language used across your panel." })}
  </p>
  {/* Same control and the same i18n instance as Lite's, so the choice
      follows the seller between panels rather than being per-panel. */}
- <div style={{ display: "flex", gap: 8 }}>
- {[{ code: "en", label: "English" }, { code: "ms", label: "Bahasa Melayu" }].map(({ code, label }) => (
+ <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+ {[{ code: "en", label: "English" }, { code: "ms", label: "Bahasa Melayu" }].map(({ code, label }) => {
+ // "en-US" from the browser is English too; an exact match lit neither.
+ const on = (i18n.resolvedLanguage || i18n.language || "").startsWith(code);
+ return (
  <button
  key={code}
  type="button"
  onClick={() => i18n.changeLanguage(code)}
- style={{
- padding: "7px 18px",
- borderRadius: 8,
- fontSize: 13,
- fontWeight: 600,
- cursor: "pointer",
- fontFamily: "inherit",
- background: i18n.language === code ? C.accent : "rgba(255,255,255,0.04)",
- border: `1px solid ${i18n.language === code ? C.accent : "rgba(255,255,255,0.1)"}`,
- color: i18n.language === code ? "#fff" : "#9ca3af",
- transition: "all 0.15s",
- }}
+ style={{ ...softBtn, padding: "8px 18px", fontSize: 13, background: on ? PD.accent : PD.raised, color: on ? PD.onAccent : PD.textSec }}
  >
  {label}
  </button>
- ))}
+ );
+ })}
  </div>
  </div>
  )}
- {nav === "password" && <ChangePasswordCard />}
- {nav === "refer" && <ReferralCard slug={profile?.slug} />}
- {nav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
+ {nav === "password" && <ChangePasswordCard theme="premium" />}
+ {nav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
+ {nav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
  {nav === "dealership" && (
  <>
  {/* Joining a dealership is a one-time action, not something that needs a
      permanent nav slot — it lives here, and /salesman-premium/merge still
      resolves to this section (see TAB_ALIASES). */}
- <div id="sp-merge">
+ <div id="sp-merge" style={card}>
  {renderMerge()}
  </div>
  </>
@@ -5634,32 +5611,26 @@ export default function SalesmanPremium() {
  {/* Replay the tour. It only auto-runs once (profiles.onboarding_tour_done),
      so without this there was no way back to it — and no way for anyone who
      skipped it on day one to find out what the other tabs do. */}
- <div>
- <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+ <div style={card}>
+ <p style={{ margin: "0 0 12px", fontSize: 12, color: PD.textSec, lineHeight: 1.6 }}>
  {t("salesmanPremium.settings.tourDesc")}
  </p>
- <button
- onClick={startTour}
- style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#e5e7eb", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
- >
+ <button onClick={startTour} style={softBtn}>
  <Sparkles size={14} /> {t("salesmanPremium.settings.replayTour")}
  </button>
  </div>
  </>
  )}
  {nav === "danger" && (
- <div style={{ padding: "16px", background: "rgba(248,113,113,0.03)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 12 }}>
- <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
- {t("salesmanPremium.settings.dangerZone")}
- </p>
- <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, maxWidth: 460 }}>
+ <div style={card}>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: PD.textSec, lineHeight: 1.6, maxWidth: 460 }}>
  {t("salesmanPremium.settings.dangerDesc")}
  </p>
  <button
  onClick={() => { setDeleteConfirmText(""); setDeleteConfirmOpen(true); }}
- style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(248,113,113,0.4)", color: "#f87171", fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ ...softBtn, color: PD.accentText }}
  >
- {t("salesmanPremium.settings.deleteMyAccount")}
+ <Trash2 size={14} /> {t("salesmanPremium.settings.deleteMyAccount")}
  </button>
  </div>
  )}
@@ -5676,44 +5647,47 @@ export default function SalesmanPremium() {
  <div style={{ paddingBottom: 8 }}>
  {SETTINGS_GROUPS.map(({ group, items }) => (
  <div key={group} style={{ marginBottom: 18 }}>
- <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4b5563", margin: "0 0 6px", paddingLeft: 4 }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
- <div style={{ background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
- {items.map(({ key, icon: Icon, label, desc }, idx) => (
+ <p style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: PD.textMuted, margin: "0 0 8px", paddingLeft: 6 }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
+ <div style={{ background: PD.card, borderRadius: PD.radius.card, overflow: "hidden" }}>
+ {items.map((item, idx) => {
+ const { key, icon: Icon, desc } = item;
+ return (
  <button
  key={key}
  onClick={() => setSettingsNav(key)}
  style={{
  display: "flex", alignItems: "center", gap: 12, width: "100%",
- padding: "12px 14px", background: "none", border: "none",
- borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.05)" : "none",
+ padding: "13px 16px", background: "none", border: "none",
+ borderTop: idx > 0 ? `1px solid ${PD.line}` : "none",
  cursor: "pointer", textAlign: "left", fontFamily: "inherit",
  }}
  >
- <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
- <Icon size={14} style={{ color: "#93c5fd" }} />
+ <div style={{ width: 32, height: 32, borderRadius: 10, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <Icon size={15} style={{ color: key === "danger" ? PD.accentText : PD.textSec }} />
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{t(`salesmanPremium.settingsNav.${key}.label`, { defaultValue: label })}</p>
- <p style={{ margin: "1px 0 0", fontSize: 11, color: "#4b5563" }}>{t(`salesmanPremium.settingsNav.${key}.desc`, { defaultValue: desc })}</p>
+ <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: PD.text }}>{navLabel(item)}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 11.5, color: PD.textMuted }}>{t(`salesmanPremium.settingsNav.${key}.desc`, { defaultValue: desc })}</p>
  </div>
- <ChevronRight size={14} style={{ color: "#374151", flexShrink: 0 }} />
+ <ChevronRight size={15} style={{ color: PD.textMuted, flexShrink: 0 }} />
  </button>
- ))}
+ );
+ })}
  </div>
  </div>
  ))}
  </div>
  ) : (
  <div>
- <div style={{ display: "flex", alignItems: "center", gap: 7, paddingBottom: 12, marginBottom: 16, borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 14 }}>
  <button
  onClick={() => setSettingsNav(null)}
- style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: "#6b7280", fontSize: 13, fontWeight: 500, padding: 0, fontFamily: "inherit" }}
+ style={{ display: "flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", color: PD.textMuted, fontSize: 13, fontWeight: 500, padding: 0, fontFamily: "inherit" }}
  >
  <ChevronLeft size={15} /> {t("salesmanPremium.tabs.settings")}
  </button>
- <ChevronRight size={13} style={{ color: "#374151" }} />
- <span style={{ fontSize: 13, fontWeight: 600, color: "#e5e7eb" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.label`, { defaultValue: navItem.label })}</span>
+ <ChevronRight size={13} style={{ color: PD.textMuted }} />
+ <span style={{ fontSize: 13, fontWeight: 600, color: PD.text }}>{navLabel(navItem)}</span>
  </div>
  {sectionContent}
  </div>
@@ -5722,11 +5696,12 @@ export default function SalesmanPremium() {
  /* DESKTOP — grouped rail on the left, the open section on the right.
     The page it sits in is already capped at 1180px wide. */
  <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
- <nav style={{ width: 190, flexShrink: 0, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 8px" }}>
+ <nav style={{ width: 200, flexShrink: 0, background: PD.card, borderRadius: PD.radius.card, padding: "16px 10px", position: "sticky", top: 16 }}>
  {SETTINGS_GROUPS.map(({ group, items }, gi) => (
  <div key={group} style={{ marginBottom: gi < SETTINGS_GROUPS.length - 1 ? 16 : 0 }}>
- <p style={{ fontSize: 10, letterSpacing: "0.1em", color: "#374151", fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
- {items.map(({ key, icon: Icon, label }) => {
+ <p style={{ fontSize: 10.5, letterSpacing: "0.1em", color: PD.textMuted, fontWeight: 700, textTransform: "uppercase", padding: "0 10px", margin: "0 0 4px" }}>{t(`salesmanPremium.settingsNav.groups.${group}`)}</p>
+ {items.map((item) => {
+ const { key, icon: Icon } = item;
  const active = nav === key;
  return (
  <button
@@ -5734,15 +5709,15 @@ export default function SalesmanPremium() {
  onClick={() => setSettingsNav(key)}
  style={{
  display: "flex", alignItems: "center", gap: 9, width: "100%",
- padding: "7px 10px", borderRadius: 8, cursor: "pointer",
+ padding: "8px 10px", borderRadius: 10, cursor: "pointer",
  textAlign: "left", marginBottom: 1, fontFamily: "inherit",
- background: active ? "rgba(37,99,235,0.15)" : "transparent",
- border: active ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
- color: active ? "#93c5fd" : "#6b7280",
- fontSize: 13, fontWeight: 500,
+ background: active ? PD.hover : "transparent",
+ border: "none",
+ color: active ? PD.text : PD.textSec,
+ fontSize: 13, fontWeight: active ? 600 : 500,
  }}
  >
- <Icon size={14} style={{ flexShrink: 0 }} /> {t(`salesmanPremium.settingsNav.${key}.label`, { defaultValue: label })}
+ <Icon size={14} style={{ flexShrink: 0, color: active ? PD.text : PD.textMuted }} /> {navLabel(item)}
  </button>
  );
  })}
@@ -5750,8 +5725,7 @@ export default function SalesmanPremium() {
  ))}
  </nav>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: "0 0 3px", fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.label`, { defaultValue: navItem.label })}</p>
- <p style={{ margin: "0 0 18px", fontSize: 12, color: "#4b5563" }}>{navItem && t(`salesmanPremium.settingsNav.${navItem.key}.desc`, { defaultValue: navItem.desc })}</p>
+ <p style={{ margin: "4px 0 16px", fontSize: 18, fontWeight: 700, color: PD.text }}>{navLabel(navItem)}</p>
  {sectionContent}
  </div>
  </div>
@@ -5763,124 +5737,45 @@ export default function SalesmanPremium() {
 
  // RENDER MERGE 
 
- const renderMerge = () => (
- <div style={{ maxWidth: 480, margin: "0 auto" }}>
- <p
- style={{
- margin: "0 0 6px",
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >{t("salesmanPremium.settingsNav.dealership.label")}
- </p>
- <p
- style={{
- margin: "0 0 24px",
- fontSize: 13,
- color: "#4b5563",
- lineHeight: 1.6,
- }}
- >{t("salesmanPremium.merge.intro")}
- </p>
-
- <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+ // Sits inside a premiumDark card in Settings > Join a Dealership. No heading
+ // of its own: the Settings header names the section (it said it twice).
+ const renderMerge = () => {
+ const locked = mergeStatus === "pending" || mergeStatus === "success";
+ const note = (tone, Icon) => (
+ <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: PD.raised, borderRadius: 10 }}>
+ <Icon size={14} style={{ color: tone, flexShrink: 0 }} />
+ <p style={{ margin: 0, fontSize: 12, color: tone }}>{mergeMsg}</p>
+ </div>
+ );
+ return (
+ <div>
+ <p style={{ margin: "0 0 14px", fontSize: 12.5, color: PD.textSec, lineHeight: 1.6 }}>{t("salesmanPremium.merge.intro")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
  <input
  value={mergeCode}
  onChange={(e) => setMergeCode(e.target.value.toUpperCase())}
  placeholder={t("salesmanPremium.merge.codePh")}
- disabled={mergeStatus === "pending" || mergeStatus === "success"}
- style={{
- width: "100%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: 8,
- color: "#e5e7eb",
- fontSize: 13,
- padding: "10px 12px",
- outline: "none",
- boxSizing: "border-box",
- fontFamily: "system-ui, sans-serif",
- }}
+ disabled={locked}
+ style={{ width: "100%", background: PD.raised, border: `1px solid ${PD.line}`, borderRadius: 10, color: PD.text, fontSize: 13, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", letterSpacing: "0.04em" }}
  />
  <button
  onClick={handleMerge}
- disabled={
-!mergeCode.trim() ||
- mergeStatus === "pending" ||
- mergeStatus === "success"
- }
- style={{
- padding: "10px 16px",
- borderRadius: 8,
- background: mergeStatus === "success"? "#16a34a" : "#2563eb",
- border: "none",
- color: "#fff",
- fontSize: 13,
- fontWeight: 600,
- cursor: "pointer",
- opacity:!mergeCode.trim() || mergeStatus === "pending"? 0.6 : 1,
- }}
+ disabled={!mergeCode.trim() || locked}
+ style={{ alignSelf: "flex-start", padding: "11px 18px", borderRadius: 10, background: mergeStatus === "success" ? PD.raised : PD.accent, border: "none", color: mergeStatus === "success" ? PD.up : PD.onAccent, fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: !mergeCode.trim() || locked ? "default" : "pointer", opacity: !mergeCode.trim() || mergeStatus === "pending" ? 0.6 : 1 }}
  >
  {mergeStatus === "pending"
-? t("salesmanPremium.merge.verifying")
+ ? t("salesmanPremium.merge.verifying")
  : mergeStatus === "success"
-? t("salesmanPremium.merge.merged")
+ ? t("salesmanPremium.merge.merged")
  : t("salesmanPremium.merge.request")}
  </button>
  </div>
-
- {mergeStatus === "error" && (
- <div
- style={{
- marginTop: 12,
- display: "flex",
- alignItems: "center",
- gap: 8,
- padding: "10px 14px",
- background: "rgba(239,68,68,0.08)",
- border: "1px solid rgba(239,68,68,0.2)",
- borderRadius: 8,
- }}
- >
- <AlertCircle size={14} style={{ color: "#f87171", flexShrink: 0 }} />
- <p style={{ margin: 0, fontSize: 12, color: "#f87171" }}>
- {mergeMsg}
- </p>
- </div>
- )}
-
- {mergeStatus === "success" && (
- <div
- style={{
- marginTop: 12,
- display: "flex",
- alignItems: "center",
- gap: 8,
- padding: "10px 14px",
- background: "rgba(34,197,94,0.08)",
- border: "1px solid rgba(34,197,94,0.2)",
- borderRadius: 8,
- }}
- >
- <CheckCircle2 size={14} style={{ color: "#4ade80", flexShrink: 0 }} />
- <p style={{ margin: 0, fontSize: 12, color: "#4ade80" }}>
- {mergeMsg}
- </p>
- </div>
- )}
-
- <p
- style={{
- marginTop: 24,
- fontSize: 12,
- color: "#374151",
- lineHeight: 1.6,
- }}
- >{t("salesmanPremium.merge.noCode")}
- </p>
+ {mergeStatus === "error" && note(PD.accentText, AlertCircle)}
+ {mergeStatus === "success" && note(PD.up, CheckCircle2)}
+ <p style={{ margin: "16px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.6 }}>{t("salesmanPremium.merge.noCode")}</p>
  </div>
  );
+ };
 
  // ADD LEAD MODAL 
 
@@ -6167,12 +6062,13 @@ export default function SalesmanPremium() {
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
  <div>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.handoverIntro")}</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: PD.textMuted }}>{t("salesmanPremium.sold.handoverIntro")}</p>
  <Suspense fallback={<TabLoadingFallback />}>
  <PostSaleBoard
  dealerId={getDealerIdFromProfile(profile)}
  salesmanId={userId}
  dark
+ theme="premium"
  controller={handover}
  openDealId={handoverDealParam}
  onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
@@ -6189,8 +6085,8 @@ export default function SalesmanPremium() {
  const renderSold = () => (
  <div style={{ maxWidth: 640, margin: "0 auto" }}>
  {renderTabBack()}
- <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>{t("salesmanPremium.tabs.sold", { defaultValue: "Sold" })}</p>
- <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.subtitle", { defaultValue: "Every buyer after the win: handover, renewals and aftercare." })}</p>
+ <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: PD.text }}>{t("salesmanPremium.tabs.sold", { defaultValue: "Sold" })}</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: PD.textMuted }}>{t("salesmanPremium.sold.subtitle", { defaultValue: "Every buyer after the win: handover, renewals and aftercare." })}</p>
  {/* Above the pills so both halves see what is due. Tapping a row opens the
  stage it is about: the handover checklist, or that buyer's renewals /
  aftercare in place. */}
@@ -6199,6 +6095,7 @@ export default function SalesmanPremium() {
  customers={customers}
  handover={handover}
  packagesByCustomer={packagesMap}
+ skipHandover={soldSubTab === "handover"}
  onPick={(it) => {
  if (it.kind === "handover" && it.leadId) { openHandoverFor(it.leadId, "sold"); return; }
  setSoldSubTab("customers");
@@ -6207,6 +6104,7 @@ export default function SalesmanPremium() {
  />
  </div>
  <SubTabs
+ premium
  value={soldSubTab}
  onChange={setSoldSubTab}
  items={[
@@ -6223,14 +6121,21 @@ export default function SalesmanPremium() {
  // car price and down payment, and the list) plus ~80 lines of helpers.
  const renderLoans = () => (
  <Suspense fallback={<TabLoadingFallback />}>
+ {/* One flow (owner, 2026-10-25): a loan check first, then "Start the bank
+     application" turns the saved check into an application. LoanDesk lists
+     the recent checks and the applications. */}
  <LoanDesk
  userId={userId}
  dealerId={profile?.dealer_id || null}
  leads={leads}
- listings={myListings}
  applications={loanApplications}
  setApplications={setLoanApplications}
  onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}
+ checks={loanChecks}
+ onNewCheck={() => openLoanCheck(null)}
+ onOpenCheck={(ck, lead) => setLoanCheck({ lead: lead || null, existing: ck })}
+ applyFrom={applyFrom}
+ onApplyDone={() => setApplyFrom(null)}
  />
  </Suspense>
  );
@@ -6291,7 +6196,6 @@ export default function SalesmanPremium() {
  ],
  loans: [
  introStep("loans", "new", "loan-new", Banknote),
- introStep("loans", "banks", "loan-banks", ShieldCheck),
  introStep("loans", "list", "loan-list", ClipboardList),
  ],
  outreach: [
@@ -6809,13 +6713,13 @@ export default function SalesmanPremium() {
     colour has one definition and the next person can change it in one place.
     Lite stays red (C.accent) — that is deliberate, not drift. */
  @keyframes sp-lead-glow {
- 0% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0.55)}; border-color: ${withAlpha(C.info, 0.7)}; }
- 70% { box-shadow: 0 0 0 12px ${withAlpha(C.info, 0)}; border-color: ${withAlpha(C.info, 0.7)}; }
- 100% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0)}; border-color: ${C.border}; }
+ 0% { box-shadow: 0 0 0 0 ${withAlpha(PD.text, 0.45)}; }
+ 70% { box-shadow: 0 0 0 12px ${withAlpha(PD.text, 0)}; }
+ 100% { box-shadow: 0 0 0 0 ${withAlpha(PD.text, 0)}; }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
  @media (prefers-reduced-motion: reduce) {
- .sp-lead-glow { animation: none; border-color: ${withAlpha(C.info, 0.7)}; }
+ .sp-lead-glow { animation: none; box-shadow: 0 0 0 2px ${withAlpha(PD.text, 0.45)}; }
  .sp-topbar { transition: none !important; }
  }
  `}</style>
@@ -6826,7 +6730,7 @@ export default function SalesmanPremium() {
  {!isMobile && (
  <nav
  style={{
- width: 200,
+ width: 232,
  flexShrink: 0,
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
@@ -6836,113 +6740,56 @@ export default function SalesmanPremium() {
  position: "sticky",
  top: 0,
  height: "100vh",
+ boxSizing: "border-box",
  }}
  >
  {/* Logo */}
- <div
- style={{
- padding: 16,
- borderBottom: "1px solid rgba(255,255,255,0.06)",
- display: "flex",
- alignItems: "center",
- gap: 8,
- }}
- >
- <div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
- <p
- style={{
- fontSize: 10,
- color: "#4b5563",
- marginTop: 2,
- marginBottom: 0,
- }}
- >
- · {isPremium? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
+ <div style={{ padding: "22px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>
+ · {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
- </div>
  </div>
 
  {/* Nav items */}
- <p
- style={{
- fontSize: 10,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.1em",
- padding: "12px 16px 4px",
- fontWeight: 600,
- margin: 0,
- }}
- >{t("salesmanPremium.nav.main")}
- </p>
+ <p style={{ ...navSection, padding: "20px 24px 8px" }}>{t("salesmanPremium.nav.main")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px 16px" }}>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
  data-tour-id={tab}
  onClick={() => switchTab(tab)}
- style={{
- display: "flex",
- alignItems: "center",
- gap: 10,
- padding: "8px 16px",
- margin: "1px 8px",
- borderRadius: 8,
- cursor: "pointer",
- background:
- activeTab === tab? "rgba(37,99,235,0.15)" : "transparent",
- border:
- activeTab === tab
-? "0.5px solid rgba(37,99,235,0.25)"
- : "0.5px solid transparent",
- color: activeTab === tab? "#93c5fd" : "#6b7280",
- fontSize: 13,
- fontWeight: 500,
- width: "calc(100% - 16px)",
- textAlign: "left",
- }}
+ style={navRow(activeTab === tab)}
  >
  {icon}
- <span style={{ flex: 1 }}>{label}</span>
- {badge? (
- <span
- style={{
- fontSize: 10,
- background: "rgba(37,99,235,0.2)",
- border: "1px solid rgba(37,99,235,0.3)",
- color: "#93c5fd",
- borderRadius: 99,
- padding: "1px 6px",
- }}
- >
- {badge}
- </span>
- ) : null}
+ <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+ {badge ? <span style={navBadge}>{badge}</span> : null}
  </button>
  ))}
+ </div>
 
  {/* Profile + logout */}
  <div
  style={{
  marginTop: "auto",
  borderTop: "1px solid rgba(255,255,255,0.06)",
- padding: "12px 16px",
+ padding: "16px 16px 20px 24px",
  display: "flex",
  alignItems: "center",
- gap: 10,
+ gap: 12,
  }}
  >
  <div
  style={{
- width: 30,
- height: 30,
+ width: 34,
+ height: 34,
  borderRadius: "50%",
  background: "rgba(37,99,235,0.2)",
  border: "1px solid rgba(37,99,235,0.3)",
  display: "flex",
  alignItems: "center",
  justifyContent: "center",
- fontSize: 12,
+ fontSize: 13,
  fontWeight: 700,
  color: "#93c5fd",
  flexShrink: 0,
@@ -6951,32 +6798,17 @@ export default function SalesmanPremium() {
  {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p
- style={{
- fontSize: 12,
- fontWeight: 600,
- color: "#e5e7eb",
- margin: 0,
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
+ <p style={{ fontSize: 12.5, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {profile?.full_name || profile?.slug || t("salesmanPremium.nav.salesman")}
  </p>
- <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>{isPremium ? "Premium" : "Lite"}</p>
+ <p style={{ fontSize: 10.5, color: "#4b5563", margin: "2px 0 0" }}>{isPremium ? "Premium" : "Lite"}</p>
  </div>
  <button
  onClick={() => setLogoutConfirmOpen(true)}
- style={{
- background: "transparent",
- border: "none",
- color: "#4b5563",
- cursor: "pointer",
- padding: 4,
- }}
+ aria-label={t("salesmanPremium.nav.logout")}
+ style={{ width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", flexShrink: 0 }}
  >
- <LogOut size={14} />
+ <LogOut size={15} />
  </button>
  </div>
  </nav>
@@ -7160,7 +6992,8 @@ export default function SalesmanPremium() {
  />
  )}
  </button>
- <button
+ {/* The Leads tab has its own Add Lead in its header; two on one screen is one too many. */}
+ {activeTab !== "leads" && <button
  onClick={() => setShowAddLead(true)}
  style={{
  display: "flex",
@@ -7177,7 +7010,7 @@ export default function SalesmanPremium() {
  }}
  >
  <Plus size={14} />{t("salesmanPremium.leads.addLead")}
- </button>
+ </button>}
  </>
  )}
  </div>
@@ -7264,6 +7097,7 @@ export default function SalesmanPremium() {
  {activeTab === "listings" && (
   <div>
    <SubTabs
+    premium
     value={listingsSubTab}
     onChange={setListingsSubTab}
     items={[
@@ -7281,11 +7115,11 @@ export default function SalesmanPremium() {
       myListings={myListings} carStatsMap={carStatsMap} filterStatus={filterStatus} sortBy={sortBy}
       listingCopied={listingCopied} showAddForm={showAddForm} showFastForm={showFastForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
-      cvrHover={cvrHover} profile={profile} isMobile={isMobile}
+      profile={profile} isMobile={isMobile}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
       setShowAddForm={setShowAddForm} setShowFastForm={setShowFastForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
-      setConfirmDeleteId={setConfirmDeleteId} setCvrHover={setCvrHover} setEditListing={setEditListing}
+      setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy}
@@ -7306,7 +7140,10 @@ export default function SalesmanPremium() {
        one tab. This replaced a read-only duplicate of the appointments list
        that used to sit under the enquiries feed — renderBookings() is the
        real, interactive board. */}
+   {/* Week | List sits on the switch's row (it had a row of its own). */}
+   <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
    <SubTabs
+    premium
     value={inboxSubTab}
     onChange={setInboxSubTab}
     items={[
@@ -7314,6 +7151,8 @@ export default function SalesmanPremium() {
      { key: "enquiries", label: t("salesmanPremium.inbox.leadHistory"), badge: newEnquiriesCount, tourId: "leadhistory" },
     ]}
    />
+   {inboxSubTab !== "enquiries" && bookingViewToggle}
+   </div>
    {inboxSubTab === "enquiries" ? renderEnquiries() : renderBookings()}
   </div>
  )}
@@ -7331,16 +7170,16 @@ export default function SalesmanPremium() {
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <Suspense fallback={<TabLoadingFallback />}>
- <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="dark" />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="premium" />
  </Suspense>
  )}
  {activeTab === "chat" && (
  <Suspense fallback={<TabLoadingFallback />}>
- {/* Premium's panel is dark — SellerInbox defaults to the light dealer
- palette, so without theme="dark" the whole chat tab rendered white
- on a #080a12 page. Same component, same props Lite passes, minus
- the upgrade strip (Premium has the AI bar for real). */}
- <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
+ {/* theme="premium": the premiumDark palette (SIMPLE-2). SellerInbox
+ defaults to the light dealer palette, so a theme must always be passed
+ here; Lite passes "dark". Premium has the AI bar for real, Lite the
+ upgrade strip. */}
+ <SellerInbox salesmanId={userId} theme="premium" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
@@ -7351,32 +7190,6 @@ export default function SalesmanPremium() {
  {tourMode && tourMode !== "main" && <div aria-hidden="true" style={{ height: TOUR_BAR_H + 160 }} />}
  </div>
  </div>
-
- {/* FAB — mobile leads tab */}
- {isMobile && activeTab === "leads" && (
- <button
- onClick={() => setShowAddLead(true)}
- style={{
- position: "fixed",
- bottom: 72,
- right: 16,
- zIndex: 40,
- width: 44,
- height: 44,
- borderRadius: "50%",
- background: "#2563eb",
- border: "none",
- color: "#fff",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- cursor: "pointer",
- boxShadow: "0 4px 12px rgba(37,99,235,0.4)",
- }}
- >
- <Plus size={20} />
- </button>
- )}
 
  {renderAddLeadModal()}
  {renderWAModal()}
@@ -7390,6 +7203,9 @@ export default function SalesmanPremium() {
  isMobile={isMobile}
  setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
  setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
+ theme="premium"
+ // premiumDark: Edit is the one red fill, the rest are neutral rows (they
+ // were blue / grey / green / purple / orange, five accents in one column).
  actions={[
  {
  // Edit existed on the listing CARD (ListingsTab.jsx:596) and nowhere in
@@ -7401,41 +7217,31 @@ export default function SalesmanPremium() {
  // never be open at once (overlay rule 3).
  key: "edit",
  label: (<><Pencil size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.edit")}</>),
- color: C.infoText,
- bg: "rgba(59,130,246,0.08)",
- border: "rgba(59,130,246,0.25)",
+ color: PD.onAccent, bg: PD.accent, border: PD.accent,
  onClick: () => { const car = selectedCar; setSelectedCar(null); setEditListing(car); },
  },
  {
  key: "link",
  label: (<><Copy size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.copyLink")}</>),
- color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
- bg: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
- border: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
+ color: listingCopied[selectedCar.id] === "link" ? PD.up : PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => handleListingCopy(selectedCar, "link"),
  },
  {
  key: "wa",
  label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.waCaption")}</>),
- color: "#4ade80",
- bg: "rgba(37,211,102,0.06)",
- border: "rgba(37,211,102,0.2)",
+ color: listingCopied[selectedCar.id] === "wa" ? PD.up : PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => handleListingCopy(selectedCar, "wa"),
  },
  {
  key: "ai",
  label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.aiCaption")}{AI_FEATURES_ENABLED ? "" : ` ${t("salesmanPremium.carActions.soon")}`}</>),
- color: "#c084fc",
- bg: "rgba(168,85,247,0.08)",
- border: "rgba(168,85,247,0.25)",
+ color: PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => { if (AI_FEATURES_ENABLED) generateAiCaptions(selectedCar); setAiCaptionCar(selectedCar); setSelectedCar(null); },
  },
  {
  key: "broadcast",
  label: (<><Bell size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.broadcast")}</>),
- color: "#fb923c",
- bg: "rgba(249,115,22,0.08)",
- border: "rgba(249,115,22,0.25)",
+ color: PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => { openBroadcast(selectedCar); setSelectedCar(null); },
  },
  ]}
@@ -7461,7 +7267,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 8 }}>
  <button
  onClick={() => setLogoutConfirmOpen(false)}
- style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 10, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}
  >
  {t("salesmanPremium.common.cancel")}
  </button>
@@ -7477,17 +7283,17 @@ export default function SalesmanPremium() {
  )}
 
  {/* ── Delete account confirm (Danger Zone) ── */}
- {deleteConfirmOpen && (
+ {deleteConfirmOpen && createPortal(
  <div
  onClick={() => !deleting && setDeleteConfirmOpen(false)}
- style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ style={{ position: "fixed", inset: 0, zIndex: 1200, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
  >
- <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 400, padding: 22, border: "1px solid rgba(255,255,255,0.08)" }}>
- <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.deleteAcct.title")}</p>
- <p style={{ margin: "0 0 16px", fontSize: 13, color: "#9ca3af", lineHeight: 1.6 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ background: PD.card, borderRadius: PD.radius.card, width: "100%", maxWidth: 400, padding: 22 }}>
+ <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: PD.text }}>{t("salesmanPremium.deleteAcct.title")}</p>
+ <p style={{ margin: "0 0 16px", fontSize: 13, color: PD.textSec, lineHeight: 1.6 }}>
  {t("salesmanPremium.deleteAcct.body")}
  </p>
- <label style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+ <label style={{ display: "block", fontSize: 11, color: PD.textMuted, marginBottom: 6 }}>
  {t("salesmanPremium.deleteAcct.typeToConfirm")}
  </label>
  <input
@@ -7495,26 +7301,27 @@ export default function SalesmanPremium() {
  onChange={(e) => setDeleteConfirmText(e.target.value)}
  placeholder="DELETE"
  autoFocus
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 14, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", letterSpacing: "0.05em", marginBottom: 16 }}
+ style={{ width: "100%", background: PD.raised, border: `1px solid ${PD.line}`, borderRadius: 10, color: PD.text, fontSize: 16, padding: "10px 12px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", letterSpacing: "0.05em", marginBottom: 16 }}
  />
  <div style={{ display: "flex", gap: 8 }}>
  <button
  onClick={() => setDeleteConfirmOpen(false)}
  disabled={deleting}
- style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: "#cbd5e1", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 10, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}
  >
  {t("salesmanPremium.common.cancel")}
  </button>
  <button
  onClick={handleDeleteAccount}
  disabled={deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
- style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#dc2626", border: "none", color: "#fff", cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 10, background: PD.accent, border: "none", color: PD.onAccent, cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
  >
  {deleting ? t("salesmanPremium.deleteAcct.deleting") : t("salesmanPremium.deleteAcct.confirm")}
  </button>
  </div>
  </div>
- </div>
+ </div>,
+ document.body
  )}
 
  {/* ── Test drive outcome ── advanceLeadStage sets testDriveConfirm and
@@ -8094,13 +7901,34 @@ export default function SalesmanPremium() {
      level (not inside renderLeads) so the pipeline card, the lead panel and
      anything added later all open the same sheet. Same AI split as the inbox:
      Premium drafts, Lite sees the locked strip. */}
+ {loanCheck && (
+ <Suspense fallback={null}>
+ <LoanCheck
+ lead={loanCheck.lead}
+ existing={loanCheck.existing}
+ listings={myListings}
+ userId={userId}
+ dealerId={profile?.dealer_id || null}
+ onSaved={onLoanCheckSaved}
+ onClose={() => setLoanCheck(null)}
+ onApply={(row) => {
+ // closeAndRun: the check closes before the application opens.
+ const lead = loanCheck.lead || (row.lead_id ? leads.find((l) => l.id === row.lead_id) : null) || null;
+ setLoanCheck(null);
+ setApplyFrom({ check: row, lead });
+ switchTab("loans");
+ }}
+ />
+ </Suspense>
+ )}
+
  {chatSheet && (
  <Suspense fallback={null}>
  <ChatSheet
  threadId={chatSheet.threadId}
  buyerName={chatSheet.buyerName}
  carLabel={chatSheet.carLabel}
- theme="dark"
+ theme="premium"
  aiAssist={isPremium}
  aiUpgrade={!isPremium}
  onClose={() => setChatSheet(null)}
@@ -8117,7 +7945,7 @@ export default function SalesmanPremium() {
  )}
  {posterCar && (
  <Suspense fallback={null}>
- <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
+ <LoanPosterSheet theme="premium" car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
  onDownloaded={() => { if (tourMode === "poster") dismissTour(); }}
  bottomInset={tourMode === "poster" ? TOUR_BAR_H + 40 : 0} />
  </Suspense>

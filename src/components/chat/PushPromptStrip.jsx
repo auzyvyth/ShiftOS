@@ -177,7 +177,7 @@ export default function PushPromptStrip({
 
   if (justEnabled) {
     return row(<>
-      <Bell size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+      <Bell size={13} style={{ color: t.ok || '#16a34a', flexShrink: 0 }} />
       <p style={{ margin: 0, flex: '1 1 150px', minWidth: 0, fontSize: 11.5, lineHeight: 1.5, color: t.sub }}>{copy.done}</p>
       <DismissBtn t={t} onClick={() => setDismissed(true)} />
     </>);
@@ -213,7 +213,7 @@ export default function PushPromptStrip({
     </p>
     {(!note || required) && (
       <button type="button" onClick={handleEnable} disabled={busy}
-        style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: 'system-ui,sans-serif' }}>
+        style={{ flexShrink: 0, padding: '6px 12px', borderRadius: 8, background: '#dc2626', border: 'none', color: '#fff', fontSize: 11.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', fontFamily: t.font || 'system-ui,sans-serif' }}>
         {busy ? 'Turning on…' : note ? 'Try again' : 'Turn on'}
       </button>
     )}

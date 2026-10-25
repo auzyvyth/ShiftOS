@@ -305,11 +305,16 @@ serve(async (req) => {
     // it is never granted twice). Those triggers skip service-role writes, so
     // the fields are written here. Before this, the owner signed in as the
     // seller and started the free month from Lite settings by hand.
+    //
+    // Length (owner, 2026-10-25): 7 days, the same as a self-serve signup
+    // (apply_premium_free_month). The console may pick 30 for a prospect who
+    // was promised a month before the change; nothing else is accepted.
     const consoleFreeMonth = isSuperCaller && !effectiveDealerId && plan === "salesman_full";
+    const trialDays = body.trial_days === 30 ? 30 : 7;
     const paymentStatus = plan === "salesman_full" && !effectiveDealerId && !consoleFreeMonth ? "pending" : null;
     const freeMonth = consoleFreeMonth
       ? {
-        plan_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        plan_expires_at: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
         premium_trial_started_at: new Date().toISOString(),
       }
       : {};

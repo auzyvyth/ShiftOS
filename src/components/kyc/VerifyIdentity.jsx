@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { ShieldCheck, Upload, Check, Clock, X, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
+import { premiumDark as PD } from "../../theme/tokens";
 
 /**
  * Seller-facing e-KYC submission.
@@ -59,7 +60,20 @@ const compress = (file, maxWidth = 1600, quality = 0.85) =>
 // Two surfaces, one component. Salesman Lite/Premium are dark; the DEALER
 // dashboard is light (white cards, #111827 text) — rendering the dark card
 // there would be the "light text on a light card" bug the theme rules ban.
+// `premium` = Salesman Premium (premiumDark): no card outline, no blue or
+// amber; "under review" is neutral (nothing for the seller to do).
 const PALETTE = {
+  premium: {
+    card: PD.card, border: "transparent", radius: PD.radius.card,
+    text: PD.text, sub: PD.textSec, faint: PD.textMuted, slotText: PD.text,
+    slotBg: PD.raised, slotBorder: "transparent", inputBorder: PD.line,
+    thumbBg: PD.hover,
+    okBorder: "rgba(110,231,183,0.35)", okIcon: PD.up, okCard: "transparent",
+    waitBorder: "transparent", waitIcon: PD.textSec,
+    askIcon: PD.textSec,
+    errBg: "rgba(220,38,38,0.08)", errBorder: "transparent",
+    errIcon: PD.accentText, errText: PD.accentText,
+  },
   dark: {
     card: "#111827", border: "rgba(255,255,255,0.07)",
     text: "#f1f5f9", sub: "#9ca3af", faint: "#6b7280", slotText: "#e5e7eb",
@@ -184,13 +198,13 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
   const card = {
     background: P.card,
     border: `1px solid ${P.border}`,
-    borderRadius: 12,
+    borderRadius: P.radius || 12,
     padding: 16,
   };
 
   if (verified) {
     return (
-      <div style={{ ...card, borderColor: P.okBorder }}>
+      <div style={{ ...card, borderColor: P.okCard || P.okBorder }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <ShieldCheck size={18} style={{ color: P.okIcon, flexShrink: 0 }} />
           <div style={{ minWidth: 0 }}>
@@ -287,7 +301,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
           maxLength={14}
           autoComplete="off"
           style={{
-            width: "100%", boxSizing: "border-box", background: P.slotBg, border: `1px solid ${P.slotBorder}`,
+            width: "100%", boxSizing: "border-box", background: P.slotBg, border: `1px solid ${P.inputBorder || P.slotBorder}`,
             borderRadius: 8, color: P.slotText, fontSize: 15, padding: "11px 13px", outline: "none", fontFamily: "inherit",
           }}
         />

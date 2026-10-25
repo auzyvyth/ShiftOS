@@ -984,6 +984,7 @@
       "commissionTitle": "Komisen dan target bulanan",
       "commissionSub": "Jejak berapa komisen setiap jualan dan berapa dekat anda dengan target bulan ini. Di Premium.",
       "leadTools": "Reminder dan log call: Premium",
+      "loanCheck": "Semakan loan sebelum bank: Premium",
       "pageTitle": "Banner, bio dan link sosial di page anda",
       "pageSub": "Page percuma anda tunjuk kereta, nama, cara hubungi anda dan maklumat kepercayaan. Premium tambah banner, bio dan Instagram, TikTok serta Facebook anda."
     },
@@ -1759,6 +1760,7 @@
       "viewMarket": "Lihat marketplace XDrive",
       "loanCalculator": "Kalkulator loan",
       "share": "Kongsi",
+      "shareVisits": "lawatan dari link yang dikongsi",
       "miniByPlatform": "Trafik mini page ikut platform",
       "visitsLower": "lawatan",
       "clicksLower": "klik",
@@ -1805,7 +1807,24 @@
       "bestToPush": "Patut ditonjolkan",
       "unpin": "Buang pin",
       "pin": "Pin",
-      "startingOutNote": "Lead, tempahan, sasaran jualan dan susulan akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda."
+      "startingOutNote": "Lead, tempahan, sasaran jualan dan susulan akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda.",
+      "openCallList": "Buka senarai panggilan",
+      "leadsLabel": "Lead",
+      "inPipeline": "dalam pipeline anda",
+      "tapsShort": "Tekan WhatsApp",
+      "visitsShort": "Lawatan halaman",
+      "last30": "30 hari lepas",
+      "allTime": "sepanjang masa",
+      "soldMonth": "Terjual bulan ini",
+      "goalLine": "RM {{earned}} daripada RM {{target}} · {{n}} hari lagi",
+      "nothingBooked": "Tiada tempahan",
+      "yourPage": "Halaman anda",
+      "more": "Lagi",
+      "openPage": "Buka halaman saya",
+      "topCars": "Kereta teratas",
+      "allInAnalytics": "Semua dalam Analitik",
+      "carMeta": "{{views}} tontonan · {{taps}} tekan",
+      "moreMissed": "+{{n}} lagi tempahan terlepas"
     },
     "lst": {
       "noImages": "Tiada gambar pada listing ni",
@@ -1877,6 +1896,7 @@
       "caption": "Caption",
       "moreActions": "Lagi tindakan",
       "tiktokPost": "Post TikTok",
+      "loanPoster": "Poster kiraan loan",
       "downloadPhotos": "Muat turun gambar"
     },
     "perf": {
@@ -1931,6 +1951,7 @@
       "moneyWon": "{{amount}} dimenangi",
       "sourceNote": "Kadar closing kira deal yang dah selesai sahaja, jadi sumber yang masih ada lead terbuka tak dihukum.",
       "listingViews": "Tontonan listing",
+      "last7": "7 hari lepas",
       "last30": "30 hari lepas",
       "waTaps": "Tap WhatsApp",
       "tapThrough": "Kadar tap",
@@ -2057,16 +2078,12 @@
       },
       "loans": {
         "new": {
-          "title": "Permohonan baru",
-          "body": "Mula dari lead atau taip nama pembeli. Masukkan kereta dan deposit, dan ia kira bayaran bulanan dan sama ada pembeli mampu."
-        },
-        "banks": {
-          "title": "Bank mana",
-          "body": "Pilih lebih dari satu bank. Kalau yang pertama tolak, yang seterusnya sudah dalam fail."
+          "title": "Semak pembeli",
+          "body": "Jawab beberapa soalan tentang rekod kredit dan pendapatan pembeli. Ia tunjuk apa perlu dibaiki sebelum bank tengok fail, kemudian mula permohonan bank dengan semua maklumat sudah diisi."
         },
         "list": {
           "title": "Permohonan",
-          "body": "Semua permohonan disimpan di sini. Kemas kini jawapan setiap bank bila sampai."
+          "body": "Setiap permohonan bank disimpan di sini. Rekod jawapan setiap bank bila sampai."
         }
       },
       "outreach": {

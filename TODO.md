@@ -2561,6 +2561,128 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 - [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
   WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
 
+## SIMPLE-2 — Show every Premium tab again; make what is INSIDE each tab simpler (owner, 2026-10-25)
+Owner: SIMPLE-1 (2026-10-21) hid nav links from new Premium sellers until they "earned" them
+(Inbox, Sold, Analytics, Loans, Outreach). "That's not what I meant by make it simple, it's the
+tabs that need to be simpler." Next session:
+- [x] Undo the hiding (2026-10-25, staging): every Premium tab shows from day one (`navTabs`,
+  SalesmanPremium.jsx). Sidebar + phone drawer reshaped (owner: "keep the colour, just shape and
+  spacing"): shared `navRow` / `navBadge`, 232px sidebar, 40px rows, 16px icons.
+- [x] Lite shows every tab from day one too (owner, 2026-10-25, staging); its full tour is back.
+- [ ] Then simplify the CONTENTS, one tab per session: fewer cards, one primary action,
+  the rest behind ···. Start by asking the owner which tab confuses new sellers most.
+  - [x] Dashboard (2026-10-25, staging): rebuilt in the `premiumDark` palette, each fact once
+    (greeting, Today strip, 4 numbers, This week, Your page, Top cars, Sold). Mockup:
+    https://claude.ai/artifact/98gAj72cBKupiYBkxWTNLc. Next: move the other Premium tabs onto
+    `premiumDark` too, one per session, so the panel stops looking like two apps.
+  - [x] Listings (2026-10-25, staging): `premiumDark`, one fact once per card. Removed the
+    "Live on XDrive" strip, the page-link bar (hardcoded xdrive.my), the average-quality banner
+    and the photo nudge (one "improve" line now); Link moved into ···; Pending / Not approved
+    pills only show while they hold a car. Next in the menu: Chat, then Leads.
+  - [x] Listings pop-ups (2026-10-25, staging): edit/add sheet + CarForm, car detail popup,
+    loan poster in `premiumDark`; Lite unchanged. TikTok post (Studio) left for later (owner).
+    Detail popup: the 5-figure strip (repeated the title line + Specs tab) removed for Lite and
+    Premium on the owner's go; Engine moved into Specs.
+  - [x] Chat (2026-10-25, staging): `SellerInbox` / `ChatThread` / push strip / car picker take
+    `theme="premium"`; Lite (`dark`) and the dealer (`light`) unchanged. The pipeline's ChatSheet
+    (opened from Leads) still uses `dark`: switch it with the Leads tab. Next: Leads.
+  - [x] Leads (2026-10-25, staging): cards + rail + ChatSheet (`theme="premium"`) in premiumDark;
+    the stage buttons keep their per-stage colours (owner). Removed: the source-breakdown bar
+    (Analytics has it, and it said "XDrive"), the second heat pill (AI score wins, else rule heat),
+    the "Stage: X 1/7" line (the picked stage names it), "Last contact" when the follow-up line
+    already says it, the rail's repeat total, the top-bar Add Lead on this tab and the mobile FAB
+    (the tab header has one). Desktop: the card grid no longer scrolls inside a 100vh-300px box
+    (cut the 2nd row); the page scrolls and the rail is sticky.
+  - [x] Lead panel (···) (2026-10-25, staging): premiumDark; one heat pill; "Change car" once
+    (beside the car, not again in the tool row); Scripts button only on the stages that have
+    scripts; a future reminder reads "Follow up Mon, 26 Oct" (was "-86393s ago"). Not yet: Add
+    lead / WhatsApp / Link car / Log call / reminder pop-ups. Open: the price script's monthly is
+    flat-rate maths (`price * 0.9 * 1.245 / 84`), breaks HP-EIR; should use `calcMonthly`.
+  - [x] Inbox (2026-10-25, staging): Bookings (list, week calendar, detail sheet) + Lead history in
+    premiumDark. Owner asked: Lead history duplicates Leads (0 of the last 60 days' enquiries lacked a
+    lead) but keep both. Removed: the "Bookings (N)" / "Lead history (N)" titles (the switch names
+    them), the calendar's "This week" counts card (header + Needs your OK already count), the
+    Pending/Confirmed pill under a heading that says it, the four colour dots on templates, the
+    never-visible "Sent" template toast. Week | List moved onto the switch's row; booking cards
+    grid on desktop. Still open: the blue top-bar "Add Lead" (shared chrome, every tab) and the
+    sidebar are `panel`; Confirm-on-WhatsApp pop-up (`openConfirmBookingModal`) not restyled.
+    Next: the lead-panel pop-ups, then Sold.
+  - [x] Sold (2026-10-25, staging): Coming up, Handover board + checklist, Customers cards, aftercare
+    plans in premiumDark (shared board/checklist/aftercare via `theme="premium"`; dealer + linked
+    salesman unchanged). Removed repeats: handover rows in Coming up while on the Handover pill, "N in
+    processing" (pill badge), "N completed" (Show completed (N)), the checklist's own progress bar,
+    the Done/Pending pill beside the round tick. No amber or blue left: due = red text, done = mint.
+    "Next:" chip now ends in "…" instead of cutting mid-word. Next: Analytics.
+  - [x] Sold follow-up (2026-10-25, staging): a deal's checklist opens INSTANTLY (board's saved
+    steps, background refresh in parallel) and as a POP-UP in Premium (owner: slow, reloaded on
+    every open, too long inside the card).
+  - [x] Analytics (2026-10-25, staging): premiumDark. Removed: "sold this month" (Dashboard tile),
+    the WA taps + Enquiries tiles (Dashboard tile / Inbox count); four tiles -> one tap-through
+    card; Recent sales moved from Listings into the commission card; sold cars out of the per-car
+    table; platform bars neutral, one "Direct" note. Next: Loans, then Outreach, then Settings.
+  - [x] Loans (2026-10-25, staging): ONE flow (owner picked the merge). Loan check -> "Start the
+    bank application" -> application prefilled from the check; the old New application form, its
+    second DSR and "cars that fit" are gone. LoanCheck + LoanDesk in premiumDark. Open: the
+    application's document list still follows how the buyer earns (DOC_SETS), not the check's own
+    list; making it follow the check needs a `loan_applications` column + `get_loan_share` change
+    (a migration, after midnight). Next: Outreach, then Settings.
+  - [x] Outreach (2026-10-25, staging): premiumDark via `theme="premium"` on OutreachHub + NudgeQueue.
+    Removed (Premium only): the four count tiles, the score ring, the footer count, the repeated
+    car/price and Year; UI emojis became icons for every theme. Phone list box follows screen
+    height (was ~200px tall). Open: due reminders show here AND in This week on the Dashboard.
+    Next: Settings, then undo the SIMPLE-1 menu hiding.
+  - [x] Settings (2026-10-25, staging): premiumDark. Shared cards take `theme="premium"`
+    (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard,
+    MyNewModels; Lite/dealer unchanged). Removed: the read-only Username box (the Google preview
+    shows the link), the name repeated on the photo card and its second upload button (photo +
+    cover are one card now), each card's own heading under a header that already says it, the
+    desktop header's one-line description. Fixed: language buttons lit neither on "en-US";
+    "Accept bookings" text now toggles the box; delete pop-up portalled.
+    Next: undo the SIMPLE-1 menu hiding.
+  - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
+
+## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
+v1 BUILT, Premium only (owner): `src/components/loans/LoanCheck.jsx`, rules
+`src/utils/loanReadiness.js` (`npm run test:loancheck`), copy `loanCheckCopy.js`. Entry: lead
+panel, Loans tab (walk-in), status row on the lead card. Tested in a headless phone browser
+(EN 375px, BM 360px): full flow, save payload, no console errors.
+- `20261025d_loan_checks.sql` APPLIED 2026-10-25 18:24 MYT on the owner's "apply now", nobody
+  live. Verified: anon cannot read it, a salesman writes only their own rows and own leads, one
+  check per lead.
+- [ ] v2: buyer fills it + uploads documents from a link (storage bucket + PDPA consent).
+- [ ] v3: one bank at a time in LoanDesk, decline reasons logged; counts say which bank fits.
+- Lite: a locked "Loan check before the bank: Premium" button in the lead panel opens the
+  upgrade screen (owner, 2026-10-25).
+- [ ] Adoption number: share of LoanDesk applications that had a check first.
+Background (from the idea):
+  - **IDEA-23: Loan pre-check BEFORE any bank sees the file (owner, 2026-10-25)** — from a
+    Proton SA (@ashrafxproton): buyer goes to 4-5 banks, all decline because of a new job
+    or high commitments, there is no guarantor, then the SA chases more documents. "Leceh
+    for both sides." The reasons were knowable in the first 2 minutes; we find out last.
+    Shape: (1) a 5-question pre-check in LoanDesk before "Save application": months in
+    this job / confirmed?, net pay, commitments (DSR exists), own CCRIS checked?,
+    guarantor available? -> red flags + fixes (bigger deposit, cheaper car via
+    `budgetMatches`, longer tenure, wait for confirmation, bring a guarantor), never an
+    approval. (2) Collect the WHOLE doc set once, incl. the new-joiner / guarantor
+    extras, via a link the buyer uploads to. (3) Submit 1-2 best-fit banks first, not 5
+    at once: pending + approved applications show on CCRIS for 12 months (BNM FAQ). (4)
+    Later: counts of each bank's decline reasons across sellers (counts only) to say
+    which bank takes new joiners. Constraints: no "approval chance" score; CTOS/CCRIS
+    pulls need the buyer's consent; LoanDesk is Premium + dealer-linked only and has
+    ~4 rows of usage, so check discovery before adding fields. Related: IDEA-12.
+    **Ashraf's answer (2026-10-25): the top decline reasons are CTOS, CCRIS, no bank
+    record (thin file) and late payments on other loans.** So the credit record comes
+    FIRST, not job tenure: step 1 of the pre-check = "has the buyer looked at their own
+    CCRIS (free, eCCRIS) and CTOS?", late payment in the last 12 months?, any bank
+    account / loan history at all? Remedies: clear arrears and wait for on-time months,
+    a guarantor or bigger deposit for a thin file, fix a wrong CTOS entry before
+    applying. Owner's plan (2026-10-25): wk1 questions + remedies, wk2 buyer upload link
+    adapted to buyer type (incl. guarantor), wk3 staged 1-2 best-fit banks using decline
+    counts; adoption metric = % of finance cases with a pre-check before the first bank.
+    NOT on the Live presenter: it is on a public stream, and credit questions about a
+    named buyer must never be on camera. Lite lead + Premium LoanDesk + a buyer link.
+    Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
+
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
@@ -2575,6 +2697,7 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   (model-card stock photos need the brand's permission, Copyright Act s.36), no phone number on
   screen, say "Drevo" not "XDrive", and an ad's monthly must be the presenter's real maths with
   "the bank decides". Portrait 1080x1920 for TikTok/Reels.
+
 - **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
   their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
   PRO RM47/mo "early bird" RM14/mo (RM42/3 mo, RM108/yr, no auto-renew): unlimited, 10

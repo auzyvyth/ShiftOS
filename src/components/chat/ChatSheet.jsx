@@ -42,6 +42,8 @@ export default function ChatSheet({
   // of empty state that makes someone think a buyer vanished.
   const [state, setState] = useState(threadIdProp ? 'ready' : 'loading');
   const t = THEMES[theme] || THEMES.light;
+  // premiumDark (SIMPLE-2): no outlines, a round raised close button, a 22px card.
+  const prem = theme === 'premium';
 
   // chat_threads.lead_id is the link the DB trigger writes when a buyer's first
   // message creates the lead, so the lookup is one indexed read.
@@ -84,13 +86,13 @@ export default function ChatSheet({
 
   const closeBtn = (
     <button onClick={onClose} aria-label="Close conversation"
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: 30, height: 30, borderRadius: 8, background: 'transparent', border: `1px solid ${t.border}`, color: t.sub, cursor: 'pointer' }}>
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, width: prem ? 32 : 30, height: prem ? 32 : 30, borderRadius: prem ? 999 : 8, background: prem ? t.inputBg : 'transparent', border: prem ? 'none' : `1px solid ${t.border}`, color: t.sub, cursor: 'pointer' }}>
       <X size={14} />
     </button>
   );
 
   const message = (title, body) => (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.bg, borderRadius: 14, overflow: 'hidden', border: `1px solid ${t.border}` }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: t.bg, borderRadius: prem ? 'inherit' : 14, overflow: 'hidden', border: prem ? 'none' : `1px solid ${t.border}` }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderBottom: `1px solid ${t.border}`, background: t.panel, flexShrink: 0 }}>
         <p style={{ margin: 0, flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, color: t.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{buyerName}</p>
         {closeBtn}
@@ -119,10 +121,11 @@ export default function ChatSheet({
         @media(min-width:640px){
           .cs-wrap{padding:14px}
           .cs-card{max-width:520px;height:min(640px,100%)}
+          ${prem ? '.cs-card{border-radius:22px}' : ''}
         }
       `}</style>
       <div className="cs-wrap" style={{ position: 'fixed', top: vv.offsetTop, left: 0, right: 0, height: vv.height, zIndex: 2001, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', boxSizing: 'border-box' }}>
-        <div className="cs-card" style={{ width: '100%', pointerEvents: 'auto', fontFamily: 'system-ui, sans-serif' }}>
+        <div className="cs-card" style={{ width: '100%', pointerEvents: 'auto', fontFamily: t.font || 'system-ui, sans-serif', ...(prem ? { overflow: 'hidden', background: t.bg } : null) }}>
           {state === 'loading' && message('Opening the conversation…', 'One moment.')}
           {state === 'none' && message(
             'No in-app conversation',
@@ -141,6 +144,8 @@ export default function ChatSheet({
               // This sheet's container is already sized to the visual viewport,
               // so the composer is above the keyboard by construction.
               viewportPinned
+              // Premium: the card itself is the frame (rounded, clipped).
+              bare={prem}
               aiAssist={aiAssist}
               aiUpgrade={aiUpgrade}
               upgradeHref={upgradeHref}

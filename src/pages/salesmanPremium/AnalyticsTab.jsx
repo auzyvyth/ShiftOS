@@ -4,9 +4,9 @@ import {
   BarChart2, Plus, TrendingUp, ChevronDown, ChevronUp, ChevronRight, Target,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
-import { panel as C, panelType as T, panelRadius as R } from "../../theme/tokens";
+import { premiumDark as PD, panelType as T } from "../../theme/tokens";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
-import { CARD, CARD_HEADER, EYEBROW, STAT, SOFT, SubTabs } from "./shared";
+import { SubTabs } from "./shared";
 import useStageHistory from "../../hooks/useStageHistory";
 import { buildSalesPerformance, formatDuration, sourceLabel } from "../../utils/salesPerformance";
 
@@ -27,13 +27,29 @@ import { buildSalesPerformance, formatDuration, sourceLabel } from "../../utils/
 // call — "This week" on the dashboard owns that, and a second call list here
 // would just be the same names in a worse place.
 //
+// premiumDark (SIMPLE-2, 2026-10-25): tone instead of borders, red for fills
+// and the one thing to fix, mint the only green. Each fact once: "sold this
+// month" and the 30-day WhatsApp taps live on the Dashboard tiles, so this tab
+// keeps what only it knows (commission + cars sold all time, the tap-through
+// rate, per car and per platform). The Inbox count ("Enquiries") was a fourth
+// tile here and has nothing to do with how the cars perform.
+//
 // Colour rule: grey by default, red ONLY for the one thing to fix (weakest
 // funnel step, a low tap-through). Green/red appear on a signed trend and
 // nowhere else. Every number used to carry a green/amber/red verdict plus blue
 // bars, so nothing stood out. Order is "what to fix" first, then the numbers
 // behind it, with the supporting detail folded under "More detail".
+const CARD = { background: PD.card, borderRadius: PD.radius.card, overflow: "hidden" };
+const CARD_HEADER = {
+  padding: "14px 18px", borderBottom: `1px solid ${PD.line}`,
+  fontSize: T.size.sm, letterSpacing: T.track.label, textTransform: "uppercase", color: PD.textMuted, fontWeight: T.weight.semibold,
+  display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+};
+const EYEBROW = { fontSize: T.size.xs, fontWeight: T.weight.semibold, color: PD.textMuted, textTransform: "uppercase", letterSpacing: T.track.label };
+const STAT = { fontWeight: T.weight.bold, color: PD.text, letterSpacing: T.track.tight, lineHeight: 1 };
+
 export default function AnalyticsTab({
- carStatsMap, enquiries, thisMonthSales, commission, soldCount, myListings,
+ carStatsMap, commission, soldCount, myListings,
  channelMap, commissionDetails, isMobile, onAddListing, leads = [], onOpenTab,
  minipageStats = { visits: 0, cardClicks: 0, byChannel: [] },
 }) {
@@ -45,6 +61,7 @@ export default function AnalyticsTab({
   const [trafficView, setTrafficView] = useState("all");
   const [openInsights, setOpenInsights] = useState(() => new Set());
   const [showDetail, setShowDetail] = useState(false);
+  const [showSales, setShowSales] = useState(false);
   const toggleInsight = (key) => setOpenInsights((prev) => {
     const next = new Set(prev);
     next.has(key) ? next.delete(key) : next.add(key);
@@ -87,14 +104,14 @@ export default function AnalyticsTab({
   // at that height the glow was most of what you saw.
   // `id` must be unique per rendered chart: several metrics share one hue, and
   // two <linearGradient> defs with the same id is a duplicate DOM id.
-  const Spark = ({ data, hue, id }) => {
+  const Spark = ({ data, hue, id, height = 46 }) => {
     const rows = (data || []).map((v, i) => ({ i, v }));
     if (!rows.length || rows.every((r) => r.v === 0)) {
-      return <div style={{ height: 46, marginTop: 8 }} />;
+      return <div style={{ height, marginTop: 8 }} />;
     }
     const gid = `sparkFill-${id}`;
     return (
-      <div style={{ height: 46, margin: "8px -4px -4px" }}>
+      <div style={{ height, margin: "8px -4px -4px" }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
             <defs>
@@ -113,21 +130,10 @@ export default function AnalyticsTab({
     );
   };
 
-  const bucketArr7 = (arr) => {
-    const b = Array(7).fill(0);
-    const now = Date.now();
-    (arr || []).forEach((e) => {
-      const d = Math.floor((now - new Date(e.created_at).getTime()) / 86400000);
-      if (d >= 0 && d < 7) b[6 - d] += 1;
-    });
-    return b;
-  };
-
   // Daily views summed across every car (d0 = 6 days ago → d6 = today).
   const viewsD = Array(7).fill(0).map((_, i) =>
     Object.values(carStatsMap).reduce((s, v) => s + (v.daily?.[i] || 0), 0),
   );
-  const enqD = bucketArr7(enquiries);
   const totalViews = Object.values(carStatsMap).reduce((s, v) => s + (v.views || 0), 0);
   const totalWA = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
   const cvrNum = totalViews > 0 ? (totalWA / totalViews) * 100 : 0;
@@ -141,21 +147,10 @@ export default function AnalyticsTab({
   const money = (n) => `RM ${Number(n || 0).toLocaleString("en-MY")}`;
 
   // Sparklines are grey: they show a shape, not a verdict.
-  const TRAFFIC_HUE = C.textMuted;
-
-  const Metric = ({ label, value, sub: subLabel, data, hue, badge, id }) => (
-    <div style={{ ...CARD, padding: "14px 16px 12px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span style={EYEBROW}>{label}</span>
-        {badge}
-      </div>
-      <p style={{ ...STAT, margin: "6px 0 0", fontSize: isMobile ? T.size.stat : T.size.statLg, fontVariantNumeric: "tabular-nums" }}>{value}</p>
-      {subLabel && <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{subLabel}</p>}
-      {data && <Spark data={data} hue={hue || TRAFFIC_HUE} id={id} />}
-    </div>
-  );
+  const TRAFFIC_HUE = PD.textMuted;
 
   const hasListings = myListings.length > 0;
+  const forSale = myListings.filter((car) => car.status !== "sold");
 
   // Car-page traffic by platform, summed across every car.
   const carChannelRows = Object.values(channelMap).flat();
@@ -181,7 +176,7 @@ export default function AnalyticsTab({
   // A card that cannot say anything useful yet says WHAT unlocks it, rather
   // than drawing an empty chart or a row of zeroes.
   const NotYet = ({ children }) => (
-    <p style={{ margin: 0, padding: "18px", fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
+    <p style={{ margin: 0, padding: "18px", fontSize: T.size.base, color: PD.textMuted, lineHeight: 1.6 }}>
       {children}
     </p>
   );
@@ -194,24 +189,24 @@ export default function AnalyticsTab({
   // the left, one number on the right. It replaces the fixed-width column
   // grids that pushed four numbers across a 375px phone.
   const Row = ({ label, detail, value, valueColor, last }) => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 18px", borderBottom: last ? "none" : `1px solid ${C.line}` }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "11px 18px", borderBottom: last ? "none" : `1px solid ${PD.line}` }}>
       <div style={{ minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: T.size.base, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</p>
-        {detail && <p style={{ ...NUM, margin: "2px 0 0", fontSize: T.size.sm, color: C.textMuted }}>{detail}</p>}
+        <p style={{ margin: 0, fontSize: T.size.base, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</p>
+        {detail && <p style={{ ...NUM, margin: "2px 0 0", fontSize: T.size.sm, color: PD.textMuted }}>{detail}</p>}
       </div>
-      <span style={{ ...NUM, flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: valueColor || C.text }}>{value}</span>
+      <span style={{ ...NUM, flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: valueColor || PD.text }}>{value}</span>
     </div>
   );
 
   const Bar = ({ pct, hue }) => (
-    <div style={{ height: 6, borderRadius: R.pill, background: C.fill, overflow: "hidden" }}>
-      <div style={{ width: `${pct}%`, height: "100%", background: hue, borderRadius: R.pill }} />
+    <div style={{ height: 6, borderRadius: PD.radius.pill, background: PD.hover, overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", background: hue, borderRadius: PD.radius.pill }} />
     </div>
   );
 
   // Neutral bar colour. Red is kept for the one thing the rep should fix, so
   // it only means something if nothing else on the page is coloured.
-  const BAR = C.textMuted;
+  const BAR = PD.textMuted;
 
   const renderSelling = () => {
     const { funnel, speed, loss, sources, closeRate, insights } = perf;
@@ -219,11 +214,11 @@ export default function AnalyticsTab({
     if (!perf.hasLeads) {
       return (
         <div style={{ ...CARD, padding: "22px 20px", textAlign: "center" }}>
-          <Target size={20} color={C.textMuted} style={{ marginBottom: 8 }} />
-          <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
+          <Target size={20} color={PD.textMuted} style={{ marginBottom: 8 }} />
+          <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: PD.text }}>
             {t("salesmanPremium.perf.noLeadsTitle")}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+          <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: PD.textMuted, lineHeight: 1.5 }}>
             {t("salesmanPremium.perf.noLeadsBody")}
           </p>
         </div>
@@ -243,43 +238,43 @@ export default function AnalyticsTab({
         <div style={CARD}>
           <div style={{ padding: isMobile ? "16px" : "18px 20px" }}>
             <p style={{ ...EYEBROW, margin: 0 }}>{focus.tone === "good" ? t("salesmanPremium.perf.whereStand") : t("salesmanPremium.perf.fixFirst")}</p>
-            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
+            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: PD.text, lineHeight: 1.35 }}>
               {insText(focus, "title")}
             </p>
-            <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{insText(focus, "body")}</p>
+            <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: PD.textSec, lineHeight: 1.6 }}>{insText(focus, "body")}</p>
             {focus.cta && onOpenTab && (
               <button
                 onClick={() => onOpenTab(focus.ctaTab)}
-                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
+                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
               >
                 {ctaText(focus)} <ChevronRight size={14} />
               </button>
             )}
           </div>
           {others.length > 0 && (
-            <div style={{ borderTop: `1px solid ${C.line}` }}>
+            <div style={{ borderTop: `1px solid ${PD.line}` }}>
               <p style={{ ...EYEBROW, margin: 0, padding: "12px 18px 4px" }}>{t("salesmanPremium.perf.alsoLook")}</p>
               {others.map((ins, i) => {
                 const open = openInsights.has(ins.key);
                 return (
-                  <div key={ins.key} style={{ borderBottom: i < others.length - 1 ? `1px solid ${C.line}` : "none" }}>
+                  <div key={ins.key} style={{ borderBottom: i < others.length - 1 ? `1px solid ${PD.line}` : "none" }}>
                     <button
                       onClick={() => toggleInsight(ins.key)}
                       aria-expanded={open}
                       style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
                     >
-                      <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{insText(ins, "title")}</span>
+                      <span style={{ ...NUM, flex: 1, minWidth: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: PD.text }}>{insText(ins, "title")}</span>
                       {open
-                        ? <ChevronUp size={15} style={{ color: C.textMuted, flexShrink: 0 }} />
-                        : <ChevronDown size={15} style={{ color: C.textMuted, flexShrink: 0 }} />}
+                        ? <ChevronUp size={15} style={{ color: PD.textMuted, flexShrink: 0 }} />
+                        : <ChevronDown size={15} style={{ color: PD.textMuted, flexShrink: 0 }} />}
                     </button>
                     {open && (
                       <div style={{ padding: "0 18px 13px" }}>
-                        <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec, lineHeight: 1.6 }}>{insText(ins, "body")}</p>
+                        <p style={{ margin: 0, fontSize: T.size.base, color: PD.textSec, lineHeight: 1.6 }}>{insText(ins, "body")}</p>
                         {ins.cta && onOpenTab && (
                           <button
                             onClick={() => onOpenTab(ins.ctaTab)}
-                            style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}
+                            style={{ marginTop: 10, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit" }}
                           >
                             {ctaText(ins)}
                           </button>
@@ -298,7 +293,7 @@ export default function AnalyticsTab({
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>{t("salesmanPremium.perf.closeRate")}</span>
-            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
+            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: PD.textMuted }}>
               {t("salesmanPremium.perf.allTime")}
             </span>
           </div>
@@ -308,13 +303,13 @@ export default function AnalyticsTab({
                 {closeRate.rate !== null ? `${closeRate.rate}%` : "—"}
               </span>
               {closeRate.trend !== null && (
-                <span style={{ ...NUM, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: closeRate.trend >= 0 ? C.successText : C.dangerText }}>
+                <span style={{ ...NUM, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: closeRate.trend >= 0 ? PD.up : PD.accentText }}>
                   {closeRate.trend >= 0 ? "+" : "−"}{t("salesmanPremium.perf.pts", { n: Math.abs(closeRate.trend) })}
-                  <span style={{ fontWeight: T.weight.normal, color: C.textMuted }}> {t("salesmanPremium.perf.last30vs", { current: closeRate.current, previous: closeRate.previous })}</span>
+                  <span style={{ fontWeight: T.weight.normal, color: PD.textMuted }}> {t("salesmanPremium.perf.last30vs", { current: closeRate.current, previous: closeRate.previous })}</span>
                 </span>
               )}
             </div>
-            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
+            <p style={{ ...NUM, margin: "8px 0 0", fontSize: T.size.sm, color: PD.textMuted }}>
               {t("salesmanPremium.perf.closeCounts", { won: closeRate.won, lost: closeRate.lost, total: closeRate.total })}
             </p>
           </div>
@@ -324,7 +319,7 @@ export default function AnalyticsTab({
         <div style={CARD}>
           <div style={CARD_HEADER}>
             <span>{t("salesmanPremium.perf.whereStop")}</span>
-            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
+            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: PD.textMuted }}>
               {t("salesmanPremium.perf.furthest")}
             </span>
           </div>
@@ -340,28 +335,28 @@ export default function AnalyticsTab({
                 return (
                   <div key={row.stage} style={{ padding: "8px 0" }}>
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-                      <span style={{ fontSize: T.size.base, color: C.text, fontWeight: isWeak ? T.weight.semibold : T.weight.normal, minWidth: 0 }}>
+                      <span style={{ fontSize: T.size.base, color: PD.text, fontWeight: isWeak ? T.weight.semibold : T.weight.normal, minWidth: 0 }}>
                         {t(`salesmanPremium.stages.${row.stage}`, { defaultValue: row.label })}
                         {isWeak && (
-                          <span style={{ marginLeft: 8, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.dangerText, textTransform: "uppercase", letterSpacing: T.track.label }}>
+                          <span style={{ marginLeft: 8, fontSize: T.size.xs, fontWeight: T.weight.bold, color: PD.accentText, textTransform: "uppercase", letterSpacing: T.track.label }}>
                             {t("salesmanPremium.perf.weakest")}
                           </span>
                         )}
                       </span>
-                      <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
+                      <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: PD.text, flexShrink: 0 }}>
                         {row.reached}
                       </span>
                     </div>
-                    <Bar pct={pct} hue={isWeak ? C.danger : BAR} />
+                    <Bar pct={pct} hue={isWeak ? PD.accent : BAR} />
                     {row.dropOffPct !== null && row.lostHere > 0 && (
-                      <p style={{ ...NUM, margin: "5px 0 0", fontSize: T.size.sm, color: isWeak ? C.dangerText : C.textMuted }}>
+                      <p style={{ ...NUM, margin: "5px 0 0", fontSize: T.size.sm, color: isWeak ? PD.accentText : PD.textMuted }}>
                         {t("salesmanPremium.perf.stoppedHere", { n: row.lostHere, pct: row.dropOffPct })}
                       </p>
                     )}
                   </div>
                 );
               })}
-              <p style={{ margin: "8px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
+              <p style={{ margin: "8px 0 0", fontSize: T.size.sm, color: PD.textMuted, lineHeight: 1.5 }}>
                 {historyLoading
                   ? t("salesmanPremium.perf.loadingHistory")
                   : t("salesmanPremium.perf.funnelNote")}
@@ -376,13 +371,13 @@ export default function AnalyticsTab({
         <button
           onClick={() => setShowDetail((v) => !v)}
           aria-expanded={showDetail}
-          style={{ ...CARD, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "13px 18px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+          style={{ ...CARD, width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 18px", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
         >
           <span style={{ minWidth: 0 }}>
-            <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{t("salesmanPremium.perf.moreDetail")}</span>
-            <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanPremium.perf.moreDetailSub")}</span>
+            <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: PD.text }}>{t("salesmanPremium.perf.moreDetail")}</span>
+            <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: PD.textMuted }}>{t("salesmanPremium.perf.moreDetailSub")}</span>
           </span>
-          {showDetail ? <ChevronUp size={16} color={C.textMuted} /> : <ChevronDown size={16} color={C.textMuted} />}
+          {showDetail ? <ChevronUp size={16} color={PD.textMuted} /> : <ChevronDown size={16} color={PD.textMuted} />}
         </button>
 
         {showDetail && (
@@ -408,7 +403,7 @@ export default function AnalyticsTab({
                     last={speed.coverage >= 100}
                   />
                   {speed.coverage < 100 && (
-                    <p style={{ margin: 0, padding: "10px 18px", fontSize: T.size.sm, color: C.textDim }}>
+                    <p style={{ margin: 0, padding: "10px 18px", fontSize: T.size.sm, color: PD.textMuted }}>
                       {t("salesmanPremium.perf.basedOn", { pct: speed.coverage })}
                     </p>
                   )}
@@ -425,12 +420,12 @@ export default function AnalyticsTab({
                   {loss.rows.map((row) => (
                     <div key={row.reason} style={{ padding: "8px 0" }}>
                       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 5 }}>
-                        <span style={{ fontSize: T.size.base, color: row.recorded ? C.text : C.textDim, minWidth: 0 }}>{reasonLabel(row.reason)}</span>
-                        <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>
-                          {row.count} <span style={{ fontSize: T.size.sm, fontWeight: T.weight.normal, color: C.textMuted }}>({row.pct}%)</span>
+                        <span style={{ fontSize: T.size.base, color: row.recorded ? PD.text : PD.textMuted, minWidth: 0 }}>{reasonLabel(row.reason)}</span>
+                        <span style={{ ...NUM, fontSize: T.size.base, fontWeight: T.weight.bold, color: PD.text, flexShrink: 0 }}>
+                          {row.count} <span style={{ fontSize: T.size.sm, fontWeight: T.weight.normal, color: PD.textMuted }}>({row.pct}%)</span>
                         </span>
                       </div>
-                      <Bar pct={row.pct} hue={row.recorded ? BAR : C.textDim} />
+                      <Bar pct={row.pct} hue={row.recorded ? BAR : PD.textMuted} />
                     </div>
                   ))}
                 </div>
@@ -440,7 +435,7 @@ export default function AnalyticsTab({
             <div style={CARD}>
               <div style={CARD_HEADER}>
                 <span>{t("salesmanPremium.perf.leadSources")}</span>
-                <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
+                <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: PD.textMuted }}>
                   {t("salesmanPremium.perf.closeRate")}
                 </span>
               </div>
@@ -450,11 +445,11 @@ export default function AnalyticsTab({
                   label={srcLabel(row.source)}
                   detail={`${t("salesmanPremium.perf.nLeads", { count: row.total })}${row.valueWon ? ` · ${t("salesmanPremium.perf.moneyWon", { amount: money(row.valueWon) })}` : ""}`}
                   value={row.closeRate !== null ? `${row.closeRate}%` : "—"}
-                  valueColor={row.closeRate === null ? C.textDim : undefined}
+                  valueColor={row.closeRate === null ? PD.textMuted : undefined}
                   last={idx === sources.rows.length - 1}
                 />
               ))}
-              <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${C.line}`, fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
+              <p style={{ margin: 0, padding: "10px 18px", borderTop: `1px solid ${PD.line}`, fontSize: T.size.sm, color: PD.textMuted, lineHeight: 1.5 }}>
                 {t("salesmanPremium.perf.sourceNote")}
               </p>
             </div>
@@ -464,44 +459,64 @@ export default function AnalyticsTab({
     );
   };
 
+  // Desktop (owner, 2026-10-25: "too wide"): two half-width columns. Left =
+  // tap-through, then by car, then by platform; right = the views chart on
+  // top, empty below. A phone stacks them, the chart right after tap-through.
+  const listGrid = isMobile
+    ? { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gridTemplateAreas: '"tap" "chart" "car" "plat"', gap: 12, alignItems: "start" }
+    : { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gridTemplateAreas: '"tap chart" "car chart" "plat ."', gridTemplateRows: "auto auto 1fr", gap: 12, alignItems: "start" };
+  const views7 = viewsD.reduce((a, b) => a + b, 0);
+
   const renderListings = () => (
-    <div>
-      {/* Traffic */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
-        {/* "All time" was wrong on these three: get_salesman_analytics defaults
-            to a rolling `now() - 30 days` cutoff and the caller passes none, so
-            the numbers have always been last-30-days. The channel breakdown
-            below IS all-time, which is why the two never reconciled. */}
-        <Metric label={t("salesmanPremium.perf.listingViews")} value={totalViews} sub={t("salesmanPremium.perf.last30")} data={viewsD} id="views" />
-        <Metric label={t("salesmanPremium.perf.waTaps")} value={totalWA} sub={t("salesmanPremium.perf.last30")} />
-        <Metric
-          label={t("salesmanPremium.perf.tapThrough")}
-          value={cvr !== null ? `${cvr}%` : "—"}
-          sub={t("salesmanPremium.perf.tapsPerView")}
-          badge={cvrLow && (
-            <span style={{ ...SOFT(C.danger), fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "2px 7px", borderRadius: R.pill }}>
-              {t("salesmanPremium.perf.low")}
-            </span>
-          )}
-        />
-        <Metric label={t("salesmanPremium.perf.enquiries")} value={enquiries.length} sub={t("salesmanPremium.perf.allMessages")} data={enqD} id="enq" />
-      </div>
+    <div style={hasListings ? listGrid : undefined}>
+      {/* One card where there were four tiles. WhatsApp taps (30 days) is a
+          Dashboard tile and "Enquiries" was the Inbox count, so what is left
+          is the one figure only this tab has: how many viewers tap through.
+          Taps and views ride along as its working. */}
+      {hasListings && (
+        <div style={{ ...CARD, gridArea: "tap", padding: isMobile ? "16px" : "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span style={EYEBROW}>{t("salesmanPremium.perf.tapThrough")}</span>
+            {cvrLow && (
+              <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "2px 8px", borderRadius: PD.radius.pill, background: PD.raised, color: PD.accentText }}>
+                {t("salesmanPremium.perf.low")}
+              </span>
+            )}
+          </div>
+          <p style={{ ...STAT, ...NUM, margin: "8px 0 0", fontSize: isMobile ? T.size.stat : T.size.statLg }}>{cvr !== null ? `${cvr}%` : "—"}</p>
+          <p style={{ ...NUM, margin: "6px 0 0", fontSize: T.size.sm, color: PD.textSec }}>
+            {t("salesmanPremium.perf.nWaTaps", { count: totalWA })} · {t("salesmanPremium.dash.nViews", { count: totalViews })} · {t("salesmanPremium.dash.last30")}
+          </p>
+        </div>
+      )}
+
+      {/* The views line, on its own card so it can be big enough to read. */}
+      {hasListings && (
+        <div style={{ ...CARD, gridArea: "chart", padding: isMobile ? "16px" : "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <span style={EYEBROW}>{t("salesmanPremium.perf.listingViews")}</span>
+            <span style={{ fontSize: T.size.sm, color: PD.textMuted }}>{t("salesmanPremium.perf.last7")}</span>
+          </div>
+          <p style={{ ...STAT, ...NUM, margin: "8px 0 0", fontSize: isMobile ? T.size.stat : T.size.statLg }}>{views7}</p>
+          <Spark data={viewsD} hue={PD.chart.views} id="views" height={isMobile ? 90 : 150} />
+        </div>
+      )}
 
       {/* Nothing listed yet — every number above is a zero and no chart can
           have anything in it. Say the one thing that changes that. */}
       {!hasListings && (
         <div style={{ ...CARD, padding: "22px 20px", marginBottom: 12, textAlign: "center" }}>
-          <TrendingUp size={20} color={C.textMuted} style={{ marginBottom: 8 }} />
-          <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
+          <TrendingUp size={20} color={PD.textMuted} style={{ marginBottom: 8 }} />
+          <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: PD.text }}>
             {t("salesmanPremium.perf.noTrafficTitle")}
           </p>
-          <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
+          <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: PD.textMuted, lineHeight: 1.5 }}>
             {t("salesmanPremium.perf.noTrafficBody")}
           </p>
           {onAddListing && (
             <button
               onClick={onAddListing}
-              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer", fontFamily: "inherit" }}
+              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
             >
               <Plus size={14} /> {t("salesmanPremium.perf.addListing")}
             </button>
@@ -509,21 +524,22 @@ export default function AnalyticsTab({
         </div>
       )}
 
-      {hasListings && (
-        <div style={{ ...CARD, marginBottom: 12 }}>
+      {forSale.length > 0 && (
+        <div style={{ ...CARD, gridArea: "car" }}>
           <div style={CARD_HEADER}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
               <BarChart2 size={13} /> {t("salesmanPremium.perf.tapByCar")}
             </span>
             {/* Same rolling window as the tiles above — this table reads the
                 same carStatsMap, so it was mislabelled for the same reason. */}
-            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: C.textDim }}>
+            <span style={{ fontSize: T.size.xs, fontWeight: T.weight.normal, letterSpacing: 0, textTransform: "none", color: PD.textMuted }}>
               {t("salesmanPremium.perf.last30")}
             </span>
           </div>
           {/* Most-viewed first. Rows, not a 4-column grid, so a phone never
               squeezes three number columns beside a car name. */}
-          {[...myListings]
+          {/* Cars still for sale: a sold car's tap-through has nothing left to fix. */}
+          {[...forSale]
             .sort((a, b) => (carStatsMap[b.id]?.views || 0) - (carStatsMap[a.id]?.views || 0))
             .map((car, idx, arr) => {
               const s = carStatsMap[car.id] ?? {};
@@ -537,7 +553,7 @@ export default function AnalyticsTab({
                   label={[car.year, car.brand, car.model].filter(Boolean).join(" ")}
                   detail={`${t("salesmanPremium.dash.nViews", { count: v })} · ${t("salesmanPremium.perf.nWaTaps", { count: w })}`}
                   value={rate !== null ? `${rate.toFixed(1)}%` : "—"}
-                  valueColor={low ? C.dangerText : rate === null ? C.textDim : undefined}
+                  valueColor={low ? PD.accentText : rate === null ? PD.textMuted : undefined}
                   last={idx === arr.length - 1}
                 />
               );
@@ -552,22 +568,22 @@ export default function AnalyticsTab({
           through a bio link was invisible here even though the dashboard
           already had the numbers. */}
       {(carChannelRows.length > 0 || miniChannelRows.length > 0) && (
-        <div style={{ ...CARD, padding: 16, marginBottom: 12 }}>
+        <div style={{ ...CARD, gridArea: hasListings ? "plat" : undefined, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
             <span style={EYEBROW}>{t("salesmanPremium.perf.trafficByPlatform")}</span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 2, padding: 3, background: PD.raised, borderRadius: PD.radius.pill, flexWrap: "wrap" }}>
               {TRAFFIC_VIEWS.map(({ key, label }) => {
                 const on = trafficView === key;
                 return (
                   <button
                     key={key}
+                    aria-pressed={on}
                     onClick={() => setTrafficView(key)}
                     style={{
-                      fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "4px 10px",
-                      borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit",
-                      background: on ? C.fillStrong : "transparent",
-                      border: `1px solid ${on ? C.borderStrong : C.border}`,
-                      color: on ? C.text : C.textMuted,
+                      fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "5px 12px",
+                      borderRadius: PD.radius.pill, cursor: "pointer", fontFamily: "inherit", border: "none",
+                      background: on ? PD.hover : "transparent",
+                      color: on ? PD.text : PD.textMuted,
                     }}
                   >
                     {label}
@@ -577,6 +593,7 @@ export default function AnalyticsTab({
             </div>
           </div>
           <ChannelBreakdown
+            theme="premium"
             rows={trafficRows}
             metric="views"
             title=""
@@ -588,88 +605,68 @@ export default function AnalyticsTab({
                 : t("salesmanPremium.perf.emptyCars")
             }
           />
-          <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.5 }}>
+          <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: PD.textMuted, lineHeight: 1.5 }}>
             {t("salesmanPremium.perf.platformNote")}
           </p>
         </div>
       )}
 
-      {commissionDetails.length > 0 && (
-        <div style={CARD}>
-          <div style={CARD_HEADER}><span>{t("salesmanPremium.perf.recentSales")}</span></div>
-          {commissionDetails.map((c, i) => (
-            <div
-              key={i}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: i < commissionDetails.length - 1 ? `1px solid ${C.line}` : "none" }}
-            >
-              <span style={{ fontSize: T.size.base, color: C.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {[c.year, c.brand, c.model].filter(Boolean).join(" ")}
-              </span>
-              <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, fontVariantNumeric: "tabular-nums" }}>
-                +{money(c.commission_amount)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 
   return (
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-        <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text, letterSpacing: T.track.tight }}>
+        <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: PD.text, letterSpacing: T.track.tight }}>
           {t("salesmanPremium.perf.title")}
         </p>
-        <span style={{ fontSize: T.size.sm, color: C.textMuted }}>
-          {sub === "selling" ? t("salesmanPremium.perf.subSelling") : t("salesmanPremium.perf.subListings")}
+        <span style={{ fontSize: T.size.sm, color: PD.textMuted }}>
+          {sub === "selling" ? t("salesmanPremium.perf.subSelling") : null}
         </span>
       </div>
 
-      {/* Sales first — it is the number the rep actually came for, and it is
-          true of both halves, so it sits above the switcher. */}
-      {/* On a phone the three figures wrapped into a ragged 2+1 grid of equal
-          weight. Commission is the headline; the two counts ride on one line.
-          Commission is ALL TIME (every sold car, SalesmanPremium.jsx
-          refreshSales), so it is labelled that way. */}
-      <div style={{ ...CARD, padding: isMobile ? "16px" : "18px 20px", marginBottom: 12, fontVariantNumeric: "tabular-nums" }}>
-        {isMobile ? (
+      {/* Sales first: true of both halves, so it sits above the switcher.
+          Commission and cars sold are ALL TIME (SalesmanPremium.jsx
+          refreshSales). "Sold this month" is the Dashboard's tile, not repeated. */}
+      <div style={{ ...CARD, marginBottom: 12, fontVariantNumeric: "tabular-nums" }}>
+        <div style={{ padding: isMobile ? "16px" : "18px 20px" }}>
+          <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.commissionAll")}</p>
+          <p style={{ ...STAT, margin: "6px 0 0", fontSize: T.size.hero }}>
+            {commission !== null ? money(commission) : "—"}
+          </p>
+          <p style={{ margin: "8px 0 0", fontSize: T.size.base, color: PD.textSec }}>
+            <b style={{ color: PD.text }}>{soldCount}</b> {t("salesmanPremium.perf.carsLower")} · {t("salesmanPremium.perf.allTimeLower")}
+          </p>
+        </div>
+        {commissionDetails.length > 0 && (
           <>
-            <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.commissionAll")}</p>
-            <p style={{ ...STAT, margin: "6px 0 0", fontSize: T.size.hero }}>
-              {commission !== null ? money(commission) : "—"}
-            </p>
-            <p style={{ margin: "8px 0 0", fontSize: T.size.base, color: C.textSec }}>
-              <b style={{ color: C.text }}>{thisMonthSales}</b> {t("salesmanPremium.perf.soldThisMonth")} · <b style={{ color: C.text }}>{soldCount}</b> {t("salesmanPremium.perf.allTimeLower")}
-            </p>
+            <button
+              onClick={() => setShowSales((v) => !v)}
+              aria-expanded={showSales}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 18px", background: "transparent", border: "none", borderTop: `1px solid ${PD.line}`, cursor: "pointer", fontFamily: "inherit", color: PD.textSec, fontSize: T.size.base, fontWeight: T.weight.semibold }}
+            >
+              {t("salesmanPremium.perf.recentSales")}
+              {showSales ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+            {showSales && commissionDetails.map((c, i) => (
+              <div
+                key={i}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "11px 18px", borderTop: `1px solid ${PD.line}` }}
+              >
+                <span style={{ fontSize: T.size.base, color: PD.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {[c.year, c.brand, c.model].filter(Boolean).join(" ")}
+                </span>
+                <span style={{ flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: PD.up }}>
+                  +{money(c.commission_amount)}
+                </span>
+              </div>
+            ))}
           </>
-        ) : (
-          <div style={{ display: "flex", gap: 40, flexWrap: "wrap" }}>
-            <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.commissionAll")}</p>
-              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
-                {commission !== null ? money(commission) : "—"}
-              </p>
-            </div>
-            <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.thisMonth")}</p>
-              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
-                {thisMonthSales}
-                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>{t("salesmanPremium.perf.soldLower")}</span>
-              </p>
-            </div>
-            <div>
-              <p style={{ ...EYEBROW, margin: 0 }}>{t("salesmanPremium.perf.allTime")}</p>
-              <p style={{ ...STAT, margin: "5px 0 0", fontSize: T.size.hero }}>
-                {soldCount}
-                <span style={{ fontSize: T.size.base, fontWeight: T.weight.normal, color: C.textMuted, marginLeft: 6 }}>{t("salesmanPremium.perf.carsLower")}</span>
-              </p>
-            </div>
-          </div>
         )}
       </div>
 
       <SubTabs
+        premium
         value={sub}
         onChange={setSub}
         items={[

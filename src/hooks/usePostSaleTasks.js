@@ -1,47 +1,51 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { defaultTasksFor, computeProgress } from '../utils/postSaleSteps';
 
 // Loads the post-sale checklist for a won deal (lead). Seeds the default
 // Malaysian handover steps the first time the board is opened for that deal.
-export function usePostSaleTasks(lead) {
+//
+// initialTasks: full step rows the caller already holds (the handover board
+// loads them for every deal). With them the checklist paints at once and the
+// fetch below only refreshes in the background. Without them (lead drawer,
+// linked-salesman panel) it behaves as before. Opening a deal used to show
+// "Loading handover steps..." every time, behind three queries in a row.
+export function usePostSaleTasks(lead, { initialTasks = null } = {}) {
   const leadId = lead?.id || null;
-  const [tasks, setTasks] = useState([]);
+  const seeded = Array.isArray(initialTasks) && initialTasks.length > 0 && initialTasks.every((t) => t.id)
+    ? [...initialTasks].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    : null;
+  const [tasks, setTasks] = useState(seeded || []);
   const [loading, setLoading] = useState(false);
+  const hadSeed = useRef(!!seeded);
+  // Bumped by every tap. A background read that started before a tap would
+  // otherwise land after it and un-tick the step on screen.
+  const edits = useRef(0);
 
   const load = useCallback(async () => {
     if (!leadId) return;
-    setLoading(true);
+    // Only show a spinner when there is nothing on screen yet.
+    if (!hadSeed.current) setLoading(true);
+    const editsAtStart = edits.current;
 
-    // Is the car clean-title (no outstanding loan)? If so the loan-settlement
-    // step doesn't apply and should be auto-marked N/A.
-    let encumbranceClear = false;
-    if (lead?.car_listing_id) {
-      const { data: su } = await supabase
-        .from('stock_units')
-        .select('encumbrance_status')
-        .eq('listing_id', lead.car_listing_id)
-        .maybeSingle();
-      encumbranceClear = su?.encumbrance_status === 'clear';
-    }
-
-    // Does this dealership handle road tax / insurance in-house? When not,
-    // those steps are auto-marked N/A so they never show as the dealer's work.
-    let handlesRoadtaxInsurance = true;
-    if (lead?.dealer_id) {
-      const { data: dp } = await supabase
-        .from('profiles')
-        .select('handles_roadtax_insurance')
-        .eq('id', lead.dealer_id)
-        .maybeSingle();
-      handlesRoadtaxInsurance = dp?.handles_roadtax_insurance !== false;
-    }
-
-    const { data } = await supabase
-      .from('post_sale_tasks')
-      .select('*')
-      .eq('lead_id', leadId)
-      .order('sort_order', { ascending: true });
+    // The three reads do not depend on each other, so they go out together
+    // (they used to run one after another, which was most of the wait).
+    // stock_units: is the car clean-title? Then loan settlement does not apply.
+    // profiles: does the dealership do road tax / insurance in-house?
+    const [suRes, dpRes, tasksRes] = await Promise.all([
+      lead?.car_listing_id
+        ? supabase.from('stock_units').select('encumbrance_status').eq('listing_id', lead.car_listing_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      lead?.dealer_id
+        ? supabase.from('profiles').select('handles_roadtax_insurance').eq('id', lead.dealer_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from('post_sale_tasks').select('*').eq('lead_id', leadId).order('sort_order', { ascending: true }),
+    ]);
+    const encumbranceClear = suRes.data?.encumbrance_status === 'clear';
+    const handlesRoadtaxInsurance = dpRes.data?.handles_roadtax_insurance !== false;
+    const { data, error } = tasksRes;
+    // A failed refresh keeps what is on screen; never blank a painted list.
+    if (error) { console.error('usePostSaleTasks:', error); setLoading(false); return; }
 
     if (data && data.length > 0) {
       // Reconcile steps seeded 'pending' by the DB trigger (which doesn't see
@@ -60,7 +64,7 @@ export function usePostSaleTasks(lead) {
           }
         }
       }
-      setTasks(data);
+      if (edits.current === editsAtStart) setTasks(data);
       setLoading(false);
       return;
     }
@@ -73,17 +77,18 @@ export function usePostSaleTasks(lead) {
       listing_id: lead.car_listing_id || null,
       salesman_id: lead.salesman_id || lead.assigned_to || null,
     }));
-    const { data: seeded } = await supabase
+    const { data: inserted } = await supabase
       .from('post_sale_tasks')
       .insert(rows)
       .select('*');
-    setTasks((seeded || []).sort((a, b) => a.sort_order - b.sort_order));
+    setTasks((inserted || []).sort((a, b) => a.sort_order - b.sort_order));
     setLoading(false);
   }, [leadId, lead]);
 
   useEffect(() => { load(); }, [load]);
 
   const updateTask = useCallback(async (id, patch) => {
+    edits.current += 1;
     if (patch.status === 'done' && !patch.completed_at) patch.completed_at = new Date().toISOString();
     if (patch.status && patch.status !== 'done') patch.completed_at = null;
     patch.updated_at = new Date().toISOString();

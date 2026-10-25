@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ShieldCheck, Clock, X } from "lucide-react";
 import { isVerifySnoozed, snoozeVerify } from "../../utils/verifySnooze";
+import { premiumDark } from "../../theme/tokens";
 
 /**
  * Invites a seller to get the Verified badge, with a button to the
@@ -24,8 +25,11 @@ export default function VerifyBadgePrompt({ profile, onStart, theme = "dark" }) 
   const close = () => { snoozeVerify(profile.id); setClosed(true); };
   const inReview = !!profile.kyc_submitted_at;
 
-  const dark = theme !== "light";
-  const c = dark
+  // "premium" = the premiumDark palette (Salesman Premium tabs moved onto it):
+  // a tone step up from the canvas, no amber, no outline.
+  const c = theme === "premium"
+    ? { bg: premiumDark.card, border: "transparent", icon: premiumDark.textSec, text: premiumDark.textSec, strong: premiumDark.text }
+    : theme !== "light"
     ? { bg: "rgba(234,179,8,0.07)", border: "rgba(234,179,8,0.22)", icon: "#facc15", text: "#cbd5e1", strong: "#e5e7eb" }
     : { bg: "#fefce8", border: "#fde68a", icon: "#ca8a04", text: "#4b5563", strong: "#111827" };
   const Icon = inReview ? Clock : ShieldCheck;

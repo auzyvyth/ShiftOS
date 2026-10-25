@@ -1,13 +1,28 @@
 import React, { useState, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  Banknote, Check, ChevronRight, Plus, Search, Copy, AlertCircle,
-  TrendingDown, User, X, Loader2, Share2, Eye,
+  Check, ChevronRight, Plus, Copy, Loader2, Share2, Eye,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
-import { BANK_RATES, MAX_TENURE_YEARS, RATE_BASIS, rateLabel, monthlyPayment, monthsForPayment, principalForPayment } from "../../utils/financing";
-import { budgetMatches } from "../../utils/liveMaths";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
+import { BANK_RATES, RATE_BASIS, rateLabel, monthlyPayment } from "../../utils/financing";
+import { assessReadiness } from "../../utils/loanReadiness";
+import { loanCheckCopy } from "./loanCheckCopy";
+import { premiumDark as PD, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
+
+// Salesman Premium only, so it is drawn in premiumDark (SIMPLE-2): depth by
+// tone, no borders, red for fills, mint the only green, no blue or amber.
+// Mapped once onto the token names this file already used.
+const C = {
+  bg: PD.canvas, surface: PD.card, surfaceRaised: PD.raised, fillSubtle: PD.card, fill: PD.raised, fillStrong: PD.hover,
+  line: PD.line, border: "transparent", borderStrong: "transparent",
+  text: PD.text, textSec: PD.textSec, textMuted: PD.textMuted, textDim: PD.textMuted,
+  accent: PD.accent, onAccent: PD.onAccent,
+  danger: "#dc2626", dangerText: PD.accentText,
+  success: "#6ee7b7", successText: PD.up,
+  info: "#a3a9b5", infoText: PD.text, infoTextHi: PD.text,
+  warn: "#a3a9b5", warnText: PD.textSec,
+};
 
 /*
  * Loan desk — one buyer case, from "can they afford it" to "which bank said yes".
@@ -35,14 +50,6 @@ import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../t
 // (src/utils/financing.js). They move, so the rate stays editable per attempt
 // rather than being treated as a quote.
 export const BANKS = BANK_RATES;
-
-// How the buyer earns decides which documents the bank asks for. Getting this
-// wrong is why a buyer gets sent home and comes back a week later.
-const EMPLOYMENT = [
-  { key: "Salaried",      label: "Salaried",      hint: "Fixed monthly pay, EPF deducted" },
-  { key: "Self-employed", label: "Self-employed", hint: "Own business, freelance, has SSM" },
-  { key: "Commission",    label: "Commission",    hint: "Agent or sales, income varies" },
-];
 
 // Column-backed so a tick survives a reload. doc_ssm / doc_tax_form were added
 // with this rebuild; the rest already existed in the table and had no UI at all.
@@ -79,30 +86,10 @@ const docSetFor = (employment) => DOC_SETS[employment] || DOC_SETS.Salaried;
 /* ── The arithmetic ──────────────────────────────────────────────────────── */
 
 // Hire purchase is charged on the REDUCING BALANCE at an EIR since the
-// Hire-Purchase (Amendment) Act 2026 — this desk used to quote flat. All three
-// helpers are the shared maths in src/utils/financing.js, in years.
+// Hire-Purchase (Amendment) Act 2026 — this desk used to quote flat. The
+// shared maths in src/utils/financing.js, in years.
 export const loanMonthly = (principal, ratePct, years) =>
   years > 0 ? monthlyPayment(principal, ratePct, years * 12) : 0;
-
-// Years needed to bring `principal` down to a target instalment. null when no
-// tenure can reach it (the first month's interest alone exceeds the target).
-const tenureForMonthly = (principal, ratePct, monthly) => {
-  const months = monthsForPayment(principal, ratePct, monthly);
-  return months == null ? null : months / 12;
-};
-
-// Principal that lands exactly on a target instalment at a given tenure — the
-// difference against the current loan is the extra down payment needed.
-const principalForMonthly = (monthly, ratePct, years) =>
-  years > 0 ? principalForPayment(monthly, ratePct, years * 12) : 0;
-
-// Debt service ratio: the share of net monthly income already committed to
-// debt once this car is added. Banks each set their own ceiling and lower
-// incomes are treated more strictly — these are the commonly used bands, shown
-// as a guide only.
-const dsrCeiling = (income) => (income < 3000 ? 60 : income <= 5000 ? 65 : 70);
-
-const MAX_TENURE = MAX_TENURE_YEARS;
 
 const rm = (n) => "RM " + Math.round(Number(n) || 0).toLocaleString("en-MY");
 const rm2 = (n) => "RM " + Number(n || 0).toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -216,204 +203,6 @@ function StatusPill({ status, small }) {
   );
 }
 
-/* ── DSR meter — the one screen that answers "can they afford this?" ─────── */
-
-function DsrMeter({ income, commitments, monthly, loan, rate, tenure, onApplySuggestion }) {
-  if (!(income > 0)) {
-    return (
-      <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
-        Enter the buyer&apos;s net monthly income to see their debt service ratio — the
-        affordability sum the bank itself runs.
-      </p>
-    );
-  }
-  if (!(loan > 0)) {
-    return (
-      <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
-        Add a car in step 2, or pick one from the cars that fit below, to see their
-        debt service ratio with it.
-      </p>
-    );
-  }
-  const ceiling = dsrCeiling(income);
-  const dsr = ((commitments + monthly) / income) * 100;
-  const over = dsr > ceiling;
-  const tone = dsr <= ceiling - 10 ? C.success : over ? C.danger : C.warn;
-  const toneText = dsr <= ceiling - 10 ? C.successText : over ? C.dangerText : C.warnText;
-  const verdict = dsr <= ceiling - 10 ? "Comfortable" : over ? "Over the usual ceiling" : "Tight but within the usual ceiling";
-
-  // What it would take to get under the ceiling. Both are the same loan formula
-  // rearranged, on figures the salesman entered — no estimate, no prediction.
-  const headroom = income * (ceiling / 100) - commitments;
-  const needTenure = over && headroom > 0 ? tenureForMonthly(loan, rate, headroom) : null;
-  const tenureFix = needTenure && needTenure <= MAX_TENURE ? Math.ceil(needTenure) : null;
-  const dpFix = over && headroom > 0
-    ? Math.max(0, loan - principalForMonthly(headroom, rate, tenure))
-    : null;
-
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: T.size.hero, lineHeight: 1, color: toneText }}>
-          {dsr.toFixed(0)}%
-        </span>
-        <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: toneText }}>{verdict}</span>
-        <span style={{ marginLeft: "auto", fontSize: T.size.sm, color: C.textMuted, whiteSpace: "nowrap" }}>
-          guide ceiling {ceiling}%
-        </span>
-      </div>
-
-      {/* Bar with the ceiling marked, so "how far over" is readable at a glance */}
-      <div style={{ position: "relative", height: 8, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden", marginBottom: 4 }}>
-        <div style={{ position: "absolute", inset: 0, width: `${Math.min(100, dsr)}%`, background: tone, borderRadius: R.pill, transition: "width .25s" }} />
-      </div>
-      <div style={{ position: "relative", height: 12, marginBottom: 10 }}>
-        <span style={{ position: "absolute", left: `${Math.min(100, ceiling)}%`, transform: "translateX(-50%)", fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>
-          ▲ {ceiling}%
-        </span>
-      </div>
-
-      <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textSec, lineHeight: 1.6 }}>
-        {rm(commitments)} existing commitments + {rm(monthly)} this car, against {rm(income)} net income.
-      </p>
-
-      {over && (
-        <div style={{ padding: "11px 12px", borderRadius: R.md, background: withAlpha(C.danger, 0.07), border: `1px solid ${withAlpha(C.danger, 0.2)}` }}>
-          <p style={{ margin: "0 0 8px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.dangerText, display: "flex", alignItems: "center", gap: 7 }}>
-            <TrendingDown size={14} style={{ flexShrink: 0 }} /> What brings it under {ceiling}%
-          </p>
-          {headroom <= 0 ? (
-            <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.6 }}>
-              Their existing commitments alone already use the whole ceiling. No tenure or
-              down payment on this car changes that — a guarantor or settling another loan first.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {tenureFix && tenureFix > tenure && (
-                <button
-                  onClick={() => onApplySuggestion?.({ tenure: tenureFix })}
-                  style={{ ...suggestionSx, cursor: "pointer" }}
-                >
-                  <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    Stretch to <strong style={{ color: C.text }}>{tenureFix} years</strong> — instalment drops to about {rm(loanMonthly(loan, rate, tenureFix))}
-                  </span>
-                  <ChevronRight size={13} style={{ flexShrink: 0, color: C.textDim }} />
-                </button>
-              )}
-              {dpFix > 0 && (
-                <button
-                  onClick={() => onApplySuggestion?.({ extraDp: Math.ceil(dpFix / 100) * 100 })}
-                  style={{ ...suggestionSx, cursor: "pointer" }}
-                >
-                  <span style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-                    Or <strong style={{ color: C.text }}>{rm(Math.ceil(dpFix / 100) * 100)}</strong> more down payment at {tenure} years
-                  </span>
-                  <ChevronRight size={13} style={{ flexShrink: 0, color: C.textDim }} />
-                </button>
-              )}
-              {!tenureFix && !(dpFix > 0) && (
-                <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.6 }}>
-                  Not reachable by stretching tenure or adding a deposit on this car.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.6 }}>
-        A guide, not a decision. Every bank sets its own ceiling and reads CCRIS itself —
-        this is the same sum they run, on the numbers you entered.
-      </p>
-    </div>
-  );
-}
-
-const suggestionSx = {
-  display: "flex", alignItems: "center", gap: 8, width: "100%",
-  padding: "8px 10px", borderRadius: R.sm, background: C.fill,
-  border: `1px solid ${C.border}`, color: C.textSec,
-  fontSize: T.size.sm, fontFamily: "inherit", lineHeight: 1.5,
-};
-
-/* ── Cars that fit — the reverse question ────────────────────────────────── */
-
-// "RM1,200 a month, what can they take?" Same maths as the live presenter's
-// Budget tab (budgetMatches in liveMaths.js), so a car's monthly here matches
-// the one the seller quotes on a live. The cap is the smaller of the DSR room
-// the bank leaves and the buyer's own limit. A guide, never an approval.
-const LOWEST_RATE = Math.min(...BANK_RATES.map((b) => b.rate));
-const carName = (c) => [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
-
-function CarsThatFit({ listings, cap, capFrom, deposit, tenure, pickedId, onPick }) {
-  const [showAll, setShowAll] = useState(false);
-  const { fits, above } = useMemo(
-    () => budgetMatches(listings, { maxMonthly: cap, deposit, years: tenure, rate: LOWEST_RATE, basis: RATE_BASIS }),
-    [listings, cap, deposit, tenure],
-  );
-  const shown = showAll ? fits : fits.slice(0, 5);
-
-  const Row = ({ r, tone }) => {
-    const on = r.car.id === pickedId;
-    return (
-      <button onClick={() => onPick(r.car)} style={{
-        display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
-        padding: "9px 11px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit",
-        background: on ? withAlpha(C.info, 0.09) : C.fill,
-        border: `1px solid ${on ? withAlpha(C.info, 0.32) : C.border}`,
-      }}>
-        <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {carName(r.car)}
-          </span>
-          <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 1 }}>{rm(r.price)}</span>
-        </span>
-        <span style={{ textAlign: "right", flexShrink: 0 }}>
-          <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.bold, color: tone }}>{rm(r.monthly)}</span>
-          <span style={{ display: "block", fontSize: T.size.xs, color: C.textDim }}>/month</span>
-        </span>
-      </button>
-    );
-  };
-
-  return (
-    <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-      <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text }}>
-        Cars from your stock that fit
-      </p>
-      <p style={{ margin: "0 0 10px", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
-        Up to {rm(cap)}/month ({capFrom}), {deposit > 0 ? `${rm(deposit)} down` : "no down payment"}, {tenure} years. Tap one to use it.
-      </p>
-      {fits.length === 0 && above.length === 0 ? (
-        <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim }}>
-          None of your available cars fit this budget. A bigger down payment or a longer tenure widens it.
-        </p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {shown.map((r) => <Row key={r.car.id} r={r} tone={C.successText} />)}
-          {fits.length > 5 && (
-            <button onClick={() => setShowAll((v) => !v)} style={{
-              padding: "6px", background: "none", border: "none", color: C.infoText,
-              fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit",
-            }}>{showAll ? "Show fewer" : `Show all ${fits.length}`}</button>
-          )}
-          {above.length > 0 && (
-            <>
-              <p style={{ margin: "6px 0 0", fontSize: T.size.sm, color: C.textMuted }}>
-                Just above: needs more down payment or a longer tenure
-              </p>
-              {above.map((r) => <Row key={r.car.id} r={r} tone={C.warnText} />)}
-            </>
-          )}
-        </div>
-      )}
-      <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.6 }}>
-        Worked out at the lowest indicative rate on the table ({LOWEST_RATE.toFixed(2)}% EIR). A guide, not an approval.
-      </p>
-    </div>
-  );
-}
-
 /* ── Document checklist ──────────────────────────────────────────────────── */
 
 function DocChecklist({ employment, docs, onToggle, buyerName }) {
@@ -438,17 +227,17 @@ function DocChecklist({ employment, docs, onToggle, buyerName }) {
       style={{
         display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
         padding: "9px 10px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit",
-        background: docs[k] ? withAlpha(C.success, 0.06) : "transparent",
-        border: `1px solid ${docs[k] ? withAlpha(C.success, 0.18) : C.border}`,
+        background: docs[k] ? withAlpha(C.success, 0.08) : C.fill,
+        border: "none",
       }}
     >
       <span style={{
         width: 18, height: 18, borderRadius: 5, flexShrink: 0,
         display: "flex", alignItems: "center", justifyContent: "center",
         background: docs[k] ? C.success : "transparent",
-        border: `1px solid ${docs[k] ? C.success : C.borderStrong}`,
+        border: `1.5px solid ${docs[k] ? C.success : C.textMuted}`,
       }}>
-        {docs[k] && <Check size={12} color="#fff" strokeWidth={3} />}
+        {docs[k] && <Check size={12} color={C.bg} strokeWidth={3} />}
       </span>
       <span style={{ flex: 1, minWidth: 0, fontSize: T.size.base, color: docs[k] ? C.textSec : C.text }}>
         {DOCS[k].label}
@@ -479,93 +268,51 @@ function DocChecklist({ employment, docs, onToggle, buyerName }) {
   );
 }
 
-/* ── New application — one flow ──────────────────────────────────────────── */
+/* ── Send a checked buyer to a bank ───────────────────────────────────────── */
 
-const emptyDraft = {
-  lead_id: null, listing_id: null,
-  buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
-  car_model: "", car_price: "", down_payment: "", loan_tenure: 7,
-  buyer_income: "", existing_commitments: "", budget_monthly: "", notes: "",
+// An application only ever starts from a saved loan check (owner, 2026-10-25:
+// one flow). The check already asked who, which car, the money and how they
+// earn, and it is the ONE affordability rule (loanReadiness.js). This screen
+// asks only what the check does not: contact details for the bank, which banks
+// to try, which documents are in, and notes. It used to retype all of it and
+// run a second DSR with different ceilings, so one buyer could read "tight" in
+// the check and "over the ceiling" here.
+const EARN_TO_EMPLOYMENT = { salary: "Salaried", commission: "Commission", business: "Self-employed", gig: "Self-employed" };
+const toNum = (v) => {
+  const n = Number(String(v ?? "").replace(/[^0-9.]/g, ""));
+  return Number.isFinite(n) ? n : 0;
 };
 
-function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
-  const [d, setD] = useState(emptyDraft);
+function ApplyFromCheck({ check, lead, userId, dealerId, onCreated, onCancel, onEditCheck }) {
+  const { i18n } = useTranslation();
+  const lc = loanCheckCopy(i18n.language);
+  const a = check?.answers || {};
+  const result = useMemo(() => assessReadiness(a), [a]);
+  const employment = EARN_TO_EMPLOYMENT[a.earn] || "Salaried";
+  const price = result.price;
+  const dp = result.deposit;
+  const loan = result.loan;
+  const tenure = result.years;
+
+  const [phone, setPhone] = useState(lead?.phone || "");
+  const [ic, setIc] = useState(lead?.buyer_ic || "");
+  const [notes, setNotes] = useState("");
   const [docs, setDocs] = useState({});
-  const [picked, setPicked] = useState([]);      // bank names chosen as attempts
+  const [picked, setPicked] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [leadPickerOpen, setLeadPickerOpen] = useState(false);
-  const [leadQuery, setLeadQuery] = useState("");
-
-  const set = (k) => (v) => setD((p) => ({ ...p, [k]: v }));
-  const num = (v) => parseFloat(v) || 0;
-
-  const price   = num(d.car_price);
-  const dp      = num(d.down_payment);
-  const tenure  = parseInt(d.loan_tenure) || 7;
-  const loan    = Math.max(0, price - dp);
-  const income  = num(d.buyer_income);
-  const commits = num(d.existing_commitments);
-  const dpPct   = price > 0 ? (dp / price) * 100 : 0;
 
   const rows = useMemo(
-    () => BANKS.map((b) => ({ ...b, monthly: loanMonthly(loan, b.rate, tenure) }))
-               .sort((a, b) => a.monthly - b.monthly),
+    () => BANKS.map((b) => ({ ...b, monthly: loanMonthly(loan, b.rate, tenure) })).sort((x, y) => x.monthly - y.monthly),
     [loan, tenure],
   );
-  const bestMonthly = rows.length ? rows[0].monthly : 0;
-  // DSR is shown against the cheapest instalment on the table — the best case.
-  // If the best case is already over the ceiling, none of them clear it.
-  const dsrBank = rows.find((r) => picked.includes(r.name)) || rows[0];
-
-  // Budget for "cars that fit": the DSR room the bank leaves, capped by what
-  // the buyer said they will pay. Either one alone is enough.
-  const dsrRoom = income > 0 ? income * (dsrCeiling(income) / 100) - commits : 0;
-  const ownLimit = num(d.budget_monthly);
-  const fitCap = dsrRoom > 0 && ownLimit > 0 ? Math.min(dsrRoom, ownLimit) : dsrRoom > 0 ? dsrRoom : ownLimit;
-  const fitCapFrom = ownLimit > 0 && (!(dsrRoom > 0) || ownLimit <= dsrRoom) ? "the buyer's own limit" : "the DSR room left";
-  // Only cars the seller can actually put on a loan today.
-  const sellable = useMemo(
-    () => (listings || []).filter((c) => c.status === "available" && Number(c.selling_price) > 0 && c.loan_eligible !== false),
-    [listings],
-  );
-
-  const pickCar = (car) => {
-    setD((p) => ({ ...p, listing_id: car.id, car_model: carName(car), car_price: String(car.selling_price) }));
-    toast.success("Car filled in. Check the down payment in step 2");
-  };
-
-  const pickLead = (lead) => {
-    const car = lead.car_listings;
-    setD((p) => ({
-      ...p,
-      lead_id: lead.id,
-      listing_id: lead.car_listing_id || null,
-      buyer_name: lead.buyer_name || "",
-      buyer_phone: lead.phone || "",
-      buyer_ic: lead.buyer_ic || "",
-      car_model: car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : p.car_model,
-      car_price: car?.selling_price ? String(car.selling_price) : p.car_price,
-    }));
-    setLeadPickerOpen(false);
-    setLeadQuery("");
-    toast.success("Buyer and car filled in from the lead");
-  };
-
-  const applySuggestion = ({ tenure: t, extraDp }) => {
-    if (t) { set("loan_tenure")(t); toast.success(`Tenure set to ${t} years`); }
-    if (extraDp) { set("down_payment")(String(Math.round(dp + extraDp))); toast.success("Down payment raised"); }
-  };
-
-  const togglePick = (name) =>
-    setPicked((p) => (p.includes(name) ? p.filter((n) => n !== name) : [...p, name]));
-
-  const canSubmit = d.buyer_name.trim() && loan > 0 && picked.length > 0;
+  const togglePick = (name) => setPicked((p) => (p.includes(name) ? p.filter((n) => n !== name) : [...p, name]));
+  const buyerName = (check?.buyer_name || lead?.buyer_name || "").trim();
+  const canSubmit = buyerName && loan > 0 && picked.length > 0;
 
   const submit = async () => {
     if (!canSubmit || saving) return;
     setSaving(true);
-    // One row per BUYER CASE; each chosen bank is an attempt inside it, so a
-    // decline can be followed by the next bank without retyping the buyer.
+    // One row per BUYER CASE; each chosen bank is an attempt inside it.
     const attempts = picked.map((name) => {
       const b = BANKS.find((x) => x.name === name);
       return {
@@ -575,323 +322,158 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
       };
     });
     const docCols = Object.fromEntries(Object.entries(DOCS).map(([k, v]) => [v.col, !!docs[k]]));
-
     const { data, error } = await supabase.from("loan_applications").insert({
       salesman_id: userId,
       dealer_id: dealerId || null,
-      lead_id: d.lead_id, listing_id: d.listing_id,
-      buyer_name: d.buyer_name.trim() || null,
-      buyer_phone: d.buyer_phone || null,
-      buyer_ic: d.buyer_ic || null,
-      buyer_employment_type: d.buyer_employment_type,
-      car_model: d.car_model || null,
+      lead_id: check?.lead_id || null,
+      listing_id: check?.listing_id || null,
+      buyer_name: buyerName || null,
+      buyer_phone: phone || null,
+      buyer_ic: ic || null,
+      buyer_employment_type: employment,
+      car_model: a.car_name || null,
       car_price: price || null,
       loan_amount: loan,
       down_payment: dp || null,
       loan_tenure: tenure,
-      buyer_income: income || null,
-      existing_commitments: commits || null,
+      buyer_income: toNum(a.pay) || null,
+      existing_commitments: toNum(a.commit) || null,
       banks: attempts,
       status: "Submitted",
-      notes: d.notes || null,
+      notes: notes || null,
       ...docCols,
     }).select("*").single();
-
     setSaving(false);
     if (error) { console.error("submitLoan:", error); toast.error("Could not save the application"); return; }
     toast.success(`Application saved — ${attempts.length} bank${attempts.length > 1 ? "s" : ""}`);
-    setD(emptyDraft); setDocs({}); setPicked([]);
     onCreated(data);
   };
 
-  const openLeads = leads.filter((l) => !["lost", "closed_lost"].includes(l.stage));
-  const shownLeads = leadQuery
-    ? openLeads.filter((l) => `${l.buyer_name || ""} ${l.phone || ""}`.toLowerCase().includes(leadQuery.toLowerCase()))
-    : openLeads;
-
   return (
     <div>
-      {/* 1 — buyer */}
+      {/* What the check settled, read-only. Changing it means changing the check. */}
       <div style={cardSx}>
-        <SectionHead n="1" title="Who is buying" sub="Pull it from a lead you already have, or type it in." />
-
-        {!d.lead_id ? (
-          <button onClick={() => setLeadPickerOpen((v) => !v)} style={{
-            display: "flex", alignItems: "center", gap: 8, width: "100%", marginBottom: 12,
-            padding: "10px 12px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit",
-            background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.22)}`,
-            color: C.infoText, fontSize: T.size.base, fontWeight: T.weight.semibold,
-          }}>
-            <User size={14} /> Start from a lead
-            <ChevronRight size={14} style={{ marginLeft: "auto", transform: leadPickerOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
-          </button>
-        ) : (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8, marginBottom: 12, padding: "8px 11px",
-            borderRadius: R.md, background: withAlpha(C.success, 0.07), border: `1px solid ${withAlpha(C.success, 0.2)}`,
-          }}>
-            <Check size={13} color={C.successText} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec }}>
-              {d.buyer_name || "Lead"} — it will show on that lead too.
-              {d.listing_id
-                ? d.car_model ? ` Car: ${d.car_model}.` : " Car linked."
-                : ""}
-            </span>
-            <button onClick={() => setD((p) => ({ ...p, lead_id: null, listing_id: null }))}
-              style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
-              <X size={14} />
-            </button>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text }}>{buyerName || lc.walkIn}</p>
+            <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textSec }}>{a.car_name || "—"}</p>
           </div>
-        )}
-
-        {d.lead_id && !d.listing_id && (
-          <div style={{
-            display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 12, padding: "9px 11px",
-            borderRadius: R.md, background: withAlpha(C.warn, 0.07), border: `1px solid ${withAlpha(C.warn, 0.22)}`,
-          }}>
-            <AlertCircle size={13} color={C.warnText} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.5 }}>
-              This lead has no car linked, so nothing was filled in below. Link one on the
-              lead in Pipeline and pick it again, or type the car and price yourself.
-            </span>
+          <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "3px 9px", borderRadius: R.pill, background: C.fill, color: check?.outcome === "ready" ? C.successText : check?.outcome === "hold" ? C.dangerText : C.text, flexShrink: 0 }}>
+            {lc.pill[check?.outcome] || ""}
+          </span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, marginTop: 14 }}>
+          <div style={{ padding: 12, borderRadius: R.md, background: C.fill, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>Loan</p>
+            <p style={{ margin: "4px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, fontVariantNumeric: "tabular-nums" }}>{rm(loan)}</p>
+            <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textSec }}>{tenure} years · {dp > 0 ? `${rm(dp)} down` : "no down payment"}</p>
           </div>
-        )}
-
-        {leadPickerOpen && !d.lead_id && (
-          <div style={{ marginBottom: 12, border: `1px solid ${C.border}`, borderRadius: R.md, overflow: "hidden" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderBottom: `1px solid ${C.line}` }}>
-              <Search size={13} color={C.textDim} style={{ flexShrink: 0 }} />
-              <input autoFocus value={leadQuery} onChange={(e) => setLeadQuery(e.target.value)} placeholder="Search your leads…"
-                style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.text, fontSize: T.size.base, fontFamily: "inherit" }} />
-            </div>
-            <div style={{ maxHeight: 210, overflowY: "auto" }}>
-              {shownLeads.length === 0 ? (
-                <p style={{ margin: 0, padding: "16px 12px", fontSize: T.size.sm, color: C.textDim, textAlign: "center" }}>No matching leads.</p>
-              ) : shownLeads.map((l) => (
-                <button key={l.id} onClick={() => pickLead(l)} style={{
-                  display: "block", width: "100%", textAlign: "left", padding: "9px 11px", cursor: "pointer",
-                  background: "transparent", border: "none", borderBottom: `1px solid ${C.line}`, fontFamily: "inherit",
-                }}>
-                  <span style={{ display: "block", fontSize: T.size.base, color: C.text, fontWeight: T.weight.medium }}>{l.buyer_name || "Unnamed lead"}</span>
-                  <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 1 }}>
-                    {[l.phone, l.car_listings ? [l.car_listings.year, l.car_listings.brand, l.car_listings.model].filter(Boolean).join(" ") : null].filter(Boolean).join(" · ")}
-                  </span>
-                </button>
-              ))}
-            </div>
+          <div style={{ padding: 12, borderRadius: R.md, background: C.fill, minWidth: 0 }}>
+            <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{lc.dsrLabel}</p>
+            <p style={{ margin: "4px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, fontVariantNumeric: "tabular-nums" }}>{result.dsr == null ? "—" : `${Math.round(result.dsr * 100)}%`}</p>
+            <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: C.textSec }}>{lc.band[result.band || "none"]}</p>
           </div>
-        )}
+        </div>
+        <button onClick={onEditCheck} style={{ marginTop: 12, padding: 0, background: "none", border: "none", color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit", textDecoration: "underline", textUnderlineOffset: 2 }}>
+          Change the answers in the loan check
+        </button>
+      </div>
 
+      {/* Contact details the bank form needs; the check never asks for an IC. */}
+      <div style={cardSx}>
+        <SectionHead n="1" title="For the bank" sub="Only on the application. The loan check never stores an IC." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-          <Field label="Buyer name">
-            <input style={inputSx} value={d.buyer_name} onChange={(e) => set("buyer_name")(e.target.value)} placeholder="Ahmad bin Ali" />
-          </Field>
           <Field label="Phone">
             <div style={{ ...inputSx, display: "flex", alignItems: "center", padding: 0, overflow: "hidden" }}>
-              <span style={{ padding: "9px 10px", color: C.textMuted, background: C.fillSubtle, borderRight: `1px solid ${C.borderStrong}`, fontSize: T.size.base, flexShrink: 0 }}>+60</span>
-              <input type="tel" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.text, fontSize: T.size.base, padding: "9px 10px", fontFamily: "inherit" }}
-                value={(d.buyer_phone || "").replace(/^\+?60/, "")}
-                onChange={(e) => set("buyer_phone")("+60" + e.target.value.replace(/\D/g, ""))} placeholder="123456789" />
+              <span style={{ padding: "9px 10px", color: C.textMuted, fontSize: T.size.base, flexShrink: 0 }}>+60</span>
+              <input type="tel" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.text, fontSize: T.size.base, padding: "9px 10px 9px 0", fontFamily: "inherit" }}
+                value={(phone || "").replace(/^\+?60/, "")}
+                onChange={(e) => setPhone("+60" + e.target.value.replace(/\D/g, ""))} placeholder="123456789" />
             </div>
           </Field>
           <Field label="IC number">
-            <input style={inputSx} value={d.buyer_ic} onChange={(e) => set("buyer_ic")(e.target.value)} placeholder="901231-10-1234" />
+            <input style={inputSx} value={ic} onChange={(e) => setIc(e.target.value)} placeholder="901231-10-1234" />
           </Field>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          <label style={labelSx}>How they earn — this decides the document list</label>
-          <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-            {EMPLOYMENT.map((e) => {
-              const on = d.buyer_employment_type === e.key;
-              return (
-                <button key={e.key} onClick={() => set("buyer_employment_type")(e.key)} title={e.hint} style={{
-                  padding: "7px 13px", borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit",
-                  fontSize: T.size.base, fontWeight: T.weight.semibold,
-                  background: on ? withAlpha(C.info, 0.14) : C.fill,
-                  border: `1px solid ${on ? withAlpha(C.info, 0.35) : C.border}`,
-                  color: on ? C.infoText : C.textSec,
-                }}>{e.label}</button>
-              );
-            })}
-          </div>
-          <p style={{ margin: "6px 0 0", fontSize: T.size.sm, color: C.textDim }}>
-            {EMPLOYMENT.find((e) => e.key === d.buyer_employment_type)?.hint}
-          </p>
         </div>
       </div>
 
-      {/* 2 — the car and the money */}
       <div style={cardSx}>
-        <SectionHead n="2" title="The car and the money" />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
-          <Field label="Car">
-            <input style={inputSx} value={d.car_model} onChange={(e) => set("car_model")(e.target.value)} placeholder="Toyota Vios 2020" />
-          </Field>
-          <Field label="Car price (RM)">
-            <input type="number" inputMode="numeric" style={inputSx} value={d.car_price} onChange={(e) => set("car_price")(e.target.value)} placeholder="85000" />
-          </Field>
-          <Field label={`Down payment (RM)${price > 0 ? ` · ${dpPct.toFixed(0)}%` : ""}`}>
-            <input type="number" inputMode="numeric" style={inputSx} value={d.down_payment} onChange={(e) => set("down_payment")(e.target.value)} placeholder="10000" />
-          </Field>
-        </div>
-
-        {price > 0 && (
-          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            {[10, 15, 20, 30].map((pct) => (
-              <button key={pct} onClick={() => set("down_payment")(String(Math.round((price * pct) / 100)))} style={{
-                padding: "4px 10px", borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit", fontSize: T.size.sm,
-                background: C.fill, border: `1px solid ${C.border}`, color: C.textSec,
-              }}>{pct}%</button>
-            ))}
-          </div>
-        )}
-
-        <div style={{ marginTop: 14 }}>
-          <label style={labelSx}>Tenure</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {[5, 7, 9].map((y) => {
-              const on = tenure === y;
-              return (
-                <button key={y} onClick={() => set("loan_tenure")(y)} style={{
-                  padding: "7px 14px", borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit",
-                  fontSize: T.size.base, fontWeight: T.weight.semibold,
-                  background: on ? withAlpha(C.info, 0.14) : C.fill,
-                  border: `1px solid ${on ? withAlpha(C.info, 0.35) : C.border}`,
-                  color: on ? C.infoText : C.textSec,
-                }}>{y} yrs</button>
-              );
-            })}
-            <select value={tenure} onChange={(e) => set("loan_tenure")(parseInt(e.target.value))}
-              style={{ ...inputSx, width: "auto", minWidth: 92, padding: "7px 10px" }}>
-              {Array.from({ length: MAX_TENURE }, (_, i) => i + 1).map((y) => <option key={y} value={y}>{y} yrs</option>)}
-            </select>
-          </div>
-        </div>
-
-        {loan > 0 && (
-          <p style={{ margin: "14px 0 0", fontSize: T.size.base, color: C.textSec }}>
-            Financing <strong style={{ color: C.text }}>{rm(loan)}</strong> over {tenure} years.
-          </p>
-        )}
-      </div>
-
-      {/* 3 — affordability */}
-      <div style={cardSx}>
-        <SectionHead n="3" title="Can they afford it?" sub="The debt service ratio decides most applications before a banker ever reads the file." />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 16 }}>
-          <Field label="Net monthly income (RM)" hint="After EPF and tax — what lands in the bank">
-            <input type="number" inputMode="numeric" style={inputSx} value={d.buyer_income} onChange={(e) => set("buyer_income")(e.target.value)} placeholder="5000" />
-          </Field>
-          <Field label="Existing commitments (RM/mo)" hint="Other car, house, PTPTN, cards">
-            <input type="number" inputMode="numeric" style={inputSx} value={d.existing_commitments} onChange={(e) => set("existing_commitments")(e.target.value)} placeholder="800" />
-          </Field>
-          <Field label="Buyer's own limit (RM/mo)" hint="Optional. What they said they can pay">
-            <input type="number" inputMode="numeric" style={inputSx} value={d.budget_monthly} onChange={(e) => set("budget_monthly")(e.target.value)} placeholder="1200" />
-          </Field>
-        </div>
-        <DsrMeter
-          income={income} commitments={commits}
-          monthly={dsrBank ? dsrBank.monthly : 0}
-          loan={loan} rate={dsrBank ? dsrBank.rate : 0} tenure={tenure}
-          onApplySuggestion={applySuggestion}
-        />
-        {fitCap > 0 && sellable.length > 0 && (
-          <CarsThatFit
-            listings={sellable} cap={fitCap} capFrom={fitCapFrom}
-            deposit={dp} tenure={tenure} pickedId={d.listing_id} onPick={pickCar}
-          />
-        )}
-      </div>
-
-      {/* 4 — banks */}
-      <div style={cardSx}>
-        <SectionHead n="4" tourId="loan-banks" title="Which banks to try" sub="Pick more than one — if the first says no, the second is already on the file." />
-        {loan <= 0 ? (
-          <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted }}>Enter a car price to compare instalments.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-            {rows.map((b, i) => {
-              const on = picked.includes(b.name);
-              const isBest = i === 0;
-              return (
-                <button key={b.name} onClick={() => togglePick(b.name)} style={{
-                  display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left",
-                  padding: "11px 12px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit",
-                  background: on ? withAlpha(C.info, 0.09) : C.fillSubtle,
-                  border: `1px solid ${on ? withAlpha(C.info, 0.32) : C.border}`,
+        <SectionHead n="2" tourId="loan-banks" title="Which banks to try" sub="Start with one. Every application sits on the buyer's CCRIS for 12 months and the next bank sees it." />
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          {rows.map((b, i) => {
+            const on = picked.includes(b.name);
+            return (
+              <button key={b.name} onClick={() => togglePick(b.name)} aria-pressed={on} style={{
+                display: "flex", alignItems: "center", gap: 11, width: "100%", textAlign: "left",
+                padding: "11px 12px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit",
+                background: on ? C.fillStrong : C.fill, border: "none",
+              }}>
+                <span style={{
+                  width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  background: on ? C.accent : "transparent", border: `1.5px solid ${on ? C.accent : C.textMuted}`,
                 }}>
-                  <span style={{
-                    width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    background: on ? C.info : "transparent",
-                    border: `1px solid ${on ? C.info : C.borderStrong}`,
-                  }}>
-                    {on && <Check size={12} color="#fff" strokeWidth={3} />}
+                  {on && <Check size={12} color="#fff" strokeWidth={3} />}
+                </span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{b.name}</span>
+                    {i === 0 && <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.successText }}>Lowest</span>}
+                    {b.islamic && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>Islamic</span>}
                   </span>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{b.name}</span>
-                      {isBest && (
-                        <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "1px 6px", borderRadius: R.pill, background: withAlpha(C.success, 0.14), border: `1px solid ${withAlpha(C.success, 0.3)}`, color: C.successText }}>Lowest</span>
-                      )}
-                      {b.islamic && (
-                        <span style={{ fontSize: T.size.xs, padding: "1px 6px", borderRadius: R.pill, background: C.fillStrong, color: C.textMuted }}>Islamic</span>
-                      )}
-                    </span>
-                    <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 2 }}>
-                      {b.rate.toFixed(2)}% EIR · total interest {rm(b.monthly * tenure * 12 - loan)}
-                    </span>
+                  <span style={{ display: "block", fontSize: T.size.sm, color: C.textMuted, marginTop: 2 }}>
+                    {b.rate.toFixed(2)}% EIR · total interest {rm(b.monthly * tenure * 12 - loan)}
                   </span>
-                  <span style={{ textAlign: "right", flexShrink: 0 }}>
-                    <span style={{ display: "block", fontFamily: "'Bebas Neue',sans-serif", fontSize: T.size.xl, lineHeight: 1, color: C.text }}>{rm(b.monthly)}</span>
-                    <span style={{ display: "block", fontSize: T.size.xs, color: C.textDim, marginTop: 2 }}>/month</span>
-                  </span>
-                </button>
-              );
-            })}
-            <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textDim, lineHeight: 1.6 }}>
-              Indicative rates, as EIR on the reducing balance (the law since June 2026). Confirm
-              the rate with the banker before you tell a buyer anything — they move, and the
-              buyer&apos;s profile changes them. A bank still quoting flat: ask for the EIR.
-            </p>
-          </div>
-        )}
+                </span>
+                <span style={{ textAlign: "right", flexShrink: 0 }}>
+                  <span style={{ display: "block", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, fontVariantNumeric: "tabular-nums" }}>{rm(b.monthly)}</span>
+                  <span style={{ display: "block", fontSize: T.size.xs, color: C.textMuted, marginTop: 2 }}>/month</span>
+                </span>
+              </button>
+            );
+          })}
+          <p style={{ margin: "4px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
+            Indicative rates, as EIR on the reducing balance (the law since June 2026). Confirm
+            the rate with the banker before you tell a buyer anything.
+          </p>
+        </div>
       </div>
 
-      {/* 5 — documents */}
       <div style={cardSx}>
-        <SectionHead n="5" title="Documents to collect" sub={`For a ${(EMPLOYMENT.find((e) => e.key === d.buyer_employment_type)?.label || "").toLowerCase()} buyer.`} />
+        <SectionHead n="3" title="Documents collected" sub={`For a ${employment.toLowerCase()} buyer. Tick each one as it comes in.`} />
         <DocChecklist
-          employment={d.buyer_employment_type}
+          employment={employment}
           docs={docs}
-          buyerName={d.buyer_name.split(" ")[0]}
+          buyerName={buyerName.split(" ")[0]}
           onToggle={(k) => setDocs((p) => ({ ...p, [k]: !p[k] }))}
         />
       </div>
 
-      {/* notes + submit */}
       <div style={cardSx}>
         <Field label="Notes (optional)">
-          <textarea rows={2} style={{ ...inputSx, resize: "vertical" }} value={d.notes} onChange={(e) => set("notes")(e.target.value)} placeholder="Anything the banker should know" />
+          <textarea rows={2} style={{ ...inputSx, resize: "vertical" }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything the banker should know" />
         </Field>
-        <button onClick={submit} disabled={!canSubmit || saving} style={{
-          marginTop: 14, width: "100%", padding: "13px", borderRadius: R.md, border: "none",
-          background: canSubmit && !saving ? C.accent : C.fillStrong,
-          color: canSubmit && !saving ? C.onAccent : C.textDim,
-          fontSize: T.size.lg, fontWeight: T.weight.bold, fontFamily: "inherit",
-          cursor: canSubmit && !saving ? "pointer" : "not-allowed",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-        }}>
-          {saving ? <><Loader2 size={15} style={{ animation: "ldspin 1s linear infinite" }} /> Saving…</>
-                  : `Save application${picked.length ? ` · ${picked.length} bank${picked.length > 1 ? "s" : ""}` : ""}`}
-        </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button onClick={onCancel} style={{ padding: "13px 18px", borderRadius: R.pill, border: "none", background: C.fill, color: C.text, fontSize: T.size.base, fontWeight: T.weight.semibold, fontFamily: "inherit", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button onClick={submit} disabled={!canSubmit || saving} style={{
+            flex: 1, padding: "13px", borderRadius: R.pill, border: "none",
+            background: canSubmit && !saving ? C.accent : C.fillStrong,
+            color: canSubmit && !saving ? C.onAccent : C.textMuted,
+            fontSize: T.size.base, fontWeight: T.weight.bold, fontFamily: "inherit",
+            cursor: canSubmit && !saving ? "pointer" : "not-allowed",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          }}>
+            {saving ? <><Loader2 size={15} style={{ animation: "ldspin 1s linear infinite" }} /> Saving…</>
+                    : `Save application${picked.length ? ` · ${picked.length} bank${picked.length > 1 ? "s" : ""}` : ""}`}
+          </button>
+        </div>
         {!canSubmit && (
-          <p style={{ margin: "8px 0 0", fontSize: T.size.sm, color: C.textDim, textAlign: "center" }}>
-            {!d.buyer_name.trim() ? "Add the buyer's name" : loan <= 0 ? "Add the car price" : "Pick at least one bank"} to save.
+          <p style={{ margin: "8px 0 0", fontSize: T.size.sm, color: C.textMuted, textAlign: "center" }}>
+            {!buyerName ? "The check has no buyer name: add it in the loan check" : loan <= 0 ? "The check has no car price: add it in the loan check" : "Pick at least one bank"} to save.
           </p>
         )}
-        <style>{`@keyframes ldspin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
   );
@@ -1019,7 +601,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                       {["Pending", "Approved", "Declined"].map((s) => (
                         <button key={s} onClick={() => setDecide((p) => ({ ...p, status: s }))} style={{
                           padding: "5px 11px", borderRadius: R.pill, cursor: "pointer", fontFamily: "inherit", fontSize: T.size.sm, fontWeight: T.weight.semibold,
-                          background: decide.status === s ? withAlpha(STATUS[s].fill, 0.16) : C.fill,
+                          background: decide.status === s ? withAlpha(STATUS[s].fill, 0.16) : C.fillStrong,
                           border: `1px solid ${decide.status === s ? withAlpha(STATUS[s].fill, 0.35) : C.border}`,
                           color: decide.status === s ? STATUS[s].text : C.textSec,
                         }}>{s}</button>
@@ -1030,7 +612,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                         <button key={t} onClick={() => setDecide((p) => ({ ...p, reason: t }))} style={{
                           padding: "5px 9px", borderRadius: R.sm, cursor: "pointer", fontFamily: "inherit",
                           fontSize: T.size.xs, textAlign: "left", lineHeight: 1.35,
-                          background: decide.reason === t ? withAlpha(C.info, 0.12) : C.fill,
+                          background: decide.reason === t ? withAlpha(C.info, 0.22) : C.fillStrong,
                           border: `1px solid ${decide.reason === t ? withAlpha(C.info, 0.3) : C.border}`,
                           color: decide.reason === t ? C.infoText : C.textSec,
                         }}>{t}</button>
@@ -1038,7 +620,7 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
                     </div>
                     <input value={decide.reason} onChange={(e) => setDecide((p) => ({ ...p, reason: e.target.value }))}
                       placeholder="Or write it in your own words"
-                      style={{ ...inputSx, fontSize: T.size.sm }} />
+                      style={{ ...inputSx, background: C.fillStrong, fontSize: T.size.sm }} />
                     <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 5, fontSize: T.size.xs, color: C.textDim }}>
                       <Eye size={11} style={{ flexShrink: 0 }} /> The buyer reads this on their status link
                     </p>
@@ -1124,74 +706,86 @@ function ApplicationCard({ app, onChange, onLeadSync }) {
 
 /* ── Shell ───────────────────────────────────────────────────────────────── */
 
-export default function LoanDesk({ userId, dealerId, leads = [], listings = [], applications = [], setApplications, onLeadSync }) {
-  const [view, setView] = useState("new");
+// The Loans tab: check a buyer first, then send the checked file to a bank and
+// track it. `checks` = the seller's saved loan checks; `applyFrom` = a check the
+// seller just chose to send ({ check, lead }), set by the page.
+const OUTCOME_HUE = { ready: C.successText, fix: C.text, hold: C.dangerText };
 
+export default function LoanDesk({
+  userId, dealerId, leads = [], applications = [], setApplications, onLeadSync,
+  checks = [], onNewCheck, onOpenCheck, applyFrom = null, onApplyDone,
+}) {
+  const { i18n } = useTranslation();
+  const lc = loanCheckCopy(i18n.language);
   const open = applications.filter((a) => !["Approved", "Declined"].includes(a.status || rollUp(a.banks))).length;
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      {/* Defined once here, not inside a view: the share button's spinner lives
-          in ApplicationCard, which renders while NewApplication is unmounted. */}
+      {/* Defined once here: the share button's spinner lives in ApplicationCard. */}
       <style>{`@keyframes ldspin{to{transform:rotate(360deg)}}`}</style>
       <p style={{ margin: "0 0 4px", fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text }}>Loans</p>
       <p style={{ margin: "0 0 16px", fontSize: T.size.base, color: C.textMuted, lineHeight: 1.6 }}>
-        Work out what the buyer can carry, pick the banks worth trying, and keep every
-        application in one place.
+        Check the buyer first, fix what the bank would reject, then send it to a bank and track it here.
       </p>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-        {[
-          { key: "new",  label: "New application" },
-          { key: "list", label: "Applications", badge: applications.length },
-        ].map(({ key, label, badge }) => (
-          <button key={key} data-tour-id={key === "new" ? "loan-new" : "loan-list"} onClick={() => setView(key)} style={{
-            fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "7px 15px", borderRadius: R.md,
-            cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
-            background: view === key ? withAlpha(C.info, 0.15) : C.fill,
-            border: `1px solid ${view === key ? withAlpha(C.info, 0.35) : C.border}`,
-            color: view === key ? C.infoTextHi : C.textMuted,
-          }}>
-            {label}
-            {badge > 0 && (
-              <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, background: C.info, color: "#fff", borderRadius: R.pill, padding: "0 5px", minWidth: 16, textAlign: "center" }}>{badge}</span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {view === "new" ? (
-        <NewApplication
-          userId={userId} dealerId={dealerId} leads={leads} listings={listings}
+      {applyFrom ? (
+        <ApplyFromCheck
+          check={applyFrom.check} lead={applyFrom.lead}
+          userId={userId} dealerId={dealerId}
+          onCancel={() => onApplyDone?.(null)}
+          onEditCheck={() => onOpenCheck?.(applyFrom.check, applyFrom.lead)}
           onCreated={(row) => {
             setApplications((p) => [row, ...p]);
             if (row.lead_id) onLeadSync?.(row.lead_id, leadPatchFor(row));
-            setView("list");
+            onApplyDone?.(row);
           }}
         />
-      ) : applications.length === 0 ? (
-        <div style={{ ...cardSx, textAlign: "center", padding: "36px 20px" }}>
-          <Banknote size={22} color={C.textDim} />
-          <p style={{ margin: "10px 0 4px", fontSize: T.size.base, color: C.textSec }}>No applications yet.</p>
-          <p style={{ margin: "0 0 14px", fontSize: T.size.sm, color: C.textDim }}>Start one and it stays here until the bank decides.</p>
-          <button onClick={() => setView("new")} style={{
-            padding: "9px 18px", borderRadius: R.md, background: C.accent, border: "none",
-            color: C.onAccent, fontSize: T.size.base, fontWeight: T.weight.bold, cursor: "pointer", fontFamily: "inherit",
-          }}>New application</button>
-        </div>
       ) : (
-        <div>
-          {open > 0 && (
-            <p style={{ margin: "0 0 12px", fontSize: T.size.sm, color: C.textMuted, display: "flex", alignItems: "center", gap: 7 }}>
-              <AlertCircle size={13} color={C.warnText} style={{ flexShrink: 0 }} />
-              {open} still waiting on a bank.
+        <>
+          {/* Step one, always: the loan check. Walk-in buyers start here; a
+              lead's check also opens from its card in Leads. */}
+          <div style={{ ...cardSx, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <p style={{ margin: 0, flex: "1 1 220px", fontSize: T.size.base, color: C.textSec, lineHeight: 1.5 }}>{lc.newCheckHint}</p>
+              <button data-tour-id="loan-new" onClick={() => onNewCheck?.()} style={{
+                display: "flex", alignItems: "center", gap: 6, minHeight: 40, padding: "0 16px", borderRadius: R.pill,
+                background: C.accent, border: "none", color: C.onAccent, fontSize: T.size.base, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit",
+              }}>
+                <Plus size={14} />{lc.newCheck}
+              </button>
+            </div>
+            {checks.slice(0, 5).map((ck) => {
+              const lead = ck.lead_id ? leads.find((l) => l.id === ck.lead_id) : null;
+              return (
+                <button key={ck.id} onClick={() => onOpenCheck?.(ck, lead)} style={{
+                  display: "flex", alignItems: "center", gap: 9, padding: "10px 12px", borderRadius: R.md,
+                  background: C.fill, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit",
+                }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: T.size.base, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[ck.buyer_name || lc.walkIn, ck.answers?.car_name].filter(Boolean).join(" · ")}
+                  </span>
+                  <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: OUTCOME_HUE[ck.outcome] || C.textSec, flexShrink: 0 }}>
+                    {ck.outcome === "fix" ? lc.pill.fix : lc.pill[ck.outcome]}
+                  </span>
+                  <ChevronRight size={14} color={C.textMuted} style={{ flexShrink: 0 }} />
+                </button>
+              );
+            })}
+          </div>
+
+          <p data-tour-id="loan-list" style={{ margin: "6px 0 10px", fontSize: T.size.xs, fontWeight: T.weight.semibold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, display: "flex", alignItems: "center", gap: 8 }}>
+            Applications{applications.length > 0 ? ` · ${applications.length}` : ""}
+            {open > 0 && <span style={{ textTransform: "none", letterSpacing: 0, fontWeight: T.weight.normal, color: C.textSec }}>· {open} waiting on a bank</span>}
+          </p>
+          {applications.length === 0 ? (
+            <p style={{ ...cardSx, margin: 0, fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
+              No applications yet. Open a loan check and tap &ldquo;{lc.apply}&rdquo; when the file is ready.
             </p>
-          )}
-          {applications.map((a) => (
+          ) : applications.map((a) => (
             <ApplicationCard key={a.id} app={a} onLeadSync={onLeadSync}
               onChange={(next) => setApplications((p) => p.map((x) => (x.id === next.id ? next : x)))} />
           ))}
-        </div>
+        </>
       )}
     </div>
   );

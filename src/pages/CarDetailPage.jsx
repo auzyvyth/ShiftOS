@@ -50,6 +50,8 @@ import { getChassisCode } from "../utils/chassisCodes";
 import { maskVin } from "../utils/maskVin";
 import DamageMap from "../components/DamageMap";
 import NewCarListingInfo, { useNewCarInfo, useNewCarVariant, VariantChips } from "../components/newcar/NewCarListingInfo";
+import { newModelPath } from "../utils/newCars";
+import { SITE_URL } from "../config/site";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import { supabase } from "../supabaseClient";
 import FinancingCalculator from "../components/FinancingCalculator";
@@ -2078,7 +2080,10 @@ export default function CarDetailPage() {
             <meta key="tt" name="twitter:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />,
             <meta key="td" name="twitter:description" content={desc} />,
             <meta key="ti" name="twitter:image" content={img} />,
-            car ? <link key="c" rel="canonical" href={url} /> : null,
+            // A new-car model card is one of many near-identical cards for the
+            // model (one per advisor): its canonical is the model page, which
+            // lists them all, so that page ranks and the cards don't compete.
+            car ? <link key="c" rel="canonical" href={car.is_model_card ? `${SITE_URL}${newModelPath(car.brand, car.model)}` : url} /> : null,
             // Start the hero photo fetch from the document head instead of
             // waiting for React to mount and render the <img>.
             heroPreload

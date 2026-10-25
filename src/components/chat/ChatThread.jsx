@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { premiumDark as P } from '../../theme/tokens';
 import { Check, CheckCheck, Send, AlertCircle, Eye, ShieldAlert, Sparkles, X, Lock, Car } from 'lucide-react';
 import { useChatThread, tickState } from '../../hooks/useChat';
 import PushPromptStrip from './PushPromptStrip';
@@ -23,18 +24,42 @@ import { AI_FEATURES_ENABLED } from '../../utils/aiFeatureFlag';
 // `panel.bg`/`panel.surface`) rather than an independent navy, so a bubble
 // sitting inside SalesmanLite/Premium reads as one surface, not a component
 // that brought its own background color.
+// What every palette shared before `premium` existed, kept as explicit values
+// so light + dark render exactly as they did.
+const LEGACY = {
+  font: 'system-ui,sans-serif', glow: true,
+  mineBorder: '1px solid rgba(255,255,255,0.18)', theirsBorder: '1px solid rgba(220,38,38,0.22)',
+  aiBg: 'rgba(124,58,237,0.07)', aiLine: 'rgba(124,58,237,0.20)', aiBtnLine: 'rgba(124,58,237,0.30)', aiText: '#8b5cf6',
+  warnBg: 'rgba(217,119,6,0.10)', warnIcon: '#d97706', ok: '#16a34a',
+};
+
 export const THEMES = {
   light: {
     bg: '#fff', panel: '#f9fafb', border: '#e5e7eb', text: '#111827',
     sub: '#6b7280', mine: '#dc2626', mineText: '#fff',
     theirs: '#f3f4f6', theirsText: '#111827', inputBg: '#fff',
     shadow: '0 2px 6px rgba(15,23,42,0.08)',
+    ...LEGACY,
   },
   dark: {
     bg: '#080a12', panel: '#0d1117', border: 'rgba(255,255,255,0.07)', text: '#f1f5f9',
     sub: '#94a3b8', mine: '#dc2626', mineText: '#fff',
     theirs: 'rgba(255,255,255,0.06)', theirsText: '#f1f5f9', inputBg: 'rgba(255,255,255,0.04)',
     shadow: '0 3px 10px rgba(0,0,0,0.45)',
+    ...LEGACY,
+  },
+  // Salesman Premium's `premiumDark` (SIMPLE-2, 2026-10-25): depth by tone, no
+  // outlines, no red glow round the bubbles, red only for fills (my bubble,
+  // Send), mint the only green, and the AI bar / privacy note go neutral
+  // instead of purple / amber. Lite keeps `dark`.
+  premium: {
+    bg: P.canvas, panel: P.card, border: P.line, text: P.text,
+    sub: P.textSec, mine: P.accent, mineText: P.onAccent,
+    theirs: P.raised, theirsText: P.text, inputBg: P.raised,
+    shadow: 'none', font: 'inherit', glow: false,
+    mineBorder: 'none', theirsBorder: 'none',
+    aiBg: P.raised, aiLine: 'transparent', aiBtnLine: 'rgba(255,255,255,0.12)', aiText: P.text,
+    warnBg: P.raised, warnIcon: P.textSec, ok: P.up, sheet: P.card,
   },
 };
 
@@ -98,7 +123,7 @@ function Bubble({ msg, mine, t, role }) {
   // fully occluded that layer and left it with no visible glow at all — the
   // "sender bubble doesn't match" bug. A box-shadow paints outside the box, so
   // it reads the same regardless of the bubble's own fill opacity.
-  const glowShadow = mine
+  const glowShadow = !t.glow ? null : mine
     ? '8px 0 20px -5px rgba(220,38,38,0.55)'
     : '-8px 0 20px -5px rgba(220,38,38,0.45)';
 
@@ -113,12 +138,12 @@ function Bubble({ msg, mine, t, role }) {
         <div style={{
           background: mine ? t.mine : t.theirs,
           color: mine ? t.mineText : t.theirsText,
-          border: mine ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(220,38,38,0.22)',
+          border: mine ? t.mineBorder : t.theirsBorder,
           borderRadius: mine ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
           padding:'9px 13px', fontSize:14, lineHeight:1.55,
           wordBreak:'break-word', whiteSpace:'pre-wrap',
           opacity: msg.pending ? 0.65 : 1,
-          boxShadow: `${t.shadow}, ${glowShadow}`,
+          boxShadow: glowShadow ? `${t.shadow}, ${glowShadow}` : t.shadow,
         }}>
           {hidden
             ? <RedactedBody text={msg.body_ai} onReveal={() => setRevealed(true)} t={t} />
@@ -365,7 +390,7 @@ export default function ChatThread({
   return (
     // `bare` drops this component's own border + radius so it can sit flush
     // inside a container that already draws them (the buyer inbox card).
-    <div style={{ display:'flex', flexDirection:'column', height, background:t.bg, border: bare ? 'none' : `1px solid ${t.border}`, borderRadius: bare ? 0 : 14, overflow:'hidden', fontFamily:"system-ui,sans-serif" }}>
+    <div style={{ display:'flex', flexDirection:'column', height, background:t.bg, border: bare ? 'none' : `1px solid ${t.border}`, borderRadius: bare ? 0 : 14, overflow:'hidden', fontFamily:t.font }}>
       {headerName && (
         <div style={{ padding:'11px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10, ...centre }}>
@@ -382,8 +407,8 @@ export default function ChatThread({
       {headerBelow}
 
       {showPrivacyNote && (
-        <div style={{ display:'flex', gap:8, padding:'9px 14px', background:'rgba(217,119,6,0.10)', borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
-          <ShieldAlert size={14} style={{ color:'#d97706', flexShrink:0, marginTop:1 }} />
+        <div style={{ display:'flex', gap:8, padding:'9px 14px', background:t.warnBg, borderBottom:`1px solid ${t.border}`, flexShrink:0 }}>
+          <ShieldAlert size={14} style={{ color:t.warnIcon, flexShrink:0, marginTop:1 }} />
           <p style={{ margin:0, fontSize:11.5, lineHeight:1.5, color:t.text }}>
             Keep IC numbers, bank details and copies of documents out of this chat.
             Phone numbers are hidden by default and only shown when the other person taps.
@@ -419,7 +444,7 @@ export default function ChatThread({
             Draft replies and ask about a buyer with AI on Premium.
           </p>
           <a href={upgradeHref}
-            style={{ display:'inline-flex', alignItems:'center', gap:5, flexShrink:0, padding:'6px 12px', borderRadius:8, background:'#dc2626', color:'#fff', fontSize:11.5, fontWeight:700, textDecoration:'none', fontFamily:"system-ui,sans-serif" }}>
+            style={{ display:'inline-flex', alignItems:'center', gap:5, flexShrink:0, padding:'6px 12px', borderRadius:8, background:'#dc2626', color:'#fff', fontSize:11.5, fontWeight:700, textDecoration:'none', fontFamily:t.font }}>
             <Sparkles size={12} /> Upgrade
           </a>
         </div>
@@ -440,7 +465,7 @@ export default function ChatThread({
       {AI_FEATURES_ENABLED && aiAssist && (
         <div style={{ borderTop:`1px solid ${t.border}`, background:t.panel, padding:'9px 10px', flexShrink:0 }}>
           {aiAnswer && (
-            <div style={{ display:'flex', gap:8, background:'rgba(124,58,237,0.07)', border:'1px solid rgba(124,58,237,0.20)', borderRadius:9, padding:'10px 12px', marginBottom:8 }}>
+            <div style={{ display:'flex', gap:8, background:t.aiBg, border:`1px solid ${t.aiLine}`, borderRadius:9, padding:'10px 12px', marginBottom:8 }}>
               <p style={{ margin:0, flex:1, fontSize:12.5, lineHeight:1.6, color:t.text, whiteSpace:'pre-wrap' }}>{aiAnswer}</p>
               <button onClick={() => setAiAnswer(null)} aria-label="Dismiss"
                 style={{ background:'none', border:'none', color:t.sub, cursor:'pointer', padding:0, height:'fit-content' }}>
@@ -450,13 +475,13 @@ export default function ChatThread({
           )}
           <div style={{ display:'flex', gap:7, alignItems:'center', flexWrap:'wrap' }}>
             <button onClick={() => callAssist('suggest')} disabled={aiLoading}
-              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 11px', borderRadius:8, border:'1px solid rgba(124,58,237,0.30)', background:'transparent', color:'#8b5cf6', fontSize:11.5, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:"system-ui,sans-serif", whiteSpace:'nowrap' }}>
+              style={{ display:'flex', alignItems:'center', gap:5, padding:'7px 11px', borderRadius:8, border:`1px solid ${t.aiBtnLine}`, background:'transparent', color:t.aiText, fontSize:11.5, fontWeight:600, cursor: aiLoading ? 'wait' : 'pointer', fontFamily:t.font, whiteSpace:'nowrap' }}>
               <Sparkles size={12} /> {aiLoading ? 'Thinking…' : 'Draft a reply'}
             </button>
             <input value={askText} onChange={e => setAskText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && askText.trim()) { e.preventDefault(); callAssist('ask', askText); } }}
               placeholder="Ask the AI about this buyer…" aria-label="Ask the AI about this conversation"
-              style={{ flex:'1 1 160px', minWidth:0, boxSizing:'border-box', padding:'7px 11px', borderRadius:8, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:11.5, fontFamily:"system-ui,sans-serif", outline:'none' }} />
+              style={{ flex:'1 1 160px', minWidth:0, boxSizing:'border-box', padding:'7px 11px', borderRadius:8, border:`1px solid ${t.border}`, background:t.inputBg, color:t.text, fontSize:11.5, fontFamily:t.font, outline:'none' }} />
           </div>
           <p style={{ margin:'7px 2px 0', fontSize:10.5, color:t.sub, lineHeight:1.5 }}>
             The AI reads this chat with phone numbers and IC numbers already stripped out. Drafts are yours to edit and send.
@@ -516,7 +541,7 @@ export default function ChatThread({
         <textarea ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} placeholder="Type a message"
           onFocus={focusComposer} onBlur={() => setKbFocused(false)} onKeyDown={onComposerKeyDown}
           rows={1} maxLength={4000} aria-label="Message"
-          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, lineHeight:1.4, fontFamily:"system-ui,sans-serif", outline:'none', resize:'none', display:'block' }} />
+          style={{ flex:1, minWidth:0, boxSizing:'border-box', padding:'9px 0', border:'none', background:'transparent', color:t.text, fontSize:14, lineHeight:1.4, fontFamily:t.font, outline:'none', resize:'none', display:'block' }} />
         {/* Keeps focus in the input: without this the tap blurs it, the bar
             unpins out from under the finger before the click lands, and the
             keyboard shuts between every message. */}

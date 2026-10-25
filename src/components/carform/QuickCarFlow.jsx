@@ -15,7 +15,7 @@ import QuickSteps, { Tile, Custom, BigNumber, fmtNum } from "./QuickSteps";
 
 const ALL_BRANDS = Object.keys(CAR_DATA).sort();
 
-export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unlockSpecs, onExitBack, onDone, renderExtras }) {
+export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unlockSpecs, onExitBack, onDone, renderExtras, dark }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   // ── Variant suggestions: what other sellers called this model's trims ─────
@@ -312,6 +312,7 @@ export default function QuickCarFlow({ form, setForm, specLock, specsLocked, unl
 
   return (
     <QuickSteps
+      dark={dark}
       setForm={setForm}
       screens={screens}
       summaryRows={summaryRows}

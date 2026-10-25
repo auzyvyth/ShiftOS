@@ -232,5 +232,6 @@ change them; each is applied on its own.
 | Why does Google show a generic page? | `api/og.js` |
 | Why does / or /showroom paint cars before the app loads? | `api/shell.js` + `src/utils/serverSeed.js` |
 | Loan / instalment numbers | `src/utils/financing.js` (the only formula) |
+| What to fix before a loan goes to a bank (Premium) | `loan_checks` (one row per lead), `src/utils/loanReadiness.js`, `src/components/loans/LoanCheck.jsx` |
 | What a buyer can see about a seller | `get_salesman_by_slug`, `sellerWaUrl` (`src/utils/sellerWhatsApp.js`) |
 | Plans and caps | `plan_config`, `enforce_listing_cap`, `src/utils/planConfig.js` |

@@ -146,7 +146,7 @@ function BillingTab({ dealers, salesmen, dealerStats }) {
       <div className="adm-stat4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 14 }}>
         <StatCard label="Est. MRR" value={`RM ${(dealerMrr + sellerMrr).toLocaleString()}`} color="#dc2626" sub={`Dealers RM ${dealerMrr.toLocaleString()} · Premium sellers RM ${sellerMrr.toLocaleString()}`} />
         <StatCard label="Paying dealers" value={d.paying} color="#4ade80" sub={`of ${rows.length} dealers`} />
-        <StatCard label="Paying Premium sellers" value={sl.paying} color="#4ade80" sub={`${sl.free} on free month · ${lite} on free Lite`} />
+        <StatCard label="Paying Premium sellers" value={sl.paying} color="#4ade80" sub={`${sl.free} on free trial · ${lite} on free Lite`} />
         <StatCard label="Owed / lapsed" value={d.owed + sl.owed} color="#f87171" sub="trial ended, lapsed, or never paid" />
       </div>
 
@@ -1042,8 +1042,8 @@ export default function AdminPage() {
               Two tabs on one device count once; nothing here names anyone. */}
           <HealthStat label="Sellers" value={online ? online.sellers : "…"} sub="in their dashboard" />
           <HealthStat label="Live now" value={online ? online.live : "…"} sub="Live presentation open" />
-          <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in" />
-          <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub="not signed in" />
+          <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in or chatting as a guest" />
+          <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub={online?.team ? `not signed in · ${online.team} of yours not counted` : "not signed in"} />
         </div>
 
         {/* Names of who is live (get_live_sellers, superadmin-only). The release

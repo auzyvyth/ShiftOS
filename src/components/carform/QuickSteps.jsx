@@ -71,7 +71,9 @@ export function BigNumber({ inputRef, value, onChange, prefix, suffix, placehold
   );
 }
 
-export default function QuickSteps({ setForm, screens, summaryRows, landOnSummary, contextLine, onExitBack, onDone }) {
+// dark: Salesman Premium's premiumDark sheet (the rest follows .pd-form,
+// src/pages/salesmanPremium/premiumForm.css); only the inline footer needs it.
+export default function QuickSteps({ setForm, screens, summaryRows, landOnSummary, contextLine, onExitBack, onDone, dark }) {
   const live = screens.filter((s) => !s.skip);
   const byKey = (k) => screens.find((s) => s.key === k);
   const gaps = live.filter((s) => s.required && !s.answered);
@@ -237,8 +239,8 @@ export default function QuickSteps({ setForm, screens, summaryRows, landOnSummar
       </div>
 
       <div
-        className="sticky bottom-0 z-20 mt-6 -mx-1 px-1 pt-3 flex items-center gap-3 bg-white border-t border-gray-100"
-        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))", boxShadow: "0 24px 0 0 #fff" }}
+        className={`sticky bottom-0 z-20 mt-6 -mx-1 px-1 pt-3 flex items-center gap-3 border-t ${dark ? "" : "bg-white border-gray-100"}`}
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))", boxShadow: `0 24px 0 0 ${dark ? "#181b21" : "#fff"}`, ...(dark ? { background: "#181b21", borderColor: "rgba(255,255,255,0.06)" } : {}) }}
       >
         <button
           type="button"
