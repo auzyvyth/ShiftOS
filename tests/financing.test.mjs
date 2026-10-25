@@ -30,7 +30,7 @@ const oldFlat = Math.round((100000 * 0.9 * (1 + 0.035 * 7)) / 84); // 1334
 const nowEst = calcMonthly(100000);
 is('default is an EIR', DEFAULT_EIR, 6.5);
 is('estimate within 1% of the old flat figure', Math.abs(nowEst - oldFlat) / oldFlat < 0.01, true);
-is('no estimate above the threshold', calcMonthly(HIGH_VALUE_THRESHOLD + 1), null);
+is('high-value cars get an estimate too', calcMonthly(HIGH_VALUE_THRESHOLD + 1) > 0, true);
 is('no estimate without a price', calcMonthly(0), null);
 
 // Schedule: interest falls, principal rises, balance reaches zero, sums match.

@@ -24,7 +24,7 @@ const pay = pageBudget(cars, { mode: 'pay', amount: 4000, depositPct: 0.1, nowYe
 is('take-home pay uses the 35% rule', pay.maxMonthly, 1400);
 
 is('no budget, nothing listed', pageBudget(cars, { amount: '' }).fits, []);
-is('cars over RM300k left out', pageBudget([proton('Big', 400000)], { amount: 99999 }).fits, []);
+is('cars over RM300k count too', pageBudget([proton('Big', 400000)], { amount: 99999 }).fits.length, 1);
 
 const old = { id: 'o', year: 2013, brand: 'Honda', model: 'City', condition: 'used', selling_price: 30000 };
 const o = pageBudget([old], { amount: 2000, depositPct: 0, nowYear: 2026 });

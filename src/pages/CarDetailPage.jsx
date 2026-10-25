@@ -69,7 +69,7 @@ import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { apiUrl } from "../utils/apiUrl";
 import { sellerWaUrl, hasWhatsApp, hasPhone } from "../utils/sellerWhatsApp";
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
-import { calcMonthly, HIGH_VALUE_THRESHOLD } from "../utils/financing";
+import { calcMonthly } from "../utils/financing";
 import { estimateRoadTax } from "../utils/roadTax";
 import SellerFeedback from "../components/feedback/SellerFeedback";
 import BuyerChat from "../components/chat/BuyerChat";
@@ -2510,8 +2510,6 @@ export default function CarDetailPage() {
               <span style={{ fontSize:13, color: th.textSec }}>
                 ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
               </span>
-            ) : shownPrice > HIGH_VALUE_THRESHOLD ? (
-              <span style={{ fontSize:12, color: th.textSec }}>Financing available on request</span>
             ) : null}
             {!isOwnListing && (
               <AffordabilityCheck
@@ -4163,8 +4161,6 @@ export default function CarDetailPage() {
                   <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>
                     ~<span style={{ color: th.text, fontWeight: 600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
                   </p>
-                ) : shownPrice > HIGH_VALUE_THRESHOLD ? (
-                  <p style={{ fontSize: 13, color: th.textSec, margin: 0 }}>Financing available on request</p>
                 ) : null}
                 {/* The calculator sits ON the monthly figure it explains. It was
                     a grey text link under the Contact button, below the fold on

@@ -7,7 +7,7 @@
 // on their device (Live), which a buyer's browser cannot read. New Proton and
 // Perodua at 4.8% EIR, every other car at DEFAULT_EIR, reducing balance.
 import { budgetMatches, maxMonthlyFromPay, tenuresFor, isLocalNew, LOCAL_NEW_EIR, SALARY_SHARE, carLabel } from './liveMaths.js';
-import { DEFAULT_EIR, RATE_BASIS, HIGH_VALUE_THRESHOLD } from './financing.js';
+import { DEFAULT_EIR, RATE_BASIS } from './financing.js';
 
 export const PAGE_TENURES = [5, 7, 9];
 export const PAGE_DEPOSITS = [0, 0.1, 0.2];
@@ -18,8 +18,8 @@ export const salaryPct = Math.round(SALARY_SHARE * 100);
 export const pageRate = (car) => (isLocalNew(car) ? LOCAL_NEW_EIR : DEFAULT_EIR);
 
 // cars: the page's `listings` array; #N = position in it, the same number the
-// cards and the live use. Cars above RM300k are left out: their card already
-// says "financing on request" (calcMonthly), and the page must not disagree.
+// cards and the live use. Every priced car counts, whatever its price (owner,
+// 2026-10-25: calcMonthly has no cap, so the page has none either).
 export function pageBudget(cars, { mode = 'monthly', amount, depositPct = 0.1, nowYear } = {}) {
   const maxMonthly = mode === 'pay' ? maxMonthlyFromPay(amount) : Math.floor(Number(amount) || 0);
   if (!maxMonthly || maxMonthly <= 0) return { maxMonthly: null, fits: [], above: [] };
@@ -27,7 +27,7 @@ export function pageBudget(cars, { mode = 'monthly', amount, depositPct = 0.1, n
     .map((c, i) => ({ ...c, _n: i + 1 }))
     .filter((c) => {
       const p = Number(c.selling_price) || 0;
-      return p > 0 && p <= HIGH_VALUE_THRESHOLD;
+      return p > 0;
     });
   const { fits, above } = budgetMatches(priced, {
     maxMonthly,

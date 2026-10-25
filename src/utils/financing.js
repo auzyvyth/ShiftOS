@@ -21,8 +21,9 @@ export const DEFAULT_TENURE_YEARS = 7;
 // Hire Purchase Act caps consumer vehicle loans at 9 years.
 export const MAX_TENURE_YEARS = 9;
 // Above this, banks underwrite case-by-case (lower margin, shorter tenure,
-// sometimes full settlement), so a formula estimate is not a real estimate —
-// callers get null and show a "financing on request" message instead.
+// sometimes full settlement). Every car still gets an estimate (owner,
+// 2026-10-25: no cap on the maths); this only switches on the "banks decide
+// case by case" notes in the presenter, the loan poster and post copy.
 export const HIGH_VALUE_THRESHOLD = 300000;
 
 // Indicative bank rates as EIR, for the Loan Desk / loan form comparison. These
@@ -125,10 +126,9 @@ export function flatToEir(flatPct, months) {
 }
 
 // The one-line estimate shown next to a price across the marketplace and CRM:
-// 90% loan, 7 years, DEFAULT_EIR. Rounded RM, or null when there is no honest
-// estimate (missing price, or above HIGH_VALUE_THRESHOLD).
+// 90% loan, 7 years, DEFAULT_EIR. Rounded RM, or null without a price. No
+// upper limit (owner, 2026-10-25): a RM800k car gets a monthly like any other.
 export const calcMonthly = (price) => {
   if (!price || price <= 0) return null;
-  if (price > HIGH_VALUE_THRESHOLD) return null;
   return Math.round(monthlyPayment(price * DEFAULT_LOAN_RATIO, DEFAULT_EIR, DEFAULT_TENURE_YEARS * 12));
 };
