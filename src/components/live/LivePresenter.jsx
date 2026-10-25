@@ -1368,6 +1368,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
         /* Top bar + nav: ink for what is picked, never the accent. */
         .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
+        .lp-brand { flex: 1 1 auto; min-width: 0; text-align: center; font-size: 17px; font-weight: 800; letter-spacing: .04em; color: #0f1115; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+        .lp:not(.lp-desk) .lp-brand { display: none; }
         .lp-top > .lp-seg button { flex: 1 1 auto; padding: 0 8px; font-size: 13px; }
         .lp-top > .lp-seg button[aria-pressed="true"] { background: #0f1115; color: #fff; box-shadow: none; }
         .lp-tools { display: flex; gap: 8px; flex-shrink: 0; }
@@ -1428,6 +1430,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <button type="button" aria-pressed={mode === 'docs'} onClick={() => setMode('docs')}>{t.docs}</button>
           </div>
         )}
+        {/* The site's name in the empty middle of the bar (owner, 2026-10-26). Plain text, never
+            a link, URL or QR code (TikTok LIVE rules). Desktop stage only: on a phone the bar is already full.
+            Rename with everything else on the Drevo switch day (BRAND-1). */}
+        <span className="lp-brand" aria-hidden="true">XDrive</span>
         <div className="lp-tools">
           {/* Shows the language on screen now; tap to switch. */}
           <button className="lp-iconbtn lp-lang" onClick={toggleLang} aria-label={t.langLabel}>
