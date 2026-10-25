@@ -65,9 +65,9 @@ import { SITE_URL } from '../../config/site';
 // can be typed FLAT, the way brochures quote it, and is converted to EIR per
 // tenure (liveMaths.eirForTenure).
 //
-// Cars above HIGH_VALUE_THRESHOLD get the table HERE ONLY (owner's call,
-// 2026-10-03: a seller on a live is asked about them too), labelled as a rough
-// guide. calcMonthly and the mini page card still say "financing on request".
+// Cars above HIGH_VALUE_THRESHOLD get the table like any other, labelled as a
+// rough guide (banks decide case by case). Since 2026-10-25 the cards and
+// calcMonthly estimate them too.
 //
 // The breakdown beside the photo is the WORKING: the trust a viewer got from
 // watching the seller punch it into a calculator.
