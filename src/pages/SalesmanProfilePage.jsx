@@ -10,7 +10,7 @@ import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
-import { agentPageTitle, agentPageDescription, agentShareImage } from '../utils/agentSeo';
+import { agentPageTitle, agentPageDescription, agentShareImage, agentCardVersion } from '../utils/agentSeo';
 import { SITE_URL } from '../config/site';
 import { useAgentTrust } from '../hooks/useAgentTrust';
 import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
@@ -213,9 +213,13 @@ export default function SalesmanProfilePage() {
   // Share: the phone's own share sheet (WhatsApp, Telegram...), which posts the
   // link and lets the app fetch the preview (cover + face, api/agent-card.js).
   // No share sheet (most desktops): copy the link instead.
+  // src=share: visits from it count as "Shared link" on the Premium dashboard.
+  // v: changes when the preview card does, so WhatsApp fetches the new card
+  // instead of the copy it saved for the old link.
   const [shareCopied, setShareCopied] = useState(false);
   const sharePage = async () => {
-    const url = `${SITE_URL}/s/${encodeURIComponent(profile?.slug || slug)}`;
+    const url = `${SITE_URL}/s/${encodeURIComponent(profile?.slug || slug)}?src=share&v=${agentCardVersion(profile)}`;
+    trackEvent(supabase, 'share', { salesman_slug: profile?.slug || slug, metadata: { source: 'minipage' } });
     if (navigator.share) {
       try { await navigator.share({ title: profile?.full_name || undefined, url }); } catch { /* closed the sheet */ }
       return;

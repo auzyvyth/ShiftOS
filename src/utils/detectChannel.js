@@ -88,8 +88,18 @@ export const CHANNEL_META = {
   xiaohongshu: { label: "RED (Xiaohongshu)", color: "#FF2442" },
   google:      { label: "Google",      color: "#4285F4" },
   copy:        { label: "Copied link", color: "#6b7280" },
+  share:       { label: "Shared link", color: "#a78bfa" },
   direct:      { label: "Direct",      color: "#94a3b8" },
 };
 
 export const channelMeta = (key) =>
   CHANNEL_META[key] || { label: key ? key[0].toUpperCase() + key.slice(1) : "Direct", color: "#94a3b8" };
+
+// Channels that only arrive when someone passed the link to someone else: the
+// mini page's Share button (?src=share), a copied link, WhatsApp, Telegram.
+// Facebook / Instagram / TikTok are left out: most of those visits come from a
+// bio link or a post, not a share.
+export const SHARE_CHANNELS = ["share", "copy", "whatsapp", "telegram"];
+export const shareVisits = (byChannel) =>
+  (byChannel || []).filter((r) => SHARE_CHANNELS.includes(r.channel))
+    .reduce((s, r) => s + (Number(r.visits) || 0), 0);
