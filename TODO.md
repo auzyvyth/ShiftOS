@@ -2561,6 +2561,17 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 - [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
   WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
 
+## SIMPLE-2 — Show every Premium tab again; make what is INSIDE each tab simpler (owner, 2026-10-25)
+Owner: SIMPLE-1 (2026-10-21) hid nav links from new Premium sellers until they "earned" them
+(Inbox, Sold, Analytics, Loans, Outreach). "That's not what I meant by make it simple, it's the
+tabs that need to be simpler." Next session:
+- [ ] Undo the hiding: every Premium seller sees every tab from day one (`navTabs`,
+  SalesmanPremium.jsx; the per-tab intros' "wait for real data" checks can stay).
+  Decide with the owner whether Lite's grown menu (SIMPLE-1 too) goes back the same way.
+- [ ] Then simplify the CONTENTS, one tab per session: fewer cards, one primary action,
+  the rest behind ···. Start by asking the owner which tab confuses new sellers most.
+- [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
+
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
 v1 BUILT, Premium only (owner): `src/components/loans/LoanCheck.jsx`, rules
 `src/utils/loanReadiness.js` (`npm run test:loancheck`), copy `loanCheckCopy.js`. Entry: lead

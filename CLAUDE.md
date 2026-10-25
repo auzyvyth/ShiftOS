@@ -2033,7 +2033,7 @@ enquiries. Both were granted to `anon`.
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).
-**The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
+**OWNER REJECTED THIS (2026-10-25, TODO SIMPLE-2): show every tab again; simplify what is inside the tabs instead.** **The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
 Leads, Settings always; Inbox once a booking/enquiry exists, Sold after the first sale,
 Analytics once there is a car, Loans + Outreach once there is a lead. The tab you are on
 keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
