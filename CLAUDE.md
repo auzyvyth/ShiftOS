@@ -1509,6 +1509,14 @@ price (owner, 2026-10-25: no cap, same as the card). A tap opens WhatsApp via `/
 budget in the text (tracked as `whatsapp_click`, `metadata.source = 'budget_finder'`). Never word
 a fit as approval; the fine print always says the bank decides.
 
+## Agent page Share + link preview (SHARE-1, 2026-10-25)
+The Share button on `/s/:slug` (`sharePage`, SalesmanProfilePage.jsx) opens the phone's share
+sheet (copies the link on desktop). The preview WhatsApp/Facebook show is `api/agent-card.js`:
+cover + profile photo merged by `sharp`, 1200x630 JPEG; a thin banner cover (most are ~4:1) sits
+on top over a blurred copy, never zoomed to fill (that cut the brand name off). og.js and the SPA
+take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose `v=` changes with either
+photo so a new photo is a new URL. The endpoint takes a SLUG only, never an image URL.
+
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
 `npm run test:agenttrust`). Every signal is a fact we hold, not a claim the agent makes.

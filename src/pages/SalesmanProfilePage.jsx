@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, User, X, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
 import { withTimeout } from '../config/marketplaceConfig';
@@ -10,7 +10,8 @@ import ReviewsSection from '../components/reviews/ReviewsSection';
 import { routeForProfile, isSellerRole, ROUTE_PROFILE_COLUMNS } from '../hooks/useRoleRedirect';
 import { trackEvent } from '../utils/analytics';
 import { captureRef } from '../utils/refTracking';
-import { agentPageTitle, agentPageDescription } from '../utils/agentSeo';
+import { agentPageTitle, agentPageDescription, agentShareImage } from '../utils/agentSeo';
+import { SITE_URL } from '../config/site';
 import { useAgentTrust } from '../hooks/useAgentTrust';
 import { replyTimeLabel, docsCheckedLine, termsLines, soldMonthLabel } from '../utils/agentTrust';
 import ReportListingButton from '../components/ReportListingButton';
@@ -208,6 +209,22 @@ export default function SalesmanProfilePage() {
     if ((window.history.state?.idx ?? 0) > 0) navigate(-1);
     else if (viewerHome?.seller) navigate(viewerHome.to);
     else navigate('/');
+  };
+  // Share: the phone's own share sheet (WhatsApp, Telegram...), which posts the
+  // link and lets the app fetch the preview (cover + face, api/agent-card.js).
+  // No share sheet (most desktops): copy the link instead.
+  const [shareCopied, setShareCopied] = useState(false);
+  const sharePage = async () => {
+    const url = `${SITE_URL}/s/${encodeURIComponent(profile?.slug || slug)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: profile?.full_name || undefined, url }); } catch { /* closed the sheet */ }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch { window.prompt('Copy this link', url); }
   };
   // A repeat visit paints from the device copy at once and refreshes behind it.
   const [seed] = useState(() => readAgentCache(slug));
@@ -641,8 +658,8 @@ export default function SalesmanProfilePage() {
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={metaDescription} />
         {/* The wide cover makes the better link preview; avatar as fallback. */}
-        {(profile.cover_url || profile.avatar_url) && (
-          <meta property="og:image" content={profile.cover_url || profile.avatar_url} />
+        {agentShareImage(profile, SITE_URL) && (
+          <meta property="og:image" content={agentShareImage(profile, SITE_URL)} />
         )}
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
@@ -659,6 +676,7 @@ export default function SalesmanProfilePage() {
            icons inside the owner buttons and blew them up across the cover. */
         .ap-cover > svg.ap-waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 70%; }
         .ap-back { position: absolute; top: 12px; left: 12px; z-index: 2; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.94); color: #0f1115; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.16); }
+        .ap-share { position: absolute; top: 12px; left: 56px; z-index: 2; height: 36px; padding: 0 12px; border-radius: 18px; border: none; background: rgba(255,255,255,.94); color: #0f1115; display: flex; align-items: center; gap: 6px; font: 600 13px/1 var(--xd-font-body); cursor: pointer; box-shadow: 0 1px 3px rgba(15,23,42,.16); }
         .ap-owner { position: absolute; top: 12px; right: 12px; z-index: 2; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
         .ap-card { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.05); border: 1px solid rgba(0,0,0,.06); }
         .ap-id { padding: 20px; margin-top: -44px; position: relative; }
@@ -805,6 +823,9 @@ export default function SalesmanProfilePage() {
               </svg>
             )}
             <button className="ap-back" onClick={goBack} aria-label="Back"><ArrowLeft size={18} /></button>
+            <button className="ap-share" onClick={sharePage} aria-label="Share this page">
+              {shareCopied ? <><Check size={16} /> Link copied</> : <><Share2 size={16} /> Share</>}
+            </button>
             {/* Logged-in visitor's way home; the owner also gets Live presentation. */}
             {viewerHome && (
               <div className="ap-owner">
