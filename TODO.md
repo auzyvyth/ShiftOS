@@ -2597,6 +2597,15 @@ tabs that need to be simpler." Next session:
     scripts; a future reminder reads "Follow up Mon, 26 Oct" (was "-86393s ago"). Not yet: Add
     lead / WhatsApp / Link car / Log call / reminder pop-ups. Open: the price script's monthly is
     flat-rate maths (`price * 0.9 * 1.245 / 84`), breaks HP-EIR; should use `calcMonthly`.
+  - [x] Inbox (2026-10-25, staging): Bookings (list, week calendar, detail sheet) + Lead history in
+    premiumDark. Owner asked: Lead history duplicates Leads (0 of the last 60 days' enquiries lacked a
+    lead) but keep both. Removed: the "Bookings (N)" / "Lead history (N)" titles (the switch names
+    them), the calendar's "This week" counts card (header + Needs your OK already count), the
+    Pending/Confirmed pill under a heading that says it, the four colour dots on templates, the
+    never-visible "Sent" template toast. Week | List moved onto the switch's row; booking cards
+    grid on desktop. Still open: the blue top-bar "Add Lead" (shared chrome, every tab) and the
+    sidebar are `panel`; Confirm-on-WhatsApp pop-up (`openConfirmBookingModal`) not restyled.
+    Next: the lead-panel pop-ups, then Sold.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 

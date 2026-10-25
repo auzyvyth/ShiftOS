@@ -273,7 +273,36 @@ export const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
 
 // Two tabs now host a pair of sibling views (Inbox: bookings / lead history,
 // Listings: cars / add-ons). One switcher, so they cannot drift apart.
-export function SubTabs({ value, onChange, items }) {
+// `premium` = the premiumDark look (SIMPLE-2): a tone pill, no blue. Tabs not
+// yet moved to premiumDark (Sold, Analytics) keep the old look until their turn.
+export function SubTabs({ value, onChange, items, premium = false }) {
+ if (premium) {
+  return (
+   <div style={{ display: "inline-flex", gap: 2, padding: 3, marginBottom: 16, background: PD.card, borderRadius: PD.radius.pill, maxWidth: "100%", overflowX: "auto" }}>
+    {items.map(({ key, label, badge, tourId }) => (
+     <button
+      key={key}
+      data-tour-id={tourId}
+      onClick={() => onChange(key)}
+      aria-pressed={value === key}
+      style={{
+       fontSize: 13, fontWeight: 600, padding: "7px 16px", borderRadius: PD.radius.pill, cursor: "pointer", border: "none",
+       background: value === key ? PD.hover : "transparent",
+       color: value === key ? PD.text : PD.textSec,
+       display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", whiteSpace: "nowrap",
+      }}
+     >
+      {label}
+      {badge > 0 && (
+       <span style={{ fontSize: 10, fontWeight: 700, background: PD.accent, color: PD.onAccent, borderRadius: 99, padding: "1px 6px", minWidth: 16, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
+        {badge}
+       </span>
+      )}
+     </button>
+    ))}
+   </div>
+  );
+ }
  return (
  <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
  {items.map(({ key, label, badge, tourId }) => (

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { panel as C, panelType as T } from "../../theme/tokens";
+import { premiumDark as PD, panelType as T } from "../../theme/tokens";
 
 // Premium Bookings, week view. The seller's side of the calendar buyers
 // already book through (BookingCalendar.jsx, get_booking_slots): same hours
@@ -16,24 +16,25 @@ import { panel as C, panelType as T } from "../../theme/tokens";
 // detail sheet on its reschedule step.
 //
 // Status is the block's whole fill + border + a dot, never a coloured side bar
-// (anti-slop rule). Colours were chosen FOR the dark panel, measured, not
-// borrowed from the light dashboard: a dark block on a dark grid (1.09:1) and
-// a 45%-opacity "done" block were unreadable. See PALETTE below; every name
-// and car line clears 5:1 against its fill, most 8-12:1. Open hours are
-// lighter than closed hours, so "where buyers can book" reads at a glance.
+// (anti-slop rule). premiumDark (SIMPLE-2, 2026-10-25): it is a Premium-only
+// view, so it uses the Premium palette. Confirmed = the one green (mint),
+// "needs your OK" = a dashed neutral block with a red dot (red = waiting on
+// you), done = a quiet grey. The amber it used to have is gone (no amber in
+// premiumDark). Every name and car line clears 5:1 against its fill. Open hours
+// are lighter than closed hours, so "where buyers can book" reads at a glance.
 // Cancelled bookings are left off the grid; the List view still has them.
 
 const HOUR_PX = 56;
 // Dark-surface palette for this view. Solid hexes (not alpha) so the contrast
 // is the same on every monitor; ratios measured against each fill.
 const PALETTE = {
-  open: "#111722",       // bookable hours: one step lighter than the card
-  closed: "#090c12",     // outside hours: one step darker, hatched
-  hourLine: "rgba(255,255,255,.07)",
-  todayTint: "rgba(220,38,38,.06)",
-  ok:   { fill: "#133524", border: "#2f8f5b", name: "#ecfdf5", sub: "#9fd8b5", dot: "#4ade80" }, // 12.8 / 8.3:1
-  wait: { fill: "#3a2a0a", border: "#d4a02a", name: "#fef3c7", sub: "#e9c46a", dot: "#fbbf24" }, // 12.4 / 8.3:1
-  done: { fill: "#1a202a", border: "#2c3644", name: "#a8b3c4", sub: "#8391a5", dot: "#8391a5" }, //  7.7 / 5.1:1
+  open: "#16191f",       // bookable hours: one step lighter than the card
+  closed: "#0b0c10",     // outside hours: one step darker, hatched
+  hourLine: "rgba(255,255,255,.06)",
+  todayTint: "rgba(220,38,38,.05)",
+  ok:   { fill: "#12281f", border: "#2b6e52", name: "#ecfdf5", sub: "#a7dcc4", dot: PD.up },        // 14.5 / 9.6:1
+  wait: { fill: PD.hover,  border: "#6b7280", name: PD.text,   sub: PD.textSec, dot: PD.accentText }, // 13.9 / 6.6:1
+  done: { fill: PD.raised, border: "#262a31", name: "#a3a9b5", sub: "#848b98", dot: "#848b98" },     //  7.4 / 5.0:1
 };
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 // When a seller has set no hours, buyers get an open Mon-Sun 9am-6pm grid
@@ -131,11 +132,6 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
   const pending = (appointments || [])
     .filter((a) => a.status === "pending" && a.appointment_date)
     .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
-  const counts = all.reduce((c, b) => {
-    const k = (STATUS[b.apt.status] || STATUS.confirmed).key;
-    c[k] = (c[k] || 0) + 1;
-    return c;
-  }, {});
 
   const go = (n) => {
     setWeekStart((w) => addDays(w, 7 * n));
@@ -288,14 +284,6 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
             {pending.length > 6 && <p className="bwc-muted">{pending.length - 6} more in the List view.</p>}
           </div>
           <div className="bwc-card bwc-pad">
-            <p className="bwc-eb">This week</p>
-            <div className="bwc-stats">
-              <div><b>{counts.ok || 0}</b><span>confirmed</span></div>
-              <div><b>{counts.wait || 0}</b><span>to confirm</span></div>
-              <div><b>{counts.done || 0}</b><span>done</span></div>
-            </div>
-          </div>
-          <div className="bwc-card bwc-pad">
             <p className="bwc-eb bwc-row">Your booking hours <button type="button" className="bwc-link" onClick={onEditHours}>Edit</button></p>
             <p className="bwc-what">{hours ? hoursText(rule) : "Not set yet. Buyers can pick any day, 9 AM – 6 PM."}</p>
             <p className="bwc-muted">{rule.slot_minutes || 60} min per booking</p>
@@ -307,38 +295,38 @@ export default function BookingWeekCalendar({ appointments, hours, nowTick, onOp
 }
 
 const CSS = `
-  .bwc { --hour: ${HOUR_PX}px; color: ${C.text}; }
+  .bwc { --hour: ${HOUR_PX}px; color: ${PD.text}; }
   .bwc *, .bwc *::before, .bwc *::after { box-sizing: border-box; }
   .bwc button { font-family: inherit; }
   .bwc-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; align-items: start; }
-  .bwc-card { background: ${C.surface}; border: 1px solid ${C.border}; border-radius: 14px; min-width: 0; }
+  .bwc-card { background: ${PD.card}; border-radius: ${PD.radius.card}px; min-width: 0; overflow: hidden; }
   .bwc-pad { padding: 12px 14px; }
-  .bwc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid ${C.border}; flex-wrap: wrap; }
+  .bwc-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid ${PD.line}; flex-wrap: wrap; }
   .bwc-head h2 { margin: 0; font-size: ${T.size.lg}px; font-weight: 700; }
-  .bwc-sub { margin: 2px 0 0; font-size: ${T.size.sm}px; color: ${C.textMuted}; font-variant-numeric: tabular-nums; }
+  .bwc-sub { margin: 2px 0 0; font-size: ${T.size.sm}px; color: ${PD.textMuted}; font-variant-numeric: tabular-nums; }
   .bwc-ctrls { display: flex; gap: 6px; }
-  .bwc-btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid ${C.borderStrong}; background: transparent; color: ${C.text}; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .bwc-btn { height: 32px; padding: 0 14px; border-radius: ${PD.radius.pill}px; border: none; background: ${PD.raised}; color: ${PD.text}; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
   .bwc-icon { width: 32px; padding: 0; }
-  .bwc-btn:hover { background: ${C.fill}; }
+  .bwc-btn:hover { background: ${PD.hover}; }
 
-  .bwc-days { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid ${C.border}; }
+  .bwc-days { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); border-bottom: 1px solid ${PD.line}; }
   .bwc-day { padding: 8px 2px; text-align: center; }
-  .bwc-dn { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: ${C.textMuted}; }
+  .bwc-dn { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: ${PD.textMuted}; }
   .bwc-dd { display: inline-block; margin-top: 4px; width: 30px; height: 30px; line-height: 30px; border-radius: 50%; font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .bwc-today .bwc-dd { background: ${C.accent}; color: #fff; }
-  .bwc-dc { font-size: 10px; color: ${C.textSec}; margin-top: 2px; min-height: 13px; }
-  .bwc-closed .bwc-dd { color: ${C.textDim}; }
+  .bwc-today .bwc-dd { background: ${PD.accent}; color: #fff; }
+  .bwc-dc { font-size: 10px; color: ${PD.textSec}; margin-top: 2px; min-height: 13px; }
+  .bwc-closed .bwc-dd { color: ${PD.textMuted}; opacity: .6; }
   .bwc-today.bwc-closed .bwc-dd { color: #fff; }
-  .bwc-dayempty { margin: 0; padding: 10px 14px; font-size: 12px; color: ${C.textSec}; border-bottom: 1px solid ${C.border}; }
+  .bwc-dayempty { margin: 0; padding: 10px 14px; font-size: 12px; color: ${PD.textSec}; border-bottom: 1px solid ${PD.line}; }
   .bwc-body { display: grid; grid-template-columns: 52px repeat(7, minmax(0, 1fr)); position: relative; }
   .bwc-mbody { grid-template-columns: 48px minmax(0, 1fr); }
   .bwc-times { position: relative; }
-  .bwc-times div { position: absolute; right: 8px; transform: translateY(-6px); font-size: 10px; font-weight: 600; color: ${C.textSec}; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .bwc-times div { position: absolute; right: 8px; transform: translateY(-6px); font-size: 10px; font-weight: 600; color: ${PD.textSec}; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .bwc-col { position: relative; border-left: 1px solid ${PALETTE.hourLine}; background-color: ${PALETTE.open}; background-image: linear-gradient(${PALETTE.hourLine} 1px, transparent 1px); background-size: 100% var(--hour); }
   .bwc-col.bwc-col-today { background-image: linear-gradient(${PALETTE.hourLine} 1px, transparent 1px), linear-gradient(${PALETTE.todayTint}, ${PALETTE.todayTint}); background-size: 100% var(--hour), 100% 100%; }
   .bwc-off { position: absolute; left: 0; right: 0; background-color: ${PALETTE.closed}; background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.045) 0 2px, transparent 2px 9px); pointer-events: none; }
-  .bwc-now { position: absolute; left: -1px; right: 0; height: 2px; background: ${C.accent}; z-index: 3; pointer-events: none; }
-  .bwc-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: ${C.accent}; }
+  .bwc-now { position: absolute; left: -1px; right: 0; height: 2px; background: ${PD.accent}; z-index: 3; pointer-events: none; }
+  .bwc-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: ${PD.accent}; }
 
   .bwc-bk { position: absolute; z-index: 2; border-radius: 8px; padding: 5px 7px; overflow: hidden; cursor: pointer; text-align: left; border: 1px solid; box-shadow: 0 1px 0 rgba(0,0,0,.35); transition: filter .12s; }
   .bwc-bk b { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -353,9 +341,9 @@ const CSS = `
   .bwc-done { background: ${PALETTE.done.fill}; border-color: ${PALETTE.done.border}; color: ${PALETTE.done.name}; }
   .bwc-done span { color: ${PALETTE.done.sub}; } .bwc-done i { background: ${PALETTE.done.dot}; }
 
-  .bwc-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid ${C.border}; font-size: 11px; color: ${C.textSec}; }
+  .bwc-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid ${PD.line}; font-size: 11px; color: ${PD.textSec}; }
   .bwc-legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .bwc-legend i { width: 16px; height: 11px; border-radius: 3px; display: inline-block; border: 1px solid; }
+  .bwc-legend i { width: 16px; height: 11px; border-radius: 3px; display: inline-block; border: 1px solid transparent; }
   .bwc-legend .bwc-dot-ok { background: ${PALETTE.ok.fill}; border-color: ${PALETTE.ok.border}; }
   .bwc-legend .bwc-dot-wait { background: ${PALETTE.wait.fill}; border-color: ${PALETTE.wait.border}; border-style: dashed; }
   .bwc-legend .bwc-dot-done { background: ${PALETTE.done.fill}; border-color: ${PALETTE.done.border}; }
@@ -363,33 +351,30 @@ const CSS = `
   .bwc-dots .bwc-dot-ok { background: ${PALETTE.ok.dot}; }
   .bwc-dots .bwc-dot-wait { background: ${PALETTE.wait.dot}; }
   .bwc-dots .bwc-dot-done { background: ${PALETTE.done.dot}; }
-  .bwc-empty { margin: 0; padding: 12px 14px; font-size: 12px; color: ${C.textSec}; border-top: 1px solid ${C.border}; }
+  .bwc-empty { margin: 0; padding: 12px 14px; font-size: 12px; color: ${PD.textSec}; border-top: 1px solid ${PD.line}; }
 
   .bwc-rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .bwc-eb { margin: 0 0 8px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: ${C.textMuted}; }
+  .bwc-eb { margin: 0 0 8px; font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: ${PD.textMuted}; }
   .bwc-row { display: flex; align-items: center; justify-content: space-between; }
-  .bwc-link { background: none; border: none; padding: 0; color: ${C.textSec}; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
-  .bwc-muted { margin: 6px 0 0; font-size: 12px; color: ${C.textMuted}; line-height: 1.5; }
-  .bwc-req { padding: 10px 0; border-top: 1px solid ${C.line}; }
+  .bwc-link { background: none; border: none; padding: 0; color: ${PD.textSec}; font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
+  .bwc-muted { margin: 6px 0 0; font-size: 12px; color: ${PD.textMuted}; line-height: 1.5; }
+  .bwc-req { padding: 10px 0; border-top: 1px solid ${PD.line}; }
   .bwc-eb + .bwc-req { border-top: none; padding-top: 2px; }
   .bwc-who { font-size: 13px; font-weight: 600; }
-  .bwc-what { margin: 2px 0 0; font-size: 12px; color: ${C.textSec}; line-height: 1.5; }
-  .bwc-when { margin-top: 4px; font-size: 12px; font-weight: 600; color: ${PALETTE.wait.dot}; font-variant-numeric: tabular-nums; }
-  .bwc-passed { color: ${C.textMuted}; }
+  .bwc-what { margin: 2px 0 0; font-size: 12px; color: ${PD.textSec}; line-height: 1.5; }
+  .bwc-when { margin-top: 4px; font-size: 12px; font-weight: 600; color: ${PD.text}; font-variant-numeric: tabular-nums; }
+  .bwc-passed { color: ${PD.accentText}; }
   .bwc-acts { display: flex; gap: 6px; margin-top: 8px; }
-  .bwc-primary { flex: 1; height: 32px; border: none; border-radius: 8px; background: ${C.accent}; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
-  .bwc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-  .bwc-stats b { display: block; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .bwc-stats span { font-size: 11px; color: ${C.textMuted}; }
+  .bwc-primary { flex: 1; height: 32px; border: none; border-radius: ${PD.radius.pill}px; background: ${PD.accent}; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
 
   .bwc-mob { display: none; }
-  .bwc-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 10px; border-bottom: 1px solid ${C.border}; }
-  .bwc-strip button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: none; border-radius: 10px; background: transparent; color: ${C.text}; cursor: pointer; }
+  .bwc-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; padding: 10px; border-bottom: 1px solid ${PD.line}; }
+  .bwc-strip button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; border: none; border-radius: 10px; background: transparent; color: ${PD.text}; cursor: pointer; }
   .bwc-strip .bwc-dd { margin: 0; width: auto; height: auto; line-height: 1.2; font-size: 15px; background: none; }
-  .bwc-strip .bwc-today .bwc-dd { color: ${C.dangerText}; }
-  .bwc-strip button.bwc-on { background: ${C.accent}; }
+  .bwc-strip .bwc-today .bwc-dd { color: ${PD.accentText}; }
+  .bwc-strip button.bwc-on { background: ${PD.hover}; }
   .bwc-strip button.bwc-on .bwc-dn, .bwc-strip button.bwc-on .bwc-dd { color: #fff; }
-  .bwc-strip button.bwc-on .bwc-dots i { box-shadow: 0 0 0 1.5px #fff; }
+  .bwc-strip button.bwc-on .bwc-dots i { box-shadow: none; }
   .bwc-dots { display: flex; gap: 3px; height: 6px; }
   .bwc-dots i { width: 5px; height: 5px; border-radius: 50%; }
   .bwc-mbody .bwc-bk { padding: 7px 10px; }
