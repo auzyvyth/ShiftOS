@@ -6,7 +6,8 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Flame, TrendingUp, Snowflake } from "lucide-react";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, withAlpha, premiumDark as PD } from "../../theme/tokens";
+import "./premiumForm.css";
 import { HIGH_VALUE_THRESHOLD } from "../../utils/financing";
 import i18n from "../../i18n/config";
 import { useModalHistory } from '../../hooks/useModalHistory';
@@ -74,18 +75,20 @@ export function ListingFormModal({ open, onClose, title, subtitle, isMobile, chi
  return createPortal(
  <div
  className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
- style={{ background: "rgba(0,0,0,0.82)" }}
+ style={{ background: "rgba(0,0,0,0.78)" }}
  >
+ {/* premiumDark sheet (SIMPLE-2). The form inside follows .pd-form
+     (premiumForm.css); CarForm stays white everywhere else. */}
  <div
  style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.1)",
- borderRadius: isMobile ? "16px 16px 0 0" : 16,
+ background: PD.card,
+ borderRadius: isMobile ? `${PD.radius.card}px ${PD.radius.card}px 0 0` : PD.radius.card,
  width: "100%",
  maxWidth: 672,
  maxHeight: "92vh",
  display: "flex",
  flexDirection: "column",
+ boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
  }}
  >
  <div
@@ -95,25 +98,25 @@ export function ListingFormModal({ open, onClose, title, subtitle, isMobile, chi
  justifyContent: "space-between",
  gap: 12,
  padding: "16px 20px",
- borderBottom: "1px solid rgba(255,255,255,0.07)",
+ borderBottom: `1px solid ${PD.line}`,
  flexShrink: 0,
  }}
  >
  <div style={{ minWidth: 0 }}>
- <p style={{ margin: 0, fontWeight: 600, color: "#f1f5f9", fontSize: 15 }}>{title}</p>
+ <p style={{ margin: 0, fontWeight: 700, color: PD.text, fontSize: 16 }}>{title}</p>
  {subtitle && (
- <p style={{ margin: "2px 0 0", fontSize: 12, color: "#6b7280" }}>{subtitle}</p>
+ <p style={{ margin: "2px 0 0", fontSize: 12.5, color: PD.textMuted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{subtitle}</p>
  )}
  </div>
  <button
  onClick={onClose}
  aria-label={tp("common.close")}
- style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280", padding: 4, display: "flex", flexShrink: 0 }}
+ style={{ width: 36, height: 36, borderRadius: PD.radius.pill, background: PD.raised, border: "none", cursor: "pointer", color: PD.textSec, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
  >
- <X size={20} />
+ <X size={18} />
  </button>
  </div>
- <div style={{ overflowY: "auto", flex: 1, padding: 20 }}>{children}</div>
+ <div className="pd-form" style={{ overflowY: "auto", flex: 1, padding: 20 }}>{children}</div>
  </div>
  </div>,
  document.body,

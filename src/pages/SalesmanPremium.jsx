@@ -162,7 +162,7 @@ const WARM_TABS = [
 const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
-import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha } from "../theme/tokens";
+import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
 // Static, unlike SellerInbox/ChatSheet above: this is a one-line strip that has
 // to render on first paint, and it pulls no chat code with it.
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
@@ -7473,6 +7473,9 @@ export default function SalesmanPremium() {
  isMobile={isMobile}
  setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
  setCarDetailLbOpen={setCarDetailLbOpen} setSelectedCar={setSelectedCar}
+ theme="premium"
+ // premiumDark: Edit is the one red fill, the rest are neutral rows (they
+ // were blue / grey / green / purple / orange, five accents in one column).
  actions={[
  {
  // Edit existed on the listing CARD (ListingsTab.jsx:596) and nowhere in
@@ -7484,41 +7487,31 @@ export default function SalesmanPremium() {
  // never be open at once (overlay rule 3).
  key: "edit",
  label: (<><Pencil size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.edit")}</>),
- color: C.infoText,
- bg: "rgba(59,130,246,0.08)",
- border: "rgba(59,130,246,0.25)",
+ color: PD.onAccent, bg: PD.accent, border: PD.accent,
  onClick: () => { const car = selectedCar; setSelectedCar(null); setEditListing(car); },
  },
  {
  key: "link",
  label: (<><Copy size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.copyLink")}</>),
- color: listingCopied[selectedCar.id] === "link" ? "#4ade80" : "#9ca3af",
- bg: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
- border: listingCopied[selectedCar.id] === "link" ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.08)",
+ color: listingCopied[selectedCar.id] === "link" ? PD.up : PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => handleListingCopy(selectedCar, "link"),
  },
  {
  key: "wa",
  label: (<><MessageSquare size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.waCaption")}</>),
- color: "#4ade80",
- bg: "rgba(37,211,102,0.06)",
- border: "rgba(37,211,102,0.2)",
+ color: listingCopied[selectedCar.id] === "wa" ? PD.up : PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => handleListingCopy(selectedCar, "wa"),
  },
  {
  key: "ai",
  label: (<><Sparkles size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.aiCaption")}{AI_FEATURES_ENABLED ? "" : ` ${t("salesmanPremium.carActions.soon")}`}</>),
- color: "#c084fc",
- bg: "rgba(168,85,247,0.08)",
- border: "rgba(168,85,247,0.25)",
+ color: PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => { if (AI_FEATURES_ENABLED) generateAiCaptions(selectedCar); setAiCaptionCar(selectedCar); setSelectedCar(null); },
  },
  {
  key: "broadcast",
  label: (<><Bell size={13} style={{ flexShrink: 0 }} />{t("salesmanPremium.carActions.broadcast")}</>),
- color: "#fb923c",
- bg: "rgba(249,115,22,0.08)",
- border: "rgba(249,115,22,0.25)",
+ color: PD.text, bg: PD.raised, border: PD.raised,
  onClick: () => { openBroadcast(selectedCar); setSelectedCar(null); },
  },
  ]}
@@ -8214,7 +8207,7 @@ export default function SalesmanPremium() {
  )}
  {posterCar && (
  <Suspense fallback={null}>
- <LoanPosterSheet car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
+ <LoanPosterSheet theme="premium" car={posterCar} seller={profile} onClose={() => setPosterCar(null)}
  onDownloaded={() => { if (tourMode === "poster") dismissTour(); }}
  bottomInset={tourMode === "poster" ? TOUR_BAR_H + 40 : 0} />
  </Suspense>

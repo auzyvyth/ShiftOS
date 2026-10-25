@@ -167,7 +167,14 @@ Project ID: lemdkdizdlcirhbzqlos
   canvas, rows #181b21), no borders on cards, Drevo red for fills only, mint `up` (red's
   complement, desaturated) as the only green; no blue/purple/amber. Adopted one tab at a time:
   Dashboard (`salesmanPremium/DashboardTab.jsx`) + `crm/ThisWeek.jsx`, then Listings
-  (`salesmanPremium/ListingsTab.jsx`, `VerifyBadgePrompt theme="premium"`) so far. The rest of
+  (`salesmanPremium/ListingsTab.jsx`, `VerifyBadgePrompt theme="premium"`) and its pop-ups:
+  `CarDetailPopup theme="premium"`, `LoanPosterSheet theme="premium"` (Lite and the linked
+  panel pass nothing and keep `panel`), and the add/edit sheet `ListingFormModal`. CarForm is
+  shared with the LIGHT dealer dashboard, so it is themed by `.pd-form`
+  (`salesmanPremium/premiumForm.css`, remaps its Tailwind colour classes, only inside that
+  sheet) plus its `dark` prop (only Premium passes it) for the inline step dots, sticky
+  footers (CarForm + QuickSteps via QuickCarFlow) and `DamageMap theme`. A new colour class
+  in CarForm needs a line in premiumForm.css or it shows light in Premium. The rest of
   Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
   dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
   only views total), "visits from shared links" sits under Share in Your page, no platform

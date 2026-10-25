@@ -642,7 +642,7 @@ export default function CarForm(props) {
   return <UsedCarForm {...props} />;
 }
 
-function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade }) {
+function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intakeDone, onUpgrade, dark }) {
   const { profile } = useProfile();
   const dealerId = getDealerIdFromProfile(profile);
   // VIN decode is a Premium-salesman convenience only. It's gated off for
@@ -663,6 +663,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // edits keep the classic layout — fixing one field should not mean walking
   // ten screens.
   const quickMode = !listing || !!intakeDone;
+  // Step dots + sticky footer colours. `dark` is passed only by Salesman Premium,
+  // whose sheet is premiumDark (the rest of the form follows its .pd-form
+  // stylesheet, src/pages/salesmanPremium/premiumForm.css).
+  const sd = dark
+    ? { dot: "#1f232a", dotLine: "rgba(255,255,255,0.14)", faint: "#848b98", done: "#a3a9b5", current: "#f87171", track: "rgba(255,255,255,0.10)" }
+    : { dot: "#fff", dotLine: "#d1d5db", faint: "#9ca3af", done: "#374151", current: "#dc2626", track: "#e5e7eb" };
 
   // In create mode, pre-fill state/city (and any other defaults) from the caller.
   // In edit mode, initialListing is unused — the pre-fill effect below populates from `listing`.
@@ -2337,6 +2343,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 <DamageMap
                   value={form.damageMap}
                   onChange={(v) => set("damageMap", v)}
+                  theme={dark ? "dark" : "light"}
                 />
               </div>
               <button
@@ -3085,6 +3092,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   const quickStage = (id, screens, summaryRows) => (
     <QuickSteps
       key={`quick-${id}`}
+      dark={dark}
       setForm={setForm}
       screens={screens}
       summaryRows={summaryRows}
@@ -3419,6 +3427,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       case 2: return quickMode ? (
         <QuickCarFlow
           key="quick-2"
+          dark={dark}
           form={form}
           setForm={setForm}
           specLock={specLock}
@@ -4086,7 +4095,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       {/* Step progress indicator — compact circle strip, optional Back button left */}
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 20 }}>
         {onBack && (
-          <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: "#6b7280", background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginBottom: 11 }}>
+          <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: sd.faint, background: "none", border: "none", cursor: "pointer", padding: 0, flexShrink: 0, marginBottom: 11 }}>
             <ChevronLeft className="w-4 h-4" /> Back
           </button>
         )}
@@ -4101,15 +4110,15 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                   style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", padding: 0, cursor: "pointer", flexShrink: 0 }}>
                   <div style={{
                     width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                    background: isCurrent ? "#dc2626" : complete ? "#dc2626" : "#fff",
-                    border: `2px solid ${isCurrent || complete ? "#dc2626" : "#d1d5db"}`,
+                    background: isCurrent ? "#dc2626" : complete ? "#dc2626" : sd.dot,
+                    border: `2px solid ${isCurrent || complete ? "#dc2626" : sd.dotLine}`,
                     boxShadow: isCurrent ? "0 0 0 3px rgba(220,38,38,0.15)" : "none",
                   }}>
-                    {complete && !isCurrent ? <Check className="w-3 h-3" style={{ color: "#fff" }} /> : <span style={{ fontSize: 9, fontWeight: 800, color: isCurrent ? "#fff" : "#9ca3af" }}>{s.id}</span>}
+                    {complete && !isCurrent ? <Check className="w-3 h-3" style={{ color: "#fff" }} /> : <span style={{ fontSize: 9, fontWeight: 800, color: isCurrent ? "#fff" : sd.faint }}>{s.id}</span>}
                   </div>
-                  <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap", color: isCurrent ? "#dc2626" : complete ? "#374151" : "#9ca3af" }}>{s.label}</span>
+                  <span style={{ fontSize: 9, fontWeight: 600, whiteSpace: "nowrap", color: isCurrent ? sd.current : complete ? sd.done : sd.faint }}>{s.label}</span>
                 </button>
-                {!isLast && <div style={{ flex: 1, height: 2, background: complete ? "#dc2626" : "#e5e7eb", margin: "0 3px 11px", minWidth: 6 }} />}
+                {!isLast && <div style={{ flex: 1, height: 2, background: complete ? "#dc2626" : sd.track, margin: "0 3px 11px", minWidth: 6 }} />}
               </React.Fragment>
             );
           })}
@@ -4187,11 +4196,11 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           instead of waiting below the fold. */}
       {!(quickMode && step >= 2 && step <= 5) && (
       <div
-        className="sticky bottom-0 z-20 mt-5 -mx-1 px-1 pt-3 flex items-center gap-3 bg-white border-t border-gray-100"
+        className={`sticky bottom-0 z-20 mt-5 -mx-1 px-1 pt-3 flex items-center gap-3 border-t ${dark ? "" : "bg-white border-gray-100"}`}
         // The shadow paints white below the bar: every modal host pads its
         // scroller (p-5), and sticky stops that far above the edge, so without
         // it a strip of form shows through under the buttons.
-        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))", boxShadow: "0 24px 0 0 #fff" }}
+        style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))", boxShadow: `0 24px 0 0 ${dark ? "#111318" : "#fff"}`, ...(dark ? { background: "#111318", borderColor: "rgba(255,255,255,0.06)" } : {}) }}
       >
         {step > 1 && (
           <button

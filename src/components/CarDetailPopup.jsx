@@ -9,13 +9,29 @@ import { DOC_TYPES } from "../utils/docTypes";
 import { DEFAULT_EIR } from "../utils/financing";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { calcMonthly } from "../utils/financing";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../theme/tokens";
+import { panel, panelType as T, panelRadius, premiumDark as P, withAlpha } from "../theme/tokens";
 
 // Shared by SalesmanLite and SalesmanPremium (both used to carry their own
 // near-identical ~900-line copy of this popup — see CLAUDE.md "one
 // implementation, shared"). Each caller supplies its own `actions` (Copy
 // Link / WA Caption / AI Caption / Broadcast etc.) since those differ by
 // plan; everything else — gallery, fields, tabs — is identical.
+//
+// theme="premium" (SIMPLE-2, 2026-10-25): Salesman Premium is moving to the
+// `premiumDark` palette, so its popup maps the same layout onto those tones:
+// depth by tone (no outlines), red only for fills, mint the only green, and
+// the rainbow chips (performance figures, document types, add-on categories,
+// the "save" badge) go neutral. Lite passes nothing and keeps `panel`.
+const PREMIUM_C = {
+  ...panel,
+  bg: P.canvas, surface: P.card, surfaceRaised: P.hover,
+  fillSubtle: P.raised, fill: P.raised, fillStrong: P.hover,
+  line: P.line, border: "transparent", borderStrong: "rgba(255,255,255,0.12)",
+  text: P.text, textSec: P.textSec, textMuted: P.textMuted, textDim: P.textMuted,
+  accent: P.accent, danger: P.accentText, dangerText: P.accentText,
+  warnText: P.textSec, successText: P.up, info: P.textSec, infoText: P.text, infoTextHi: P.text,
+};
+const PREMIUM_R = { ...panelRadius, sm: P.radius.row, md: P.radius.row, lg: P.radius.card };
 
 // A plain comma/newline split also cuts a thousands-separator number in half
 // — "28,595 km" typed into the features box became two tags, "28" and "595
@@ -40,16 +56,16 @@ const copyText = (text, label) => {
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : null);
 
-const Row = ({ k, v, valueColor }) => (
+const Row = ({ C, k, v, valueColor }) => (
   <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "9px 0", borderBottom: `1px solid ${C.line}` }}>
     <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{k}</span>
     <span style={{ fontSize: T.size.base, color: valueColor || C.textSec, textAlign: "right" }}>{v ?? "—"}</span>
   </div>
 );
 
-const Grid = ({ rows }) => (
+const Grid = ({ C, rows }) => (
   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", columnGap: 20 }}>
-    {rows.map(({ k, v, valueColor }) => <Row key={k} k={k} v={v} valueColor={valueColor} />)}
+    {rows.map(({ k, v, valueColor }) => <Row key={k} C={C} k={k} v={v} valueColor={valueColor} />)}
   </div>
 );
 
@@ -59,8 +75,13 @@ export default function CarDetailPopup({
   selectedCar, carStatsMap,
   carDetailImgIdx, carDetailTab, carDetailLbOpen, isMobile,
   setCarDetailImgIdx, setCarDetailTab, setCarDetailLbOpen, setSelectedCar,
-  actions = [],
+  actions = [], theme,
 }) {
+  const mono = theme === "premium";
+  const C = mono ? PREMIUM_C : panel;
+  const R = mono ? PREMIUM_R : panelRadius;
+  const font = mono ? "inherit" : "system-ui, sans-serif";
+  const pick = mono ? P.text : C.accent; // selected thumb + tab: ink on premium, red fills only
   // Back closes the photo viewer first, then the car (before the early return:
   // hooks must run on every render).
   useModalHistory(!!selectedCar, () => setSelectedCar(null));
@@ -122,7 +143,7 @@ export default function CarDetailPopup({
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          style={{ position: "relative", margin: isMobile ? 0 : "24px auto", maxWidth: isMobile ? "100vw" : 1000, width: isMobile ? "100vw" : "calc(100vw - 48px)", height: isMobile ? "100dvh" : undefined, maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)", background: C.surface, border: `1px solid ${C.border}`, borderRadius: isMobile ? 0 : R.lg, overflow: "hidden", display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}
+          style={{ position: "relative", margin: isMobile ? 0 : "24px auto", maxWidth: isMobile ? "100vw" : 1000, width: isMobile ? "100vw" : "calc(100vw - 48px)", height: isMobile ? "100dvh" : undefined, maxHeight: isMobile ? "100dvh" : "calc(100vh - 48px)", background: C.surface, border: `1px solid ${C.border}`, borderRadius: isMobile ? 0 : R.lg, overflow: "hidden", display: "flex", flexDirection: "column", fontFamily: font }}
         >
           <button
             onClick={close}
@@ -141,7 +162,7 @@ export default function CarDetailPopup({
                       <div
                         key={i}
                         onClick={() => setCarDetailImgIdx(i)}
-                        style={{ width: 60, height: 44, borderRadius: 4, cursor: "pointer", flexShrink: 0, background: C.bg, border: i === carDetailImgIdx ? `1px solid ${C.accent}` : `1px solid ${C.border}`, overflow: "hidden", opacity: i === carDetailImgIdx ? 1 : 0.45 }}
+                        style={{ width: 60, height: 44, borderRadius: 4, cursor: "pointer", flexShrink: 0, background: C.bg, border: i === carDetailImgIdx ? `1px solid ${pick}` : `1px solid ${C.border}`, overflow: "hidden", opacity: i === carDetailImgIdx ? 1 : 0.45 }}
                       >
                         <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
                       </div>
@@ -210,7 +231,7 @@ export default function CarDetailPopup({
 
               {/* Price */}
               <div style={{ marginTop: 14 }}>
-                <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: T.size.hero, color: C.text, margin: 0, lineHeight: 1 }}>
+                <p style={mono ? { fontSize: 28, fontWeight: 700, letterSpacing: "-0.01em", fontVariantNumeric: "tabular-nums", color: C.text, margin: 0, lineHeight: 1.1 } : { fontFamily: "'Bebas Neue', sans-serif", fontSize: T.size.hero, color: C.text, margin: 0, lineHeight: 1 }}>
                   {sp ? `RM ${sp.toLocaleString("en-MY")}` : "—"}
                 </p>
                 {saving > 0 && (
@@ -249,7 +270,7 @@ export default function CarDetailPopup({
                   <button
                     key={tab}
                     onClick={() => setCarDetailTab(tab)}
-                    style={{ padding: "8px 14px", fontSize: T.size.sm, whiteSpace: "nowrap", color: carDetailTab === tab ? C.text : C.textMuted, background: "none", border: "none", borderBottom: carDetailTab === tab ? `2px solid ${C.accent}` : "2px solid transparent", cursor: "pointer", fontFamily: "system-ui, sans-serif" }}
+                    style={{ padding: "8px 14px", fontSize: T.size.sm, whiteSpace: "nowrap", color: carDetailTab === tab ? C.text : C.textMuted, background: "none", border: "none", borderBottom: carDetailTab === tab ? `2px solid ${pick}` : "2px solid transparent", cursor: "pointer", fontFamily: font }}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
@@ -257,7 +278,7 @@ export default function CarDetailPopup({
               </div>
 
               {carDetailTab === "specs" && (
-                <Grid rows={[
+                <Grid C={C} rows={[
                   { k: "Year", v: car.year || "—" },
                   { k: "Condition", v: car.condition || "—" },
                   { k: "Body Type", v: car.body_type || "—" },
@@ -270,7 +291,7 @@ export default function CarDetailPopup({
               )}
 
               {carDetailTab === "mechanical" && (
-                <Grid rows={[
+                <Grid C={C} rows={[
                   { k: "Horsepower", v: car.horsepower ? `${car.horsepower} hp` : "—" },
                   { k: "Cylinders", v: car.cylinders ? `${car.cylinders} cyl` : "—" },
                   { k: "Doors", v: car.doors || "—" },
@@ -281,7 +302,7 @@ export default function CarDetailPopup({
 
               {carDetailTab === "paperwork" && (
                 <div>
-                  <Grid rows={[
+                  <Grid C={C} rows={[
                     { k: "VIN", v: car.vin_number || "—" },
                     { k: "Plate Number", v: car.plate_number || "—" },
                     { k: "Registration Date", v: fmtDate(car.registration_date) || "—" },
@@ -295,7 +316,7 @@ export default function CarDetailPopup({
                   ]} />
 
                   <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, fontWeight: T.weight.semibold, margin: "18px 0 4px" }}>Recon / Import</p>
-                  <Grid rows={[
+                  <Grid C={C} rows={[
                     { k: "Unit Type", v: car.is_recon === true ? "Recon (Imported)" : car.is_recon === false ? "Local Unit" : "—" },
                     { k: "Auction Grade", v: car.auction_grade || "—" },
                     { k: "Interior Grade", v: car.interior_grade || "—" },
@@ -312,7 +333,7 @@ export default function CarDetailPopup({
                       docs.map((d, i) => {
                         const cfg = DOC_TYPES.find((t) => t.key === d.type) || DOC_TYPES[DOC_TYPES.length - 1];
                         return (
-                          <span key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.size.sm, color: cfg.color, background: withAlpha(cfg.color, 0.1), border: `1px solid ${withAlpha(cfg.color, 0.25)}`, borderRadius: R.sm, padding: "4px 10px" }}>
+                          <span key={i} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.size.sm, color: mono ? C.textSec : cfg.color, background: mono ? C.fill : withAlpha(cfg.color, 0.1), border: `1px solid ${mono ? "transparent" : withAlpha(cfg.color, 0.25)}`, borderRadius: R.sm, padding: "4px 10px" }}>
                             <FileText size={11} /> {cfg.label}
                           </span>
                         );
@@ -358,9 +379,9 @@ export default function CarDetailPopup({
                       const cfg = getCategoryCfg(svc.category);
                       const CatIcon = cfg.icon;
                       return (
-                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: withAlpha(cfg.color, 0.07), border: `1px solid ${withAlpha(cfg.color, 0.2)}`, borderRadius: R.sm, padding: "6px 12px" }}>
-                          <CatIcon size={12} style={{ color: cfg.color, flexShrink: 0 }} />
-                          <span style={{ fontSize: T.size.sm, color: cfg.color, fontWeight: T.weight.semibold }}>{svc.name}</span>
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: mono ? C.fill : withAlpha(cfg.color, 0.07), border: `1px solid ${mono ? "transparent" : withAlpha(cfg.color, 0.2)}`, borderRadius: R.sm, padding: "6px 12px" }}>
+                          <CatIcon size={12} style={{ color: mono ? C.textSec : cfg.color, flexShrink: 0 }} />
+                          <span style={{ fontSize: T.size.sm, color: mono ? C.text : cfg.color, fontWeight: T.weight.semibold }}>{svc.name}</span>
                         </div>
                       );
                     })}
@@ -387,7 +408,7 @@ export default function CarDetailPopup({
                 <button
                   key={key}
                   onClick={onClick}
-                  style={{ width: "100%", minWidth: 0, background: bg, border: `1px solid ${border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: T.size.sm, fontWeight: T.weight.medium, color, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 2, fontFamily: "system-ui, sans-serif" }}
+                  style={{ width: "100%", minWidth: 0, background: bg, border: `1px solid ${border}`, borderRadius: R.sm, padding: "10px 12px", fontSize: T.size.sm, fontWeight: T.weight.medium, color, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 2, fontFamily: font }}
                 >
                   {label}
                 </button>
@@ -397,9 +418,9 @@ export default function CarDetailPopup({
               <div style={{ marginTop: 8, background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: 12 }}>
                 <p style={{ fontSize: T.size.xs, color: C.textMuted, letterSpacing: T.track.label, textTransform: "uppercase", margin: "0 0 8px" }}>Performance</p>
                 {[
-                  { label: "Views", val: views, color: C.infoText },
-                  { label: "Enquiries", val: enqs, color: C.warnText },
-                  { label: "CVR", val: cvr !== null ? `${cvr}%` : "—", color: C.successText },
+                  { label: "Views", val: views, color: mono ? C.text : C.infoText },
+                  { label: "Enquiries", val: enqs, color: mono ? C.text : C.warnText },
+                  { label: "CVR", val: cvr !== null ? `${cvr}%` : "—", color: mono ? C.text : C.successText },
                 ].map(({ label, val, color }) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                     <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{label}</span>

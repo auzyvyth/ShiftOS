@@ -1,0 +1,57 @@
+/* Premium's car form in the `premiumDark` palette (SIMPLE-2, 2026-10-25).
+   CarForm is shared with Lite, the dealer dashboard (LIGHT) and the manager
+   panel, all of which keep their white form. Only ListingFormModal wraps it in
+   .pd-form, so these rules reach nothing else. They remap the Tailwind colour
+   classes CarForm draws with; the step dots and the sticky footer, which are
+   inline styles, follow CarForm's `dark` prop instead.
+   Layers: sheet #111318 (card) > step card #181b21 (raised) > inputs #1f232a.
+   Selected chips are ink (white on dark), like the Listings pills: red stays
+   for fills (Continue, Save), mint is the only green, no blue or amber. */
+.pd-form .bg-white { background-color: #181b21 !important; }
+.pd-form .bg-gray-50, .pd-form .bg-gray-100, .pd-form .bg-blue-50, .pd-form .bg-blue-100,
+.pd-form .bg-amber-50, .pd-form .bg-amber-100, .pd-form .bg-gray-900,
+.pd-form .hover\:bg-gray-50:hover, .pd-form .hover\:bg-gray-100:hover,
+.pd-form .hover\:bg-blue-50:hover { background-color: #1f232a !important; }
+.pd-form .bg-gray-200, .pd-form .bg-gray-300, .pd-form .hover\:bg-gray-200:hover { background-color: rgba(255,255,255,0.10) !important; }
+.pd-form .bg-blue-500\/5, .pd-form .bg-blue-500\/15 { background-color: rgba(255,255,255,0.04) !important; }
+
+.pd-form input, .pd-form select, .pd-form textarea {
+  background-color: #1f232a !important; color: #f2f4f7 !important; color-scheme: dark;
+}
+.pd-form input::placeholder, .pd-form textarea::placeholder { color: #848b98 !important; }
+
+.pd-form .text-gray-900, .pd-form .text-gray-800, .pd-form .hover\:text-gray-900:hover { color: #f2f4f7 !important; }
+.pd-form .text-gray-700, .pd-form .text-gray-600, .pd-form .hover\:text-gray-700:hover,
+.pd-form .hover\:text-gray-600:hover { color: #a3a9b5 !important; }
+.pd-form .text-gray-500, .pd-form .text-gray-400 { color: #848b98 !important; }
+
+.pd-form .border-gray-100, .pd-form .border-gray-200, .pd-form .border-gray-300,
+.pd-form .border-gray-400\/40, .pd-form .border-blue-200, .pd-form .border-blue-500\/15,
+.pd-form .border-amber-200, .pd-form .border-amber-400,
+.pd-form .divide-gray-100 > * + * { border-color: rgba(255,255,255,0.08) !important; }
+.pd-form .hover\:border-gray-300:hover, .pd-form .hover\:border-gray-400:hover,
+.pd-form .hover\:border-blue-400:hover, .pd-form .focus\:border-blue-500:focus,
+.pd-form .border-blue-500 { border-color: rgba(255,255,255,0.30) !important; }
+.pd-form .ring-blue-500\/30 { --tw-ring-color: rgba(255,255,255,0.15) !important; }
+
+/* Selected chip / toggle: ink. */
+.pd-form .bg-blue-600, .pd-form .hover\:bg-blue-700:hover { background-color: #f2f4f7 !important; }
+.pd-form .bg-blue-600, .pd-form .bg-blue-600 * { color: #111318 !important; }
+.pd-form .border-blue-600 { border-color: #f2f4f7 !important; }
+/* Blue links ("Change", "Edit"): ink, underlined so they still read as links. */
+.pd-form .text-blue-400, .pd-form .text-blue-500, .pd-form .text-blue-600, .pd-form .text-blue-700,
+.pd-form .hover\:text-blue-600:hover, .pd-form .hover\:text-blue-700:hover { color: #f2f4f7 !important; }
+
+/* Good news (margin, ready): mint. */
+.pd-form .bg-emerald-50, .pd-form .bg-emerald-100, .pd-form .bg-green-50, .pd-form .bg-green-500\/10 { background-color: rgba(110,231,183,0.08) !important; }
+.pd-form .text-emerald-600, .pd-form .text-emerald-700, .pd-form .text-green-400,
+.pd-form .text-green-600, .pd-form .text-green-700 { color: #6ee7b7 !important; }
+.pd-form .border-emerald-200, .pd-form .border-emerald-300, .pd-form .border-green-200,
+.pd-form .border-green-500\/20 { border-color: rgba(110,231,183,0.22) !important; }
+
+/* Warnings: no amber in this palette; the words carry it. */
+.pd-form .text-amber-600, .pd-form .text-amber-800, .pd-form .text-yellow-600 { color: #a3a9b5 !important; }
+
+/* Errors / required: red as text. Red fills (Continue, Save) are untouched. */
+.pd-form .text-red-500, .pd-form .text-red-600, .pd-form .text-red-400 { color: #f87171 !important; }
+.pd-form .bg-red-50, .pd-form .hover\:bg-red-50:hover { background-color: rgba(220,38,38,0.10) !important; }
