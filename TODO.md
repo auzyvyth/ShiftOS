@@ -2913,6 +2913,13 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   rule — "188" meaning RM188,000 is a convention in one seller's messages, not a
   universal one, and mis-reading it writes a wrong price onto a public listing.
   Frontend check is UX only; the gate is the server.
+  Owner, 2026-10-24: the form's real pain is MEMORY ("I can't remember all the
+  details about a car"), not typing. So fill from what is in front of the seller:
+  photo of the geran -> brand, model, year, cc, colour, fuel (never store the
+  photo or the owner's name/IC on it, keep only the car fields); photo of the
+  odometer -> mileage; the trim catalogue (Schema 3.0 roadmap step 2-3) -> every
+  spec. The seller then only types price + condition. Ties into IDEA-22 (owner
+  listing dealer stock by hand will feel this first).
 
 - **IDEA-9: Buyer-side features as the traffic engine (2026-09-25)** — owner:
   roughly 10 buyers per seller, the product serves sellers well and buyers
