@@ -166,12 +166,16 @@ Project ID: lemdkdizdlcirhbzqlos
   "keep dark, premium, colours that complement"). Depth by tone (card #111318 on the near-black
   canvas, rows #181b21), no borders on cards, Drevo red for fills only, mint `up` (red's
   complement, desaturated) as the only green; no blue/purple/amber. Adopted one tab at a time:
-  Dashboard (`salesmanPremium/DashboardTab.jsx`) + `crm/ThisWeek.jsx` so far. The rest of
+  Dashboard (`salesmanPremium/DashboardTab.jsx`) + `crm/ThisWeek.jsx`, then Listings
+  (`salesmanPremium/ListingsTab.jsx`, `VerifyBadgePrompt theme="premium"`) so far. The rest of
   Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
   dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
   only views total), "visits from shared links" sits under Share in Your page, no platform
   breakdown (Analytics has it), no second follow-up list (This week is the one), the goal is
-  the bar in "Sold this month".
+  the bar in "Sold this month". Listings card = photo (state as a pill on it), name + status
+  menu, price + margin (only when computable), specs, one traffic line, ONE "improve" line
+  (`listingScore`'s first fix), Caption + Edit + ···; Link lives in ···. No page-link bar
+  (Dashboard has it) and no "Live on XDrive" strip (the Available pill says it).
 
 ### Anti-slop UI rules (non-negotiable)
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.

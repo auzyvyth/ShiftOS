@@ -2574,6 +2574,10 @@ tabs that need to be simpler." Next session:
     (greeting, Today strip, 4 numbers, This week, Your page, Top cars, Sold). Mockup:
     https://claude.ai/artifact/98gAj72cBKupiYBkxWTNLc. Next: move the other Premium tabs onto
     `premiumDark` too, one per session, so the panel stops looking like two apps.
+  - [x] Listings (2026-10-25, staging): `premiumDark`, one fact once per card. Removed the
+    "Live on XDrive" strip, the page-link bar (hardcoded xdrive.my), the average-quality banner
+    and the photo nudge (one "improve" line now); Link moved into ···; Pending / Not approved
+    pills only show while they hold a car. Next in the menu: Chat, then Leads.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)

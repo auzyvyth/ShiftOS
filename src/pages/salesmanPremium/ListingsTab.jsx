@@ -3,15 +3,15 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
- BarChart2, Calculator, Camera, Car, Check, ChevronDown, Clock, Copy, Download, Flame, Link as LinkIcon,
- Film, Megaphone, Pencil, Plus, Sparkles, Store, Trash2, X,
+ Calculator, Car, Check, ChevronDown, Clock, Download, Flame, Link as LinkIcon,
+ Film, Megaphone, Pencil, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
 const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
-import { priceStyle, SOFT, ListingFormModal, tp } from "./shared";
+import { premiumDark as P } from "../../theme/tokens";
+import { ListingFormModal, tp } from "./shared";
 
 // Lazy-load JSZip from CDN once, only when a salesman actually downloads photos.
 let _jszipPromise = null;
@@ -77,12 +77,18 @@ const downloadListingImages = async (car) => {
 // lazy-loads instead of shipping in the initial bundle. The car-detail popup
 // this tab opens now lives in src/components/CarDetailPopup.jsx, shared with
 // SalesmanLite.
+// Rebuilt 2026-10-25 (SIMPLE-2) in the `premiumDark` palette, one fact once:
+// the "Live on XDrive" strip on every card (the Available tab already says it,
+// and it repeated the view count), the page-link bar (Dashboard > Your page
+// has it), the average-quality banner and the separate photo nudge (the card's
+// one "improve" line names the first fix, photos first) all went. Link moved
+// into ···; Caption + Edit stay on the card.
 export default function ListingsTab({
  onOpenNewCars,
  myListings, carStatsMap, filterStatus, sortBy, listingCopied, showAddForm, showFastForm,
- statusMenuCarId, actionMenuCarId, confirmDeleteId, cvrHover, profile, isMobile,
+ statusMenuCarId, actionMenuCarId, confirmDeleteId, profile, isMobile,
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
- setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setCvrHover, setEditListing,
+ setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  listingScore, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, openBroadcast,
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
@@ -91,17 +97,14 @@ export default function ListingsTab({
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
  const statusLabel = (st) => t(`salesmanPremium.lst.status.${st}`, { defaultValue: st });
  const enriched = myListings.map((car) => {
- const stats = carStatsMap[car.id]?? {};
+ const stats = carStatsMap[car.id] ?? {};
  const views = stats.views || 0;
  const enqs = stats.enquiries || 0;
- const cvr = views > 0? (enqs / views) * 100 : null;
- const isHot = cvr!== null && cvr > 6 && views > 3;
+ const cvr = views > 0 ? (enqs / views) * 100 : null;
+ const isHot = cvr !== null && cvr > 6 && views > 3;
  const isStale = views > 10 && (cvr === null || cvr === 0);
- return { car, views, enqs, cvr, isHot, isStale };
+ return { car, views, enqs, isHot, isStale };
  });
-
- const hotCount = enriched.filter((e) => e.isHot).length;
- const staleCount = enriched.filter((e) => e.isStale).length;
 
  const normStatus = (s) => {
  if (!s || s === "active") return "available";
@@ -125,55 +128,58 @@ export default function ListingsTab({
  nameCounts[n] = (nameCounts[n] || 0) + 1;
  });
 
- const SEL_STYLE = (active) => ({
- fontSize: T.size.sm,
- padding: "5px 11px",
- borderRadius: R.sm,
- cursor: "pointer",
- background: active ? withAlpha(C.accent, 0.12) : C.line,
- border: active ? `1px solid ${withAlpha(C.accent, 0.3)}` : `1px solid ${C.border}`,
- color: active ? C.dangerText : C.textMuted,
- fontWeight: active ? T.weight.semibold : T.weight.normal,
+ // Pending + Not approved only get a tab while they hold a car (or are the
+ // one picked): most sellers never have either, and five tabs read as work.
+ const STATUS_TABS = [
+ { key: "pending_approval", label: t("salesmanPremium.lst.tabPending"), count: myListings.filter((c) => c.status === "pending_approval").length, optional: true },
+ { key: "rejected", label: statusLabel("rejected"), count: myListings.filter((c) => c.status === "rejected").length, optional: true },
+ { key: "available", label: statusLabel("available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
+ { key: "reserved", label: statusLabel("reserved"), count: myListings.filter((c) => c.status === "reserved").length },
+ { key: "sold", label: statusLabel("sold"), count: myListings.filter((c) => c.status === "sold").length },
+ ].filter((s) => !s.optional || s.count > 0 || s.key === filterStatus);
+
+ const pill = (active) => ({
+ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 14px",
+ borderRadius: P.radius.pill, border: "none", cursor: "pointer", fontFamily: "inherit",
+ fontSize: 13, fontWeight: active ? 600 : 500, whiteSpace: "nowrap", flexShrink: 0,
+ background: active ? P.text : P.raised, color: active ? P.card : P.textSec,
  });
+ const sortBtn = (active) => ({
+ height: 28, padding: "0 10px", borderRadius: P.radius.pill, border: "none", cursor: "pointer",
+ fontFamily: "inherit", fontSize: 12, fontWeight: active ? 600 : 400,
+ background: active ? P.hover : "transparent", color: active ? P.text : P.textMuted,
+ });
+ const cardBtn = { flex: 1, minWidth: 0, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: P.raised, color: P.text };
+ const menuBox = { position: "absolute", right: 0, zIndex: 60, background: P.hover, border: `1px solid ${P.line}`, borderRadius: P.radius.row, overflow: "hidden", minWidth: 170, boxShadow: "0 12px 32px rgba(0,0,0,0.55)" };
+ const menuItem = { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "11px 14px", background: "none", border: "none", cursor: "pointer", color: P.text, fontSize: 13, textAlign: "left", fontFamily: "inherit" };
+ const menuRule = <div style={{ height: 1, background: P.line }} />;
+ const dotOf = (st) => (st === "available" ? P.up : st === "reserved" ? P.textSec : P.textMuted);
 
  return (
  <div>
  {/* The badge is unearnable if nobody finds the upload step, and Settings is
      the screen a rep never opens. */}
- <VerifyBadgePrompt profile={profile} onStart={onVerifyId} />
+ <VerifyBadgePrompt profile={profile} onStart={onVerifyId} theme="premium" />
 
- {/* Header row with Add button */}
- <div
- style={{
- display: "flex",
- alignItems: "center",
- justifyContent: "space-between",
- marginBottom: 12,
- }}
- >
- <p
- style={{
- margin: 0,
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
- }}
- >{t("salesmanPremium.lst.title", { n: myListings.length })}
+ {/* Header: Quick add is the one red button; the full form sits beside it. */}
+ <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
+ <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: P.text, letterSpacing: "-0.01em" }}>
+ {t("salesmanPremium.lst.title", { n: myListings.length })}
  </p>
- <div style={{ display: "flex", gap: 7 }}>
+ <div style={{ display: "flex", gap: 8 }}>
  <button
  data-tour-id="lst-fast"
  onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
- style={{ display: "flex", alignItems: "center", gap: 5, background: "#dc2626", border: "none", borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 700, padding: "7px 12px", cursor: "pointer" }}
+ style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
  >
  {t("salesmanPremium.lst.fast")}
  </button>
  <button
  data-tour-id="lst-full"
  onClick={() => { setShowAddForm(true); setShowFastForm(false); }}
- style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 8, color: "#e5e7eb", fontSize: 12, fontWeight: 600, padding: "7px 12px", cursor: "pointer" }}
+ style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.text, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}
  >
- <Plus size={13} /> {t("salesmanPremium.lst.fullForm")}
+ <Plus size={14} /> {t("salesmanPremium.lst.fullForm")}
  </button>
  </div>
  </div>
@@ -219,174 +225,59 @@ export default function ListingsTab({
  </React.Suspense>
  </ListingFormModal>
 
- {/* Store exposure bar */}
- {profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
- <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.04), border: `1px solid ${withAlpha(C.success, 0.13)}` }}>
- <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.xs, color: C.textMuted, flex: 1 }}>
- {t("salesmanPremium.lst.liveBarPre")} <strong style={{ color: C.success }}>{t("salesmanPremium.lst.liveBarStrong")}</strong> {t("salesmanPremium.lst.liveBarPost", { url: `xdrive.my/s/${profile.slug}` })}
- </span>
- <button
- onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanPremium.dash.linkCopied")); }}
- style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, whiteSpace: "nowrap", fontFamily: "inherit" }}
- >
- {t("salesmanPremium.carActions.copyLink")}
- </button>
- </div>
- )}
-
- {/* Listing quality banner */}
- {myListings.filter(c => c.status === "available").length > 0 && (() => {
- const scores = myListings.filter(c => c.status === "available").map(c => listingScore(c).pct);
- const avg = Math.round(scores.reduce((s, p) => s + p, 0) / scores.length);
- if (avg >= 80) return null;
- return (
- <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: R.md, background: withAlpha(C.warn, 0.04), border: `1px solid ${withAlpha(C.warn, 0.15)}` }}>
- <BarChart2 size={13} style={{ flexShrink: 0, color: C.warnText }} />
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, flex: 1 }}>{t("salesmanPremium.lst.avgPre")} <strong style={{ color: C.warnText }}>{t("salesmanPremium.lst.avgStrong", { n: avg })}</strong>. {t("salesmanPremium.lst.avgPost")}</p>
- </div>
- );
- })()}
-
  {myListings.length > 0 && (
- <>
- {/* Status tabs */}
- <div style={{ borderBottom: `1px solid ${C.border}`, marginBottom: 0 }}>
- <div style={{ display: "flex", gap: 0, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
- {[
- { key: "pending_approval", label: t("salesmanPremium.lst.tabPending"), count: myListings.filter((c) => c.status === "pending_approval").length },
- { key: "rejected", label: statusLabel("rejected"), count: myListings.filter((c) => c.status === "rejected").length },
- { key: "available", label: statusLabel("available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
- { key: "reserved", label: statusLabel("reserved"), count: myListings.filter((c) => c.status === "reserved").length },
- { key: "sold", label: statusLabel("sold"), count: myListings.filter((c) => c.status === "sold").length },
- ].map(({ key, label, count }) => (
- <button
- key={key}
- onClick={() => setFilterStatus(key)}
- style={{
- background: "none", border: "none", cursor: "pointer",
- padding: "10px 13px", fontSize: T.size.base,
- fontWeight: filterStatus === key ? T.weight.semibold : T.weight.normal,
- fontFamily: "inherit",
- color: filterStatus === key ? C.text : C.textDim,
- borderBottom: filterStatus === key ? `2px solid ${C.accent}` : "2px solid transparent",
- marginBottom: -1, display: "flex", alignItems: "center", gap: 6,
- transition: "color 0.15s", whiteSpace: "nowrap", flexShrink: 0,
- }}
- >
+ <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+ {/* Status pills */}
+ <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", minWidth: 0, maxWidth: "100%" }}>
+ {STATUS_TABS.map(({ key, label, count }) => {
+ const active = filterStatus === key;
+ return (
+ <button key={key} onClick={() => setFilterStatus(key)} style={pill(active)}>
  {label}
- <span style={{
- fontSize: T.size.sm, fontWeight: T.weight.bold, padding: "1px 6px", borderRadius: 4, lineHeight: 1.6,
- background: filterStatus === key ? withAlpha(C.accent, 0.12) : C.fill,
- color: filterStatus === key ? C.dangerText : C.textDim,
- }}>
- {count}
- </span>
+ <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: active ? P.card : P.textMuted, opacity: active ? 0.7 : 1 }}>{count}</span>
  </button>
- ))}
+ );
+ })}
+ </div>
+ {/* Sort */}
+ <div style={{ display: "flex", alignItems: "center", gap: 2, marginLeft: "auto" }}>
+ <span style={{ fontSize: 12, color: P.textMuted, marginRight: 4 }}>{t("salesmanPremium.lst.sort")}</span>
+ <button style={sortBtn(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanPremium.lst.newest")}</button>
+ <button style={sortBtn(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanPremium.lst.price")} ↓</button>
+ <button style={sortBtn(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanPremium.lst.price")} ↑</button>
  </div>
  </div>
-
- {/* Sort row */}
- <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", padding: "10px 0 14px" }}>
- <span style={{ fontSize: T.size.sm, color: C.textDim, marginRight: 2 }}>{t("salesmanPremium.lst.sort")}</span>
- <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanPremium.lst.newest")}</button>
- <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanPremium.lst.price")} ↓</button>
- <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanPremium.lst.price")} ↑</button>
- {hotCount > 0 && (
- <span style={{ fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold, marginLeft: "auto" }}>{t("salesmanPremium.lst.nHot", { n: hotCount })}</span>
- )}
- {staleCount > 0 && (
- <span style={{ fontSize: T.size.sm, color: C.textMuted, fontWeight: T.weight.medium }}>{t("salesmanPremium.lst.nStale", { n: staleCount })}</span>
- )}
- </div>
- </>
  )}
 
- {myListings.length === 0? (
- <div
- style={{
- display: "flex",
- flexDirection: "column",
- alignItems: "center",
- justifyContent: "center",
- gap: 12,
- padding: "52px 24px",
- background: "#0d1117",
- border: "1px dashed rgba(255,255,255,0.1)",
- borderRadius: 14,
- }}
- >
- <div
- style={{
- width: 52,
- height: 52,
- borderRadius: "50%",
- background: "rgba(255,255,255,0.04)",
- border: "1px solid rgba(255,255,255,0.08)",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- }}
- >
- <Car size={24} color="#374151" />
+ {myListings.length === 0 ? (
+ <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, padding: "52px 24px", background: P.card, borderRadius: P.radius.card, textAlign: "center" }}>
+ <div style={{ width: 52, height: 52, borderRadius: "50%", background: P.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={24} color={P.textMuted} />
  </div>
- <p
- style={{
- margin: 0,
- fontSize: 15,
- fontWeight: 600,
- color: "#4b5563",
- }}
- >{t("salesmanPremium.lst.emptyTitle")}
- </p>
- <p
- style={{
- margin: 0,
- fontSize: 12,
- color: "#374151",
- textAlign: "center",
- maxWidth: 260,
- lineHeight: 1.6,
- }}
- >{t("salesmanPremium.lst.emptyBody")}
- </p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: P.text }}>{t("salesmanPremium.lst.emptyTitle")}</p>
+ <p style={{ margin: 0, fontSize: 13, color: P.textSec, maxWidth: 280, lineHeight: 1.55 }}>{t("salesmanPremium.lst.emptyBody")}</p>
  </div>
- ) : sorted.length === 0? (
- <div
- style={{
- textAlign: "center",
- padding: "32px 0",
- color: "#374151",
- fontSize: 13,
- }}
- >{t("salesmanPremium.lst.noneInStatus", { status: statusLabel(filterStatus).toLowerCase() })}
+ ) : sorted.length === 0 ? (
+ <div style={{ textAlign: "center", padding: "36px 16px", background: P.card, borderRadius: P.radius.card, color: P.textSec, fontSize: 13 }}>
+ {t("salesmanPremium.lst.noneInStatus", { status: statusLabel(filterStatus).toLowerCase() })}
  </div>
  ) : (
  <div
  onClick={() => { setStatusMenuCarId(null); setActionMenuCarId(null); }}
- style={{
- display: "grid",
- gridTemplateColumns: isMobile
-? "1fr"
- : "repeat(auto-fill,minmax(260px,1fr))",
- gap: 14,
- }}
+ style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(270px,1fr))", gap: 14 }}
  >
- {sorted.map(({ car, views, enqs: enquiries, cvr, isHot, isStale }) => {
+ {sorted.map(({ car, views, enqs: enquiries, isHot, isStale }) => {
  const isSold = car.status === "sold";
  const isReserved = car.status === "reserved";
  const isPending = car.status === "pending_approval";
  const isRejected = car.status === "rejected";
- const cvrFill = cvr !== null ? Math.min(cvr * 10, 100) : 0;
+ const isLive = !isSold && !isReserved && !isPending && !isRejected;
  const img = car.images?.[0];
  const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
  const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
  const disambiguator = nameCounts[name] > 1
  ? [car.colour, car.plate_number ? t("salesmanPremium.lst.plate", { last: car.plate_number.slice(-4) }) : null].filter(Boolean).join(" · ")
  : null;
- const cvrLabel = cvr !== null ? cvr.toFixed(1) : "0";
- const isHovering = cvrHover === car.id;
  // Included services sold with the car (car_listings.included_services:
  // [{ name, category, cost, selling_price }]). Shown as an INLINE marker in
  // the meta row below, never as its own row — the house rule here is that a
@@ -394,181 +285,125 @@ export default function ListingsTab({
  // card without them.
  const addOns = Array.isArray(car.included_services) ? car.included_services.filter(Boolean) : [];
  const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
+ // My margin — a sole seller, so selling price minus base price. Hidden
+ // when either is missing: a "—" on every card was noise.
+ const base = Number(car.base_price);
+ const sell = Number(car.selling_price);
+ const margin = base > 0 && sell > 0 ? sell - base : null;
+ const score = !isSold && !isRejected ? listingScore(car) : null;
+ const copied = listingCopied[car.id];
+ const statusPill = isSold
+ ? `${statusLabel("sold")}${car.sold_at ? ` · ${new Date(car.sold_at).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}` : ""}`
+ : isReserved ? statusLabel("reserved")
+ : isPending ? `${statusLabel("pending_approval")} · ${t("salesmanPremium.lst.notVisible")}`
+ : null;
  return (
  <div
  key={car.id}
- style={{
- background: C.surface,
- border: isSold ? `1px solid ${C.fillStrong}`
- : isReserved ? `1px solid ${withAlpha(C.warn, 0.22)}`
- : isPending ? `1px solid ${withAlpha(C.warn, 0.18)}`
- : isRejected ? `1px solid ${withAlpha(C.danger, 0.22)}`
- : `1px solid ${C.border}`,
- borderRadius: R.lg, overflow: "hidden", opacity: isSold ? 0.62 : 1,
- transition: "opacity 0.2s", display: "flex", flexDirection: "column", height: "100%",
- }}
+ style={{ background: P.card, borderRadius: P.radius.card, overflow: "hidden", opacity: isSold ? 0.62 : 1, display: "flex", flexDirection: "column", height: "100%", minWidth: 0 }}
  >
  {/* Rejected — the reason is the first thing on the card: it is the
- only thing the seller needs to act on. No left accent bar (anti-slop);
- a full-width tint carries the state. */}
+     only thing the seller needs to act on. */}
  {isRejected && (
- <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
- <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
- <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.dangerText, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.dangerText }}>{t("salesmanPremium.lst.notApproved")}</span>
- </div>
- <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
+ <div style={{ padding: "14px 16px", background: P.hero }}>
+ <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: P.accentText }}>{t("salesmanPremium.lst.notApproved")}</p>
+ <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: P.text, lineHeight: 1.4 }}>
  {car.rejection_reason || t("salesmanPremium.lst.noReason")}
  </p>
- <button onClick={() => setEditListing(car)} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
+ <button onClick={() => setEditListing(car)} style={{ marginTop: 12, width: "100%", height: 38, fontSize: 13, fontWeight: 600, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
  <Pencil size={13} /> {t("salesmanPremium.lst.editResubmit")}
  </button>
  </div>
  )}
- {/* Image */}
+
+ {/* Photo, with the state on it as a pill instead of its own strip */}
+ <div onClick={openDetail} style={{ position: "relative", cursor: "pointer" }}>
  {img ? (
- <img
- src={img} alt={name} onClick={openDetail}
- style={{ width: "100%", height: 150, objectFit: "cover", cursor: "pointer", filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none" }}
- />
+ <img src={img} alt={name} style={{ display: "block", width: "100%", height: 160, objectFit: "cover", filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none" }} />
  ) : (
- <div
- onClick={openDetail}
- style={{ width: "100%", height: 150, background: C.fill, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", filter: isSold ? "grayscale(0.75) brightness(0.6)" : "none" }}
- >
- <Car size={32} color={C.textDim} />
+ <div style={{ width: "100%", height: 160, background: P.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+ <Car size={32} color={P.textMuted} />
  </div>
  )}
-
- {/* Status indicator — compact single-line strip */}
- {(isSold || isReserved || isPending) && (
- <div style={{
- display: "flex", alignItems: "center", gap: 6, padding: "5px 14px",
- borderBottom: `1px solid ${isRejected ? withAlpha(C.danger, 0.18) : isSold ? withAlpha(C.textMuted, 0.15) : withAlpha(C.warn, 0.15)}`,
- background: `${isRejected ? withAlpha(C.danger, 0.05) : isSold ? withAlpha(C.textMuted, 0.07) : withAlpha(C.warn, 0.05)}`,
- }}>
- <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: isRejected ? C.dangerText : isSold ? C.textMuted : C.warnText }} />
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, color: isRejected ? C.dangerText : isSold ? C.textSec : C.warnText }}>
- {isSold ? statusLabel("sold") : isReserved ? statusLabel("reserved") : isPending ? statusLabel("pending_approval") : statusLabel("rejected")}
- </span>
- {isSold && car.sold_at && (
- <span style={{ fontSize: T.size.xs, color: C.textDim }}>
- · {new Date(car.sold_at).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}
+ {statusPill && (
+ <span style={{ position: "absolute", top: 10, left: 10, maxWidth: "calc(100% - 20px)", padding: "4px 10px", borderRadius: P.radius.pill, background: "rgba(8,9,12,0.82)", color: P.text, fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ {statusPill}
  </span>
  )}
- {isPending && <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· {t("salesmanPremium.lst.notVisible")}</span>}
  </div>
- )}
 
- {/* Live on XDrive bar — only for available listings */}
- {!isSold &&!isReserved &&!isPending &&!isRejected && (
- <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "5px 14px", display: "flex", alignItems: "center", gap: 6 }}>
- <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>{t("salesmanPremium.lst.liveOnXdrive")}</span>
- <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? t("salesmanPremium.dash.nViews", { count: views }) : t("salesmanPremium.lst.accepting")}</span>
- </div>
- )}
-
- <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
+ <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column" }}>
  {/* Title + status dropdown */}
- <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
- <p
- onClick={openDetail}
- style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: isSold ? C.textMuted : C.text, lineHeight: 1.3, flex: 1, marginRight: 8, cursor: "pointer" }}
- >
+ <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+ <p onClick={openDetail} style={{ margin: 0, fontSize: 14, fontWeight: 600, color: P.text, lineHeight: 1.35, flex: 1, minWidth: 0, cursor: "pointer" }}>
  {name}
  {disambiguator && (
- <span style={{ display: "block", fontSize: T.size.xs, fontWeight: T.weight.normal, color: C.textMuted, marginTop: 2 }}>{disambiguator}</span>
+ <span style={{ display: "block", fontSize: 12, fontWeight: 400, color: P.textMuted, marginTop: 2 }}>{disambiguator}</span>
  )}
  </p>
+ {/* Locked (pending / rejected): the state is already said on the
+     card, and a disabled pill would just contradict it. */}
+ {!isPending && !isRejected && (
  <div style={{ position: "relative", flexShrink: 0 }}>
  {(() => {
- const curStatus = normStatus(car.status || "available");
- const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : C.successText;
- const locked = isPending || isRejected;
+ const cur = normStatus(car.status || "available");
  const open = statusMenuCarId === car.id;
- // Locked (pending / rejected): the state is already said above the
- // title, and a disabled "available" pill just contradicts it.
- if (locked) return null;
  return (
  <button
- onClick={(e) => { e.stopPropagation(); if (locked) return; setStatusMenuCarId(open ? null : car.id); }}
- title={locked ? undefined : t("salesmanPremium.lst.changeStatus")}
- style={{
- display: "flex", alignItems: "center", gap: 6, padding: "4px 6px 4px 9px", borderRadius: R.sm,
- background: open ? C.fillStrong : C.line, border: `1px solid ${open ? C.borderStrong : C.border}`,
- cursor: locked ? "not-allowed" : "pointer", opacity: locked ? 0.5 : 1,
- }}
+ onClick={(e) => { e.stopPropagation(); setStatusMenuCarId(open ? null : car.id); }}
+ title={t("salesmanPremium.lst.changeStatus")}
+ style={{ display: "flex", alignItems: "center", gap: 6, height: 30, padding: "0 8px 0 11px", borderRadius: P.radius.pill, background: open ? P.hover : P.raised, border: "none", cursor: "pointer", fontFamily: "inherit" }}
  >
- <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
- <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{statusLabel(car.status || "available")}</span>
- {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
+ <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotOf(cur), flexShrink: 0 }} />
+ <span style={{ fontSize: 12, fontWeight: 600, color: P.text }}>{statusLabel(car.status || "available")}</span>
+ <ChevronDown size={13} color={P.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
  </button>
  );
  })()}
- {!isPending &&!isRejected && statusMenuCarId === car.id && (
- <div
- onClick={(e) => e.stopPropagation()}
- style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 146, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
- >
- <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>{t("salesmanPremium.lst.setTo")}</p>
+ {statusMenuCarId === car.id && (
+ <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, top: "calc(100% + 6px)" }}>
+ <p style={{ margin: 0, padding: "10px 14px 6px", fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: P.textMuted }}>{t("salesmanPremium.lst.setTo")}</p>
  {[
- { key: "available", label: statusLabel("available"), color: C.successText, hint: t("salesmanPremium.lst.hintAvailable") },
- { key: "reserved", label: statusLabel("reserved"), color: C.warnText, hint: t("salesmanPremium.lst.hintReserved") },
- { key: "sold", label: statusLabel("sold"), color: C.textSec, hint: t("salesmanPremium.lst.hintSold") },
- ].map(({ key, label, color, hint }) => {
+ { key: "available", hint: t("salesmanPremium.lst.hintAvailable") },
+ { key: "reserved", hint: t("salesmanPremium.lst.hintReserved") },
+ { key: "sold", hint: t("salesmanPremium.lst.hintSold") },
+ ].map(({ key, hint }) => {
  const active = normStatus(car.status || "available") === key;
  return (
- <button
- key={key}
- onClick={() => updateListingStatus(car, key)}
- style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 12px", background: active ? C.fillStrong : "none", border: "none", cursor: "pointer", textAlign: "left" }}
- >
- <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+ <button key={key} onClick={() => updateListingStatus(car, key)} style={{ ...menuItem, background: active ? P.raised : "none" }}>
+ <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotOf(key), flexShrink: 0 }} />
  <span style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
- <span style={{ fontSize: T.size.base, color: active ? C.text : C.textSec, fontWeight: active ? T.weight.bold : T.weight.medium }}>{label}</span>
- <span style={{ fontSize: T.size.xs, color: C.textMuted }}>{hint}</span>
+ <span style={{ fontSize: 13, fontWeight: active ? 600 : 500, color: P.text }}>{statusLabel(key)}</span>
+ <span style={{ fontSize: 11.5, color: P.textMuted }}>{hint}</span>
  </span>
- {active && <Check size={13} color={C.successText} style={{ flexShrink: 0 }} />}
+ {active && <Check size={14} color={P.up} style={{ flexShrink: 0 }} />}
  </button>
  );
  })}
  </div>
  )}
  </div>
+ )}
  </div>
 
- {/* Price */}
- <p style={{ margin: "0 0 6px", lineHeight: 1, ...(isSold ? { fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textDim } : priceStyle(car.selling_price)) }}>
- {price}
- </p>
-
- {/* My margin — you're a sole seller, no salesman under you to pay a
-     commission to, so this is just selling price minus base price.
-     Computed, not typed in. */}
- {(() => {
- const base = Number(car.base_price);
- const sell = Number(car.selling_price);
- const hasBoth = !isNaN(base) && base > 0 && !isNaN(sell) && sell > 0;
- const margin = hasBoth? sell - base : null;
- return (
- <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
- <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>{t("salesmanPremium.lst.myMargin")}</span>
- <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: margin == null? C.textMuted : margin >= 0? C.successText : C.dangerText }}>
- {margin == null? "—" : `RM ${margin.toLocaleString()}`}
+ {/* Price + margin on one line */}
+ <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
+ <span style={{ fontSize: 18, fontWeight: 700, color: isSold ? P.textSec : P.text, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{price}</span>
+ {margin != null && (
+ <span style={{ fontSize: 12, color: P.textMuted }}>
+ {t("salesmanPremium.lst.myMargin")} <span style={{ fontWeight: 600, color: margin >= 0 ? P.up : P.accentText, fontVariantNumeric: "tabular-nums" }}>RM {margin.toLocaleString()}</span>
  </span>
+ )}
  </div>
- );
- })()}
 
  {/* Meta + add-on marker. minHeight is load-bearing: a listing with no
      mileage/engine/transmission/colour would otherwise collapse this line to
      zero and everything below it would sit higher than on its neighbours. */}
- <div style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 8px", minHeight: 17 }}>
- <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, minHeight: 17 }}>
+ <p style={{ margin: 0, fontSize: 12, color: P.textMuted, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {[
- car.mileage? `${Number(car.mileage).toLocaleString()} km` : null,
- car.engine_cc? `${Number(car.engine_cc).toLocaleString()}cc` : null,
+ car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
+ car.engine_cc ? `${Number(car.engine_cc).toLocaleString()}cc` : null,
  car.transmission,
  car.colour,
  ].filter(Boolean).join(" · ")}
@@ -576,158 +411,116 @@ export default function ListingsTab({
  {addOns.length > 0 && (
  <span
  title={t("salesmanPremium.lst.included", { list: addOns.map(a => a?.name).filter(Boolean).join(", ") })}
- style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "1px 6px", borderRadius: R.pill, background: withAlpha(C.info, 0.1), border: `1px solid ${withAlpha(C.info, 0.22)}`, color: C.infoText, fontSize: T.size.xs, fontWeight: T.weight.semibold, lineHeight: 1.4 }}
+ style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: P.radius.pill, background: P.raised, color: P.textSec, fontSize: 11.5, fontWeight: 600 }}
  >
- <Sparkles size={9} style={{ flexShrink: 0 }} />{addOns.length}
+ <Sparkles size={10} style={{ flexShrink: 0 }} />{addOns.length}
  </span>
  )}
  </div>
 
- {/* Listing completeness bar */}
- {!isSold && (() => {
- const { pct, missing } = listingScore(car);
- if (pct >= 90) return null;
- const barColor = pct >= 70? C.warnText : C.dangerText;
- return (
- <div style={{ marginBottom: 8 }} title={missing.length? t("salesmanPremium.lst.improve", { list: missing.join(", ") }) : ""}>
- <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
- <span style={{ fontSize: T.size.xs, color: C.textDim }}>{t("salesmanPremium.lst.quality")}</span>
- <span style={{ fontSize: T.size.xs, color: barColor, fontWeight: T.weight.semibold }}>{pct}%</span>
- </div>
- <div style={{ height: 3, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden" }}>
- <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: R.pill }} />
- </div>
- {missing.length > 0 && <p style={{ margin: "3px 0 0", fontSize: T.size.xs, color: C.textDim }}>+ {missing[0]}</p>}
- </div>
- );
- })()}
-
- {/* CVR bar — hidden for sold, and for rejected (never shown to buyers) */}
- {!isSold && !isRejected && (
- <div style={{ marginBottom: 10, position: "relative" }} onMouseEnter={() => setCvrHover(car.id)} onMouseLeave={() => setCvrHover(null)}>
- <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
- <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
- <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> {t("salesmanPremium.lst.viewsLower")} · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enquiries}</span> {t("salesmanPremium.lst.enquiriesLower")}
+ {/* Traffic: one line. Hidden for sold, and for cars buyers can't see. */}
+ {!isSold && !isRejected && !isPending && (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 12.5, color: P.textSec }}>
+ <span style={{ fontVariantNumeric: "tabular-nums" }}>
+ <strong style={{ color: P.text, fontWeight: 600 }}>{views}</strong> {t("salesmanPremium.lst.viewsLower")} · <strong style={{ color: P.text, fontWeight: 600 }}>{enquiries}</strong> {t("salesmanPremium.lst.enquiriesLower")}
  </span>
- {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold }}><Flame size={12} /> {t("salesmanPremium.lst.hot")}</span>}
- {isStale &&!isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.textSec }}><Clock size={12} /> {t("salesmanPremium.lst.stale")}</span>}
- </div>
- <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, overflow: "visible" }}>
- <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot? C.danger : C.textDim, borderRadius: R.pill, transition: "width 0.3s" }} />
- </div>
- {isHovering && (
- <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.sm, padding: "5px 10px", fontSize: T.size.sm, color: C.text, whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }}>
- {views} {t("salesmanPremium.lst.viewsLower")} · {enquiries} {t("salesmanPremium.lst.enquiriesLower")} ·{" "}
- <span style={{ color: isHot? C.danger : C.infoText, fontWeight: T.weight.semibold }}>{cvrLabel}% CVR</span>
- </div>
- )}
+ {isHot && <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: P.accentText, fontWeight: 600 }}><Flame size={12} /> {t("salesmanPremium.lst.hot")}</span>}
+ {isStale && !isHot && <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: P.textMuted }}><Clock size={12} /> {t("salesmanPremium.lst.stale")}</span>}
  </div>
  )}
 
- {/* Photo nudge — fewer than 3 photos hurts views */}
- {!isSold && !isRejected && (!car.images || car.images.length < 3) && (
- <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: R.sm, background: withAlpha(C.warn, 0.05), border: `1px solid ${withAlpha(C.warn, 0.14)}` }}>
- <Camera size={11} style={{ flexShrink: 0, color: C.warn }} />
- <span style={{ fontSize: T.size.xs, color: C.warn, flex: 1 }}>
- {t("salesmanPremium.lst.addPhotos", { count: Math.max(0, 3 - (car.images?.length || 0)) })}
- </span>
- <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.bold, whiteSpace: "nowrap", fontFamily: "inherit" }}>{t("salesmanPremium.lst.fix")}</button>
- </div>
- )}
-
- {/* Action bar */}
- <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${C.line}`, paddingTop: 10, marginTop: "auto" }}>
- {isSold ? (
- <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.lst.view")}</button>
- ) : isPending ? (
- <>
- <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.lst.view")}</button>
- <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
- <Pencil size={10} /> {t("salesmanPremium.carActions.edit")}
- </button>
- </>
- ) : isRejected ? (
-<button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
-{t("salesmanPremium.lst.view")}
-</button>
-) : (
- <>
- <button
- onClick={() => handleListingCopy(car, "link")}
- title={t("salesmanPremium.lst.copyLinkTitle")}
- style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link"? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link"? C.successText : C.textSec }}
- >
- <LinkIcon size={11} />
- {listingCopied[car.id] === "link"? t("salesmanPremium.lst.copied") : t("salesmanPremium.lst.link")}
- </button>
- <button
- onClick={() => handleListingCopy(car, "wa")}
- title={t("salesmanPremium.lst.copyCaptionTitle")}
- style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa"? withAlpha(C.success, 0.12) : withAlpha(C.success, 0.06), border: `1px solid ${withAlpha(C.success, 0.15)}`, color: listingCopied[car.id] === "wa"? C.successText : C.success }}
- >
- {listingCopied[car.id] === "wa"? t("salesmanPremium.lst.copied") : t("salesmanPremium.lst.caption")}
- </button>
+ {/* Improve: one line, the first fix (photos rank first), one tap. */}
+ {score && score.pct < 90 && (
  <button
  onClick={() => setEditListing(car)}
- style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+ title={score.missing.length ? t("salesmanPremium.lst.improve", { list: score.missing.join(", ") }) : ""}
+ style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: P.radius.row, background: P.raised, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
  >
- <Pencil size={10} /> {t("salesmanPremium.carActions.edit")}
+ <span style={{ flex: 1, minWidth: 0 }}>
+ <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: P.textSec, marginBottom: 5 }}>
+ <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{score.missing[0] || t("salesmanPremium.lst.quality")}</span>
+ <span style={{ fontWeight: 600, color: P.text, fontVariantNumeric: "tabular-nums", marginLeft: 8 }}>{score.pct}%</span>
+ </span>
+ <span style={{ display: "block", height: 3, borderRadius: P.radius.pill, background: P.hover, overflow: "hidden" }}>
+ <span style={{ display: "block", height: "100%", width: `${score.pct}%`, background: P.accent, borderRadius: P.radius.pill }} />
+ </span>
+ </span>
+ <span style={{ fontSize: 12, fontWeight: 600, color: P.text, flexShrink: 0 }}>{t("salesmanPremium.lst.fix")}</span>
  </button>
+ )}
+
+ {/* Actions: Caption + Edit, everything else behind ··· */}
+ <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: "auto" }}>
+ {isSold || isRejected ? (
+ <button onClick={openDetail} style={{ ...cardBtn, color: P.textSec }}>{t("salesmanPremium.lst.view")}</button>
+ ) : isPending ? (
+ <>
+ <button onClick={openDetail} style={{ ...cardBtn, color: P.textSec }}>{t("salesmanPremium.lst.view")}</button>
+ <button onClick={() => setEditListing(car)} style={cardBtn}><Pencil size={12} /> {t("salesmanPremium.carActions.edit")}</button>
+ </>
+ ) : (
+ <>
+ <button onClick={() => handleListingCopy(car, "wa")} title={t("salesmanPremium.lst.copyCaptionTitle")} style={{ ...cardBtn, color: copied === "wa" ? P.up : P.text }}>
+ {copied === "wa" ? t("salesmanPremium.lst.copied") : t("salesmanPremium.lst.caption")}
+ </button>
+ <button onClick={() => setEditListing(car)} style={cardBtn}><Pencil size={12} /> {t("salesmanPremium.carActions.edit")}</button>
  </>
  )}
 
- {/* ··· overflow — Broadcast / AI Caption (Premium-only) + Delete */}
+ {/* ··· overflow — Link, Broadcast, AI Caption, posters, photos, Delete */}
  <div style={{ position: "relative", flexShrink: 0 }}>
  <button
  data-tour-id="lst-more"
- onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id? null : car.id); setConfirmDeleteId(null); }}
+ onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
  title={t("salesmanPremium.lst.moreActions")} aria-label={t("salesmanPremium.lst.moreActions")}
- style={{ width: 30, height: 30, borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, letterSpacing: 1 }}
+ style={{ width: 36, height: 36, borderRadius: P.radius.row, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, letterSpacing: 1 }}
  >
  ···
  </button>
  {actionMenuCarId === car.id && (
- <div
- onClick={(e) => e.stopPropagation()}
- style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 150, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
- >
- {!isSold && (
- <>
- <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Megaphone size={12} /> {t("salesmanPremium.carActions.broadcast")}
- </button>
- <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Sparkles size={12} /> {t("salesmanPremium.carActions.aiCaption")}
- </button>
- {openLoanPoster && (
- <button data-tour-id="lst-poster" onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Calculator size={12} /> Loan poster
+ <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, bottom: "calc(100% + 6px)" }}>
+ {isLive && (
+ <button onClick={() => { handleListingCopy(car, "link"); setActionMenuCarId(null); }} title={t("salesmanPremium.lst.copyLinkTitle")} style={menuItem}>
+ <LinkIcon size={13} /> {t("salesmanPremium.carActions.copyLink")}
  </button>
  )}
- {/* ShiftOS Studio: TikTok poster from this car. Post-list only, and it
-     never writes back to the listing, so the XDrive photos stay clean. */}
- <button onClick={() => { openStudio(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Film size={12} /> {t("salesmanPremium.lst.tiktokPost")}
+ {!isSold && (
+ <>
+ <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Megaphone size={13} /> {t("salesmanPremium.carActions.broadcast")}
  </button>
- <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
+ <button onClick={() => { generateAiCaptions(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Sparkles size={13} /> {t("salesmanPremium.carActions.aiCaption")}
+ </button>
+ {openLoanPoster && (
+ <button data-tour-id="lst-poster" onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Calculator size={13} /> {t("salesmanPremium.lst.loanPoster")}
+ </button>
+ )}
+ {/* Studio: TikTok poster from this car. Post-list only, and it
+     never writes back to the listing, so the listing photos stay clean. */}
+ <button onClick={() => { openStudio(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Film size={13} /> {t("salesmanPremium.lst.tiktokPost")}
+ </button>
+ {menuRule}
  </>
  )}
  {Array.isArray(car.images) && car.images.length > 0 && (
  <>
- <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
- <Download size={12} /> {t("salesmanPremium.lst.downloadPhotos")}
+ <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Download size={13} /> {t("salesmanPremium.lst.downloadPhotos")}
  </button>
- <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
+ {menuRule}
  </>
  )}
  {confirmDeleteId === car.id ? (
- <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
- <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: T.weight.bold }}>{deletingId === car.id ? t("salesmanPremium.common.deleting") : t("salesmanPremium.common.delete")}</button>
- <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
+ <div style={{ padding: "8px 10px", display: "flex", gap: 6 }}>
+ <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: 600, fontFamily: "inherit" }}>{deletingId === car.id ? t("salesmanPremium.common.deleting") : t("salesmanPremium.common.delete")}</button>
+ <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  ) : (
- <button onClick={() => setConfirmDeleteId(car.id)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: T.size.base, textAlign: "left" }}>
- <Trash2 size={12} /> {t("salesmanPremium.common.delete")}
+ <button onClick={() => setConfirmDeleteId(car.id)} style={{ ...menuItem, color: P.accentText }}>
+ <Trash2 size={13} /> {t("salesmanPremium.common.delete")}
  </button>
  )}
  </div>

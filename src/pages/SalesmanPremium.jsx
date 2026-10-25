@@ -764,7 +764,6 @@ export default function SalesmanPremium() {
  // placeholders until every request behind them has answered (trafficFetched).
  const [trafficFetched, setTrafficFetched] = useState(false);
  const trafficReady = trafficFetched || (carStatsCached && minipageCached);
- const [cvrHover, setCvrHover] = useState(null);
 
  // car detail popup
  const [selectedCar, setSelectedCar] = useState(null);
@@ -7365,11 +7364,11 @@ export default function SalesmanPremium() {
       myListings={myListings} carStatsMap={carStatsMap} filterStatus={filterStatus} sortBy={sortBy}
       listingCopied={listingCopied} showAddForm={showAddForm} showFastForm={showFastForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
-      cvrHover={cvrHover} profile={profile} isMobile={isMobile}
+      profile={profile} isMobile={isMobile}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
       setShowAddForm={setShowAddForm} setShowFastForm={setShowFastForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
-      setConfirmDeleteId={setConfirmDeleteId} setCvrHover={setCvrHover} setEditListing={setEditListing}
+      setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
       listingScore={listingScore} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy}
