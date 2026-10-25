@@ -836,8 +836,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return `${fmtRate(Math.max(0, Number(r.eir) || 0))}% ${r.basis === 'flat' ? t.flat : 'EIR'}`;
   }).join(' / ');
   // The viewer's number and commitments, shared by the phone and desktop layouts.
+  // A 5-digit take-home pay ("15000") did not fit the desktop sum line beside
+  // the commitments box; it steps down a size instead of being cut off.
   const moneyIn = (
-    <label className="lp-money">
+    <label className={budgetAmount.length >= 5 ? 'lp-money lp-long' : 'lp-money'}>
       <span>RM</span>
       <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
         aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
@@ -1302,6 +1304,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bsum > .lp-bkind .lp-chip { min-height: 28px; padding: 2px 10px; border: none; font-size: 12px; white-space: nowrap; }
         .lp-bsum > .lp-money { flex: 1 1 240px; max-width: 330px; min-width: 0; height: 64px; padding: 0 10px; border: 2px solid #0f1115; }
         .lp-bsum > .lp-money input { min-width: 4ch; font-size: 38px; }
+        .lp-bsum > .lp-money.lp-long input { min-width: 5ch; font-size: 27px; }
         .lp-bsum > .lp-money-sm { flex: 0 0 136px; max-width: none; overflow: hidden; border-width: 1.5px; border-color: #D1D5DB; }
         .lp .lp-bsum > .lp-money-sm input { min-width: 0; height: 28px; font-size: 22px; }
         /* The label must keep its line: in a fixed-height column the box
