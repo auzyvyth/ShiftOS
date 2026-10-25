@@ -2591,8 +2591,12 @@ tabs that need to be simpler." Next session:
     the "Stage: X 1/7" line (the picked stage names it), "Last contact" when the follow-up line
     already says it, the rail's repeat total, the top-bar Add Lead on this tab and the mobile FAB
     (the tab header has one). Desktop: the card grid no longer scrolls inside a 100vh-300px box
-    (cut the 2nd row); the page scrolls and the rail is sticky. Not yet: the lead panel (···),
-    Add lead / WhatsApp / Link car pop-ups. Next: those pop-ups, then Inbox.
+    (cut the 2nd row); the page scrolls and the rail is sticky.
+  - [x] Lead panel (···) (2026-10-25, staging): premiumDark; one heat pill; "Change car" once
+    (beside the car, not again in the tool row); Scripts button only on the stages that have
+    scripts; a future reminder reads "Follow up Mon, 26 Oct" (was "-86393s ago"). Not yet: Add
+    lead / WhatsApp / Link car / Log call / reminder pop-ups. Open: the price script's monthly is
+    flat-rate maths (`price * 0.9 * 1.245 / 84`), breaks HP-EIR; should use `calcMonthly`.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
