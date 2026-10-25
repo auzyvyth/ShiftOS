@@ -2109,8 +2109,9 @@ ten and the simplifying happens INSIDE the tabs. The per-tab intros still wait f
 The Dashboard's `startingOut` (setup + greeting + page link until the first buyer) is unchanged.
 Sidebar + phone drawer rows share ONE style (`navRow` / `navBadge`, SalesmanPremium.jsx): 40px
 rows (44 on a phone), 12px corners, 16px icons; colours are still the old `panel` blue.
-**Lite still grows its menu (SIMPLE-1, owner to decide)** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
-Settings always; Leads + Performance once there is a car, Inbox once a booking/enquiry exists.
+**Lite shows every tab from day one too (owner, 2026-10-25)** (`TABS_DESKTOP` / `TABS_MOBILE` +
+`TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings, Leads, Inbox, Performance, Settings. A
+seller with no car who opens Leads or Inbox gets the "list a car first" screen (`gatedLocked`).
 The tour is built from `TOUR_PLAN` (one list for steps AND anchors; never re-split them into two
 index-matched arrays). Dashboard `startingOut` hides the Chat/Add-ons row and every card below
 it until the first buyer. `gatedLocked` lock screens stay for deep links. The tour never switches tabs: it opens the nav (the drawer

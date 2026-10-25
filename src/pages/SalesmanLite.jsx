@@ -2108,35 +2108,27 @@ export default function SalesmanLite() {
     return () => clearInterval(id);
   }, []);
 
-  // The menu grows with the seller (SIMPLE-1, same rule as Premium, 2026-10-21).
-  // A seller with no car saw six links, and Leads, Inbox and Performance each
-  // opened a lock screen ("list a car first"). A link appears once there is
-  // something behind it; the tab you are on keeps its link, and every tab still
-  // opens by URL (gatedLocked keeps the lock screen for a deep link).
-  const hasCar = myListings.length > 0;
+  // Every tab shows from day one (owner, 2026-10-25, SIMPLE-2, same as Premium).
+  // SIMPLE-1 hid Leads, Inbox and Performance until there was something behind
+  // them; the owner asked for simpler tabs instead of fewer. A seller with no car
+  // who opens Leads, Inbox or Performance gets the "list a car first" screen
+  // (gatedLocked), which is the nudge they need.
   const hasInbox = (appointments || []).length > 0 || (enquiries || []).length > 0;
   // No buyer has reached this seller yet: the dashboard drops every card that
   // would be zeros (renderDashboard), and the tour skips what that hides.
   const startingOut = leads.length === 0 && !hasInbox;
-  const navTabs = [
-    "dashboard", "listings",
-    ...(hasCar || leads.length > 0 ? ["leads"] : []),
-    ...(hasInbox ? ["enquiries"] : []),
-    ...(hasCar ? ["performance"] : []),
-    "settings",
-  ];
-  const navShows = (tab) => navTabs.includes(tab) || activeTab === tab;
   // One entry per tour step: the key names its copy (salesmanLite.tour.steps.*),
   // the anchor says which tab it opens and what it rings. Only steps whose link
-  // or button is on screen are kept, so the tour is as short as the menu.
+  // or button is on screen are kept (the Chat and Add-ons cards wait for the
+  // first buyer, see startingOut).
   const TOUR_PLAN = [
     { key: "welcome" },
     { key: "dashboard", anchor: { tab: "dashboard" } },
     { key: "listings", anchor: { tab: "listings" } },
-    { key: "leads", anchor: { tab: "leads" }, show: navTabs.includes("leads") },
-    { key: "inbox", anchor: { tab: "enquiries" }, show: hasInbox },
-    { key: "bookings", anchor: { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") }, show: hasInbox },
-    { key: "performance", anchor: { tab: "performance" }, show: hasCar },
+    { key: "leads", anchor: { tab: "leads" } },
+    { key: "inbox", anchor: { tab: "enquiries" } },
+    { key: "bookings", anchor: { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") } },
+    { key: "performance", anchor: { tab: "performance" } },
     { key: "chat", anchor: { tab: "dashboard", targetId: "chat" }, show: !startingOut },
     { key: "services", anchor: { tab: "dashboard", targetId: "services" }, show: !startingOut },
     { key: "settings", anchor: { tab: "settings" } },
@@ -3086,7 +3078,7 @@ export default function SalesmanLite() {
       label: t("salesmanLite.tabs.settings"),
       icon: <Settings style={{ width: 14, height: 14 }} />,
     },
-  ].filter((x) => navShows(x.tab));
+  ];
 
   const TABS_MOBILE = [
     { tab: "dashboard", label: t("salesmanLite.tabs.dashboard"), icon: <LayoutGrid size={18} /> },
@@ -3110,7 +3102,7 @@ export default function SalesmanLite() {
     },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
-  ].filter((x) => navShows(x.tab));
+  ];
 
   // ── NOTIFICATION PANEL ────────────────────────────────────────────────────
 

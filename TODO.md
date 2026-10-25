@@ -2568,7 +2568,7 @@ tabs that need to be simpler." Next session:
 - [x] Undo the hiding (2026-10-25, staging): every Premium tab shows from day one (`navTabs`,
   SalesmanPremium.jsx). Sidebar + phone drawer reshaped (owner: "keep the colour, just shape and
   spacing"): shared `navRow` / `navBadge`, 232px sidebar, 40px rows, 16px icons.
-- [ ] Owner call: does Lite's grown menu (SIMPLE-1 too) go back the same way?
+- [x] Lite shows every tab from day one too (owner, 2026-10-25, staging); its full tour is back.
 - [ ] Then simplify the CONTENTS, one tab per session: fewer cards, one primary action,
   the rest behind ···. Start by asking the owner which tab confuses new sellers most.
   - [x] Dashboard (2026-10-25, staging): rebuilt in the `premiumDark` palette, each fact once
