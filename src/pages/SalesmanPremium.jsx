@@ -939,7 +939,7 @@ export default function SalesmanPremium() {
  const renderTabBack = () => backTab && (
  <button
  onClick={() => navigate(`/salesman-premium/${backTab}`)}
- style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "6px 11px 6px 8px", borderRadius: R.pill, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ display: "inline-flex", alignItems: "center", gap: 5, margin: "0 0 12px", padding: "7px 12px 7px 9px", borderRadius: PD.radius.pill, background: PD.card, border: "none", color: PD.textSec, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", fontFamily: "inherit" }}
  >
  <ChevronLeft size={14} />
  {TAB_BACK_LABELS[backTab]}
@@ -6124,12 +6124,13 @@ export default function SalesmanPremium() {
  // HANDOVER (post-sale paperwork checklist, shared postsale/PostSaleBoard)
  const renderHandover = () => (
  <div>
- <p style={{ margin: "0 0 20px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.handoverIntro")}</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: PD.textMuted }}>{t("salesmanPremium.sold.handoverIntro")}</p>
  <Suspense fallback={<TabLoadingFallback />}>
  <PostSaleBoard
  dealerId={getDealerIdFromProfile(profile)}
  salesmanId={userId}
  dark
+ theme="premium"
  controller={handover}
  openDealId={handoverDealParam}
  onViewCustomer={(lead) => openCustomerForLead(lead, "handover")}
@@ -6146,8 +6147,8 @@ export default function SalesmanPremium() {
  const renderSold = () => (
  <div style={{ maxWidth: 640, margin: "0 auto" }}>
  {renderTabBack()}
- <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: C.text }}>{t("salesmanPremium.tabs.sold", { defaultValue: "Sold" })}</p>
- <p style={{ margin: "0 0 14px", fontSize: 12, color: C.textMuted }}>{t("salesmanPremium.sold.subtitle", { defaultValue: "Every buyer after the win: handover, renewals and aftercare." })}</p>
+ <p style={{ margin: "0 0 4px", fontSize: 19, fontWeight: 700, color: PD.text }}>{t("salesmanPremium.tabs.sold", { defaultValue: "Sold" })}</p>
+ <p style={{ margin: "0 0 14px", fontSize: 12, color: PD.textMuted }}>{t("salesmanPremium.sold.subtitle", { defaultValue: "Every buyer after the win: handover, renewals and aftercare." })}</p>
  {/* Above the pills so both halves see what is due. Tapping a row opens the
  stage it is about: the handover checklist, or that buyer's renewals /
  aftercare in place. */}
@@ -6156,6 +6157,7 @@ export default function SalesmanPremium() {
  customers={customers}
  handover={handover}
  packagesByCustomer={packagesMap}
+ skipHandover={soldSubTab === "handover"}
  onPick={(it) => {
  if (it.kind === "handover" && it.leadId) { openHandoverFor(it.leadId, "sold"); return; }
  setSoldSubTab("customers");
@@ -6164,6 +6166,7 @@ export default function SalesmanPremium() {
  />
  </div>
  <SubTabs
+ premium
  value={soldSubTab}
  onChange={setSoldSubTab}
  items={[

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle, UserRound, RefreshCw } from 'lucide-react';
 import useHandover from '../../hooks/useHandover';
 import PostSaleChecklist from './PostSaleChecklist';
+import { premiumDark as PD } from '../../theme/tokens';
 
 // Target handover turnaround in Malaysia (settle loan -> JPJ -> road tax ->
 // handover) is roughly 2-3 weeks. Past 21 days a deal is overdue.
@@ -23,6 +24,9 @@ export default function PostSaleBoard({
   dealerId,
   salesmanId = null,
   dark = false,
+  // "premium" = Salesman Premium's premiumDark look (SIMPLE-2). The dealer
+  // dashboard (light) and the linked-salesman panel (`dark`) pass nothing.
+  theme = null,
   controller = null,
   openDealId = null,
   onViewCustomer = null,
@@ -46,19 +50,28 @@ export default function PostSaleBoard({
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [openDealId, deals]);
 
-  // Theme tokens — light (dealer dashboard shell) or dark (salesman panel).
-  const t = dark
+  // Theme tokens — light (dealer dashboard shell), dark (salesman panel) or
+  // premium (Salesman Premium: tone instead of borders, mint the only green).
+  const premium = theme === 'premium';
+  const doneHue = premium ? PD.up : '#059669';
+  const t = premium
+    ? { panelBg: 'transparent', cardBg: PD.card, border: 'transparent', divider: PD.line, text: PD.text, sub: PD.textSec, chip: PD.raised, chipBorder: 'transparent', chipText: PD.text, track: PD.hover, btnBg: PD.raised }
+    : dark
     ? { panelBg: 'rgba(255,255,255,0.03)', cardBg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.08)', divider: 'rgba(255,255,255,0.06)', text: '#f1f5f9', sub: '#9ca3af', chip: 'rgba(255,255,255,0.06)', chipBorder: 'rgba(255,255,255,0.1)', chipText: '#d1d5db', track: 'rgba(255,255,255,0.1)', btnBg: 'rgba(255,255,255,0.06)' }
     : { panelBg: '#fff', cardBg: '#fff', border: '#e5e7eb', divider: '#f3f4f6', text: '#111827', sub: '#6b7280', chip: '#f3f4f6', chipBorder: '#e5e7eb', chipText: '#374151', track: '#e5e7eb', btnBg: '#f3f4f6' };
-  const PANEL = { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
+  // Premium: no outer panel; each deal is its own card, like the other tabs.
+  const PANEL = premium
+    ? { background: 'transparent' }
+    : { background: t.panelBg, border: `1px solid ${t.border}`, borderRadius: 16, padding: 'clamp(12px, 3vw, 18px)' };
+  const EMPTY = premium ? { background: PD.card, borderRadius: PD.radius.card, padding: '28px 16px' } : null;
 
-  if (loading && deals.length === 0) return <div style={PANEL}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
+  if (loading && deals.length === 0) return <div style={{ ...PANEL, ...EMPTY }}><p style={{ fontSize: 13, color: t.sub, margin: 0 }}>Loading sold deals…</p></div>;
 
   // A failed read used to render as "No sold deals yet" — the one empty state
   // that makes a salesman think their win vanished. Say what happened instead.
   if (error && deals.length === 0) {
     return (
-      <div style={{ ...PANEL, textAlign: 'center' }}>
+      <div style={{ ...PANEL, ...EMPTY, textAlign: 'center' }}>
         <AlertTriangle size={24} color="#dc2626" style={{ marginBottom: 8 }} />
         <p style={{ fontSize: 13, color: t.text, margin: '0 0 10px' }}>Could not load your sold deals.</p>
         <button onClick={refresh} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}>
@@ -85,7 +98,7 @@ export default function PostSaleBoard({
 
   if (deals.length === 0) {
     return (
-      <div style={{ ...PANEL, textAlign: 'center', color: t.sub }}>
+      <div style={{ ...PANEL, ...EMPTY, textAlign: 'center', color: t.sub }}>
         <Car size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
         <p style={{ fontSize: 13, margin: 0 }}>No sold deals yet. Won deals show up here for handover processing.</p>
       </div>
@@ -94,30 +107,39 @@ export default function PostSaleBoard({
 
   return (
     <div style={{ ...PANEL, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Premium shows this row only when it has something to say. */}
+      {!(premium && overdueCount === 0 && doneCount === 0) && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <p style={{ fontSize: 12, color: t.sub, margin: 0 }}>
-            {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
-          </p>
+          {/* Premium's Handover pill already carries this count as its badge. */}
+          {!premium && (
+            <p style={{ fontSize: 12, color: t.sub, margin: 0 }}>
+              {deals.filter((d) => progressMap[d.id] !== 100).length} in processing
+            </p>
+          )}
           {overdueCount > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '3px 9px' }}>
+            <span style={premium
+              ? { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: PD.accentText, background: PD.raised, borderRadius: 999, padding: '4px 10px' }
+              : { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#dc2626', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 8, padding: '3px 9px' }}>
               <AlertTriangle size={12} />{overdueCount} overdue
             </span>
           )}
-          {doneCount > 0 && (
+          {/* Premium: "Show completed (N)" already gives this count. */}
+          {doneCount > 0 && !premium && (
             <span style={{ fontSize: 11, fontWeight: 600, color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 8, padding: '3px 9px' }}>
               {doneCount} completed
             </span>
           )}
         </div>
         {doneCount > 0 ? (
-          <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: t.sub, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '5px 10px', cursor: 'pointer' }}>
+          <button onClick={() => setHideDone((v) => !v)} style={{ fontSize: 11, fontWeight: 600, color: t.sub, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: premium ? 999 : 8, padding: premium ? '6px 12px' : '5px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>
             {hideDone ? `Show completed (${doneCount})` : 'Hide completed'}
           </button>
-        ) : (
+        ) : !premium && (
           <span style={{ fontSize: 11, fontWeight: 600, color: t.sub, opacity: 0.7 }}>No completed yet</span>
         )}
       </div>
+      )}
 
       {visible.map((d) => {
         const car = d.car_listings;
@@ -126,13 +148,15 @@ export default function PostSaleBoard({
         const isOpen = open === d.id;
         const done = prog === 100;
         const age = daysSince(d.updated_at);
-        const slaColor = done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af';
+        const slaColor = premium
+          ? (done ? doneHue : age > SLA_BREACH_DAYS ? PD.accentText : age >= SLA_WARN_DAYS ? PD.text : PD.textMuted)
+          : (done ? '#059669' : age > SLA_BREACH_DAYS ? '#dc2626' : age >= SLA_WARN_DAYS ? '#d97706' : '#9ca3af');
         const blocker = done ? null : nextStepMap[d.id];
         return (
-          <div key={d.id} id={`handover-deal-${d.id}`} style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: 12, overflow: 'hidden' }}>
+          <div key={d.id} id={`handover-deal-${d.id}`} style={{ background: t.cardBg, border: `1px solid ${t.border}`, borderRadius: premium ? PD.radius.card : 12, overflow: 'hidden' }}>
             <button
               onClick={() => setOpen(isOpen ? null : d.id)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: premium ? '14px 16px' : '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
             >
               {isOpen ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -148,14 +172,14 @@ export default function PostSaleBoard({
                     </span>
                   )}
                   {blocker && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 600, color: t.chipText, background: t.chip, border: `1px solid ${t.chipBorder}`, borderRadius: 6, padding: '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span style={{ display: 'inline-block', fontSize: 10.5, fontWeight: 600, color: t.chipText, background: t.chip, border: `1px solid ${t.chipBorder}`, borderRadius: premium ? 999 : 6, padding: premium ? '2px 9px' : '1px 7px', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       Next: {blocker.label}<span style={{ color: t.sub }}> · {blocker.owner}</span>
                     </span>
                   )}
                 </div>
               </div>
               {done ? (
-                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#059669', flexShrink: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: doneHue, flexShrink: 0 }}>
                   <CheckCircle2 size={14} /> Done
                 </span>
               ) : (
@@ -168,14 +192,14 @@ export default function PostSaleBoard({
               )}
             </button>
             {isOpen && (
-              <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
+              <div style={{ padding: premium ? '0 16px 16px' : '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
-                  <PostSaleChecklist lead={d} dark={dark} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} onExpiryWritten={onExpiryWritten} />
+                  <PostSaleChecklist lead={d} dark={dark} theme={theme} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} onExpiryWritten={onExpiryWritten} />
                 </div>
                 {onViewCustomer && (
                   <button
                     onClick={() => onViewCustomer(d)}
-                    style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}
+                    style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: t.chipText, background: t.btnBg, border: `1px solid ${t.border}`, borderRadius: premium ? 999 : 8, padding: premium ? '8px 14px' : '7px 12px', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     <UserRound size={13} /> View customer record
                   </button>

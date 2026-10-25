@@ -2606,6 +2606,12 @@ tabs that need to be simpler." Next session:
     grid on desktop. Still open: the blue top-bar "Add Lead" (shared chrome, every tab) and the
     sidebar are `panel`; Confirm-on-WhatsApp pop-up (`openConfirmBookingModal`) not restyled.
     Next: the lead-panel pop-ups, then Sold.
+  - [x] Sold (2026-10-25, staging): Coming up, Handover board + checklist, Customers cards, aftercare
+    plans in premiumDark (shared board/checklist/aftercare via `theme="premium"`; dealer + linked
+    salesman unchanged). Removed repeats: handover rows in Coming up while on the Handover pill, "N in
+    processing" (pill badge), "N completed" (Show completed (N)), the checklist's own progress bar,
+    the Done/Pending pill beside the round tick. No amber or blue left: due = red text, done = mint.
+    "Next:" chip now ends in "…" instead of cutting mid-word. Next: Analytics.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 

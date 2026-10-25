@@ -184,7 +184,12 @@ Project ID: lemdkdizdlcirhbzqlos
   WORD carries the colour (pending red, confirmed mint); pending/confirmed cards carry no pill
   (the section heading says it); booking cards grid on desktop; `BookingWeekCalendar` is
   Premium-only and on `PD` (no amber: "needs your OK" = dashed block + red dot). `SubTabs
-  premium` is the premiumDark switch (Inbox + Listings pass it; Sold + Analytics not yet). The rest of
+  premium` is the premiumDark switch (Inbox, Listings, Sold pass it; Analytics not yet). Sold tab:
+  `SoldCustomers` / `ComingUp` are Premium-only and on `PD`; the shared `PostSaleBoard`,
+  `PostSaleChecklist` and `ServicePackages` take `theme="premium"` (dealer = light, linked
+  salesman = `dark`, both unchanged). On the Handover pill `ComingUp skipHandover` drops the
+  handover rows (the board below lists them); the board drops "N in processing" (the pill's
+  badge) and the checklist its progress bar (the deal header has it). The rest of
   Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
   dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
   only views total), "visits from shared links" sits under Share in Your page, no platform

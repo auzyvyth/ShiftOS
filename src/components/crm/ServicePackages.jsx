@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CalendarCheck2, Plus, RotateCcw } from 'lucide-react';
 import { packageStatus } from '../../hooks/useServicePackages';
 import { AFTERCARE_PRESETS, AFTERCARE_CATEGORIES, nextVisitDue } from '../../utils/aftercare';
+import { premiumDark as PD } from '../../theme/tokens';
 
 // One customer's aftercare plans: the visits a seller promised the buyer after
 // the sale (a free first service, oil changes, a care visit). Rendered by BOTH
@@ -33,6 +34,15 @@ const PALETTES = {
     accent: '#dc2626', track: 'rgba(255,255,255,0.08)',
     ok: '#4ade80', warn: '#fbbf24', danger: '#f87171',
   },
+  // Salesman Premium (SIMPLE-2): tone instead of borders, mint the only green,
+  // red text for "due" (no amber). `solid` = picked chips and buttons are
+  // filled pills, not outlined ones.
+  premium: {
+    surface: PD.card, fill: PD.raised, border: 'transparent', line: PD.line,
+    text: PD.text, sub: PD.textSec, dim: PD.textMuted,
+    accent: PD.accent, track: PD.hover,
+    ok: PD.up, warn: PD.accentText, danger: PD.accentText, solid: true,
+  },
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -57,15 +67,19 @@ export default function ServicePackages({
   const serviceProducts = products.filter((p) => AFTERCARE_CATEGORIES.includes(p.category));
 
   const inputSx = {
-    background: P.fill, border: `1px solid ${P.border}`, borderRadius: 6,
+    // Premium inputs sit one step lighter than the add box they are in.
+    background: P.solid ? PD.hover : P.fill, border: `1px solid ${P.border}`, borderRadius: P.solid ? 10 : 6,
     padding: '7px 9px', color: P.text, fontSize: 13, outline: 'none', fontFamily: 'inherit',
-    boxSizing: 'border-box', width: '100%',
+    boxSizing: 'border-box', width: '100%', ...(P.solid ? { colorScheme: 'dark' } : null),
   };
   const btn = (bg, color, extra = {}) => ({
-    fontSize: 12, fontWeight: 700, padding: '6px 11px', borderRadius: 6, cursor: 'pointer',
+    fontSize: 12, fontWeight: 700, padding: P.solid ? '7px 13px' : '6px 11px', borderRadius: P.solid ? 999 : 6, cursor: 'pointer',
     fontFamily: 'inherit', background: bg, color, border: '1px solid transparent', ...extra,
   });
-  const chip = (on) => ({
+  const chip = (on) => (P.solid ? {
+    fontSize: 12, fontWeight: 600, padding: '7px 12px', borderRadius: 99, cursor: 'pointer', fontFamily: 'inherit',
+    background: on ? P.accent : PD.hover, color: on ? '#fff' : P.sub, border: 'none',
+  } : {
     fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: 99, cursor: 'pointer', fontFamily: 'inherit',
     background: on ? `${P.accent}1f` : 'transparent', color: on ? P.text : P.sub,
     border: `1px solid ${on ? `${P.accent}66` : P.border}`,
@@ -187,7 +201,7 @@ export default function ServicePackages({
       })}
 
       {adding ? (
-        <div style={{ marginTop: 8, padding: 12, borderRadius: 8, background: P.fill, border: `1px solid ${P.border}` }}>
+        <div style={{ marginTop: 8, padding: 12, borderRadius: P.solid ? 14 : 8, background: P.fill, border: `1px solid ${P.border}` }}>
           <p style={label}>{t('aftercare.whatPlan', { defaultValue: 'What are you giving this buyer?' })}</p>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {AFTERCARE_PRESETS.map((p) => (
