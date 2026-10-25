@@ -27,6 +27,12 @@ import {
 //
 // A zone with no price entered says "ask an advisor" -- never the Peninsular
 // number, which an East Malaysia buyer cannot get.
+//
+// Each advisor links to THEIR CARD for this model (card_slug, NEWCAR-STATS
+// 2026-10-25): it is the only road in to a card since cards left the browse
+// surfaces, and a card visit is what the seller's dashboard counts as a view.
+// Taps here carry the card's id for the same reason. The cards point their
+// canonical back at this page, so this page is the one that ranks.
 const SITE = SITE_URL;
 
 export default function NewCarModelPage() {
@@ -89,6 +95,12 @@ export default function NewCarModelPage() {
     return list.map((a, i) => [a, i]).sort((x, y) => rank(x[0]) - rank(y[0]) || x[1] - y[1]).map(([a]) => a);
   }, [advisors, zone, buyerState]);
   const nearCount = buyerState ? sorted.filter((a) => a.state === buyerState).length : 0;
+
+  // One page visit per model opened (this page recorded nothing before).
+  useEffect(() => {
+    if (!brand || !model) return;
+    trackEvent(supabase, "page_view", { metadata: { source: "new_model_page", model: `${brand} ${model}` } });
+  }, [brand, model]);
 
   if (isSubdomain()) return <Navigate to="/cars" replace />;
   if (!brand || (rows && rows.length === 0)) return <NotFoundPage />;
@@ -177,9 +189,14 @@ export default function NewCarModelPage() {
                       const reply = replyTimeLabel({ median_minutes: a.reply_median_minutes, samples: a.reply_samples });
                       const where = [a.city, a.state].filter(Boolean).join(", ");
                       const wa = waFor(a);
+                      // Before the advisor list carried card_slug, fall back to the page.
+                      const to = a.card_slug ? `/showroom/${a.card_slug}` : `/s/${a.slug}`;
+                      const openCard = () => {
+                        if (a.card_id) trackEvent(supabase, "card_click", { car_id: a.card_id, salesman_slug: a.slug, metadata: { source: "new_model_page" } });
+                      };
                       return (
                         <div key={a.slug} className="ncm-card ncm-a">
-                          <div className="ncm-a-top">
+                          <Link to={to} onClick={openCard} className="ncm-a-top">
                             {a.avatar_url
                               ? <img src={a.avatar_url} alt="" className="ncm-av" loading="lazy" />
                               : <span className="ncm-av ncm-av-i" aria-hidden="true">{(a.full_name || "A")[0].toUpperCase()}</span>}
@@ -188,12 +205,12 @@ export default function NewCarModelPage() {
                               {where && <p className="ncm-sub">{where}</p>}
                               {reply && <p className="ncm-sub">{reply}</p>}
                             </div>
-                          </div>
+                          </Link>
                           <div className="ncm-a-btns">
-                            <Link to={`/s/${a.slug}`}>View page</Link>
+                            <Link to={to} onClick={openCard}>{a.card_slug ? "See offer" : "View page"}</Link>
                             {wa && (
                               <a href={wa} target="_blank" rel="noopener noreferrer" className="ncm-primary"
-                                onClick={() => trackEvent(supabase, "whatsapp_click", { salesman_slug: a.slug, metadata: { source: "new_model_page", model: `${brand} ${model}` } })}>
+                                onClick={() => trackEvent(supabase, "whatsapp_click", { car_id: a.card_id || undefined, salesman_slug: a.slug, metadata: { source: "new_model_page", model: `${brand} ${model}` } })}>
                                 WhatsApp
                               </a>
                             )}
@@ -239,7 +256,7 @@ const CSS = `
   .ncm-empty a, .ncm-foot a { color: #111827; font-weight: 600; }
   .ncm-adv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 12px; }
   .ncm-a { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .ncm-a-top { display: flex; gap: 12px; align-items: center; min-width: 0; }
+  .ncm-a-top { display: flex; gap: 12px; align-items: center; min-width: 0; color: inherit; text-decoration: none; }
   .ncm-av { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #EDEAE3; }
   .ncm-av-i { display: inline-flex; align-items: center; justify-content: center; font-weight: 700; color: #4b5563; }
   .ncm-name { margin: 0; font-size: 15px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; }
