@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Banknote, Check, ChevronRight, Plus, Search, Copy, AlertCircle,
   TrendingDown, User, X, Loader2, Share2, Eye,
@@ -7,6 +7,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import { BANK_RATES, MAX_TENURE_YEARS, RATE_BASIS, rateLabel, monthlyPayment, monthsForPayment, principalForPayment } from "../../utils/financing";
 import { budgetMatches } from "../../utils/liveMaths";
+import { useNewCarInfos } from "../newcar/NewCarListingInfo";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 
 /*
@@ -345,11 +346,24 @@ const suggestionSx = {
 const LOWEST_RATE = Math.min(...BANK_RATES.map((b) => b.rate));
 const carName = (c) => [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
 
-function CarsThatFit({ listings, cap, capFrom, deposit, tenure, pickedId, onPick }) {
+// A new-car advisor's CARD is one listing for a whole model (20261017c): its
+// selling_price is the cheapest variant and `variant` is empty. The real price
+// depends on which variant the buyer takes, so the desk prices the variant,
+// never the card. Sold units (new_car_unit) are ordinary cars.
+const isModelCard = (c) => !!c?.new_car_model_id && !c?.new_car_unit;
+// The card once per priced variant, the same way the live presenter's Budget
+// tab expands it, so "cars that fit" names WHICH variant the budget buys.
+const expandVariants = (cars, infos) => cars.flatMap((c, i) => {
+  const vs = isModelCard(c) ? (infos[c.id]?.variants || []).filter((v) => v.price != null) : [];
+  if (!vs.length) return [{ ...c, _n: i + 1 }];
+  return vs.map((v) => ({ ...c, _n: i + 1, _variantId: v.model_id, selling_price: v.price, variant: v.variant }));
+});
+
+function CarsThatFit({ listings, cardInfos, cap, capFrom, deposit, tenure, pickedId, onPick }) {
   const [showAll, setShowAll] = useState(false);
   const { fits, above } = useMemo(
-    () => budgetMatches(listings, { maxMonthly: cap, deposit, years: tenure, rate: LOWEST_RATE, basis: RATE_BASIS }),
-    [listings, cap, deposit, tenure],
+    () => budgetMatches(expandVariants(listings, cardInfos), { maxMonthly: cap, deposit, years: tenure, rate: LOWEST_RATE, basis: RATE_BASIS }),
+    [listings, cardInfos, cap, deposit, tenure],
   );
   const shown = showAll ? fits : fits.slice(0, 5);
 
@@ -482,7 +496,7 @@ function DocChecklist({ employment, docs, onToggle, buyerName }) {
 /* ── New application — one flow ──────────────────────────────────────────── */
 
 const emptyDraft = {
-  lead_id: null, listing_id: null,
+  lead_id: null, listing_id: null, variant_id: null,
   buyer_name: "", buyer_phone: "", buyer_ic: "", buyer_employment_type: "Salaried",
   car_model: "", car_price: "", down_payment: "", loan_tenure: 7,
   buyer_income: "", existing_commitments: "", budget_monthly: "", notes: "",
@@ -528,23 +542,55 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
     () => (listings || []).filter((c) => c.status === "available" && Number(c.selling_price) > 0 && c.loan_eligible !== false),
     [listings],
   );
+  // Every model card's variants, priced for the seller's zone, in ONE read.
+  const cardIds = useMemo(() => (listings || []).filter(isModelCard).map((c) => c.id), [listings]);
+  const cardInfos = useNewCarInfos(cardIds);
+  const variantsOf = (id) => (cardInfos[id]?.variants || []).filter((v) => v.price != null);
+  const pickedCar = (listings || []).find((c) => c.id === d.listing_id) || null;
+  const pickedVariants = isModelCard(pickedCar) ? variantsOf(pickedCar.id) : [];
+
+  // Fills car + price from a listing. On a model card the price is the picked
+  // variant's (preferred, else the cheapest), never the card's "from" price.
+  const carFields = (car, preferredVariant) => {
+    if (!car) return {};
+    const vs = isModelCard(car) ? variantsOf(car.id) : [];
+    const v = vs.find((x) => x.model_id === preferredVariant) || vs[0];
+    if (v) return { listing_id: car.id, variant_id: v.model_id, car_model: carName({ ...car, variant: v.variant }), car_price: String(v.price) };
+    return { listing_id: car.id, variant_id: null, car_model: carName(car), car_price: car.selling_price ? String(car.selling_price) : "" };
+  };
 
   const pickCar = (car) => {
-    setD((p) => ({ ...p, listing_id: car.id, car_model: carName(car), car_price: String(car.selling_price) }));
+    const own = (listings || []).find((c) => c.id === car.id) || car;
+    setD((p) => ({ ...p, ...carFields(own, car._variantId) }));
     toast.success("Car filled in. Check the down payment in step 2");
   };
 
+  // A lead picked before the variants had loaded got the card's cheapest
+  // price; put the right variant in once they arrive.
+  useEffect(() => {
+    if (!pickedCar || !isModelCard(pickedCar) || d.variant_id) return;
+    if (!variantsOf(pickedCar.id).length) return;
+    const lead = leads.find((l) => l.id === d.lead_id);
+    setD((p) => ({ ...p, ...carFields(pickedCar, lead?.new_car_model_id) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cardInfos, d.listing_id, d.variant_id]);
+
   const pickLead = (lead) => {
     const car = lead.car_listings;
+    const own = (listings || []).find((c) => c.id === lead.car_listing_id);
+    // leads.new_car_model_id = the variant the seller already chose for this buyer.
+    const fromListing = own ? carFields(own, lead.new_car_model_id) : null;
     setD((p) => ({
       ...p,
       lead_id: lead.id,
       listing_id: lead.car_listing_id || null,
+      variant_id: null,
       buyer_name: lead.buyer_name || "",
       buyer_phone: lead.phone || "",
       buyer_ic: lead.buyer_ic || "",
       car_model: car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : p.car_model,
       car_price: car?.selling_price ? String(car.selling_price) : p.car_price,
+      ...(fromListing || {}),
     }));
     setLeadPickerOpen(false);
     setLeadQuery("");
@@ -637,7 +683,7 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
                 ? d.car_model ? ` Car: ${d.car_model}.` : " Car linked."
                 : ""}
             </span>
-            <button onClick={() => setD((p) => ({ ...p, lead_id: null, listing_id: null }))}
+            <button onClick={() => setD((p) => ({ ...p, lead_id: null, listing_id: null, variant_id: null }))}
               style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}>
               <X size={14} />
             </button>
@@ -724,6 +770,46 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
       {/* 2 — the car and the money */}
       <div style={cardSx}>
         <SectionHead n="2" title="The car and the money" />
+        {sellable.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <Field label="From your cars">
+              <select style={inputSx} value={sellable.some((c) => c.id === d.listing_id) ? d.listing_id : ""}
+                onChange={(e) => {
+                  const car = sellable.find((c) => c.id === e.target.value);
+                  if (car) setD((p) => ({ ...p, ...carFields(car) }));
+                  else setD((p) => ({ ...p, listing_id: null, variant_id: null }));
+                }}>
+                <option value="">Type it in below</option>
+                {sellable.map((c) => (
+                  <option key={c.id} value={c.id}>{carName(c)}{isModelCard(c) ? " (new)" : ` · ${rm(c.selling_price)}`}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        )}
+        {pickedVariants.length > 1 && (
+          <div style={{ marginBottom: 12 }}>
+            <label style={labelSx}>Variant — each has its own price</label>
+            <div role="radiogroup" aria-label="Variant" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {pickedVariants.map((v) => {
+                const on = v.model_id === d.variant_id;
+                return (
+                  <button key={v.model_id} type="button" role="radio" aria-checked={on}
+                    onClick={() => setD((p) => ({ ...p, ...carFields(pickedCar, v.model_id) }))}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1,
+                      padding: "6px 11px", borderRadius: R.md, cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                      background: on ? withAlpha(C.info, 0.14) : C.fill,
+                      border: `1px solid ${on ? withAlpha(C.info, 0.35) : C.border}`,
+                    }}>
+                    <span style={{ fontSize: T.size.base, fontWeight: on ? T.weight.bold : T.weight.medium, color: on ? C.infoText : C.text }}>{v.variant}</span>
+                    <span style={{ fontSize: T.size.sm, color: C.textMuted, fontVariantNumeric: "tabular-nums" }}>{rm(v.price)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
           <Field label="Car">
             <input style={inputSx} value={d.car_model} onChange={(e) => set("car_model")(e.target.value)} placeholder="Toyota Vios 2020" />
@@ -798,7 +884,7 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
         />
         {fitCap > 0 && sellable.length > 0 && (
           <CarsThatFit
-            listings={sellable} cap={fitCap} capFrom={fitCapFrom}
+            listings={sellable} cardInfos={cardInfos} cap={fitCap} capFrom={fitCapFrom}
             deposit={dp} tenure={tenure} pickedId={d.listing_id} onPick={pickCar}
           />
         )}
