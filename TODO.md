@@ -2566,8 +2566,9 @@ v1 BUILT, Premium only (owner): `src/components/loans/LoanCheck.jsx`, rules
 `src/utils/loanReadiness.js` (`npm run test:loancheck`), copy `loanCheckCopy.js`. Entry: lead
 panel, Loans tab (walk-in), status row on the lead card. Tested in a headless phone browser
 (EN 375px, BM 360px): full flow, save payload, no console errors.
-- [ ] **Apply `20261025d_loan_checks.sql` in tonight's after-midnight slot.** Until then the
-  check works but Save says "Could not save" (the table does not exist yet).
+- `20261025d_loan_checks.sql` APPLIED 2026-10-25 18:24 MYT on the owner's "apply now", nobody
+  live. Verified: anon cannot read it, a salesman writes only their own rows and own leads, one
+  check per lead.
 - [ ] v2: buyer fills it + uploads documents from a link (storage bucket + PDPA consent).
 - [ ] v3: one bank at a time in LoanDesk, decline reasons logged; counts say which bank fits.
 - Lite: a locked "Loan check before the bank: Premium" button in the lead panel opens the

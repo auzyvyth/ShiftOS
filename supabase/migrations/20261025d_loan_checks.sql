@@ -4,7 +4,7 @@
 -- team's, anon reads nothing, and no IC number is ever stored here.
 -- Separate from loan_applications on purpose: a check is not a submission, and a
 -- row there flips leads.loan_status to 'submitted' (trg_sync_lead_loan).
--- QUEUED for the after-midnight slot (CLAUDE.md DB migrations). Additive only.
+-- Applied 2026-10-25 18:24 MYT on the owner's explicit "apply now" (nobody live). Additive only.
 
 begin;
 
