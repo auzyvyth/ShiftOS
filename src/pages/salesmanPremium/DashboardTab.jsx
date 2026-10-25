@@ -66,10 +66,12 @@ export default function DashboardTab({
  return { key, name: i === 0 ? t("salesmanPremium.dash.today") : dayFmt.format(d), num: d.getDate(), busy: busyDays.has(key) };
  });
  // Missed = a past booking never closed out. Only shown on today's view.
- const missedAppts = pickedDay !== todayKey ? [] : openAppts
+ // At most 3, newest first; the rest are one tap away in Inbox > Bookings.
+ // Five month-old misses made this the tallest card on the page.
+ const allMissed = pickedDay !== todayKey ? [] : openAppts
  .filter((a) => { const k = apptDay(a); return k && k < todayKey; })
- .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date))
- .slice(0, 5);
+ .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
+ const missedAppts = allMissed.slice(0, 3);
  const dayAppts = openAppts.filter((a) => apptDay(a) === pickedDay)
  .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
  const dayFollowUps = openLeads.filter((l) => fuKey(l.follow_up_at) === pickedDay);
@@ -139,7 +141,6 @@ export default function DashboardTab({
  ].filter(Boolean).join(" · ")
  || (customers.length ? t("salesmanPremium.dash.buyersOnRecord", { count: customers.length }) : t("salesmanPremium.dash.soldEmpty"));
 
- const greetingWord = t(`salesmanPremium.greet.${now.getHours() < 12 ? "morning" : now.getHours() < 17 ? "afternoon" : "evening"}`);
  const todayAppts = openAppts.filter((a) => apptDay(a) === todayKey).length;
  const personalizedLine = isNewUser
  ? t("salesmanPremium.dash.lineNew")
@@ -161,10 +162,9 @@ export default function DashboardTab({
  const greeting = (
  <section style={{ gridArea: "hero", ...card, background: P.hero, padding: isMobile ? 22 : "28px 30px", display: "flex", alignItems: isMobile ? "flex-start" : "center", flexDirection: isMobile ? "column" : "row", justifyContent: "space-between", gap: 16 }}>
  <div style={{ minWidth: 0 }}>
- <h1 style={{ margin: 0, fontSize: isMobile ? 26 : 30, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.12, color: P.text }}>
- {greetingWord}, {profile?.full_name?.split(" ")[0] || t("salesmanPremium.greet.there")}.
- </h1>
- <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.45, color: P.textSec, maxWidth: 520 }}>
+ {/* No "Good evening, <name>" here: the panel header above already says it.
+ The line that says what needs you IS the headline. */}
+ <p style={{ margin: 0, fontSize: isMobile ? 20 : 22, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1.3, color: P.text, maxWidth: 560 }}>
  {/* It counts leads; "your pipeline is clear" before they load is false. */}
  {available.length === 0 && !isNewUser ? t("salesmanPremium.dash.emptyBody")
  : leadsReady ? personalizedLine : <StatSkeleton width="70%" height={16} />}
@@ -259,6 +259,12 @@ export default function DashboardTab({
  {missedAppts.map((a) => agendaRow(`m${a.id}`, () => goToLeadForAppt(a), shortDate(a), a.buyer_name || "—", `${t("salesmanPremium.dash.missedAppt")} · ${carOf(a)}`, "missed"))}
  {dayAppts.map((a) => agendaRow(`a${a.id}`, () => goToLeadForAppt(a), timeOf(a), a.buyer_name || "—", `${t("salesmanPremium.stages.test_drive")} · ${carOf(a)}`))}
  {dayFollowUps.map((l) => agendaRow(`f${l.id}`, () => goToLead(l), l.follow_up_at?.length > 10 ? new Date(l.follow_up_at).toLocaleTimeString(dateLocale, { hour: "numeric", minute: "2-digit" }) : "", l.buyer_name || "—", `${t("salesmanPremium.dash.scheduledFu")} · ${carOf(l)}`))}
+ {allMissed.length > missedAppts.length && (
+ <button type="button" onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }}
+ style={{ alignSelf: "flex-start", padding: "2px 2px", border: "none", background: "none", fontSize: 13, color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>
+ {t("salesmanPremium.dash.moreMissed", { n: allMissed.length - missedAppts.length })} ›
+ </button>
+ )}
  {agendaEmpty && <p style={{ margin: 0, padding: "12px 2px", fontSize: 13, color: P.textMuted }}>{t("salesmanPremium.dash.nothingBooked")}</p>}
  </div>
  </section>
@@ -415,12 +421,21 @@ export default function DashboardTab({
  @media (prefers-reduced-motion: reduce) { .pd-press, .pd-press:active { transition: none; transform: none; } }
  .pd-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
  @media (min-width: 1100px) { .pd-stats { gap: 16px; grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+ .pd-col, .pd-pair { display: contents; }
  .pd-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr);
  grid-template-areas: "hero" "today" "stats" "traffic" "calls" "page" "cars" "sold"; align-items: start; }
  @media (min-width: 768px) { .pd-grid { gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr));
- grid-template-areas: "hero hero" "stats stats" "traffic traffic" "today calls" "today page" "cars sold"; } }
- @media (min-width: 1240px) { .pd-grid { grid-template-columns: repeat(3, minmax(0, 1fr));
- grid-template-areas: "hero hero today" "stats stats today" "traffic traffic page" "calls cars sold"; } }
+ grid-template-areas: "hero hero" "stats stats" "traffic traffic" "today calls" "page cars" "sold sold"; } }
+ /* Wide screen: two INDEPENDENT columns. In one shared grid the tall Today
+ card stretched the greeting and number rows beside it into big gaps. */
+ @media (min-width: 1240px) {
+ .pd-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-areas: none; }
+ .pd-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+ .pd-pair { display: grid; gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+ /* The cards' inline gridArea names belong to the phone/tablet grid; left
+ on here they invent extra tracks and push cards out of the pair. */
+ .pd-col > *, .pd-pair > * { grid-area: auto !important; }
+ }
  `}</style>
 
  {/* Setup list stays first while it is not done (INTRO-1). */}
@@ -451,10 +466,11 @@ export default function DashboardTab({
  </>
  ) : (
  <div className="pd-grid">
+ <div className="pd-col">
  {greeting}
- {today}
  {stats}
  {traffic}
+ <div className="pd-pair">
  {/* The one call list (src/utils/thisWeek.js). The "Open call list"
  button in the greeting scrolls here. */}
  <div id="sp-call-list" style={{ gridArea: "calls", minWidth: 0, scrollMarginTop: 72 }}>
@@ -462,9 +478,14 @@ export default function DashboardTab({
  repName={profile?.full_name} onContacted={handleThisWeekContacted} loading={!leadsReady}
  style={{ ...card, border: "none", marginBottom: 0 }} />
  </div>
- {yourPage}
  {cars}
+ </div>
+ </div>
+ <div className="pd-col">
+ {today}
+ {yourPage}
  {sold}
+ </div>
  </div>
  )}
 

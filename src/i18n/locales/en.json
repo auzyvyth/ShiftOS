@@ -1834,7 +1834,8 @@
       "openPage": "Open my page",
       "topCars": "Top cars",
       "allInAnalytics": "All in Analytics",
-      "carMeta": "{{views}} views · {{taps}} taps"
+      "carMeta": "{{views}} views · {{taps}} taps",
+      "moreMissed": "+{{n}} more missed bookings"
     },
     "lst": {
       "noImages": "No images on this listing",

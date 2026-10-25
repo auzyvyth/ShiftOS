@@ -1823,7 +1823,8 @@
       "openPage": "Buka halaman saya",
       "topCars": "Kereta teratas",
       "allInAnalytics": "Semua dalam Analitik",
-      "carMeta": "{{views}} tontonan · {{taps}} tekan"
+      "carMeta": "{{views}} tontonan · {{taps}} tekan",
+      "moreMissed": "+{{n}} lagi tempahan terlepas"
     },
     "lst": {
       "noImages": "Tiada gambar pada listing ni",
