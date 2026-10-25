@@ -500,6 +500,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     preload(pics(listings[(idx + 1) % listings.length])[0]);
     preload(pics(listings[(idx - 1 + listings.length) % listings.length])[0]);
   }, [idx, listings]);
+  // And, once the first car is up, every car's FIRST photo: the car list and
+  // the Budget screen jump past the neighbours, and the photo sat blank while
+  // it downloaded (seen in the 2026-10-25 recording). Not in the embedded demo.
+  useEffect(() => {
+    if (embedded || listings.length < 3) return undefined;
+    const tm = setTimeout(() => {
+      listings.forEach((c) => preload(Array.isArray(c?.images) ? c.images.find(Boolean) : null));
+    }, 1500);
+    return () => clearTimeout(tm);
+  }, [listings, embedded]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
   // This car's rate group, its rate and how it was quoted.
