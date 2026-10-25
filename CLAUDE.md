@@ -1511,11 +1511,14 @@ a fit as approval; the fine print always says the bank decides.
 
 ## Agent page Share + link preview (SHARE-1, 2026-10-25)
 The Share button on `/s/:slug` (`sharePage`, SalesmanProfilePage.jsx) opens the phone's share
-sheet (copies the link on desktop). The preview WhatsApp/Facebook show is `api/agent-card.js`:
-cover + profile photo merged by `sharp`, 1200x630 JPEG; a thin banner cover (most are ~4:1) sits
-on top over a blurred copy, never zoomed to fill (that cut the brand name off). og.js and the SPA
-take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose `v=` changes with either
-photo so a new photo is a new URL. The endpoint takes a SLUG only, never an image URL.
+sheet (copies the link on desktop). The preview WhatsApp/Facebook show is `api/agent-card.js`,
+ONE size for every agent (1200x630 JPEG): cover as a banner on top, then a white card like the
+page's: photo, role, name, town, and chips for cars for sale (measured), "Verified" (only
+`is_verified`) and specialisations. Photos via `sharp`, words via `satori` from the fonts in
+`api/_fonts` (no server fonts needed; `vercel.json` includeFiles ships them). NEVER the phone
+number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
+picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
+`v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
