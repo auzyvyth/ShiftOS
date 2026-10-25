@@ -95,7 +95,7 @@ async function getSalesmanData(slug) {
 // 404'd for crawlers. The view exposes the same columns and is granted to anon.
 async function getListingData(slug) {
   const [car] = await sbFetch(
-    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs,seller_role,salesman_slug,created_at&limit=1`,
+    `public_car_listings?slug=eq.${encodeURIComponent(slug)}&select=brand,model,variant,year,selling_price,mileage,colour,transmission,fuel_type,body_type,engine_cc,images,status,city,state,slug,is_recon,auction_grade,dealer_id,options,features,specs,seller_role,salesman_slug,created_at,is_model_card&limit=1`,
   );
   return car ?? null;
 }
@@ -282,7 +282,14 @@ function buildNewModelHtml(brand, rows, advisors) {
   const canonical = `${SITE_URL}${newModelPath(brand, model)}`;
   const head = PRICE_ZONES.map((z) => `<th>${esc(z.label)}</th>`).join("");
   const trs = rows.map((r) => `<tr><td>${esc(`${brand} ${r.model} ${r.variant}`)}</td>${PRICE_ZONES.map((z) => `<td>${esc(newRm(r[z.col]) || "Ask an advisor")}</td>`).join("")}</tr>`).join("\n      ");
-  const advLis = advisors.map((a) => `<li><a href="${SITE_URL}/s/${encodeURIComponent(a.slug)}">${esc(a.full_name || "Advisor")}</a>${a.city || a.state ? ` (${esc([a.city, a.state].filter(Boolean).join(", "))})` : ""}</li>`).join("");
+  // Each advisor links to their card for the model (the cards canonicalise
+  // back here) and to their page.
+  const advLis = advisors.map((a) => {
+    const name = esc(a.full_name || "Advisor");
+    const where = a.city || a.state ? ` (${esc([a.city, a.state].filter(Boolean).join(", "))})` : "";
+    const card = a.card_slug ? ` <a href="${SITE_URL}/showroom/${encodeURIComponent(a.card_slug)}">${esc(`${brand} ${model} offer from ${a.full_name || "this advisor"}`)}</a>` : "";
+    return `<li><a href="${SITE_URL}/s/${encodeURIComponent(a.slug)}">${name}</a>${where}${card}</li>`;
+  }).join("");
   const body = `  <main>
     <h1>${esc(copy.h1)}</h1>
     <p>${esc(copy.intro)}</p>
@@ -300,7 +307,9 @@ function buildNewModelHtml(brand, rows, advisors) {
 }
 
 // ── HTML shell ────────────────────────────────────────────────────────────────
-function htmlShell({ lang = "en", title, ogTitle = title, siteName = "xdrive.my", description, canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
+// ogUrl: the address a share stands for; differs from canonical only on a
+// new-car model card (canonical = the model page, og:url = the card itself).
+function htmlShell({ lang = "en", title, ogTitle = title, siteName = "xdrive.my", description, canonical, ogUrl = canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
   const ld = jsonLd
     .filter(Boolean)
     // "<" escaped as \u003c: JSON-LD carries seller-typed text, and a literal
@@ -318,7 +327,7 @@ function htmlShell({ lang = "en", title, ogTitle = title, siteName = "xdrive.my"
   <link rel="canonical" href="${esc(canonical)}" />
   <meta property="og:type" content="${ogType}" />${extraHead}
   <meta property="og:site_name" content="${esc(siteName)}" />
-  <meta property="og:url" content="${esc(canonical)}" />
+  <meta property="og:url" content="${esc(ogUrl)}" />
   <meta property="og:title" content="${esc(ogTitle)}" />
   <meta property="og:description" content="${esc(description)}" />
   <meta property="og:image" content="${esc(image)}" />
@@ -449,7 +458,7 @@ export function carFacts(car, hubModel) {
   return out.filter(Boolean);
 }
 
-function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, hubModel = null) {
+function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, hubModel = null, canonicalTo = null) {
   const baseName = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
   // Chassis/generation code (e.g. "G82") — enthusiasts search "m4 g82"; surfacing
   // it in the title/H1/description is what lets Google match those queries to us.
@@ -504,7 +513,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, h
   return htmlShell({
     title: `${name} — ${priceFormatted} | xdrive.my`,
     description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on xdrive.my.`,
-    canonical, image,
+    canonical: canonicalTo || canonical, ogUrl: canonical, image,
     jsonLd: [
       buildCarSchema(car, dealer, canonical, feats, chassis),
       crumbs ? breadcrumbLd([...crumbs, { name, path: null }], SITE_URL) : null,
@@ -1029,6 +1038,13 @@ export default async function handler(req) {
   if (carMatch) {
     const car = await getListingData(decodeURIComponent(carMatch[1]));
     if (!car) return new Response("Not found", { status: 404 });
+    // A new-car model card is one of many near-identical cards for the model
+    // (one per advisor): it canonicalises to /new-cars/:brand/:model, the page
+    // that lists them all, and takes no used-car hub breadcrumb.
+    if (car.is_model_card) {
+      const dealer = await getSellerData(car);
+      return html(buildCarHtml(car, dealer, carCanonical(car, dealer), baseUrl, carBase, null, null, `${SITE_URL}${newModelPath(car.brand, car.model)}`));
+    }
     const [dealer, hubs] = await Promise.all([getSellerData(car), subdomain ? [] : getHubs()]);
     // Link the car up to its brand/model hub when that hub exists (it only
     // exists while the model has a live car, so a sold unit may get brand only).

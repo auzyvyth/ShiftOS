@@ -1446,6 +1446,14 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
+  2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
+  After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards
+  got ZERO views and their sellers' dashboards read 0. Taps there carry `car_id` (card_click,
+  whatsapp_click) and the page logs a `page_view` (`source: new_model_page`).
+  **A model card's canonical is its model page** (CarDetailPage Helmet + `api/og.js` car branch;
+  `og:url` and the Car schema keep the card's own URL so shares still preview the card). Ten
+  advisors = ten near-identical "Proton X50 for sale" pages otherwise. Cards stay out of the sitemap.
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
 - Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
 - Live presenter: cards are ordinary listings; `officialNew` (seller_type new_car) adds
