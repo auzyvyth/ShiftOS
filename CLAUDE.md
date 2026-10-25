@@ -1350,7 +1350,7 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   restore cannot move `plan_expires_at` (escalation guard), so it waits.
 
 ## Lite -> Premium upgrade + the free trial (2026-10-04, migration 20261004b)
-- **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025b).** One
+- **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025c).** One
   number in two places: the trigger `apply_premium_free_month()` and
   `PLAN_CONFIG.salesman_full.trialDays`. Trials started before that keep their 30 days
   (the date is stamped at start). Console "Set up a seller" picks 7 days or 1 month
