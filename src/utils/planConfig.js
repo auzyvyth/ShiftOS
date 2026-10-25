@@ -10,6 +10,9 @@ export const PLAN_CONFIG = {
   salesman_full: {
     label: 'Salesman Premium',
     price: 35,
+    // Free trial length for a new Premium seller (owner, 2026-10-25: was 30).
+    // Same number as the DB trigger apply_premium_free_month().
+    trialDays: 7,
     listingCap: 30,
     seatCap: 1,
     isDealer: false,
