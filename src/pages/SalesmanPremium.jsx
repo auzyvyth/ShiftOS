@@ -264,9 +264,8 @@ const SETTINGS_GROUPS = [
  ]},
 ];
 
-// Which tab each tour step rings: `tourTabs` in the component, built from the
-// links the menu is SHOWING (navTabs, SIMPLE-1), so a new seller's tour is as
-// short as their menu. Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
+// Which tab each tour step rings: `tourTabs` in the component, built from
+// navTabs (all ten links). Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
 // the sidebar but was introduced 9th, so the ring jumped back up the menu. One step per sidebar link — exactly the
 // 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
 // anymore (see the tourStep effect): it opens the nav (the drawer on
@@ -1653,21 +1652,13 @@ export default function SalesmanPremium() {
  // scroll-room padding and in-content scroll-compensation logic (needed
  // when steps pointed at things buried in page content) is gone — every
  // target is a fixed nav row that doesn't move under its own step.
- // The menu grows with the seller (SIMPLE-1, 2026-10-21). Three new signups
- // in a day said the panel was "too complicated": a seller with no car saw ten
- // links, most of them empty boards (Sold, Inbox, Loans, Analytics, Outreach).
- // A link appears once there is something behind it. The tabs themselves are
- // untouched, so a deep link or a dashboard shortcut still opens one, and the
- // tab you are on always keeps its link.
- const navTabs = [
-  "dashboard", "listings", "chat", "leads",
-  ...((appointments || []).length > 0 || (enquiries || []).length > 0 ? ["enquiries"] : []),
-  ...(handover.deals.length > 0 || soldCount > 0 ? ["sold"] : []),
-  ...(myListings.length > 0 ? ["analytics"] : []),
-  ...(leads.length > 0 ? ["loans", "outreach"] : []),
-  "settings",
- ];
- const navShows = (tab) => navTabs.includes(tab) || activeTab === tab;
+ // Every tab shows from day one (owner, 2026-10-25, SIMPLE-2). SIMPLE-1 hid
+ // Inbox, Sold, Analytics, Loans and Outreach until a seller "earned" them;
+ // the owner rejected that: "it's the tabs that need to be simpler", so the
+ // work went into what is INSIDE each tab instead. The per-tab intros still
+ // wait for real data before they play (TAB_INTROS). Same order as the
+ // sidebar (TABS_DESKTOP), so the tour walks down the menu.
+ const navTabs = ["dashboard", "listings", "chat", "leads", "enquiries", "sold", "analytics", "loans", "outreach", "settings"];
  const tourTabs = [null, ...navTabs];
  const tourTabsKey = tourTabs.join(",");
 
@@ -2853,16 +2844,40 @@ export default function SalesmanPremium() {
  leads, customers, nudges: dueNudges, packages: servicePackages, repName: profile?.full_name,
  }).filter((i) => i.leadId).length;
 
+ // Sidebar rows, shared by the desktop sidebar and the phone drawer so the two
+ // keep one shape (owner, 2026-10-25: "keep the colour, just shape and
+ // spacing"). Colours are the panel's as before; what changed is the size:
+ // 40px rows (44 on a phone), a rounder 12px corner, a 16px icon with a 12px
+ // gap, one 2px step between rows, and a badge that is a fixed round chip.
+ const navRow = (active, mobile = false) => ({
+ display: "flex", alignItems: "center", gap: 12,
+ width: "100%", minHeight: mobile ? 44 : 40, padding: "0 12px",
+ borderRadius: 12, cursor: "pointer", textAlign: "left", fontFamily: "inherit",
+ background: active ? "rgba(37,99,235,0.15)" : "transparent",
+ border: active ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
+ color: active ? "#93c5fd" : mobile ? "#9ca3af" : "#6b7280",
+ fontSize: mobile ? 14.5 : 13.5, fontWeight: active ? 600 : 500,
+ boxSizing: "border-box",
+ });
+ const navBadge = {
+ display: "inline-flex", alignItems: "center", justifyContent: "center",
+ minWidth: 20, height: 20, padding: "0 6px", boxSizing: "border-box",
+ fontSize: 10.5, fontWeight: 600, fontVariantNumeric: "tabular-nums",
+ background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)",
+ color: "#93c5fd", borderRadius: 99,
+ };
+ const navSection = { fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, margin: 0 };
+
  const TABS_DESKTOP = [
  {
  tab: "dashboard",
  label: t("salesmanPremium.tabs.dashboard", { defaultValue: "Dashboard" }),
- icon: <LayoutGrid style={{ width: 14, height: 14 }} />,
+ icon: <LayoutGrid style={{ width: 16, height: 16 }} />,
  },
  {
  tab: "listings",
  label: t("salesmanPremium.tabs.listings", { defaultValue: "My Listings" }),
- icon: <Car style={{ width: 14, height: 14 }} />,
+ icon: <Car style={{ width: 16, height: 16 }} />,
  badge: myListings.length || null,
  },
  {
@@ -2873,19 +2888,19 @@ export default function SalesmanPremium() {
  // the distinction the nav never applied — MessageSquare for Inbox (:5998),
  // MessageCircle for Chat (:6003) — so it is applied here rather than a
  // third icon being picked.
- icon: <MessageCircle style={{ width: 14, height: 14 }} />,
+ icon: <MessageCircle style={{ width: 16, height: 16 }} />,
  badge: chatUnread || null,
  },
  {
  tab: "leads",
  label: t("salesmanPremium.tabs.leads", { defaultValue: "Leads" }),
- icon: <User style={{ width: 14, height: 14 }} />,
+ icon: <User style={{ width: 16, height: 16 }} />,
  badge: leadsNeedingFollowUp || null,
  },
  {
  tab: "enquiries",
  label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
- icon: <MessageSquare style={{ width: 14, height: 14 }} />,
+ icon: <MessageSquare style={{ width: 16, height: 16 }} />,
  badge: inboxBadge || null,
  },
  {
@@ -2893,30 +2908,30 @@ export default function SalesmanPremium() {
  // no nav slot at all, reachable only from two tiles on the Dashboard.
  tab: "sold",
  label: t("salesmanPremium.tabs.sold", { defaultValue: "Sold" }),
- icon: <ClipboardList style={{ width: 14, height: 14 }} />,
+ icon: <ClipboardList style={{ width: 16, height: 16 }} />,
  badge: handover.activeCount || null,
  },
  {
  tab: "analytics",
  label: t("salesmanPremium.tabs.analytics", { defaultValue: "Analytics" }),
- icon: <TrendingUp style={{ width: 14, height: 14 }} />,
+ icon: <TrendingUp style={{ width: 16, height: 16 }} />,
  },
  {
  tab: "loans",
  label: t("salesmanPremium.tabs.loans", { defaultValue: "Loans" }),
- icon: <Banknote style={{ width: 14, height: 14 }} />,
+ icon: <Banknote style={{ width: 16, height: 16 }} />,
  },
  ...(showOutreach ? [{
  tab: "outreach",
  label: t("salesmanPremium.tabs.outreach", { defaultValue: "Outreach" }),
- icon: <Megaphone style={{ width: 14, height: 14 }} />,
+ icon: <Megaphone style={{ width: 16, height: 16 }} />,
  }] : []),
  {
  tab: "settings",
  label: t("salesmanPremium.tabs.settings", { defaultValue: "Settings" }),
- icon: <Settings style={{ width: 14, height: 14 }} />,
+ icon: <Settings style={{ width: 16, height: 16 }} />,
  },
- ].filter((x) => navShows(x.tab));
+ ];
 
  // NOTIFICATION PANEL — markup lives in the shared component (Lite renders the
  // same one). This page only owns where each notification goes.
@@ -2959,7 +2974,7 @@ export default function SalesmanPremium() {
  style={{
  position: "fixed", top: 0, left: 0, bottom: 0, zIndex: 1000,
  paddingBottom: tourStep !== null ? TOUR_BAR_H + 24 : 0,
- width: "min(78vw, 280px)",
+ width: "min(80vw, 288px)",
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
  display: "flex",
@@ -2968,45 +2983,38 @@ export default function SalesmanPremium() {
  boxShadow: "4px 0 24px rgba(0,0,0,0.4)",
  }}
  >
- <div style={{ padding: 16, borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+ <div style={{ padding: "20px 16px 18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
- <p style={{ fontSize: 10, color: "#4b5563", marginTop: 2, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
  </div>
  <button onClick={() => setMobileNavOpen(false)} aria-label={t("salesmanPremium.nav.closeNav")}
  style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 4, display: "flex", flexShrink: 0 }}>
  <X size={18} />
  </button>
  </div>
- <p style={{ fontSize: 10, color: "#374151", textTransform: "uppercase", letterSpacing: "0.1em", padding: "12px 16px 4px", fontWeight: 600, margin: 0 }}>{t("salesmanPremium.nav.main")}</p>
+ <p style={{ ...navSection, padding: "18px 24px 8px" }}>{t("salesmanPremium.nav.main")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px 12px" }}>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
  data-tour-id={tab}
  onClick={() => { switchTab(tab); setMobileNavOpen(false); }}
- style={{
- display: "flex", alignItems: "center", gap: 10,
- padding: "10px 16px", margin: "1px 8px", borderRadius: 8, cursor: "pointer",
- background: activeTab === tab ? "rgba(37,99,235,0.15)" : "transparent",
- border: activeTab === tab ? "0.5px solid rgba(37,99,235,0.25)" : "0.5px solid transparent",
- color: activeTab === tab ? "#93c5fd" : "#9ca3af",
- fontSize: 14, fontWeight: 500, width: "calc(100% - 16px)", textAlign: "left",
- }}
+ style={navRow(activeTab === tab, true)}
  >
  {icon}
- <span style={{ flex: 1 }}>{label}</span>
- {badge ? (
- <span style={{ fontSize: 10, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.3)", color: "#93c5fd", borderRadius: 99, padding: "1px 6px" }}>{badge}</span>
- ) : null}
+ <span style={{ flex: 1, minWidth: 0 }}>{label}</span>
+ {badge ? <span style={navBadge}>{badge}</span> : null}
  </button>
  ))}
+ </div>
  <button
  onClick={() => { setMobileNavOpen(false); setLogoutConfirmOpen(true); }}
  style={{
- display: "flex", alignItems: "center", gap: 10, marginTop: "auto",
- padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)",
+ display: "flex", alignItems: "center", gap: 12, marginTop: "auto",
+ padding: "16px 24px 20px", borderTop: "1px solid rgba(255,255,255,0.06)",
  background: "none", border: "none", borderTopWidth: 1, cursor: "pointer",
- color: "#6b7280", fontSize: 13, fontWeight: 500, textAlign: "left",
+ color: "#6b7280", fontSize: 14, fontWeight: 500, textAlign: "left", fontFamily: "inherit",
  }}
  >
  <LogOut size={15} /> {t("salesmanPremium.nav.logout")}
@@ -6722,7 +6730,7 @@ export default function SalesmanPremium() {
  {!isMobile && (
  <nav
  style={{
- width: 200,
+ width: 232,
  flexShrink: 0,
  background: "#080a12",
  borderRight: "1px solid rgba(255,255,255,0.07)",
@@ -6732,113 +6740,56 @@ export default function SalesmanPremium() {
  position: "sticky",
  top: 0,
  height: "100vh",
+ boxSizing: "border-box",
  }}
  >
  {/* Logo */}
- <div
- style={{
- padding: 16,
- borderBottom: "1px solid rgba(255,255,255,0.06)",
- display: "flex",
- alignItems: "center",
- gap: 8,
- }}
- >
- <div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
- <p
- style={{
- fontSize: 10,
- color: "#4b5563",
- marginTop: 2,
- marginBottom: 0,
- }}
- >
- · {isPremium? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
+ <div style={{ padding: "22px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+ <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>
+ · {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
- </div>
  </div>
 
  {/* Nav items */}
- <p
- style={{
- fontSize: 10,
- color: "#374151",
- textTransform: "uppercase",
- letterSpacing: "0.1em",
- padding: "12px 16px 4px",
- fontWeight: 600,
- margin: 0,
- }}
- >{t("salesmanPremium.nav.main")}
- </p>
+ <p style={{ ...navSection, padding: "20px 24px 8px" }}>{t("salesmanPremium.nav.main")}</p>
+ <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "0 12px 16px" }}>
  {TABS_DESKTOP.map(({ tab, label, icon, badge }) => (
  <button
  key={tab}
  data-tour-id={tab}
  onClick={() => switchTab(tab)}
- style={{
- display: "flex",
- alignItems: "center",
- gap: 10,
- padding: "8px 16px",
- margin: "1px 8px",
- borderRadius: 8,
- cursor: "pointer",
- background:
- activeTab === tab? "rgba(37,99,235,0.15)" : "transparent",
- border:
- activeTab === tab
-? "0.5px solid rgba(37,99,235,0.25)"
- : "0.5px solid transparent",
- color: activeTab === tab? "#93c5fd" : "#6b7280",
- fontSize: 13,
- fontWeight: 500,
- width: "calc(100% - 16px)",
- textAlign: "left",
- }}
+ style={navRow(activeTab === tab)}
  >
  {icon}
- <span style={{ flex: 1 }}>{label}</span>
- {badge? (
- <span
- style={{
- fontSize: 10,
- background: "rgba(37,99,235,0.2)",
- border: "1px solid rgba(37,99,235,0.3)",
- color: "#93c5fd",
- borderRadius: 99,
- padding: "1px 6px",
- }}
- >
- {badge}
- </span>
- ) : null}
+ <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+ {badge ? <span style={navBadge}>{badge}</span> : null}
  </button>
  ))}
+ </div>
 
  {/* Profile + logout */}
  <div
  style={{
  marginTop: "auto",
  borderTop: "1px solid rgba(255,255,255,0.06)",
- padding: "12px 16px",
+ padding: "16px 16px 20px 24px",
  display: "flex",
  alignItems: "center",
- gap: 10,
+ gap: 12,
  }}
  >
  <div
  style={{
- width: 30,
- height: 30,
+ width: 34,
+ height: 34,
  borderRadius: "50%",
  background: "rgba(37,99,235,0.2)",
  border: "1px solid rgba(37,99,235,0.3)",
  display: "flex",
  alignItems: "center",
  justifyContent: "center",
- fontSize: 12,
+ fontSize: 13,
  fontWeight: 700,
  color: "#93c5fd",
  flexShrink: 0,
@@ -6847,32 +6798,17 @@ export default function SalesmanPremium() {
  {(profile?.full_name || profile?.slug || "S")[0].toUpperCase()}
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
- <p
- style={{
- fontSize: 12,
- fontWeight: 600,
- color: "#e5e7eb",
- margin: 0,
- overflow: "hidden",
- textOverflow: "ellipsis",
- whiteSpace: "nowrap",
- }}
- >
+ <p style={{ fontSize: 12.5, fontWeight: 600, color: "#e5e7eb", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {profile?.full_name || profile?.slug || t("salesmanPremium.nav.salesman")}
  </p>
- <p style={{ fontSize: 10, color: "#4b5563", margin: 0 }}>{isPremium ? "Premium" : "Lite"}</p>
+ <p style={{ fontSize: 10.5, color: "#4b5563", margin: "2px 0 0" }}>{isPremium ? "Premium" : "Lite"}</p>
  </div>
  <button
  onClick={() => setLogoutConfirmOpen(true)}
- style={{
- background: "transparent",
- border: "none",
- color: "#4b5563",
- cursor: "pointer",
- padding: 4,
- }}
+ aria-label={t("salesmanPremium.nav.logout")}
+ style={{ width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", color: "#4b5563", cursor: "pointer", flexShrink: 0 }}
  >
- <LogOut size={14} />
+ <LogOut size={15} />
  </button>
  </div>
  </nav>

@@ -2102,14 +2102,14 @@ enquiries. Both were granted to `anon`.
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).
-**OWNER REJECTED THIS (2026-10-25, TODO SIMPLE-2): show every tab again; simplify what is inside the tabs instead.** **The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
-Leads, Settings always; Inbox once a booking/enquiry exists, Sold after the first sale,
-Analytics once there is a car, Loans + Outreach once there is a lead. The tab you are on
-keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows
-only setup + greeting + page link (`startingOut`, DashboardTab.jsx) until the first buyer.
-Three new signups called the full panel "too complicated" on day one. A new tab must say
-when it earns its link, or it goes back to ten links for a seller with no car.
-**Lite does the same** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
+**Every Premium tab shows from day one (owner, 2026-10-25, SIMPLE-2, undoing SIMPLE-1).**
+SIMPLE-1 (2026-10-21) hid Inbox, Sold, Analytics, Loans and Outreach until the seller "earned"
+them; the owner rejected it ("it's the tabs that need to be simpler"), so `navTabs` is the fixed
+ten and the simplifying happens INSIDE the tabs. The per-tab intros still wait for real data.
+The Dashboard's `startingOut` (setup + greeting + page link until the first buyer) is unchanged.
+Sidebar + phone drawer rows share ONE style (`navRow` / `navBadge`, SalesmanPremium.jsx): 40px
+rows (44 on a phone), 12px corners, 16px icons; colours are still the old `panel` blue.
+**Lite still grows its menu (SIMPLE-1, owner to decide)** (`navTabs` + `TOUR_PLAN` in SalesmanLite.jsx): Dashboard, Listings,
 Settings always; Leads + Performance once there is a car, Inbox once a booking/enquiry exists.
 The tour is built from `TOUR_PLAN` (one list for steps AND anchors; never re-split them into two
 index-matched arrays). Dashboard `startingOut` hides the Chat/Add-ons row and every card below

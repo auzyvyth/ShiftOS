@@ -2565,9 +2565,10 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Owner: SIMPLE-1 (2026-10-21) hid nav links from new Premium sellers until they "earned" them
 (Inbox, Sold, Analytics, Loans, Outreach). "That's not what I meant by make it simple, it's the
 tabs that need to be simpler." Next session:
-- [ ] Undo the hiding: every Premium seller sees every tab from day one (`navTabs`,
-  SalesmanPremium.jsx; the per-tab intros' "wait for real data" checks can stay).
-  Decide with the owner whether Lite's grown menu (SIMPLE-1 too) goes back the same way.
+- [x] Undo the hiding (2026-10-25, staging): every Premium tab shows from day one (`navTabs`,
+  SalesmanPremium.jsx). Sidebar + phone drawer reshaped (owner: "keep the colour, just shape and
+  spacing"): shared `navRow` / `navBadge`, 232px sidebar, 40px rows, 16px icons.
+- [ ] Owner call: does Lite's grown menu (SIMPLE-1 too) go back the same way?
 - [ ] Then simplify the CONTENTS, one tab per session: fewer cards, one primary action,
   the rest behind ···. Start by asking the owner which tab confuses new sellers most.
   - [x] Dashboard (2026-10-25, staging): rebuilt in the `premiumDark` palette, each fact once
@@ -2639,7 +2640,6 @@ tabs that need to be simpler." Next session:
     "Accept bookings" text now toggles the box; delete pop-up portalled.
     Next: undo the SIMPLE-1 menu hiding.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
-- [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
 v1 BUILT, Premium only (owner): `src/components/loans/LoanCheck.jsx`, rules
