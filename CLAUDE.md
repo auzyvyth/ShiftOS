@@ -342,6 +342,13 @@ never said the buyer had moved into handover at all.
   after the write** (see `handleMarkWon`, SalesmanPremium.jsx). The DB trigger has already
   created the customer and the 8 steps by the time the leads UPDATE returns, so one
   refetch lands everything; skipping it puts the split-brain straight back.
+- **`useHandover` loads FULL step rows (`TASK_COLS`) and keeps them on the device**, and the board
+  hands them to the checklist as `initialTasks`, so opening a deal paints at once (2026-10-25: it
+  showed "Loading handover steps..." on every open, behind three queries in a row). The checklist
+  still refreshes in the background, its three reads in parallel; a tap bumps `edits` so a late
+  read never un-ticks a step. Premium opens a deal as a POP-UP (`HandoverSheet` in
+  PostSaleBoard.jsx, `theme="premium"` only; portal, scroll lock, `useModalHistory`); the dealer
+  dashboard and linked panel keep the inline expand.
 - `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
   the percentage on every surface at once. That callback is held in a REF inside the
   checklist — parents pass an inline arrow, so keying the effect on it would re-fire every

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle, UserRound, RefreshCw } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronRight, CheckCircle2, Car, Clock, AlertTriangle, UserRound, RefreshCw, X } from 'lucide-react';
 import useHandover from '../../hooks/useHandover';
+import { useModalHistory } from '../../hooks/useModalHistory';
 import PostSaleChecklist from './PostSaleChecklist';
 import { premiumDark as PD } from '../../theme/tokens';
 
@@ -36,10 +38,29 @@ export default function PostSaleBoard({
   // when the page already handed us a controller so it never double-fetches.
   const ownController = useHandover(controller ? null : dealerId, salesmanId);
   const h = controller || ownController;
-  const { deals, progressByLead: progressMap, nextStepByLead: nextStepMap, loading, error, refresh, setTasksForLead } = h;
+  const { deals, tasksByLead, progressByLead: progressMap, nextStepByLead: nextStepMap, loading, error, refresh, setTasksForLead } = h;
 
   const [open, setOpen] = useState(null);
   const [hideDone, setHideDone] = useState(true);
+  // Premium opens a deal's checklist as a pop-up instead of inside the card:
+  // eight steps in a card pushed every other deal off the screen (owner,
+  // 2026-10-25). The dealer dashboard and the linked panel keep the inline view.
+  const premiumSheet = theme === 'premium';
+  const sheetDeal = premiumSheet && open ? deals.find((d) => d.id === open) || null : null;
+  const closeSheet = () => setOpen(null);
+  useModalHistory(!!sheetDeal, closeSheet);
+  useEffect(() => {
+    if (!sheetDeal) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [!!sheetDeal]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 640);
+  useEffect(() => {
+    if (!premiumSheet) return undefined;
+    const onResize = () => setNarrow(window.innerWidth < 640);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [premiumSheet]);
 
   // Deep link from another tab ("open this buyer's handover") — expand that
   // deal and scroll it into view once it is on screen.
@@ -158,7 +179,7 @@ export default function PostSaleBoard({
               onClick={() => setOpen(isOpen ? null : d.id)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: premium ? '14px 16px' : '12px 14px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
             >
-              {isOpen ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
+              {isOpen && !premiumSheet ? <ChevronDown size={16} color="#9ca3af" /> : <ChevronRight size={16} color="#9ca3af" />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontSize: 14, fontWeight: 700, color: t.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.buyer_name || 'Buyer'}</p>
                 <p style={{ fontSize: 11.5, color: t.sub, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -191,7 +212,7 @@ export default function PostSaleBoard({
                 </div>
               )}
             </button>
-            {isOpen && (
+            {isOpen && !premiumSheet && (
               <div style={{ padding: premium ? '0 16px 16px' : '0 14px 14px', borderTop: `1px solid ${t.divider}` }}>
                 <div style={{ paddingTop: 12 }}>
                   <PostSaleChecklist lead={d} dark={dark} theme={theme} onTasksChange={(tasks) => setTasksForLead(d.id, tasks)} onExpiryWritten={onExpiryWritten} />
@@ -209,6 +230,76 @@ export default function PostSaleBoard({
           </div>
         );
       })}
+      {sheetDeal && createPortal(
+        <HandoverSheet
+          deal={sheetDeal}
+          narrow={narrow}
+          progress={progressMap[sheetDeal.id]}
+          initialTasks={tasksByLead[sheetDeal.id] || null}
+          onClose={closeSheet}
+          onTasksChange={(tasks) => setTasksForLead(sheetDeal.id, tasks)}
+          onExpiryWritten={onExpiryWritten}
+          // closeAndRun: shut this pop-up before the customer view opens.
+          onViewCustomer={onViewCustomer ? () => { const d = sheetDeal; closeSheet(); onViewCustomer(d); } : null}
+        />,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+// One deal's handover checklist as a pop-up (Salesman Premium). Bottom sheet
+// on a phone, a centred box on desktop. The header carries the deal's live
+// progress, so the checklist inside drops its own bar.
+function HandoverSheet({ deal, narrow, progress, initialTasks, onClose, onTasksChange, onExpiryWritten, onViewCustomer }) {
+  const car = deal.car_listings;
+  const carLabel = car ? `${car.year || ''} ${car.brand || ''} ${car.model || ''}`.trim() : 'No car linked';
+  const done = progress === 100;
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 9990, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: narrow ? 'flex-end' : 'center', justifyContent: 'center', padding: narrow ? 0 : 24 }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Handover: ${deal.buyer_name || 'Buyer'}`}
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: narrow ? '100%' : 560, maxHeight: narrow ? '90vh' : '86vh', display: 'flex', flexDirection: 'column', background: PD.card, color: PD.text, borderRadius: narrow ? `${PD.radius.card}px ${PD.radius.card}px 0 0` : PD.radius.card, overflow: 'hidden', fontFamily: 'var(--xd-font-body)' }}
+      >
+        <div style={{ padding: '16px 16px 14px', borderBottom: `1px solid ${PD.line}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{deal.buyer_name || 'Buyer'}</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: PD.textSec, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{carLabel}</p>
+            </div>
+            <button onClick={onClose} aria-label="Close" style={{ width: 32, height: 32, flexShrink: 0, borderRadius: '50%', background: PD.raised, border: 'none', color: PD.textSec, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X size={16} />
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
+            <div style={{ flex: 1, height: 6, borderRadius: 99, background: PD.hover, overflow: 'hidden' }}>
+              <div style={{ width: `${progress > 0 ? progress : 0}%`, height: '100%', background: done ? PD.up : PD.accent, transition: 'width 0.3s' }} />
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: done ? PD.up : PD.textSec, minWidth: 64, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+              {done ? 'Completed' : progress < 0 ? '–' : `${progress}%`}
+            </span>
+          </div>
+        </div>
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: 16 }}>
+          <PostSaleChecklist lead={deal} dark theme="premium" initialTasks={initialTasks} onTasksChange={onTasksChange} onExpiryWritten={onExpiryWritten} />
+        </div>
+        {onViewCustomer && (
+          <div style={{ padding: `12px 16px calc(12px + env(safe-area-inset-bottom))`, borderTop: `1px solid ${PD.line}`, flexShrink: 0 }}>
+            <button
+              onClick={onViewCustomer}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: PD.text, background: PD.raised, border: 'none', borderRadius: 999, padding: '9px 15px', cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              <UserRound size={13} /> View customer record
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

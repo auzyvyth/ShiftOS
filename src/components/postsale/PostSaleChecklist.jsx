@@ -36,8 +36,10 @@ function StatusIcon({ status }) {
 // the row expands (tap anywhere on the title) for notes / due date / cost.
 // theme="premium" = Salesman Premium's premiumDark look; `dark` alone is the
 // linked-salesman panel, neither is the light dealer dashboard.
-export default function PostSaleChecklist({ lead, compact = false, dark = false, theme = null, onTasksChange = null, onExpiryWritten = null }) {
-  const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead);
+// initialTasks: the step rows the handover board already holds, so the list
+// paints at once instead of behind a fetch (see usePostSaleTasks).
+export default function PostSaleChecklist({ lead, compact = false, dark = false, theme = null, initialTasks = null, onTasksChange = null, onExpiryWritten = null }) {
+  const { tasks, loading, progress, updateTask } = usePostSaleTasks(lead, { initialTasks });
   const [expanded, setExpanded] = useState(null);
 
   // Writing an expiry changes the CUSTOMER row too (trg_sync_customer_expiry

@@ -5,6 +5,10 @@ import { computeProgress, nextBlocker } from '../utils/postSaleSteps';
 
 export const WON_STAGES = ['won', 'closed_won'];
 
+// Every column the checklist shows or writes, so the board's one fetch is
+// enough to open any deal's checklist without a second round trip.
+const TASK_COLS = 'id, lead_id, step_key, status, owner_role, due_date, cost, notes, sort_order, completed_at, result_date';
+
 // One source of truth for "deals that are past the win and in handover".
 //
 // Pipeline, Handover and Customers all need the same answer (which won deals
@@ -19,6 +23,8 @@ export const WON_STAGES = ['won', 'closed_won'];
 export default function useHandover(dealerId, salesmanId = null) {
   // Persisted so Pipeline/Handover/Customers paint last-known deals instantly;
   // refresh() still runs on mount and replaces them. No IC/address in here.
+  // The tasks are FULL step rows (TASK_COLS), so a checklist opened from the
+  // board paints at once from them instead of starting from a spinner.
   const cacheKey = dealerId ? `handover:${salesmanId || 'all'}:${dealerId}` : null;
   const [deals, setDeals] = usePersistentState(cacheKey, []);
   const [tasksByLead, setTasksByLead] = usePersistentState(cacheKey && `${cacheKey}:tasks`, {});
@@ -60,8 +66,9 @@ export default function useHandover(dealerId, salesmanId = null) {
     if (ids.length) {
       const { data: allTasks, error: tasksErr } = await supabase
         .from('post_sale_tasks')
-        .select('lead_id, step_key, status')
-        .in('lead_id', ids);
+        .select(TASK_COLS)
+        .in('lead_id', ids)
+        .order('sort_order', { ascending: true });
       if (run !== runRef.current) return;
       if (tasksErr) console.error('useHandover tasks:', tasksErr);
       const byLead = {};
@@ -79,16 +86,16 @@ export default function useHandover(dealerId, salesmanId = null) {
 
   // The checklist owns the live task rows for the deal it has open. Pushing
   // them back up keeps every other surface's percentage and "next step" chip
-  // honest without a refetch.
+  // honest without a refetch, and keeps the saved copy current, so the next
+  // open of that deal paints the edit (a note, a cost) straight away.
   const setTasksForLead = useCallback((leadId, tasks) => {
     if (!leadId || !Array.isArray(tasks)) return;
-    const next = tasks.map((t) => ({ lead_id: leadId, step_key: t.step_key, status: t.status }));
+    const next = tasks.map((t) => ({ ...t, lead_id: leadId }));
     setTasksByLead((p) => {
-      // Same steps, same statuses -> keep the old array so nothing downstream
-      // re-renders on a report that changed nothing.
+      // Nothing changed -> keep the old array so nothing downstream re-renders
+      // on a report that changed nothing (the checklist reports on every load).
       const prev = p[leadId];
-      if (prev && prev.length === next.length &&
-          prev.every((t, i) => t.step_key === next[i].step_key && t.status === next[i].status)) return p;
+      if (prev && JSON.stringify(prev) === JSON.stringify(next)) return p;
       return { ...p, [leadId]: next };
     });
   }, []);
