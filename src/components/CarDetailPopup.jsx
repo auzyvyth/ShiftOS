@@ -2,8 +2,8 @@ import React from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { toast } from "sonner";
 import {
-  Car, ChevronLeft, ChevronRight, Copy, Droplets, FileText, Gauge, Hash,
-  MapPin, Palette, PlayCircle, Settings, X, ZoomIn,
+  Car, ChevronLeft, ChevronRight, Copy, FileText, Hash,
+  MapPin, PlayCircle, X, ZoomIn,
 } from "lucide-react";
 import { DOC_TYPES } from "../utils/docTypes";
 import { DEFAULT_EIR } from "../utils/financing";
@@ -247,25 +247,12 @@ export default function CarDetailPopup({
                 )}
               </div>
 
-              {/* Quick stats strip */}
-              <div style={{ display: "flex", borderTop: `1px solid ${C.line}`, borderBottom: `1px solid ${C.line}`, margin: "16px 0", padding: "12px 0", overflowX: "auto" }}>
-                {[
-                  { Icon: Gauge, label: "Mileage", value: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
-                  { Icon: Settings, label: "Engine", value: car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : "—" },
-                  { Icon: ChevronRight, label: "Transmission", value: car.transmission || "—" },
-                  { Icon: Droplets, label: "Fuel", value: car.fuel_type || "—" },
-                  { Icon: Palette, label: "Colour", value: car.colour || "—" },
-                ].map(({ Icon, label, value }, i, arr) => (
-                  <div key={label} style={{ flex: "1 0 70px", textAlign: "center", padding: "0 10px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
-                    <Icon size={13} color={C.textMuted} style={{ marginBottom: 4 }} />
-                    <p style={{ fontSize: T.size.xs, textTransform: "uppercase", letterSpacing: T.track.label, color: C.textMuted, marginBottom: 3 }}>{label}</p>
-                    <p style={{ fontSize: T.size.base, color: C.text, margin: 0 }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-
+              {/* The five-figure strip (mileage, engine, transmission, fuel, colour)
+                  was removed 2026-10-25 (owner): each figure was already in the
+                  line under the title and again in the Specs tab. Engine size
+                  lived only in the strip, so it moved into Specs. */}
               {/* Tabs */}
-              <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, marginBottom: 16, overflowX: "auto" }}>
+              <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, margin: "18px 0 16px", overflowX: "auto" }}>
                 {TABS.map((tab) => (
                   <button
                     key={tab}
@@ -285,6 +272,7 @@ export default function CarDetailPopup({
                   { k: "Colour", v: car.colour || "—" },
                   { k: "Mileage", v: car.mileage ? `${Number(car.mileage).toLocaleString()} km` : "—" },
                   { k: "Transmission", v: car.transmission || "—" },
+                  { k: "Engine", v: car.engine_cc ? `${Number(car.engine_cc).toLocaleString()} cc` : "—" },
                   { k: "Fuel Type", v: car.fuel_type || "—" },
                   { k: "Location", v: [car.city, car.state].filter(Boolean).join(", ") || "—" },
                 ]} />

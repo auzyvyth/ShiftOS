@@ -2580,8 +2580,8 @@ tabs that need to be simpler." Next session:
     pills only show while they hold a car. Next in the menu: Chat, then Leads.
   - [x] Listings pop-ups (2026-10-25, staging): edit/add sheet + CarForm, car detail popup,
     loan poster in `premiumDark`; Lite unchanged. TikTok post (Studio) left for later (owner).
-    The detail popup still repeats facts (header line, the 5-figure strip and the Specs tab
-    all say mileage/transmission/fuel/colour): ask the owner before trimming, it is shared with Lite.
+    Detail popup: the 5-figure strip (repeated the title line + Specs tab) removed for Lite and
+    Premium on the owner's go; Engine moved into Specs.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
