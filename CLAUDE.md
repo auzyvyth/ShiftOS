@@ -1446,6 +1446,14 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
+  2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
+  After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards
+  got ZERO views and their sellers' dashboards read 0. Taps there carry `car_id` (card_click,
+  whatsapp_click) and the page logs a `page_view` (`source: new_model_page`).
+  **A model card's canonical is its model page** (CarDetailPage Helmet + `api/og.js` car branch;
+  `og:url` and the Car schema keep the card's own URL so shares still preview the card). Ten
+  advisors = ten near-identical "Proton X50 for sale" pages otherwise. Cards stay out of the sitemap.
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
 - Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
 - Live presenter: cards are ordinary listings; `officialNew` (seller_type new_car) adds
@@ -1519,6 +1527,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
+new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
+under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`
+(`src/utils/detectChannel.js`): channels share, copy, whatsapp, telegram only (Facebook / IG /
+TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
+(`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
