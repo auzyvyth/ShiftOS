@@ -66,3 +66,15 @@ export function agentSeoIssues(p) {
   else if (agentPageTitle(p).length > TITLE_LIMIT) issues.push({ key: "title", text: "Your title is long enough that Google will cut the end off. A shorter city name helps, e.g. \"Kuala Lumpur\" instead of \"Wilayah Persekutuan Kuala Lumpur\"." });
   return issues;
 }
+
+// The link-preview picture for an agent page: their cover with their profile
+// photo on top, made by api/agent-card.js. `v` changes when either photo does,
+// so a new photo is a new URL and WhatsApp/Facebook fetch it again instead of
+// showing their cached copy. null when the agent has no photo at all.
+export function agentShareImage(p, siteUrl) {
+  if (!p?.slug || !(p.cover_url || p.avatar_url)) return null;
+  const key = `${p.cover_url || ""}|${p.avatar_url || ""}`;
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+  return `${siteUrl}/api/agent-card?slug=${encodeURIComponent(p.slug)}&v=${h.toString(36)}`;
+}

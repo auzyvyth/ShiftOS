@@ -19,7 +19,7 @@ import { canonicalModel } from "../src/utils/modelKey.js";
 import { ARTICLE_PAGES as ARTICLES } from "../src/config/articlePages.generated.js";
 import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
-import { agentName, agentLocation, agentPageTitle, agentPageDescription } from "../src/utils/agentSeo.js";
+import { agentName, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
 import { SITE_URL, ROOT_DOMAIN } from "../src/config/site.js";
 
@@ -584,9 +584,9 @@ function buildListingHtml({ title, description, h1, intro, cars, canonical, base
 }
 
 // ── Salesman mini page (/s/:slug) ─────────────────────────────────────────────
-// The salesman's public storefront. The OG image is their own cover banner
-// (falling back to avatar, then the site default) so a shared link previews the
-// agent's page — not the generic XDrive/ShiftOS banner it fell through to before.
+// The salesman's public storefront. The OG image is their cover with their
+// profile photo on it (api/agent-card.js), else the site default, so a shared
+// link previews the agent's page, not the generic site banner.
 // Agent page text and schema read `bio` ONLY. `about_text` is the DEALER
 // storefront's "About us" (same rule as SalesmanProfilePage) — reading it here
 // put a linked salesman's dealership blurb under their own name in Google.
@@ -612,7 +612,7 @@ function socialUrl(v, base) {
 function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
   const name = agentName(s);
   const location = agentLocation(s);
-  const image = s.cover_url || s.avatar_url || `${SITE_URL}/og-default.jpg`;
+  const image = agentShareImage(s, SITE_URL) || `${SITE_URL}/og-default.jpg`;
   const bio = (s.bio || "").replace(/\s+/g, " ").trim();
   const jobTitle = s.job_title || "Car Sales Agent";
   // Title + description come from agentSeo.js — the Premium settings preview
