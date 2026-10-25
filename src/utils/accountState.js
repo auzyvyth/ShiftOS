@@ -91,11 +91,12 @@ export function billingState(a, now = Date.now()) {
     const exp = ms(a.plan_expires_at);
     if (exp && exp > now) {
       const started = ms(a.premium_trial_started_at);
-      // start_premium_trial / the signup trigger set both stamps 30 days apart;
-      // a logged payment moves plan_expires_at further out.
-      const freeMonth = started && Math.abs(exp - started - 30 * DAY) < DAY;
+      // start_premium_trial / the signup trigger set both stamps 7 days apart
+      // (30 before 2026-10-25, and still 30 when the console grants a month);
+      // a logged payment moves plan_expires_at further out (37+ days).
+      const freeMonth = started && [7, 30].some((d) => Math.abs(exp - started - d * DAY) < DAY);
       return freeMonth
-        ? { id: "free_month", text: `Free month · until ${shortDate(exp)}`, color: TONE.info, paying: false }
+        ? { id: "free_month", text: `Free trial · until ${shortDate(exp)}`, color: TONE.info, paying: false }
         : { id: "paid", text: `Premium · paid until ${shortDate(exp)}`, color: TONE.ok, paying: true };
     }
     if (exp) return { id: "lapsed", text: `Premium lapsed ${shortDate(exp)} · on Lite limits`, color: TONE.bad, paying: false };
@@ -134,7 +135,7 @@ export const STATUS_FILTERS = [
   { id: "all", label: "Any status" },
   { id: "review", label: "Waiting on ID check" },
   { id: "paid", label: "Paying" },
-  { id: "free", label: "Free month / trial" },
+  { id: "free", label: "Free trial" },
   { id: "lite", label: "Lite (free)" },
   { id: "money", label: "Lapsed / never paid / unconfirmed" },
   { id: "off", label: "Suspended / switched off" },

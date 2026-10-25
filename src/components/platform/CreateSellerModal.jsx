@@ -16,10 +16,10 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 //
 // Always the seller's OWN email: the account, its leads and its buyers' chats
 // belong to whoever owns the address. Lite or Premium (owner, 2026-10-18).
-// Premium here is the one free month, granted by create-salesman the same way
+// Premium here is the one free trial, granted by create-salesman the same way
 // start_premium_trial() does: it starts when the account is made, and no
-// payment is asked for. Before this the owner signed in as the seller and
-// started the free month from Lite settings by hand.
+// payment is asked for. 7 days like a signup, or 1 month for a prospect who
+// was promised a month before the trial was cut (owner, 2026-10-25).
 //
 // The form asks what signup asks (how they sell, which brand) plus what the
 // seller would otherwise type into Settings later (shop address; job title
@@ -48,13 +48,13 @@ const ERRORS = {
 };
 
 export default function CreateSellerModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "", plan: "salesman_lite",
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", slug: "", state: "", city: "", dealership: "", plan: "salesman_lite", trial_days: 7,
     sells: ["broker"], new_car_brand: "", location: "", job_title: "", bio: "" });
   const [slugEdited, setSlugEdited] = useState(false);
   const [slugFree, setSlugFree] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  useModalHistory(true, onClose, { isDirty: () => Object.entries(form).some(([k, v]) => k !== "plan" && k !== "sells" && String(v || "").trim()) });
+  useModalHistory(true, onClose, { isDirty: () => Object.entries(form).some(([k, v]) => k !== "plan" && k !== "sells" && k !== "trial_days" && String(v || "").trim()) });
   const [created, setCreated] = useState(null);
   const [mailState, setMailState] = useState(null); // null | sending | sent | failed
 
@@ -96,6 +96,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
         city: form.city || null,
         dealership: form.dealership.trim() || null,
         plan: form.plan,
+        trial_days: form.trial_days,
         ...sellsToDb(form.sells, form.new_car_brand),
         location: form.location.trim() || null,
         // Premium-page fields; a Lite page never shows them, so don't store
@@ -114,7 +115,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
       code = code || e.message;
     }
     if (code || !data?.user_id) { setError(ERRORS[code] || `Could not create the account: ${code || "no reply"}`); return; }
-    setCreated({ ...data, email: form.email.trim().toLowerCase(), slug: form.slug, plan: form.plan });
+    setCreated({ ...data, email: form.email.trim().toLowerCase(), slug: form.slug, plan: form.plan, trial_days: form.trial_days });
     onCreated?.(data.profile);
   };
 
@@ -147,7 +148,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
             <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{created ? "Account created" : "Set up a seller's page"}</p>
             <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280", lineHeight: 1.5 }}>
               {created
-                ? `${created.plan === "salesman_full" ? "Premium, free month started." : "Lite."} Nothing has been emailed yet.`
+                ? `${created.plan === "salesman_full" ? `Premium, ${created.trial_days === 30 ? "1 month" : "7 days"} free started.` : "Lite."} Nothing has been emailed yet.`
                 : "Under the seller's own email. Nothing is emailed until you press Send setup email."}
             </p>
           </div>
@@ -160,7 +161,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
               <div role="radiogroup" aria-label="Plan" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
                   { key: "salesman_lite", name: "Lite", note: "Free" },
-                  { key: "salesman_full", name: "Premium", note: `Free month, then RM${PLAN_CONFIG.salesman_full.price}` },
+                  { key: "salesman_full", name: "Premium", note: `Free trial, then RM${PLAN_CONFIG.salesman_full.price}` },
                 ].map((p) => {
                   const on = form.plan === p.key;
                   return (
@@ -173,7 +174,26 @@ export default function CreateSellerModal({ onClose, onCreated }) {
                     </button>
                   );
                 })}
-              </div></div>
+              </div>
+              {form.plan === "salesman_full" && (
+                <div role="radiogroup" aria-label="Free trial" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
+                  {[
+                    { days: 7, name: "7 days free", note: "Same as signup" },
+                    { days: 30, name: "1 month free", note: "Promised a month" },
+                  ].map((t) => {
+                    const on = form.trial_days === t.days;
+                    return (
+                      <button key={t.days} type="button" role="radio" aria-checked={on} onClick={() => set("trial_days", t.days)}
+                        style={{ textAlign: "left", padding: "9px 12px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", minWidth: 0,
+                          background: on ? "rgba(220,38,38,0.1)" : "rgba(255,255,255,0.04)",
+                          border: `1px solid ${on ? "rgba(220,38,38,0.55)" : "rgba(255,255,255,0.1)"}` }}>
+                        <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: on ? "#f1f5f9" : "#d1d5db" }}>{t.name}</span>
+                        <span style={{ display: "block", fontSize: 11, color: "#6b7280", marginTop: 2 }}>{t.note}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}</div>
             <div><label style={label}>Full name</label>
               <input value={form.full_name} onChange={(e) => set("full_name", e.target.value)} style={input} autoComplete="off" /></div>
             <div><label style={label}>Their email (not yours)</label>

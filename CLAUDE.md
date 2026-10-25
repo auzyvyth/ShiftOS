@@ -1349,9 +1349,16 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
   restore cannot move `plan_expires_at` (escalation guard), so it waits.
 
-## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
-- **The free month is a paid-through date, not a trial flag:** `plan_expires_at =
-  now() + 30 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
+## Lite -> Premium upgrade + the free trial (2026-10-04, migration 20261004b)
+- **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025b).** One
+  number in two places: the trigger `apply_premium_free_month()` and
+  `PLAN_CONFIG.salesman_full.trialDays`. Trials started before that keep their 30 days
+  (the date is stamped at start). Console "Set up a seller" picks 7 days or 1 month
+  (`trial_days` in create-salesman, only 7 or 30 accepted) for prospects promised a
+  month. After it ends: drop to Lite as below, never a full lock (owner's pick).
+  `accountState.js` reads a 7- or 30-day gap as a trial; any other length = paid.
+- **The free trial is a paid-through date, not a trial flag:** `plan_expires_at =
+  now() + 7 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
   `start_premium_trial()` from Lite). `subscription_status='trial'` never granted
   Premium (is_salesman_premium ignores it), which is why Premium signups used to land
   on Lite. `premium_trial_started_at` = the one free month is used.
@@ -1502,7 +1509,7 @@ and the won-trigger marks it sold on the first deal.
   `create-salesman` uses signup's business-name fallback (blank = full name) and tags the login
   `account_type`/`tier` like `signUp()`. The setup email lists every saved field, read back
   from the profile row. A new signup question goes in both, or console accounts drift again.
-- Console "Set up a seller" offers Lite or Premium. Premium = the free month, written
+- Console "Set up a seller" offers Lite or Premium. Premium = the free trial (7 days or 1 month), written
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.
 

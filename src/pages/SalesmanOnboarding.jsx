@@ -143,7 +143,7 @@ const TIERS = {
   },
   premium: {
     label: 'SALESMAN PREMIUM',
-    price: 'First month free, then RM 35 / mo',
+    price: 'First 7 days free, then RM 35 / mo',
     // One list, shared with /plans and /for-salesmen (src/utils/plans.js).
     features: [`Up to ${PLAN_CONFIG.salesman_full.listingCap} active listings`, ...SALESMAN_PREMIUM_FEATURES],
   },
@@ -572,10 +572,10 @@ export default function SalesmanOnboarding() {
         is_active: true,
         onboarding_complete: true,
         plan: tier === 'premium' ? 'salesman_full' : 'salesman_lite',
-        // Premium's first month is free (subscription_status/trial_ends_at set
+        // Premium's first 7 days are free (subscription_status/trial_ends_at set
         // by the DB trigger prevent_profile_privilege_escalation, which forces
         // payment_status to NULL for this exact signup-completing write —
-        // whatever we send here is overridden, the DB decides). After 30 days
+        // whatever we send here is overridden, the DB decides). After 7 days
         // the panel gates behind the same manual DuitNow QR flow dealers use
         // (admin marks payment_status='received' in /platform).
         payment_status: null,

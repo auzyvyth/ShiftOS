@@ -146,7 +146,7 @@ function BillingTab({ dealers, salesmen, dealerStats }) {
       <div className="adm-stat4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 14 }}>
         <StatCard label="Est. MRR" value={`RM ${(dealerMrr + sellerMrr).toLocaleString()}`} color="#dc2626" sub={`Dealers RM ${dealerMrr.toLocaleString()} · Premium sellers RM ${sellerMrr.toLocaleString()}`} />
         <StatCard label="Paying dealers" value={d.paying} color="#4ade80" sub={`of ${rows.length} dealers`} />
-        <StatCard label="Paying Premium sellers" value={sl.paying} color="#4ade80" sub={`${sl.free} on free month · ${lite} on free Lite`} />
+        <StatCard label="Paying Premium sellers" value={sl.paying} color="#4ade80" sub={`${sl.free} on free trial · ${lite} on free Lite`} />
         <StatCard label="Owed / lapsed" value={d.owed + sl.owed} color="#f87171" sub="trial ended, lapsed, or never paid" />
       </div>
 

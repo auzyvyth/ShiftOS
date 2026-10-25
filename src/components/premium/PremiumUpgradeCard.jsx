@@ -9,9 +9,9 @@ import PagePreview from "./PagePreview";
 // The Lite -> Premium door (migration 20261004b). Before this, Lite had no
 // upgrade control at all and /plans looped a signed-in Lite seller back to
 // Lite. Two states:
-//   - free month not used yet: one button, start_premium_trial(), which sets
-//     a 30-day plan_expires_at server side, then we go to the Premium panel;
-//   - free month used / lapsed: how to pay. Payment is still confirmed by
+//   - free trial not used yet: one button, start_premium_trial(), which sets
+//     a 7-day plan_expires_at server side, then we go to the Premium panel;
+//   - free trial used / lapsed: how to pay. Payment is still confirmed by
 //     hand (WhatsApp + DuitNow QR); the owner logs it in the console and the
 //     seller lands on Premium on their next load.
 // Dark seller-panel surface.
@@ -38,7 +38,7 @@ export default function PremiumUpgradeCard({ profile, cars, onRefer }) {
     setStarting(true);
     const { data, error } = await supabase.rpc("start_premium_trial");
     setStarting(false);
-    if (error) { toast.error("Couldn't start your free month. Try again."); return; }
+    if (error) { toast.error("Couldn't start your free trial. Try again."); return; }
     if (data === "ok" || data === "already_premium") {
       // Full load: the Premium panel re-reads the profile and its gates.
       window.location.href = "/salesman-premium";
@@ -46,10 +46,10 @@ export default function PremiumUpgradeCard({ profile, cars, onRefer }) {
     }
     if (data === "used") {
       setOffer((o) => ({ ...o, trial_available: false, trial_used: true }));
-      toast.error("Your free month has already been used.");
+      toast.error("Your free trial has already been used.");
       return;
     }
-    toast.error("This account can't start a free month.");
+    toast.error("This account can't start a free trial.");
   };
 
   const card = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
@@ -74,15 +74,15 @@ export default function PremiumUpgradeCard({ profile, cars, onRefer }) {
         <>
           <button type="button" onClick={startTrial} disabled={starting}
             style={{ marginTop: 14, padding: "11px 16px", borderRadius: 8, border: "none", background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, cursor: starting ? "wait" : "pointer", opacity: starting ? 0.7 : 1, fontFamily: "inherit" }}>
-            {starting ? "Starting..." : "Try Premium free for 30 days"}
+            {starting ? "Starting..." : "Try Premium free for 7 days"}
           </button>
           <p style={{ margin: "8px 0 0", fontSize: 11, color: "#6b7280", lineHeight: 1.6 }}>
-            No payment now. After 30 days you go back to Lite unless you pay, and nothing you added is lost.
+            No payment now. After 7 days you go back to Lite unless you pay, and nothing you added is lost.
           </p>
         </>
       ) : (
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-          <PremiumPayBox profile={profile} lead={offer.trial_used ? "Your free month has ended. " : ""} />
+          <PremiumPayBox profile={profile} lead={offer.trial_used ? "Your free trial has ended. " : ""} />
         </div>
       )}
 
