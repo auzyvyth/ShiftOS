@@ -2582,6 +2582,10 @@ tabs that need to be simpler." Next session:
     loan poster in `premiumDark`; Lite unchanged. TikTok post (Studio) left for later (owner).
     Detail popup: the 5-figure strip (repeated the title line + Specs tab) removed for Lite and
     Premium on the owner's go; Engine moved into Specs.
+  - [x] Chat (2026-10-25, staging): `SellerInbox` / `ChatThread` / push strip / car picker take
+    `theme="premium"`; Lite (`dark`) and the dealer (`light`) unchanged. The pipeline's ChatSheet
+    (opened from Leads) still uses `dark`: switch it with the Leads tab. Next: Leads.
+  - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)

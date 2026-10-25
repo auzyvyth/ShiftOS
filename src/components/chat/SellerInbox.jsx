@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { premiumDark as P } from '../../theme/tokens';
 import { createPortal } from 'react-dom';
 import { MessageSquare, ArrowLeft, UserCircle2, BadgeCheck, ChevronDown, GitBranch } from 'lucide-react';
 import { useChatThreads } from '../../hooks/useChat';
@@ -115,9 +116,13 @@ export default function SellerInbox({
   const t = THEMES[theme] || THEMES.light;
   // Row hover/active tint and separators, derived so both palettes stay legible.
   const dark = theme === 'dark';
-  const rowActive = dark ? 'rgba(220,38,38,0.10)' : 'rgba(220,38,38,0.05)';
-  const rowLine = dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6';
-  const ph = dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6';
+  // premium = Salesman Premium's premiumDark (SIMPLE-2): the list is a card one
+  // tone up from the canvas with no outline, rows split by the one hairline,
+  // and red only for fills (the unread counts).
+  const prem = theme === 'premium';
+  const rowActive = prem ? P.raised : dark ? 'rgba(220,38,38,0.10)' : 'rgba(220,38,38,0.05)';
+  const rowLine = prem ? P.line : dark ? 'rgba(255,255,255,0.05)' : '#f3f4f6';
+  const ph = prem ? P.raised : dark ? 'rgba(255,255,255,0.06)' : '#f3f4f6';
 
   const open = threads.find(x => x.id === openId) || null;
   const carOf = (x) => x.listing ? [x.listing.year, x.listing.brand, x.listing.model].filter(Boolean).join(' ')
@@ -141,10 +146,10 @@ export default function SellerInbox({
   }
 
   const list = (
-    <div style={{ background:t.bg, border:`1px solid ${t.border}`, borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column', height: fullHeight ? '100%' : undefined, minHeight:0 }}>
-      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
-        <MessageSquare size={15} style={{ color:'#dc2626' }} />
-        <p style={{ margin:0, fontSize:13, fontWeight:700, color:t.text, flex:1 }}>Messages</p>
+    <div style={{ background: prem ? t.panel : t.bg, border: prem ? 'none' : `1px solid ${t.border}`, borderRadius: prem ? P.radius.card : 14, overflow:'hidden', display:'flex', flexDirection:'column', height: fullHeight ? '100%' : undefined, minHeight:0, fontFamily:t.font }}>
+      <div style={{ display:'flex', alignItems:'center', gap:8, padding: prem ? '16px 18px' : '12px 14px', borderBottom:`1px solid ${t.border}`, background:t.panel, flexShrink:0 }}>
+        <MessageSquare size={15} style={{ color: prem ? t.sub : '#dc2626' }} />
+        <p style={{ margin:0, fontSize: prem ? 15 : 13, fontWeight:700, color:t.text, flex:1 }}>Messages</p>
         {totalUnread > 0 && (
           <span style={{ fontSize:11, fontWeight:700, color:'#fff', background:'#dc2626', borderRadius:20, padding:'1px 8px' }}>{totalUnread}</span>
         )}
@@ -155,15 +160,15 @@ export default function SellerInbox({
           const unread = row.seller_unread || 0;
           return (
             <button key={row.id} onClick={() => setOpenId(row.id)}
-              style={{ width:'100%', display:'flex', gap:10, alignItems:'center', padding:'11px 14px', background: active ? rowActive : 'transparent', border:'none', borderBottom:`1px solid ${rowLine}`, cursor:'pointer', textAlign:'left', fontFamily:"system-ui,sans-serif" }}>
+              style={{ width:'100%', display:'flex', gap:10, alignItems:'center', padding: prem ? '12px 18px' : '11px 14px', background: active ? rowActive : 'transparent', border:'none', borderBottom:`1px solid ${rowLine}`, cursor:'pointer', textAlign:'left', fontFamily:t.font }}>
               {row.listing?.images?.[0]
-                ? <img src={row.listing.images[0]} alt="" style={{ width:42, height:42, borderRadius:9, objectFit:'cover', flexShrink:0, border:`1px solid ${t.border}` }} />
+                ? <img src={row.listing.images[0]} alt="" style={{ width:42, height:42, borderRadius:9, objectFit:'cover', flexShrink:0, border: prem ? 'none' : `1px solid ${t.border}` }} />
                 : <div style={{ width:42, height:42, borderRadius:9, background:ph, flexShrink:0 }} />}
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:1 }}>
                   {row.buyer_is_anon
                     ? <UserCircle2 size={12} style={{ color:t.sub, flexShrink:0 }} />
-                    : <BadgeCheck size={12} style={{ color:'#16a34a', flexShrink:0 }} />}
+                    : <BadgeCheck size={12} style={{ color:t.ok, flexShrink:0 }} />}
                   <span style={{ fontSize:13, fontWeight: unread ? 700 : 600, color:t.text, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                     {row.buyer_label}
                   </span>
@@ -211,8 +216,8 @@ export default function SellerInbox({
       aria-label={stage ? `Pipeline stage: ${stageCfg?.label || stage}`
         : leadHidden ? 'In the pipeline, not assigned to you' : 'Not in the pipeline yet'}
       style={{ display:'flex', alignItems:'center', gap:5, background: showStage ? rowActive : 'none',
-               border:`1px solid ${t.border}`, borderRadius:8, padding:'5px 9px', fontSize:11.5,
-               color:t.text, cursor:'pointer', fontFamily:"system-ui,sans-serif", whiteSpace:'nowrap' }}>
+               border: prem ? 'none' : `1px solid ${t.border}`, borderRadius: prem ? P.radius.pill : 8, padding: prem ? '6px 11px' : '5px 9px', fontSize:11.5, ...(prem && !showStage ? { background:P.raised } : null),
+               color:t.text, cursor:'pointer', fontFamily:t.font, whiteSpace:'nowrap' }}>
       <GitBranch size={12} style={{ color:t.sub, flexShrink:0 }} />
       {stageCfg?.label || (leadHidden ? 'In pipeline' : 'No lead')}
       <ChevronDown size={11} style={{ color:t.sub, flexShrink:0, transform: showStage ? 'rotate(180deg)' : 'none', transition:'transform .15s' }} />
@@ -245,13 +250,14 @@ export default function SellerInbox({
                 <span style={{
                   display:'inline-flex', alignItems:'center', gap:4, padding:'3px 8px', borderRadius:20,
                   fontSize:11, whiteSpace:'nowrap',
-                  background: here ? 'rgba(220,38,38,0.12)' : 'transparent',
-                  border: `1px solid ${here ? 'rgba(220,38,38,0.35)' : t.border}`,
-                  color: here ? '#f87171' : done ? t.text : t.sub,
+                  // premium: the current stage is ink (picked), never red.
+                  background: here ? (prem ? P.text : 'rgba(220,38,38,0.12)') : 'transparent',
+                  border: `1px solid ${here ? (prem ? P.text : 'rgba(220,38,38,0.35)') : t.border}`,
+                  color: here ? (prem ? P.card : '#f87171') : done ? t.text : t.sub,
                   fontWeight: here ? 700 : 500,
                 }}>
                   <span aria-hidden style={{ width:5, height:5, borderRadius:'50%', flexShrink:0,
-                    background: here ? '#dc2626' : done ? t.sub : 'transparent',
+                    background: here ? (prem ? P.card : '#dc2626') : done ? t.sub : 'transparent',
                     border: done || here ? 'none' : `1px solid ${t.border}` }} />
                   {STAGE_CONFIG[key]?.label || key}
                 </span>
@@ -287,7 +293,7 @@ export default function SellerInbox({
         headerRight={stagePill}
         headerLeft={
           <button onClick={() => setOpenId(null)} aria-label="Back to all messages"
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius:9, background:'none', border:`1px solid ${t.border}`, color:t.sub, cursor:'pointer', flexShrink:0 }}>
+            style={{ display:'flex', alignItems:'center', justifyContent:'center', width:32, height:32, borderRadius: prem ? P.radius.pill : 9, background: prem ? P.raised : 'none', border: prem ? 'none' : `1px solid ${t.border}`, color:t.sub, cursor:'pointer', flexShrink:0 }}>
             <ArrowLeft size={16} />
           </button>
         }

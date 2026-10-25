@@ -70,7 +70,7 @@ export default function CarPickerSheet({ threadId, t, onPick, onClose }) {
     <div onClick={onClose}
       style={{ position:'fixed', inset:0, zIndex:12000, background:'rgba(0,0,0,0.55)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
       <div onClick={e => e.stopPropagation()} role="dialog" aria-label="Send a car"
-        style={{ width:'100%', maxWidth:520, maxHeight:'80vh', display:'flex', flexDirection:'column', background:t.bg, color:t.text, borderRadius:'16px 16px 0 0', border:`1px solid ${t.border}`, boxShadow:t.shadow, fontFamily:'system-ui,sans-serif', boxSizing:'border-box' }}>
+        style={{ width:'100%', maxWidth:520, maxHeight:'80vh', display:'flex', flexDirection:'column', background:t.sheet || t.bg, color:t.text, borderRadius:'16px 16px 0 0', border:`1px solid ${t.border}`, boxShadow:t.shadow, fontFamily:t.font || 'system-ui,sans-serif', boxSizing:'border-box' }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 14px 10px' }}>
           <p style={{ margin:0, flex:1, fontSize:15, fontWeight:700 }}>Send a car</p>
           <button type="button" onClick={onClose} aria-label="Close"

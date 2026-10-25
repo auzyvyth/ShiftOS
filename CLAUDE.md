@@ -174,7 +174,10 @@ Project ID: lemdkdizdlcirhbzqlos
   (`salesmanPremium/premiumForm.css`, remaps its Tailwind colour classes, only inside that
   sheet) plus its `dark` prop (only Premium passes it) for the inline step dots, sticky
   footers (CarForm + QuickSteps via QuickCarFlow) and `DamageMap theme`. A new colour class
-  in CarForm needs a line in premiumForm.css or it shows light in Premium. The rest of
+  in CarForm needs a line in premiumForm.css or it shows light in Premium. Chat tab:
+  `SellerInbox theme="premium"` -> `THEMES.premium` in `chat/ChatThread.jsx` (no bubble glow,
+  neutral AI bar + privacy note; `LEGACY` keeps light/dark exactly as before). Any new colour
+  in the chat components goes in THEMES as a key, never inline, or Premium drifts. The rest of
   Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
   dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
   only views total), "visits from shared links" sits under Share in Your page, no platform

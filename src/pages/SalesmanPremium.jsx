@@ -7419,11 +7419,11 @@ export default function SalesmanPremium() {
  )}
  {activeTab === "chat" && (
  <Suspense fallback={<TabLoadingFallback />}>
- {/* Premium's panel is dark — SellerInbox defaults to the light dealer
- palette, so without theme="dark" the whole chat tab rendered white
- on a #080a12 page. Same component, same props Lite passes, minus
- the upgrade strip (Premium has the AI bar for real). */}
- <SellerInbox salesmanId={userId} theme="dark" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
+ {/* theme="premium": the premiumDark palette (SIMPLE-2). SellerInbox
+ defaults to the light dealer palette, so a theme must always be passed
+ here; Lite passes "dark". Premium has the AI bar for real, Lite the
+ upgrade strip. */}
+ <SellerInbox salesmanId={userId} theme="premium" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}
