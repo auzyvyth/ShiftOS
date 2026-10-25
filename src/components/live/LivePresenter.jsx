@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight, Contact, Expand, Info, Lock, Maximize2, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Contact, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../../supabaseClient';
 import {
@@ -124,6 +124,43 @@ const preload = (u) => {
 };
 
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
+
+// Motion is for the camera (LIVE-MOTION, owner 2026-10-25): sellers film a
+// monitor and TikTok compresses it, so only slow, large moves survive. Off
+// when the phone asks for reduced motion.
+const reducedMotion = () => typeof window !== 'undefined'
+  && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const ROLL_MS = 650;
+// The big monthly ROLLS to a new value when a deposit / tenure / rate tap
+// changes it: viewers watch a number move. A new car (snapKey) jumps straight
+// there, so the roll never reads as one car's price turning into another's.
+// Its own component: the presenter re-fits on every render, and a roll is ~40.
+const RollingNumber = ({ value, snapKey }) => {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  const snap = useRef(snapKey);
+  useEffect(() => {
+    if (snap.current !== snapKey || reducedMotion() || from.current === value) {
+      snap.current = snapKey;
+      from.current = value;
+      setShown(value);
+      return undefined;
+    }
+    const start = from.current;
+    const t0 = performance.now();
+    let raf;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ROLL_MS);
+      const v = start + (value - start) * (1 - (1 - k) ** 3); // ease out
+      from.current = v;
+      setShown(k === 1 ? value : v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, snapKey]);
+  return fmt(Math.round(shown));
+};
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
 const DOWN_ROWS = [DEFAULT_DOWN, 20, 30];
@@ -160,6 +197,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
+  // Which way the last car change went: the new car slides in from that side.
+  const [dir, setDir] = useState(0);
+  // Jump to a car (LIVE-JUMP, owner 2026-10-25): ten Proton cards meant five
+  // taps on Next to reach one. Desktop: a list in the margin beside the stage,
+  // outside what a phone filming the monitor records. Phone: a sheet from the
+  // bottom nav. Plus a typed number + Enter, since viewers comment "#7".
+  const [pickOpen, setPickOpen] = useState(false);
+  const [pickQ, setPickQ] = useState('');
+  const [typedNo, setTypedNo] = useState('');
+  const [gutter, setGutter] = useState(0);
+  const pickListRef = useRef(null);
   const [imgIdx, setImgIdx] = useState(0);
   // Full view of the car photo. It fills the STAGE, not the browser window, so
   // it is never wider than the calculator (owner, 2026-10-22): on a phone that
@@ -175,6 +223,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [confirmEnd, setConfirmEnd] = useState(false);
   const requestExit = () => {
     if (photoFull) setPhotoFull(false);
+    else if (pickOpen) setPickOpen(false);
     else if (adjustOpen) setAdjustOpen(false);
     else if (budgetSetOpen) setBudgetSetOpen(false);
     else setConfirmEnd(true);
@@ -304,6 +353,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Back closes the photo first, then (asking) the live.
   useModalHistory(!embedded && photoFull, () => setPhotoFull(false));
   useModalHistory(!embedded && confirmEnd, () => setConfirmEnd(false));
+  useModalHistory(!embedded && pickOpen, () => setPickOpen(false));
   // Back closes the Settings pop-up, never the live.
   useModalHistory(!embedded && adjustOpen, () => setAdjustOpen(false));
   useModalHistory(!embedded && budgetSetOpen, () => setBudgetSetOpen(false));
@@ -350,7 +400,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useEffect(() => {
     if (embedded || typeof window === 'undefined' || !window.matchMedia) return undefined;
     const mq = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)');
-    const update = () => setDeskZoom(mq.matches ? Math.min(window.innerHeight / STAGE_H, window.innerWidth / DESK_W) : null);
+    const update = () => {
+      const z = mq.matches ? Math.min(window.innerHeight / STAGE_H, window.innerWidth / DESK_W) : null;
+      setDeskZoom(z);
+      // The margin either side of the zoomed stage: room for the car list?
+      setGutter(z ? (window.innerWidth - DESK_W * z) / 2 : 0);
+    };
     update();
     window.addEventListener('resize', update);
     mq.addEventListener?.('change', update);
@@ -445,6 +500,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     preload(pics(listings[(idx + 1) % listings.length])[0]);
     preload(pics(listings[(idx - 1 + listings.length) % listings.length])[0]);
   }, [idx, listings]);
+  // And, once the first car is up, every car's FIRST photo: the car list and
+  // the Budget screen jump past the neighbours, and the photo sat blank while
+  // it downloaded (seen in the 2026-10-25 recording). Not in the embedded demo.
+  useEffect(() => {
+    if (embedded || listings.length < 3) return undefined;
+    const tm = setTimeout(() => {
+      listings.forEach((c) => preload(Array.isArray(c?.images) ? c.images.find(Boolean) : null));
+    }, 1500);
+    return () => clearTimeout(tm);
+  }, [listings, embedded]);
   // price = asking, net = what the loan is worked from (asking - rebate).
   const { price, rebate, net } = netPrice(shown, rebates);
   // This car's rate group, its rate and how it was quoted.
@@ -466,12 +531,28 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
+    setDir(d);
     setImgIdx(0);
     setPhotoFull(false);
     setDepEdit(false);
     setRebateEdit(false);
     setInsEdit(false);
   }, [listings.length]);
+
+  // Straight to car i, sliding in from the side it sits on.
+  const goTo = useCallback((i) => {
+    setMode('cars');
+    setPickOpen(false);
+    setPickQ('');
+    if (i === idx || i < 0 || i >= listings.length) return;
+    setDir(i > idx ? 1 : -1);
+    setIdx(i);
+    setImgIdx(0);
+    setPhotoFull(false);
+    setDepEdit(false);
+    setRebateEdit(false);
+    setInsEdit(false);
+  }, [idx, listings.length]);
 
   // Exit: a live of a minute or more ends on its report; a peek just closes.
   const finish = useCallback(async () => {
@@ -521,6 +602,11 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         return;
       }
       if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
+      // Type a number, then Enter: the car viewers asked for by its #N.
+      if (!adjustOpen && !budgetSetOpen && /^[0-9]$/.test(e.key)) { setTypedNo((v) => (v + e.key).replace(/^0+/, '').slice(-3)); return; }
+      if (typedNo && e.key === 'Enter') { e.preventDefault(); goTo(Number(typedNo) - 1); setTypedNo(''); return; }
+      if (typedNo && (e.key === 'Escape' || e.key === 'Backspace')) { setTypedNo(e.key === 'Escape' ? '' : typedNo.slice(0, -1)); return; }
+      if (e.key === 'Escape' && pickOpen) { setPickOpen(false); return; }
       if (e.key === 'Escape') { if (adjustOpen) setAdjustOpen(false); else if (budgetSetOpen) setBudgetSetOpen(false); else setConfirmEnd(true); }
       else if (mode !== 'cars') return;
       else if (e.key === 'ArrowRight') go(1);
@@ -528,7 +614,17 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen]);
+  }, [go, goTo, typedNo, pickOpen, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen]);
+  // A typed number nobody confirmed clears itself.
+  useEffect(() => {
+    if (!typedNo) return undefined;
+    const tm = setTimeout(() => setTypedNo(''), 3000);
+    return () => clearTimeout(tm);
+  }, [typedNo]);
+  // Keep the car on screen in view in the list.
+  useEffect(() => {
+    pickListRef.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [idx, pickOpen, gutter]);
 
   // A live runs 30-60 minutes; a phone that dims and locks mid-pitch kills it.
   useEffect(() => {
@@ -740,8 +836,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return `${fmtRate(Math.max(0, Number(r.eir) || 0))}% ${r.basis === 'flat' ? t.flat : 'EIR'}`;
   }).join(' / ');
   // The viewer's number and commitments, shared by the phone and desktop layouts.
+  // A 5-digit take-home pay ("15000") did not fit the desktop sum line beside
+  // the commitments box; it steps down a size instead of being cut off.
   const moneyIn = (
-    <label className="lp-money">
+    <label className={budgetAmount.length >= 5 ? 'lp-money lp-long' : 'lp-money'}>
       <span>RM</span>
       <input type="text" inputMode="numeric" value={budgetAmount} placeholder="0"
         aria-label={budgetKind === 'pay' ? t.takeHomeAria : t.monthlyBudget}
@@ -768,6 +866,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
+    setDir(0);
     setImgIdx(0);
     // A "just above" car opens with the extra deposit that makes it fit.
     const dep = bDown + (m.topUp || 0);
@@ -780,6 +879,55 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Adjust > Rebates: how many cars have one, and the day the saved list clears.
   const rebateCount = listings.filter((c) => Number(rebates[c.id]) > 0).length;
   const endLabel = monthEnd(myMonth()).toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+  // Jump to a car. Only with 3+ cars (with 2, Next already is the list).
+  // Desktop with room in the margin: the list sits there, outside the stage.
+  // Anything else: a list button in the bottom nav opens it as a sheet.
+  const canPick = !embedded && !report && listings.length >= 3;
+  const pickRail = canPick && !!deskZoom && gutter >= 200;
+  const pickQn = pickQ.trim().replace(/^#\s*/, '').toLowerCase();
+  const pickRows = listings.map((c, i) => ({ c, i })).filter(({ c, i }) => !pickQn
+    || (/^[0-9]+$/.test(pickQn) ? String(i + 1) === pickQn : carLabel(c).toLowerCase().includes(pickQn)));
+  const typedOk = typedNo && Number(typedNo) >= 1 && Number(typedNo) <= listings.length;
+  const pickBody = (
+    <>
+      <div className="lp-pick-h">
+        <b>{t.jumpTitle}</b>
+        {pickRail && <span><Lock size={11} /> {t.jumpOnlyYou}</span>}
+      </div>
+      <label className="lp-pick-q">
+        <Search size={15} />
+        <input type="text" value={pickQ} placeholder={t.jumpSearch} aria-label={t.jumpSearch}
+          onChange={(e) => setPickQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && pickRows[0]) { goTo(pickRows[0].i); e.currentTarget.blur(); }
+            if (e.key === 'Escape') { e.stopPropagation(); setPickQ(''); e.currentTarget.blur(); }
+          }} />
+      </label>
+      <div className="lp-pick-list" ref={pickListRef}>
+        {pickRows.map(({ c, i }) => {
+          const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
+          return (
+            <button key={c.id || i} type="button" className="lp-pick-row" aria-current={i === idx && mode === 'cars'} onClick={() => goTo(i)}>
+              <span className="lp-badge">#{i + 1}</span>
+              <span className="lp-pick-img">{img && <img src={cdnImg(img, 120, 60)} alt="" loading="lazy" decoding="async" onError={imgFallback(img)} />}</span>
+              {/* Model + variant first: that is what the seller is looking for. */}
+              <span className="lp-pick-name">
+                <b>{[c.model, c.variant].filter(Boolean).join(' ')}</b>
+                <small>{[c.year, c.brand].filter(Boolean).join(' ')}</small>
+              </span>
+            </button>
+          );
+        })}
+        {!pickRows.length && <p className="lp-pick-none">{t.jumpNone}</p>}
+      </div>
+      {pickRail && (
+        <p className="lp-pick-f" aria-live="polite">
+          {typedNo ? <b>{typedOk ? t.jumpGo(typedNo) : t.jumpNoCar(typedNo)}</b> : t.jumpKeys}
+        </p>
+      )}
+    </>
+  );
 
   const screen = (
     <div className={`lp${embedded ? ' lp-embed' : ''}${deskZoom ? ' lp-desk' : ''}`} style={{ '--lp-a': theme.accent, '--lp-a2': theme.dark, '--lp-rgb': theme.rgb }}>
@@ -857,6 +1005,24 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            under it beside a taller answer (a model card's variants). */
         .lp-desk .lp-photo { aspect-ratio: auto; align-self: stretch; min-height: 200px; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        /* LIVE-MOTION: the photo drifts in 4% over 9s, then holds, so a car
+           left on screen never looks like a frozen stream. Too slow to smear
+           on a phone camera. Keyed by photo, so each photo starts over. */
+        .lp-photo img { animation: lp-drift 9s cubic-bezier(.25,.1,.25,1) both; transform-origin: 50% 55%; }
+        @keyframes lp-drift { from { transform: scale(1); } to { transform: scale(1.04); } }
+        /* A new car slides in from the side the seller went (one move, ~0.45s),
+           and its #N pops once. */
+        .lp-sheet[data-in="next"] { animation: lp-in-next .45s cubic-bezier(.22,1,.36,1) both; }
+        .lp-sheet[data-in="prev"] { animation: lp-in-prev .45s cubic-bezier(.22,1,.36,1) both; }
+        .lp-sheet[data-in="fade"] { animation: lp-in-fade .35s ease-out both; }
+        @keyframes lp-in-next { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+        @keyframes lp-in-prev { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+        @keyframes lp-in-fade { from { opacity: 0; } to { opacity: 1; } }
+        .lp-sheet .lp-num { animation: lp-pop .5s cubic-bezier(.34,1.4,.64,1) .12s both; }
+        @keyframes lp-pop { from { transform: scale(.6); } to { transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) {
+          .lp-photo img, .lp-sheet, .lp-sheet .lp-num, .lp-picksheet { animation: none; }
+        }
         .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-dots { position: absolute; z-index: 2; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
@@ -1138,6 +1304,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-bsum > .lp-bkind .lp-chip { min-height: 28px; padding: 2px 10px; border: none; font-size: 12px; white-space: nowrap; }
         .lp-bsum > .lp-money { flex: 1 1 240px; max-width: 330px; min-width: 0; height: 64px; padding: 0 10px; border: 2px solid #0f1115; }
         .lp-bsum > .lp-money input { min-width: 4ch; font-size: 38px; }
+        .lp-bsum > .lp-money.lp-long input { min-width: 5ch; font-size: 27px; }
         .lp-bsum > .lp-money-sm { flex: 0 0 136px; max-width: none; overflow: hidden; border-width: 1.5px; border-color: #D1D5DB; }
         .lp .lp-bsum > .lp-money-sm input { min-width: 0; height: 28px; font-size: 22px; }
         /* The label must keep its line: in a fixed-height column the box
@@ -1216,6 +1383,32 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-nav { display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: #EEEDEA; border-top: 1px solid rgba(33,31,30,.08); flex-shrink: 0; }
         .lp-navbtn { flex: 1; height: 48px; border-radius: 12px; border: 1px solid #E5E7EB; background: #fff; color: #111827; font-size: 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; }
         .lp-navbtn.lp-next { background: #0f1115; border-color: transparent; color: #fff; }
+        .lp-navbtn.lp-navlist { flex: 0 0 56px; }
+        /* Jump to a car. Desktop: a card in the margin right of the stage (not
+           zoomed with it, so it never grows into the camera's frame). Phone: a
+           sheet over the stage that closes after a pick. */
+        .lp-pick { position: absolute; top: 16px; right: 16px; bottom: 16px; z-index: 1; display: flex; flex-direction: column; background: #fff; border: 1px solid rgba(33,31,30,.08); border-radius: 16px; box-shadow: 0 1px 2px rgba(17,24,39,.06); overflow: hidden; }
+        .lp-pickwrap { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; background: rgba(15,17,21,.35); }
+        .lp-picksheet { width: 100%; max-height: 78%; display: flex; flex-direction: column; background: #fff; border-radius: 18px 18px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.18); padding-bottom: env(safe-area-inset-bottom); animation: lp-sheet-up .3s cubic-bezier(.22,1,.36,1) both; }
+        @keyframes lp-sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+        .lp-pick-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 14px 8px; }
+        .lp-pick-h b { font-size: 15px; font-weight: 700; color: #111827; }
+        .lp-pick-h span { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #6b7280; white-space: nowrap; }
+        .lp-pick-q { display: flex; align-items: center; gap: 8px; margin: 0 12px 8px; padding: 0 10px; height: 42px; border-radius: 10px; background: #F4F3F1; color: #6b7280; }
+        .lp-pick-q input { flex: 1; min-width: 0; border: none; background: none; outline: none; font-family: inherit; color: #111827; }
+        .lp-pick-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 8px 8px; display: flex; flex-direction: column; gap: 2px; }
+        .lp-pick-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 50px; padding: 6px 8px; border: none; border-radius: 10px; background: none; color: #111827; font: inherit; text-align: left; cursor: pointer; }
+        .lp-pick-row:hover { background: #F4F3F1; }
+        .lp-pick-row[aria-current="true"] { background: rgba(var(--lp-rgb), .08); box-shadow: inset 0 0 0 1.5px var(--lp-a); }
+        .lp-pick-row[aria-current="true"] .lp-badge { background: var(--lp-a); color: #fff; }
+        .lp-pick-img { position: relative; width: 48px; height: 34px; flex-shrink: 0; border-radius: 6px; overflow: hidden; background: #E9E7E3; }
+        .lp-pick-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .lp-pick-name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; }
+        .lp-pick-name b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-pick-name small { font-size: 12px; color: #6b7280; }
+        .lp-pick-none { margin: 12px 8px; font-size: 14px; color: #6b7280; }
+        .lp-pick-f { margin: 0; padding: 10px 14px; border-top: 1px solid rgba(33,31,30,.08); font-size: 12px; line-height: 1.4; color: #6b7280; }
+        .lp-pick-f b { color: #111827; font-size: 14px; }
         .lp-report { flex: 1; min-height: 0; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; }
         .lp-report h2 { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 40px; line-height: 1; letter-spacing: .015em; color: #0f1115; margin: 0; }
         .lp-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -1267,7 +1460,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
-        <div className="lp-card lp-sheet">
+        <div className="lp-card lp-sheet" key={car?.id || idx} data-in={dir > 0 ? 'next' : dir < 0 ? 'prev' : 'fade'}>
           <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
             <div className="lp-title">
               <span className="lp-num">#{idx + 1}</span>
@@ -1352,7 +1545,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <p className="lp-ans-lbl">
                     {t.years(pickYears)} · {picked.down > 0 ? t.depositAmt(`RM ${fmt(picked.down)}`) : t.noDeposit}
                   </p>
-                  <p className="lp-big"><span className="lp-rm">RM</span>{fmt(answer)}<small>{t.perMonth}</small></p>
+                  <p className="lp-big"><span className="lp-rm">RM</span><RollingNumber value={answer} snapKey={car?.id} /><small>{t.perMonth}</small></p>
                   {/* As many columns as tenures: an old car's lone "1 year" tile
                       fills the row and says it is the most a bank gives. */}
                   <div className="lp-tens" role="group" aria-label={t.tenure}
@@ -1632,6 +1825,9 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       {mode === 'cars' && listings.length > 1 && (
         <div className="lp-nav">
           <button className="lp-navbtn" onClick={() => go(-1)}><ChevronLeft size={20} /> #{((idx - 1 + listings.length) % listings.length) + 1}</button>
+          {canPick && !pickRail && (
+            <button className="lp-navbtn lp-navlist" onClick={() => setPickOpen(true)} aria-label={t.jumpTitle}><List size={20} /></button>
+          )}
           <button className="lp-navbtn lp-next" onClick={() => go(1)}>#{((idx + 1) % listings.length) + 1} <ChevronRight size={20} /></button>
         </div>
       )}
@@ -1828,7 +2024,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           </div>
         </div>
       )}
+      {pickOpen && canPick && !pickRail && (
+        <div className="lp-pickwrap" role="dialog" aria-modal="true" aria-label={t.jumpTitle}
+          onClick={(e) => { if (e.target === e.currentTarget) setPickOpen(false); }}>
+          <div className="lp-picksheet">{pickBody}</div>
+        </div>
+      )}
       </div>
+      {pickRail && (
+        <aside className="lp-pick" style={{ width: Math.min(300, gutter - 32) }} aria-label={t.jumpTitle}>{pickBody}</aside>
+      )}
     </div>
   );
   return embedded ? screen : createPortal(screen, document.body);

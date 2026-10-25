@@ -2566,6 +2566,15 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
+  presenter can be driven by a script in a headless browser and recorded to MP4 (done once for
+  the LIVE-MOTION / LIVE-JUMP demo, with stand-in photos). Use it for Drevo ads: real cars, the
+  monthly number rolling as a deposit is tapped, jumping between cars. Blocked now: the cloud
+  session's network cannot reach Supabase storage / wsrv.nl, so real photos do not load (host
+  must be allowed in the environment's network settings). Watch: only photos the seller took
+  (model-card stock photos need the brand's permission, Copyright Act s.36), no phone number on
+  screen, say "Drevo" not "XDrive", and an ad's monthly must be the presenter's real maths with
+  "the bank decides". Portrait 1080x1920 for TikTok/Reels.
 - **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
   their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
   PRO RM47/mo "early bird" RM14/mo (RM42/3 mo, RM108/yr, no auto-renew): unlimited, 10
