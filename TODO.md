@@ -2570,7 +2570,8 @@ panel, Loans tab (walk-in), status row on the lead card. Tested in a headless ph
   check works but Save says "Could not save" (the table does not exist yet).
 - [ ] v2: buyer fills it + uploads documents from a link (storage bucket + PDPA consent).
 - [ ] v3: one bank at a time in LoanDesk, decline reasons logged; counts say which bank fits.
-- [ ] Lite: a PremiumRow teaser for Loan check (Lite has no Loans tab today).
+- Lite: a locked "Loan check before the bank: Premium" button in the lead panel opens the
+  upgrade screen (owner, 2026-10-25).
 - [ ] Adoption number: share of LoanDesk applications that had a check first.
 Background (from the idea):
   - **IDEA-23: Loan pre-check BEFORE any bank sees the file (owner, 2026-10-25)** — from a

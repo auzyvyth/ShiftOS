@@ -1803,7 +1803,8 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
 
 ## Loan check (IDEA-23, 2026-10-25) — fix the file BEFORE any bank sees it
 A Proton SA: buyers go to 4-5 banks, all decline (CTOS, CCRIS, no bank record, late payments,
-new job), then the SA chases documents. Premium only (owner, 2026-10-25): Lite has no Loans tab.
+new job), then the SA chases documents. Premium only (owner, 2026-10-25): Lite's lead panel shows
+it locked (`premiumRow.loanCheck`), opening `goPremium`.
 Opened from the lead panel ("Loan check"), the Loans tab (walk-in buyer) and, once saved, a
 status row on the lead card (the 3-button row is unchanged). Three steps, credit record FIRST,
 then two tabs: what to fix, what to bring (sent to the buyer on WhatsApp, EN/BM switch, a
