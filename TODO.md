@@ -2566,6 +2566,22 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-23: Loan pre-check BEFORE any bank sees the file (owner, 2026-10-25)** — from a
+  Proton SA (@ashrafxproton): buyer goes to 4-5 banks, all decline because of a new job
+  or high commitments, there is no guarantor, then the SA chases more documents. "Leceh
+  for both sides." The reasons were knowable in the first 2 minutes; we find out last.
+  Shape: (1) a 5-question pre-check in LoanDesk before "Save application": months in
+  this job / confirmed?, net pay, commitments (DSR exists), own CCRIS checked?,
+  guarantor available? -> red flags + fixes (bigger deposit, cheaper car via
+  `budgetMatches`, longer tenure, wait for confirmation, bring a guarantor), never an
+  approval. (2) Collect the WHOLE doc set once, incl. the new-joiner / guarantor
+  extras, via a link the buyer uploads to. (3) Submit 1-2 best-fit banks first, not 5
+  at once: pending + approved applications show on CCRIS for 12 months (BNM FAQ). (4)
+  Later: counts of each bank's decline reasons across sellers (counts only) to say
+  which bank takes new joiners. Constraints: no "approval chance" score; CTOS/CCRIS
+  pulls need the buyer's consent; LoanDesk is Premium + dealer-linked only and has
+  ~4 rows of usage, so check discovery before adding fields. Related: IDEA-12.
+
 - **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
   presenter can be driven by a script in a headless browser and recorded to MP4 (done once for
   the LIVE-MOTION / LIVE-JUMP demo, with stand-in photos). Use it for Drevo ads: real cars, the
@@ -2575,6 +2591,7 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   (model-card stock photos need the brand's permission, Copyright Act s.36), no phone number on
   screen, say "Drevo" not "XDrive", and an ad's monthly must be the presenter's real maths with
   "the bank decides". Portrait 1080x1920 for TikTok/Reels.
+
 - **IDEA-21: Beat SA Studio (sastudio.my) on posters, with cheap AI (owner, 2026-10-23)** —
   their site (owner's screenshots): free = 3 watermarked loan posters/month, 1 template;
   PRO RM47/mo "early bird" RM14/mo (RM42/3 mo, RM108/yr, no auto-renew): unlimited, 10
