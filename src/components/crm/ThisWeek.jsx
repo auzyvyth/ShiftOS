@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, MessageCircle, ChevronDown } from "lucide-react";
-import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
+import { premiumDark as P } from "../../theme/tokens";
 import { buildThisWeek, waLink } from "../../utils/thisWeek";
 import StatSkeleton from "../ui/StatSkeleton";
 
@@ -21,6 +21,7 @@ import StatSkeleton from "../ui/StatSkeleton";
 // the dashboard, so it has to read as a short call list, not a second page.
 // Everything past the fourth row is one tap away behind "Show all".
 const PREVIEW = 4;
+const initials = (name = "") => name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
 
 export default function ThisWeek({ leads = [], customers = [], nudges = [], packages = [], repName = "", onContacted, style, loading = false }) {
   const [showAll, setShowAll] = useState(false);
@@ -59,7 +60,7 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
   };
 
   return (
-    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, padding: 16, marginBottom: 16, ...style }}>
+    <div style={{ background: P.card, borderRadius: P.radius.card, padding: 20, marginBottom: 16, ...style }}>
       <button
         onClick={() => setCollapsed((v) => !v)}
         aria-expanded={!collapsed}
@@ -67,12 +68,12 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
         style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: collapsed ? 0 : 4, padding: 0, background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
       >
         <span style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-          <ChevronDown size={15} color={C.textMuted} style={{ flexShrink: 0, transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s" }} />
-          <span style={{ fontSize: 17, fontWeight: T.weight.bold, color: C.text }}>{t("crm.thisWeek.title")}</span>
+          <ChevronDown size={15} color={P.textMuted} style={{ flexShrink: 0, transform: collapsed ? "rotate(-90deg)" : "none", transition: "transform .15s" }} />
+          <span style={{ fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: P.text }}>{t("crm.thisWeek.title")}</span>
         </span>
         {open.length > 0 && (
-          <span style={{ fontSize: T.size.sm, color: C.textMuted, flexShrink: 0 }}>
-            <span style={{ color: C.dangerText, fontWeight: T.weight.bold }}>{open.length}</span> {t("crm.thisWeek.toContact")}
+          <span style={{ fontSize: 13, color: P.textSec, flexShrink: 0 }}>
+            <span style={{ color: P.text, fontWeight: 600 }}>{open.length}</span> {t("crm.thisWeek.toContact")}
           </span>
         )}
       </button>
@@ -84,31 +85,34 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
           <StatSkeleton width="100%" height={44} />
         </div>
       ) : open.length === 0 ? (
-        <p style={{ margin: "10px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.6 }}>
+        <p style={{ margin: "10px 0 0", fontSize: 13, color: P.textMuted, lineHeight: 1.6 }}>
           {t("crm.thisWeek.empty")}
         </p>
       ) : (
         <>
-          <p style={{ margin: "0 0 12px", fontSize: T.size.sm, color: C.textMuted }}>
+          <p style={{ margin: "2px 0 8px", fontSize: 12, color: P.textMuted }}>
             {t("crm.thisWeek.intro")}
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
             {shown.map((item) => {
               const urgent = item.kind === "never_replied";
               const canSend = !!waLink(item.phone, item.message);
               return (
                 <div key={item.id}
-                  style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 11px", borderRadius: R.md, background: C.fill, border: `1px solid ${urgent ? withAlpha(C.danger, 0.22) : C.border}` }}>
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderTop: `1px solid ${P.line}` }}>
+                  <span aria-hidden="true" style={{ width: 36, height: 36, borderRadius: 18, background: P.raised, color: P.text, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>
+                    {initials(item.name)}
+                  </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: P.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {item.name}
                     </p>
-                    <p style={{ margin: "2px 0 0", fontSize: T.size.sm, color: urgent ? C.dangerText : C.textSec }}>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: urgent ? P.accentText : P.textSec }}>
                       {item.why}
                     </p>
                     {(item.sub || item.also?.length > 0) && (
-                      <p style={{ margin: "2px 0 0", fontSize: T.size.xs, color: C.textMuted }}>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: P.textMuted }}>
                         {[item.sub, ...(item.also || [])].filter(Boolean).join(" · ")}
                       </p>
                     )}
@@ -116,13 +120,13 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {canSend && (
                       <button onClick={() => sendAndMark(item)} title={t("crm.thisWeek.messageTitle")}
-                        style={{ display: "flex", alignItems: "center", gap: 5, fontSize: T.size.xs, fontWeight: T.weight.bold, padding: "6px 10px", borderRadius: R.sm, background: C.fillStrong, border: `1px solid ${C.borderStrong}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}>
-                        <MessageCircle size={12} /> {t("crm.thisWeek.message")}
+                        style={{ display: "flex", alignItems: "center", gap: 6, height: 36, fontSize: 13, fontWeight: 600, padding: "0 14px", borderRadius: P.radius.pill, background: "transparent", border: `1px solid ${P.line}`, color: P.text, cursor: "pointer", fontFamily: "inherit" }}>
+                        <MessageCircle size={13} /> {t("crm.thisWeek.message")}
                       </button>
                     )}
                     <button onClick={() => markDone(item)} title={t("crm.thisWeek.handledTitle")}
                       aria-label={t("crm.thisWeek.markHandled", { name: item.name })}
-                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>
+                      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 18, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>
                       <Check size={13} />
                     </button>
                   </div>
@@ -133,7 +137,7 @@ export default function ThisWeek({ leads = [], customers = [], nudges = [], pack
 
           {open.length > PREVIEW && (
             <button onClick={() => setShowAll((v) => !v)}
-              style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 5, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.textSec, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
+              style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: P.textSec, background: "transparent", border: "none", padding: 0, cursor: "pointer", fontFamily: "inherit" }}>
               <ChevronDown size={13} style={{ transform: showAll ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
               {showAll ? t("crm.thisWeek.showFewer") : t("crm.thisWeek.showAll", { n: open.length })}
             </button>

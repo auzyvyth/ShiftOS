@@ -162,6 +162,14 @@ Project ID: lemdkdizdlcirhbzqlos
   language — tokens, tabular figures, delta contract, sparkline spec, dense table rules)
   before building any dashboard panel, stat tile, data table or trend. Reference
   implementation is `src/components/MarketDemandTab.jsx`.
+- **Salesman Premium is moving to `premiumDark`** (`src/theme/tokens.js`, owner 2026-10-25:
+  "keep dark, premium, colours that complement"). Depth by tone (card #111318 on the near-black
+  canvas, rows #181b21), no borders on cards, Drevo red for fills only, mint `up` (red's
+  complement, desaturated) as the only green; no blue/purple/amber. Adopted one tab at a time:
+  Dashboard (`salesmanPremium/DashboardTab.jsx`) + `crm/ThisWeek.jsx` so far. The rest of
+  Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
+  dashboard: no traffic chart / platform breakdown there (Analytics has them), no second
+  follow-up list (This week is the one), the goal is the bar in "Sold this month".
 
 ### Anti-slop UI rules (non-negotiable)
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.

@@ -72,6 +72,33 @@ export const panel = {
   onAccent:    '#ffffff',
 };
 
+// "Premium dark" (SIMPLE-2, 2026-10-25): the refined panel palette, adopted one
+// Premium tab at a time (Dashboard first). How it was chosen:
+//  - Near-black with a faint cool cast, never #000 (Linear / Raycast canvases
+//    sit at #08090a / #07080a; pure black makes shadows and edges vanish).
+//  - Depth by TONE, not borders or shadows (Material dark theme): each layer
+//    up is a lighter grey, so cards need no outline at all.
+//  - One brand colour, Drevo red, for fills only. Its partner is mint, red's
+//    complement on the wheel, desaturated (~300 tone) so it reads as "up" and
+//    never competes with red. Nothing else is coloured: no blue, purple, amber.
+//  - Text greys all pass 4.5:1 on `card`, the faintest included.
+export const premiumDark = {
+  canvas:  '#08090c',
+  card:    '#111318',                 // layer 1: every card
+  raised:  '#181b21',                 // layer 2: rows, chips, inputs inside a card
+  hover:   '#1f232a',
+  hero:    '#1a1114',                 // the greeting card: red at ~6% over card
+  line:    'rgba(255,255,255,0.06)',  // the one divider weight
+  text:    '#f2f4f7',
+  textSec: '#a3a9b5',
+  textMuted: '#848b98',
+  accent:  '#dc2626',                 // fills: Share, the goal bar, today's day
+  accentText: '#f87171',              // red as TEXT on dark (missed booking)
+  up:      '#6ee7b7',                 // "+3 today", the only green
+  onAccent: '#ffffff',
+  radius:  { card: 22, row: 14, pill: 999 },
+};
+
 // Pipeline-stage hues for the dark panel. Colour-codes a lead row by where it
 // sits in the funnel. TODO: SalesmanLite's own STAGE_COLOR map (pill bg/border/
 // text for the leads board) still lives inline — fold it in here on the leads

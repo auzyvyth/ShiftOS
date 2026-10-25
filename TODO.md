@@ -2570,6 +2570,10 @@ tabs that need to be simpler." Next session:
   Decide with the owner whether Lite's grown menu (SIMPLE-1 too) goes back the same way.
 - [ ] Then simplify the CONTENTS, one tab per session: fewer cards, one primary action,
   the rest behind ···. Start by asking the owner which tab confuses new sellers most.
+  - [x] Dashboard (2026-10-25, staging): rebuilt in the `premiumDark` palette, each fact once
+    (greeting, Today strip, 4 numbers, This week, Your page, Top cars, Sold). Mockup:
+    https://claude.ai/artifact/98gAj72cBKupiYBkxWTNLc. Next: move the other Premium tabs onto
+    `premiumDark` too, one per session, so the panel stops looking like two apps.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
 ## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
