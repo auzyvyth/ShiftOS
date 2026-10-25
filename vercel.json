@@ -10,6 +10,9 @@
   "functions": {
     "api/ai-messages.js": {
       "maxDuration": 300
+    },
+    "api/agent-card.js": {
+      "includeFiles": "api/_fonts/**"
     }
   },
   "rewrites": [
