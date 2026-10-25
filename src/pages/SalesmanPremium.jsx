@@ -3050,20 +3050,6 @@ export default function SalesmanPremium() {
  })
  : leads;
 
- // lead source breakdown
- const srcMap = { enquiry: 0, manual: 0, booking: 0, xdrive: 0 };
- leads.forEach(l => {
- const s = l.lead_source || "manual";
- srcMap[s] = (srcMap[s] || 0) + 1;
- });
- const srcTotal = leads.length;
- const srcCfg = [
- { key: "enquiry", label: "WhatsApp", color: "#4ade80" },
- { key: "booking", label: t("salesmanPremium.leads.srcBooking"), color: "#60a5fa" },
- { key: "xdrive", label: "XDrive", color: "#f87171" },
- { key: "manual", label: t("salesmanPremium.leads.srcManual"), color: "#6b7280" },
- ].filter(s => srcMap[s.key] > 0);
-
  // pre-compute heat scores once
  const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
 
@@ -3094,6 +3080,9 @@ export default function SalesmanPremium() {
  );
  };
 
+ // One button shape for the card's action row (premiumDark: tone, no border).
+ const leadBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "center" };
+
  const renderLeadCard = (lead) => {
  const car = lead.car_listings;
  const carName = car? [car.year, car.brand, car.model].filter(Boolean).join(" ") : null;
@@ -3121,40 +3110,38 @@ export default function SalesmanPremium() {
  const followUp = followUpStatus(lead);
  const followUpOverdue = followUp.due;
  const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
- const heatStyle = heat.label === "hot"
-? { bg: "rgba(248,113,113,0.12)", color: "#f87171" }
- : heat.label === "warm"
-? { bg: "rgba(251,191,36,0.12)", color: "#fbbf24" }
- : { bg: "rgba(255,255,255,0.05)", color: "#6b7280" };
+ // ONE heat pill: the AI score when there is one, else the rule-based heat.
+ // The card used to show both, side by side, and they could disagree.
+ const heatKey = lead.ai_score || leadScores[lead.id]?.score || heat.label;
+ const heatColor = heatKey === "hot" ? PD.accentText : heatKey === "warm" ? PD.text : PD.textMuted;
+ // premiumDark pill: a tone, no border (SIMPLE-2).
+ const pill = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, borderRadius: PD.radius.pill, padding: "2px 8px", background: PD.raised, whiteSpace: "nowrap" };
 
  return (
  <div
  key={lead.id}
  className={glowLeadIds.has(lead.id) ? "sp-lead-glow" : undefined}
  style={{
- background: "#0d1117",
- // Same token the glow's last keyframe settles back to, so the wave can
- // never land on a border colour the card does not actually rest at.
- border: `1px solid ${C.border}`,
- borderRadius: 10,
+ background: PD.card,
+ borderRadius: PD.radius.card,
  overflow: "hidden",
  }}
  >
  {/* HEADER */}
- <div style={{ padding: "12px 14px 0" }}>
- <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+ <div style={{ padding: "16px 16px 0" }}>
+ <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
  {/* Avatar */}
- <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: "#93c5fd" }}>
+ <div style={{ width: 36, height: 36, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: PD.textSec }}>
  {initials}
  </div>
  <div style={{ flex: 1, minWidth: 0 }}>
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
- <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
  {lead.buyer_name || "—"}
  </p>
  <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
  {leadIdsWithAddons.has(lead.id) && (
- <span title={t("salesmanPremium.leads.addonTitle")} style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: "rgba(96,165,250,0.15)", border: "1px solid rgba(96,165,250,0.35)", color: "#93c5fd", whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ <span title={t("salesmanPremium.leads.addonTitle")} style={{ ...pill, color: PD.textSec }}>
  <Package size={9} /> {t("salesmanPremium.leads.addonBadge")}
  </span>
  )}
@@ -3163,50 +3150,47 @@ export default function SalesmanPremium() {
      up whichever surface submitted the loan. */}
  {lead.loan_status && lead.loan_status !== "none" && (() => {
  const ls = {
- approved: { bg: "rgba(34,197,94,0.15)", bd: "rgba(34,197,94,0.35)", fg: "#4ade80", label: t("salesmanPremium.leads.loanOk") },
- rejected: { bg: "rgba(239,68,68,0.15)", bd: "rgba(239,68,68,0.35)", fg: "#f87171", label: t("salesmanPremium.leads.loanNo") },
- cancelled: { bg: "rgba(255,255,255,0.06)", bd: "rgba(255,255,255,0.12)", fg: "#94a3b8", label: t("salesmanPremium.leads.loanOff") },
- }[lead.loan_status] || { bg: "rgba(251,191,36,0.15)", bd: "rgba(251,191,36,0.35)", fg: "#fbbf24", label: t("salesmanPremium.leads.loanIn") };
+ approved: { fg: PD.up, label: t("salesmanPremium.leads.loanOk") },
+ rejected: { fg: PD.accentText, label: t("salesmanPremium.leads.loanNo") },
+ cancelled: { fg: PD.textMuted, label: t("salesmanPremium.leads.loanOff") },
+ }[lead.loan_status] || { fg: PD.textSec, label: t("salesmanPremium.leads.loanIn") };
  return (
  <span title={[lead.loan_bank, lead.loan_amount ? `RM ${Number(lead.loan_amount).toLocaleString("en-MY")}` : null].filter(Boolean).join(" · ") || t("salesmanPremium.leads.loanTitle")}
- style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, borderRadius: 99, padding: "2px 7px", background: ls.bg, border: `1px solid ${ls.bd}`, color: ls.fg, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+ style={{ ...pill, color: ls.fg }}>
  <Banknote size={9} /> {ls.label}
  </span>
  );
  })()}
- <span style={{ fontSize: 10, borderRadius: 99, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", fontWeight: 600 }}>
- {t(`salesmanPremium.heat.${heat.label}`)}
+ <span style={{ ...pill, color: heatColor }}>
+ {t(`salesmanPremium.heat.${heatKey}`, { defaultValue: heatKey })}
  </span>
- {(lead.ai_score || leadScores[lead.id]?.score) && (() => {
- const score = lead.ai_score || leadScores[lead.id]?.score;
- const c = score === "hot"? {bg:"#dc2626",tx:"#fff"} : score === "warm"? {bg:"#f59e0b",tx:"#000"} : {bg:"#52525b",tx:"#fff"};
- return <span style={{fontSize:9,fontWeight:800,background:c.bg,color:c.tx,borderRadius:4,padding:"1px 6px",flexShrink:0}}>{t(`salesmanPremium.heat.${score}`, { defaultValue: score }).toUpperCase()}</span>;
- })()}
  </div>
  </div>
  {(carName || carPrice) && (
  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 2, gap: 8 }}>
- {carName && <p style={{ margin: 0, fontSize: 11, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
- {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#60a5fa", flexShrink: 0 }}>{carPrice}</p>}
+ {carName && <p style={{ margin: 0, fontSize: 12, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+ {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
  </div>
  )}
  {(() => {
  // Was "Last contact: {timeAgo(lead.updated_at)}", which sat directly above a
  // follow-up badge reading last_contacted_at — so one card could say "Last
  // contact: 2d ago" and "Never contacted · 4d" at the same time.
+ // The follow-up line below already says how long it has waited, so this
+ // only shows when that line does not.
  const lt = lastTouch(lead);
- if (!lt.at) return null;
+ if (!lt.at || followUpOverdue) return null;
  return (
- <p style={{ margin: "2px 0 0", fontSize: 10, color: Date.now() - new Date(lt.at).getTime() > 48 * 3600 * 1000? "#fb923c" : "#374151" }}>{lt.contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")}: {timeAgo(lt.at)}
+ <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted }}>{lt.contacted ? t("salesmanPremium.leads.lastContact") : t("salesmanPremium.leads.lastActivity")}: {timeAgo(lt.at)}
  </p>
  );
  })()}
  {lead.last_call_outcome && (() => {
- const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanPremium.call.answered"), color: "#4ade80" }, no_answer: { icon: PhoneOff, label: t("salesmanPremium.call.noAnswer"), color: "#f87171" }, callback_requested: { icon: RefreshCw, label: t("salesmanPremium.call.callback"), color: "#fbbf24" }, voicemail: { icon: Voicemail, label: t("salesmanPremium.call.voicemail"), color: "#94a3b8" } };
+ const OUTCOME = { answered: { icon: CheckCircle, label: t("salesmanPremium.call.answered"), color: PD.up }, no_answer: { icon: PhoneOff, label: t("salesmanPremium.call.noAnswer"), color: PD.textSec }, callback_requested: { icon: RefreshCw, label: t("salesmanPremium.call.callback"), color: PD.textSec }, voicemail: { icon: Voicemail, label: t("salesmanPremium.call.voicemail"), color: PD.textSec } };
  const o = OUTCOME[lead.last_call_outcome];
  if (!o) return null;
  return (
- <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 99, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+ <span style={{ ...pill, marginTop: 5, color: o.color }}>
  <o.icon size={10} /> {o.label}
  </span>
  );
@@ -3215,21 +3199,17 @@ export default function SalesmanPremium() {
  </div>
 
  {/* Progress bar — 7 segments */}
- <div style={{ marginBottom: followUpOverdue? 8 : 12 }}>
- <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+ {/* The bar alone: the stage you picked above already names the stage. */}
+ <div title={`${stageLabel(normalizedStage || "new")} · ${currentProgressIdx + 1}/${progressStages.length}`} style={{ display: "flex", gap: 3, marginBottom: 12 }}>
  {progressStages.map((s, i) => (
- <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx? "#9ca3af" : i === currentProgressIdx? "#f1f5f9" : "rgba(255,255,255,0.08)" }} />
+ <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx? PD.textMuted : i === currentProgressIdx? PD.text : PD.raised }} />
  ))}
- </div>
- <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{t("salesmanPremium.leads.stage")}: <span style={{ color: "#9ca3af", fontWeight: 600 }}>{stageLabel(normalizedStage || "new")}</span>
- {currentProgressIdx >= 0 && <span style={{ color: "#374151" }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
- </p>
  </div>
 
  {/* Follow-up warning — reason first, then how long it has been waiting.
      "Never contacted · 3d" tells a rep what to do; a bare red ring does not. */}
  {followUpOverdue && (
- <div style={{ background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.22)", borderRadius: 7, color: "#fb923c", fontSize: 11, padding: "6px 10px", marginBottom: 12 }}>
+ <div style={{ background: PD.raised, borderRadius: PD.radius.row, color: PD.accentText, fontSize: 12, padding: "8px 12px", marginBottom: 12 }}>
  {followUp.reason === 'reminder_due'
  ? t("salesmanPremium.followUp.reminderDueAgo", { ago: timeAgo(lead.follow_up_at) })
  : t("salesmanPremium.followUp.waiting", { reason: t(`salesmanPremium.followUp.${followUp.reason}`, { defaultValue: followUp.label }), n: Math.max(1, Math.round(followUp.sinceHours / 24)) })}
@@ -3240,8 +3220,7 @@ export default function SalesmanPremium() {
  {isWonLead && (() => {
  const done = handoverStatus?.done;
  const pct = handoverStatus?.progress;
- const tint = done ? "34,197,94" : "148,163,184";
- const fg = done ? "#4ade80" : "#cbd5e1";
+ const fg = done ? PD.up : PD.text;
  const detail = done
  ? t("salesmanPremium.handover.complete")
  : pct === undefined || pct === null || pct < 0
@@ -3250,13 +3229,13 @@ export default function SalesmanPremium() {
  return (
  <button
  onClick={() => openHandoverFor(lead.id, "leads")}
- style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: `rgba(${tint},0.08)`, border: `1px solid rgba(${tint},0.2)`, borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <ClipboardList size={13} color={fg} style={{ flexShrink: 0 }} />
  <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {t("salesmanPremium.handover.buyerMoved")} · <span style={{ color: "#9ca3af" }}>{detail}</span>
+ {t("salesmanPremium.handover.buyerMoved")} · <span style={{ color: PD.textSec }}>{detail}</span>
  </span>
- <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
  </button>
  );
  })()}
@@ -3265,28 +3244,28 @@ export default function SalesmanPremium() {
      lead panel and the Loans tab, so the 3-button row stays as it is. */}
  {!isWonLead && checkByLead.get(lead.id) && (() => {
  const ck = checkByLead.get(lead.id);
- const fg = ck.outcome === "ready" ? "#4ade80" : ck.outcome === "hold" ? "#f87171" : "#fbbf24";
+ const fg = ck.outcome === "ready" ? PD.up : ck.outcome === "hold" ? PD.accentText : PD.textSec;
  return (
  <button
  onClick={() => openLoanCheck(lead)}
- style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: PD.raised, border: "none", borderRadius: PD.radius.row, padding: "9px 12px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
  >
  <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
  <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]} <span style={{ color: "#6b7280" }}>· {lc.checked(timeAgo(ck.updated_at))}</span>
+ {ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]} <span style={{ color: PD.textMuted }}>· {lc.checked(timeAgo(ck.updated_at))}</span>
  </span>
- <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ <ChevronRight size={13} color={PD.textMuted} style={{ flexShrink: 0 }} />
  </button>
  );
  })()}
  </div>
 
  {/* ACTIONS — exactly 3 buttons */}
- <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+ <div style={{ display: "flex", gap: 6, padding: "0 16px 16px" }}>
  {lead.stage!== "won" && lead.stage!== "closed_won" && (
  <button
  onClick={() => advanceLeadStage(lead, nextStage)}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", textAlign: "center" }}
+ style={{ ...leadBtn, flex: 1, background: PD.accent, color: PD.onAccent, fontWeight: 600 }}
  >
  → {stageLabel(nextStage || "won")}
  </button>
@@ -3296,7 +3275,7 @@ export default function SalesmanPremium() {
  href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
  title={t("salesmanPremium.common.call")}
  aria-label={t("salesmanPremium.leads.callLead")}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 14px", borderRadius: 7, background: "rgba(96,165,250,0.10)", border: "1px solid rgba(96,165,250,0.25)", color: "#93c5fd", textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
+ style={{ ...leadBtn, flexShrink: 0, padding: "8px 14px", textDecoration: "none" }}
  >
  <Phone size={13} />
  </a>
@@ -3309,11 +3288,11 @@ export default function SalesmanPremium() {
  <button
  onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || t("salesmanPremium.common.buyer"), carLabel: carName })}
  title={t("salesmanPremium.leads.openChatTitle")}
- style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#e5e7eb", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ ...leadBtn, flex: 1 }}
  >
  <MessageSquare size={12} />{t("salesmanPremium.tabs.chat")}
  {leadThread.seller_unread > 0 && (
- <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: "#dc2626", color: "#fff", fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+ <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: PD.accent, color: PD.onAccent, fontSize: 9, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
  {leadThread.seller_unread}
  </span>
  )}
@@ -3329,20 +3308,20 @@ export default function SalesmanPremium() {
  setWaModalMessage(msg);
  setWaModalLead(lead);
  }}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(37,211,102,0.10)", border: "1px solid rgba(37,211,102,0.25)", color: "#4ade80", cursor: "pointer", textAlign: "center" }}
- >WA
+ style={{ ...leadBtn, flex: 1 }}
+ >WhatsApp
  </button>
  ) :!lead.car_listing_id? (
  <button
  onClick={() => setLinkCarLeadId(lead.id)}
- style={{ flex: 1, fontSize: 11, padding: "6px 12px", borderRadius: 7, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", cursor: "pointer", textAlign: "center" }}
+ style={{ ...leadBtn, flex: 1, color: PD.textSec }}
  >{t("salesmanPremium.leads.linkCar")}
  </button>
  ) : null}
  <button
  data-tour-id="leads-more"
  onClick={() => setDrawerLeadId(lead.id)}
- style={{ flexShrink: 0, fontSize: 13, padding: "6px 10px", borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
+ style={{ ...leadBtn, flexShrink: 0, fontSize: 13, padding: "8px 12px", color: PD.textSec, letterSpacing: "0.05em", lineHeight: 1 }}
  >
  ···
  </button>
@@ -3364,9 +3343,9 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: 0,
- fontSize: 16,
- fontWeight: 600,
- color: "#f1f5f9",
+ fontSize: 18,
+ fontWeight: 700,
+ color: PD.text,
  }}
  >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
@@ -3377,13 +3356,13 @@ export default function SalesmanPremium() {
  display: "flex",
  alignItems: "center",
  gap: 6,
- background: "#dc2626",
+ background: PD.accent,
  border: "none",
- borderRadius: 8,
- color: "#fff",
+ borderRadius: PD.radius.pill,
+ color: PD.onAccent,
  fontSize: 12,
  fontWeight: 600,
- padding: "7px 12px",
+ padding: "8px 14px",
  cursor: "pointer",
  }}
  >
@@ -3391,35 +3370,16 @@ export default function SalesmanPremium() {
  </button>
  </div>
 
- {/* Lead source breakdown */}
- {srcTotal > 0 && srcCfg.length > 1 && (
- <div style={{ marginBottom: 14 }}>
- <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", height: 6, marginBottom: 8 }}>
- {srcCfg.map(({ key, color }) => (
- <div key={key} style={{ flex: srcMap[key], background: color }} />
- ))}
- </div>
- <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
- {srcCfg.map(({ key, label, color }) => (
- <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
- <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
- <span style={{ fontSize: 10, color: "#6b7280" }}>{label} <strong style={{ color: "#9ca3af" }}>{srcMap[key]}</strong></span>
- </div>
- ))}
- </div>
- </div>
- )}
-
  {/* Search bar */}
  <div style={{ position: "relative", marginBottom: 12 }}>
  <input
  value={leadSearch}
  onChange={(e) => setLeadSearch(e.target.value)}
  placeholder={t("salesmanPremium.leads.searchPh")}
- style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, color: "#e5e7eb", fontSize: 13, padding: "8px 10px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+ style={{ width: "100%", background: PD.card, border: "none", borderRadius: PD.radius.pill, color: PD.text, fontSize: 13, padding: "10px 16px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark" }}
  />
  {leadSearch && (
- <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2 }}>
+ <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2 }}>
  <X size={13} />
  </button>
  )}
@@ -3496,12 +3456,10 @@ export default function SalesmanPremium() {
  if (stageLeads.length === 0) {
  return (
  <div style={{
-  height: 96, borderRadius: 12,
-  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
-  border: "1px solid rgba(255,255,255,0.055)",
+  height: 96, borderRadius: PD.radius.card, background: PD.card,
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
- <span style={{ fontSize: 11.5, color: "#4b5563", textTransform: "capitalize" }}>
+ <span style={{ fontSize: 12, color: PD.textMuted }}>
  {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
@@ -3524,7 +3482,7 @@ export default function SalesmanPremium() {
     the grid shows only the stage you picked, scrolling vertically like the
     rest of the page. Stage selection is the same activeLeadStage state
     mobile already used, so the two layouts cannot disagree. */
- <div style={{ display: "flex", gap: 22, alignItems: "stretch" }}>
+ <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
 
  {/* Stage rail -- one panel, same material as the mini page's stat block:
      a dark slate gradient running darker along the diagonal, hairline
@@ -3536,25 +3494,14 @@ export default function SalesmanPremium() {
    width: 226,
    flexShrink: 0,
    alignSelf: "flex-start",
-   borderRadius: 16,
+   // Sticky, so the rail stays beside the cards while the PAGE scrolls.
+   position: "sticky",
+   top: 16,
+   borderRadius: PD.radius.card,
    padding: 12,
-   background: "linear-gradient(158deg, #1b202b 0%, #141822 48%, #0e1219 100%)",
-   border: "1px solid rgba(255,255,255,0.07)",
-   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 10px 30px rgba(0,0,0,0.32)",
+   background: PD.card,
   }}
  >
- {/* Panel header — the pipeline's own total, so the rail leads with a
-     number the way the mini page's stat block does. */}
- <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8, padding: "4px 6px 14px", borderBottom: "1px solid rgba(255,255,255,0.055)", marginBottom: 12 }}>
-  <div style={{ minWidth: 0 }}>
-   <p style={{ margin: 0, fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.14em", fontWeight: 700 }}>{t("salesmanPremium.common.pipeline")}</p>
-   <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b" }}>{t("salesmanPremium.leads.pickStage")}</p>
-  </div>
-  <p style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "#f1f5f9", lineHeight: 1, letterSpacing: "-0.01em" }}>
-   {activeStages.reduce((n, st) => n + searchedLeads.filter((l) => l.stage === st).length, 0)}
-  </p>
- </div>
-
  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
  {activeStages.map((stage) => {
  const sc = STAGE_COLOR[stage] || {};
@@ -3620,19 +3567,6 @@ export default function SalesmanPremium() {
  </div>
  </div>
 
- {/* Hairline between the rail and the board. Fades out top and bottom so
-     it reads as a seam rather than a drawn box edge; the row above is
-     alignItems:"stretch" purely so this has a height to fill. */}
- <div
-  aria-hidden="true"
-  style={{
-   width: 1,
-   flexShrink: 0,
-   alignSelf: "stretch",
-   background: "linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.13) 12%, rgba(255,255,255,0.13) 88%, rgba(255,255,255,0) 100%)",
-  }}
- />
-
  {/* Cards for the selected stage */}
  {(() => {
  const stageLeads = searchedLeads
@@ -3642,12 +3576,10 @@ export default function SalesmanPremium() {
  <div style={{ flex: 1, minWidth: 0 }}>
  {stageLeads.length === 0 ? (
  <div style={{
-  minHeight: 260, borderRadius: 14,
-  background: "linear-gradient(158deg, #191e28 0%, #131720 50%, #0e1219 100%)",
-  border: "1px solid rgba(255,255,255,0.055)",
+  minHeight: 260, borderRadius: PD.radius.card, background: PD.card,
   display: "flex", alignItems: "center", justifyContent: "center",
  }}>
- <span style={{ fontSize: 12, color: "#4b5563", textTransform: "capitalize" }}>
+ <span style={{ fontSize: 12, color: PD.textMuted }}>
  {t("salesmanPremium.leads.nothingInStage", { stage: stageLabel(activeLeadStage) })}
  </span>
  </div>
@@ -3656,15 +3588,11 @@ export default function SalesmanPremium() {
  style={{
  display: "grid",
  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
- gap: 10,
+ gap: 12,
  alignItems: "start",
- // The grid scrolls, not the page, so the rail stays put while you
- // work through a stage. minHeight keeps a one-card stage from
- // collapsing to a sliver next to the rail.
- maxHeight: "calc(100vh - 300px)",
- minHeight: 260,
- overflowY: "auto",
- paddingRight: 4,
+ // The PAGE scrolls, not this grid: an inner scroller capped at
+ // 100vh-300px cut the second row off on desktop and nobody found
+ // its scrollbar. The rail is sticky instead, so it stays put.
  }}
  >
  {stageLeads.map((lead) => renderLeadCard(lead))}
@@ -3692,17 +3620,13 @@ export default function SalesmanPremium() {
  >
  <span
  style={{
- fontSize: 10,
- fontWeight: 700,
- color: "#4b5563",
- letterSpacing: "0.08em",
- textTransform: "uppercase",
+ fontSize: 12,
+ fontWeight: 600,
+ color: PD.textSec,
  }}
  >{t("salesmanPremium.stages.lost")} ({lostLeads.length})
  </span>
- <span style={{ fontSize: 12, color: "#374151" }}>
- {lostOpen? "" : ""}
- </span>
+ <ChevronRight size={13} color={PD.textMuted} style={{ transform: lostOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
  </button>
  {lostOpen && (
  <div
@@ -3717,11 +3641,9 @@ export default function SalesmanPremium() {
  <div
  key={lead.id}
  style={{
- background: "#0d1117",
- border: "1px solid rgba(255,255,255,0.06)",
- borderRadius: 10,
- padding: "10px 12px",
- opacity: 0.65,
+ background: PD.card,
+ borderRadius: PD.radius.row,
+ padding: "12px 14px",
  }}
  >
  <div
@@ -3735,9 +3657,9 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: 0,
- fontSize: 12,
+ fontSize: 13,
  fontWeight: 600,
- color: "#9ca3af",
+ color: PD.textSec,
  flex: 1,
  minWidth: 0,
  overflow: "hidden",
@@ -3761,9 +3683,8 @@ export default function SalesmanPremium() {
  fontSize: 10,
  padding: "1px 7px",
  borderRadius: 99,
- background: "rgba(148,163,184,0.08)",
- border: "1px solid rgba(148,163,184,0.2)",
- color: "#cbd5e1",
+ background: PD.raised,
+ color: PD.textSec,
  whiteSpace: "nowrap",
  }}
  >
@@ -3776,7 +3697,7 @@ export default function SalesmanPremium() {
  style={{
  background: "transparent",
  border: "none",
- color: "#4b5563",
+ color: PD.textMuted,
  cursor: "pointer",
  padding: 2,
  display: "flex",
@@ -3790,8 +3711,8 @@ export default function SalesmanPremium() {
  <p
  style={{
  margin: "2px 0 0",
- fontSize: 10,
- color: "#374151",
+ fontSize: 11,
+ color: PD.textMuted,
  }}
  >
  {timeAgo(lead.created_at)}
@@ -3809,7 +3730,7 @@ export default function SalesmanPremium() {
  <span
  style={{
  fontSize: 11,
- color: "#f87171",
+ color: PD.accentText,
  fontWeight: 600,
  }}
  >{t("salesmanPremium.common.deleteQ")}
@@ -3819,10 +3740,10 @@ export default function SalesmanPremium() {
  style={{
  fontSize: 10,
  padding: "6px 11px",
- borderRadius: 5,
- background: "rgba(239,68,68,0.12)",
- border: "1px solid rgba(239,68,68,0.3)",
- color: "#f87171",
+ borderRadius: PD.radius.pill,
+ background: PD.accent,
+ border: "none",
+ color: PD.onAccent,
  cursor: "pointer",
  fontWeight: 600,
  }}
@@ -3833,10 +3754,10 @@ export default function SalesmanPremium() {
  style={{
  fontSize: 10,
  padding: "6px 11px",
- borderRadius: 5,
- background: "rgba(255,255,255,0.05)",
- border: "1px solid rgba(255,255,255,0.08)",
- color: "#6b7280",
+ borderRadius: PD.radius.pill,
+ background: PD.raised,
+ border: "none",
+ color: PD.textSec,
  cursor: "pointer",
  }}
  >{t("salesmanPremium.common.no")}
@@ -6892,13 +6813,13 @@ export default function SalesmanPremium() {
     colour has one definition and the next person can change it in one place.
     Lite stays red (C.accent) — that is deliberate, not drift. */
  @keyframes sp-lead-glow {
- 0% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0.55)}; border-color: ${withAlpha(C.info, 0.7)}; }
- 70% { box-shadow: 0 0 0 12px ${withAlpha(C.info, 0)}; border-color: ${withAlpha(C.info, 0.7)}; }
- 100% { box-shadow: 0 0 0 0 ${withAlpha(C.info, 0)}; border-color: ${C.border}; }
+ 0% { box-shadow: 0 0 0 0 ${withAlpha(PD.text, 0.45)}; }
+ 70% { box-shadow: 0 0 0 12px ${withAlpha(PD.text, 0)}; }
+ 100% { box-shadow: 0 0 0 0 ${withAlpha(PD.text, 0)}; }
  }
  .sp-lead-glow { animation: sp-lead-glow 1s ease-out; }
  @media (prefers-reduced-motion: reduce) {
- .sp-lead-glow { animation: none; border-color: ${withAlpha(C.info, 0.7)}; }
+ .sp-lead-glow { animation: none; box-shadow: 0 0 0 2px ${withAlpha(PD.text, 0.45)}; }
  .sp-topbar { transition: none !important; }
  }
  `}</style>
@@ -7243,7 +7164,8 @@ export default function SalesmanPremium() {
  />
  )}
  </button>
- <button
+ {/* The Leads tab has its own Add Lead in its header; two on one screen is one too many. */}
+ {activeTab !== "leads" && <button
  onClick={() => setShowAddLead(true)}
  style={{
  display: "flex",
@@ -7260,7 +7182,7 @@ export default function SalesmanPremium() {
  }}
  >
  <Plus size={14} />{t("salesmanPremium.leads.addLead")}
- </button>
+ </button>}
  </>
  )}
  </div>
@@ -7434,32 +7356,6 @@ export default function SalesmanPremium() {
  {tourMode && tourMode !== "main" && <div aria-hidden="true" style={{ height: TOUR_BAR_H + 160 }} />}
  </div>
  </div>
-
- {/* FAB — mobile leads tab */}
- {isMobile && activeTab === "leads" && (
- <button
- onClick={() => setShowAddLead(true)}
- style={{
- position: "fixed",
- bottom: 72,
- right: 16,
- zIndex: 40,
- width: 44,
- height: 44,
- borderRadius: "50%",
- background: "#2563eb",
- border: "none",
- color: "#fff",
- display: "flex",
- alignItems: "center",
- justifyContent: "center",
- cursor: "pointer",
- boxShadow: "0 4px 12px rgba(37,99,235,0.4)",
- }}
- >
- <Plus size={20} />
- </button>
- )}
 
  {renderAddLeadModal()}
  {renderWAModal()}
@@ -8190,7 +8086,7 @@ export default function SalesmanPremium() {
  threadId={chatSheet.threadId}
  buyerName={chatSheet.buyerName}
  carLabel={chatSheet.carLabel}
- theme="dark"
+ theme="premium"
  aiAssist={isPremium}
  aiUpgrade={!isPremium}
  onClose={() => setChatSheet(null)}

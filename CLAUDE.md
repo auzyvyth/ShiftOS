@@ -177,7 +177,10 @@ Project ID: lemdkdizdlcirhbzqlos
   in CarForm needs a line in premiumForm.css or it shows light in Premium. Chat tab:
   `SellerInbox theme="premium"` -> `THEMES.premium` in `chat/ChatThread.jsx` (no bubble glow,
   neutral AI bar + privacy note; `LEGACY` keeps light/dark exactly as before). Any new colour
-  in the chat components goes in THEMES as a key, never inline, or Premium drifts. The rest of
+  in the chat components goes in THEMES as a key, never inline, or Premium drifts. Leads tab:
+  cards, rail and `ChatSheet theme="premium"`; the stage buttons KEEP their per-stage hues (owner);
+  one heat pill per card; the desktop grid flows with the page (sticky rail), never an inner
+  scroller. The rest of
   Premium still uses `panel`; do not mix the two inside one tab. Each fact shows ONCE on the
   dashboard: the 7-day traffic chart stays (owner: "it's valuable"; its legend carries the
   only views total), "visits from shared links" sits under Share in Your page, no platform

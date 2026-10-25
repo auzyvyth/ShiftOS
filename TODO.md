@@ -2585,6 +2585,14 @@ tabs that need to be simpler." Next session:
   - [x] Chat (2026-10-25, staging): `SellerInbox` / `ChatThread` / push strip / car picker take
     `theme="premium"`; Lite (`dark`) and the dealer (`light`) unchanged. The pipeline's ChatSheet
     (opened from Leads) still uses `dark`: switch it with the Leads tab. Next: Leads.
+  - [x] Leads (2026-10-25, staging): cards + rail + ChatSheet (`theme="premium"`) in premiumDark;
+    the stage buttons keep their per-stage colours (owner). Removed: the source-breakdown bar
+    (Analytics has it, and it said "XDrive"), the second heat pill (AI score wins, else rule heat),
+    the "Stage: X 1/7" line (the picked stage names it), "Last contact" when the follow-up line
+    already says it, the rail's repeat total, the top-bar Add Lead on this tab and the mobile FAB
+    (the tab header has one). Desktop: the card grid no longer scrolls inside a 100vh-300px box
+    (cut the 2nd row); the page scrolls and the rail is sticky. Not yet: the lead panel (···),
+    Add lead / WhatsApp / Link car pop-ups. Next: those pop-ups, then Inbox.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
