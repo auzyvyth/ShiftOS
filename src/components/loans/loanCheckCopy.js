@@ -83,6 +83,8 @@ const en = {
     title: 'When ready: one bank first, not five',
     body: 'Every application sits on the buyer’s CCRIS for 12 months, and the next bank sees it. Send to one, wait for the answer, then the next.',
   },
+  // Opens the bank application with this check's answers filled in (LoanDesk).
+  apply: 'Start the bank application',
   bringTitle: 'What to bring',
   bringIntro: 'Built from their answers, hard-case papers included, so nobody chases documents after a bank says no.',
   docs: {
@@ -193,6 +195,7 @@ const ms = {
     title: 'Bila sedia: satu bank dulu, bukan lima',
     body: 'Setiap permohonan kekal dalam CCRIS pembeli 12 bulan, dan bank seterusnya nampak. Hantar ke satu, tunggu jawapan, baru yang seterusnya.',
   },
+  apply: 'Mula permohonan bank',
   bringTitle: 'Dokumen dibawa',
   bringIntro: 'Dibina dari jawapan mereka, termasuk dokumen kes susah, supaya tiada siapa kejar dokumen selepas bank tolak.',
   docs: {

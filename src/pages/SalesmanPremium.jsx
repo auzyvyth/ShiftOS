@@ -98,7 +98,6 @@ import {
  History,
  Search,
  DollarSign,
- ShieldCheck,
  Globe,
  ThumbsUp,
  ThumbsDown,
@@ -886,7 +885,14 @@ export default function SalesmanPremium() {
  const checkByLead = new Map(loanChecks.filter((c) => c.lead_id).map((c) => [c.lead_id, c]));
  const lc = loanCheckCopy(i18n.language);
  const openLoanCheck = (lead) => setLoanCheck({ lead: lead || null, existing: lead ? checkByLead.get(lead.id) || null : null });
- const onLoanCheckSaved = (row) => setLoanChecks((p) => [row, ...p.filter((c) => c.id !== row.id)]);
+ // A check the seller chose to send to a bank: the Loans tab opens its
+ // application with the check's answers (LoanDesk ApplyFromCheck).
+ const [applyFrom, setApplyFrom] = useState(null);
+ const onLoanCheckSaved = (row) => {
+ setLoanChecks((p) => [row, ...p.filter((c) => c.id !== row.id)]);
+ // Edited from the application screen: keep that screen on the new answers.
+ setApplyFrom((p) => (p && p.check?.id === row.id ? { ...p, check: row } : p));
+ };
  // Persisted (IC stripped) so Customers paints instantly; refreshCustomers
  // and the bootstrap fetch still replace it. Loading = nothing to show yet.
  const [customers, setCustomers, customersCached] = usePersistentState(
@@ -6183,37 +6189,21 @@ export default function SalesmanPremium() {
  // car price and down payment, and the list) plus ~80 lines of helpers.
  const renderLoans = () => (
  <Suspense fallback={<TabLoadingFallback />}>
- {/* Loan check first: the gaps get fixed before an application exists.
-     Walk-in checks have no lead card, so recent ones are listed here. */}
- <div style={{ maxWidth: 720, margin: "0 auto 18px", padding: 14, borderRadius: 12, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", gap: 10 }}>
- <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
- <p style={{ margin: 0, flex: "1 1 220px", fontSize: 13, color: "#94a3b8", lineHeight: 1.5 }}>{lc.newCheckHint}</p>
- <button onClick={() => openLoanCheck(null)} style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 40, padding: "0 14px", borderRadius: 9, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
- <Plus size={14} />{lc.newCheck}
- </button>
- </div>
- {loanChecks.slice(0, 5).map((ck) => {
- const lead = ck.lead_id ? leads.find((l) => l.id === ck.lead_id) : null;
- const fg = ck.outcome === "ready" ? "#4ade80" : ck.outcome === "hold" ? "#f87171" : "#fbbf24";
- return (
- <button key={ck.id} onClick={() => setLoanCheck({ lead, existing: ck })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
- <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
- <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[ck.buyer_name || lc.walkIn, ck.answers?.car_name].filter(Boolean).join(" · ")}
- </span>
- <span style={{ fontSize: 11, color: fg, flexShrink: 0 }}>{ck.outcome === "fix" ? lc.pill.fix : lc.pill[ck.outcome]}</span>
- </button>
- );
- })}
- </div>
+ {/* One flow (owner, 2026-10-25): a loan check first, then "Start the bank
+     application" turns the saved check into an application. LoanDesk lists
+     the recent checks and the applications. */}
  <LoanDesk
  userId={userId}
  dealerId={profile?.dealer_id || null}
  leads={leads}
- listings={myListings}
  applications={loanApplications}
  setApplications={setLoanApplications}
  onLeadSync={(leadId, patch) => setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, ...patch } : l)))}
+ checks={loanChecks}
+ onNewCheck={() => openLoanCheck(null)}
+ onOpenCheck={(ck, lead) => setLoanCheck({ lead: lead || null, existing: ck })}
+ applyFrom={applyFrom}
+ onApplyDone={() => setApplyFrom(null)}
  />
  </Suspense>
  );
@@ -6274,7 +6264,6 @@ export default function SalesmanPremium() {
  ],
  loans: [
  introStep("loans", "new", "loan-new", Banknote),
- introStep("loans", "banks", "loan-banks", ShieldCheck),
  introStep("loans", "list", "loan-list", ClipboardList),
  ],
  outreach: [
@@ -8061,6 +8050,13 @@ export default function SalesmanPremium() {
  dealerId={profile?.dealer_id || null}
  onSaved={onLoanCheckSaved}
  onClose={() => setLoanCheck(null)}
+ onApply={(row) => {
+ // closeAndRun: the check closes before the application opens.
+ const lead = loanCheck.lead || (row.lead_id ? leads.find((l) => l.id === row.lead_id) : null) || null;
+ setLoanCheck(null);
+ setApplyFrom({ check: row, lead });
+ switchTab("loans");
+ }}
  />
  </Suspense>
  )}

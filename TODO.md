@@ -2619,6 +2619,12 @@ tabs that need to be simpler." Next session:
     the WA taps + Enquiries tiles (Dashboard tile / Inbox count); four tiles -> one tap-through
     card; Recent sales moved from Listings into the commission card; sold cars out of the per-car
     table; platform bars neutral, one "Direct" note. Next: Loans, then Outreach, then Settings.
+  - [x] Loans (2026-10-25, staging): ONE flow (owner picked the merge). Loan check -> "Start the
+    bank application" -> application prefilled from the check; the old New application form, its
+    second DSR and "cars that fit" are gone. LoanCheck + LoanDesk in premiumDark. Open: the
+    application's document list still follows how the buyer earns (DOC_SETS), not the check's own
+    list; making it follow the check needs a `loan_applications` column + `get_loan_share` change
+    (a migration, after midnight). Next: Outreach, then Settings.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 

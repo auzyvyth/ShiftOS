@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, X, Copy, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "../../supabaseClient";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import useVisualViewport from "../../hooks/useVisualViewport";
-import { panel as C, panelRadius as R, withAlpha } from "../../theme/tokens";
+import { premiumDark as PD, withAlpha } from "../../theme/tokens";
 import { DEFAULT_EIR } from "../../utils/financing";
 import { carLabel, eirForTenure, isLocalNew, LOCAL_NEW_EIR, RATE_MAX, clampRateInput } from "../../utils/liveMaths";
 import { QUESTIONS, DEPOSIT_OPTIONS, YEAR_OPTIONS, assessReadiness, docsFor, unanswered } from "../../utils/loanReadiness";
@@ -26,9 +26,20 @@ import { loanCheckCopy, buyerMessage } from "./loanCheckCopy";
 
 const STEPS = ["credit", "income", "car", "result"];
 
+// Premium only, so premiumDark (SIMPLE-2): depth by tone, no borders, red for
+// fills, mint the only green, no amber. Mapped onto the names this file used.
+const C = {
+  bg: PD.canvas, surface: PD.card, fillSubtle: PD.card, fill: PD.raised, fillStrong: PD.hover,
+  line: PD.line, border: "transparent", borderStrong: "transparent",
+  text: PD.text, textSec: PD.textSec, textMuted: PD.textMuted,
+  accent: PD.accent, dangerText: PD.accentText, successText: PD.up,
+};
+
+// Severity by weight, not hue: "do not apply yet" is a filled red dot, "fix
+// first" a red ring, "know this" grey.
 const TONE = {
   red: { fg: C.dangerText, dot: C.dangerText },
-  amber: { fg: C.warnText, dot: C.warnText },
+  amber: { fg: C.text, dot: "transparent", ring: C.dangerText },
   info: { fg: C.textSec, dot: C.textMuted },
   green: { fg: C.successText, dot: C.successText },
 };
@@ -53,7 +64,9 @@ function initialAnswers(existing, car) {
   return { price: priceOf(car), dep: 10, years: 7, eir: String(eir), pay: "", commit: "" };
 }
 
-export default function LoanCheck({ lead = null, listings = [], userId, dealerId = null, existing = null, onClose, onSaved }) {
+// onApply(savedCheck): the "Start the bank application" step. The page opens
+// the application with this check's answers (LoanDesk ApplyFromCheck).
+export default function LoanCheck({ lead = null, listings = [], userId, dealerId = null, existing = null, onClose, onSaved, onApply = null }) {
   const { i18n } = useTranslation();
   const t = loanCheckCopy(i18n.language);
   const vv = useVisualViewport();
@@ -129,6 +142,13 @@ export default function LoanCheck({ lead = null, listings = [], userId, dealerId
     setRow(data);
     onSaved?.(data);
     return data;
+  };
+
+  // Saves first when anything changed, so the application reads the answers
+  // on screen, never an older copy.
+  const startApplication = async () => {
+    const r = row && !dirty.current ? row : await save();
+    if (r) onApply?.(r);
   };
 
   const sendWhatsApp = () => {
@@ -298,7 +318,7 @@ export default function LoanCheck({ lead = null, listings = [], userId, dealerId
       <div style={{ ...card, display: "flex", flexDirection: "column" }}>
         {flagRows.map((f, i) => (
           <div key={f.key + i} style={{ display: "flex", gap: 12, padding: 14, borderTop: i ? `1px solid ${C.line}` : "none" }}>
-            <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: "50%", flex: "none", marginTop: 6, background: TONE[f.tone].dot }} />
+            <span aria-hidden="true" style={{ width: 8, height: 8, boxSizing: "border-box", borderRadius: "50%", flex: "none", marginTop: 6, background: TONE[f.tone].dot, border: TONE[f.tone].ring ? `1.5px solid ${TONE[f.tone].ring}` : "none" }} />
             <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.35 }}>{f.title}</div>
               <div style={{ fontSize: 13, color: C.textSec, lineHeight: 1.5 }}>{f.fix}</div>
@@ -322,6 +342,15 @@ export default function LoanCheck({ lead = null, listings = [], userId, dealerId
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: C.text }}>{t.oneBank.title}</div>
         <p style={{ margin: 0, fontSize: 13, color: C.textSec, lineHeight: 1.5 }}>{t.oneBank.body}</p>
+        {onApply && (
+          <button type="button" onClick={startApplication} disabled={saving} style={{
+            marginTop: 6, display: "flex", alignItems: "center", gap: 8, minHeight: 48, padding: "0 16px", borderRadius: 999,
+            background: C.fill, border: 0, color: C.text, fontSize: 15, fontWeight: 600, fontFamily: "inherit", cursor: "pointer",
+          }}>
+            <span style={{ flex: 1, textAlign: "left" }}>{t.apply}</span>
+            <ChevronRight size={16} color={C.textSec} />
+          </button>
+        )}
       </div>
     </>);
 

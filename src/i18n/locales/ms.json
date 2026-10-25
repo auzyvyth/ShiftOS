@@ -2078,16 +2078,12 @@
       },
       "loans": {
         "new": {
-          "title": "Permohonan baru",
-          "body": "Mula dari lead atau taip nama pembeli. Masukkan kereta dan deposit, dan ia kira bayaran bulanan dan sama ada pembeli mampu."
-        },
-        "banks": {
-          "title": "Bank mana",
-          "body": "Pilih lebih dari satu bank. Kalau yang pertama tolak, yang seterusnya sudah dalam fail."
+          "title": "Semak pembeli",
+          "body": "Jawab beberapa soalan tentang rekod kredit dan pendapatan pembeli. Ia tunjuk apa perlu dibaiki sebelum bank tengok fail, kemudian mula permohonan bank dengan semua maklumat sudah diisi."
         },
         "list": {
           "title": "Permohonan",
-          "body": "Semua permohonan disimpan di sini. Kemas kini jawapan setiap bank bila sampai."
+          "body": "Setiap permohonan bank disimpan di sini. Rekod jawapan setiap bank bila sampai."
         }
       },
       "outreach": {

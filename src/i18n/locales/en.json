@@ -2089,16 +2089,12 @@
       },
       "loans": {
         "new": {
-          "title": "New application",
-          "body": "Start from a lead or type the buyer in. Add the car and the deposit, and it works out the monthly and whether the buyer can carry it."
-        },
-        "banks": {
-          "title": "Which banks",
-          "body": "Pick more than one bank. If the first says no, the next one is already on file."
+          "title": "Check a buyer",
+          "body": "Answer a few questions about the buyer’s credit record and income. It shows what to fix before any bank sees the file, then starts the bank application with everything filled in."
         },
         "list": {
           "title": "Applications",
-          "body": "Every application stays here. Update each bank's answer as it comes in."
+          "body": "Every bank application stays here. Record each bank’s answer as it comes in."
         }
       },
       "outreach": {

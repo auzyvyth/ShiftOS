@@ -189,7 +189,8 @@ Project ID: lemdkdizdlcirhbzqlos
   top card = commission + cars sold ALL TIME with "Recent sales" folded in (it sat under Listings);
   no "sold this month" (Dashboard tile). Listings = ONE tap-through card (taps + views as its
   working, views line) where four tiles were (WA taps = Dashboard tile, "Enquiries" = the Inbox
-  count); per-car table lists cars for sale only. `ChannelBreakdown theme="premium"`: neutral bars,
+  count); per-car table lists cars for sale only. Desktop Listings = two half-width columns (left:
+  tap-through, by car, by platform; right: the views chart, 7-day total; owner: "too wide"). `ChannelBreakdown theme="premium"`: neutral bars,
   mint WA count, no second "Direct" note (Lite + linked panel keep brand colours). Sold tab:
   `SoldCustomers` / `ComingUp` are Premium-only and on `PD`; the shared `PostSaleBoard`,
   `PostSaleChecklist` and `ServicePackages` take `theme="premium"` (dealer = light, linked
@@ -1864,6 +1865,17 @@ on `financing.js` and the Live presenter's DSR bands. Words: `src/components/loa
 - Saved in `loan_checks` (migration `20261025d`), one row per lead, answers only, never an IC.
   NOT in `loan_applications`: a row there flips `leads.loan_status` to submitted
   (`trg_sync_lead_loan`) though nothing went to a bank. Never on the Live presenter.
+- **ONE flow into a bank application (owner, 2026-10-25).** An application starts ONLY from a
+  saved check: the result's "Start the bank application" (`onApply`) closes the check and the
+  Loans tab opens `ApplyFromCheck` (`src/components/loans/LoanDesk.jsx`) with buyer, car, price,
+  deposit, years, income, commitments and how they earn filled in. It asks only phone + IC,
+  banks, documents collected, notes. The old "New application" form (its own buyer/car/income
+  fields, a second DSR with 60/65/70% ceilings, "cars that fit") is GONE: one buyer read "tight"
+  in one and "over the ceiling" in the other. Affordability = `assessReadiness`, nowhere else.
+  The application's document ticks still follow `DOC_SETS` by how the buyer earns, because the
+  buyer's status page (`LoanSharePage.jsx`) must show the same list and has no other source;
+  following the check's own list needs a column on `loan_applications` + the share RPC.
+  LoanCheck + LoanDesk are Premium-only and drawn in `premiumDark` (a local `C` map onto `PD`).
 
 ## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
 Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
