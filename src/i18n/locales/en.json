@@ -995,6 +995,7 @@
       "commissionTitle": "Commission and monthly goal",
       "commissionSub": "Track what each sale earned you and how close you are to this month's target. On Premium.",
       "leadTools": "Reminders and call log: Premium",
+      "loanCheck": "Loan check before the bank: Premium",
       "pageTitle": "Banner, bio and social links on your page",
       "pageSub": "Your free page shows your cars, your name, how to reach you and your trust details. Premium adds a banner, a bio and your Instagram, TikTok and Facebook."
     },
@@ -1770,6 +1771,7 @@
       "viewMarket": "View XDrive marketplace",
       "loanCalculator": "Loan calculator",
       "share": "Share",
+      "shareVisits": "visits from shared links",
       "miniByPlatform": "Mini-page traffic by platform",
       "visitsLower": "visits",
       "clicksLower": "clicks",

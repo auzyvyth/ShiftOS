@@ -6,8 +6,8 @@ import { isInternalDevice } from '../utils/internalTraffic';
 import { ONLINE_CHANNEL, SELLER_PREFIXES, deviceKey, isLiveOpen } from '../lib/onlinePresence';
 
 // Mounted once inside the Router (App.jsx). Announces this tab on the
-// "online now" presence channel (src/lib/onlinePresence.js): seller, buyer or
-// visitor, plus whether Live presentation is open. Writes nothing to the DB.
+// "online now" presence channel (src/lib/onlinePresence.js): seller, buyer,
+// visitor or team (our own devices), plus whether Live presentation is open. Writes nothing to the DB.
 //
 // Waits a few seconds after load so it never competes with first paint, and
 // skips the platform console (the admin is not a user).
@@ -45,11 +45,18 @@ export default function OnlineBeacon() {
 
   const onConsole = pathname.startsWith('/platform');
   const signedIn = Boolean(user && !user.is_anonymous);
-  const kind = !signedIn ? 'visitor'
-    : (matchesPathPrefix(pathname, SELLER_PREFIXES) || isInternalDevice()) ? 'seller' : 'buyer';
-  // Signed-in tabs ride the main client's socket (sellers already have one for
-  // chat and notifications); visitors use the session-free public client.
-  const useMain = signedIn;
+  // A guest in chat (anonymous sign-in) is a buyer, not a visitor. A device
+  // that is ours (isInternalDevice: a seller/admin once signed in on it, or
+  // ?internal=1) never counts as a visitor or buyer: it is the team.
+  const internal = isInternalDevice();
+  const kind = signedIn && (internal || matchesPathPrefix(pathname, SELLER_PREFIXES)) ? 'seller'
+    : internal ? 'team'
+    : user ? 'buyer'
+    : 'visitor';
+  // Tabs with a session (incl. guests) ride the main client's socket (sellers
+  // already have one for chat and notifications); visitors use the
+  // session-free public client.
+  const useMain = Boolean(user);
 
   // Join (or re-join when the client changes). Track updates ride the same channel.
   useEffect(() => {

@@ -145,6 +145,9 @@ import { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/S
 const ServicesAddonsTab = React.lazy(() => import("../components/salesman/ServicesAddonsTab"));
 const loadLoanDesk = () => import("../components/loans/LoanDesk");
 const LoanDesk = React.lazy(loadLoanDesk);
+const loadLoanCheck = () => import("../components/loans/LoanCheck");
+const LoanCheck = React.lazy(loadLoanCheck);
+import { loanCheckCopy } from "../components/loans/loanCheckCopy";
 // Tab code downloaded in the background once the first screen is up, most-used
 // first, one file at a time (src/utils/warmChunks.js). Same loaders as the
 // React.lazy calls above, so a warmed tab opens with no spinner, and offline.
@@ -878,6 +881,14 @@ export default function SalesmanPremium() {
 
  // premium — loans
  const [loanApplications, setLoanApplications] = useState([]);
+ // Loan check (IDEA-23): one row per lead, read by the lead card, the lead
+ // panel and the Loans tab. loanCheck = the open check: { lead, existing }.
+ const [loanChecks, setLoanChecks] = useState([]);
+ const [loanCheck, setLoanCheck] = useState(null);
+ const checkByLead = new Map(loanChecks.filter((c) => c.lead_id).map((c) => [c.lead_id, c]));
+ const lc = loanCheckCopy(i18n.language);
+ const openLoanCheck = (lead) => setLoanCheck({ lead: lead || null, existing: lead ? checkByLead.get(lead.id) || null : null });
+ const onLoanCheckSaved = (row) => setLoanChecks((p) => [row, ...p.filter((c) => c.id !== row.id)]);
  // Persisted (IC stripped) so Customers paints instantly; refreshCustomers
  // and the bootstrap fetch still replace it. Loading = nothing to show yet.
  const [customers, setCustomers, customersCached] = usePersistentState(
@@ -1329,6 +1340,14 @@ export default function SalesmanPremium() {
  if (error) { console.error("fetchLoanApplications:", error); toast.error(i18n.t("salesmanPremium.errors.loadLoans")); }
  setLoanApplications(data || []);
  });
+ // Loan checks. Before the 20261025d migration the table does not exist:
+ // stay quiet then, the feature just shows no saved checks.
+ supabase.from("loan_checks").select("*").eq("salesman_id", uid)
+ .order("updated_at", { ascending: false }).limit(200)
+ .then(({ data, error }) => {
+ if (error) { if (!["42P01", "PGRST205"].includes(error.code)) console.error("fetchLoanChecks:", error); return; }
+ setLoanChecks(data || []);
+ });
 
  // premium — customers (post-sale buyer records) + their service packages.
  // A solo salesman's dealer_id resolves to their own id (getDealerIdFromProfile).
@@ -1346,7 +1365,7 @@ export default function SalesmanPremium() {
  // Must include every column CarForm's edit prefill reads AND every column
  // CarDetailPopup's Paperwork/Mechanical tabs display, or editing/viewing a
  // listing silently blanks those fields (see overlay rule 4).
- const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id";
+ const LISTING_SELECT = "id, slug, year, brand, model, variant, selling_price, original_price, base_price, purchase_price, status, images, colour, mileage, transmission, fuel_type, body_type, features, options, specs, city, state, condition, engine_cc, horsepower, cylinders, doors, seats, fuel_consumption, created_at, included_services, included_services_cost, recon_cost, sold_at, commission_amount, rejection_reason, is_recon, auction_grade, interior_grade, import_country, auction_house, local_reg_date, chassis_status, damage_map, video_url, car_documents, registration_date, plate_number, vin_number, previous_owners, road_tax_expiry, loan_eligible, payment_type, warranty_months, deposit_amount, new_car_model_id, new_car_unit";
  Promise.all([
  supabase
  .from("car_listings")
@@ -3242,6 +3261,25 @@ export default function SalesmanPremium() {
  </button>
  );
  })()}
+
+ {/* Loan check (IDEA-23): only once one exists; starting one lives in the
+     lead panel and the Loans tab, so the 3-button row stays as it is. */}
+ {!isWonLead && checkByLead.get(lead.id) && (() => {
+ const ck = checkByLead.get(lead.id);
+ const fg = ck.outcome === "ready" ? "#4ade80" : ck.outcome === "hold" ? "#f87171" : "#fbbf24";
+ return (
+ <button
+ onClick={() => openLoanCheck(lead)}
+ style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, textAlign: "left", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 7, padding: "7px 10px", marginBottom: 12, cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: fg, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]} <span style={{ color: "#6b7280" }}>· {lc.checked(timeAgo(ck.updated_at))}</span>
+ </span>
+ <ChevronRight size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
  </div>
 
  {/* ACTIONS — exactly 3 buttons */}
@@ -4070,6 +4108,29 @@ export default function SalesmanPremium() {
  </p>
  )}
  </div>
+
+ {/* LOAN CHECK (IDEA-23): what to fix before any bank sees the file. */}
+ {(() => {
+ const ck = checkByLead.get(pl.id);
+ const fg = !ck ? "#e5e7eb" : ck.outcome === "ready" ? "#4ade80" : ck.outcome === "hold" ? "#f87171" : "#fbbf24";
+ return (
+ <button
+ onClick={() => { close(); openLoanCheck(pl); }}
+ style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 11px", borderRadius: 9, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+ >
+ <Banknote size={13} color="#6b7280" style={{ flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0 }}>
+ <span style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: fg }}>
+ {!ck ? lc.start : ck.outcome === "fix" ? lc.card.fix(ck.fix_count) : lc.card[ck.outcome]}
+ </span>
+ <span style={{ display: "block", fontSize: 11, color: "#6b7280", marginTop: 1 }}>
+ {ck ? lc.checked(timeAgo(ck.updated_at)) : lc.newCheckHint}
+ </span>
+ </span>
+ <ChevronRight size={13} color="#4b5563" style={{ flexShrink: 0 }} />
+ </button>
+ );
+ })()}
 
  {/* CONTACT + STATUS — everything the card shows, which this panel did not. */}
  <div>
@@ -6223,6 +6284,29 @@ export default function SalesmanPremium() {
  // car price and down payment, and the list) plus ~80 lines of helpers.
  const renderLoans = () => (
  <Suspense fallback={<TabLoadingFallback />}>
+ {/* Loan check first: the gaps get fixed before an application exists.
+     Walk-in checks have no lead card, so recent ones are listed here. */}
+ <div style={{ maxWidth: 720, margin: "0 auto 18px", padding: 14, borderRadius: 12, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", display: "flex", flexDirection: "column", gap: 10 }}>
+ <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+ <p style={{ margin: 0, flex: "1 1 220px", fontSize: 13, color: "#94a3b8", lineHeight: 1.5 }}>{lc.newCheckHint}</p>
+ <button onClick={() => openLoanCheck(null)} style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 40, padding: "0 14px", borderRadius: 9, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+ <Plus size={14} />{lc.newCheck}
+ </button>
+ </div>
+ {loanChecks.slice(0, 5).map((ck) => {
+ const lead = ck.lead_id ? leads.find((l) => l.id === ck.lead_id) : null;
+ const fg = ck.outcome === "ready" ? "#4ade80" : ck.outcome === "hold" ? "#f87171" : "#fbbf24";
+ return (
+ <button key={ck.id} onClick={() => setLoanCheck({ lead, existing: ck })} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 10px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}>
+ <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: "50%", background: fg, flexShrink: 0 }} />
+ <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+ {[ck.buyer_name || lc.walkIn, ck.answers?.car_name].filter(Boolean).join(" · ")}
+ </span>
+ <span style={{ fontSize: 11, color: fg, flexShrink: 0 }}>{ck.outcome === "fix" ? lc.pill.fix : lc.pill[ck.outcome]}</span>
+ </button>
+ );
+ })}
+ </div>
  <LoanDesk
  userId={userId}
  dealerId={profile?.dealer_id || null}
@@ -8094,6 +8178,20 @@ export default function SalesmanPremium() {
      level (not inside renderLeads) so the pipeline card, the lead panel and
      anything added later all open the same sheet. Same AI split as the inbox:
      Premium drafts, Lite sees the locked strip. */}
+ {loanCheck && (
+ <Suspense fallback={null}>
+ <LoanCheck
+ lead={loanCheck.lead}
+ existing={loanCheck.existing}
+ listings={myListings}
+ userId={userId}
+ dealerId={profile?.dealer_id || null}
+ onSaved={onLoanCheckSaved}
+ onClose={() => setLoanCheck(null)}
+ />
+ </Suspense>
+ )}
+
  {chatSheet && (
  <Suspense fallback={null}>
  <ChatSheet

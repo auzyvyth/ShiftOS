@@ -549,8 +549,9 @@ live can stall it in front of their audience. So:
   updates on the hourly token refresh; `analytics_events` skips sellers' devices and anyone
   without analytics consent). **ONLINE-1 (2026-10-21)**: every app tab announces itself on the
   Realtime PRESENCE channel `online-now` (`src/components/OnlineBeacon.jsx`, mounted in
-  App.jsx; payload `{a: seller|buyer|visitor, live}`, one random key per DEVICE, no user id), and
-  console Home counts it (`useOnlineNow`). Presence lives in the realtime server's memory: NO
+  App.jsx; payload `{a: seller|buyer|visitor|team, live}`, one random key per DEVICE, no user id), and
+  console Home counts it (`useOnlineNow`). A guest in chat (anonymous sign-in) is a buyer; a
+  signed-out device of ours (`isInternalDevice`) is `team` and is shown apart, never as a visitor. Presence lives in the realtime server's memory: NO
   database writes. The channel is public and spoofable, so it is a dashboard number, never
   the release gate: `seller_live_state` stays the gate.
   **ONLINE-2**: the NAMES of who is live come from `get_live_sellers()` (superadmin-only,
@@ -1349,9 +1350,16 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
   restore cannot move `plan_expires_at` (escalation guard), so it waits.
 
-## Lite -> Premium upgrade + the free month (2026-10-04, migration 20261004b)
-- **The free month is a paid-through date, not a trial flag:** `plan_expires_at =
-  now() + 30 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
+## Lite -> Premium upgrade + the free trial (2026-10-04, migration 20261004b)
+- **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025c).** One
+  number in two places: the trigger `apply_premium_free_month()` and
+  `PLAN_CONFIG.salesman_full.trialDays`. Trials started before that keep their 30 days
+  (the date is stamped at start). Console "Set up a seller" picks 7 days or 1 month
+  (`trial_days` in create-salesman, only 7 or 30 accepted) for prospects promised a
+  month. After it ends: drop to Lite as below, never a full lock (owner's pick).
+  `accountState.js` reads a 7- or 30-day gap as a trial; any other length = paid.
+- **The free trial is a paid-through date, not a trial flag:** `plan_expires_at =
+  now() + 7 days`, set server side (`trg_zz_premium_free_month` on a Premium signup,
   `start_premium_trial()` from Lite). `subscription_status='trial'` never granted
   Premium (is_salesman_premium ignores it), which is why Premium signups used to land
   on Lite. `premium_trial_started_at` = the one free month is used.
@@ -1446,6 +1454,14 @@ and the won-trigger marks it sold on the first deal.
   No phone numbers: buttons go through `sellerWaUrl` (CDP-3).
 - `/new-cars/:brand/:model` is "the salesman is the product": price once, then the
   advisors. The mini page does NOT link to it (it lists that advisor's competitors).
+- **Each advisor on `/new-cars/:brand/:model` links to THEIR CARD for the model (NEWCAR-STATS,
+  2026-10-25)**: `get_new_model_advisors` returns `card_id` / `card_slug` (migration `20261025b`).
+  After cards left the browse surfaces (2026-10-23) the page linked only to `/s/<slug>`, so cards
+  got ZERO views and their sellers' dashboards read 0. Taps there carry `car_id` (card_click,
+  whatsapp_click) and the page logs a `page_view` (`source: new_model_page`).
+  **A model card's canonical is its model page** (CarDetailPage Helmet + `api/og.js` car branch;
+  `og:url` and the Car schema keep the card's own URL so shares still preview the card). Ten
+  advisors = ten near-identical "Proton X50 for sale" pages otherwise. Cards stay out of the sitemap.
 - Wording/helpers: `src/utils/newCars.js`, shared with `api/og.js` and the sitemap.
 - Hide a catalogue row, never delete it: delete cascades through the advisors' hide lists.
 - Live presenter: cards are ordinary listings; `officialNew` (seller_type new_car) adds
@@ -1494,7 +1510,7 @@ and the won-trigger marks it sold on the first deal.
   `create-salesman` uses signup's business-name fallback (blank = full name) and tags the login
   `account_type`/`tier` like `signUp()`. The setup email lists every saved field, read back
   from the profile row. A new signup question goes in both, or console accounts drift again.
-- Console "Set up a seller" offers Lite or Premium. Premium = the free month, written
+- Console "Set up a seller" offers Lite or Premium. Premium = the free trial (7 days or 1 month), written
   by `create-salesman` (service role skips `apply_premium_free_month`), never the
   `payment_status='pending'` pay-first lock.
 
@@ -1519,6 +1535,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
+new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
+under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`
+(`src/utils/detectChannel.js`): channels share, copy, whatsapp, telegram only (Facebook / IG /
+TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
+(`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
@@ -1763,10 +1785,36 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the
   app's. Every on-screen word lives in `src/components/live/liveCopy.js` (both
   languages); a new string goes there in BOTH, never hardcoded in the JSX.
+- **Motion is for the camera (LIVE-MOTION, owner 2026-10-25)**: the big monthly ROLLS to a new
+  value on a tap (`RollingNumber`, its own component so the per-render `fit` does not run ~40
+  times; snaps on a new car), a new car slides in from the side the seller went with one pop on
+  #N, the photo drifts 4% over 9s then holds. Slow, large moves only: a phone filming a monitor
+  plus TikTok compression smears anything fast. No loops, no confetti. All off under reduced motion.
+- **Jump to a car (LIVE-JUMP, 2026-10-25)**, 3+ cars only: desktop with 200px+ of margin = a list
+  card RIGHT of the stage (`.lp-pick`, outside the zoomed stage, so outside an upright phone's
+  frame); otherwise a list button in the bottom nav opens it as a sheet (viewers see it briefly).
+  Search takes `#7` or a name. Keyboard: digits then Enter opens that #N (`typedNo`, clears after
+  3s). One row per CAR (a model card is one row; variants stay chips). A sharer of the WHOLE
+  screen in LIVE Studio shows the list too: they share the presenter window only.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
   `npm run test:live`.
+
+## Loan check (IDEA-23, 2026-10-25) — fix the file BEFORE any bank sees it
+A Proton SA: buyers go to 4-5 banks, all decline (CTOS, CCRIS, no bank record, late payments,
+new job), then the SA chases documents. Premium only (owner, 2026-10-25): Lite's lead panel shows
+it locked (`premiumRow.loanCheck`), opening `goPremium`.
+Opened from the lead panel ("Loan check"), the Loans tab (walk-in buyer) and, once saved, a
+status row on the lead card (the 3-button row is unchanged). Three steps, credit record FIRST,
+then two tabs: what to fix, what to bring (sent to the buyer on WhatsApp, EN/BM switch, a
+person presses send). Rules + maths: `src/utils/loanReadiness.js` (`npm run test:loancheck`),
+on `financing.js` and the Live presenter's DSR bands. Words: `src/components/loans/loanCheckCopy.js`.
+- **Never an approval, a score or a chance.** It lists what commonly gets a file declined.
+- **One bank first, not five**: pending + approved applications show on CCRIS for 12 months.
+- Saved in `loan_checks` (migration `20261025d`), one row per lead, answers only, never an IC.
+  NOT in `loan_applications`: a row there flips `leads.loan_status` to submitted
+  (`trg_sync_lead_loan`) though nothing went to a bank. Never on the Live presenter.
 
 ## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
 Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
@@ -1985,7 +2033,7 @@ enquiries. Both were granted to `anon`.
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).
-**The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
+**OWNER REJECTED THIS (2026-10-25, TODO SIMPLE-2): show every tab again; simplify what is inside the tabs instead.** **The Premium menu grows with the seller (SIMPLE-1, 2026-10-21)**: Dashboard, Listings, Chat,
 Leads, Settings always; Inbox once a booking/enquiry exists, Sold after the first sale,
 Analytics once there is a car, Loans + Outreach once there is a lead. The tab you are on
 keeps its link, and every tab still opens by URL or shortcut. The Dashboard likewise shows

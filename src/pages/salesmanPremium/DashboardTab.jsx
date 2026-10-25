@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
  Bell, Calendar, Car, CheckCircle, ChevronRight, Clock, ExternalLink, Eye, History,
- Link as LinkIcon, MessageCircle, Pin, Store, Users, ClipboardList, Zap, Calculator,
+ Link as LinkIcon, MessageCircle, Pin, Share2, Store, Users, ClipboardList, Zap, Calculator,
 } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { normalizePhone } from "../../lib/phone";
 import { panel as C, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
+import { shareVisits } from "../../utils/detectChannel";
 import ThisWeek from "../../components/crm/ThisWeek";
 import FollowUpRow from "../../components/crm/FollowUpRow";
 import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/StarterTasks";
@@ -422,6 +423,16 @@ export default function DashboardTab({
  </div>
  )}
  </>
+ )}
+ {/* Visits that came from a link someone passed on (Share button, copied
+     link, WhatsApp, Telegram): shareVisits, detectChannel.js. All time, the
+     same window as "Page visits". */}
+ {profile?.slug && trafficReady && (
+ <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, fontSize: T.size.sm, color: C.textSec }}>
+ <Share2 size={13} color="#a78bfa" style={{ flexShrink: 0 }} />
+ <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: T.weight.semibold, color: C.text }}>{shareVisits(minipageStats.byChannel)}</span>
+ <span>{t("salesmanPremium.dash.shareVisits")}</span>
+ </div>
  )}
  {profile?.slug && (
  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>

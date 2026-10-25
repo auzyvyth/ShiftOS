@@ -5238,6 +5238,12 @@ export default function SalesmanLite() {
                   <button type="button" onClick={goPremium} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", alignSelf: "flex-start" }}>
                     <Lock size={12} /> {t("salesmanLite.premiumRow.leadTools")}
                   </button>
+                  {/* Loan check (IDEA-23) is Premium (owner, 2026-10-25): shown locked
+                      here, where a buyer's loan question comes up, and it opens the one
+                      upgrade screen. */}
+                  <button type="button" onClick={goPremium} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", alignSelf: "flex-start" }}>
+                    <Lock size={12} /> {t("salesmanLite.premiumRow.loanCheck")}
+                  </button>
 
                   {/* Tool row 2 */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
