@@ -66,3 +66,17 @@ export function agentSeoIssues(p) {
   else if (agentPageTitle(p).length > TITLE_LIMIT) issues.push({ key: "title", text: "Your title is long enough that Google will cut the end off. A shorter city name helps, e.g. \"Kuala Lumpur\" instead of \"Wilayah Persekutuan Kuala Lumpur\"." });
   return issues;
 }
+
+// The link-preview picture for an agent page, made by api/agent-card.js: cover,
+// profile photo, role, name, town and chips. `v` changes when anything drawn on
+// it changes, so an edit is a new URL and WhatsApp/Facebook fetch it again
+// instead of showing their cached copy. (The car count is not in it; the image
+// itself is re-made at most a day later.)
+export function agentShareImage(p, siteUrl) {
+  if (!p?.slug) return null;
+  const key = [p.cover_url, p.avatar_url, p.full_name, p.dealership, p.job_title, p.city, p.state, p.is_verified,
+    (Array.isArray(p.specializations) ? p.specializations : []).join(",")].map((v) => String(v ?? "")).join("|");
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) h = ((h * 33) ^ key.charCodeAt(i)) >>> 0;
+  return `${siteUrl}/api/agent-card?slug=${encodeURIComponent(p.slug)}&v=${h.toString(36)}`;
+}
