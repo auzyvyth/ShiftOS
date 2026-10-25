@@ -549,8 +549,9 @@ live can stall it in front of their audience. So:
   updates on the hourly token refresh; `analytics_events` skips sellers' devices and anyone
   without analytics consent). **ONLINE-1 (2026-10-21)**: every app tab announces itself on the
   Realtime PRESENCE channel `online-now` (`src/components/OnlineBeacon.jsx`, mounted in
-  App.jsx; payload `{a: seller|buyer|visitor, live}`, one random key per DEVICE, no user id), and
-  console Home counts it (`useOnlineNow`). Presence lives in the realtime server's memory: NO
+  App.jsx; payload `{a: seller|buyer|visitor|team, live}`, one random key per DEVICE, no user id), and
+  console Home counts it (`useOnlineNow`). A guest in chat (anonymous sign-in) is a buyer; a
+  signed-out device of ours (`isInternalDevice`) is `team` and is shown apart, never as a visitor. Presence lives in the realtime server's memory: NO
   database writes. The channel is public and spoofable, so it is a dashboard number, never
   the release gate: `seller_live_state` stays the gate.
   **ONLINE-2**: the NAMES of who is live come from `get_live_sellers()` (superadmin-only,

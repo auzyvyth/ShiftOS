@@ -1042,8 +1042,8 @@ export default function AdminPage() {
               Two tabs on one device count once; nothing here names anyone. */}
           <HealthStat label="Sellers" value={online ? online.sellers : "…"} sub="in their dashboard" />
           <HealthStat label="Live now" value={online ? online.live : "…"} sub="Live presentation open" />
-          <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in" />
-          <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub="not signed in" />
+          <HealthStat label="Buyers" value={online ? online.buyers : "…"} sub="signed in or chatting as a guest" />
+          <HealthStat label="Visitors" value={online ? online.visitors : "…"} sub={online?.team ? `not signed in · ${online.team} of yours not counted` : "not signed in"} />
         </div>
 
         {/* Names of who is live (get_live_sellers, superadmin-only). The release

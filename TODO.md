@@ -2581,6 +2581,17 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   which bank takes new joiners. Constraints: no "approval chance" score; CTOS/CCRIS
   pulls need the buyer's consent; LoanDesk is Premium + dealer-linked only and has
   ~4 rows of usage, so check discovery before adding fields. Related: IDEA-12.
+  **Ashraf's answer (2026-10-25): the top decline reasons are CTOS, CCRIS, no bank
+  record (thin file) and late payments on other loans.** So the credit record comes
+  FIRST, not job tenure: step 1 of the pre-check = "has the buyer looked at their own
+  CCRIS (free, eCCRIS) and CTOS?", late payment in the last 12 months?, any bank
+  account / loan history at all? Remedies: clear arrears and wait for on-time months,
+  a guarantor or bigger deposit for a thin file, fix a wrong CTOS entry before
+  applying. Owner's plan (2026-10-25): wk1 questions + remedies, wk2 buyer upload link
+  adapted to buyer type (incl. guarantor), wk3 staged 1-2 best-fit banks using decline
+  counts; adoption metric = % of finance cases with a pre-check before the first bank.
+  NOT on the Live presenter: it is on a public stream, and credit questions about a
+  named buyer must never be on camera. Lite lead + Premium LoanDesk + a buyer link.
 
 - **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
   presenter can be driven by a script in a headless browser and recorded to MP4 (done once for

@@ -51,12 +51,14 @@ export function deviceKey() {
 // device key; its tabs are merged: a seller tab anywhere makes it a seller, and
 // any tab with Live open makes it live.
 export function countOnline(state) {
-  const out = { sellers: 0, buyers: 0, visitors: 0, live: 0, total: 0 };
+  // team = our own devices signed out (isInternalDevice), kept out of buyers/visitors.
+  const out = { sellers: 0, buyers: 0, visitors: 0, team: 0, live: 0, total: 0 };
   for (const metas of Object.values(state || {})) {
     if (!metas?.length) continue;
     out.total += 1;
     const kinds = metas.map((m) => m.a);
     if (kinds.includes('seller')) out.sellers += 1;
+    else if (kinds.includes('team')) out.team += 1;
     else if (kinds.includes('buyer')) out.buyers += 1;
     else out.visitors += 1;
     if (metas.some((m) => m.live)) out.live += 1;
