@@ -124,6 +124,43 @@ const preload = (u) => {
 };
 
 const Money = ({ n }) => <><span className="lp-rm">RM</span>{fmt(n)}</>;
+
+// Motion is for the camera (LIVE-MOTION, owner 2026-10-25): sellers film a
+// monitor and TikTok compresses it, so only slow, large moves survive. Off
+// when the phone asks for reduced motion.
+const reducedMotion = () => typeof window !== 'undefined'
+  && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const ROLL_MS = 650;
+// The big monthly ROLLS to a new value when a deposit / tenure / rate tap
+// changes it: viewers watch a number move. A new car (snapKey) jumps straight
+// there, so the roll never reads as one car's price turning into another's.
+// Its own component: the presenter re-fits on every render, and a roll is ~40.
+const RollingNumber = ({ value, snapKey }) => {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  const snap = useRef(snapKey);
+  useEffect(() => {
+    if (snap.current !== snapKey || reducedMotion() || from.current === value) {
+      snap.current = snapKey;
+      from.current = value;
+      setShown(value);
+      return undefined;
+    }
+    const start = from.current;
+    const t0 = performance.now();
+    let raf;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ROLL_MS);
+      const v = start + (value - start) * (1 - (1 - k) ** 3); // ease out
+      from.current = v;
+      setShown(k === 1 ? value : v);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [value, snapKey]);
+  return fmt(Math.round(shown));
+};
 const TENURES = [5, 7, MAX_TENURE_YEARS];
 const DEFAULT_DOWN = Math.round((1 - DEFAULT_LOAN_RATIO) * 100); // 10
 const DOWN_ROWS = [DEFAULT_DOWN, 20, 30];
@@ -160,6 +197,8 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [mode, setMode] = useState('cars'); // 'cars' | 'budget' | 'docs'
   const [docsKind, setDocsKind] = useState('employee'); // 'employee' | 'self'
   const [idx, setIdx] = useState(0);
+  // Which way the last car change went: the new car slides in from that side.
+  const [dir, setDir] = useState(0);
   const [imgIdx, setImgIdx] = useState(0);
   // Full view of the car photo. It fills the STAGE, not the browser window, so
   // it is never wider than the calculator (owner, 2026-10-22): on a phone that
@@ -466,6 +505,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
 
   const go = useCallback((d) => {
     setIdx((i) => (i + d + listings.length) % listings.length);
+    setDir(d);
     setImgIdx(0);
     setPhotoFull(false);
     setDepEdit(false);
@@ -768,6 +808,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const openFromBudget = (m) => {
     if (m.car._variantId) pickNewCarVariant(m.car.id, m.car._variantId);
     setIdx(m.n - 1);
+    setDir(0);
     setImgIdx(0);
     // A "just above" car opens with the extra deposit that makes it fit.
     const dep = bDown + (m.topUp || 0);
@@ -857,6 +898,24 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
            under it beside a taller answer (a model card's variants). */
         .lp-desk .lp-photo { aspect-ratio: auto; align-self: stretch; min-height: 200px; }
         .lp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+        /* LIVE-MOTION: the photo drifts in 4% over 9s, then holds, so a car
+           left on screen never looks like a frozen stream. Too slow to smear
+           on a phone camera. Keyed by photo, so each photo starts over. */
+        .lp-photo img { animation: lp-drift 9s cubic-bezier(.25,.1,.25,1) both; transform-origin: 50% 55%; }
+        @keyframes lp-drift { from { transform: scale(1); } to { transform: scale(1.04); } }
+        /* A new car slides in from the side the seller went (one move, ~0.45s),
+           and its #N pops once. */
+        .lp-sheet[data-in="next"] { animation: lp-in-next .45s cubic-bezier(.22,1,.36,1) both; }
+        .lp-sheet[data-in="prev"] { animation: lp-in-prev .45s cubic-bezier(.22,1,.36,1) both; }
+        .lp-sheet[data-in="fade"] { animation: lp-in-fade .35s ease-out both; }
+        @keyframes lp-in-next { from { opacity: 0; transform: translateX(36px); } to { opacity: 1; transform: none; } }
+        @keyframes lp-in-prev { from { opacity: 0; transform: translateX(-36px); } to { opacity: 1; transform: none; } }
+        @keyframes lp-in-fade { from { opacity: 0; } to { opacity: 1; } }
+        .lp-sheet .lp-num { animation: lp-pop .5s cubic-bezier(.34,1.4,.64,1) .12s both; }
+        @keyframes lp-pop { from { transform: scale(.6); } to { transform: scale(1); } }
+        @media (prefers-reduced-motion: reduce) {
+          .lp-photo img, .lp-sheet, .lp-sheet .lp-num { animation: none; }
+        }
         .lp-expand { position: absolute; top: 6px; right: 6px; z-index: 2; width: 32px; height: 32px; border: none; border-radius: 8px; background: rgba(15,17,21,.55); color: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
         .lp-dots { position: absolute; z-index: 2; bottom: 6px; left: 0; right: 0; display: flex; justify-content: center; gap: 4px; pointer-events: none; }
         .lp-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,.55); box-shadow: 0 0 2px rgba(0,0,0,.4); }
@@ -1267,7 +1326,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
-        <div className="lp-card lp-sheet">
+        <div className="lp-card lp-sheet" key={car?.id || idx} data-in={dir > 0 ? 'next' : dir < 0 ? 'prev' : 'fade'}>
           <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
             <div className="lp-title">
               <span className="lp-num">#{idx + 1}</span>
@@ -1352,7 +1411,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <p className="lp-ans-lbl">
                     {t.years(pickYears)} · {picked.down > 0 ? t.depositAmt(`RM ${fmt(picked.down)}`) : t.noDeposit}
                   </p>
-                  <p className="lp-big"><span className="lp-rm">RM</span>{fmt(answer)}<small>{t.perMonth}</small></p>
+                  <p className="lp-big"><span className="lp-rm">RM</span><RollingNumber value={answer} snapKey={car?.id} /><small>{t.perMonth}</small></p>
                   {/* As many columns as tenures: an old car's lone "1 year" tile
                       fills the row and says it is the most a bank gives. */}
                   <div className="lp-tens" role="group" aria-label={t.tenure}
