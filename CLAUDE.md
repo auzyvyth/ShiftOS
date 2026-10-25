@@ -1801,6 +1801,20 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   opened. Counts only, never a buyer name: the screen may still be on stream.
   `npm run test:live`.
 
+## Loan check (IDEA-23, 2026-10-25) — fix the file BEFORE any bank sees it
+A Proton SA: buyers go to 4-5 banks, all decline (CTOS, CCRIS, no bank record, late payments,
+new job), then the SA chases documents. Premium only (owner, 2026-10-25): Lite has no Loans tab.
+Opened from the lead panel ("Loan check"), the Loans tab (walk-in buyer) and, once saved, a
+status row on the lead card (the 3-button row is unchanged). Three steps, credit record FIRST,
+then two tabs: what to fix, what to bring (sent to the buyer on WhatsApp, EN/BM switch, a
+person presses send). Rules + maths: `src/utils/loanReadiness.js` (`npm run test:loancheck`),
+on `financing.js` and the Live presenter's DSR bands. Words: `src/components/loans/loanCheckCopy.js`.
+- **Never an approval, a score or a chance.** It lists what commonly gets a file declined.
+- **One bank first, not five**: pending + approved applications show on CCRIS for 12 months.
+- Saved in `loan_checks` (migration `20261025d`), one row per lead, answers only, never an IC.
+  NOT in `loan_applications`: a row there flips `leads.loan_status` to submitted
+  (`trg_sync_lead_loan`) though nothing went to a bank. Never on the Live presenter.
+
 ## Loan poster (POSTER-1, 2026-10-16) — the seller's "Kiraan Loan" image
 Opened from a car's menu in Lite, Premium (`salesmanPremium/ListingsTab.jsx`) and the
 linked-salesman car popup (`Salesmanpanel.jsx`). Seller types price, deposit, rate (EIR or

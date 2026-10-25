@@ -2561,38 +2561,50 @@ Lite 3 cars a month, Premium unlimited (see CLAUDE.md "Loan poster"). Answer to 
 - [ ] **POSTER-5: Gallery page 2** (up to 6 real photos, sent with the poster as one
   WhatsApp album), and translate the sheet's own UI (it is English; the poster is BM/EN).
 
+## LOANCHECK-1 — Loan check before any bank (built 2026-10-25, was IDEA-23)
+v1 BUILT, Premium only (owner): `src/components/loans/LoanCheck.jsx`, rules
+`src/utils/loanReadiness.js` (`npm run test:loancheck`), copy `loanCheckCopy.js`. Entry: lead
+panel, Loans tab (walk-in), status row on the lead card. Tested in a headless phone browser
+(EN 375px, BM 360px): full flow, save payload, no console errors.
+- [ ] **Apply `20261025d_loan_checks.sql` in tonight's after-midnight slot.** Until then the
+  check works but Save says "Could not save" (the table does not exist yet).
+- [ ] v2: buyer fills it + uploads documents from a link (storage bucket + PDPA consent).
+- [ ] v3: one bank at a time in LoanDesk, decline reasons logged; counts say which bank fits.
+- [ ] Lite: a PremiumRow teaser for Loan check (Lite has no Loans tab today).
+- [ ] Adoption number: share of LoanDesk applications that had a check first.
+Background (from the idea):
+  - **IDEA-23: Loan pre-check BEFORE any bank sees the file (owner, 2026-10-25)** — from a
+    Proton SA (@ashrafxproton): buyer goes to 4-5 banks, all decline because of a new job
+    or high commitments, there is no guarantor, then the SA chases more documents. "Leceh
+    for both sides." The reasons were knowable in the first 2 minutes; we find out last.
+    Shape: (1) a 5-question pre-check in LoanDesk before "Save application": months in
+    this job / confirmed?, net pay, commitments (DSR exists), own CCRIS checked?,
+    guarantor available? -> red flags + fixes (bigger deposit, cheaper car via
+    `budgetMatches`, longer tenure, wait for confirmation, bring a guarantor), never an
+    approval. (2) Collect the WHOLE doc set once, incl. the new-joiner / guarantor
+    extras, via a link the buyer uploads to. (3) Submit 1-2 best-fit banks first, not 5
+    at once: pending + approved applications show on CCRIS for 12 months (BNM FAQ). (4)
+    Later: counts of each bank's decline reasons across sellers (counts only) to say
+    which bank takes new joiners. Constraints: no "approval chance" score; CTOS/CCRIS
+    pulls need the buyer's consent; LoanDesk is Premium + dealer-linked only and has
+    ~4 rows of usage, so check discovery before adding fields. Related: IDEA-12.
+    **Ashraf's answer (2026-10-25): the top decline reasons are CTOS, CCRIS, no bank
+    record (thin file) and late payments on other loans.** So the credit record comes
+    FIRST, not job tenure: step 1 of the pre-check = "has the buyer looked at their own
+    CCRIS (free, eCCRIS) and CTOS?", late payment in the last 12 months?, any bank
+    account / loan history at all? Remedies: clear arrears and wait for on-time months,
+    a guarantor or bigger deposit for a thin file, fix a wrong CTOS entry before
+    applying. Owner's plan (2026-10-25): wk1 questions + remedies, wk2 buyer upload link
+    adapted to buyer type (incl. guarantor), wk3 staged 1-2 best-fit banks using decline
+    counts; adoption metric = % of finance cases with a pre-check before the first bank.
+    NOT on the Live presenter: it is on a public stream, and credit questions about a
+    named buyer must never be on camera. Lite lead + Premium LoanDesk + a buyer link.
+    Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
+
 ## 💡 Ideas (unrefined — capture only, not scheduled)
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
-
-- **IDEA-23: Loan pre-check BEFORE any bank sees the file (owner, 2026-10-25)** — from a
-  Proton SA (@ashrafxproton): buyer goes to 4-5 banks, all decline because of a new job
-  or high commitments, there is no guarantor, then the SA chases more documents. "Leceh
-  for both sides." The reasons were knowable in the first 2 minutes; we find out last.
-  Shape: (1) a 5-question pre-check in LoanDesk before "Save application": months in
-  this job / confirmed?, net pay, commitments (DSR exists), own CCRIS checked?,
-  guarantor available? -> red flags + fixes (bigger deposit, cheaper car via
-  `budgetMatches`, longer tenure, wait for confirmation, bring a guarantor), never an
-  approval. (2) Collect the WHOLE doc set once, incl. the new-joiner / guarantor
-  extras, via a link the buyer uploads to. (3) Submit 1-2 best-fit banks first, not 5
-  at once: pending + approved applications show on CCRIS for 12 months (BNM FAQ). (4)
-  Later: counts of each bank's decline reasons across sellers (counts only) to say
-  which bank takes new joiners. Constraints: no "approval chance" score; CTOS/CCRIS
-  pulls need the buyer's consent; LoanDesk is Premium + dealer-linked only and has
-  ~4 rows of usage, so check discovery before adding fields. Related: IDEA-12.
-  **Ashraf's answer (2026-10-25): the top decline reasons are CTOS, CCRIS, no bank
-  record (thin file) and late payments on other loans.** So the credit record comes
-  FIRST, not job tenure: step 1 of the pre-check = "has the buyer looked at their own
-  CCRIS (free, eCCRIS) and CTOS?", late payment in the last 12 months?, any bank
-  account / loan history at all? Remedies: clear arrears and wait for on-time months,
-  a guarantor or bigger deposit for a thin file, fix a wrong CTOS entry before
-  applying. Owner's plan (2026-10-25): wk1 questions + remedies, wk2 buyer upload link
-  adapted to buyer type (incl. guarantor), wk3 staged 1-2 best-fit banks using decline
-  counts; adoption metric = % of finance cases with a pre-check before the first bank.
-  NOT on the Live presenter: it is on a public stream, and credit questions about a
-  named buyer must never be on camera. Lite lead + Premium LoanDesk + a buyer link.
-  Preview + v1 scope (2026-10-25): https://claude.ai/artifact/UwjkMD6Sccyg3PDQ9WixFH
 
 - **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
   presenter can be driven by a script in a headless browser and recorded to MP4 (done once for

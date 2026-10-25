@@ -892,7 +892,7 @@ function NewApplication({ userId, dealerId, leads, listings, onCreated }) {
 
       {/* 4 — banks */}
       <div style={cardSx}>
-        <SectionHead n="4" tourId="loan-banks" title="Which banks to try" sub="Pick more than one — if the first says no, the second is already on the file." />
+        <SectionHead n="4" tourId="loan-banks" title="Which banks to try" sub="Start with one. Every application sits on the buyer's CCRIS for 12 months and the next bank sees it." />
         {loan <= 0 ? (
           <p style={{ margin: 0, fontSize: T.size.base, color: C.textMuted }}>Enter a car price to compare instalments.</p>
         ) : (
