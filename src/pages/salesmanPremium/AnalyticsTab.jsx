@@ -104,14 +104,14 @@ export default function AnalyticsTab({
   // at that height the glow was most of what you saw.
   // `id` must be unique per rendered chart: several metrics share one hue, and
   // two <linearGradient> defs with the same id is a duplicate DOM id.
-  const Spark = ({ data, hue, id }) => {
+  const Spark = ({ data, hue, id, height = 46 }) => {
     const rows = (data || []).map((v, i) => ({ i, v }));
     if (!rows.length || rows.every((r) => r.v === 0)) {
-      return <div style={{ height: 46, marginTop: 8 }} />;
+      return <div style={{ height, marginTop: 8 }} />;
     }
     const gid = `sparkFill-${id}`;
     return (
-      <div style={{ height: 46, margin: "8px -4px -4px" }}>
+      <div style={{ height, margin: "8px -4px -4px" }}>
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
             <defs>
@@ -459,14 +459,22 @@ export default function AnalyticsTab({
     );
   };
 
+  // Desktop (owner, 2026-10-25: "too wide"): two half-width columns. Left =
+  // tap-through, then by car, then by platform; right = the views chart on
+  // top, empty below. A phone stacks them, the chart right after tap-through.
+  const listGrid = isMobile
+    ? { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gridTemplateAreas: '"tap" "chart" "car" "plat"', gap: 12, alignItems: "start" }
+    : { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gridTemplateAreas: '"tap chart" "car chart" "plat ."', gridTemplateRows: "auto auto 1fr", gap: 12, alignItems: "start" };
+  const views7 = viewsD.reduce((a, b) => a + b, 0);
+
   const renderListings = () => (
-    <div>
+    <div style={hasListings ? listGrid : undefined}>
       {/* One card where there were four tiles. WhatsApp taps (30 days) is a
           Dashboard tile and "Enquiries" was the Inbox count, so what is left
           is the one figure only this tab has: how many viewers tap through.
           Taps and views ride along as its working. */}
       {hasListings && (
-        <div style={{ ...CARD, padding: isMobile ? "16px" : "18px 20px", marginBottom: 12 }}>
+        <div style={{ ...CARD, gridArea: "tap", padding: isMobile ? "16px" : "18px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
             <span style={EYEBROW}>{t("salesmanPremium.perf.tapThrough")}</span>
             {cvrLow && (
@@ -479,7 +487,18 @@ export default function AnalyticsTab({
           <p style={{ ...NUM, margin: "6px 0 0", fontSize: T.size.sm, color: PD.textSec }}>
             {t("salesmanPremium.perf.nWaTaps", { count: totalWA })} · {t("salesmanPremium.dash.nViews", { count: totalViews })} · {t("salesmanPremium.dash.last30")}
           </p>
-          <Spark data={viewsD} hue={TRAFFIC_HUE} id="views" />
+        </div>
+      )}
+
+      {/* The views line, on its own card so it can be big enough to read. */}
+      {hasListings && (
+        <div style={{ ...CARD, gridArea: "chart", padding: isMobile ? "16px" : "18px 20px" }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+            <span style={EYEBROW}>{t("salesmanPremium.perf.listingViews")}</span>
+            <span style={{ fontSize: T.size.sm, color: PD.textMuted }}>{t("salesmanPremium.perf.last7")}</span>
+          </div>
+          <p style={{ ...STAT, ...NUM, margin: "8px 0 0", fontSize: isMobile ? T.size.stat : T.size.statLg }}>{views7}</p>
+          <Spark data={viewsD} hue={PD.chart.views} id="views" height={isMobile ? 90 : 150} />
         </div>
       )}
 
@@ -506,7 +525,7 @@ export default function AnalyticsTab({
       )}
 
       {forSale.length > 0 && (
-        <div style={{ ...CARD, marginBottom: 12 }}>
+        <div style={{ ...CARD, gridArea: "car" }}>
           <div style={CARD_HEADER}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
               <BarChart2 size={13} /> {t("salesmanPremium.perf.tapByCar")}
@@ -549,7 +568,7 @@ export default function AnalyticsTab({
           through a bio link was invisible here even though the dashboard
           already had the numbers. */}
       {(carChannelRows.length > 0 || miniChannelRows.length > 0) && (
-        <div style={{ ...CARD, padding: 16, marginBottom: 12 }}>
+        <div style={{ ...CARD, gridArea: hasListings ? "plat" : undefined, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
             <span style={EYEBROW}>{t("salesmanPremium.perf.trafficByPlatform")}</span>
             <div style={{ display: "flex", gap: 2, padding: 3, background: PD.raised, borderRadius: PD.radius.pill, flexWrap: "wrap" }}>
@@ -602,7 +621,7 @@ export default function AnalyticsTab({
           {t("salesmanPremium.perf.title")}
         </p>
         <span style={{ fontSize: T.size.sm, color: PD.textMuted }}>
-          {sub === "selling" ? t("salesmanPremium.perf.subSelling") : t("salesmanPremium.perf.subListings")}
+          {sub === "selling" ? t("salesmanPremium.perf.subSelling") : null}
         </span>
       </div>
 
