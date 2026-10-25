@@ -1751,6 +1751,17 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   present in the other. Starts in the last presenter choice (`xd_live_lang`), else the
   app's. Every on-screen word lives in `src/components/live/liveCopy.js` (both
   languages); a new string goes there in BOTH, never hardcoded in the JSX.
+- **Motion is for the camera (LIVE-MOTION, owner 2026-10-25)**: the big monthly ROLLS to a new
+  value on a tap (`RollingNumber`, its own component so the per-render `fit` does not run ~40
+  times; snaps on a new car), a new car slides in from the side the seller went with one pop on
+  #N, the photo drifts 4% over 9s then holds. Slow, large moves only: a phone filming a monitor
+  plus TikTok compression smears anything fast. No loops, no confetti. All off under reduced motion.
+- **Jump to a car (LIVE-JUMP, 2026-10-25)**, 3+ cars only: desktop with 200px+ of margin = a list
+  card RIGHT of the stage (`.lp-pick`, outside the zoomed stage, so outside an upright phone's
+  frame); otherwise a list button in the bottom nav opens it as a sheet (viewers see it briefly).
+  Search takes `#7` or a name. Keyboard: digits then Enter opens that #N (`typedNo`, clears after
+  3s). One row per CAR (a model card is one row; variants stay chips). A sharer of the WHOLE
+  screen in LIVE Studio shows the list too: they share the presenter window only.
 - **Live report** on exit (lives of 1 min+): counts from the seller's own
   `analytics_events` (by slug) and `leads` (by salesman_id) since the presenter
   opened. Counts only, never a buyer name: the screen may still be on stream.
