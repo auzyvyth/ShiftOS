@@ -1519,6 +1519,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
+new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
+under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`
+(`src/utils/detectChannel.js`): channels share, copy, whatsapp, telegram only (Facebook / IG /
+TikTok visits are mostly bio links, not shares). The seller's own taps are never counted
+(`internalTraffic.js`); buyers' taps log a `share` event (`metadata.source='minipage'`).
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
