@@ -2625,6 +2625,11 @@ tabs that need to be simpler." Next session:
     application's document list still follows how the buyer earns (DOC_SETS), not the check's own
     list; making it follow the check needs a `loan_applications` column + `get_loan_share` change
     (a migration, after midnight). Next: Outreach, then Settings.
+  - [x] Outreach (2026-10-25, staging): premiumDark via `theme="premium"` on OutreachHub + NudgeQueue.
+    Removed (Premium only): the four count tiles, the score ring, the footer count, the repeated
+    car/price and Year; UI emojis became icons for every theme. Phone list box follows screen
+    height (was ~200px tall). Open: due reminders show here AND in This week on the Dashboard.
+    Next: Settings, then undo the SIMPLE-1 menu hiding.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 

@@ -7310,7 +7310,7 @@ export default function SalesmanPremium() {
  {activeTab === "loans" && renderLoans()}
  {activeTab === "outreach" && showOutreach && (
  <Suspense fallback={<TabLoadingFallback />}>
- <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="dark" />
+ <OutreachHub dealerId={getDealerIdFromProfile(profile)} salesmanId={userId} theme="premium" />
  </Suspense>
  )}
  {activeTab === "chat" && (

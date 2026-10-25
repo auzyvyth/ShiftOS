@@ -184,7 +184,12 @@ Project ID: lemdkdizdlcirhbzqlos
   WORD carries the colour (pending red, confirmed mint); pending/confirmed cards carry no pill
   (the section heading says it); booking cards grid on desktop; `BookingWeekCalendar` is
   Premium-only and on `PD` (no amber: "needs your OK" = dashed block + red dot). `SubTabs
-  premium` is the premiumDark switch (Inbox, Listings, Sold, Analytics pass it). Analytics tab
+  premium` is the premiumDark switch (Inbox, Listings, Sold, Analytics pass it). Outreach tab:
+  `OutreachHub` + `NudgeQueue` take `theme="premium"` (dealer = light, linked salesman = `dark`,
+  unchanged). Premium drops the four count tiles (three were the Hot/Cold/All switch counts; one
+  line "N contacted today" stays), the 0-100 ring (it was only time since contact, the age chip
+  says it), the footer count, and the car + price in the open lead's header (the car card has
+  them). Only a lead silent 7+ days is red; WhatsApp buttons are the red fill, no green gradient. Analytics tab
   (`salesmanPremium/AnalyticsTab.jsx`, own `PD` CARD/EYEBROW/STAT, not shared.jsx's `panel` ones):
   top card = commission + cars sold ALL TIME with "Recent sales" folded in (it sat under Listings);
   no "sold this month" (Dashboard tile). Listings = ONE tap-through card (taps + views as its
