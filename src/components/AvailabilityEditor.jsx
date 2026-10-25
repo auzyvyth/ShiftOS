@@ -3,11 +3,14 @@ import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
 import { Clock, Check } from "lucide-react";
+import { premiumDark as PD } from "../theme/tokens";
 
 // Seller sets their viewing schedule ONCE. Feeds the buyer tap-calendar
 // (get_booking_slots RPC). Owner = the logged-in profile (a linked/solo
 // salesman sets their own; a dealer sets the house calendar for cars nobody
 // has claimed). Theme-aware: dark salesman panels vs the light dealer dash.
+// `theme="premium"` (Salesman Premium, premiumDark): no outlines, and no title
+// of its own, because the Settings header above it already names the section.
 //
 // weekdays use 0=Sun..6=Sat to match JS Date.getDay(); displayed Mon-first.
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
@@ -18,7 +21,7 @@ const fmtHour = (h) => {
   return h < 12 ? `${h} AM` : `${h - 12} PM`;
 };
 
-export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) {
+export default function AvailabilityEditor({ ownerId, dealerId, dark = false, theme }) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,7 +31,10 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
   const [slotMinutes, setSlotMinutes] = useState(60);
   const [isActive, setIsActive] = useState(true);
 
-  const c = dark
+  const premium = theme === "premium";
+  const c = premium
+    ? { card: PD.card, border: "transparent", text: PD.text, muted: PD.textMuted, chipBg: PD.raised, chipBorder: "transparent", inputBg: PD.raised, box: PD.textMuted }
+    : dark
     ? { card: "#0d1117", border: "rgba(255,255,255,0.08)", text: "#f1f5f9", muted: "#64748b", chipBg: "rgba(255,255,255,0.04)", chipBorder: "rgba(255,255,255,0.1)", inputBg: "rgba(255,255,255,0.05)" }
     : { card: "#fff", border: "#e5e7eb", text: "#111827", muted: "#6b7280", chipBg: "#f9fafb", chipBorder: "#e5e7eb", inputBg: "#fff" };
 
@@ -83,17 +89,19 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
   const endOpts = Array.from({ length: 18 }, (_, i) => i + 7);   // 7..24
 
   const label = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: c.muted, margin: "0 0 8px" };
-  const select = { background: c.inputBg, border: `1px solid ${c.chipBorder}`, borderRadius: 8, padding: "8px 10px", color: c.text, fontSize: 14, fontFamily: "inherit", cursor: "pointer", outline: "none" };
+  const select = { background: c.inputBg, border: `1px solid ${c.chipBorder}`, borderRadius: 8, padding: "8px 10px", color: c.text, fontSize: 14, fontFamily: "inherit", cursor: "pointer", outline: "none", ...(premium ? { colorScheme: "dark" } : {}) };
 
   if (loading) return <p style={{ fontSize: 12, color: c.muted, margin: 0 }}>{t("availability.loading")}</p>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Clock size={16} color="#dc2626" />
-        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: c.text }}>{t("availability.title")}</p>
-      </div>
-      <p style={{ margin: "-12px 0 0", fontSize: 12, color: c.muted, lineHeight: 1.5 }}>
+      {!premium && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Clock size={16} color="#dc2626" />
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: c.text }}>{t("availability.title")}</p>
+        </div>
+      )}
+      <p style={{ margin: premium ? 0 : "-12px 0 0", fontSize: 12, color: c.muted, lineHeight: 1.5 }}>
         {t("availability.subtitle")}
       </p>
 
@@ -163,9 +171,8 @@ export default function AvailabilityEditor({ ownerId, dealerId, dark = false }) 
       </div>
 
       {/* Active toggle */}
-      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
-        <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: isActive ? "#dc2626" : "transparent", border: isActive ? "1px solid #dc2626" : `2px solid ${c.chipBorder}` }}
-          onClick={() => setIsActive((v) => !v)}>
+      <label onClick={() => setIsActive((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none" }}>
+        <div style={{ width: 18, height: 18, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: isActive ? "#dc2626" : "transparent", border: isActive ? "1px solid #dc2626" : `2px solid ${c.box || c.chipBorder}` }}>
           {isActive && <Check size={12} color="#fff" strokeWidth={3} />}
         </div>
         <span style={{ fontSize: 13, color: c.text }}>{t("availability.acceptBookings")}</span>

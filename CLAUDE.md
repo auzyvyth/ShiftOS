@@ -209,7 +209,10 @@ Project ID: lemdkdizdlcirhbzqlos
   the bar in "Sold this month". Listings card = photo (state as a pill on it), name + status
   menu, price + margin (only when computable), specs, one traffic line, ONE "improve" line
   (`listingScore`'s first fix), Caption + Edit + ···; Link lives in ···. No page-link bar
-  (Dashboard has it) and no "Live on XDrive" strip (the Available pill says it).
+  (Dashboard has it) and no "Live on XDrive" strip (the Available pill says it). Settings: each section's name is said once (rail/breadcrumb +
+  header); the shared cards inside take `theme="premium"` and then drop their own heading
+  (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard, MyNewModels);
+  photo + cover are one card; no read-only username box (the Google preview shows the link).
 
 ### Anti-slop UI rules (non-negotiable)
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.

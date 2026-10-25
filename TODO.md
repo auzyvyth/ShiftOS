@@ -2630,6 +2630,14 @@ tabs that need to be simpler." Next session:
     car/price and Year; UI emojis became icons for every theme. Phone list box follows screen
     height (was ~200px tall). Open: due reminders show here AND in This week on the Dashboard.
     Next: Settings, then undo the SIMPLE-1 menu hiding.
+  - [x] Settings (2026-10-25, staging): premiumDark. Shared cards take `theme="premium"`
+    (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard,
+    MyNewModels; Lite/dealer unchanged). Removed: the read-only Username box (the Google preview
+    shows the link), the name repeated on the photo card and its second upload button (photo +
+    cover are one card now), each card's own heading under a header that already says it, the
+    desktop header's one-line description. Fixed: language buttons lit neither on "en-US";
+    "Accept bookings" text now toggles the box; delete pop-up portalled.
+    Next: undo the SIMPLE-1 menu hiding.
   - Owner, 2026-10-25: finish the whole Premium renovation on staging, then release it in one go.
 - [ ] Update the "Premium menu grows with the seller" paragraph in CLAUDE.md when done.
 
