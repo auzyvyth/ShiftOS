@@ -1504,10 +1504,21 @@ on landing (owner: never fill the page with it). `src/components/agent/BudgetFin
 `src/utils/pageBudget.js` (`npm run test:pagebudget`). It runs the Live presenter's engine
 (`budgetMatches`, which takes `depositFor` for a per-car % deposit), so page and live quote the
 same monthly. Rates are DEFAULTS (new Proton/Perodua 4.8%, else `DEFAULT_EIR`): the seller's own
-rates live on their device and a buyer's browser cannot read them. Cars over RM300k are left out,
-matching the card's "financing on request". A tap opens WhatsApp via `/api/wa` with the buyer's
+rates live on their device and a buyer's browser cannot read them. Every priced car counts, at any
+price (owner, 2026-10-25: no cap, same as the card). A tap opens WhatsApp via `/api/wa` with the buyer's
 budget in the text (tracked as `whatsapp_click`, `metadata.source = 'budget_finder'`). Never word
 a fit as approval; the fine print always says the bank decides.
+
+## Agent page Share + link preview (SHARE-1, 2026-10-25)
+The Share button on `/s/:slug` (`sharePage`, SalesmanProfilePage.jsx) opens the phone's share
+sheet (copies the link on desktop). The preview WhatsApp/Facebook show is `api/agent-card.js`,
+ONE size for every agent (1200x630 JPEG): cover as a banner on top, then a white card like the
+page's: photo, role, name, town, and chips for cars for sale (measured), "Verified" (only
+`is_verified`) and specialisations. Photos via `sharp`, words via `satori` from the fonts in
+`api/_fonts` (no server fonts needed; `vercel.json` includeFiles ships them). NEVER the phone
+number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
+picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
+`v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
 
 ## Agent page trust signals (/s/:slug) — measured, never typed (2026-10-03)
 `src/hooks/useAgentTrust.js` + `src/utils/agentTrust.js` (wording, thresholds,
@@ -1586,9 +1597,10 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   salary number without the rule, never word it as approval.
 - **Flat (brochure) rates are accepted and converted** per tenure with `flatToEir`
   (`eirForTenure`). Never feed a flat number straight into `monthlyPayment`.
-- **Cars above RM300k get the table in the presenter ONLY** (owner, 2026-10-03), with
-  a "banks decide case by case" note. `calcMonthly` and the mini-page card still
-  return null / "financing on request" for them — do not widen that.
+- **No price cap on any estimate (owner, 2026-10-25; reverses 2026-10-03).** `calcMonthly`,
+  the cards, the car page and the page budget finder give every priced car a monthly.
+  `HIGH_VALUE_THRESHOLD` (RM300k) now only switches on the "banks decide case by case"
+  notes (presenter, loan poster, post copy). Do not bring back a null above it.
 - **Phone: one portrait stage (9:16 max). Desktop: phone height, TWICE its width**
   (owner, 2026-10-18). Sellers film their monitor with a phone held upright. The
   stage is laid out at `DESK_W` x `STAGE_H` (750x667, about square) and magnified

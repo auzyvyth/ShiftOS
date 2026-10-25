@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Wallet, X, MessageCircle } from 'lucide-react';
-import { calcMonthly, HIGH_VALUE_THRESHOLD } from '../utils/financing';
+import { calcMonthly } from '../utils/financing';
 import { computeAffordability } from '../utils/affordability';
 import { useModalHistory } from '../hooks/useModalHistory';
 
@@ -99,9 +99,9 @@ export default function AffordabilityCheck({
         <div style={{ padding: '14px 20px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {!monthlyInstallment ? (
             <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 12, padding: 14 }}>
-              <p style={{ color: c.text, fontSize: 13, fontWeight: 600, margin: '0 0 4px' }}>Above our quick-estimate range</p>
+              <p style={{ color: c.text, fontSize: 13, fontWeight: 600, margin: '0 0 4px' }}>No price to estimate from</p>
               <p style={{ color: c.sub, fontSize: 12, lineHeight: 1.5, margin: 0 }}>
-                Cars over RM{Math.round(HIGH_VALUE_THRESHOLD / 1000)}k are usually financed case-by-case. Ask the seller for a proper quote instead of a rule-of-thumb estimate.
+                This car has no asking price yet. Ask the seller for a quote.
               </p>
             </div>
           ) : (
