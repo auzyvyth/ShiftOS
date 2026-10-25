@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Calculator, Car, ChevronRight } from "lucide-react";
+import { Calculator, Car, ChevronRight, Share2 } from "lucide-react";
+import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
 import { normalizePhone } from "../../lib/phone";
 import { premiumDark as P } from "../../theme/tokens";
 import { ROOT_DOMAIN, SITE_URL } from "../../config/site";
 import ShareMenu from "../../components/ShareMenu";
+import { shareVisits } from "../../utils/detectChannel";
 import ThisWeek from "../../components/crm/ThisWeek";
 import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/StarterTasks";
 import SalesHistorySheet from "./SalesHistorySheet";
@@ -18,6 +20,7 @@ import StatSkeleton from "../../components/ui/StatSkeleton";
 // week is the one call list), the goal gauge + 14-day commission chart + "best
 // car to push" box (the goal is a bar in "Sold this month"), Copy link and
 // Marketplace buttons (the link pill opens the page, Share copies it).
+// The 7-day traffic chart stayed (owner, 2026-10-25: "it's valuable").
 // Mockup: https://claude.ai/artifact/98gAj72cBKupiYBkxWTNLc
 export default function DashboardTab({
  leads, appointments, myListings, carStatsMap, enquiries, staleLeads, isReturning,
@@ -86,6 +89,27 @@ export default function DashboardTab({
  // 20260904f), shown as "+N today" only when something happened.
  const sumToday = (key) => Object.values(carStatsMap).reduce((s, v) => s + (Number(v[key]?.[6]) || 0), 0);
  const totalWATaps = Object.values(carStatsMap).reduce((s, v) => s + (v.enquiries || 0), 0);
+ // 7-day traffic, oldest day first: listing views (carStatsMap.daily), WhatsApp
+ // + call taps (waDaily, w0..w6 of get_salesman_analytics) and page visits
+ // (get_salesman_minipage_daily). All already fetched; nothing new is queried.
+ const sumDaily = (key) => Array.from({ length: 7 }, (_, i) =>
+ Object.values(carStatsMap).reduce((s, v) => s + (Number(v[key]?.[i]) || 0), 0));
+ const viewsTrend = sumDaily("daily");
+ const tapsTrend = sumDaily("waDaily");
+ const visitsTrend = Array.from({ length: 7 }, (_, i) => Number(minipageStats.daily?.[i]) || 0);
+ const weekdayFmt = new Intl.DateTimeFormat(dateLocale, { weekday: "short" });
+ const trafficTrend = Array.from({ length: 7 }, (_, i) => {
+ const d = new Date();
+ d.setDate(d.getDate() - (6 - i));
+ return { day: i === 6 ? t("salesmanPremium.dash.today") : weekdayFmt.format(d), views: viewsTrend[i], visits: visitsTrend[i], taps: tapsTrend[i] };
+ });
+ const sum7 = (arr) => arr.reduce((a, b) => a + b, 0);
+ const TRAFFIC_SERIES = [
+ { key: "views", label: t("salesmanPremium.dash.views"), hue: P.chart.views, total: sum7(viewsTrend) },
+ { key: "visits", label: t("salesmanPremium.dash.visitsShort"), hue: P.chart.visits, total: sum7(visitsTrend) },
+ { key: "taps", label: t("salesmanPremium.dash.tapsShort"), hue: P.chart.taps, total: sum7(tapsTrend) },
+ ];
+ const hasTraffic = TRAFFIC_SERIES.some((sr) => sr.total > 0);
  const now = new Date();
  const soldThisMonth = myListings.filter((c) => {
  if (c.status !== "sold" || !c.sold_at) return false;
@@ -177,6 +201,16 @@ export default function DashboardTab({
  style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, fontSize: 14 }}
  />
  </div>
+ {/* Visits that came from a link someone passed on (Share button, copied
+ link, WhatsApp, Telegram): shareVisits, detectChannel.js. All time, the
+ same window as "Page visits". It sits under Share because Share makes them. */}
+ {trafficReady && (
+ <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: P.textSec }}>
+ <Share2 size={13} color={P.textMuted} style={{ flexShrink: 0 }} />
+ <span style={{ fontWeight: 600, color: P.text, fontVariantNumeric: "tabular-nums" }}>{shareVisits(minipageStats.byChannel)}</span>
+ {t("salesmanPremium.dash.shareVisits")}
+ </p>
+ )}
  {/* Loan calculator, one tap from home: opens the Live presentation
  (?live=1, SalesmanProfilePage), the calculator sellers use on camera. */}
  <a href={`/s/${profile.slug}?live=1`} target="_blank" rel="noopener noreferrer" className="pd-press"
@@ -285,6 +319,55 @@ export default function DashboardTab({
  </div>
  );
 
+ const traffic = (
+ <section style={{ gridArea: "traffic", ...card }}>
+ <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+ <h2 style={h2}>{t("salesmanPremium.dash.traffic7")}</h2>
+ {/* The legend carries each line's 7-day total: views are on no tile. */}
+ <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+ {TRAFFIC_SERIES.map((sr) => (
+ <span key={sr.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: P.textSec }}>
+ <span style={{ width: 8, height: 8, borderRadius: 4, background: sr.hue, flexShrink: 0 }} />
+ {sr.label}
+ {trafficReady && <span style={{ fontWeight: 600, color: P.text, fontVariantNumeric: "tabular-nums" }}>{sr.total.toLocaleString("en-MY")}</span>}
+ </span>
+ ))}
+ </div>
+ </div>
+ {/* Hold the chart's space while loading, or it lands later and shoves the page down. */}
+ {!trafficReady ? <StatSkeleton width="100%" height={140} style={{ display: "block" }} />
+ : !hasTraffic ? <p style={{ margin: 0, padding: "24px 0", fontSize: 13, color: P.textMuted }}>{t("salesmanPremium.dash.noListingData")}</p>
+ : (
+ <div style={{ height: 140, margin: "0 -6px" }}>
+ <ResponsiveContainer width="100%" height="100%">
+ <AreaChart data={trafficTrend} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
+ <defs>
+ {TRAFFIC_SERIES.map((sr) => (
+ <linearGradient key={sr.key} id={`pdTraffic-${sr.key}`} x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0%" stopColor={sr.hue} stopOpacity={0.22} />
+ <stop offset="100%" stopColor={sr.hue} stopOpacity={0} />
+ </linearGradient>
+ ))}
+ </defs>
+ <XAxis dataKey="day" tick={{ fill: P.textMuted, fontSize: 11 }} tickLine={false} axisLine={false} interval={0} padding={{ left: 16, right: 20 }} />
+ <RTooltip
+ cursor={{ stroke: P.line, strokeWidth: 1 }}
+ contentStyle={{ background: P.raised, border: "none", borderRadius: 12, fontSize: 12, padding: "8px 12px" }}
+ labelStyle={{ color: P.textSec, fontSize: 11, marginBottom: 2 }}
+ itemStyle={{ padding: 0 }}
+ />
+ {TRAFFIC_SERIES.map((sr) => (
+ <Area key={sr.key} type="monotone" dataKey={sr.key} name={sr.label}
+ stroke={sr.hue} strokeWidth={2} fill={`url(#pdTraffic-${sr.key})`}
+ dot={false} activeDot={{ r: 3, strokeWidth: 0 }} isAnimationActive={false} />
+ ))}
+ </AreaChart>
+ </ResponsiveContainer>
+ </div>
+ )}
+ </section>
+ );
+
  const cars = topCars.length > 0 && (
  <section style={{ gridArea: "cars", ...card }}>
  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
@@ -333,11 +416,11 @@ export default function DashboardTab({
  .pd-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
  @media (min-width: 1100px) { .pd-stats { gap: 16px; grid-template-columns: repeat(4, minmax(0, 1fr)); } }
  .pd-grid { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr);
- grid-template-areas: "hero" "today" "stats" "calls" "page" "cars" "sold"; align-items: start; }
+ grid-template-areas: "hero" "today" "stats" "traffic" "calls" "page" "cars" "sold"; align-items: start; }
  @media (min-width: 768px) { .pd-grid { gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr));
- grid-template-areas: "hero hero" "stats stats" "today calls" "today page" "cars sold"; } }
+ grid-template-areas: "hero hero" "stats stats" "traffic traffic" "today calls" "today page" "cars sold"; } }
  @media (min-width: 1240px) { .pd-grid { grid-template-columns: repeat(3, minmax(0, 1fr));
- grid-template-areas: "hero hero today" "stats stats today" "calls cars page" "calls cars sold"; } }
+ grid-template-areas: "hero hero today" "stats stats today" "traffic traffic page" "calls cars sold"; } }
  `}</style>
 
  {/* Setup list stays first while it is not done (INTRO-1). */}
@@ -371,6 +454,7 @@ export default function DashboardTab({
  {greeting}
  {today}
  {stats}
+ {traffic}
  {/* The one call list (src/utils/thisWeek.js). The "Open call list"
  button in the greeting scrolls here. */}
  <div id="sp-call-list" style={{ gridArea: "calls", minWidth: 0, scrollMarginTop: 72 }}>

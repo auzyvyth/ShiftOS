@@ -96,6 +96,9 @@ export const premiumDark = {
   accentText: '#f87171',              // red as TEXT on dark (missed booking)
   up:      '#6ee7b7',                 // "+3 today", the only green
   onAccent: '#ffffff',
+  // The traffic chart's three lines, told apart by LIGHTNESS as well as hue
+  // (views brightest, visits mid grey, taps the mint), so no blue or purple.
+  chart:   { views: '#e4e7ec', visits: '#7d8596', taps: '#6ee7b7' },
   radius:  { card: 22, row: 14, pill: 999 },
 };
 
