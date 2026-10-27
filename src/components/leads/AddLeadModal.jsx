@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { X, UserPlus, Search } from 'lucide-react';
 import { supabase } from '../../supabaseClient';
+import PhoneInput from '../ui/PhoneInput';
+import { isValidMyPhone, MY_PHONE_ERROR } from '../../lib/phone';
 import { useProfile, getDealerIdFromProfile } from '../../hooks/useProfile';
 import { INCOME_OPTIONS, EMPLOYMENT_OPTIONS, SOURCE_CONFIG, LEAD_SOURCE_DB_VALUES, STAGE_ORDER, STAGE_CONFIG } from '../../lib/leadsHelpers';
 
@@ -10,7 +12,7 @@ const sel = inp + " appearance-none";
 
 const EMPTY = {
   buyer_name:     '',
-  phone:          '+60',
+  phone:          '',
   buyer_ic:       '',
   buyer_email:    '',
   buyer_address:  '',
@@ -61,6 +63,7 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
     const e = {};
     if (!form.buyer_name.trim()) e.buyer_name  = 'Required';
     if (!form.phone.trim())      e.phone        = 'Required';
+    else if (!isValidMyPhone(form.phone)) e.phone = MY_PHONE_ERROR;
     if (!form.lead_source)       e.lead_source  = 'Required';
     return e;
   }
@@ -140,16 +143,13 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
           {/* Phone */}
           <div>
             <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1.5">Phone Number <span className="text-red-500">*</span></label>
-            <div className={`flex items-center overflow-hidden border rounded-lg ${errors.phone ? 'border-red-400' : 'border-gray-200'} bg-white`}>
-              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
-              <input
-                value={(form.phone||'').replace(/^\+?60/,'')}
-                onChange={e => set('phone', '+60'+e.target.value.replace(/\D/g,''))}
-                className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
-                placeholder="X-XXXXXXX"
-                type="tel"
-              />
-            </div>
+            <PhoneInput
+              value={form.phone}
+              onChange={v => set('phone', v)}
+              className={`border rounded-lg ${errors.phone ? 'border-red-400' : 'border-gray-200'} bg-white`}
+              prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0"
+              inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
+            />
             {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
           </div>
 

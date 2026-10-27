@@ -6,6 +6,8 @@ import { usePersistentState } from "../hooks/usePersistentState";
 import LeadsPage from "./LeadsPage";
 import OutreachHub from "../components/crm/OutreachHub";
 import { liveChannel } from "../lib/liveChannel";
+import PhoneInput from '../components/ui/PhoneInput';
+import { isValidMyPhone, MY_PHONE_ERROR } from '../lib/phone';
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -1281,7 +1283,7 @@ function BookingsTab({ userId, listings, salesmen }) {
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({
     buyer_name: "",
-    buyer_phone: "+60",
+    buyer_phone: "",
     listing_id: "",
     booking_type: "test_drive",
     scheduled_at: "",
@@ -1449,6 +1451,7 @@ function BookingsTab({ userId, listings, salesmen }) {
   };
 
   const handleAdd = async () => {
+    if (addForm.buyer_phone && !isValidMyPhone(addForm.buyer_phone)) { toast.error(MY_PHONE_ERROR); return; }
     setAddSaving(true);
     try {
       const { error } = await supabase.from("appointments").insert({
@@ -1465,7 +1468,7 @@ function BookingsTab({ userId, listings, salesmen }) {
       setShowAdd(false);
       setAddForm({
         buyer_name: "",
-        buyer_phone: "+60",
+        buyer_phone: "",
         listing_id: "",
         booking_type: "test_drive",
         scheduled_at: "",
@@ -1935,16 +1938,7 @@ function BookingsTab({ userId, listings, salesmen }) {
                   <label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">
                     Buyer Phone
                   </label>
-                  <div className={`flex items-center overflow-hidden ${lInputCls}`} style={{ padding:0 }}>
-                    <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
-                    <input
-                      type="tel"
-                      value={(addForm.buyer_phone||'').replace(/^\+?60/,'')}
-                      onChange={(e) => setAddForm((p) => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))}
-                      placeholder="X-XXXXXXX"
-                      className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
-                    />
-                  </div>
+                  <PhoneInput value={addForm.buyer_phone} onChange={(v) => setAddForm((p) => ({ ...p, buyer_phone: v }))} className={lInputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
                 </div>
               </div>
               <div>

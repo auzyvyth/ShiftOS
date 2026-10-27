@@ -80,6 +80,8 @@ import MarketplaceHeader from "../components/MarketplaceHeader";
 import { cdnImg, cdnSrcSet } from "../utils/img";
 import { toast } from "sonner";
 import { DEPOSIT_POLICY_COPY } from "../utils/agentTrust";
+import PhoneInput from "../components/ui/PhoneInput";
+import { toLocalDigits, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 
 /* ─── helpers ─── */
 const fmt = (n) => Number(n).toLocaleString("en-MY");
@@ -691,17 +693,16 @@ const inputStyle = (focused, th) => ({
    typed no number submitted, api/booking.js answered 400 "Invalid phone
    number", and the client threw that reason away and showed a flat
    "Booking failed. Please try again."
-   Phone bounds (9-15 digits) MUST stay in sync with api/booking.js. */
+   The phone rule is src/lib/phone.js, shared with api/booking.js. */
 const validateBooking = (form, consent) => {
   const errors = {};
   if (!form.name?.trim()) errors.name = "Enter your name so the seller knows who to expect.";
 
-  const digits = String(form.phone || "").replace(/\D/g, "");
-  // "+60" is the prefix we prefill, not a number the buyer typed.
-  if (!digits || digits === "60") {
+  // The box shows a fixed "+60"; the rule is src/lib/phone.js, same as api/booking.js.
+  if (!toLocalDigits(form.phone)) {
     errors.phone = "Enter your phone number — the seller confirms on WhatsApp.";
-  } else if (digits.length < 9 || digits.length > 15) {
-    errors.phone = "That number doesn't look right. Check the digits.";
+  } else if (!isValidMyPhone(form.phone)) {
+    errors.phone = MY_PHONE_ERROR;
   }
 
   if (!form.date || !form.time) errors.slot = "Pick a date and a time for your viewing.";
@@ -1106,7 +1107,7 @@ export default function CarDetailPage() {
   /* booking */
   const [form, setForm] = useState({
     name: "",
-    phone: "+60",
+    phone: "",
     date: "",
     time: "",
     timeline: "",
@@ -1723,6 +1724,9 @@ export default function CarDetailPage() {
     // The page paints before the seller lookup lands, so an early tap on an
     // agent's car opened the form with no target; route it to the agent now.
     const target = enquiryTarget || repTargetFor(salesmanProfile);
+    // Optional number: one that cannot be real is dropped, never a reason to stop
+    // the buyer reaching WhatsApp (which carries their real number anyway).
+    const enqPhone = isValidMyPhone(enquiryForm.phone) ? enquiryForm.phone : "";
     // Open WhatsApp immediately — must happen synchronously in the click handler
     // before any await, otherwise popup blockers will intercept window.open.
     const message = `Hi, I'm ${enquiryForm.name}. I'm interested in the ${car.brand} ${car.model}${(newCarVariant?.variant || car.variant) ? " " + (newCarVariant?.variant || car.variant) : ""} listed at RM ${shownPrice?.toLocaleString()}.`;
@@ -1744,7 +1748,7 @@ export default function CarDetailPage() {
       toast.error("This dealer hasn't added a WhatsApp number yet. We've saved your enquiry instead.");
     }
     // Remember on this device for next time (no-ops without preferences consent).
-    saveBuyerDetails({ name: enquiryForm.name, phone: enquiryForm.phone, state: enquiryForm.state });
+    saveBuyerDetails({ name: enquiryForm.name, phone: enqPhone, state: enquiryForm.state });
     setShowEnquiryModal(false);
     setEnquiryForm({ name: "", phone: "", state: "" });
 
@@ -1766,7 +1770,7 @@ export default function CarDetailPage() {
       body: JSON.stringify({
         carId: car.id,
         name: enquiryForm.name,
-        phone: enquiryForm.phone,
+        phone: enqPhone,
         state: enquiryForm.state || null,
         // The targeted agent wins over the ?ref= that brought the buyer here —
         // they tapped that rep's own button. The slug is stored on the enquiry
@@ -1839,7 +1843,7 @@ export default function CarDetailPage() {
         // rather than collapsing every reason into "Booking failed".
         const reason = String(data.error || "");
         if (res.status === 400 && reason === "Invalid phone number") {
-          setBookErrors({ phone: "That number doesn't look right. Check the digits." });
+          setBookErrors({ phone: MY_PHONE_ERROR });
           document.getElementById("cdp-bk-phone")?.focus();
           return;
         }
@@ -4422,16 +4426,17 @@ export default function CarDetailPage() {
               onFocus={() => setFocused('enq_name')} onBlur={() => setFocused(null)}
               style={inputStyle(focusedField === 'enq_name', th)}
             />
-            <input
+            <PhoneInput
               id="cdp-enq-phone"
               placeholder="Phone number (optional)"
               aria-label="Phone number"
-              inputMode="tel"
               value={enquiryForm.phone}
-              onChange={e => setEnquiryForm(p => ({ ...p, phone: e.target.value }))}
+              onChange={v => setEnquiryForm(p => ({ ...p, phone: v }))}
               onKeyDown={e => { if (e.key === 'Enter' && enquiryForm.name) { e.preventDefault(); handleEnquirySubmit(); } }}
               onFocus={() => setFocused('enq_phone')} onBlur={() => setFocused(null)}
               style={inputStyle(focusedField === 'enq_phone', th)}
+              prefixStyle={{ padding: '0 4px 0 0' }}
+              inputStyle={{ padding: 0 }}
             />
             <select
               value={enquiryForm.state}
@@ -4536,13 +4541,14 @@ export default function CarDetailPage() {
                       <FieldError id="cdp-bk-name-err" msg={bookErrors.name} th={th} />
                     </div>
                     <div style={{ minWidth:0 }}>
-                      <input id="cdp-bk-phone" type="tel" inputMode="tel" placeholder="Phone number" aria-label="Phone number" required
-                        aria-invalid={!!bookErrors.phone}
+                      <PhoneInput id="cdp-bk-phone" aria-label="Phone number" required
                         aria-describedby={bookErrors.phone ? 'cdp-bk-phone-err' : undefined}
                         value={form.phone}
-                        onChange={e => { setForm(f => ({...f, phone: e.target.value})); clearBookError('phone'); }}
+                        onChange={v => { setForm(f => ({...f, phone: v})); clearBookError('phone'); }}
                         onFocus={() => setFocused('bk_phone')} onBlur={() => setFocused(null)}
-                        style={bkStyle('phone', 'bk_phone')} />
+                        style={bkStyle('phone', 'bk_phone')}
+                        prefixStyle={{ padding: '0 4px 0 0' }}
+                        inputStyle={{ padding: 0 }} />
                       <FieldError id="cdp-bk-phone-err" msg={bookErrors.phone} th={th} />
                     </div>
                   </div>

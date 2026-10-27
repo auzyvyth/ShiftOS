@@ -14,6 +14,8 @@ import { advanceOnEnter } from '../utils/onboardingKeys';
 import { PLAN_CONFIG } from '../utils/planConfig';
 import { SALESMAN_PREMIUM_FEATURES } from '../utils/plans';
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
+import PhoneInput from '../components/ui/PhoneInput';
+import { toPlus60, isValidMyPhone } from '../lib/phone';
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700&display=swap');
@@ -152,13 +154,6 @@ const TIERS = {
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20);
-}
-
-function normalizePhone(raw) {
-  const d = raw.replace(/\D/g, '');
-  if (d.startsWith('60')) return '+' + d;
-  if (d.startsWith('0')) return '+6' + d;
-  return '+60' + d;
 }
 
 function StepDot({ state, num }) {
@@ -556,11 +551,11 @@ export default function SalesmanOnboarding() {
         id: userId,
         email: userEmail,
         full_name: form.fullName.trim(),
-        phone: normalizePhone(form.phone),
+        phone: toPlus60(form.phone),
         // The storefront, WhatsApp enquiry buttons and CarDetail contact card all
         // read whatsapp_number — the onboarding phone is useless unless we also
         // seed it here, otherwise buyers get "dealer hasn't added a WhatsApp number".
-        whatsapp_number: normalizePhone(form.phone),
+        whatsapp_number: toPlus60(form.phone),
         // IC is deferred-friendly: signing up no longer requires it. When provided,
         // it's hashed right after this upsert via set_my_ic (never stored plaintext).
         // When skipped we stamp a soft deadline; the panel hard-enforces at 1 week.
@@ -914,13 +909,12 @@ export default function SalesmanOnboarding() {
                 <div className="eo-heading">Contact Number</div>
                 <p className="eo-sub">Your WhatsApp number is shown to buyers on your listings and used for account notifications.</p>
                 <label className="eo-label">WHATSAPP / MOBILE NUMBER</label>
-                <input className="eo-inp" type="tel" placeholder="+60123456789" value={form.phone}
-                  onChange={e => upd('phone')(e.target.value)} autoComplete="tel" />
+                <PhoneInput mobileOnly className="eo-inp" value={form.phone} onChange={upd('phone')} />
                 <p className="eo-hint">Malaysian numbers only (+60). This appears on your public listing page.</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn"
                   onClick={() => { setErr(''); setStep(4); }}
-                  disabled={form.phone.replace(/\D/g, '').length < 9}>
+                  disabled={!isValidMyPhone(form.phone, { mobileOnly: true })}>
                   CONTINUE
                 </button>
                 <button className="eo-ghost" onClick={() => { setErr(''); setStep(2); }}>
@@ -990,7 +984,7 @@ export default function SalesmanOnboarding() {
                     ['PLAN', (TIERS[tier] || TIERS.lite).label + ' — ' + (TIERS[tier] || TIERS.lite).price],
                     ['NAME', form.fullName],
                     ['EMAIL', userEmail],
-                    ['PHONE', normalizePhone(form.phone)],
+                    ['PHONE', toPlus60(form.phone)],
                     ['PROFILE URL', 'xdrive.my/s/' + form.slug],
                     ['STATE', form.state || '—'],
                   ].map(([k, v]) => (

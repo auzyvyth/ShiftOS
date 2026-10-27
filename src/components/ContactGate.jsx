@@ -8,6 +8,8 @@ import { MY_STATES } from '../utils/locations';
 import { apiUrl } from '../utils/apiUrl';
 import Turnstile from './Turnstile';
 import { useModalHistory } from '../hooks/useModalHistory';
+import PhoneInput from './ui/PhoneInput';
+import { toPlus60, isValidMyPhone } from '../lib/phone';
 
 // Lazy for the same reason as in ConsentBanner: this component is reachable from
 // every car card, so a static import would drag the full legal prose onto the
@@ -76,7 +78,10 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     // skips the CRM record — it never blocks the buyer reaching the seller.
     if (waUrl && waUrl !== '#') window.open(waUrl, '_blank', 'noopener,noreferrer');
     // Remember on this device for next time (no-ops without preferences consent).
-    saveBuyerDetails({ name: nm, phone: phone.trim(), state });
+    // An optional number that cannot be real is dropped, not a reason to stop the
+    // buyer: WhatsApp is opening anyway and carries their real number.
+    const ph = isValidMyPhone(phone) ? toPlus60(phone) : '';
+    saveBuyerDetails({ name: nm, phone: ph, state });
     if (dealerId) {
       fetch(apiUrl('/api/whatsapp-lead'), {
         method: 'POST',
@@ -85,7 +90,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           dealerId,
           carId: carId || null,
           name: nm,
-          phone: phone.trim() || null,
+          phone: ph || null,
           state: state || null,
           refSlug: getRef() || null,
           token,
@@ -99,7 +104,7 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
     if (buyerProfile?.id) {
       const patch = {};
       if (nm && !buyerProfile.full_name) patch.full_name = nm;
-      if (phone.trim() && !buyerProfile.phone) patch.phone = phone.trim();
+      if (ph && !buyerProfile.phone) patch.phone = ph;
       if (Object.keys(patch).length) {
         supabase.from('profiles').update(patch).eq('id', buyerProfile.id)
           .then(({ error }) => { if (error) console.error('buyer profile write-back:', error.message); });
@@ -126,14 +131,15 @@ export default function ContactGate({ open, onClose, waUrl, dealerId, carId, car
           placeholder="Your name"
           style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 10 }}
         />
-        <input
+        <PhoneInput
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={setPhone}
           onKeyDown={(e) => { if (e.key === 'Enter') proceed(); }}
-          inputMode="tel"
           placeholder="Phone number (optional)"
           aria-label="Phone number"
-          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '11px 13px', fontSize: 14, color: '#111827', outline: 'none', marginBottom: 10 }}
+          style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 14, color: '#111827', marginBottom: 10 }}
+          prefixStyle={{ padding: '0 4px 0 13px', color: '#6b7280' }}
+          inputStyle={{ padding: '11px 13px 11px 0' }}
         />
         <select
           value={state}

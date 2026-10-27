@@ -19,7 +19,8 @@ import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
 import { warmChunks } from "../utils/warmChunks";
 import { mergePendingTag } from "../utils/pendingTag";
-import { normalizePhone } from "../lib/phone";
+import { normalizePhone, toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
+import PhoneInput from "../components/ui/PhoneInput";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { PremiumDueBanner } from "../components/premium/PremiumStatusBanner";
 import SellerIdCard from "../components/kyc/SellerIdCard";
@@ -1942,8 +1943,7 @@ export default function SalesmanPremium() {
  // Not a contact event, so it stamps updated_at only: last_contacted_at is what
  // the "This week" call list runs on and saving a number is not a call.
  const saveLeadPhone = async (leadId) => {
- const digits = editPhoneVal.replace(/\D/g, "");
- if (digits.length < 9) { toast.error(t("salesmanPremium.errors.phoneShort")); return; }
+ if (!isValidMyPhone(editPhoneVal)) { toast.error(t("salesmanPremium.errors.phoneShort")); return; }
  setPhoneSavingId(leadId);
  // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write,
  // so read the row back rather than trusting what was typed — every de-dup
@@ -4093,16 +4093,15 @@ export default function SalesmanPremium() {
  <Phone size={12} color={PD.textMuted} style={{ flexShrink: 0 }} />
  {editPhoneLeadId === pl.id? (
  <>
- <input
+ <PhoneInput
  autoFocus
- type="tel"
- inputMode="tel"
  value={editPhoneVal}
- onChange={(e) => setEditPhoneVal(e.target.value)}
+ onChange={setEditPhoneVal}
  onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
- placeholder="012 345 6789"
  aria-label={t("salesmanPremium.drawer.buyerPhone")}
  style={{ flex: 1, minWidth: 0, background: PD.hover, border: "none", colorScheme: "dark", borderRadius: 99, color: PD.text, fontSize: 12.5, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+ prefixStyle={{ padding: "0 3px 0 0" }}
+ inputStyle={{ padding: 0 }}
  />
  <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
  style={{ flexShrink: 0, fontSize: 11, padding: "6px 12px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
@@ -4120,7 +4119,10 @@ export default function SalesmanPremium() {
  style={{ flexShrink: 0, background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 2, display: "flex" }} aria-label={t("salesmanPremium.drawer.editPhone")}>
  <Pencil size={11} />
  </button>
- {String(pl.phone).replace(/\D/g, "").length >= 9 && (
+ {!isValidMyPhone(pl.phone) && (
+ <span style={{ flexShrink: 0, fontSize: 11, color: PD.accent }}>{t("salesmanPremium.drawer.phoneLooksWrong")}</span>
+ )}
+ {isValidMyPhone(pl.phone) && (
  <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
  style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: 11, padding: "3px 8px", borderRadius: 99, background: PD.raised, border: "none", color: PD.up, textDecoration: "none" }}>
  <MessageCircle size={10} /> WhatsApp
@@ -5147,7 +5149,6 @@ export default function SalesmanPremium() {
  colorScheme: "dark",
  };
 
- const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "");
 
  const handleAvatarUpload = async (e) => {
  const file = e.target.files?.[0];
@@ -5201,8 +5202,9 @@ export default function SalesmanPremium() {
  };
 
  const handleSave = async () => {
+ const phone = toPlus60(settingsForm.whatsapp_number);
+ if (phone && !isValidMyPhone(phone, { mobileOnly: true })) { toast.error(MY_PHONE_ERROR); return; }
  setSettingsSaving(true);
- const phone = "+60" + localPhone.replace(/\D/g, "");
  // A tag typed but not yet entered is still the user's answer — saving with it
  // sitting in the input used to discard it and write an empty array over the
  // profile, so the pills never appeared on the public mini page.
@@ -5459,10 +5461,7 @@ export default function SalesmanPremium() {
  <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
  <label style={lbl}>{t("salesmanPremium.settings.whatsapp")}</label>
- <div style={fieldBox}>
- <span style={fieldPrefix}>+60</span>
- <input type="tel" value={localPhone} onChange={(e) => { const d = e.target.value.replace(/\D/g, ""); setSettingsForm((p) => ({ ...p, whatsapp_number: "+60" + d })); }} placeholder="123456789" style={bareInput} />
- </div>
+ <PhoneInput mobileOnly value={settingsForm.whatsapp_number} onChange={(v) => setSettingsForm((p) => ({ ...p, whatsapp_number: v }))} style={fieldBox} prefixStyle={fieldPrefix} inputStyle={bareInput} />
  <p style={hint}>{t("salesmanPremium.settings.whatsappHint")}</p>
  </div>
  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

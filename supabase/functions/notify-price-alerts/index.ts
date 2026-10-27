@@ -253,7 +253,8 @@ Deno.serve(async (req) => {
         sent++;
         updateIds.push(...buckets.map(b => b.alert.id as string));
       } catch (e) {
-        console.error(`Failed to send to ${email}:`, e);
+        // Alert ids, never the address: logs are not a place for buyers' emails (PDPA).
+        console.error(`Failed to send alert(s) ${buckets.map(b => b.alert.id).join(',')}:`, e);
       }
     }
 

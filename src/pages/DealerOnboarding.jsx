@@ -10,6 +10,8 @@ import DealerPendingApproval from '../components/DealerPendingApproval';
 import useAuthCaptcha from '../hooks/useAuthCaptcha';
 import { advanceOnEnter } from '../utils/onboardingKeys';
 import { isInAppBrowser, GOOGLE_IN_APP_MESSAGE } from '../utils/installPrompt';
+import PhoneInput from '../components/ui/PhoneInput';
+import { toPlus60, isValidMyPhone } from '../lib/phone';
 
 // Same design system CSS as SalesmanOnboarding (eo- prefix)
 const CSS = `
@@ -151,13 +153,6 @@ const FLEET_SIZES = ['1–5 cars','6–15 cars','16–30 cars','31–50 cars','5
 
 function validateIC(ic) {
   return /^\d{12}$/.test(ic.replace(/-/g, ''));
-}
-
-function normalizePhone(raw) {
-  const d = raw.replace(/\D/g, '');
-  if (d.startsWith('60')) return '+' + d;
-  if (d.startsWith('0')) return '+6' + d;
-  return '+60' + d;
 }
 
 function StepDot({ state, num }) {
@@ -473,7 +468,7 @@ export default function DealerOnboarding() {
         id: userId,
         email: userEmail,
         full_name: form.fullName.trim(),
-        phone: normalizePhone(form.phone),
+        phone: toPlus60(form.phone),
         // IC is already hashed via set_my_ic at the identity step — never write
         // the raw number here (leaving a national ID in the clear breaches PDPA).
         role: 'dealer',
@@ -685,13 +680,12 @@ export default function DealerOnboarding() {
                 <div className="eo-heading">Contact Number</div>
                 <p className="eo-sub">Your mobile number is used for dealership notifications and WhatsApp enquiries from buyers.</p>
                 <label className="eo-label">OWNER MOBILE NUMBER</label>
-                <input className="eo-inp" type="tel" placeholder="+60123456789" value={form.phone}
-                  onChange={e => upd('phone')(e.target.value)} autoComplete="tel" />
+                <PhoneInput mobileOnly className="eo-inp" value={form.phone} onChange={upd('phone')} />
                 <p className="eo-hint">Malaysian numbers only (+60).</p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn"
                   onClick={() => { setErr(''); setStep(4); }}
-                  disabled={form.phone.replace(/\D/g, '').length < 9}>
+                  disabled={!isValidMyPhone(form.phone, { mobileOnly: true })}>
                   CONTINUE
                 </button>
               </>
@@ -802,7 +796,7 @@ export default function DealerOnboarding() {
                     ['OWNER', form.fullName],
                     ['EMAIL', userEmail],
                     ['IC NUMBER', form.icNumber ? '••••••-••-' + form.icNumber.replace(/-/g, '').slice(-4) : '—'],
-                    ['PHONE', normalizePhone(form.phone)],
+                    ['PHONE', toPlus60(form.phone)],
                     ['DEALERSHIP', form.dealerName],
                     ['TYPE', form.dealerType || '—'],
                     ['STATE', form.state],

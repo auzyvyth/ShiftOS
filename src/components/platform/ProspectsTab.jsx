@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
+import PhoneInput from "../ui/PhoneInput";
 
 // OPS-CRM-1: the owner's own prospecting list -- salesmen and dealers being
 // signed up, where each conversation stands, and who to follow up today.
@@ -330,7 +331,7 @@ function ProspectFields({ value, onChange }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
       <label><Label>Name *</Label><input className="adm-input" style={{ width: "100%" }} value={value.name} onChange={set("name")} /></label>
-      <label><Label>WhatsApp number</Label><input className="adm-input" style={{ width: "100%" }} inputMode="tel" placeholder="012-345 6789" value={value.phone || ""} onChange={set("phone")} /></label>
+      <label><Label>WhatsApp number</Label><PhoneInput mobileOnly className="adm-input" style={{ width: "100%" }} value={value.phone || ""} onChange={(v) => onChange({ ...value, phone: v })} /></label>
       <label><Label>Business / dealership</Label><input className="adm-input" style={{ width: "100%" }} value={value.business || ""} onChange={set("business")} /></label>
       <label><Label>Area</Label><input className="adm-input" style={{ width: "100%" }} placeholder="e.g. Shah Alam" value={value.area || ""} onChange={set("area")} /></label>
       <label><Label>Type</Label>

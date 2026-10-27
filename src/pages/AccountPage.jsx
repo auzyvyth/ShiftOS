@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Heart, Bell, BellRing, ArrowLeft, ArrowRight, LogOut, Store, Check, X, Clock, PackageCheck, User, MessageSquare, ChevronRight, Trash2 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import PhoneInput from '../components/ui/PhoneInput';
+import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from '../lib/phone';
 import { useSavedCars, useSavedCarsDetails } from '../hooks/useSavedCars';
 import { useBuyerGuard } from '../hooks/useBuyerGuard';
 import { useBuyerThreads } from '../hooks/useChat';
@@ -82,9 +84,10 @@ export default function AccountPage() {
   }, [profile]);
   const saveDetails = async () => {
     if (!session || savingDetails) return;
+    if (detailPhone && !isValidMyPhone(detailPhone)) { toast.error(MY_PHONE_ERROR); return; }
     setSavingDetails(true);
     setDetailsSaved(false);
-    const patch = { full_name: detailName.trim() || null, phone: detailPhone.trim() || null };
+    const patch = { full_name: detailName.trim() || null, phone: toPlus60(detailPhone) || null };
     const { error } = await supabase.from('profiles').update(patch).eq('id', session.user.id);
     setSavingDetails(false);
     if (!error) {
@@ -231,13 +234,13 @@ export default function AccountPage() {
               <p style={{ margin: '8px 0 0', fontSize: 13, color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</p>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 14 }}>
-                <input
+                <PhoneInput
                   value={detailPhone}
-                  onChange={(e) => setDetailPhone(e.target.value)}
-                  inputMode="tel"
-                  placeholder="Phone number"
+                  onChange={setDetailPhone}
                   aria-label="Phone number"
-                  style={{ flex: '1 1 200px', minWidth: 0, boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, padding: '9px 13px', fontSize: 13.5, color: '#111827', outline: 'none', fontFamily: 'inherit' }}
+                  style={{ flex: '1 1 200px', minWidth: 0, boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 13.5, color: '#111827', fontFamily: 'inherit' }}
+                  prefixStyle={{ padding: '0 4px 0 13px', color: '#6b7280' }}
+                  inputStyle={{ padding: '9px 13px 9px 0' }}
                 />
                 <button onClick={saveDetails} disabled={savingDetails}
                   style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '9px 18px', fontSize: 13.5, fontWeight: 700, cursor: savingDetails ? 'default' : 'pointer', opacity: savingDetails ? 0.7 : 1, fontFamily: 'inherit', whiteSpace: 'nowrap' }}>

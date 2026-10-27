@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Bell, Car, Eye, MessageSquare, Phone } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { liveChannel } from "../lib/liveChannel";
+import PhoneInput from "../components/ui/PhoneInput";
+import { toast } from "sonner";
+import { isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 
 const ACC = "#dc2626";
 
@@ -209,6 +212,7 @@ export default function AdminPanel() {
   }
 
   async function saveSettings() {
+    if (settings.whatsapp_number && !isValidMyPhone(settings.whatsapp_number, { mobileOnly: true })) { toast.error(MY_PHONE_ERROR); return; }
     await supabase.from("profiles").update(settings).eq("id", profile.id);
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
@@ -1594,16 +1598,10 @@ export default function AdminPanel() {
                       >
                         WhatsApp Number
                       </label>
-                      <div style={{ display:'flex', alignItems:'center', ...inp, padding:0, overflow:'hidden' }}>
-                        <span style={{ padding:'10px 12px', color:'#6b7280', background:'rgba(255,255,255,0.03)', borderRight:'1px solid rgba(255,255,255,0.08)', fontSize:13, whiteSpace:'nowrap', flexShrink:0 }}>+60</span>
-                        <input
-                          type="tel"
-                          value={(settings.whatsapp_number||'').replace(/^\+?60/,'')}
-                          onChange={(e) => setSettings((s) => ({ ...s, whatsapp_number: '+60'+e.target.value.replace(/\D/g,'') }))}
-                          style={{ flex:1, background:'transparent', border:'none', outline:'none', color:'#e5e7eb', fontSize:13, padding:'10px 12px', fontFamily:'inherit' }}
-                          placeholder="X-XXXXXXX"
-                        />
-                      </div>
+                      <PhoneInput mobileOnly value={settings.whatsapp_number} onChange={(v) => setSettings((s) => ({ ...s, whatsapp_number: v }))}
+                        style={inp}
+                        prefixStyle={{ padding:'10px 12px', color:'#6b7280', background:'rgba(255,255,255,0.03)', borderRight:'1px solid rgba(255,255,255,0.08)', fontSize:13 }}
+                        inputStyle={{ color:'#e5e7eb', fontSize:13, padding:'10px 12px' }} />
                     </div>
                     <div>
                       <label

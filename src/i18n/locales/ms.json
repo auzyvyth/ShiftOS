@@ -775,6 +775,7 @@
       "noCodeHelp": "Tiada kod? Minta pengedar anda jana satu dari panel Tetapan ShiftOS mereka."
     },
     "drawer": {
+      "phoneLooksWrong": "Semak nombor ini",
       "noCarLinkedShort": "Tiada kereta dipaut",
       "noCarLinkedRow": "Tiada kereta dipaut pada lead ini",
       "plateLabel": "Plat",
@@ -1501,6 +1502,7 @@
       "inAppChat": "Chat dalam app",
       "buyerPhone": "Nombor telefon buyer",
       "editPhone": "Edit nombor telefon",
+      "phoneLooksWrong": "Semak nombor ini",
       "addNumberChat": "Tambah nombor bila buyer bagi",
       "addNumber": "Tambah nombor telefon",
       "followUpAgo": "Follow up {{ago}}",

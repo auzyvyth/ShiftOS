@@ -785,6 +785,7 @@
       "noCodeHelp": "Don't have a code? Ask your dealer to generate one from their ShiftOS Settings panel."
     },
     "drawer": {
+      "phoneLooksWrong": "Check this number",
       "noCarLinkedShort": "No car linked",
       "noCarLinkedRow": "No car linked to this lead",
       "plateLabel": "Plate",
@@ -1512,6 +1513,7 @@
       "inAppChat": "In-app chat",
       "buyerPhone": "Buyer phone number",
       "editPhone": "Edit phone number",
+      "phoneLooksWrong": "Check this number",
       "addNumberChat": "Add their number when they share it",
       "addNumber": "Add phone number",
       "followUpAgo": "Follow up {{ago}}",

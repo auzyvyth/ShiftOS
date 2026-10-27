@@ -34,6 +34,8 @@ import { purgeKycFiles } from "../utils/kycPurge";
 import { useOnlineNow } from "../hooks/useOnlineNow";
 import { useLiveSellers } from "../hooks/useLiveSellers";
 import { liveChannel } from "../lib/liveChannel";
+import PhoneInput from "../components/ui/PhoneInput";
+import { normalizePhone } from "../lib/phone";
 
 // The console's own session pauses live updates on a hidden tab too (IO-6).
 installRealtimeIdle(supabase);
@@ -1867,14 +1869,13 @@ export default function AdminPage() {
                         style={{ flex: 1, minWidth: 240 }}
                       />
                     </MktField>
-                    <MktField label="WhatsApp Number" hint="Digits only, no + sign (e.g. 601111521742)">
-                      <input
-                        type="text"
+                    <MktField label="WhatsApp Number">
+                      <PhoneInput
+                        mobileOnly
                         value={mktSettings.support_whatsapp || ""}
-                        onChange={e => setMktSettings(s => ({ ...s, support_whatsapp: e.target.value.replace(/\D/g, "") }))}
+                        onChange={v => setMktSettings(s => ({ ...s, support_whatsapp: normalizePhone(v) }))}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240 }}
-                        placeholder="601111521742"
                       />
                     </MktField>
                     <MktField label="Phone Display Text" hint="Human-readable format shown in header/footer">
