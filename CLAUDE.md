@@ -542,6 +542,15 @@ Each entry: { icon: LucideComponent, color: hex, twColor: tailwind-class, label:
   which is how the announcement bar ended up a dark band above a white header.
   Paint an explicit light colour, and don't reuse a grey across both surfaces.
 
+## Phone numbers: ONE rule, ONE box, Malaysia only (INPUT-1, 2026-10-28)
+Every phone input is `src/components/ui/PhoneInput.jsx` (fixed "+60", typed or pasted
+0 / 60 / +60 not counted twice, cut at 10 digits, red when invalid); every check is
+`src/lib/phone.js` (`isValidMyPhone`, `{ mobileOnly }` for a seller's WhatsApp,
+`toPlus60`, `normalizePhone` = the DB's `normalize_my_phone`). The api/* routes import
+the same file. Never add a raw `<input type="tel">` or a digit-count check (`>= 9`) again:
+that is how a signup saved a number with extra digits. Malaysia only (owner + PDPA).
+An OPTIONAL buyer number that fails is dropped, never a reason to block a lead.
+
 ## Seller numbers never ship to the public (CDP-3, 2026-10-05)
 Every public WhatsApp button links to `sellerWaUrl({ car, slug, seller, text })`
 (`src/utils/sellerWhatsApp.js`) -> `/api/wa` (rate-limited per IP in

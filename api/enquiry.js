@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
+import { normalizePhone, isValidMyPhone } from '../src/lib/phone.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
@@ -37,8 +38,9 @@ export default async function handler(req, res) {
   }
 
   // Validate phone only when one is supplied; a blank phone is allowed through.
-  const phoneClean = phone ? String(phone).replace(/\D/g, '') : '';
-  if (phoneClean && (phoneClean.length < 9 || phoneClean.length > 15)) {
+  // One Malaysian-number rule for every box and route: src/lib/phone.js.
+  const phoneClean = phone ? normalizePhone(phone) : '';
+  if (phoneClean && !isValidMyPhone(phoneClean)) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 

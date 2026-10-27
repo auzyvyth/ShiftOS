@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { BANK_RATES, RATE_BASIS, rateLabel, monthlyPayment } from "../../utils/financing";
 import { assessReadiness } from "../../utils/loanReadiness";
 import { loanCheckCopy } from "./loanCheckCopy";
+import PhoneInput from "../ui/PhoneInput";
+import { isValidMyPhone } from "../../lib/phone";
 import { premiumDark as PD, panelType as T, panelRadius as R, withAlpha } from "../../theme/tokens";
 
 // Salesman Premium only, so it is drawn in premiumDark (SIMPLE-2): depth by
@@ -307,7 +309,7 @@ function ApplyFromCheck({ check, lead, userId, dealerId, onCreated, onCancel, on
   );
   const togglePick = (name) => setPicked((p) => (p.includes(name) ? p.filter((n) => n !== name) : [...p, name]));
   const buyerName = (check?.buyer_name || lead?.buyer_name || "").trim();
-  const canSubmit = buyerName && loan > 0 && picked.length > 0;
+  const canSubmit = buyerName && loan > 0 && picked.length > 0 && (!phone || isValidMyPhone(phone));
 
   const submit = async () => {
     if (!canSubmit || saving) return;
@@ -384,12 +386,9 @@ function ApplyFromCheck({ check, lead, userId, dealerId, onCreated, onCancel, on
         <SectionHead n="1" title="For the bank" sub="Only on the application. The loan check never stores an IC." />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12 }}>
           <Field label="Phone">
-            <div style={{ ...inputSx, display: "flex", alignItems: "center", padding: 0, overflow: "hidden" }}>
-              <span style={{ padding: "9px 10px", color: C.textMuted, fontSize: T.size.base, flexShrink: 0 }}>+60</span>
-              <input type="tel" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: C.text, fontSize: T.size.base, padding: "9px 10px 9px 0", fontFamily: "inherit" }}
-                value={(phone || "").replace(/^\+?60/, "")}
-                onChange={(e) => setPhone("+60" + e.target.value.replace(/\D/g, ""))} placeholder="123456789" />
-            </div>
+            <PhoneInput value={phone} onChange={setPhone} style={inputSx}
+              prefixStyle={{ padding: "9px 4px 9px 10px", color: C.textMuted, fontSize: T.size.base }}
+              inputStyle={{ color: C.text, fontSize: T.size.base, padding: "9px 10px 9px 0" }} />
           </Field>
           <Field label="IC number">
             <input style={inputSx} value={ic} onChange={(e) => setIc(e.target.value)} placeholder="901231-10-1234" />

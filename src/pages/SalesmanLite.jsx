@@ -15,7 +15,8 @@ import { supabase } from "../supabaseClient";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { routeForRole } from "../hooks/useRoleRedirect";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
-import { normalizePhone } from "../lib/phone";
+import { normalizePhone, toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
+import PhoneInput from "../components/ui/PhoneInput";
 import { cdnImg } from "../utils/img";
 import { compressImageFile } from "../utils/compressImage";
 import { copyListingCaption } from "../utils/copyListingCaption";
@@ -2389,8 +2390,7 @@ export default function SalesmanLite() {
   // updated_at only: saving a number is not a contact event, and last_contacted_at
   // is what the follow-up lists run on.
   const saveLeadPhone = async (leadId) => {
-    const digits = editPhoneVal.replace(/\D/g, "");
-    if (digits.length < 9) { toast.error(t("salesmanLite.toast.phoneTooShort", { defaultValue: "That does not look like a full phone number" })); return; }
+    if (!isValidMyPhone(editPhoneVal)) { toast.error(t("salesmanLite.toast.phoneTooShort", { defaultValue: "That does not look like a full phone number" })); return; }
     setPhoneSavingId(leadId);
     // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write,
     // so read the row back instead of trusting what was typed — de-dup and every
@@ -5154,17 +5154,16 @@ export default function SalesmanLite() {
                         <Phone size={12} color={C.textMuted} style={{ flexShrink: 0 }} />
                         {editPhoneLeadId === pl.id ? (
                           <>
-                            <input
-                              autoFocus
-                              type="tel"
-                              inputMode="tel"
-                              value={editPhoneVal}
-                              onChange={(e) => setEditPhoneVal(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
-                              placeholder="012 345 6789"
-                              aria-label={t("salesmanLite.drawer.phoneLabel", { defaultValue: "Buyer phone number" })}
-                              style={{ flex: 1, minWidth: 0, background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.sm, color: C.text, fontSize: T.size.sm, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
-                            />
+                            <PhoneInput
+ autoFocus
+ value={editPhoneVal}
+ onChange={setEditPhoneVal}
+ onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
+ aria-label={t("salesmanLite.drawer.phoneLabel", { defaultValue: "Buyer phone number" })}
+ style={{ flex: 1, minWidth: 0, background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.sm, color: C.text, fontSize: T.size.sm, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+ prefixStyle={{ padding: "0 3px 0 0" }}
+ inputStyle={{ padding: 0 }}
+ />
                             <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
                               style={{ flexShrink: 0, fontSize: T.size.sm, padding: "5px 11px", borderRadius: R.sm, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit", opacity: phoneSavingId === pl.id ? 0.5 : 1 }}>
                               {phoneSavingId === pl.id ? "\u2026" : t("salesmanLite.drawer.save")}
@@ -5181,7 +5180,10 @@ export default function SalesmanLite() {
                               style={{ flexShrink: 0, background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex" }}>
                               <Pencil size={11} />
                             </button>
-                            {String(pl.phone).replace(/\D/g, "").length >= 9 && (
+                            {!isValidMyPhone(pl.phone) && (
+                              <span style={{ flexShrink: 0, fontSize: T.size.sm, color: C.dangerText }}>{t("salesmanLite.drawer.phoneLooksWrong", { defaultValue: "Check this number" })}</span>
+                            )}
+                            {isValidMyPhone(pl.phone) && (
                               <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
                                 style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: T.size.sm, padding: "3px 8px", borderRadius: R.sm, background: withAlpha(C.success, 0.1), border: `1px solid ${withAlpha(C.success, 0.25)}`, color: C.successText, textDecoration: "none" }}>
                                 <MessageCircle size={10} /> WhatsApp
@@ -6135,7 +6137,6 @@ export default function SalesmanLite() {
     // written without the leading 0 (011… -> +6011…). Without the /^0+/ strip a
     // stored value could carry an extra 0 (+60011…), which is an invalid number
     // and breaks WhatsApp links + enquiries.
-    const localPhone = (settingsForm.whatsapp_number || "").replace(/^\+?60/, "").replace(/^0+/, "");
 
     const handleAvatarUpload = async (e) => {
       const file = e.target.files?.[0];
@@ -6249,9 +6250,9 @@ export default function SalesmanLite() {
     };
 
     const handleSave = async () => {
+      const phone = toPlus60(settingsForm.whatsapp_number);
+      if (phone && !isValidMyPhone(phone, { mobileOnly: true })) { toast.error(MY_PHONE_ERROR); return; }
       setSettingsSaving(true);
-      const cleanLocal = localPhone.replace(/\D/g, "").replace(/^0+/, "");
-      const phone = cleanLocal ? "+60" + cleanLocal : "";
       const { error: saveProfileErr } = await supabase
         .from("profiles")
         .update({
@@ -6464,19 +6465,14 @@ export default function SalesmanLite() {
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.whatsapp")}</label>
-            <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, overflow: "hidden" }}>
-              <span style={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)", whiteSpace: "nowrap", flexShrink: 0 }}>+60</span>
-              <input
-                type="tel"
-                value={localPhone}
-                onChange={(e) => {
-                  const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "");
-                  setSettingsForm((p) => ({ ...p, whatsapp_number: digits ? "+60" + digits : "" }));
-                }}
-                placeholder="123456789"
-                style={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto" }}
-              />
-            </div>
+            <PhoneInput
+              mobileOnly
+              value={settingsForm.whatsapp_number}
+              onChange={(v) => setSettingsForm((p) => ({ ...p, whatsapp_number: v }))}
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
+              prefixStyle={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)" }}
+              inputStyle={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto", minWidth: 0 }}
+            />
             <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.whatsappHint")}</p>
           </div>
           <div>

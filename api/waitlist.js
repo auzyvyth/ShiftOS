@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
 import { applyCors } from '../lib/cors.js';
+import { normalizePhone, isValidMyPhone } from '../src/lib/phone.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
@@ -21,8 +22,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const phoneClean = String(phone).replace(/\D/g, '');
-  if (phoneClean.length < 9 || phoneClean.length > 15) {
+  // One Malaysian-number rule for every box and route: src/lib/phone.js.
+  const phoneClean = normalizePhone(phone);
+  if (!isValidMyPhone(phoneClean, { mobileOnly: true })) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 

@@ -9,6 +9,7 @@ import { DOC_TYPES } from "../utils/docTypes";
 import { DEFAULT_EIR } from "../utils/financing";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import { calcMonthly } from "../utils/financing";
+import { isHttpUrl } from "../utils/newCars";
 import { panel, panelType as T, panelRadius, premiumDark as P, withAlpha } from "../theme/tokens";
 
 // Shared by SalesmanLite and SalesmanPremium (both used to carry their own
@@ -328,7 +329,7 @@ export default function CarDetailPopup({
                       })
                     )}
                   </div>
-                  {car.video_url && (
+                  {isHttpUrl(car.video_url) && (
                     <a href={car.video_url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, color: C.infoText, textDecoration: "none" }}>
                       <PlayCircle size={14} /> Watch video
                     </a>

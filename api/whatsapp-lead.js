@@ -14,6 +14,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
+import { normalizePhone, isValidMyPhone } from '../src/lib/phone.js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
@@ -62,7 +63,9 @@ export default async function handler(req, res) {
     p_dealer_id: realDealerId,
     p_car_id: carId || null,
     p_name: nm.substring(0, 100),
-    p_phone: phone ? String(phone).substring(0, 30) : null,
+    // Optional: a number that cannot be real is dropped (the buyer is on WhatsApp
+    // anyway), never a reason to lose the lead.
+    p_phone: phone && isValidMyPhone(phone) ? normalizePhone(phone) : null,
     p_ref_slug: refSlug || null,
     p_state: state ? String(state).substring(0, 40) : null,
   });

@@ -4,6 +4,8 @@ import { useSearchParams } from "react-router-dom";
 import LegalModal from "../components/LegalModal";
 import { useTranslation } from "react-i18next";
 import { apiUrl } from "../utils/apiUrl";
+import PhoneInput from "../components/ui/PhoneInput";
+import { normalizePhone, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import { SITE_URL } from "../config/site";
 
 const fmt = (n) => n?.toLocaleString("en-MY") ?? "—";
@@ -50,8 +52,9 @@ export default function WaitlistPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    const trimPhone = phone.replace(/\s+/g, "").replace(/^0/, "60");
+    const trimPhone = normalizePhone(phone);
     if (!name.trim() || !trimPhone) { setError(t("waitlist.errorFill")); return; }
+    if (!isValidMyPhone(phone, { mobileOnly: true })) { setError(MY_PHONE_ERROR); return; }
     if (!consent) { setError(t("waitlist.errorConsent")); return; }
 
     setLoading(true);
@@ -135,13 +138,13 @@ export default function WaitlistPage() {
       </div>
       <div style={{ marginBottom: marginBottomPhone }}>
         <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>{t("waitlist.labelPhone")}</label>
-        <input
-          type="tel"
-          placeholder={t("waitlist.placeholderPhone")}
+        <PhoneInput
+          mobileOnly
           value={phone}
-          onChange={e => setPhone(e.target.value)}
+          onChange={setPhone}
           required
-          style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "11px 14px", color: "#f1f5f9", fontSize: 14, fontFamily: "inherit", outline: "none" }}
+          style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "#f1f5f9", fontSize: 14, fontFamily: "inherit" }}
+          inputStyle={{ padding: "11px 14px 11px 4px" }}
         />
       </div>
       {consentBlock}

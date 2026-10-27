@@ -9,6 +9,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { applyCors } from '../lib/cors.js';
+import { normalizePhone, isValidMyPhone } from '../src/lib/phone.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
@@ -35,8 +36,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const phoneClean = String(phone).replace(/\D/g, '');
-  if (phoneClean.length < 9 || phoneClean.length > 15) {
+  // One Malaysian-number rule for every box and route: src/lib/phone.js.
+  const phoneClean = normalizePhone(phone);
+  if (!isValidMyPhone(phoneClean)) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 

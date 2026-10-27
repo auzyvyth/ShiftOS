@@ -16,6 +16,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '../../supabaseClient';
+import PhoneInput from '../ui/PhoneInput';
+import { toPlus60 } from '../../lib/phone';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -144,7 +146,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
     transmission:    slide?.transmission    || 'Auto',
     fuel_type:       slide?.fuel_type       || 'Petrol',
     badge:           slide?.badge           || null,
-    whatsapp_number: slide?.whatsapp_number || profile?.whatsapp_number || '+60',
+    whatsapp_number: slide?.whatsapp_number || profile?.whatsapp_number || '',
     image_url:       slide?.image_url       || '',
     listing_url:     slide?.listing_url     || '',
     active:          slide?.active          ?? true,
@@ -279,7 +281,7 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
       transmission:    form.transmission,
       fuel_type:       form.fuel_type,
       badge:           form.badge || null,
-      whatsapp_number: form.whatsapp_number.trim(),
+      whatsapp_number: toPlus60(form.whatsapp_number),
       image_url:       form.image_url.trim(),
       listing_url:     form.listing_url.trim() || null,
       active:          form.active,
@@ -597,16 +599,14 @@ export default function HeroSlideForm({ slide, userId, profile, slideCount, onCl
               {/* WhatsApp */}
               <div>
                 <Label>WhatsApp Number</Label>
-                <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
-                  <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0">+60</span>
-                  <input
-                    type="tel"
-                    value={(form.whatsapp_number||'').replace(/^\+?60/,'')}
-                    onChange={e => setForm(f => ({ ...f, whatsapp_number: '+60'+e.target.value.replace(/\D/g,'') }))}
-                    placeholder="123456789"
-                    className="flex-1 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
-                  />
-                </div>
+                <PhoneInput
+                  mobileOnly
+                  value={form.whatsapp_number}
+                  onChange={v => setForm(f => ({ ...f, whatsapp_number: v }))}
+                  className={iCls}
+                  prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-700 bg-gray-800/50 flex-shrink-0"
+                  inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-white text-sm px-3 py-2.5"
+                />
               </div>
 
               {/* Image */}

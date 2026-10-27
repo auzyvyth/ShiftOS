@@ -97,6 +97,8 @@ import AiQuotaBadge from "../components/ai/AiQuotaBadge";
 import PushToggle from "../components/PushToggle";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import { isPremiumSalesman } from "../utils/salesmanPlan";
+import PhoneInput from "../components/ui/PhoneInput";
+import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import {
   readCache,
   writeCache,
@@ -1893,8 +1895,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  // updated_at only: saving a number is not a contact event, and last_contacted_at
  // is what the follow-up lists run on.
  const saveLeadPhone = async (leadId) => {
- const digits = editPhoneVal.replace(/\D/g, "");
- if (digits.length < 9) { toast.error("That does not look like a full phone number"); return; }
+ if (!isValidMyPhone(editPhoneVal)) { toast.error("That does not look like a full phone number"); return; }
  setPhoneSavingId(leadId);
  // trg_leads_normalize_phone rewrites this to the 60xxxxxxxxx form on write, so
  // read the row back rather than trusting what was typed — de-dup and every
@@ -2057,6 +2058,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const handleAddLead = async () => {
  if (!addLeadForm.buyer_name?.trim()) { toast.error("Buyer name is required"); return; }
+ if (addLeadForm.phone && !isValidMyPhone(addLeadForm.phone)) { toast.error(MY_PHONE_ERROR); return; }
  // dealer_id must match the fetch filter (profile.dealer_id) or the new lead
  // silently vanishes on the next refetch. Guard against a half-loaded profile.
  const dealerId = profile?.dealer_id || getDealerIdFromProfile(profile);
@@ -5690,16 +5692,15 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      a chat lead arrives with no number and there was no way to add one. */}
  {editPhoneLeadId === pl.id? (
  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
- <input
+ <PhoneInput
  autoFocus
- type="tel"
- inputMode="tel"
  value={editPhoneVal}
- onChange={(e) => setEditPhoneVal(e.target.value)}
+ onChange={setEditPhoneVal}
  onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
- placeholder="012 345 6789"
  aria-label="Buyer phone number"
  style={{ flex: 1, minWidth: 0, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(220,38,38,0.3)", borderRadius: 6, color: "#e5e7eb", fontSize: 13, padding: "6px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+ prefixStyle={{ padding: "0 3px 0 0" }}
+ inputStyle={{ padding: 0 }}
  />
  <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
  style={{ flexShrink: 0, fontSize: 11, padding: "6px 11px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
@@ -5714,6 +5715,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
  <span style={{ fontSize: 13, color: "#cbd5e1", fontFamily: "monospace" }}>{pl.phone}</span>
  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+ {!isValidMyPhone(pl.phone) && <span style={{ fontSize: 11, color: "#f87171" }}>Check this number</span>}
  <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }} aria-label="Edit phone number"
  style={{ background: "none", border: "none", color: "#4b5563", cursor: "pointer", padding: 2, display: "flex" }}>
  <Pencil size={11} />
@@ -6733,6 +6735,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  toast.error("Bank, loan amount and tenure are required");
  return;
  }
+ if (loanForm.buyer_phone && !isValidMyPhone(loanForm.buyer_phone)) { toast.error(MY_PHONE_ERROR); return; }
  setLoanSaving(true);
  const dealerId = getDealerIdFromProfile(profile);
  const banksPayload = loanForm.bank_name? [{
@@ -6944,13 +6947,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>Phone</label>
- <div style={{ display:"flex", alignItems:"center", ...loanInputSx, padding:0, overflow:"hidden" }}>
- <span style={{ padding:"8px 10px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
- <input type="tel" placeholder="123456789"
- value={(loanForm.buyer_phone||'').replace(/^\+?60/,'')}
- onChange={(e) => setLoanForm((f) => ({ ...f, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))}
- style={{ flex:1, background:"transparent", border:"none", outline:"none", color:"#fff", fontSize:13, padding:"8px 10px", fontFamily:"inherit" }} />
- </div>
+ <PhoneInput value={loanForm.buyer_phone} onChange={(v) => setLoanForm((f) => ({ ...f, buyer_phone: v }))}
+ style={loanInputSx}
+ prefixStyle={{ padding:"8px 10px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13 }}
+ inputStyle={{ color:"#fff", fontSize:13, padding:"8px 10px" }} />
  </div>
  <div>
  <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 4 }}>IC Number</label>
@@ -7198,6 +7198,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
 
  const handleSave = async () => {
  if (!profile?.id) return;
+ if (profileSettings.whatsapp_number && !isValidMyPhone(profileSettings.whatsapp_number, { mobileOnly: true })) { setSettingsError(MY_PHONE_ERROR); return; }
  setSettingsSaving(true);
  setSettingsError(null);
  // Same rule as Premium: a tag still sitting in the input when Save is pressed
@@ -7206,7 +7207,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const { error } = await supabase.from('profiles').update({
  full_name: profileSettings.full_name,
  job_title: profileSettings.job_title,
- whatsapp_number: profileSettings.whatsapp_number,
+ whatsapp_number: toPlus60(profileSettings.whatsapp_number),
  city: profileSettings.city,
  state: profileSettings.state,
  location: profileSettings.location || null,
@@ -7285,9 +7286,9 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ display: 'grid', gap: 14 }}>
  <div>
  <label style={labelStyle}>WhatsApp Number</label>
- <input type="text" value={profileSettings.whatsapp_number}
- onChange={e => setProfileSettings(p => ({ ...p, whatsapp_number: e.target.value }))}
- placeholder="e.g. 60123456789" style={inputStyle} />
+ <PhoneInput mobileOnly value={profileSettings.whatsapp_number}
+ onChange={(v) => setProfileSettings(p => ({ ...p, whatsapp_number: v }))}
+ style={inputStyle} />
  </div>
  <div>
  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
@@ -8409,25 +8410,10 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >Phone
  </label>
- <div style={{ display:"flex", alignItems:"center", width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8, overflow:"hidden" }}>
- <span style={{ padding:"9px 12px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13, whiteSpace:"nowrap", flexShrink:0 }}>+60</span>
- <input
- type="tel"
- value={(addLeadForm.phone||'').replace(/^\+?60/,'')}
- onChange={(e) => setAddLeadForm((p) => ({ ...p, phone: '+60'+e.target.value.replace(/\D/g,'') }))}
- placeholder="123456789"
- style={{
- flex: 1,
- background: "transparent",
- border: "none",
- color: "#e5e7eb",
- fontSize: 13,
- padding: "9px 12px",
- outline: "none",
- boxSizing: "border-box",
- }}
- />
- </div>
+ <PhoneInput value={addLeadForm.phone} onChange={(v) => setAddLeadForm((p) => ({ ...p, phone: v }))}
+ style={{ width:"100%", background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:8 }}
+ prefixStyle={{ padding:"9px 12px", color:"#6b7280", background:"rgba(255,255,255,0.03)", borderRight:"1px solid rgba(255,255,255,0.08)", fontSize:13 }}
+ inputStyle={{ color: "#e5e7eb", fontSize: 13, padding: "9px 12px" }} />
  </div>
  <div>
  <label

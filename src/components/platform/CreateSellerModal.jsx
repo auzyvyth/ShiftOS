@@ -6,6 +6,8 @@ import { PLAN_CONFIG } from "../../utils/planConfig";
 import { NEW_CAR_BRANDS } from "../../utils/newCars";
 import { SELLS_OPTIONS, sellsToDb, toggleSells } from "../../utils/sellsHow";
 import { useModalHistory } from '../../hooks/useModalHistory';
+import PhoneInput from '../ui/PhoneInput';
+import { toPlus60, isValidMyPhone } from '../../lib/phone';
 
 // "I'll set your page up for you" (outreach playbook, 2026-10-12). The owner
 // collects a seller's name, email and cars over chat, makes the account here,
@@ -29,15 +31,6 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 
 function slugify(s) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
-}
-
-// Same storage form as SalesmanOnboarding (+60...).
-function normalizePhone(raw) {
-  const d = raw.replace(/\D/g, "");
-  if (!d) return null;
-  if (d.startsWith("60")) return "+" + d;
-  if (d.startsWith("0")) return "+6" + d;
-  return "+60" + d;
 }
 
 const ERRORS = {
@@ -82,7 +75,8 @@ export default function CreateSellerModal({ onClose, onCreated }) {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
   const premium = form.plan === "salesman_full";
   const brandOk = !form.sells.includes("new_car") || !!form.new_car_brand;
-  const canSubmit = form.full_name.trim().length >= 2 && emailOk && brandOk && form.slug.length >= 3 && slugFree !== false && !busy;
+  const phoneOk = !form.phone || isValidMyPhone(form.phone, { mobileOnly: true });
+  const canSubmit = form.full_name.trim().length >= 2 && emailOk && phoneOk && brandOk && form.slug.length >= 3 && slugFree !== false && !busy;
 
   const submit = async () => {
     setBusy(true); setError("");
@@ -90,7 +84,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
       body: {
         full_name: form.full_name.trim(),
         email: form.email.trim().toLowerCase(),
-        phone: normalizePhone(form.phone),
+        phone: toPlus60(form.phone) || null,
         slug: form.slug,
         state: form.state || null,
         city: form.city || null,
@@ -199,7 +193,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
             <div><label style={label}>Their email (not yours)</label>
               <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} style={input} autoComplete="off" inputMode="email" /></div>
             <div><label style={label}>WhatsApp number</label>
-              <input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="012 345 6789" style={input} inputMode="tel" autoComplete="off" /></div>
+              <PhoneInput mobileOnly value={form.phone} onChange={(v) => set("phone", v)} style={input} autoComplete="off" /></div>
             <div><label style={label}>Business name (optional)</label>
               <input value={form.dealership} onChange={(e) => set("dealership", e.target.value)} placeholder="e.g. Ali Auto" style={input} autoComplete="off" /></div>
             <div><label style={label}>How do they sell? Pick one or two</label>

@@ -3,6 +3,8 @@ import { motion, MotionConfig, animate, useInView, useScroll, useSpring, useMoti
 import CustomerCircle from "../components/sensus/CustomerCircle";
 import { Helmet } from "react-helmet";
 import { publicClient } from "../supabaseClient";
+import PhoneInput from "../components/ui/PhoneInput";
+import { isValidMyPhone } from "../lib/phone";
 import * as S from "../config/sensusCopy";
 
 // SENSUS-1: landing page for Sensus AI, presented by the owner as a Sensus
@@ -195,7 +197,7 @@ function DemoForm() {
     setErr("");
     if (f.name.trim().length < 2) return setErr(S.SENSUS_ERRORS.sensus_bad_name);
     if (f.dealership.trim().length < 2) return setErr(S.SENSUS_ERRORS.sensus_bad_dealership);
-    if (f.phone.replace(/\D/g, "").length < 9) return setErr(S.SENSUS_ERRORS.sensus_bad_phone);
+    if (!isValidMyPhone(f.phone, { mobileOnly: true })) return setErr(S.SENSUS_ERRORS.sensus_bad_phone);
     if (!consent) return setErr("Please tick the box so I can contact you about the demo.");
     setBusy(true);
     const source = (() => { try { return new URLSearchParams(window.location.search).get("utm_source") || document.referrer || null; } catch { return null; } })();
@@ -272,7 +274,7 @@ function DemoForm() {
         <label>Business name<input className="sx-in" value={f.dealership} onChange={set("dealership")} autoComplete="organization" maxLength={120} /></label>
       </div>
       <div className="sx-row2">
-        <label>WhatsApp number<input className="sx-in" value={f.phone} onChange={set("phone")} type="tel" inputMode="tel" autoComplete="tel" placeholder="012 345 6789" maxLength={20} /></label>
+        <label>WhatsApp number<PhoneInput mobileOnly className="sx-in" value={f.phone} onChange={(v) => setF((p) => ({ ...p, phone: v }))} /></label>
         <label>Your role (optional)<input className="sx-in" value={f.role} onChange={set("role")} placeholder="Owner, GM, sales manager" maxLength={60} /></label>
       </div>
       {fit && <label>Anything I should know? (optional)<textarea className="sx-in" value={f.note} onChange={set("note")} maxLength={1000} placeholder="Brands you sell, branches, the channel most enquiries come in on" /></label>}

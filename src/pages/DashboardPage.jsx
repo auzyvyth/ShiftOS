@@ -104,7 +104,8 @@ const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSal
 const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
 import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
-import { normalizeMYPhone } from "../utils/phone";
+import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
+import PhoneInput from "../components/ui/PhoneInput";
 import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
@@ -1046,7 +1047,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
   const [siteName, setSiteName] = useState(profile?.site_name || "");
   const [whatsapp, setWhatsapp] = useState(profile?.whatsapp_number || "");
   const [contactEmail, setContactEmail] = useState(profile?.email || "");
-  const [contactPhone, setContactPhone] = useState(profile?.phone || "+60");
+  const [contactPhone, setContactPhone] = useState(profile?.phone || "");
   const [tiktok, setTiktok] = useState(profile?.social_tiktok || "");
   const [instagram, setInstagram] = useState(profile?.social_instagram || "");
   const [facebook, setFacebook] = useState(profile?.social_facebook || "");
@@ -1375,11 +1376,15 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
     (logoUrl || "") !== (profile?.site_logo_url || "") ||
     (avatarUrl || "") !== (profile?.avatar_url || "");
 
-  const saveContact = () =>
-    saveSection("contact", {
-      whatsapp_number: whatsapp.trim() ? normalizeMYPhone(whatsapp.trim()) : '',
+  const saveContact = () => {
+    if ((whatsapp && !isValidMyPhone(whatsapp, { mobileOnly: true })) || (contactPhone && !isValidMyPhone(contactPhone))) {
+      setErrors((p) => ({ ...p, contact: MY_PHONE_ERROR }));
+      return;
+    }
+    return saveSection("contact", {
+      whatsapp_number: whatsapp.trim() ? toPlus60(whatsapp) : '',
       email: contactEmail.trim(),
-      phone: contactPhone.trim() ? normalizeMYPhone(contactPhone.trim()) : '',
+      phone: contactPhone.trim() ? toPlus60(contactPhone) : '',
       social_tiktok: tiktok.trim(),
       social_instagram: instagram.trim(),
       social_facebook: facebook.trim(),
@@ -1393,6 +1398,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
       deposit_terms: depositTerms.trim() || null,
       processing_fee: processingFee.trim() === '' ? null : (Number(processingFee) || 0),
     });
+  };
 
   const saveTelegram = () =>
     saveSection("telegram", {
@@ -1928,18 +1934,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           );
         })()}
 
-        <SettingsField label="WhatsApp Number" hint="Include country code">
-          <div className="relative">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-600 text-sm pointer-events-none">
-              +60
-            </span>
-            <input
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="12-345 6789"
-              className={`${iCls} pl-12`}
-            />
-          </div>
+        <SettingsField label="WhatsApp Number">
+          <PhoneInput mobileOnly value={whatsapp} onChange={setWhatsapp} className={iCls}
+            prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0"
+            inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
           <p className="text-xs text-gray-700 mt-1">
             This powers the WhatsApp enquiry button on every listing card.
           </p>
@@ -1956,16 +1954,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
             />
           </SettingsField>
           <SettingsField label="Phone Number">
-            <div className={`flex items-center overflow-hidden ${iCls}`} style={{ padding:0 }}>
-              <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
-              <input
-                type="tel"
-                value={(contactPhone||'').replace(/^\+?60/,'')}
-                onChange={(e) => setContactPhone('+60'+e.target.value.replace(/\D/g,''))}
-                placeholder="X-XXXXXXX"
-                className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
-              />
-            </div>
+            <PhoneInput value={contactPhone} onChange={(v) => setContactPhone(v)} className={iCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
           </SettingsField>
         </div>
 
@@ -4485,7 +4474,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const msgDoneTimer = useRef(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("+60");
+  const [phone, setPhone] = useState("");
   const [slug, setSlug] = useState("");
   const [tempPw, setTempPw] = useState("");
   const [createdAccount, setCreatedAccount] = useState(null); // one-time password modal
@@ -4730,7 +4719,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
   const resetForm = () => {
     setName("");
     setEmail("");
-    setPhone("+60");
+    setPhone("");
     setSlug("");
     setTempPw("");
     setAddError("");
@@ -4751,6 +4740,10 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     const isSalesman = newRole === "salesman";
     if (!n || !e || !s || (!isSalesman && !tempPw)) {
       setAddError("All fields required.");
+      return;
+    }
+    if (p && !isValidMyPhone(p)) {
+      setAddError(MY_PHONE_ERROR);
       return;
     }
     if (!isSalesman && tempPw.length < 8) {
@@ -5878,17 +5871,7 @@ function TeamTab({ managerDealership, dealerId, profile }) {
                       <label className="block text-xs text-gray-500 uppercase tracking-wider mb-1.5">
                         Phone
                       </label>
-                      <div className={`flex items-center overflow-hidden ${inputCls}`} style={{ padding:0 }}>
-                        <span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span>
-                        <input
-                          type="tel"
-                          value={(phone||'').replace(/^\+?60/,'')}
-                          onChange={(e) => setPhone('+60'+e.target.value.replace(/\D/g,''))}
-                          placeholder="X-XXXXXXX"
-                          autoComplete="off"
-                          className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5"
-                        />
-                      </div>
+                      <PhoneInput value={phone} onChange={(v) => setPhone(v)} autoComplete="off" className={inputCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" />
                     </div>
                     {newRole !== "salesman" && (
                       <div>
@@ -8478,7 +8461,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                         <select value={vendorForm.category} onChange={e => setVendorForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
                           {VENDOR_CATS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                         </select>
-                        <input value={vendorForm.phone} onChange={e => setVendorForm(f => ({ ...f, phone: e.target.value }))} placeholder="Phone" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
+                        <PhoneInput value={vendorForm.phone} onChange={v => setVendorForm(f => ({ ...f, phone: v }))} placeholder="Phone" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 12 }} prefixStyle={{ padding: '0 4px 0 12px', color: '#6b7280' }} inputStyle={{ padding: '8px 12px 8px 0' }} />
                         <input value={vendorForm.contact} onChange={e => setVendorForm(f => ({ ...f, contact: e.target.value }))} placeholder="Contact person" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
                         <input value={vendorForm.notes} onChange={e => setVendorForm(f => ({ ...f, notes: e.target.value }))} placeholder="Notes" style={{ gridColumn: '1/-1', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 12, outline: 'none' }} />
                       </div>
@@ -8552,7 +8535,7 @@ const DEFAULT_HANDOVER_ITEMS = [
 
 const EMPTY_GEN_FORM = {
   doc_type: 'Sales Agreement', listing_id: '', buyer_name: '', buyer_ic: '',
-  buyer_email: '', buyer_phone: '+60', buyer_address: '', sale_price: '', deposit_amount: '',
+  buyer_email: '', buyer_phone: '', buyer_address: '', sale_price: '', deposit_amount: '',
   payment_deadline: '', payment_method: 'Bank Transfer',
   // Dealer (auto-filled from profile)
   dealer_name: '', dealer_ssm: '', dealer_city: '', dealer_state: '',
@@ -8601,7 +8584,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
       ...p,
       doc_type: prefillDocData.doc_type || 'Sales Agreement',
       buyer_name: prefillDocData.buyer_name || '',
-      buyer_phone: prefillDocData.buyer_phone || '+60',
+      buyer_phone: prefillDocData.buyer_phone || '',
       listing_id: prefillDocData.listing_id || '',
       sale_price: prefillListing?.selling_price ? String(prefillListing.selling_price) : p.sale_price,
       sa_name: profile?.full_name || '',
@@ -9308,7 +9291,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.buyer_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, buyer_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
+                <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><PhoneInput value={genForm.buyer_phone} onChange={(v) => setGenForm(p => ({ ...p, buyer_phone: v }))} className={iCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div>
                 <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Sale Price (RM)</label><input type="number" value={genForm.sale_price} onChange={e => setGenForm(p => ({ ...p, sale_price: e.target.value }))} placeholder="0" className={iCls} /></div>
               </div>
               <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Buyer Email <span style={{ color: '#9ca3af', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>— for document delivery</span></label><input type="email" value={genForm.buyer_email} onChange={e => setGenForm(p => ({ ...p, buyer_email: e.target.value }))} placeholder="buyer@email.com" className={iCls} /></div>
@@ -9344,7 +9327,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 <p style={{ fontSize: 10, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Sales Advisor</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Name</label><input value={genForm.sa_name} onChange={e => setGenForm(p => ({ ...p, sa_name: e.target.value }))} placeholder="SA Name" className={iCls} /></div>
-                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><div className={`flex items-center overflow-hidden ${iCls}`} style={{padding:0}}><span className="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0">+60</span><input type="tel" value={(genForm.sa_phone||'').replace(/^\+?60/,'')} onChange={e => setGenForm(p => ({ ...p, sa_phone: '+60'+e.target.value.replace(/\D/g,'') }))} placeholder="X-XXXXXXX" className="flex-1 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div></div>
+                  <div><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">Phone</label><PhoneInput value={genForm.sa_phone} onChange={(v) => setGenForm(p => ({ ...p, sa_phone: v }))} className={iCls} prefixClassName="px-3 py-2.5 text-gray-500 text-sm whitespace-nowrap border-r border-gray-200 bg-gray-50 flex-shrink-0" inputClassName="flex-1 min-w-0 bg-transparent border-none outline-none text-gray-900 text-sm px-3 py-2.5" /></div>
                 </div>
                 <div style={{ marginTop: 10 }}><label className="block text-xs text-gray-500 uppercase tracking-widest mb-1">IC Number</label><input value={genForm.sa_ic} onChange={e => setGenForm(p => ({ ...p, sa_ic: e.target.value }))} placeholder="XXXXXX-XX-XXXX" className={iCls} /></div>
               </div>

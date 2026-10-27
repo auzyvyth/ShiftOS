@@ -70,6 +70,26 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## INPUT-1: one phone rule + input limits — built 2026-10-28, on staging, NOT live
+Owner: "on sign up a user can put in fake numbers with extra digits". Every phone box
+had its own check (or none) and no Malaysian maximum. Now ONE rule, `src/lib/phone.js`
+(`npm run test:phone`), and ONE box, `src/components/ui/PhoneInput.jsx`: fixed "+60",
+whatever is typed or pasted after it is cleaned (a typed 0 / 60 / +60 is not counted
+twice), cut at the longest real number, red when it cannot be real. All ~30 phone boxes
+use it; api/enquiry, booking, waitlist refuse a bad number; api/whatsapp-lead drops one.
+Malaysia only (owner + PDPA check: a +65 buyer brings Singapore's PDPA in too).
+- [ ] Ship to prod (owner's "ship tonight"), with the two items below in the same slot.
+- [ ] Apply `supabase/migrations/20261028a_input_limits.sql` (text length limits +
+      car-docs file types; every current row fits). After midnight, nobody live.
+- [ ] Redeploy `notify-price-alerts` from the repo (logs alert ids, not buyer emails).
+      Deployed v21 was diffed against the repo on 2026-10-28: same code.
+- [ ] 18 bad numbers already stored (8 leads, 7 appointments, 1 each customers, loans,
+      enquiries, seller WhatsApp). Lead panels now say "Check this number"; nothing is
+      deleted or guessed. The seller WhatsApp one: ask that seller.
+- [ ] Review the ~129 SECURITY DEFINER functions anon can call (advisor list), one pass.
+- [ ] Owner: revoke the Anthropic + remove.bg keys removed from Vercel on 2026-10-28,
+      and switch on Supabase leaked-password protection.
+
 ## IO-1 / IO-2: disk IO is writes, not reads (2026-10-21)
 DB 57 MB, cache hit 100%: every byte of disk IO is a write. IO-1 (shipping tonight):
 guarded cron jobs (`20261021d_cron_diet.sql`), push re-save once a day, dead storefront
