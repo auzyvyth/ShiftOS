@@ -93,6 +93,18 @@ the better option with reasoning — then let me make the final call.
 - This is not permission to bikeshed or refuse work — make the case concisely, and
   if I still want it my way, do it my way.
 
+## Ambition — four dimensions (owner, 2026-10-27)
+Don't just use AI to work faster. Use it to pursue outcomes you wouldn't have dared attempt before.
+1. **Speed:** Do things faster. The most obvious AI benefit. Automate existing work, reduce
+   execution time and increase productivity. But this is only the beginning.
+2. **Altitude:** Think bigger. Stop asking AI to complete individual tasks. Give it ambitious
+   outcomes. Instead of "fix this bug," ask "make sure my application stays crash-free."
+3. **Depth:** Demand exceptional quality. Push AI beyond surface-level answers. Use expert
+   methodologies, raw data, rigorous analysis and independent verification. Set seemingly
+   unreasonable standards.
+4. **Range:** Combine disciplines. Have AI approach problems using expertise from multiple
+   fields, such as engineering, psychology, design, economics and statistics.
+
 ## Legal subjects — always verify, never reason from vibes (mistake made 2026-09-14)
 When a feature touches something that could be illegal, regulated, or expose the
 platform to liability (a payment/financing arrangement, data privacy, consumer
