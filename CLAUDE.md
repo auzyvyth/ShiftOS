@@ -638,7 +638,7 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   row even when guarded (`cron.log_run` is Supabase's, not ours). Measured: 188 kB real WAL vs
   ~288 MB archived in 44 min. Scattered minutes froze the DB on 2026-10-22. A new job picks one
   of those four minutes, never its own. appointment-reminders is every 15 min; its edge function
-  AND its cron guard look back 20 min. Change cadence and look-back together or reminders drop.
+  AND its cron guard look back 35 min (`20261028b`; was 20), so ONE skipped run loses no reminder. Change cadence and look-back together or reminders drop.
 - **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
   the device (a delete + insert) on every open; it now saves at most once a day per account
   + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
@@ -753,6 +753,18 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   (4) map existing listings, (5) buyer trim filter + per-trim pages.
 
 ## DB migrations
+- **Before EVERY migration, check it will actually be used; if not, PARK it (owner, 2026-10-28).**
+  Focus is getting sellers to list. The owner will onboard dealerships by hand later, so the
+  dealer dashboard has no users (on 2026-10-28, in the last 30 days 8 of 9 standalone salesmen listed and
+  every dealer / owner / linked account listed nothing). Ask two things: (1) which surface
+  reads or writes what it touches (search `src/`, `api/`, `supabase/functions/`); (2) does
+  that surface have live users (check the DB, not just the code). Seller panels (Lite,
+  Premium), the marketplace, buyers and the console = used. Dealer dashboard, manager /
+  admin / accountant / F&I roles = NOT used. Unused -> write the SQL into `supabase/parked/`
+  with a row in its README (what, waiting for what), never into `supabase/migrations/`,
+  and do not apply it. Exceptions that ship anyway: a security hole, and anything broken
+  for users who exist today. A change to a shared table (`car_listings`, `leads`,
+  `profiles`) counts as used if any live surface touches it.
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
@@ -2056,6 +2068,18 @@ Rules that follow:
     and preserving the hole. Read what each grant allows, or drop it.
   - Test every anon-reachable surface AS anon before shipping: `set local role anon`
     inside a DO block that raises at the end, so the probe rolls itself back.
+
+### A signup request never chooses its own role or dealer (SEC-11, 2026-10-28)
+`handle_new_user` used to copy `raw_user_meta_data->>'role'` and `->>'dealer_id'`, which the
+CLIENT sets in `supabase.auth.signUp({ options: { data } })`, and every role guard skips the signup
+insert (`auth.uid()` is null there). So `data: {role: 'superadmin'}` made a platform admin and
+`{role: 'manager', dealer_id: X}` joined dealer X's team. Now a signup is only buyer / salesman /
+dealer, never linked (migration `20261028c`). Staff roles and dealer links come ONLY from the
+service-role follow-up UPDATE in the `invites` / `create-salesman` edge functions;
+`guard_profile_approval_cols` lets that through (`auth.role() = 'service_role'`) and approves it.
+- Never read a privilege-bearing field (role, dealer_id, plan, approval) from `raw_user_meta_data`.
+- Dealer invites need `_dealer_in_good_standing(dealer)` (platform-approved, active, not
+  suspended), checked at creation AND at redemption; `dealer_invites` has no client INSERT/UPDATE.
 
 ### Naming a subject in an argument is not an ownership check (same family)
 A share token at least has to be presented. An argument that merely NAMES whose

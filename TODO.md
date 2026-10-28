@@ -2708,6 +2708,16 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
+  by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
+  handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
+  dealers: "which ad money actually sold cars, and what you made on each". Money without AI:
+  dealer seat subscription, then partner revenue (warranty, insurance via a PIAM-registered
+  partner, bank referral). BLOCKED on legal checks before any commission: Consumer Credit Act
+  2025 (in force 1 Mar 2026; unlicensed credit business up to RM5m fine; credit service
+  providers must register), PIAM agent registration + no premium rebates, PDPA consent before
+  any buyer data goes to a bank/insurer. Also blocked on supply: dealer dashboard has no users
+  yet (see the parked-SQL rule); first metric = % of leads with an outcome recorded.
 - **IDEA-22: Ad videos recorded from the real Live presenter (owner, 2026-10-25)** — the
   presenter can be driven by a script in a headless browser and recorded to MP4 (done once for
   the LIVE-MOTION / LIVE-JUMP demo, with stand-in photos). Use it for Drevo ads: real cars, the

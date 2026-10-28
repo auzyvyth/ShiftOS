@@ -34,13 +34,15 @@ Deno.serve(async (req) => {
   if (!botToken) {
     console.error("appointment-reminder: TELEGRAM_BOT_TOKEN not set — skipping Job 1");
   } else {
-    // Window: remind_at is between now-20min and now. The lookback covers the cron
-    // cadence (every 15 min since 20261022a_cron_align.sql, IO-5) plus a late tick,
-    // so no reminder falls between two runs. The cron job's own guard uses the same
-    // 20 min; change both together. The remind_sent=false filter guarantees each
-    // appointment is only notified once even though 2 ticks may both see it in-window.
+    // Window: remind_at is between now-35min and now. The lookback covers the cron
+    // cadence (every 15 min since 20261022a_cron_align.sql, IO-5) plus ONE skipped
+    // tick: a stalled DB fails a run with "job startup timeout" (19 on 2026-10-24),
+    // and at 20 min a reminder due in the gap was never sent. The cron job's own
+    // guard uses the same 35 min (20261028b); change both together. The
+    // remind_sent=false filter guarantees each appointment is only notified once
+    // even though several ticks may see it in-window.
     const now = new Date();
-    const windowStart = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
+    const windowStart = new Date(now.getTime() - 35 * 60 * 1000).toISOString();
     const windowEnd = now.toISOString();
 
     const { data: appointments, error } = await supabase
