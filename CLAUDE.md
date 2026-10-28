@@ -753,6 +753,18 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   (4) map existing listings, (5) buyer trim filter + per-trim pages.
 
 ## DB migrations
+- **Before EVERY migration, check it will actually be used; if not, PARK it (owner, 2026-10-28).**
+  Focus is getting sellers to list. The owner will onboard dealerships by hand later, so the
+  dealer dashboard has no users (on 2026-10-28, in the last 30 days 8 of 9 standalone salesmen listed and
+  every dealer / owner / linked account listed nothing). Ask two things: (1) which surface
+  reads or writes what it touches (search `src/`, `api/`, `supabase/functions/`); (2) does
+  that surface have live users (check the DB, not just the code). Seller panels (Lite,
+  Premium), the marketplace, buyers and the console = used. Dealer dashboard, manager /
+  admin / accountant / F&I roles = NOT used. Unused -> write the SQL into `supabase/parked/`
+  with a row in its README (what, waiting for what), never into `supabase/migrations/`,
+  and do not apply it. Exceptions that ship anyway: a security hole, and anything broken
+  for users who exist today. A change to a shared table (`car_listings`, `leads`,
+  `profiles`) counts as used if any live surface touches it.
 - Schema changes (ALTER TABLE, CREATE VIEW) go directly to the live Supabase DB via MCP apply_migration
 - **Every migration freezes the live API for everyone, up to 45 seconds** (PostgREST
   reloads its schema; measured 2026-09-26, TODO PERF-LOAD). Owner's rule, 2026-09-26:
