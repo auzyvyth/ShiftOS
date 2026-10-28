@@ -61,6 +61,17 @@ export function getSubdomain() {
   return storefrontSubdomain(hostname);
 }
 
+// The storefront's display name from this device's saved copy, or null. No
+// fetch: the error screens (incl. the crash screen) use it for their top bar.
+export function readStorefrontName() {
+  try {
+    const t = readTenantCache(getSubdomain());
+    return t?.site_name || t?.dealership || null;
+  } catch {
+    return null;
+  }
+}
+
 export function isSubdomain() {
   return !!getSubdomain();
 }

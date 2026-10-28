@@ -60,6 +60,7 @@ import SimilarCars from "../components/car/SimilarCars";
 import { recordCarProgress, scrollProgress } from "../utils/viewProgress";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
 import { fetchCarRow, getCarPreview } from "../utils/carPrefetch";
+import ErrorScreen from "../components/ErrorScreen";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
@@ -1906,74 +1907,37 @@ export default function CarDetailPage() {
 
   /* ── early returns ── */
   if (loading) return <Skeleton preview={getCarPreview(slug)} />;
-  if (loadError)
+  if (loadError || notFound) {
+    const browseTo = isSubdomain() ? "/cars" : "/showroom";
+    if (loadError)
+      return (
+        <ErrorScreen
+          variant="load"
+          eyebrow="Slow connection"
+          title="Hold up, we're stuck in traffic"
+          body="Our side is running slow right now. The car's still here, we just couldn't fetch it. Give it another go."
+          actions={[
+            { label: "Try again", onClick: () => setRetryKey((k) => k + 1) },
+            { label: "Browse all cars", to: browseTo },
+          ]}
+        />
+      );
+    // The view no longer returns the car, so its name comes from the card the
+    // buyer tapped (carPrefetch preview), when there was one.
+    const gone = getCarPreview(slug);
+    const like = gone?.brand && gone?.model
+      ? { label: `See other ${gone.brand} ${gone.model}`, to: `${browseTo}?${new URLSearchParams({ brand: gone.brand, model: gone.model })}` }
+      : null;
     return (
-      <div
-        style={{
-          background: "#060c14",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0 16px",
-          textAlign: "center",
-          fontFamily: "var(--xd-font-body)",
-        }}
-      >
-        <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
-          {"We couldn't load this car just now. Please try again."}
-        </p>
-        <button
-          type="button"
-          onClick={() => setRetryKey((k) => k + 1)}
-          style={{
-            background: "#dc2626",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 20px",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: "pointer",
-            marginBottom: 16,
-            fontFamily: "inherit",
-          }}
-        >
-          Try again
-        </button>
-        <Link
-          to="/showroom"
-          style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
-        >
-          ← Browse all cars
-        </Link>
-      </div>
+      <ErrorScreen
+        variant="gone"
+        eyebrow="Listing ended"
+        title="Someone beat you to it"
+        body="This one found a new home, or the seller took it down. Plenty more where that came from."
+        actions={[like, { label: "Browse all cars", to: browseTo }].filter(Boolean)}
+      />
     );
-  if (notFound)
-    return (
-      <div
-        style={{
-          background: "#060c14",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "var(--xd-font-body)",
-        }}
-      >
-        <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
-          This listing is no longer available.
-        </p>
-        <Link
-          to="/showroom"
-          style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
-        >
-          ← Browse all cars
-        </Link>
-      </div>
-    );
+  }
 
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
   // Resized WebP for the on-page gallery (full-res is kept for the lightbox zoom).

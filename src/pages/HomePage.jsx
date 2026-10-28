@@ -64,6 +64,7 @@ import {
 import { useMarketplaceTracking } from "../hooks/useMarketplaceTracking";
 import { getEmbedUrl } from "../utils/videoEmbed";
 import CustomSelect from "../components/ui/CustomSelect";
+import { StorefrontError } from "../components/ErrorScreen";
 
 const CAR_FIELDS =
   "id,slug,brand,model,variant,year,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,images,status,created_at,market_avg_price,payment_type,is_model_card";
@@ -541,41 +542,9 @@ const HomePage = () => {
   }
 
   if (isSubdomain() && tenant === null && tenant !== undefined) {
-    return (
-      <div
-        style={{
-          background: "#0C0C0E",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Outfit', sans-serif",
-        }}
-      >
-        {/* tenantError = the lookup failed (network/database), not a miss.
-            Saying "doesn't exist" there sent a live dealer's buyers away. */}
-        <p style={{ color: "#52525A", fontSize: 15 }}>
-          {tenantError
-            ? "Couldn't load this dealer page right now."
-            : "This dealer page doesn't exist."}
-        </p>
-        {tenantError && (
-          <button
-            onClick={() => window.location.reload()}
-            style={{ background: "none", border: "none", color: "#DC2626", fontSize: 13, marginTop: 12, cursor: "pointer", fontFamily: "'Outfit', sans-serif" }}
-          >
-            Try again
-          </button>
-        )}
-        <a
-          href="https://xdrive.my"
-          style={{ color: "#DC2626", fontSize: 13, marginTop: 12 }}
-        >
-          ← Browse all cars
-        </a>
-      </div>
-    );
+    // tenantError = the lookup failed (network/database), not a miss.
+    // Saying "doesn't exist" there sent a live dealer's buyers away.
+    return <StorefrontError failed={tenantError} />;
   }
 
   const soldDisplay =

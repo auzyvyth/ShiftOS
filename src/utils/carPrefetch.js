@@ -30,6 +30,9 @@ export function rememberCarPreview(car) {
     // The car page heading's order (brand, model, trim, year), so the preview
     // and the loaded page say the same thing in the same place.
     heading: [car.brand, car.model, car.variant, car.year].filter(Boolean).join(" "),
+    // Brand + model let the "no longer listed" screen offer cars like it.
+    brand: car.brand || null,
+    model: car.model || null,
     price: Number(car.selling_price) > 0 ? Number(car.selling_price) : null,
     image: Array.isArray(car.images) ? car.images.find(Boolean) || null : null,
   };

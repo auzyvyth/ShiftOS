@@ -10,6 +10,7 @@ import { i18nReady } from './i18n/config';
 import './utils/installPrompt';
 import App from '@/App';
 import { logError } from '@/utils/logError';
+import ErrorScreen from '@/components/ErrorScreen';
 import { purgeDeadImageCaches } from '@/utils/localCache';
 import { captureInvite } from '@/utils/invite';
 import { adoptServerSeed } from '@/utils/serverSeed';
@@ -117,34 +118,27 @@ function ErrorFallback({ resetError }) {
   if (navigator.onLine === false) {
     const goBack = () => { window.history.back(); setTimeout(() => resetError?.(), 0); };
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 20px', background: '#080C14', color: '#fff', fontFamily: "system-ui, sans-serif", textAlign: 'center' }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>You're offline</h1>
-        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', maxWidth: 320, margin: 0, lineHeight: 1.5 }}>
-          This screen has not been opened on this phone yet, so it needs a connection the first time. It will open by itself when you are back online.
-        </p>
-        <button
-          onClick={goBack}
-          style={{ marginTop: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-        >
-          Go back
-        </button>
-      </div>
+      <ErrorScreen
+        variant="load"
+        eyebrow="You're offline"
+        title="No signal, no road"
+        body="This screen hasn't been opened on this phone yet, so it needs a connection the first time. It opens by itself once you're back online."
+        actions={[{ label: 'Go back', onClick: goBack }]}
+      />
     );
   }
+  // Outside the router: href / onClick only, never `to`.
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: '24px 20px', background: '#080C14', color: '#fff', fontFamily: "system-ui, sans-serif", textAlign: 'center' }}>
-      <p style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 52, color: '#dc2626', letterSpacing: 2, lineHeight: 1, margin: 0 }}>OOPS</p>
-      <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Something went wrong</h1>
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', maxWidth: 320, margin: 0 }}>
-        The page failed to load. This usually fixes itself with a reload.
-      </p>
-      <button
-        onClick={hardReload}
-        style={{ marginTop: 8, padding: '12px 28px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-      >
-        Reload
-      </button>
-    </div>
+    <ErrorScreen
+      variant="crash"
+      eyebrow="Page error"
+      title="Well, that broke down"
+      body="Something went wrong on this page. Our mechanics have been told. A quick reload usually gets it running again."
+      actions={[
+        { label: 'Reload the page', onClick: hardReload },
+        { label: 'Take me home', href: '/' },
+      ]}
+    />
   );
 }
 

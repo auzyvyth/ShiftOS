@@ -64,6 +64,17 @@ invent a new one.
   the hero exists for, so it is not ornament. Do not copy it to a second
   element; a second glowing ring is decoration.
 
+- **Error screens — the SECOND sanctioned looping animation (owner's call,
+  2026-10-28, ERR-1).** Every full-page error is `src/components/ErrorScreen.jsx`
+  (variants `load` / `gone` / `404` / `crash`): light page, dark bar (DREVO, or
+  the dealer's name on a storefront), Bebas headline, casual English copy, and
+  a small red car looping in a scene that says what happened (stuck in
+  traffic, drove off, wrong turn, broke down). Plain CSS so the crash screen
+  still animates when the JS broke; never gates a button;
+  `prefers-reduced-motion` freezes it. Do not hand-roll an error page again and
+  do not copy the car scenes elsewhere: a third loop is decoration. A failed
+  lookup is `load` ("try again"), never `gone`/`404`.
+
 ## Type
 - **Display / headlines:** `'Bebas Neue', sans-serif` — uppercase, tight
   line-height (0.92–1.0), letter-spacing ~0.02em. Hero h1 `clamp(38px,10vw,96px)`.
