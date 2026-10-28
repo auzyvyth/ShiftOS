@@ -306,7 +306,7 @@ export default function SalesmanLiteLanding() {
         </section>
 
         {/* ── What you get with each plan: one real screenshot per tab ── */}
-        <PlanTour copy={t.tour} />
+        <PlanTour copy={t.tour} lang={lang} />
 
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
