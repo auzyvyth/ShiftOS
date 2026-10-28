@@ -2069,6 +2069,18 @@ Rules that follow:
   - Test every anon-reachable surface AS anon before shipping: `set local role anon`
     inside a DO block that raises at the end, so the probe rolls itself back.
 
+### A signup request never chooses its own role or dealer (SEC-11, 2026-10-28)
+`handle_new_user` used to copy `raw_user_meta_data->>'role'` and `->>'dealer_id'`, which the
+CLIENT sets in `supabase.auth.signUp({ options: { data } })`, and every role guard skips the signup
+insert (`auth.uid()` is null there). So `data: {role: 'superadmin'}` made a platform admin and
+`{role: 'manager', dealer_id: X}` joined dealer X's team. Now a signup is only buyer / salesman /
+dealer, never linked (migration `20261028c`). Staff roles and dealer links come ONLY from the
+service-role follow-up UPDATE in the `invites` / `create-salesman` edge functions;
+`guard_profile_approval_cols` lets that through (`auth.role() = 'service_role'`) and approves it.
+- Never read a privilege-bearing field (role, dealer_id, plan, approval) from `raw_user_meta_data`.
+- Dealer invites need `_dealer_in_good_standing(dealer)` (platform-approved, active, not
+  suspended), checked at creation AND at redemption; `dealer_invites` has no client INSERT/UPDATE.
+
 ### Naming a subject in an argument is not an ownership check (same family)
 A share token at least has to be presented. An argument that merely NAMES whose
 row to touch — an email, a dealer id, a list of car ids — proves nothing at all,

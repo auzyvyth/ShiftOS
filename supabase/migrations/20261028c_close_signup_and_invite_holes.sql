@@ -1,3 +1,4 @@
+-- APPLIED 2026-10-28 by the owner in the SQL Editor; verified read-only the same day.
 -- SEC-11 (2026-10-28): close the holes found in the dealer-side audit.
 --
 -- 1. A sign-up request chose its own role and dealer. handle_new_user copied
