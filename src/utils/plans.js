@@ -37,15 +37,14 @@ import { PLAN_CONFIG } from './planConfig.js';
 // services catalogue and page customisation are listed here and not on Lite.
 // Live presentation moved to Lite (owner, 2026-10-18): it is on the Lite
 // card below, never here.
-// PremiumUpgradeCard drops every line matching /\bAI\b/ (English side), so
-// keep "AI" spelled out in the AI lines.
+// No AI line (owner, 2026-10-28: "we don't have that yet"). Do not list an AI
+// feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
   { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
   { group: 'calc', en: 'Loan desk: affordability check + bank comparison', ms: 'Loan desk: semak kemampuan + banding bank' },
   { group: 'leads', en: 'Handover checklist + customer list', ms: 'Senarai semak handover + senarai customer' },
-  { group: 'more', en: 'AI listing captions + AI chat reply drafts', ms: 'Caption iklan AI + draf balasan chat AI' },
   { group: 'more', en: 'TikTok poster studio for every car', ms: 'Studio poster TikTok untuk setiap kereta' },
   { group: 'dash', en: 'Commission tracking', ms: 'Jejak komisen' },
   { group: 'dash', en: 'Performance: close rate + where deals are lost', ms: 'Performance: close rate + di mana deal terlepas' },
