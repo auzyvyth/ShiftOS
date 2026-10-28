@@ -162,10 +162,12 @@ export default function SalesmanLiteLanding() {
           </div>
           <div className="sll-wrap sll-hero-inner">
             <span className="sll-tag">{s.offer.tag}</span>
+            {/* "untuk salesman kereta" sits INSIDE the h1: the big words carry no
+                search term, and the h1 is what search engines weigh most. */}
             <h1 className="sll-h1">
               {s.offer.h1a}<br /><span className="sll-red">{s.offer.h1b}</span>
+              <span className="sll-sub">{s.offer.sub}</span>
             </h1>
-            <p className="sll-sub">{s.offer.sub}</p>
             <p className="sll-lead">{s.offer.line}</p>
 
             <ol className="sll-parts">
@@ -440,7 +442,7 @@ const CSS = `
   .sll-hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
   .sll-tag { display: inline-block; background: #dc2626; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 20px; border-radius: 999px; margin-bottom: 14px; }
   .sll-h1 { font-size: clamp(46px, 8vw, 88px); font-weight: 900; line-height: 0.95; letter-spacing: -0.035em; text-transform: uppercase; margin: 0; }
-  .sll-sub { font-size: clamp(14px, 2.2vw, 22px); font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; margin: 12px 0 14px; padding-left: 0.32em; }
+  .sll-sub { display: block; line-height: 1.3; color: #0a0a0a; font-size: clamp(14px, 2.2vw, 22px); font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; margin: 12px 0 14px; padding-left: 0.32em; }
   .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.55; color: #374151; max-width: 640px; margin: 0 0 28px; }
   .sll-parts { list-style: none; padding: 0; margin: 0 0 30px; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 940px; }
   .sll-part { display: flex; align-items: flex-start; gap: 14px; text-align: left; padding: 0 22px; }

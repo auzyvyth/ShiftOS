@@ -63,11 +63,11 @@ export const REVIEWED_ISO = "2026-10-28";
 // see the product rather than a mock-up. Must stay an active account with cars.
 export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
 export const SEO_KEYWORDS = [
-  "kira ansuran kereta live", "kalkulator ansuran bulanan kereta", "jual kereta TikTok live",
-  "car loan instalment calculator Malaysia", "TikTok live car salesman", "salesman kereta live",
-  "poster ansuran kereta", "monthly berapa kereta", "salesman premium XDrive",
-  "salesman kereta online", "app salesman kereta Malaysia", "CRM salesman kereta",
-  "free car listing Malaysia", "car agent page Malaysia", "XDrive salesman lite",
+  "kalkulator loan kereta", "kira loan kereta", "kira loan kereta excel", "formula excel loan kereta",
+  "kira ansuran kereta", "kalkulator ansuran bulanan kereta", "kira ansuran kereta live",
+  "CRM salesman kereta", "rekod prospek pelanggan", "template prospek excel", "cara follow up customer kereta",
+  "app salesman kereta Malaysia", "jual kereta TikTok live", "salesman kereta live",
+  "car loan calculator Malaysia", "car salesman CRM Malaysia", "TikTok live car salesman",
 ].join(", ");
 
 // ─── English ────────────────────────────────────────────────────────────────
@@ -77,14 +77,17 @@ const EN = {
   switchTo: "ms",
   switchLabel: "Tukar ke Bahasa Melayu",
 
-  seoTitle: "Car Instalment Calculator for TikTok Live Salesmen | XDrive",
+  // Search terms (2026-10-28): "car loan calculator", "Excel", "CRM / lead"
+  // for car salesmen. No Malaysian page answered the Excel loan and prospect
+  // tracker searches; those are the gap this page and its FAQ go after.
+  seoTitle: "Car Loan Calculator & Lead CRM for Car Salesmen | XDrive",
   seoDesc:
-    "For Malaysian car salesmen selling on TikTok and Facebook Live: every car numbered, 9, 7 and 5-year monthlies, deposit changes in one tap. Free on Salesman Lite.",
+    "For Malaysian car salesmen: work out car loan instalments on your live, keep every lead in one CRM, follow up until the deal closes. Replaces Excel. Start free.",
 
-  heroEyebrow: "For agents who sell on TikTok and Facebook Live",
-  heroH1Lines: ["Monthly berapa?", "One tap.", "Every car."],
+  heroEyebrow: "For car salesmen who sell on TikTok, Facebook and WhatsApp",
+  heroH1Lines: ["Car loan calculator and lead CRM", "for car salesmen"],
   heroIntro:
-    "Live presentation builds the instalment poster for every car you list: price, deposit, loan, and the monthly over 9, 7 and 5 years. A viewer asks for a different deposit, you tap once and every number updates. Free on Salesman Lite.",
+    "One app in three parts. A car loan calculator for your lives: the monthly over 9, 7 and 5 years for every car, deposit changed in one tap. A dashboard that says who to call today. And a lead CRM where every buyer from WhatsApp, chat and bookings lands with a stage. It replaces the Excel loan sheet and the prospect list.",
   liveCta: "Go live free",
   premiumCta: "Try Premium free for 7 days",
   liteCta: "Start free on Lite",
@@ -285,7 +288,7 @@ const EN = {
       h1a: "3 in 1",
       h1b: "sales app",
       sub: "For car salesmen",
-      line: "Work out the monthly on your live, get every lead in one dashboard, follow up until the deal closes. One app.",
+      line: "A car loan calculator for your lives, a dashboard, and a CRM for every lead. Follow up until the deal closes. One app, no more Excel.",
       parts: [
         { title: "Live calculator", line: "Monthly, deposit and tenure, worked out in front of your viewers.", alt: "Live presentation: a car numbered #1 with its monthly instalment over 9, 7 and 5 years and deposit buttons" },
         { title: "Dashboard", line: "Who to call today, page visits and WhatsApp taps.", alt: "Premium dashboard: leads waiting for follow-up, today's bookings, lead and WhatsApp tap counts" },
@@ -365,6 +368,10 @@ const EN = {
         a: `Monthly. Premium is RM${PREMIUM_PRICE} a month, and the first ${TRIAL_DAYS} days are free. There is no contract and we never take a card, so nothing is charged automatically: you pay for the next month when you want to keep it. If you stop, your account goes back to free Lite and your page, cars and leads stay.` },
       { q: "Do I only get the instalment calculator?",
         a: `No. The calculator (Live presentation and loan posters) is one of three parts. You also get your own sales page with your cars, listed on the marketplace, and a lead dashboard: every buyer who contacts you lands there with a stage. Premium adds the full CRM on top: who to call today, follow-up reminders and call log, WhatsApp to all your quiet leads, commission tracking and the handover checklist.` },
+      { q: "Can I work out a car loan in Excel?",
+        a: "Yes. The monthly is =PMT(rate/12, years*12, -loan amount), with the rate as an EIR (interest on the reducing balance). Since the Hire-Purchase (Amendment) Act 2026 took effect on 1 June 2026, new hire-purchase agreements are on EIR, so a flat rate has to be converted first or the sheet shows a monthly that is too low. A sheet also has to be retyped for every car and every deposit. Live presentation does this for every car you list: flat rates are converted to EIR, and deposit and tenure change with one tap. Figures are estimates; the bank decides." },
+      { q: "How do I keep track of prospects and leads?",
+        a: "Most salesmen use an Excel sheet or a notebook: name, number, the car they want, where they came from, stage and the next follow-up date. A sheet never reminds you to follow up, and every lead from WhatsApp, chat or a booking has to be typed in by hand. Here every buyer who contacts you lands in your lead list by themselves, with a stage and an alert on your phone, free on Lite. Premium adds follow-up reminders, a call log and a \"This week\" list of who to call." },
       { q: "Can XDrive work out monthly instalments for my TikTok Live?",
         a: "Yes, free on Salesman Lite. Live presentation shows one car per screen with a number (#1, #2, #3) for viewers to comment, the price, deposit, loan and rate, and the monthly instalment over 9, 7 and 5 years. Change the deposit or type the bank's flat rate and every figure updates; budget mode lists which of your cars fit a viewer's salary or monthly budget. Figures are estimates on the reducing balance (EIR) and subject to bank approval. Your contact details only appear when you tap to show them." },
       { q: "What happens after the 7 free days?",
@@ -415,14 +422,14 @@ const MS = {
   switchTo: "en",
   switchLabel: "Change to English",
 
-  seoTitle: "Kalkulator Ansuran Kereta untuk Salesman TikTok Live | XDrive",
+  seoTitle: "Kalkulator Loan Kereta & CRM Lead untuk Salesman | XDrive",
   seoDesc:
-    "Untuk salesman kereta di Malaysia yang jual di TikTok dan Facebook Live: setiap kereta bernombor, monthly 9, 7 dan 5 tahun, tukar deposit dengan satu tap. Percuma dengan Salesman Lite.",
+    "Untuk salesman kereta: kira loan kereta dan ansuran bulanan masa live, rekod semua lead dalam satu CRM, follow up sampai deal. Ganti Excel. Mula percuma.",
 
-  heroEyebrow: "Untuk salesman yang jual kereta di TikTok dan Facebook Live",
-  heroH1Lines: ["Monthly berapa?", "Satu tap.", "Semua kereta."],
+  heroEyebrow: "Untuk salesman kereta yang jual di TikTok, Facebook dan WhatsApp",
+  heroH1Lines: ["Kalkulator loan kereta dan CRM lead", "untuk salesman kereta"],
   heroIntro:
-    "Live presentation siapkan poster ansuran untuk setiap kereta yang anda listing: harga, deposit, loan, dan monthly untuk 9, 7 dan 5 tahun. Penonton minta deposit lain, anda tap sekali dan semua nombor terus berubah. Percuma dengan Salesman Lite.",
+    "Satu app, tiga bahagian. Kalkulator loan kereta untuk live: monthly 9, 7 dan 5 tahun untuk setiap kereta, tukar deposit dengan satu tap. Dashboard yang tunjuk siapa perlu di-call hari ni. Dan CRM lead: setiap pembeli dari WhatsApp, chat dan booking masuk dengan stage. Ganti sheet Excel kira loan dan senarai prospek anda.",
   liveCta: "Mula live percuma",
   premiumCta: "Cuba Premium percuma 7 hari",
   liteCta: "Mula percuma dengan Lite",
@@ -607,7 +614,7 @@ const MS = {
       h1a: "3 dalam 1",
       h1b: "app jualan",
       sub: "Untuk salesman kereta",
-      line: "Kira monthly masa live, semua lead masuk satu dashboard, follow up sampai deal. Satu app.",
+      line: "Kalkulator loan kereta untuk live, dashboard, dan CRM untuk semua lead. Follow up sampai deal. Satu app, tak perlu Excel lagi.",
       parts: [
         { title: "Kalkulator Live", line: "Monthly, deposit dan tempoh, dikira terus depan penonton.", alt: "Live presentation: kereta bernombor #1 dengan ansuran bulanan 9, 7 dan 5 tahun serta butang deposit" },
         { title: "Dashboard", line: "Siapa perlu di-call hari ni, lawatan page dan tap WhatsApp.", alt: "Dashboard Premium: lead yang tunggu follow-up, booking hari ini, bilangan lead dan tap WhatsApp" },
@@ -684,6 +691,10 @@ const MS = {
         a: `Bulanan. Premium RM${PREMIUM_PRICE} sebulan, dan ${TRIAL_DAYS} hari pertama percuma. Tiada kontrak dan kami tak pernah ambil kad, jadi tiada caj automatik: anda bayar bulan seterusnya bila nak teruskan. Kalau berhenti, akaun balik ke Lite yang percuma dan page, kereta serta lead anda kekal.` },
       { q: "Saya dapat kalkulator ansuran saja ke?",
         a: `Tidak. Kalkulator (Live presentation dan poster loan) cuma satu daripada tiga bahagian. Anda juga dapat page jualan sendiri dengan kereta anda, masuk marketplace sekali, dan dashboard lead: setiap pembeli yang hubungi anda masuk ke situ dengan stage. Premium tambah CRM penuh: siapa perlu di-call hari ni, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap, jejak komisen dan senarai semak handover.` },
+      { q: "Boleh ke kira loan kereta guna Excel?",
+        a: "Boleh. Monthly ialah =PMT(kadar/12, tahun*12, -jumlah pinjaman), dengan kadar dalam EIR (faedah atas baki berkurangan). Sejak Akta Sewa Beli (Pindaan) 2026 berkuat kuasa pada 1 Jun 2026, perjanjian sewa beli baru guna EIR, jadi kadar flat kena ditukar dulu, kalau tak sheet anda tunjuk monthly yang terlalu rendah. Sheet Excel juga kena taip semula untuk setiap kereta dan setiap deposit. Live presentation buat semua ni untuk setiap kereta yang anda listing: kadar flat ditukar ke EIR, deposit dan tempoh bertukar dengan satu tap. Anggaran sahaja; keputusan di tangan bank." },
+      { q: "Macam mana nak rekod prospek dan lead pelanggan?",
+        a: "Ramai salesman guna Excel atau buku nota: nama, nombor, kereta yang diminati, dari mana dia datang, stage dan tarikh follow up. Sheet tak pernah ingatkan anda bila nak follow up, dan setiap lead dari WhatsApp, chat atau booking kena taip sendiri. Di sini setiap pembeli yang hubungi anda masuk sendiri ke senarai lead, dengan stage dan alert di telefon, percuma dengan Lite. Premium tambah reminder follow up, log panggilan dan senarai \"Minggu ini\" siapa perlu di-call." },
       { q: "Boleh kira ansuran bulanan kereta masa live TikTok?",
         a: "Boleh, percuma dengan Salesman Lite. Live presentation tunjuk satu kereta satu skrin dengan nombor (#1, #2, #3) untuk penonton komen, harga, deposit, jumlah loan, kadar faedah dan ansuran bulanan untuk 9, 7 dan 5 tahun. Tukar deposit atau masukkan kadar flat bank, semua angka dikira semula. Budget mode pula senaraikan kereta anda yang muat dengan gaji atau bajet bulanan penonton. Semua angka ialah anggaran atas baki berkurangan (EIR) dan tertakluk kepada kelulusan bank. Maklumat contact anda hanya keluar bila anda tap untuk tunjuk." },
       { q: "Apa jadi lepas 7 hari percuma habis?",
