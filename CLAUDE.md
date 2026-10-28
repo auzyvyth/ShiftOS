@@ -638,7 +638,7 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   row even when guarded (`cron.log_run` is Supabase's, not ours). Measured: 188 kB real WAL vs
   ~288 MB archived in 44 min. Scattered minutes froze the DB on 2026-10-22. A new job picks one
   of those four minutes, never its own. appointment-reminders is every 15 min; its edge function
-  AND its cron guard look back 20 min. Change cadence and look-back together or reminders drop.
+  AND its cron guard look back 35 min (`20261028b`; was 20), so ONE skipped run loses no reminder. Change cadence and look-back together or reminders drop.
 - **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
   the device (a delete + insert) on every open; it now saves at most once a day per account
   + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
