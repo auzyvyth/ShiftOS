@@ -20,6 +20,7 @@ import { sellerWaUrl, hasWhatsApp } from '../utils/sellerWhatsApp';
 import { starterTodoKeys } from '../components/onboarding/StarterTasks';
 import BudgetFinder from '../components/agent/BudgetFinder';
 import { hasStoredSession } from '../utils/panelCache';
+import ErrorScreen from '../components/ErrorScreen';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -240,6 +241,10 @@ export default function SalesmanProfilePage() {
   // is known; only the car grid waits (skeleton cards, never "No cars").
   const [loading, setLoading] = useState(!seed);
   const [notFound, setNotFound] = useState(false);
+  // Every retry failed and there is no saved copy to show: say so, with a
+  // Try again, rather than a loader that never ends (ERR-1).
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [bioExpanded, setBioExpanded] = useState(false);
   const bioRef = useRef(null);
   const [bioOverflows, setBioOverflows] = useState(false);
@@ -338,6 +343,7 @@ export default function SalesmanProfilePage() {
 
   useEffect(() => {
     let cancelled = false;
+    setLoadError(false);
 
     // Moving from one agent's page to another: show the new agent's device
     // copy (or the loader), never the previous agent.
@@ -366,9 +372,10 @@ export default function SalesmanProfilePage() {
       if (error) {
         if (attempt < 3) {
           setTimeout(() => { if (!cancelled) load(attempt + 1); }, 1000 * (attempt + 1));
+        } else if (!c) {
+          // Never a wrong "not found". With a saved copy on screen, keep it.
+          setLoadError(true);
         }
-        // else: leave the loader up rather than a wrong "not found"; a later
-        // refresh / tab-focus re-mount retries.
         return;
       }
 
@@ -430,7 +437,7 @@ export default function SalesmanProfilePage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, retryKey]);
 
   // Trust signals (measured reply time, recently sold, the agent's own terms).
   // Above the early returns: hooks cannot sit below a conditional return.
@@ -602,14 +609,29 @@ export default function SalesmanProfilePage() {
   const ownLocationStr = profile?.location || null;
   const mapLocationStr = ownLocationStr || dealerLocationStr;
 
+  if (loadError && !profile) return (
+    <ErrorScreen
+      variant="load"
+      eyebrow="Slow connection"
+      title="Hold up, we're stuck in traffic"
+      body="We couldn't load this page just now. The agent is still here, give it another go."
+      actions={[
+        { label: 'Try again', onClick: () => setRetryKey((k) => k + 1) },
+        { label: 'Browse all cars', to: '/showroom' },
+      ]}
+    />
+  );
+
   if ((!profile && !notFound) || !viewerReady) return <ShowroomLoader slug={slug} />;
 
   if (notFound) return (
-    <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--xd-font-body)', padding: '0 24px', textAlign: 'center' }}>
-      <p style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 8 }}>Agent not found</p>
-      <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>This page doesn't exist or has been removed.</p>
-      <Link to="/showroom" style={{ fontSize: 13, fontWeight: 600, color: '#111827', textDecoration: 'underline', textUnderlineOffset: 3 }}>Browse all cars</Link>
-    </div>
+    <ErrorScreen
+      variant="404"
+      eyebrow="Page not found"
+      title="Oops, wrong turn"
+      body="There's no agent page at this link. It may have been renamed or removed."
+      actions={[{ label: 'Browse all cars', to: '/showroom' }]}
+    />
   );
 
   const facebookHref = profile.facebook

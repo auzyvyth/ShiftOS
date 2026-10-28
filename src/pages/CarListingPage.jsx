@@ -33,6 +33,7 @@ import PriceAlertButton from '../components/PriceAlertButton';
 import ShowroomCard, { ShowroomCardSkeleton } from '../components/ShowroomCard';
 import Pagination from '../components/ui/Pagination';
 import { storefront as SF } from '../theme/tokens';
+import { StorefrontError } from '../components/ErrorScreen';
 
 // Dealer-storefront chrome only (/cars on <sub>.xdrive.my). Lazy so the
 // marketplace /showroom does not download them, nor the framer-motion they
@@ -696,21 +697,8 @@ export default function CarListingPage() {
 
   /* ── Early states ── */
   if (!isMarketplace && !tenantLoading && !tenant) {
-    return (
-      <>
-        <Suspense fallback={null}><Header /></Suspense>
-        <div style={{ background:'#F7F6F2', minHeight:'100vh', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', fontFamily:"system-ui,sans-serif" }}>
-          <Car size={36} color="#d1d5db" style={{ marginBottom:16 }}/>
-          {/* tenantError = lookup failed (network/database), not a miss. */}
-          <p style={{ color:'#6b7280', fontSize:15, margin:'0 0 12px' }}>{tenantError ? "Couldn't load this dealer page right now." : "This dealer page doesn't exist."}</p>
-          {tenantError && (
-            <button onClick={() => window.location.reload()} style={{ background:'none', border:'none', color:'#dc2626', fontSize:13, fontWeight:'600', cursor:'pointer', marginBottom:10, fontFamily:"'Outfit',sans-serif" }}>Try again</button>
-          )}
-          <a href="https://xdrive.my" style={{ color:'#dc2626', fontSize:13, fontWeight:'600' }}>Browse all cars on XDrive</a>
-        </div>
-        <MarketplaceFooter />
-      </>
-    );
+    // tenantError = lookup failed (network/database), not a miss.
+    return <StorefrontError failed={tenantError} />;
   }
 
   return (
