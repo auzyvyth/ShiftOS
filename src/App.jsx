@@ -107,6 +107,8 @@ const JadiSalesmanKeretaArticle = lazy(() => import("./pages/articles/JadiSalesm
 const EvTerpakaiArticle = lazy(() => import("./pages/articles/EvTerpakaiArticle"));
 const AktaSewaBeli2026Article = lazy(() => import("./pages/articles/AktaSewaBeli2026Article"));
 const FlatRateVsEirArticle = lazy(() => import("./pages/articles/FlatRateVsEirArticle"));
+const KiraLoanKeretaExcelArticle = lazy(() => import("./pages/articles/KiraLoanKeretaExcelArticle"));
+const TemplateProspekSalesmanArticle = lazy(() => import("./pages/articles/TemplateProspekSalesmanArticle"));
 const HargaAlphardReconArticle = lazy(() => import("./pages/articles/HargaAlphardReconArticle"));
 const HargaHarrierReconArticle = lazy(() => import("./pages/articles/HargaHarrierReconArticle"));
 
@@ -218,6 +220,8 @@ function App() {
           <Route path="/articles/harga-harrier-recon-malaysia" element={<HargaHarrierReconArticle />} />
           <Route path="/articles/akta-sewa-beli-2026-eir-pinjaman-kereta" element={<AktaSewaBeli2026Article />} />
           <Route path="/articles/car-loan-malaysia-flat-rate-vs-eir" element={<FlatRateVsEirArticle />} />
+          <Route path="/articles/cara-kira-loan-kereta-excel" element={<KiraLoanKeretaExcelArticle />} />
+          <Route path="/articles/template-excel-rekod-prospek-salesman-kereta" element={<TemplateProspekSalesmanArticle />} />
 
           {/* Auth */}
           <Route path="/style-guide" element={<StyleGuidePage />} />

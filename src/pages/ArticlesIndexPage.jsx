@@ -111,6 +111,20 @@ const ARTICLES = [
     category: 'Salesman',
     readMins: 8,
   },
+  {
+    slug: 'cara-kira-loan-kereta-excel',
+    title: 'Cara Kira Loan Kereta Guna Excel: Formula PMT, Flat ke EIR',
+    description: 'Formula PMT untuk ansuran bulanan, cara tukar kadar flat ke EIR guna RATE, contoh RM54,000, dan template Excel percuma.',
+    category: 'Salesman',
+    readMins: 7,
+  },
+  {
+    slug: 'template-excel-rekod-prospek-salesman-kereta',
+    title: 'Template Excel Rekod Prospek untuk Salesman Kereta (Percuma)',
+    description: 'Lajur dan stage untuk rekod lead, cara follow up pembeli kereta, contoh mesej WhatsApp, dan cara simpan data ikut PDPA.',
+    category: 'Salesman',
+    readMins: 8,
+  },
 ];
 
 const PAGE_TITLE = 'Panduan Kereta Malaysia — XDrive';
