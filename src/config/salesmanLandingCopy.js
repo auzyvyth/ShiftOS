@@ -37,13 +37,19 @@
 //    (routeForProfile) and existing cars stay.
 //  - No claims about named competitors.
 
-import { SALESMAN_PREMIUM_FEATURES, SALESMAN_PREMIUM_FEATURES_MS } from "../utils/plans.js";
+import { SALESMAN_PREMIUM_FEATURES, SALESMAN_PREMIUM_FEATURES_MS, salesmanPremiumFeaturesByGroup } from "../utils/plans.js";
 import { PLAN_CONFIG } from "../utils/planConfig.js";
 import { LITE_POSTERS_PER_MONTH } from "../utils/loanPoster.js";
 
 const LITE_CAP = PLAN_CONFIG.salesman_lite.listingCap;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full.listingCap;
 const LITE_POSTERS = LITE_POSTERS_PER_MONTH;
+const PREMIUM_PRICE = PLAN_CONFIG.salesman_full.price;
+const TRIAL_DAYS = PLAN_CONFIG.salesman_full.trialDays;
+// "About RM1.20 a day": the price over a 30-day month, rounded to 10 sen.
+const PER_DAY = (Math.round((PREMIUM_PRICE / 30) * 10) / 10).toFixed(2);
+const P_EN = salesmanPremiumFeaturesByGroup("en");
+const P_MS = salesmanPremiumFeaturesByGroup("ms");
 
 export const DEFAULT_LANG = "ms";
 // Per-device memory of the visitor's choice on THIS page only.
@@ -52,7 +58,7 @@ export const LANG_KEY = "xd_for_salesmen_lang";
 export const CANON = "https://xdrive.my/for-salesmen";
 // Bump when the copy changes: it feeds dateModified (webpageLd) and the
 // "last reviewed" line, a freshness signal search and AI answers both read.
-export const REVIEWED_ISO = "2026-10-23";
+export const REVIEWED_ISO = "2026-10-28";
 // XDrive's own example Salesman Premium page, linked so agents and crawlers can
 // see the product rather than a mock-up. Must stay an active account with cars.
 export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
@@ -79,7 +85,7 @@ const EN = {
   heroH1Lines: ["Monthly berapa?", "One tap.", "Every car."],
   heroIntro:
     "Live presentation builds the instalment poster for every car you list: price, deposit, loan, and the monthly over 9, 7 and 5 years. A viewer asks for a different deposit, you tap once and every number updates. Free on Salesman Lite.",
-  heroTrust: ["Free on Lite", "No credit card", "Your number hidden until you tap"],
+  heroTrust: ["No credit card", "Nothing charged automatically", "Your number hidden until you tap"],
   liveCta: "Go live free",
   premiumCta: "Try Premium free for 7 days",
   liteCta: "Start free on Lite",
@@ -248,18 +254,44 @@ const EN = {
     },
     plansKicker: "Pricing",
     plansTitle: "Start free. Upgrade when it pays.",
-    liteBullets: [
-      `Up to ${LITE_CAP} cars, your own page`,
-      "Live presentation for TikTok / FB lives",
-      `Loan posters for ${LITE_POSTERS} cars a month`,
-      "Buyers by WhatsApp, chat and booking",
-      "Lead alerts and a lead list",
-    ],
-    premiumBullets: [
-      "Everything in Lite",
-      `Up to ${PREMIUM_CAP} cars, unlimited loan posters`,
-      ...SALESMAN_PREMIUM_FEATURES.slice(0, 4),
-    ],
+    // Hero offer (owner, 2026-10-28): two leads asked "is it monthly?" and took
+    // the product for a calculator. The offer names the price, the billing and
+    // the three parts (page, live + loan tools, CRM dashboard) above the fold.
+    offer: {
+      kicker: `Premium · first ${TRIAL_DAYS} days free`,
+      title: "More than a calculator. Your whole sales desk.",
+      price: `RM${PREMIUM_PRICE}`,
+      per: "/month",
+      perDay: `About RM${PER_DAY} a day`,
+      parts: [
+        { title: "Your sales page", line: `Up to ${PREMIUM_CAP} cars on one link, on the marketplace too` },
+        { title: "Live + loan tools", line: "Live presentation, unlimited loan posters, loan desk" },
+        { title: "Lead dashboard (CRM)", line: "Who to call today, follow-up reminders, commission, handover" },
+      ],
+      billing: "Paid month by month. No contract, no card, nothing charged automatically.",
+      cta: `Start ${TRIAL_DAYS} days free`,
+      liteLink: "Or start free on Lite",
+    },
+    // Plan cards: the same three parts on both cards, so Lite vs Premium is
+    // read part by part, and the billing sentence sits under the price.
+    planCards: {
+      premium: {
+        billing: `Billed monthly: pay RM${PREMIUM_PRICE} each month to keep it. No contract, nothing charged automatically. Stop paying and you go back to Lite; your cars and leads stay.`,
+        groups: [
+          { h: "Your sales page", items: [`Up to ${PREMIUM_CAP} cars on your page and the marketplace`, ...P_EN.page] },
+          { h: "Live + loan tools", items: ["Live presentation for TikTok / FB lives", "Unlimited loan posters", ...P_EN.tools.slice(0, 2)] },
+          { h: "Lead dashboard (CRM)", items: P_EN.crm.slice(0, 5) },
+        ],
+      },
+      lite: {
+        billing: "Free forever. No credit card, no trial that bills you later.",
+        groups: [
+          { h: "Your sales page", items: [`Up to ${LITE_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking"] },
+          { h: "Live + loan tools", items: ["Live presentation for TikTok / FB lives", `Loan posters for ${LITE_POSTERS} cars a month`] },
+          { h: "Lead dashboard", items: ["Alerts on new leads", "A simple lead list with stages", "Views + WhatsApp taps for each car"] },
+        ],
+      },
+    },
     more: "And more",
   },
   plans: {
@@ -289,6 +321,10 @@ const EN = {
     reviewed: "Page last reviewed",
     reviewedLabel: "October 2026",
     items: [
+      { q: "Is Premium a one-off payment or monthly?",
+        a: `Monthly. Premium is RM${PREMIUM_PRICE} a month, and the first ${TRIAL_DAYS} days are free. There is no contract and we never take a card, so nothing is charged automatically: you pay for the next month when you want to keep it. If you stop, your account goes back to free Lite and your page, cars and leads stay.` },
+      { q: "Do I only get the instalment calculator?",
+        a: `No. The calculator (Live presentation and loan posters) is one of three parts. You also get your own sales page with your cars, listed on the marketplace, and a lead dashboard: every buyer who contacts you lands there with a stage. Premium adds the full CRM on top: who to call today, follow-up reminders and call log, WhatsApp to all your quiet leads, commission tracking and the handover checklist.` },
       { q: "Can XDrive work out monthly instalments for my TikTok Live?",
         a: "Yes, free on Salesman Lite. Live presentation shows one car per screen with a number (#1, #2, #3) for viewers to comment, the price, deposit, loan and rate, and the monthly instalment over 9, 7 and 5 years. Change the deposit or type the bank's flat rate and every figure updates; budget mode lists which of your cars fit a viewer's salary or monthly budget. Figures are estimates on the reducing balance (EIR) and subject to bank approval. Your contact details only appear when you tap to show them." },
       { q: "What happens after the 7 free days?",
@@ -347,7 +383,7 @@ const MS = {
   heroH1Lines: ["Monthly berapa?", "Satu tap.", "Semua kereta."],
   heroIntro:
     "Live presentation siapkan poster ansuran untuk setiap kereta yang anda listing: harga, deposit, loan, dan monthly untuk 9, 7 dan 5 tahun. Penonton minta deposit lain, anda tap sekali dan semua nombor terus berubah. Percuma dengan Salesman Lite.",
-  heroTrust: ["Percuma dengan Lite", "Tak perlu kad kredit", "Nombor anda tersembunyi sampai anda tap"],
+  heroTrust: ["Tak perlu kad kredit", "Tiada caj automatik", "Nombor anda tersembunyi sampai anda tap"],
   liveCta: "Mula live percuma",
   premiumCta: "Cuba Premium percuma 7 hari",
   liteCta: "Mula percuma dengan Lite",
@@ -504,18 +540,39 @@ const MS = {
     },
     plansKicker: "Harga",
     plansTitle: "Mula percuma. Naik taraf bila dah untung.",
-    liteBullets: [
-      `Sampai ${LITE_CAP} kereta, page anda sendiri`,
-      "Live presentation untuk TikTok / FB live",
-      `Poster loan untuk ${LITE_POSTERS} kereta sebulan`,
-      "Pembeli melalui WhatsApp, chat dan booking",
-      "Alert lead dan senarai lead",
-    ],
-    premiumBullets: [
-      "Semua dalam Lite",
-      `Sampai ${PREMIUM_CAP} kereta, poster loan tanpa had`,
-      ...SALESMAN_PREMIUM_FEATURES_MS.slice(0, 4),
-    ],
+    offer: {
+      kicker: `Premium · ${TRIAL_DAYS} hari pertama percuma`,
+      title: "Bukan kalkulator saja. Ini app jualan penuh.",
+      price: `RM${PREMIUM_PRICE}`,
+      per: "/bulan",
+      perDay: `Lebih kurang RM${PER_DAY} sehari`,
+      parts: [
+        { title: "Page jualan anda", line: `Sampai ${PREMIUM_CAP} kereta dalam satu link, masuk marketplace sekali` },
+        { title: "Alat live + loan", line: "Live presentation, poster loan tanpa had, loan desk" },
+        { title: "Dashboard lead (CRM)", line: "Siapa perlu di-call hari ni, reminder follow up, komisen, handover" },
+      ],
+      billing: "Bayar bulan ke bulan. Tiada kontrak, tiada kad, tiada caj automatik.",
+      cta: `Mula ${TRIAL_DAYS} hari percuma`,
+      liteLink: "Atau mula percuma dengan Lite",
+    },
+    planCards: {
+      premium: {
+        billing: `Bayaran bulanan: bayar RM${PREMIUM_PRICE} setiap bulan untuk teruskan. Tiada kontrak, tiada caj automatik. Berhenti bayar, akaun balik ke Lite; kereta dan lead anda kekal.`,
+        groups: [
+          { h: "Page jualan anda", items: [`Sampai ${PREMIUM_CAP} kereta di page anda dan marketplace`, ...P_MS.page] },
+          { h: "Alat live + loan", items: ["Live presentation untuk TikTok / FB live", "Poster loan tanpa had", ...P_MS.tools.slice(0, 2)] },
+          { h: "Dashboard lead (CRM)", items: P_MS.crm.slice(0, 5) },
+        ],
+      },
+      lite: {
+        billing: "Percuma selamanya. Tak perlu kad kredit, tiada trial yang caj kemudian.",
+        groups: [
+          { h: "Page jualan anda", items: [`Sampai ${LITE_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking"] },
+          { h: "Alat live + loan", items: ["Live presentation untuk TikTok / FB live", `Poster loan untuk ${LITE_POSTERS} kereta sebulan`] },
+          { h: "Dashboard lead", items: ["Alert untuk lead baru", "Senarai lead ringkas dengan stage", "Views + tap WhatsApp untuk setiap kereta"] },
+        ],
+      },
+    },
     more: "Dan banyak lagi",
   },
   plans: {
@@ -545,6 +602,10 @@ const MS = {
     reviewed: "Page ini kali terakhir disemak",
     reviewedLabel: "Oktober 2026",
     items: [
+      { q: "Premium ni bayar sekali atau bulanan?",
+        a: `Bulanan. Premium RM${PREMIUM_PRICE} sebulan, dan ${TRIAL_DAYS} hari pertama percuma. Tiada kontrak dan kami tak pernah ambil kad, jadi tiada caj automatik: anda bayar bulan seterusnya bila nak teruskan. Kalau berhenti, akaun balik ke Lite yang percuma dan page, kereta serta lead anda kekal.` },
+      { q: "Saya dapat kalkulator ansuran saja ke?",
+        a: `Tidak. Kalkulator (Live presentation dan poster loan) cuma satu daripada tiga bahagian. Anda juga dapat page jualan sendiri dengan kereta anda, masuk marketplace sekali, dan dashboard lead: setiap pembeli yang hubungi anda masuk ke situ dengan stage. Premium tambah CRM penuh: siapa perlu di-call hari ni, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap, jejak komisen dan senarai semak handover.` },
       { q: "Boleh kira ansuran bulanan kereta masa live TikTok?",
         a: "Boleh, percuma dengan Salesman Lite. Live presentation tunjuk satu kereta satu skrin dengan nombor (#1, #2, #3) untuk penonton komen, harga, deposit, jumlah loan, kadar faedah dan ansuran bulanan untuk 9, 7 dan 5 tahun. Tukar deposit atau masukkan kadar flat bank, semua angka dikira semula. Budget mode pula senaraikan kereta anda yang muat dengan gaji atau bajet bulanan penonton. Semua angka ialah anggaran atas baki berkurangan (EIR) dan tertakluk kepada kelulusan bank. Maklumat contact anda hanya keluar bila anda tap untuk tunjuk." },
       { q: "Apa jadi lepas 7 hari percuma habis?",
