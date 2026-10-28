@@ -616,6 +616,49 @@ const CSS = `
   .sll-final-alt a:hover { color: #fff; }
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
+  /* Laptops and 1080p monitors (Chromebooks: ~1366x650 after the browser bar).
+     The centred ad layout is ~1300px tall, so the price and the button sat two
+     screens down. Here the hero goes two columns: words + button left, the
+     three phones + price sticker right, all inside one screen. */
+  @media (min-width: 1024px) and (max-height: 1000px) {
+    .sll-hero { padding: 8px 0 36px; }
+    .sll-langbar { margin-bottom: 0; }
+    .sll-hero-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 540px); column-gap: 36px; align-items: start; text-align: left;
+      grid-template-areas: "tag dev" "h1 dev" "sub dev" "lead dev" "parts dev" "cta dev" "badges note"; }
+    .sll-tag { grid-area: tag; justify-self: start; font-size: 12px; padding: 6px 16px; margin-bottom: 10px; }
+    .sll-h1 { grid-area: h1; font-size: clamp(44px, 4.6vw, 62px); white-space: nowrap; }
+    .sll-sub { grid-area: sub; font-size: 15px; letter-spacing: 0.26em; padding-left: 0; margin: 8px 0 10px; }
+    .sll-lead { grid-area: lead; font-size: 15px; margin: 0 0 16px; max-width: 520px; }
+    .sll-parts { grid-area: parts; grid-template-columns: 1fr; gap: 10px; margin: 0 0 18px; max-width: 520px; }
+    .sll-part { padding: 0; gap: 12px; }
+    .sll-part + .sll-part { border-left: 0; }
+    .sll-part-ic { width: 38px; height: 38px; border-radius: 11px; }
+    .sll-part-ic svg { width: 18px; height: 18px; }
+    .sll-part-n { width: 18px; height: 18px; font-size: 10px; top: -6px; right: -6px; }
+    .sll-part-copy strong { font-size: 15px; }
+    .sll-part-copy span { font-size: 13px; margin-top: 1px; }
+    .sll-devices { grid-area: dev; align-self: center; padding: 0; }
+    .sll-device { width: 178px; border-radius: 26px; padding: 6px; }
+    .sll-device img { border-radius: 20px; }
+    .sll-device-1 { width: 196px; }
+    .sll-device-0 { margin-right: -26px; }
+    .sll-device-2 { margin-left: -26px; }
+    .sll-sticker { right: -10px; bottom: 18px; padding: 10px 16px 9px; }
+    .sll-sticker-p { font-size: 32px; }
+    .sll-sticker-p small { font-size: 13px; }
+    .sll-shots-note { grid-area: note; margin: 8px 0 0; text-align: center; }
+    .sll-badges { grid-area: badges; justify-content: flex-start; gap: 6px 16px; margin: 12px 0 0; }
+    .sll-badges li { font-size: 12.5px; }
+    .sll-badge-ic { width: 20px; height: 20px; }
+    .sll-badge-ic svg { width: 12px; height: 12px; }
+    .sll-hero-cta { grid-area: cta; align-items: flex-start; gap: 6px; }
+    .sll-hero-cta .sll-btn-lg { font-size: 15px; padding: 13px 26px; }
+    .sll-hero-bill { font-size: 12.5px; margin: 2px 0 0; text-align: left; }
+    .sll-hero-lite { font-size: 13px; }
+    .sll-section, .sll-dark { padding: 56px 0; }
+    .sll-h2 { font-size: clamp(26px, 3.4vw, 38px); margin-bottom: 28px; }
+  }
+
   @media (max-width: 860px) {
     .sll-pay-steps { grid-template-columns: 1fr; gap: 16px; }
     .sll-plan { padding: 26px 20px; }
