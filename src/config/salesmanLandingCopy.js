@@ -85,7 +85,6 @@ const EN = {
   heroH1Lines: ["Monthly berapa?", "One tap.", "Every car."],
   heroIntro:
     "Live presentation builds the instalment poster for every car you list: price, deposit, loan, and the monthly over 9, 7 and 5 years. A viewer asks for a different deposit, you tap once and every number updates. Free on Salesman Lite.",
-  heroTrust: ["No credit card", "Nothing charged automatically", "Your number hidden until you tap"],
   liveCta: "Go live free",
   premiumCta: "Try Premium free for 7 days",
   liteCta: "Start free on Lite",
@@ -231,7 +230,6 @@ const EN = {
   // compare, features) are what the crawler render reads (api/og.js); the
   // SPA no longer prints them.
   short: {
-    heroLine: "Every car you list gets its monthly instalments worked out. A viewer asks, you tap.",
     painKicker: "Sound familiar?",
     pains: [
       "Working out the loan by hand every time a buyer asks.",
@@ -254,23 +252,32 @@ const EN = {
     },
     plansKicker: "Pricing",
     plansTitle: "Start free. Upgrade when it pays.",
-    // Hero offer (owner, 2026-10-28): two leads asked "is it monthly?" and took
-    // the product for a calculator. The offer names the price, the billing and
-    // the three parts (page, live + loan tools, CRM dashboard) above the fold.
+    // Hero (owner, 2026-10-28): laid out like a product-box ad. Two leads
+    // asked "is it monthly?" and took the product for a calculator, so the
+    // hero names the three parts with a real screen of each, the price, and
+    // how billing works. The screens are the real app on sample data.
     offer: {
-      kicker: `Premium · first ${TRIAL_DAYS} days free`,
-      title: "More than a calculator. Your whole sales desk.",
+      tag: "Ready to use",
+      h1a: "3 in 1",
+      h1b: "sales app",
+      sub: "For car salesmen",
+      line: "Work out the monthly on your live, get every lead in one dashboard, follow up until the deal closes. One app.",
+      parts: [
+        { title: "Live calculator", line: "Monthly, deposit and tenure, worked out in front of your viewers.", alt: "Live presentation: a car numbered #1 with its monthly instalment over 9, 7 and 5 years and deposit buttons" },
+        { title: "Dashboard", line: "Who to call today, page visits and WhatsApp taps.", alt: "Premium dashboard: leads waiting for follow-up, today's bookings, lead and WhatsApp tap counts" },
+        { title: "Leads", line: "Every buyer has a stage, never lost in your chats.", alt: "Lead pipeline: buyers sorted by stage, each with the car, price and a WhatsApp button" },
+      ],
+      shotsNote: "Real app screens, sample data.",
+      badges: ["No credit card", "No contract", "Nothing charged automatically", `Up to ${PREMIUM_CAP} cars`],
+      priceKicker: "Premium",
       price: `RM${PREMIUM_PRICE}`,
       per: "/month",
-      perDay: `About RM${PER_DAY} a day`,
-      parts: [
-        { title: "Your sales page", line: `Up to ${PREMIUM_CAP} cars on one link, on the marketplace too` },
-        { title: "Live + loan tools", line: "Live presentation, unlimited loan posters, loan desk" },
-        { title: "Lead dashboard (CRM)", line: "Who to call today, follow-up reminders, commission, handover" },
-      ],
-      billing: "Paid month by month. No contract, no card, nothing charged automatically.",
+      priceNote: `First ${TRIAL_DAYS} days free`,
+      billing: `Paid month by month. ${TRIAL_DAYS} days free, then RM${PREMIUM_PRICE} a month (about RM${PER_DAY} a day) if you keep it.`,
       cta: `Start ${TRIAL_DAYS} days free`,
       liteLink: "Or start free on Lite",
+      tryKicker: "Try it",
+      tryTitle: "Tap a deposit. Watch the monthly change.",
     },
     // Plan cards: the same three parts on both cards, so Lite vs Premium is
     // read part by part, and the billing sentence sits under the price.
@@ -383,7 +390,6 @@ const MS = {
   heroH1Lines: ["Monthly berapa?", "Satu tap.", "Semua kereta."],
   heroIntro:
     "Live presentation siapkan poster ansuran untuk setiap kereta yang anda listing: harga, deposit, loan, dan monthly untuk 9, 7 dan 5 tahun. Penonton minta deposit lain, anda tap sekali dan semua nombor terus berubah. Percuma dengan Salesman Lite.",
-  heroTrust: ["Tak perlu kad kredit", "Tiada caj automatik", "Nombor anda tersembunyi sampai anda tap"],
   liveCta: "Mula live percuma",
   premiumCta: "Cuba Premium percuma 7 hari",
   liteCta: "Mula percuma dengan Lite",
@@ -517,7 +523,6 @@ const MS = {
   },
 
   short: {
-    heroLine: "Setiap kereta yang anda listing dah siap kiraan ansuran. Penonton tanya, anda tap.",
     painKicker: "Bunyi macam anda?",
     pains: [
       "Kira loan manual setiap kali customer tanya.",
@@ -541,19 +546,27 @@ const MS = {
     plansKicker: "Harga",
     plansTitle: "Mula percuma. Naik taraf bila dah untung.",
     offer: {
-      kicker: `Premium · ${TRIAL_DAYS} hari pertama percuma`,
-      title: "Bukan kalkulator saja. Ini app jualan penuh.",
+      tag: "App siap guna",
+      h1a: "3 dalam 1",
+      h1b: "app jualan",
+      sub: "Untuk salesman kereta",
+      line: "Kira monthly masa live, semua lead masuk satu dashboard, follow up sampai deal. Satu app.",
+      parts: [
+        { title: "Kalkulator Live", line: "Monthly, deposit dan tempoh, dikira terus depan penonton.", alt: "Live presentation: kereta bernombor #1 dengan ansuran bulanan 9, 7 dan 5 tahun serta butang deposit" },
+        { title: "Dashboard", line: "Siapa perlu di-call hari ni, lawatan page dan tap WhatsApp.", alt: "Dashboard Premium: lead yang tunggu follow-up, booking hari ini, bilangan lead dan tap WhatsApp" },
+        { title: "Leads", line: "Setiap pembeli ada stage, tak hilang dalam chat.", alt: "Pipeline lead: pembeli disusun ikut stage, setiap satu dengan kereta, harga dan butang WhatsApp" },
+      ],
+      shotsNote: "Skrin app sebenar, data contoh.",
+      badges: ["Tak perlu kad kredit", "Tiada kontrak", "Tiada caj automatik", `Sampai ${PREMIUM_CAP} kereta`],
+      priceKicker: "Premium",
       price: `RM${PREMIUM_PRICE}`,
       per: "/bulan",
-      perDay: `Lebih kurang RM${PER_DAY} sehari`,
-      parts: [
-        { title: "Page jualan anda", line: `Sampai ${PREMIUM_CAP} kereta dalam satu link, masuk marketplace sekali` },
-        { title: "Alat live + loan", line: "Live presentation, poster loan tanpa had, loan desk" },
-        { title: "Dashboard lead (CRM)", line: "Siapa perlu di-call hari ni, reminder follow up, komisen, handover" },
-      ],
-      billing: "Bayar bulan ke bulan. Tiada kontrak, tiada kad, tiada caj automatik.",
+      priceNote: `${TRIAL_DAYS} hari pertama percuma`,
+      billing: `Bayar bulan ke bulan. ${TRIAL_DAYS} hari percuma, lepas tu RM${PREMIUM_PRICE} sebulan (lebih kurang RM${PER_DAY} sehari) kalau nak teruskan.`,
       cta: `Mula ${TRIAL_DAYS} hari percuma`,
       liteLink: "Atau mula percuma dengan Lite",
+      tryKicker: "Cuba sendiri",
+      tryTitle: "Tap deposit. Tengok monthly berubah.",
     },
     planCards: {
       premium: {

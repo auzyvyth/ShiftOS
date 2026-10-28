@@ -6,7 +6,7 @@ import { supabase } from "../supabaseClient";
 import { trackPageView } from "../utils/analytics";
 import {
   ArrowRight, Check, MessageCircle, Wallet, ChevronDown, Share2, ShieldCheck,
-  X as XIcon, ExternalLink, Languages, Calculator, Repeat, Clock, LayoutDashboard,
+  X as XIcon, ExternalLink, Languages, Calculator, Repeat, Clock, LayoutDashboard, Users,
 } from "lucide-react";
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
@@ -24,8 +24,8 @@ import {
 // beside it (the live presenter, a loan poster drawn by the real renderer, the
 // page, real screenshots). The long copy lives on for the crawler (api/og.js).
 // Audience (owner, 2026-10-06): agents who work out instalments on TikTok /
-// Facebook lives. The hero sells Live presentation (free on Lite, owner 2026-10-18);
-// Lite is the free way in, one button over. Every claim on this page must match
+// Facebook lives. The hero sells Premium as one app in three parts (owner,
+// 2026-10-28); Lite is the free way in, one link under the button. Every claim on this page must match
 // what the product does — see the fact list at the top of salesmanLandingCopy.js.
 // Malay first (owner, 2026-10-13): every visible string comes from
 // landingCopy(lang); this page's language is its own per-device switch.
@@ -60,8 +60,11 @@ const LITE_SIGNUP = "/salesman-onboarding/lite";
 // Index-matched to copy.short.pains.
 const PAIN_ICONS = [Calculator, Repeat, Clock];
 const FINAL_TRUST_ICONS = [Wallet, ShieldCheck, Share2];
-// Index-matched to copy.short.offer.parts and each planCards group:
-// page, live + loan tools, lead dashboard.
+// Hero: index-matched to copy.short.offer.parts and to the screenshots in
+// public/for-salesmen (hero-<key>-<lang>.webp, the real app on sample data).
+const HERO_ICONS = [Calculator, LayoutDashboard, Users];
+const HERO_SHOTS = ["calc", "dash", "leads"];
+// Index-matched to each planCards group: page, live + loan tools, lead dashboard.
 const PART_ICONS = [Share2, Calculator, LayoutDashboard];
 
 // The plan card body: the same three parts on both cards.
@@ -147,7 +150,9 @@ export default function SalesmanLiteLanding() {
       <MarketplaceHeader hideAnnouncement />
 
       <main className="sll" lang={t.htmlLang}>
-        {/* ── Hero: Live presentation ── */}
+        {/* ── Hero (owner, 2026-10-28): laid out like a product-box ad. The
+            three parts, a real screen of each, the price and how it is billed,
+            so nobody reads the product as "a calculator". ── */}
         <section className="sll-hero">
           <div className="sll-wrap sll-langbar">
             <button type="button" className="sll-lang" onClick={switchLang} lang={t.switchTo}>
@@ -155,54 +160,66 @@ export default function SalesmanLiteLanding() {
             </button>
           </div>
           <div className="sll-wrap sll-hero-inner">
-            <div className="sll-hero-copy">
-              <span className="sll-eyebrow">{t.heroEyebrow}</span>
-              <h1 className="sll-h1">
-                {t.heroH1Lines.map((line, i) => {
-                  const last = i === t.heroH1Lines.length - 1;
-                  return (
-                    <React.Fragment key={line}>
-                      {last ? <span className="sll-red">{line}</span> : line}
-                      {!last && <br />}
-                    </React.Fragment>
-                  );
-                })}
-              </h1>
-              <p className="sll-lead">{s.heroLine}</p>
+            <span className="sll-tag">{s.offer.tag}</span>
+            <h1 className="sll-h1">
+              {s.offer.h1a}<br /><span className="sll-red">{s.offer.h1b}</span>
+            </h1>
+            <p className="sll-sub">{s.offer.sub}</p>
+            <p className="sll-lead">{s.offer.line}</p>
 
-              {/* The offer, above the fold (owner, 2026-10-28): price, how it is
-                  billed, and the three parts, so nobody reads "a calculator". */}
-              <div className="sll-offer">
-                <div className="sll-offer-top">
-                  <span className="sll-offer-kicker">{s.offer.kicker}</span>
-                  <span className="sll-offer-price">{s.offer.price}<span>{s.offer.per}</span></span>
-                </div>
-                <p className="sll-offer-title">{s.offer.title}</p>
-                <ol className="sll-offer-parts">
-                  {s.offer.parts.map((part, i) => {
-                    const Icon = PART_ICONS[i] || Check;
-                    return (
-                      <li key={part.title}>
-                        <span className="sll-offer-ic"><Icon size={16} /></span>
-                        <span><strong>{part.title}</strong><span className="sll-offer-line">{part.line}</span></span>
-                      </li>
-                    );
-                  })}
-                </ol>
-                <p className="sll-offer-bill">{s.offer.billing} {s.offer.perDay}.</p>
-                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">
-                  {s.offer.cta} <ArrowRight size={17} />
-                </Link>
-                <Link to={LITE_SIGNUP} className="sll-offer-lite">{s.offer.liteLink}</Link>
+            <ol className="sll-parts">
+              {s.offer.parts.map((part, i) => {
+                const Icon = HERO_ICONS[i];
+                return (
+                  <li key={part.title} className="sll-part">
+                    <span className="sll-part-ic"><Icon size={22} /><span className="sll-part-n">{i + 1}</span></span>
+                    <span className="sll-part-copy">
+                      <strong>{part.title}</strong>
+                      <span>{part.line}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+
+            <div className="sll-devices">
+              {HERO_SHOTS.map((k, i) => (
+                <figure key={k} className={`sll-device sll-device-${i}`}>
+                  <img src={`/for-salesmen/hero-${k}-${lang}.webp`} alt={s.offer.parts[i].alt}
+                    width={600} height={1068} decoding="async" fetchPriority={i === 1 ? "high" : "auto"} />
+                </figure>
+              ))}
+              <div className="sll-sticker" aria-label={`${s.offer.priceKicker} ${s.offer.price}${s.offer.per}, ${s.offer.priceNote}`}>
+                <span className="sll-sticker-k">{s.offer.priceKicker}</span>
+                <span className="sll-sticker-p">{s.offer.price}<small>{s.offer.per}</small></span>
+                <span className="sll-sticker-n">{s.offer.priceNote}</span>
               </div>
-              <p className="sll-microtrust">
-                {t.heroTrust.map((x) => (
-                  <span key={x} className="sll-microtrust-item"><Check size={14} /> {x}</span>
-                ))}
-              </p>
             </div>
+            <p className="sll-shots-note">{s.offer.shotsNote}</p>
 
-            {/* The real Live presentation, real cars (LiveDemo.jsx) */}
+            <ul className="sll-badges">
+              {s.offer.badges.map((x) => (
+                <li key={x}><span className="sll-badge-ic"><Check size={15} /></span>{x}</li>
+              ))}
+            </ul>
+
+            <div className="sll-hero-cta">
+              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
+                {s.offer.cta} <ArrowRight size={18} />
+              </Link>
+              <p className="sll-hero-bill">{s.offer.billing}</p>
+              <Link to={LITE_SIGNUP} className="sll-hero-lite">{s.offer.liteLink}</Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Try it: the real Live presentation, real cars (LiveDemo.jsx) ── */}
+        <section className="sll-section sll-try">
+          <div className="sll-wrap sll-try-inner">
+            <div>
+              <p className="sll-kicker">{s.offer.tryKicker}</p>
+              <h2 className="sll-h2 sll-try-h">{s.offer.tryTitle}</h2>
+            </div>
             <div className="sll-hero-mock">
               <LiveDemo copy={t.demo} lang={lang} />
             </div>
@@ -393,19 +410,52 @@ const CSS = `
   .sll-red { color: #dc2626; }
 
   /* Language switch: page-local (BM first), top of the hero */
-  .sll-langbar { display: flex; justify-content: flex-end; margin-bottom: 28px; }
+  .sll-langbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
   .sll-lang { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 14px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; color: #374151; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: border-color .15s, color .15s; }
   .sll-lang:hover { border-color: #0a0a0a; color: #0a0a0a; }
   .sll-lang svg { flex-shrink: 0; }
 
-  /* Hero */
-  .sll-hero { padding: 28px 0 60px; border-bottom: 1px solid #eceaea; }
-  .sll-hero-inner { display: grid; grid-template-columns: 1fr minmax(320px, 400px); gap: 56px; align-items: start; }
-  .sll-eyebrow { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7280; margin-bottom: 22px; }
-  .sll-h1 { font-size: clamp(36px, 6vw, 64px); font-weight: 900; line-height: 0.98; letter-spacing: -0.03em; margin: 0 0 22px; }
-  .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.65; color: #4b5563; max-width: 580px; margin: 0 0 30px; }
-  .sll-cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-  .sll-cta-center { justify-content: center; }
+  /* Hero: product-box layout */
+  .sll-hero { padding: 20px 0 56px; border-bottom: 1px solid #eceaea; background: linear-gradient(#fff 55%, #f5f5f4); overflow: hidden; }
+  .sll-hero-inner { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .sll-tag { display: inline-block; background: #dc2626; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 20px; border-radius: 999px; margin-bottom: 14px; }
+  .sll-h1 { font-size: clamp(46px, 8vw, 88px); font-weight: 900; line-height: 0.95; letter-spacing: -0.035em; text-transform: uppercase; margin: 0; }
+  .sll-sub { font-size: clamp(14px, 2.2vw, 22px); font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; margin: 12px 0 14px; padding-left: 0.32em; }
+  .sll-lead { font-size: clamp(15px, 2vw, 18px); line-height: 1.55; color: #374151; max-width: 640px; margin: 0 0 28px; }
+  .sll-parts { list-style: none; padding: 0; margin: 0 0 30px; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; max-width: 940px; }
+  .sll-part { display: flex; align-items: flex-start; gap: 14px; text-align: left; padding: 0 22px; }
+  .sll-part + .sll-part { border-left: 1px solid #e5e7eb; }
+  .sll-part-ic { position: relative; width: 50px; height: 50px; border-radius: 13px; background: #0a0a0a; color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-part-n { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; }
+  .sll-part-copy strong { display: block; font-size: 18px; font-weight: 800; line-height: 1.2; color: #0a0a0a; }
+  .sll-part-copy span { display: block; font-size: 14px; line-height: 1.4; color: #4b5563; margin-top: 3px; }
+
+  /* Three real screens in phone frames; the middle one sits in front */
+  .sll-devices { position: relative; display: flex; justify-content: center; align-items: flex-end; width: 100%; max-width: 880px; padding: 10px 0 0; }
+  .sll-device { margin: 0; flex: 0 0 auto; width: 250px; border-radius: 34px; padding: 9px; background: #0a0a0a; box-shadow: 0 28px 60px rgba(10,10,10,0.22); }
+  .sll-device img { display: block; width: 100%; height: auto; border-radius: 26px; }
+  .sll-device-0, .sll-device-2 { transform: scale(0.88); transform-origin: bottom center; z-index: 1; }
+  .sll-device-0 { margin-right: -34px; }
+  .sll-device-2 { margin-left: -34px; }
+  .sll-device-1 { z-index: 2; width: 270px; }
+  .sll-sticker { position: absolute; right: 0; bottom: 40px; z-index: 3; display: flex; flex-direction: column; align-items: center; background: #dc2626; color: #fff; padding: 14px 22px 12px; border-radius: 16px; transform: rotate(-6deg); box-shadow: 0 16px 36px rgba(220,38,38,0.35); line-height: 1; }
+  .sll-sticker-k { font-size: 12px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.9; }
+  .sll-sticker-p { font-size: 44px; font-weight: 900; letter-spacing: -0.03em; margin: 6px 0 4px; }
+  .sll-sticker-p small { font-size: 16px; font-weight: 700; letter-spacing: 0; }
+  .sll-sticker-n { font-size: 12.5px; font-weight: 700; }
+  .sll-shots-note { font-size: 12px; color: #9ca3af; margin: 14px 0 22px; }
+
+  .sll-badges { list-style: none; padding: 0; margin: 0 0 26px; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 24px; }
+  .sll-badges li { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: #1f2733; }
+  .sll-badge-ic { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid #0a0a0a; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-hero-cta { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .sll-hero-bill { font-size: 13.5px; color: #4b5563; margin: 4px 0 0; max-width: 460px; line-height: 1.5; }
+  .sll-hero-lite { font-size: 14px; font-weight: 600; color: #374151; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
+  .sll-hero-lite:hover { color: #0a0a0a; text-decoration-color: #0a0a0a; }
+
+  /* Try it: the interactive presenter, under the hero */
+  .sll-try-inner { display: grid; grid-template-columns: 1fr minmax(320px, 400px); gap: 56px; align-items: center; }
+  .sll-try-h { margin-bottom: 0; }
   .sll-btn { display: inline-flex; align-items: center; gap: 8px; font-family: inherit; font-size: 15px; font-weight: 700; padding: 14px 26px; border-radius: 10px; text-decoration: none; cursor: pointer; border: none; transition: transform .15s, box-shadow .15s, background .15s; }
   .sll-btn:hover { transform: translateY(-1px); }
   .sll-btn-lg { font-size: 16px; padding: 16px 32px; }
@@ -421,22 +471,6 @@ const CSS = `
 
   .sll-band-line { background: #0a0a0a; color: #fff; padding: 15px 0; font-size: 14px; font-weight: 500; text-align: center; }
   .sll-band-line strong { color: #fff; font-weight: 800; }
-
-  /* Hero offer card */
-  .sll-offer { max-width: 560px; border: 1.5px solid #0a0a0a; border-radius: 16px; padding: 20px 20px 16px; background: #fff; box-shadow: 0 18px 44px rgba(10,10,10,0.08); }
-  .sll-offer-top { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
-  .sll-offer-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #dc2626; }
-  .sll-offer-price { font-size: 30px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
-  .sll-offer-price span { font-size: 14px; font-weight: 600; color: #6b7280; letter-spacing: 0; }
-  .sll-offer-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.25; margin: 0 0 14px; }
-  .sll-offer-parts { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 10px; }
-  .sll-offer-parts li { display: flex; align-items: flex-start; gap: 12px; }
-  .sll-offer-parts strong { display: block; font-size: 15px; font-weight: 700; color: #0a0a0a; }
-  .sll-offer-line { display: block; font-size: 13.5px; line-height: 1.4; color: #6b7280; }
-  .sll-offer-ic { width: 32px; height: 32px; border-radius: 9px; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .sll-offer-bill { font-size: 13px; line-height: 1.5; color: #374151; background: #f5f5f4; border-radius: 10px; padding: 10px 12px; margin: 0 0 14px; }
-  .sll-offer-lite { display: block; text-align: center; margin-top: 12px; font-size: 14px; font-weight: 600; color: #374151; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #d1d5db; }
-  .sll-offer-lite:hover { color: #0a0a0a; text-decoration-color: #0a0a0a; }
 
   /* Hero picture: the real Live presentation (LiveDemo.jsx) */
   .sll-hero-mock { min-width: 0; }
@@ -543,14 +577,29 @@ const CSS = `
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
-    .sll-steps, .sll-plans, .sll-pains, .sll-feat, .sll-feat-flip, .sll-hero-inner { grid-template-columns: 1fr; }
+    .sll-steps, .sll-plans, .sll-pains, .sll-feat, .sll-feat-flip, .sll-try-inner { grid-template-columns: 1fr; }
+    .sll-parts { grid-template-columns: 1fr; gap: 14px; max-width: 420px; margin-bottom: 24px; }
+    .sll-part { padding: 0; }
+    .sll-part + .sll-part { border-left: 0; }
+    .sll-part-ic { width: 44px; height: 44px; }
+    .sll-part-copy strong { font-size: 16px; }
+    .sll-device { width: 37%; border-radius: 22px; padding: 5px; }
+    .sll-device img { border-radius: 18px; }
+    .sll-device-1 { width: 42%; }
+    .sll-device-0 { margin-right: -6%; }
+    .sll-device-2 { margin-left: -6%; }
+    .sll-sticker { right: -4px; bottom: -6px; padding: 9px 13px 8px; border-radius: 12px; }
+    .sll-sticker-p { font-size: 28px; }
+    .sll-sticker-p small { font-size: 12px; }
+    .sll-sticker-k, .sll-sticker-n { font-size: 10.5px; }
+    .sll-shots-note { margin-top: 18px; }
+    .sll-try-inner { gap: 28px; }
     .sll-feat { gap: 28px; padding: 8px 0 36px; }
     .sll-feat + .sll-feat { padding-top: 36px; }
     .sll-feat-flip .sll-feat-copy, .sll-feat-flip .sll-feat-pic { order: 0; }
     .sll-feat-line { font-size: 16px; }
-    .sll-hero { padding: 16px 0 48px; }
+    .sll-hero { padding: 12px 0 44px; }
     .sll-langbar { margin-bottom: 24px; }
-    .sll-hero-inner { gap: 36px; }
     .sll-hero-mock { max-width: 400px; width: 100%; margin: 0 auto; }
     .sll-phone { max-width: 340px; margin: 0 auto; }
     /* Three items in one wrapped inline row read as clanky on narrow screens
