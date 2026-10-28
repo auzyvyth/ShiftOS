@@ -1058,6 +1058,11 @@ export default function CarDetailPage() {
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // A lookup that failed or timed out is NOT "this car is gone" (2026-10-28):
+  // the DB stalled, a live car read "no longer available", and the seller
+  // thought their listing was deleted. Only a clean empty answer is notFound.
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [simBuckets, setSimBuckets] = useState(null);
   // The mobile and desktop sections are display:none in the other layout, and
   // a display:none node never intersects — so both are registered and whichever
@@ -1315,6 +1320,8 @@ export default function CarDetailPage() {
     let alive = true;
     async function load() {
       setLoading(true);
+      setNotFound(false);
+      setLoadError(false);
       // The car paints before the seller lookups land (see below), so a
       // previous car's seller must never sit beside this one.
       setDealer(null);
@@ -1323,9 +1330,21 @@ export default function CarDetailPage() {
       // Usually already in flight: the card the buyer tapped started it on
       // pointer-down (src/utils/carPrefetch.js). Same fields, same slug-then-id
       // lookup as before, through publicClient with a time cap.
-      const { data: carData, error } = await fetchCarRow(slug);
+      let { data: carData, error } = await fetchCarRow(slug);
+      // One quiet retry: a stall usually clears in a few seconds, and failures
+      // are not cached, so this goes back to the database.
+      if (error && alive) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (!alive) return;
+        ({ data: carData, error } = await fetchCarRow(slug));
+      }
       if (!alive) return;
-      if (error || !carData) {
+      if (error) {
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
+      if (!carData) {
         setNotFound(true);
         setLoading(false);
         return;
@@ -1461,7 +1480,7 @@ export default function CarDetailPage() {
     }
     load();
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, retryKey]);
 
   useCarSchema(car, dealer);
 
@@ -1887,6 +1906,50 @@ export default function CarDetailPage() {
 
   /* ── early returns ── */
   if (loading) return <Skeleton preview={getCarPreview(slug)} />;
+  if (loadError)
+    return (
+      <div
+        style={{
+          background: "#060c14",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0 16px",
+          textAlign: "center",
+          fontFamily: "var(--xd-font-body)",
+        }}
+      >
+        <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
+          {"We couldn't load this car just now. Please try again."}
+        </p>
+        <button
+          type="button"
+          onClick={() => setRetryKey((k) => k + 1)}
+          style={{
+            background: "#dc2626",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            marginBottom: 16,
+            fontFamily: "inherit",
+          }}
+        >
+          Try again
+        </button>
+        <Link
+          to="/showroom"
+          style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
+        >
+          ← Browse all cars
+        </Link>
+      </div>
+    );
   if (notFound)
     return (
       <div
