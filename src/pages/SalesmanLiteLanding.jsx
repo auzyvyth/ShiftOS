@@ -64,18 +64,18 @@ const FINAL_TRUST_ICONS = [Wallet, ShieldCheck, Share2];
 // public/for-salesmen (hero-<key>-<lang>.webp, the real app on sample data).
 const HERO_ICONS = [Calculator, LayoutDashboard, Users];
 const HERO_SHOTS = ["calc", "dash", "leads"];
-// Index-matched to each planCards group: page, live + loan tools, lead dashboard.
-const PART_ICONS = [Share2, Calculator, LayoutDashboard];
-
-// The plan card body: the same three parts on both cards.
+// The plan card body: the hero's three numbered parts, same icons, so the
+// cards read as the same "3 in 1" and Lite vs Premium compares part by part.
 function PlanGroups({ groups }) {
   return (
     <div className="sll-plan-groups">
       {groups.map((g, i) => {
-        const Icon = PART_ICONS[i] || Check;
+        const Icon = HERO_ICONS[i] || Check;
         return (
           <div key={g.h} className="sll-plan-group">
-            <p className="sll-plan-gh"><Icon size={15} /> {g.h}</p>
+            <p className="sll-plan-gh">
+              <span className="sll-plan-gic"><Icon size={15} /><span>{i + 1}</span></span> {g.h}
+            </p>
             <ul className="sll-plan-list">
               {g.items.map((x) => (
                 <li key={x}><Check size={15} className="sll-tick" /> {x}</li>
@@ -114,6 +114,7 @@ export default function SalesmanLiteLanding() {
   const [lang, setLang] = useState(readLang);
   const t = landingCopy(lang);
   const s = t.short;
+  const pc = s.planCards;
   const switchLang = () => { const next = t.switchTo; saveLang(next); setLang(next); };
   const reveal = reduceMotion
     ? {}
@@ -329,32 +330,51 @@ export default function SalesmanLiteLanding() {
           </div>
         </section>
 
-        {/* ── Lite vs Premium ── */}
-        <section className="sll-section sll-section-alt">
+        {/* ── Plans: Premium first, then Lite, then how paying works ── */}
+        <section className="sll-section sll-section-alt" id="pricing">
           <div className="sll-wrap">
             <p className="sll-kicker">{s.plansKicker}</p>
             <h2 className="sll-h2">{s.plansTitle}</h2>
             <div className="sll-plans">
-              <div className="sll-plan sll-plan-alt">
+              <div className="sll-plan sll-plan-pro">
+                <span className="sll-plan-badge">{pc.premium.badge}</span>
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.premiumName}</span>
                   <span className="sll-plan-price">RM{PLAN_CONFIG.salesman_full.price}<span>{t.plans.premiumPer}</span></span>
-                  <span className="sll-plan-note">{t.plans.premiumNote}</span>
-                  <p className="sll-plan-bill">{s.planCards.premium.billing}</p>
+                  <span className="sll-plan-bill">{pc.premium.billing}</span>
                 </div>
-                <PlanGroups groups={s.planCards.premium.groups} />
-                <p className="sll-plan-more">{s.more}</p>
-                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">{t.premiumCta}</Link>
+                <PlanGroups groups={pc.premium.groups} />
+                <div className="sll-plan-more">
+                  <p>{pc.premium.moreLabel}</p>
+                  <ul>{pc.premium.more.map((x) => <li key={x}>{x}</li>)}</ul>
+                </div>
+                <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-block">
+                  {s.offer.cta} <ArrowRight size={17} />
+                </Link>
               </div>
               <div className="sll-plan">
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.liteName}</span>
                   <span className="sll-plan-price">RM0<span>{t.plans.litePer}</span></span>
-                  <p className="sll-plan-bill">{s.planCards.lite.billing}</p>
+                  <span className="sll-plan-bill">{pc.lite.billing}</span>
                 </div>
-                <PlanGroups groups={s.planCards.lite.groups} />
+                <PlanGroups groups={pc.lite.groups} />
                 <Link to={LITE_SIGNUP} className="sll-btn sll-btn-dark sll-btn-block">{t.liteCta}</Link>
               </div>
+            </div>
+
+            <div className="sll-pay">
+              <p className="sll-pay-k">{pc.payKicker}</p>
+              <ol className="sll-pay-steps">
+                {pc.paySteps.map((st, i) => (
+                  <li key={st.when} className="sll-pay-step">
+                    <span className="sll-pay-n">{i + 1}</span>
+                    <span className="sll-pay-when">{st.when}</span>
+                    <strong>{st.title}</strong>
+                    <span className="sll-pay-line">{st.line}</span>
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
         </section>
@@ -504,7 +524,6 @@ const CSS = `
   .sll-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
   .sll-chips li { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #1f2733; background: #f5f5f4; border: 1px solid #eceaea; border-radius: 999px; padding: 7px 13px; }
   .sll-chips svg { color: #dc2626; flex-shrink: 0; }
-  .sll-plan-more { font-size: 14px; color: #6b7280; font-weight: 600; margin: -8px 0 20px 24px; }
 
   /* Last-updated stamp (FAQ) */
   .sll-updated { font-size: 12.5px; color: #9ca3af; margin: 0 0 28px; }
@@ -542,23 +561,44 @@ const CSS = `
 
 
 
-  /* Plans */
-  .sll-plans { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
-  .sll-plan { border: 1px solid #eceaea; border-radius: 18px; padding: 30px 28px; display: flex; flex-direction: column; background: #fff; }
-  .sll-plan-alt { border: 1.5px solid #0a0a0a; }
-  .sll-plan-head { margin-bottom: 22px; }
-  .sll-plan-name { display: block; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; }
-  .sll-plan-price { font-size: 40px; font-weight: 900; letter-spacing: -0.03em; }
-  .sll-plan-note { display: block; font-size: 13px; font-weight: 700; color: #dc2626; margin-top: 6px; }
-  .sll-plan-price span { font-size: 15px; font-weight: 600; color: #9ca3af; letter-spacing: 0; }
-  .sll-plan-bill { font-size: 13px; line-height: 1.5; color: #4b5563; margin: 12px 0 0; }
-  .sll-plan-groups { flex: 1; margin-bottom: 20px; }
-  .sll-plan-group + .sll-plan-group { border-top: 1px solid #f0efee; padding-top: 12px; margin-top: 4px; }
-  .sll-plan-gh { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #0a0a0a; margin: 0 0 2px; }
-  .sll-plan-gh svg { color: #dc2626; }
-  .sll-plan-list { list-style: none; padding: 0; margin: 0 0 8px; }
-  .sll-plan-list li { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; color: #1f2733; padding: 7px 0; line-height: 1.4; }
+  /* Plans: Premium is the dark card (the hero's phone frames), Lite white */
+  .sll-plans { display: grid; grid-template-columns: 1.1fr 1fr; gap: 18px; align-items: start; }
+  .sll-plan { position: relative; border: 1px solid #e5e7eb; border-radius: 22px; padding: 30px 28px; display: flex; flex-direction: column; background: #fff; }
+  .sll-plan-pro { background: #0a0a0a; border-color: #0a0a0a; color: #fff; box-shadow: 0 28px 60px rgba(10,10,10,0.22); }
+  .sll-plan-badge { position: absolute; top: -14px; right: 22px; background: #dc2626; color: #fff; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; padding: 8px 14px; border-radius: 10px; transform: rotate(-4deg); box-shadow: 0 10px 24px rgba(220,38,38,0.35); }
+  .sll-plan-head { margin-bottom: 18px; }
+  .sll-plan-name { display: block; font-size: 13px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280; margin-bottom: 6px; }
+  .sll-plan-pro .sll-plan-name { color: rgba(255,255,255,0.6); }
+  .sll-plan-price { display: block; font-size: 52px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; }
+  .sll-plan-price span { font-size: 17px; font-weight: 700; color: #9ca3af; letter-spacing: 0; }
+  .sll-plan-bill { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 700; color: #1f2733; background: #f3f4f6; border-radius: 999px; padding: 6px 12px; }
+  .sll-plan-pro .sll-plan-bill { color: #fff; background: rgba(255,255,255,0.1); }
+  .sll-plan-groups { flex: 1; margin-bottom: 18px; }
+  .sll-plan-group { padding: 14px 0 6px; border-top: 1px solid #f0efee; }
+  .sll-plan-pro .sll-plan-group { border-top-color: rgba(255,255,255,0.1); }
+  .sll-plan-gh { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; margin: 0 0 4px; }
+  .sll-plan-gic { position: relative; width: 30px; height: 30px; border-radius: 9px; background: #0a0a0a; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sll-plan-gic span { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; border-radius: 50%; background: #dc2626; color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .sll-plan-pro .sll-plan-gic { background: #fff; color: #0a0a0a; }
+  .sll-plan-list { list-style: none; padding: 0; margin: 0 0 6px; }
+  .sll-plan-list li { display: flex; align-items: flex-start; gap: 9px; font-size: 14.5px; color: #1f2733; padding: 5px 0; line-height: 1.4; }
+  .sll-plan-pro .sll-plan-list li { color: rgba(255,255,255,0.88); }
   .sll-tick { color: #dc2626; flex-shrink: 0; margin-top: 2px; }
+  .sll-plan-pro .sll-tick { color: #f87171; }
+  .sll-plan-more { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; margin-bottom: 22px; }
+  .sll-plan-more p { font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.55); margin: 0 0 10px; }
+  .sll-plan-more ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+  .sll-plan-more li { font-size: 12.5px; font-weight: 600; color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.08); border-radius: 999px; padding: 6px 11px; }
+
+  /* How paying works: three steps under the cards */
+  .sll-pay { margin-top: 26px; background: #fff; border: 1px solid #e5e7eb; border-radius: 22px; padding: 24px 26px; }
+  .sll-pay-k { font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #dc2626; margin: 0 0 16px; }
+  .sll-pay-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .sll-pay-step { position: relative; padding-left: 44px; }
+  .sll-pay-n { position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 50%; background: #0a0a0a; color: #fff; font-size: 14px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .sll-pay-when { display: block; font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; }
+  .sll-pay-step strong { display: block; font-size: 18px; font-weight: 800; margin: 2px 0 4px; }
+  .sll-pay-line { display: block; font-size: 14px; line-height: 1.45; color: #4b5563; }
 
   /* FAQ */
   .sll-faq-sec { background: #fafafa; border-top: 1px solid #eceaea; }
@@ -577,6 +617,9 @@ const CSS = `
   .sll-final .sll-microtrust { color: rgba(255,255,255,0.5); justify-content: center; }
 
   @media (max-width: 860px) {
+    .sll-pay-steps { grid-template-columns: 1fr; gap: 16px; }
+    .sll-plan { padding: 26px 20px; }
+    .sll-plan-price { font-size: 44px; }
     .sll-steps, .sll-plans, .sll-pains, .sll-feat, .sll-feat-flip, .sll-try-inner { grid-template-columns: 1fr; }
     .sll-parts { grid-template-columns: 1fr; gap: 14px; max-width: 420px; margin-bottom: 24px; }
     .sll-part { padding: 0; }

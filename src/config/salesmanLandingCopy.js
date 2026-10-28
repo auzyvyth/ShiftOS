@@ -251,7 +251,7 @@ const EN = {
       chips: ["Your own page", "On the marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Pricing",
-    plansTitle: "Start free. Upgrade when it pays.",
+    plansTitle: "One price. Paid month by month.",
     // Hero (owner, 2026-10-28): laid out like a product-box ad. Two leads
     // asked "is it monthly?" and took the product for a calculator, so the
     // hero names the three parts with a real screen of each, the price, and
@@ -279,27 +279,36 @@ const EN = {
       tryKicker: "Try it",
       tryTitle: "Tap a deposit. Watch the monthly change.",
     },
-    // Plan cards: the same three parts on both cards, so Lite vs Premium is
-    // read part by part, and the billing sentence sits under the price.
+    // Plan cards (owner, 2026-10-28): the hero's three parts on both cards,
+    // so Lite vs Premium reads part by part, then how paying works in three
+    // steps, because two leads could not tell whether Premium is monthly.
     planCards: {
       premium: {
-        billing: `Billed monthly: pay RM${PREMIUM_PRICE} each month to keep it. No contract, nothing charged automatically. Stop paying and you go back to Lite; your cars and leads stay.`,
+        badge: `${TRIAL_DAYS} days free`,
+        billing: "Paid month by month · DuitNow QR",
         groups: [
-          { h: "Your sales page", items: [`Up to ${PREMIUM_CAP} cars on your page and the marketplace`, ...P_EN.page] },
-          { h: "Live + loan tools", items: ["Live presentation for TikTok / FB lives", "Unlimited loan posters", ...P_EN.tools.slice(0, 2)] },
-          { h: "Lead dashboard (CRM)", items: P_EN.crm.slice(0, 5) },
+          { h: "Live calculator", items: ["Live presentation for TikTok / FB lives", "Unlimited loan posters", ...P_EN.calc] },
+          { h: "Dashboard", items: P_EN.dash },
+          { h: "Leads", items: [`Up to ${PREMIUM_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking", ...P_EN.leads] },
         ],
+        moreLabel: "Also in Premium",
+        more: P_EN.more,
       },
       lite: {
-        billing: "Free forever. No credit card, no trial that bills you later.",
+        billing: "Free forever · no card",
         groups: [
-          { h: "Your sales page", items: [`Up to ${LITE_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking"] },
-          { h: "Live + loan tools", items: ["Live presentation for TikTok / FB lives", `Loan posters for ${LITE_POSTERS} cars a month`] },
-          { h: "Lead dashboard", items: ["Alerts on new leads", "A simple lead list with stages", "Views + WhatsApp taps for each car"] },
+          { h: "Live calculator", items: ["Live presentation for TikTok / FB lives", `Loan posters for ${LITE_POSTERS} cars a month`] },
+          { h: "Dashboard", items: ["Alerts on new leads", "Views + WhatsApp taps for each car"] },
+          { h: "Leads", items: [`Up to ${LITE_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking", "A simple lead list with stages"] },
         ],
       },
+      payKicker: "How paying works",
+      paySteps: [
+        { when: `Day 1 to ${TRIAL_DAYS}`, title: "Free", line: "All of Premium. No card asked." },
+        { when: `Day ${TRIAL_DAYS + 1}`, title: `Pay RM${PREMIUM_PRICE}`, line: "Scan the DuitNow QR in the app and WhatsApp us. Premium runs another month." },
+        { when: "Every month after", title: "Pay again, or stop", line: "Not paid? You go back to free Lite. Your page, cars and leads stay." },
+      ],
     },
-    more: "And more",
   },
   plans: {
     kicker: "Pick your plan",
@@ -544,7 +553,7 @@ const MS = {
       chips: ["Page anda sendiri", "Masuk marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Harga",
-    plansTitle: "Mula percuma. Naik taraf bila dah untung.",
+    plansTitle: "Satu harga. Bayar bulan ke bulan.",
     offer: {
       tag: "App siap guna",
       h1a: "3 dalam 1",
@@ -570,23 +579,31 @@ const MS = {
     },
     planCards: {
       premium: {
-        billing: `Bayaran bulanan: bayar RM${PREMIUM_PRICE} setiap bulan untuk teruskan. Tiada kontrak, tiada caj automatik. Berhenti bayar, akaun balik ke Lite; kereta dan lead anda kekal.`,
+        badge: `${TRIAL_DAYS} hari percuma`,
+        billing: "Bayar bulan ke bulan · DuitNow QR",
         groups: [
-          { h: "Page jualan anda", items: [`Sampai ${PREMIUM_CAP} kereta di page anda dan marketplace`, ...P_MS.page] },
-          { h: "Alat live + loan", items: ["Live presentation untuk TikTok / FB live", "Poster loan tanpa had", ...P_MS.tools.slice(0, 2)] },
-          { h: "Dashboard lead (CRM)", items: P_MS.crm.slice(0, 5) },
+          { h: "Kalkulator Live", items: ["Live presentation untuk TikTok / FB live", "Poster loan tanpa had", ...P_MS.calc] },
+          { h: "Dashboard", items: P_MS.dash },
+          { h: "Leads", items: [`Sampai ${PREMIUM_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking", ...P_MS.leads] },
         ],
+        moreLabel: "Juga dalam Premium",
+        more: P_MS.more,
       },
       lite: {
-        billing: "Percuma selamanya. Tak perlu kad kredit, tiada trial yang caj kemudian.",
+        billing: "Percuma selamanya · tak perlu kad",
         groups: [
-          { h: "Page jualan anda", items: [`Sampai ${LITE_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking"] },
-          { h: "Alat live + loan", items: ["Live presentation untuk TikTok / FB live", `Poster loan untuk ${LITE_POSTERS} kereta sebulan`] },
-          { h: "Dashboard lead", items: ["Alert untuk lead baru", "Senarai lead ringkas dengan stage", "Views + tap WhatsApp untuk setiap kereta"] },
+          { h: "Kalkulator Live", items: ["Live presentation untuk TikTok / FB live", `Poster loan untuk ${LITE_POSTERS} kereta sebulan`] },
+          { h: "Dashboard", items: ["Alert untuk lead baru", "Views + tap WhatsApp untuk setiap kereta"] },
+          { h: "Leads", items: [`Sampai ${LITE_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking", "Senarai lead ringkas dengan stage"] },
         ],
       },
+      payKicker: "Cara bayaran",
+      paySteps: [
+        { when: `Hari 1 hingga ${TRIAL_DAYS}`, title: "Percuma", line: "Semua Premium. Tak minta kad." },
+        { when: `Hari ${TRIAL_DAYS + 1}`, title: `Bayar RM${PREMIUM_PRICE}`, line: "Scan DuitNow QR dalam app dan WhatsApp kami. Premium aktif sebulan lagi." },
+        { when: "Setiap bulan lepas tu", title: "Bayar lagi, atau berhenti", line: "Tak bayar? Akaun balik ke Lite yang percuma. Page, kereta dan lead kekal." },
+      ],
     },
-    more: "Dan banyak lagi",
   },
   plans: {
     kicker: "Pilih pelan anda",
