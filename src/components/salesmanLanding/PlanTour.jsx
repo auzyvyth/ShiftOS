@@ -17,24 +17,34 @@ import { ArrowRight } from "lucide-react";
 // Every word comes from `copy` (landingCopy(lang).tour, salesmanLandingCopy.js),
 // both languages in one place; this file only holds the images and the order.
 //
-// Lite shows only Leads (owner, 2026-10-13: Lite is "get found, get the lead";
-// follow-up reminders and Performance are Premium). The old Lite Dashboard and
-// Performance screenshots (/for-salesmen/lite-dashboard.png,
-// lite-performance.png) show those Premium tools, so they are not used here
-// until the Lite dashboard is re-shot.
+// One section per Premium tab, in the menu's order (owner, 2026-10-28: "all
+// tabs"), Settings left out (a form of the seller's own details). Lite shows
+// only Leads (owner, 2026-10-13: Lite is "get found, get the lead").
+// The screenshots are the real panels on sample data, shot per language
+// (public/for-salesmen/tour-<key>-<lang>.webp, 760x1120, the app's top bar
+// cropped off). Re-shoot them when a tab changes; never mock one up.
 
+const SHOT_W = 760;
+const SHOT_H = 1120;
 const SHOTS = {
-  liteLeads: { img: "/for-salesmen/lite-leads.png", w: 413, h: 444 },
-  dashboard: { img: "/for-salesmen/premium-dashboard.png", w: 390, h: 437 },
-  carPerformance: { img: "/for-salesmen/premium-performance.png", w: 391, h: 285 },
-  premiumLeads: { img: "/for-salesmen/premium-leads.png", w: 403, h: 496 },
-  sold: { img: "/for-salesmen/premium-sold.png", w: 435, h: 617 },
-  analytics: { img: "/for-salesmen/premium-analytics.png", w: 763, h: 609 },
+  liteLeads: "lite-leads",
+  dashboard: "dashboard",
+  listings: "listings",
+  chat: "chat",
+  premiumLeads: "leads",
+  inbox: "inbox",
+  sold: "sold",
+  analytics: "analytics",
+  loans: "loans",
+  outreach: "outreach",
 };
 
 const PLAN_ORDER = {
   lite: { keys: ["liteLeads"], to: "/salesman-onboarding/lite" },
-  premium: { keys: ["dashboard", "carPerformance", "premiumLeads", "sold", "analytics"], to: "/salesman-onboarding/premium" },
+  premium: {
+    keys: ["dashboard", "listings", "chat", "premiumLeads", "inbox", "sold", "analytics", "loans", "outreach"],
+    to: "/salesman-onboarding/premium",
+  },
 };
 
 const DESKTOP_MQ = "(min-width: 861px)";
@@ -90,7 +100,7 @@ function Shot({ s, shotRef, pending }) {
   );
 }
 
-export default function PlanTour({ copy }) {
+export default function PlanTour({ copy, lang = "ms" }) {
   const reduce = useReducedMotion();
   // Opens on Premium: it shows the most tabs (Live presentation is on both
   // plans since 2026-10-18), and Lite is one tap away on the toggle.
@@ -106,7 +116,9 @@ export default function PlanTour({ copy }) {
   const cfg = {
     ...copy.plans[plan],
     to: order.to,
-    sections: order.keys.map((key) => ({ key, ...SHOTS[key], ...copy.sections[key] })),
+    sections: order.keys.map((key) => ({
+      key, img: `/for-salesmen/tour-${SHOTS[key]}-${lang}.webp`, w: SHOT_W, h: SHOT_H, ...copy.sections[key],
+    })),
   };
 
   const measure = useCallback(() => {

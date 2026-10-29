@@ -37,13 +37,19 @@
 //    (routeForProfile) and existing cars stay.
 //  - No claims about named competitors.
 
-import { SALESMAN_PREMIUM_FEATURES, SALESMAN_PREMIUM_FEATURES_MS } from "../utils/plans.js";
+import { SALESMAN_PREMIUM_FEATURES, SALESMAN_PREMIUM_FEATURES_MS, salesmanPremiumFeaturesByGroup } from "../utils/plans.js";
 import { PLAN_CONFIG } from "../utils/planConfig.js";
 import { LITE_POSTERS_PER_MONTH } from "../utils/loanPoster.js";
 
 const LITE_CAP = PLAN_CONFIG.salesman_lite.listingCap;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full.listingCap;
 const LITE_POSTERS = LITE_POSTERS_PER_MONTH;
+const PREMIUM_PRICE = PLAN_CONFIG.salesman_full.price;
+const TRIAL_DAYS = PLAN_CONFIG.salesman_full.trialDays;
+// "About RM1.20 a day": the price over a 30-day month, rounded to 10 sen.
+const PER_DAY = (Math.round((PREMIUM_PRICE / 30) * 10) / 10).toFixed(2);
+const P_EN = salesmanPremiumFeaturesByGroup("en");
+const P_MS = salesmanPremiumFeaturesByGroup("ms");
 
 export const DEFAULT_LANG = "ms";
 // Per-device memory of the visitor's choice on THIS page only.
@@ -52,16 +58,16 @@ export const LANG_KEY = "xd_for_salesmen_lang";
 export const CANON = "https://xdrive.my/for-salesmen";
 // Bump when the copy changes: it feeds dateModified (webpageLd) and the
 // "last reviewed" line, a freshness signal search and AI answers both read.
-export const REVIEWED_ISO = "2026-10-23";
+export const REVIEWED_ISO = "2026-10-28";
 // XDrive's own example Salesman Premium page, linked so agents and crawlers can
 // see the product rather than a mock-up. Must stay an active account with cars.
 export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
 export const SEO_KEYWORDS = [
-  "kira ansuran kereta live", "kalkulator ansuran bulanan kereta", "jual kereta TikTok live",
-  "car loan instalment calculator Malaysia", "TikTok live car salesman", "salesman kereta live",
-  "poster ansuran kereta", "monthly berapa kereta", "salesman premium XDrive",
-  "salesman kereta online", "app salesman kereta Malaysia", "CRM salesman kereta",
-  "free car listing Malaysia", "car agent page Malaysia", "XDrive salesman lite",
+  "kalkulator loan kereta", "kira loan kereta", "kira loan kereta excel", "formula excel loan kereta",
+  "kira ansuran kereta", "kalkulator ansuran bulanan kereta", "kira ansuran kereta live",
+  "CRM salesman kereta", "rekod prospek pelanggan", "template prospek excel", "cara follow up customer kereta",
+  "app salesman kereta Malaysia", "jual kereta TikTok live", "salesman kereta live",
+  "car loan calculator Malaysia", "car salesman CRM Malaysia", "TikTok live car salesman",
 ].join(", ");
 
 // ─── English ────────────────────────────────────────────────────────────────
@@ -71,15 +77,17 @@ const EN = {
   switchTo: "ms",
   switchLabel: "Tukar ke Bahasa Melayu",
 
-  seoTitle: "Car Instalment Calculator for TikTok Live Salesmen | XDrive",
+  // Search terms (2026-10-28): "car loan calculator", "Excel", "CRM / lead"
+  // for car salesmen. No Malaysian page answered the Excel loan and prospect
+  // tracker searches; those are the gap this page and its FAQ go after.
+  seoTitle: "Car Loan Calculator & Lead CRM for Car Salesmen | XDrive",
   seoDesc:
-    "For Malaysian car salesmen selling on TikTok and Facebook Live: every car numbered, 9, 7 and 5-year monthlies, deposit changes in one tap. Free on Salesman Lite.",
+    "For Malaysian car salesmen: work out car loan instalments on your live, keep every lead in one CRM, follow up until the deal closes. Replaces Excel. Start free.",
 
-  heroEyebrow: "For agents who sell on TikTok and Facebook Live",
-  heroH1Lines: ["Monthly berapa?", "One tap.", "Every car."],
+  heroEyebrow: "For car salesmen who sell on TikTok, Facebook and WhatsApp",
+  heroH1Lines: ["Car loan calculator and lead CRM", "for car salesmen"],
   heroIntro:
-    "Live presentation builds the instalment poster for every car you list: price, deposit, loan, and the monthly over 9, 7 and 5 years. A viewer asks for a different deposit, you tap once and every number updates. Free on Salesman Lite.",
-  heroTrust: ["Free on Lite", "No credit card", "Your number hidden until you tap"],
+    "One app in three parts. A car loan calculator for your lives: the monthly over 9, 7 and 5 years for every car, deposit changed in one tap. A dashboard that says who to call today. And a lead CRM where every buyer from WhatsApp, chat and bookings lands with a stage. It replaces the Excel loan sheet and the prospect list.",
   liveCta: "Go live free",
   premiumCta: "Try Premium free for 7 days",
   liteCta: "Start free on Lite",
@@ -144,39 +152,63 @@ const EN = {
     sections: {
       liteLeads: {
         tab: "Leads",
-        alt: "Lead list of 37 buyers with source breakdown, stage filters and buyer cards showing warm tags and a WhatsApp button",
+        alt: "Lite lead list: buyers with their car, price and stage, and a WhatsApp button on each",
         title: "Every buyer in a stage, not lost in a chat.",
         line: "An alert on your phone when a new buyer comes in.",
       },
       dashboard: {
         tab: "Dashboard",
-        alt: "Salesman Premium dashboard showing 4 overdue follow-ups, 30-day views, page visits and WhatsApp taps, and a 7-day traffic chart",
+        alt: "Premium dashboard: leads waiting for follow-up, today's bookings, and counts of leads, WhatsApp taps, page visits and cars sold this month",
         title: "Open the app. Know who needs you today.",
-        line: "Overdue follow-ups counted for you, right at the top.",
+        line: "Follow-ups that are due and today's bookings, right at the top.",
       },
-      carPerformance: {
-        tab: "Dashboard",
-        alt: "Per-car performance list showing views, WhatsApp taps and conversion rate, with one car tagged Rising",
-        title: "See which car pulls buyers, and which one is stuck.",
-        line: "Views and WhatsApp taps for every car, last 30 days.",
+      listings: {
+        tab: "My Listings",
+        alt: "Listings tab: a car card with photo, price, status, views and enquiries, and Caption and Edit buttons",
+        title: "Every car on one card.",
+        line: "Status, views, enquiries and what to fix next, per car.",
+      },
+      chat: {
+        tab: "Chat",
+        alt: "Chat tab: buyer conversations, each with the car they asked about and an unread count",
+        title: "Buyers message you inside the app.",
+        line: "Each chat shows the car it is about, and joins your lead list.",
       },
       premiumLeads: {
         tab: "Leads",
-        alt: "Lead pipeline with stage filters and buyer cards flagged Never contacted with the number of days waiting",
+        alt: "Lead pipeline with stage filters and buyer cards flagged not contacted, with how many days they waited",
         title: "Every buyer in a stage, not lost in a chat.",
         line: "Buyers nobody replied to are flagged, with how long they waited.",
       },
+      inbox: {
+        tab: "Inbox",
+        alt: "Inbox tab: a booking waiting for confirmation and a week calendar of test drives and viewings",
+        title: "Every test drive in one calendar.",
+        line: "Confirm a booking or move it in one tap.",
+      },
       sold: {
         tab: "Sold",
-        alt: "8-step handover checklist for a won deal, with loan settlement and insurance done and Puspakom inspection next",
+        alt: "Sold tab: a won deal in handover with its progress and the next step, JPJ ownership transfer",
         title: "Won is not done. The handover, step by step.",
         line: "A won deal gets its 8-step handover checklist.",
       },
       analytics: {
         tab: "Analytics",
-        alt: "Close rate funnel showing where deals stop, with Contacted marked as the weakest step, plus median reply speed",
+        alt: "Analytics tab: commission and cars sold, the step where most deals stop, and the close rate",
         title: "Find out where you are losing deals.",
-        line: "Close rate, reply speed and why deals were lost.",
+        line: "Close rate, commission and the step where deals stop.",
+      },
+      loans: {
+        tab: "Loans",
+        alt: "Loans tab: a loan check that needs fixing and two bank applications, one pending and one approved",
+        title: "Check the loan before the bank says no.",
+        line: "What to fix first, then every bank application in one list.",
+      },
+      outreach: {
+        tab: "Outreach",
+        alt: "Outreach tab: hot, warm and cold leads, contacted today, and a button to message all hot leads",
+        title: "Quiet leads? Message them all at once.",
+        line: "The message is written for you. You press send.",
       },
     },
   },
@@ -225,7 +257,6 @@ const EN = {
   // compare, features) are what the crawler render reads (api/og.js); the
   // SPA no longer prints them.
   short: {
-    heroLine: "Every car you list gets its monthly instalments worked out. A viewer asks, you tap.",
     painKicker: "Sound familiar?",
     pains: [
       "Working out the loan by hand every time a buyer asks.",
@@ -247,20 +278,64 @@ const EN = {
       chips: ["Your own page", "On the marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Pricing",
-    plansTitle: "Start free. Upgrade when it pays.",
-    liteBullets: [
-      `Up to ${LITE_CAP} cars, your own page`,
-      "Live presentation for TikTok / FB lives",
-      `Loan posters for ${LITE_POSTERS} cars a month`,
-      "Buyers by WhatsApp, chat and booking",
-      "Lead alerts and a lead list",
-    ],
-    premiumBullets: [
-      "Everything in Lite",
-      `Up to ${PREMIUM_CAP} cars, unlimited loan posters`,
-      ...SALESMAN_PREMIUM_FEATURES.slice(0, 4),
-    ],
-    more: "And more",
+    plansTitle: "One price. Paid month by month.",
+    // Hero (owner, 2026-10-28): laid out like a product-box ad. Two leads
+    // asked "is it monthly?" and took the product for a calculator, so the
+    // hero names the three parts with a real screen of each, the price, and
+    // how billing works. The screens are the real app on sample data.
+    offer: {
+      tag: "Ready to use",
+      h1a: "3 in 1",
+      h1b: "sales app",
+      sub: "For car salesmen",
+      line: "A car loan calculator for your lives, a dashboard, and a CRM for every lead. Follow up until the deal closes. One app, no more Excel.",
+      parts: [
+        { title: "Live calculator", line: "Monthly, deposit and tenure, worked out in front of your viewers.", alt: "Live presentation: a car numbered #1 with its monthly instalment over 9, 7 and 5 years and deposit buttons" },
+        { title: "Dashboard", line: "Who to call today, page visits and WhatsApp taps.", alt: "Premium dashboard: leads waiting for follow-up, today's bookings, lead and WhatsApp tap counts" },
+        { title: "Leads", line: "Every buyer has a stage, never lost in your chats.", alt: "Lead pipeline: buyers sorted by stage, each with the car, price and a WhatsApp button" },
+      ],
+      shotsNote: "Real app screens, sample data.",
+      badges: ["No credit card", "No contract", "Nothing charged automatically", `Up to ${PREMIUM_CAP} cars`],
+      priceKicker: "Premium",
+      price: `RM${PREMIUM_PRICE}`,
+      per: "/month",
+      priceNote: `First ${TRIAL_DAYS} days free`,
+      billing: `Paid month by month. ${TRIAL_DAYS} days free, then RM${PREMIUM_PRICE} a month (about RM${PER_DAY} a day) if you keep it.`,
+      cta: `Start ${TRIAL_DAYS} days free`,
+      liteLink: "Or start free on Lite",
+      tryKicker: "Try it",
+      tryTitle: "Tap a deposit. Watch the monthly change.",
+    },
+    // Plan cards (owner, 2026-10-28): the hero's three parts on both cards,
+    // so Lite vs Premium reads part by part, then how paying works in three
+    // steps, because two leads could not tell whether Premium is monthly.
+    planCards: {
+      premium: {
+        badge: `${TRIAL_DAYS} days free`,
+        billing: "Paid month by month · DuitNow QR",
+        groups: [
+          { h: "Live calculator", items: ["Live presentation for TikTok / FB lives", "Unlimited loan posters", ...P_EN.calc] },
+          { h: "Dashboard", items: P_EN.dash },
+          { h: "Leads", items: [`Up to ${PREMIUM_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking", ...P_EN.leads] },
+        ],
+        moreLabel: "Also in Premium",
+        more: P_EN.more,
+      },
+      lite: {
+        billing: "Free forever · no card",
+        groups: [
+          { h: "Live calculator", items: ["Live presentation for TikTok / FB lives", `Loan posters for ${LITE_POSTERS} cars a month`] },
+          { h: "Dashboard", items: ["Alerts on new leads", "Views + WhatsApp taps for each car"] },
+          { h: "Leads", items: [`Up to ${LITE_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking", "A simple lead list with stages"] },
+        ],
+      },
+      payKicker: "How paying works",
+      paySteps: [
+        { when: `Day 1 to ${TRIAL_DAYS}`, title: "Free", line: "All of Premium. No card asked." },
+        { when: `Day ${TRIAL_DAYS + 1}`, title: `Pay RM${PREMIUM_PRICE}`, line: "Scan the DuitNow QR in the app and WhatsApp us. Premium runs another month." },
+        { when: "Every month after", title: "Pay again, or stop", line: "Not paid? You go back to free Lite. Your page, cars and leads stay." },
+      ],
+    },
   },
   plans: {
     kicker: "Pick your plan",
@@ -289,6 +364,14 @@ const EN = {
     reviewed: "Page last reviewed",
     reviewedLabel: "October 2026",
     items: [
+      { q: "Is Premium a one-off payment or monthly?",
+        a: `Monthly. Premium is RM${PREMIUM_PRICE} a month, and the first ${TRIAL_DAYS} days are free. There is no contract and we never take a card, so nothing is charged automatically: you pay for the next month when you want to keep it. If you stop, your account goes back to free Lite and your page, cars and leads stay.` },
+      { q: "Do I only get the instalment calculator?",
+        a: `No. The calculator (Live presentation and loan posters) is one of three parts. You also get your own sales page with your cars, listed on the marketplace, and a lead dashboard: every buyer who contacts you lands there with a stage. Premium adds the full CRM on top: who to call today, follow-up reminders and call log, WhatsApp to all your quiet leads, commission tracking and the handover checklist.` },
+      { q: "Can I work out a car loan in Excel?",
+        a: "Yes. The monthly is =PMT(rate/12, years*12, -loan amount), with the rate as an EIR (interest on the reducing balance). Since the Hire-Purchase (Amendment) Act 2026 took effect on 1 June 2026, new hire-purchase agreements are on EIR, so a flat rate has to be converted first or the sheet shows a monthly that is too low. A sheet also has to be retyped for every car and every deposit. Live presentation does this for every car you list: flat rates are converted to EIR, and deposit and tenure change with one tap. Figures are estimates; the bank decides." },
+      { q: "How do I keep track of prospects and leads?",
+        a: "Most salesmen use an Excel sheet or a notebook: name, number, the car they want, where they came from, stage and the next follow-up date. A sheet never reminds you to follow up, and every lead from WhatsApp, chat or a booking has to be typed in by hand. Here every buyer who contacts you lands in your lead list by themselves, with a stage and an alert on your phone, free on Lite. Premium adds follow-up reminders, a call log and a \"This week\" list of who to call." },
       { q: "Can XDrive work out monthly instalments for my TikTok Live?",
         a: "Yes, free on Salesman Lite. Live presentation shows one car per screen with a number (#1, #2, #3) for viewers to comment, the price, deposit, loan and rate, and the monthly instalment over 9, 7 and 5 years. Change the deposit or type the bank's flat rate and every figure updates; budget mode lists which of your cars fit a viewer's salary or monthly budget. Figures are estimates on the reducing balance (EIR) and subject to bank approval. Your contact details only appear when you tap to show them." },
       { q: "What happens after the 7 free days?",
@@ -306,7 +389,7 @@ const EN = {
       { q: "Can I still use Mudah and Carlist?",
         a: "Yes. XDrive works alongside them. The difference is this page is yours, it lives on the XDrive marketplace, and it doesn't charge you per listing." },
       { q: `What happens when I have more than ${LITE_CAP} cars?`,
-        a: `Salesman Premium (RM35/month, first 7 days free) raises your cap to ${PREMIUM_CAP} listings and adds a sorted "This week" call list with follow-up messages already drafted, follow-up reminders and call logging, WhatsApp to all your quiet leads in one go, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, AI listing captions and chat reply drafts, commission tracking, Telegram booking reminders, a services and add-ons catalogue, a page you can customise with your bio and social links, and a Performance view that shows your close rate and where your deals are lost. Your Lite page and cars carry straight over: upgrade any time from your panel.` },
+        a: `Salesman Premium (RM35/month, first 7 days free) raises your cap to ${PREMIUM_CAP} listings and adds a sorted "This week" call list with follow-up messages already drafted, follow-up reminders and call logging, WhatsApp to all your quiet leads in one go, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, commission tracking, Telegram booking reminders, a services and add-ons catalogue, a page you can customise with your bio and social links, and a Performance view that shows your close rate and where your deals are lost. Your Lite page and cars carry straight over: upgrade any time from your panel.` },
       { q: "Is there an example page I can see?",
         a: "Yes. xdrive.my/s/premiummotors is XDrive's example Salesman Premium page: stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
       { q: "How long does setup take?",
@@ -339,15 +422,14 @@ const MS = {
   switchTo: "en",
   switchLabel: "Change to English",
 
-  seoTitle: "Kalkulator Ansuran Kereta untuk Salesman TikTok Live | XDrive",
+  seoTitle: "Kalkulator Loan Kereta & CRM Lead untuk Salesman | XDrive",
   seoDesc:
-    "Untuk salesman kereta di Malaysia yang jual di TikTok dan Facebook Live: setiap kereta bernombor, monthly 9, 7 dan 5 tahun, tukar deposit dengan satu tap. Percuma dengan Salesman Lite.",
+    "Untuk salesman kereta: kira loan kereta dan ansuran bulanan masa live, rekod semua lead dalam satu CRM, follow up sampai deal. Ganti Excel. Mula percuma.",
 
-  heroEyebrow: "Untuk salesman yang jual kereta di TikTok dan Facebook Live",
-  heroH1Lines: ["Monthly berapa?", "Satu tap.", "Semua kereta."],
+  heroEyebrow: "Untuk salesman kereta yang jual di TikTok, Facebook dan WhatsApp",
+  heroH1Lines: ["Kalkulator loan kereta dan CRM lead", "untuk salesman kereta"],
   heroIntro:
-    "Live presentation siapkan poster ansuran untuk setiap kereta yang anda listing: harga, deposit, loan, dan monthly untuk 9, 7 dan 5 tahun. Penonton minta deposit lain, anda tap sekali dan semua nombor terus berubah. Percuma dengan Salesman Lite.",
-  heroTrust: ["Percuma dengan Lite", "Tak perlu kad kredit", "Nombor anda tersembunyi sampai anda tap"],
+    "Satu app, tiga bahagian. Kalkulator loan kereta untuk live: monthly 9, 7 dan 5 tahun untuk setiap kereta, tukar deposit dengan satu tap. Dashboard yang tunjuk siapa perlu di-call hari ni. Dan CRM lead: setiap pembeli dari WhatsApp, chat dan booking masuk dengan stage. Ganti sheet Excel kira loan dan senarai prospek anda.",
   liveCta: "Mula live percuma",
   premiumCta: "Cuba Premium percuma 7 hari",
   liteCta: "Mula percuma dengan Lite",
@@ -405,40 +487,64 @@ const MS = {
     },
     sections: {
       liteLeads: {
-        tab: "Leads",
-        alt: "Senarai 37 pembeli dengan pecahan sumber, filter stage dan kad pembeli yang tunjuk tag warm serta butang WhatsApp",
+        tab: "Lead",
+        alt: "Senarai lead Lite: pembeli dengan kereta, harga dan stage, dan butang WhatsApp pada setiap satu",
         title: "Setiap pembeli ada stage, tak hilang dalam chat.",
         line: "Alert di telefon bila pembeli baru masuk.",
       },
       dashboard: {
         tab: "Dashboard",
-        alt: "Dashboard Salesman Premium yang tunjuk 4 follow-up tertunggak, views 30 hari, lawatan page dan tap WhatsApp, serta carta trafik 7 hari",
+        alt: "Dashboard Premium: lead yang tunggu follow-up, booking hari ini, dan bilangan lead, tap WhatsApp, lawatan page dan kereta terjual bulan ini",
         title: "Buka app. Terus tahu siapa perlukan anda hari ni.",
-        line: "Follow up yang tertunggak dikira untuk anda, paling atas.",
+        line: "Follow up yang dah sampai masa dan booking hari ini, paling atas.",
       },
-      carPerformance: {
-        tab: "Dashboard",
-        alt: "Senarai prestasi setiap kereta yang tunjuk views, tap WhatsApp dan kadar conversion, dengan satu kereta ditanda Rising",
-        title: "Tengok kereta mana yang tarik pembeli, dan mana yang tersangkut.",
-        line: "Views dan tap WhatsApp untuk setiap kereta, 30 hari terakhir.",
+      listings: {
+        tab: "Listing Saya",
+        alt: "Tab listing: kad kereta dengan gambar, harga, status, views dan pertanyaan, serta butang Caption dan Edit",
+        title: "Setiap kereta dalam satu kad.",
+        line: "Status, views, pertanyaan dan apa nak dibaiki, untuk setiap kereta.",
+      },
+      chat: {
+        tab: "Chat",
+        alt: "Tab chat: perbualan pembeli, setiap satu dengan kereta yang ditanya dan bilangan mesej belum dibaca",
+        title: "Pembeli chat terus dalam app.",
+        line: "Setiap chat tunjuk kereta yang ditanya, dan masuk senarai lead anda.",
       },
       premiumLeads: {
-        tab: "Leads",
-        alt: "Pipeline lead dengan filter stage dan kad pembeli ditanda Never contacted berserta bilangan hari menunggu",
+        tab: "Lead",
+        alt: "Pipeline lead dengan filter stage dan kad pembeli ditanda belum dihubungi berserta berapa hari dia tunggu",
         title: "Setiap pembeli ada stage, tak hilang dalam chat.",
         line: "Pembeli yang belum dibalas ditanda, dengan berapa hari dia tunggu.",
       },
+      inbox: {
+        tab: "Peti Masuk",
+        alt: "Tab peti masuk: booking yang tunggu pengesahan dan kalendar seminggu untuk test drive dan viewing",
+        title: "Semua test drive dalam satu kalendar.",
+        line: "Sahkan booking atau tukar masa dengan satu tap.",
+      },
       sold: {
-        tab: "Sold",
-        alt: "Senarai semak handover 8 langkah untuk deal yang dah Won, dengan loan settlement dan insurans selesai dan pemeriksaan Puspakom seterusnya",
+        tab: "Terjual",
+        alt: "Tab terjual: deal yang dah won dalam handover dengan kemajuan dan langkah seterusnya, pindah milik JPJ",
         title: "Won belum bermakna selesai. Handover, langkah demi langkah.",
         line: "Deal won terus dapat senarai semak handover 8 langkah.",
       },
       analytics: {
-        tab: "Analytics",
-        alt: "Funnel close rate yang tunjuk di mana deal berhenti, dengan Contacted ditanda sebagai langkah paling lemah, serta median kelajuan balas",
+        tab: "Analitik",
+        alt: "Tab analitik: komisen dan kereta terjual, langkah di mana paling banyak deal berhenti, dan kadar closing",
         title: "Cari di mana anda terlepas deal.",
-        line: "Close rate, kelajuan balas dan sebab deal terlepas.",
+        line: "Kadar closing, komisen dan langkah di mana deal berhenti.",
+      },
+      loans: {
+        tab: "Pinjaman",
+        alt: "Tab pinjaman: semakan loan yang perlu dibaiki dan dua permohonan bank, satu dalam proses dan satu lulus",
+        title: "Semak loan dulu, sebelum bank tolak.",
+        line: "Apa nak dibaiki dulu, lepas tu setiap permohonan bank dalam satu senarai.",
+      },
+      outreach: {
+        tab: "Outreach",
+        alt: "Tab outreach: lead panas, suam dan sejuk, yang dihubungi hari ini, dan butang untuk mesej semua lead panas",
+        title: "Lead senyap? Mesej semua sekali gus.",
+        line: "Mesej dah siap ditulis. Anda tekan hantar.",
       },
     },
   },
@@ -481,7 +587,6 @@ const MS = {
   },
 
   short: {
-    heroLine: "Setiap kereta yang anda listing dah siap kiraan ansuran. Penonton tanya, anda tap.",
     painKicker: "Bunyi macam anda?",
     pains: [
       "Kira loan manual setiap kali customer tanya.",
@@ -503,20 +608,57 @@ const MS = {
       chips: ["Page anda sendiri", "Masuk marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Harga",
-    plansTitle: "Mula percuma. Naik taraf bila dah untung.",
-    liteBullets: [
-      `Sampai ${LITE_CAP} kereta, page anda sendiri`,
-      "Live presentation untuk TikTok / FB live",
-      `Poster loan untuk ${LITE_POSTERS} kereta sebulan`,
-      "Pembeli melalui WhatsApp, chat dan booking",
-      "Alert lead dan senarai lead",
-    ],
-    premiumBullets: [
-      "Semua dalam Lite",
-      `Sampai ${PREMIUM_CAP} kereta, poster loan tanpa had`,
-      ...SALESMAN_PREMIUM_FEATURES_MS.slice(0, 4),
-    ],
-    more: "Dan banyak lagi",
+    plansTitle: "Satu harga. Bayar bulan ke bulan.",
+    offer: {
+      tag: "App siap guna",
+      h1a: "3 dalam 1",
+      h1b: "app jualan",
+      sub: "Untuk salesman kereta",
+      line: "Kalkulator loan kereta untuk live, dashboard, dan CRM untuk semua lead. Follow up sampai deal. Satu app, tak perlu Excel lagi.",
+      parts: [
+        { title: "Kalkulator Live", line: "Monthly, deposit dan tempoh, dikira terus depan penonton.", alt: "Live presentation: kereta bernombor #1 dengan ansuran bulanan 9, 7 dan 5 tahun serta butang deposit" },
+        { title: "Dashboard", line: "Siapa perlu di-call hari ni, lawatan page dan tap WhatsApp.", alt: "Dashboard Premium: lead yang tunggu follow-up, booking hari ini, bilangan lead dan tap WhatsApp" },
+        { title: "Leads", line: "Setiap pembeli ada stage, tak hilang dalam chat.", alt: "Pipeline lead: pembeli disusun ikut stage, setiap satu dengan kereta, harga dan butang WhatsApp" },
+      ],
+      shotsNote: "Skrin app sebenar, data contoh.",
+      badges: ["Tak perlu kad kredit", "Tiada kontrak", "Tiada caj automatik", `Sampai ${PREMIUM_CAP} kereta`],
+      priceKicker: "Premium",
+      price: `RM${PREMIUM_PRICE}`,
+      per: "/bulan",
+      priceNote: `${TRIAL_DAYS} hari pertama percuma`,
+      billing: `Bayar bulan ke bulan. ${TRIAL_DAYS} hari percuma, lepas tu RM${PREMIUM_PRICE} sebulan (lebih kurang RM${PER_DAY} sehari) kalau nak teruskan.`,
+      cta: `Mula ${TRIAL_DAYS} hari percuma`,
+      liteLink: "Atau mula percuma dengan Lite",
+      tryKicker: "Cuba sendiri",
+      tryTitle: "Tap deposit. Tengok monthly berubah.",
+    },
+    planCards: {
+      premium: {
+        badge: `${TRIAL_DAYS} hari percuma`,
+        billing: "Bayar bulan ke bulan · DuitNow QR",
+        groups: [
+          { h: "Kalkulator Live", items: ["Live presentation untuk TikTok / FB live", "Poster loan tanpa had", ...P_MS.calc] },
+          { h: "Dashboard", items: P_MS.dash },
+          { h: "Leads", items: [`Sampai ${PREMIUM_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking", ...P_MS.leads] },
+        ],
+        moreLabel: "Juga dalam Premium",
+        more: P_MS.more,
+      },
+      lite: {
+        billing: "Percuma selamanya · tak perlu kad",
+        groups: [
+          { h: "Kalkulator Live", items: ["Live presentation untuk TikTok / FB live", `Poster loan untuk ${LITE_POSTERS} kereta sebulan`] },
+          { h: "Dashboard", items: ["Alert untuk lead baru", "Views + tap WhatsApp untuk setiap kereta"] },
+          { h: "Leads", items: [`Sampai ${LITE_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking", "Senarai lead ringkas dengan stage"] },
+        ],
+      },
+      payKicker: "Cara bayaran",
+      paySteps: [
+        { when: `Hari 1 hingga ${TRIAL_DAYS}`, title: "Percuma", line: "Semua Premium. Tak minta kad." },
+        { when: `Hari ${TRIAL_DAYS + 1}`, title: `Bayar RM${PREMIUM_PRICE}`, line: "Scan DuitNow QR dalam app dan WhatsApp kami. Premium aktif sebulan lagi." },
+        { when: "Setiap bulan lepas tu", title: "Bayar lagi, atau berhenti", line: "Tak bayar? Akaun balik ke Lite yang percuma. Page, kereta dan lead kekal." },
+      ],
+    },
   },
   plans: {
     kicker: "Pilih pelan anda",
@@ -545,6 +687,14 @@ const MS = {
     reviewed: "Page ini kali terakhir disemak",
     reviewedLabel: "Oktober 2026",
     items: [
+      { q: "Premium ni bayar sekali atau bulanan?",
+        a: `Bulanan. Premium RM${PREMIUM_PRICE} sebulan, dan ${TRIAL_DAYS} hari pertama percuma. Tiada kontrak dan kami tak pernah ambil kad, jadi tiada caj automatik: anda bayar bulan seterusnya bila nak teruskan. Kalau berhenti, akaun balik ke Lite yang percuma dan page, kereta serta lead anda kekal.` },
+      { q: "Saya dapat kalkulator ansuran saja ke?",
+        a: `Tidak. Kalkulator (Live presentation dan poster loan) cuma satu daripada tiga bahagian. Anda juga dapat page jualan sendiri dengan kereta anda, masuk marketplace sekali, dan dashboard lead: setiap pembeli yang hubungi anda masuk ke situ dengan stage. Premium tambah CRM penuh: siapa perlu di-call hari ni, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap, jejak komisen dan senarai semak handover.` },
+      { q: "Boleh ke kira loan kereta guna Excel?",
+        a: "Boleh. Monthly ialah =PMT(kadar/12, tahun*12, -jumlah pinjaman), dengan kadar dalam EIR (faedah atas baki berkurangan). Sejak Akta Sewa Beli (Pindaan) 2026 berkuat kuasa pada 1 Jun 2026, perjanjian sewa beli baru guna EIR, jadi kadar flat kena ditukar dulu, kalau tak sheet anda tunjuk monthly yang terlalu rendah. Sheet Excel juga kena taip semula untuk setiap kereta dan setiap deposit. Live presentation buat semua ni untuk setiap kereta yang anda listing: kadar flat ditukar ke EIR, deposit dan tempoh bertukar dengan satu tap. Anggaran sahaja; keputusan di tangan bank." },
+      { q: "Macam mana nak rekod prospek dan lead pelanggan?",
+        a: "Ramai salesman guna Excel atau buku nota: nama, nombor, kereta yang diminati, dari mana dia datang, stage dan tarikh follow up. Sheet tak pernah ingatkan anda bila nak follow up, dan setiap lead dari WhatsApp, chat atau booking kena taip sendiri. Di sini setiap pembeli yang hubungi anda masuk sendiri ke senarai lead, dengan stage dan alert di telefon, percuma dengan Lite. Premium tambah reminder follow up, log panggilan dan senarai \"Minggu ini\" siapa perlu di-call." },
       { q: "Boleh kira ansuran bulanan kereta masa live TikTok?",
         a: "Boleh, percuma dengan Salesman Lite. Live presentation tunjuk satu kereta satu skrin dengan nombor (#1, #2, #3) untuk penonton komen, harga, deposit, jumlah loan, kadar faedah dan ansuran bulanan untuk 9, 7 dan 5 tahun. Tukar deposit atau masukkan kadar flat bank, semua angka dikira semula. Budget mode pula senaraikan kereta anda yang muat dengan gaji atau bajet bulanan penonton. Semua angka ialah anggaran atas baki berkurangan (EIR) dan tertakluk kepada kelulusan bank. Maklumat contact anda hanya keluar bila anda tap untuk tunjuk." },
       { q: "Apa jadi lepas 7 hari percuma habis?",
@@ -562,7 +712,7 @@ const MS = {
       { q: "Masih boleh guna Mudah dan Carlist?",
         a: "Boleh. XDrive boleh guna sekali dengan platform tu. Bezanya, page ni milik anda, ia ada di marketplace XDrive, dan tiada caj untuk setiap listing." },
       { q: `Kalau saya ada lebih dari ${LITE_CAP} kereta?`,
-        a: `Salesman Premium (RM35 sebulan, 7 hari pertama percuma) naikkan had anda ke ${PREMIUM_CAP} listing dan tambah senarai call "Minggu ini" yang tersusun dengan mesej follow up siap ditulis, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap sekali gus, loan desk yang semak kemampuan dan banding bank, senarai semak handover dan senarai customer, caption AI dan draf balasan chat AI, jejak komisen, reminder booking di Telegram, katalog servis dan add-on, page yang boleh diubah suai dengan bio dan link media sosial, serta Performance yang tunjuk close rate dan di mana deal anda terlepas. Page dan kereta Lite anda terus dibawa: upgrade bila-bila masa dari panel anda.` },
+        a: `Salesman Premium (RM35 sebulan, 7 hari pertama percuma) naikkan had anda ke ${PREMIUM_CAP} listing dan tambah senarai call "Minggu ini" yang tersusun dengan mesej follow up siap ditulis, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap sekali gus, loan desk yang semak kemampuan dan banding bank, senarai semak handover dan senarai customer, jejak komisen, reminder booking di Telegram, katalog servis dan add-on, page yang boleh diubah suai dengan bio dan link media sosial, serta Performance yang tunjuk close rate dan di mana deal anda terlepas. Page dan kereta Lite anda terus dibawa: upgrade bila-bila masa dari panel anda.` },
       { q: "Ada contoh page yang saya boleh tengok?",
         a: "Ada. xdrive.my/s/premiummotors ialah contoh page Salesman Premium dari XDrive: stok, harga dan butang contact di setiap kereta, sama macam yang pembeli nampak bila anda share link anda." },
       { q: "Berapa lama nak setup?",
@@ -640,7 +790,7 @@ export const SOFTWARE_LD = {
   operatingSystem: "Web, Android, iOS (browser)",
   url: CANON,
   description: MS.seoDesc,
-  screenshot: "https://xdrive.my/for-salesmen/premium-dashboard.png",
+  screenshot: "https://xdrive.my/for-salesmen/tour-dashboard-ms.webp",
   featureList: [
     "Live presentation: car instalment calculator for TikTok and Facebook lives",
     "Own car listing page at xdrive.my/s/yourname",

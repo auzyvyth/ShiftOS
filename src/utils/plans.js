@@ -37,24 +37,33 @@ import { PLAN_CONFIG } from './planConfig.js';
 // services catalogue and page customisation are listed here and not on Lite.
 // Live presentation moved to Lite (owner, 2026-10-18): it is on the Lite
 // card below, never here.
-// PremiumUpgradeCard drops every line matching /\bAI\b/ (English side), so
-// keep "AI" spelled out in the AI lines.
+// No AI line (owner, 2026-10-28: "we don't have that yet"). Do not list an AI
+// feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
-  { en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
-  { en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
-  { en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
-  { en: 'Loan desk: affordability check + bank comparison', ms: 'Loan desk: semak kemampuan + banding bank' },
-  { en: 'Handover checklist + customer list', ms: 'Senarai semak handover + senarai customer' },
-  { en: 'AI listing captions + AI chat reply drafts', ms: 'Caption iklan AI + draf balasan chat AI' },
-  { en: 'TikTok poster studio for every car', ms: 'Studio poster TikTok untuk setiap kereta' },
-  { en: 'Commission tracking', ms: 'Jejak komisen' },
-  { en: 'Performance: close rate + where deals are lost', ms: 'Performance: close rate + di mana deal terlepas' },
-  { en: 'Telegram booking reminders', ms: 'Reminder booking di Telegram' },
-  { en: 'Services and add-ons catalogue', ms: 'Katalog servis dan add-on' },
-  { en: 'Customise your page: bio + social links', ms: 'Ubah suai page anda: bio + link media sosial' },
+  { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
+  { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
+  { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
+  { group: 'calc', en: 'Loan desk: affordability check + bank comparison', ms: 'Loan desk: semak kemampuan + banding bank' },
+  { group: 'leads', en: 'Handover checklist + customer list', ms: 'Senarai semak handover + senarai customer' },
+  { group: 'more', en: 'TikTok poster studio for every car', ms: 'Studio poster TikTok untuk setiap kereta' },
+  { group: 'dash', en: 'Commission tracking', ms: 'Jejak komisen' },
+  { group: 'dash', en: 'Performance: close rate + where deals are lost', ms: 'Performance: close rate + di mana deal terlepas' },
+  { group: 'more', en: 'Telegram booking reminders', ms: 'Reminder booking di Telegram' },
+  { group: 'more', en: 'Services and add-ons catalogue', ms: 'Katalog servis dan add-on' },
+  { group: 'more', en: 'Customise your page: bio + social links', ms: 'Ubah suai page anda: bio + link media sosial' },
 ];
 export const SALESMAN_PREMIUM_FEATURES = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.en);
 export const SALESMAN_PREMIUM_FEATURES_MS = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.ms);
+// The same lines sorted into the three parts the /for-salesmen hero names
+// (live calculator / dashboard / leads), plus `more` for the rest, so the
+// plan cards repeat the hero's "3 in 1" instead of a fourth way of slicing it.
+// Two leads read the old flat list as "a calculator" and missed the dashboard
+// (owner, 2026-10-28), so the cards name the three parts.
+export function salesmanPremiumFeaturesByGroup(lang = 'en') {
+  const by = { calc: [], dash: [], leads: [], more: [] };
+  for (const l of SALESMAN_PREMIUM_FEATURE_LINES) by[l.group].push(lang === 'ms' ? l.ms : l.en);
+  return by;
+}
 
 const PRESENTATION = {
   salesman_lite: {

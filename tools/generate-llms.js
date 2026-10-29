@@ -28,6 +28,8 @@ const ARTICLES = [
   ["/articles/apa-itu-dms-dealer-kereta", "What a dealer DMS (Dealer Management System) is and why used car dealers need one."],
   ["/articles/cara-urus-stok-kereta-terpakai-sistem-digital", "How to manage used car stock with a digital system instead of spreadsheets."],
   ["/articles/cara-kira-komisen-salesman-kereta", "How car salesman commission is calculated in Malaysia (percent-of-gross, flat, and tiered)."],
+  ["/articles/cara-kira-loan-kereta-excel", "How to work out a car loan instalment in Excel or Google Sheets (PMT, flat rate to EIR with RATE), with a free template."],
+  ["/articles/template-excel-rekod-prospek-salesman-kereta", "Free Excel prospect / lead tracker for car salesmen: columns, stages, follow-up routine and PDPA basics."],
   ["/articles/cara-buat-sales-agreement-kereta-terpakai", "How to write a used car sales agreement (Sales Agreement / Perjanjian Jual Beli) in Malaysia."],
   ["/articles/apa-itu-puspakom-b5-b7", "What Puspakom B5 and B7 inspections are, when each is required, and current fees."],
   ["/articles/cara-pindah-milik-kereta-mysikap", "How to transfer car ownership (pindah milik) via JPJ MySikap, step by step."],

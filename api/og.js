@@ -860,7 +860,7 @@ const STATIC_PAGES = {
     <h2>${esc(c.crawler.faq)}</h2>
     ${c.faq.items.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
     <p>${esc(c.faq.reviewed)} ${esc(c.faq.reviewedLabel)}.</p>
-    <p><a href="${SITE_URL}/showroom">${esc(c.crawler.browse)}</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/shiftos">${esc(c.crawler.dealers)}</a></p>
+    <p><a href="${SITE_URL}/showroom">${esc(c.crawler.browse)}</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/articles/cara-kira-loan-kereta-excel">Cara kira loan kereta guna Excel</a> · <a href="${SITE_URL}/articles/template-excel-rekod-prospek-salesman-kereta">Template Excel rekod prospek</a> · <a href="${SITE_URL}/shiftos">${esc(c.crawler.dealers)}</a></p>
   </main>`;
     return htmlShell({
       lang: "ms",
