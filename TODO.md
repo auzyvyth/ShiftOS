@@ -2722,6 +2722,10 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   duty status of each car (Customs seizes duty-unpaid/grey supercars; a buyer's car being seized
   ends the brand); AP/import papers, ownership + HP settlement before any deposit; deposits into a
   company account, never personal. Domain from `src/config/site.js`, copy says Drevo.
+  Supply without chasing salesmen one by one (owner asked 2026-10-29): an opt-in "let Drevo broker
+  this car" switch on a seller's listing (they agree to the split once, in-app; the concierge page
+  shows only switched-on cars), plus direct-from-owner consignment (a "sell my supercar" form).
+  Never list a car whose seller has not opted in.
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
