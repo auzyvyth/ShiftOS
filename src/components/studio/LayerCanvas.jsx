@@ -32,6 +32,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import DragSlider from "./DragSlider";
+import AdjustStrip from "./AdjustStrip";
 import GradientEditor, { gradientCss, stopColor, DARK_SCRIM_GRADIENT } from "./GradientEditor";
 // react-konva removed — now using CSS div rendering for z-interleave with template
 
@@ -311,7 +312,6 @@ function SelectionBox({
   onHandleTouchStart,
   onRotateMouseDown,
   onRotateTouchStart,
-  onDelete,
 }) {
   const x = (layer.x / 100) * containerW;
   const y = (layer.y / 100) * containerH;
@@ -451,48 +451,6 @@ function SelectionBox({
         </div>
       </div>
 
-      {/* Delete — top-right, 32px hit area */}
-      <div
-        onMouseDown={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          onDelete();
-        }}
-        style={{
-          position: "absolute",
-          right: -16 - 6,
-          top: -16 - 6,
-          width: 32,
-          height: 32,
-          cursor: "pointer",
-          pointerEvents: "auto",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 201,
-          touchAction: "none",
-          background: "transparent",
-        }}
-      >
-        <div
-          style={{
-            width: 20,
-            height: 20,
-            background: "#ef4444",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 1px 5px rgba(0,0,0,0.5)",
-          }}
-        >
-          <Trash2 size={10} color="#fff" />
-        </div>
-      </div>
     </div>
   );
 }
@@ -561,142 +519,67 @@ function Tooltip({ text, x, y }) {
   );
 }
 
-// ─── QuickPanel — floating mini toolbar near selected layer ──────────────────
-const Q_BTN = {
-  width: 26,
-  height: 26,
+// ─── Mini bar over the selected layer: Duplicate, Lock, Delete ──────────────
+// The same three actions as over a selected text (STUDIO-UX-2). Everything
+// else about the object lives in its own tools, in one place, so nothing here
+// duplicates a panel control (the old bar had text, fill, colour and +/-5 z).
+const MINI_BTN = {
+  width: 40,
+  height: 40,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "rgba(255,255,255,0.07)",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: 5,
-  color: "rgba(255,255,255,0.65)",
+  background: "transparent",
+  border: "none",
+  borderRadius: 10,
+  color: "#f2f4f7",
   cursor: "pointer",
-  flexShrink: 0,
   padding: 0,
 };
 
-function QuickPanel({ layer, cW, cH, onUpdate, onCommit, onShiftZ }) {
-  // Guarded placement: anchor the bar to the selection box and hard-clamp it
-  // so it can NEVER leave the visible canvas frame — in any aspect ratio, for
-  // any selection position (incl. a full-frame layer). Prefer just above the
-  // selection; fall back to just below; otherwise dock to the top edge.
-  const M = 8; // margin from the canvas edges
-  const PANEL_H = 40; // approx bar height (padding + control)
-  const PANEL_W = Math.min(216, Math.max(120, cW - M * 2));
-
+function ObjectMiniBar({ layer, cW, cH, onDuplicate, onToggleLock, onDelete }) {
+  // Hard-clamped inside the canvas frame: just above the selection, else just
+  // below it, else docked to the top edge (a full-frame layer).
+  const M = 6;
+  const BAR_H = 44;
+  const BAR_W = 128;
   const sx = (layer.x / 100) * cW;
   const sy = (layer.y / 100) * cH;
   const sw = (layer.width / 100) * cW;
   const sh = (layer.height / 100) * cH;
-
-  const maxLeft = Math.max(M, cW - PANEL_W - M);
-  const panelLeft = Math.min(maxLeft, Math.max(M, sx + sw / 2 - PANEL_W / 2));
-
-  const above = sy - PANEL_H - M;
-  const below = sy + sh + M;
-  const maxTop = Math.max(M, cH - PANEL_H - M);
-  let panelTop;
-  if (above >= M) panelTop = above;
-  else if (below <= maxTop) panelTop = below;
-  else panelTop = M;
-  panelTop = Math.min(maxTop, Math.max(M, panelTop));
-
-  const hasText = ["text", "rect", "circle", "triangle"].includes(layer.type);
-  const hasShapeColor = layer.type !== "image" && layer.type !== "text";
-
+  const left = Math.min(Math.max(M, cW - BAR_W - M), Math.max(M, sx + sw / 2 - BAR_W / 2));
+  const above = sy - BAR_H - 34; // clear of the rotate handle row
+  const below = sy + sh + 40;
+  const maxTop = Math.max(M, cH - BAR_H - M);
+  let top = above >= M ? above : below <= maxTop ? below : M;
+  top = Math.min(maxTop, Math.max(M, top));
+  const stop = (e) => e.stopPropagation();
   return (
     <div
+      onMouseDown={stop}
+      onTouchStart={stop}
+      onTouchEnd={stop}
       style={{
         position: "absolute",
-        left: panelLeft,
-        top: panelTop,
-        width: PANEL_W,
-        background: "#1a2035",
-        border: "1px solid rgba(255,255,255,0.14)",
-        borderRadius: 8,
-        padding: "5px 8px",
+        left,
+        top,
+        height: BAR_H,
         display: "flex",
         alignItems: "center",
-        gap: 5,
+        gap: 2,
+        padding: "0 2px",
+        borderRadius: 12,
+        background: "#181b21",
+        boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
         zIndex: 202,
         pointerEvents: "auto",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.65)",
-        touchAction: "none",
       }}
-      onMouseDown={(e) => e.stopPropagation()}
     >
-      {hasText && (
-        <input
-          value={layer.text || ""}
-          onChange={(e) => onUpdate(layer.id, { text: e.target.value })}
-          onBlur={() => onCommit?.()}
-          placeholder="Text…"
-          style={{
-            flex: 1,
-            background: "rgba(255,255,255,0.07)",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 5,
-            padding: "4px 6px",
-            color: "#fff",
-            fontSize: 11,
-            outline: "none",
-            minWidth: 0,
-            fontFamily: "inherit",
-          }}
-        />
-      )}
-      {hasShapeColor && (
-        <label title="Fill color" style={{ flexShrink: 0, cursor: "pointer" }}>
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: layer.fill || "#e63946",
-              position: "relative",
-            }}
-          >
-            <input
-              type="color"
-              value={layer.fill || "#e63946"}
-              onChange={(e) => onUpdate(layer.id, { fill: e.target.value })}
-              onBlur={() => onCommit?.()}
-              style={{ opacity: 0, position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "pointer" }}
-            />
-          </div>
-        </label>
-      )}
-      {layer.type === "text" && (
-        <label title="Text color" style={{ flexShrink: 0, cursor: "pointer" }}>
-          <div
-            style={{
-              width: 22,
-              height: 22,
-              borderRadius: 4,
-              border: "1px solid rgba(255,255,255,0.2)",
-              background: layer.textColor || "#ffffff",
-              position: "relative",
-            }}
-          >
-            <input
-              type="color"
-              value={layer.textColor || "#ffffff"}
-              onChange={(e) => onUpdate(layer.id, { textColor: e.target.value })}
-              onBlur={() => onCommit?.()}
-              style={{ opacity: 0, position: "absolute", inset: 0, width: "100%", height: "100%", cursor: "pointer" }}
-            />
-          </div>
-        </label>
-      )}
-      <button onClick={() => onShiftZ(5)} title="Bring to front" style={Q_BTN}>
-        <ChevronsUp size={11} />
+      <button aria-label="Duplicate" title="Duplicate" onClick={onDuplicate} style={MINI_BTN}><Copy size={17} /></button>
+      <button aria-label={layer.locked ? "Unlock" : "Lock"} title={layer.locked ? "Unlock" : "Lock"} onClick={onToggleLock} style={MINI_BTN}>
+        {layer.locked ? <Unlock size={17} /> : <Lock size={17} />}
       </button>
-      <button onClick={() => onShiftZ(-5)} title="Send to back" style={Q_BTN}>
-        <ChevronsDown size={11} />
-      </button>
+      <button aria-label="Delete" title="Delete" onClick={onDelete} style={{ ...MINI_BTN, color: "#f87171" }}><Trash2 size={17} /></button>
     </div>
   );
 }
@@ -713,6 +596,9 @@ export default function LayerCanvas({
   onUpdateLayer,
   onCommitHistory,
   onDeleteLayer,
+  onDuplicateLayer,
+  onToggleLockLayer,
+  showMiniBar = true,
 }) {
   const containerRef = useRef(null);
   const dragRef = useRef(null);
@@ -1013,279 +899,19 @@ export default function LayerCanvas({
             onHandleTouchStart={onHandlePointerDown}
             onRotateMouseDown={onRotatePointerDown}
             onRotateTouchStart={onRotatePointerDown}
-            onDelete={() => onDeleteLayer?.(selectedLayer.id)}
           />
-          <QuickPanel
-            layer={selectedLayer}
-            cW={cW}
-            cH={cH}
-            onUpdate={onUpdateLayer}
-            onCommit={onCommitHistory}
-            onShiftZ={(delta) =>
-              onUpdateLayer(selectedLayer.id, {
-                zIndex: clamp((selectedLayer.zIndex ?? Z_ABOVE_TEMPLATE) + delta, 1, 199),
-              })
-            }
-          />
+          {showMiniBar && (
+            <ObjectMiniBar
+              layer={selectedLayer}
+              cW={cW}
+              cH={cH}
+              onDuplicate={() => onDuplicateLayer?.(selectedLayer.id)}
+              onToggleLock={() => onToggleLockLayer?.(selectedLayer.id)}
+              onDelete={() => onDeleteLayer?.(selectedLayer.id)}
+            />
+          )}
         </>
       )}
-    </div>
-  );
-}
-
-// ─── LayerToolbar ──────────────────────────────────────────────────────────────
-export function LayerToolbar({
-  onAddShape,
-  onAddImage,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
-}) {
-  const inputRef = useRef(null);
-
-  const btn = (content, title, onClick, disabled) => (
-    <button
-      title={title}
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: 34,
-        height: 34,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: disabled ? "transparent" : "rgba(255,255,255,0.05)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 7,
-        color: disabled ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.6)",
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "background 0.15s, color 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled)
-          e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-      }}
-      onMouseLeave={(e) => {
-        if (!disabled)
-          e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-      }}
-    >
-      {content}
-    </button>
-  );
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 4,
-        padding: "6px 5px",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
-        background: "#1a2035",
-        flexShrink: 0,
-        width: 44,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 7,
-          color: "rgba(255,255,255,0.3)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          marginBottom: 4,
-          textAlign: "center",
-          lineHeight: 1,
-        }}
-      >
-        Layers
-      </div>
-      {btn(<Square size={14} />, "Add Rectangle", () => onAddShape("rect"))}
-      {btn(<CircleIcon size={14} />, "Add Circle", () => onAddShape("circle"))}
-      {btn(<Triangle size={14} />, "Add Triangle", () =>
-        onAddShape("triangle"),
-      )}
-      {btn(<Blend size={14} />, "Add Gradient Overlay", () =>
-        onAddShape("gradient"),
-      )}
-      {btn(<Type size={14} />, "Add Text", () => onAddShape("text"))}
-      {btn(<ImagePlus size={14} />, "Add Image", () =>
-        inputRef.current?.click(),
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        style={{ display: "none" }}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onAddImage(URL.createObjectURL(f));
-          e.target.value = "";
-        }}
-      />
-      <div
-        style={{
-          width: "100%",
-          height: 1,
-          background: "rgba(255,255,255,0.07)",
-          margin: "4px 0",
-        }}
-      />
-      {btn(<Undo2 size={13} />, "Undo", onUndo, !canUndo)}
-      {btn(<Redo2 size={13} />, "Redo", onRedo, !canRedo)}
-    </div>
-  );
-}
-
-// ─── LayerStack ────────────────────────────────────────────────────────────────
-export function LayerStack({
-  layers = [],
-  selectedIds = [],
-  onSelectLayer,
-  onUpdateLayer,
-  onDeleteLayer,
-  onDuplicateLayer,
-  onShiftZ,
-}) {
-  if (!layers.length) return null;
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-        padding: "4px 8px",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        background: "#141a28",
-        overflowX: "auto",
-        flexShrink: 0,
-        minHeight: 40,
-      }}
-    >
-      <span
-        style={{
-          fontSize: 9,
-          color: "rgba(255,255,255,0.3)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          flexShrink: 0,
-        }}
-      >
-        Layers:
-      </span>
-
-      {[...layers].reverse().map((layer) => {
-        const sel = selectedIds.includes(layer.id);
-        return (
-          <div
-            key={layer.id}
-            onClick={() => onSelectLayer(layer.id)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              padding: "3px 7px",
-              borderRadius: 5,
-              cursor: "pointer",
-              flexShrink: 0,
-              background: sel
-                ? "rgba(59,130,246,0.12)"
-                : "rgba(255,255,255,0.05)",
-              border: `1px solid ${sel ? "rgba(59,130,246,0.4)" : "rgba(255,255,255,0.07)"}`,
-              fontSize: 10,
-              color: sel ? "#60a5fa" : "rgba(255,255,255,0.6)",
-              transition: "all 0.1s",
-            }}
-          >
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateLayer(layer.id, { visible: !layer.visible });
-              }}
-              style={{
-                cursor: "pointer",
-                opacity: layer.visible === false ? 0.4 : 1,
-                display: "flex",
-              }}
-            >
-              {layer.visible === false ? (
-                <EyeOff size={11} />
-              ) : (
-                <Eye size={11} />
-              )}
-            </span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdateLayer(layer.id, { locked: !layer.locked });
-              }}
-              style={{
-                cursor: "pointer",
-                opacity: layer.locked ? 1 : 0.3,
-                display: "flex",
-              }}
-            >
-              {layer.locked ? <Lock size={10} /> : <Unlock size={10} />}
-            </span>
-            <span
-              style={{
-                maxWidth: 56,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {layer.label || layer.type}
-            </span>
-            {(layer.zIndex ?? 20) < 10 && (
-              <span
-                title="Behind template"
-                style={{ fontSize: 8, color: "#fbbf24", flexShrink: 0 }}
-              >
-                bg
-              </span>
-            )}
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onShiftZ(layer.id, "up");
-              }}
-              style={{ cursor: "pointer", opacity: 0.5, display: "flex" }}
-              title="Bring forward"
-            >
-              <MoveUp size={9} />
-            </span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onShiftZ(layer.id, "down");
-              }}
-              style={{ cursor: "pointer", opacity: 0.5, display: "flex" }}
-              title="Send back"
-            >
-              <MoveDown size={9} />
-            </span>
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onDeleteLayer(layer.id);
-              }}
-              style={{
-                cursor: "pointer",
-                color: "#ef4444",
-                opacity: 0.7,
-                display: "flex",
-              }}
-              title="Delete"
-            >
-              <Trash2 size={9} />
-            </span>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1293,18 +919,8 @@ export function LayerStack({
 // ─── LayerPropertiesPanel ──────────────────────────────────────────────────────
 function PropRow({ label, children }) {
   return (
-    <div style={{ marginBottom: 10 }}>
-      <div
-        style={{
-          fontSize: 9,
-          color: "rgba(255,255,255,0.35)",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </div>
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: "#a3a9b5", marginBottom: 6 }}>{label}</div>
       {children}
     </div>
   );
@@ -1349,26 +965,10 @@ function LColorInput({ value, onChange }) {
 
 function LSlider({ label, value, min, max, step = 1, onChange, fmt }) {
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 3,
-        }}
-      >
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.8)",
-            fontWeight: 600,
-          }}
-        >
-          {fmt ? fmt(value) : value}
-        </span>
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+        <span style={{ fontSize: 12, color: "#a3a9b5" }}>{label}</span>
+        <span style={{ fontSize: 12, color: "#f2f4f7", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmt ? fmt(value) : value}</span>
       </div>
       <DragSlider value={value} min={min} max={max} step={step} onChange={onChange} />
     </div>
@@ -1419,13 +1019,63 @@ function SectionLabel({ children }) {
 
 const selectStyle = {
   width: "100%",
-  background: "rgba(255,255,255,0.05)",
+  height: 40,
+  background: "#181b21",
   border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 6,
-  padding: "5px 8px",
-  color: "rgba(255,255,255,0.8)",
-  fontSize: 11,
+  borderRadius: 10,
+  padding: "0 10px",
+  color: "#f2f4f7",
+  fontSize: 13,
   outline: "none",
+};
+
+// Sections a caller can ask for with `only` (STUDIO-UX-2: one tool tab each):
+// fill, border, content, font, textColour, textStyle, image, fit, effects,
+// arrange. Without `only` every section a layer type supports is shown.
+const LAYER_ADJUST = [
+  { key: "brightness", label: "Brightness", min: 0, max: 200, step: 1, def: 100, fmt: (v) => signedPct(v - 100) },
+  { key: "contrast", label: "Contrast", min: 0, max: 200, step: 1, def: 100, fmt: (v) => signedPct(v - 100) },
+  { key: "saturation", label: "Saturation", min: 0, max: 200, step: 1, def: 100, fmt: (v) => signedPct(v - 100) },
+  { key: "blur", label: "Blur", min: 0, max: 20, step: 0.5, def: 0, fmt: (v) => `${v}` },
+  { key: "hue", label: "Hue", min: 0, max: 360, step: 1, def: 0, fmt: (v) => `${Math.round(v)}°` },
+  { key: "sepia", label: "Sepia", min: 0, max: 100, step: 1, def: 0, fmt: (v) => `${Math.round(v)}` },
+];
+function signedPct(n) {
+  const r = Math.round(n);
+  return (r > 0 ? "+" : "") + r;
+}
+
+const segBtn = (on) => ({
+  flex: 1,
+  height: 34,
+  borderRadius: 9,
+  border: "none",
+  fontSize: 12,
+  fontWeight: on ? 600 : 500,
+  cursor: "pointer",
+  background: on ? "#2a2f38" : "transparent",
+  color: on ? "#f2f4f7" : "#a3a9b5",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 4,
+  fontFamily: "inherit",
+});
+const segWrap = { display: "flex", padding: 3, borderRadius: 12, background: "#181b21", marginBottom: 10, gap: 2 };
+const tileBtn = {
+  height: 44,
+  borderRadius: 12,
+  border: "none",
+  background: "#181b21",
+  color: "#f2f4f7",
+  fontSize: 12,
+  fontWeight: 500,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  fontFamily: "inherit",
 };
 
 export function LayerPropertiesPanel({
@@ -1434,6 +1084,8 @@ export function LayerPropertiesPanel({
   onCommit,
   onDelete,
   onDuplicate,
+  onZ,
+  only,
 }) {
   if (!layer) {
     return (
@@ -1464,183 +1116,90 @@ export function LayerPropertiesPanel({
   };
 
   const curZ = layer.zIndex ?? Z_ABOVE_TEMPLATE;
+  const isShape = layer.type !== "image" && layer.type !== "text";
+  const hasText = layer.type === "text" || isShape;
+  const show = (k) => {
+    if (only) return only.includes(k);
+    if (k === "fill") return isShape;
+    if (["content", "font", "textColour", "textStyle"].includes(k)) return hasText;
+    if (k === "image" || k === "fit") return layer.type === "image";
+    return true;
+  };
+  // Z order: the caller can route it (All slides mode); else write zIndex here.
+  const setZ = (z) => (onZ ? onZ(z) : uc({ zIndex: z }));
 
   return (
-    <div style={{ overflowY: "auto", paddingBottom: 16 }}>
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 12,
-          padding: "4px 0",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#60a5fa",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-          }}
-        >
-          ▣ {layer.label || layer.type}
-        </span>
-        <div style={{ display: "flex", gap: 5 }}>
-          <button
-            onClick={() => onDuplicate?.(layer.id)}
-            style={{
-              padding: "3px 8px",
-              fontSize: 9,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 5,
-              color: "rgba(255,255,255,0.6)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-            }}
-          >
-            <Copy size={10} /> Copy
-          </button>
-          <button
-            onClick={() => onDelete?.(layer.id)}
-            style={{
-              padding: "3px 8px",
-              fontSize: 9,
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.3)",
-              borderRadius: 5,
-              color: "#f87171",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-            }}
-          >
-            <Trash2 size={10} /> Delete
-          </button>
-        </div>
-      </div>
-
-      {/* Fill + Border first — the controls people actually reach for */}
-      {layer.type !== "image" && layer.type !== "text" && (
-        <>
-          <SectionLabel>Fill</SectionLabel>
-          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-            <button
-              onClick={() => uc({ gradient: null })}
-              style={{
-                flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", fontWeight: 600,
-                border: `1px solid ${!layer.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
-                background: !layer.gradient ? "rgba(37,99,235,0.12)" : "transparent",
-                color: !layer.gradient ? "#60a5fa" : "rgba(255,255,255,0.5)",
-              }}
-            >
-              Solid
+    <div style={{ paddingBottom: 8 }}>
+      {!only && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, padding: "4px 0" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#f2f4f7" }}>{layer.label || layer.type}</span>
+          <div style={{ display: "flex", gap: 5 }}>
+            <button onClick={() => onDuplicate?.(layer.id)} style={{ ...tileBtn, height: 30, padding: "0 10px" }}>
+              <Copy size={12} /> Copy
             </button>
-            <button
-              onClick={() => uc({ gradient: layer.gradient || DARK_SCRIM_GRADIENT })}
-              style={{
-                flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", fontWeight: 600, color: "#fff",
-                border: `1px solid ${layer.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
-                background: layer.gradient ? gradientCss(layer.gradient) : "transparent",
-              }}
-            >
-              Gradient
+            <button onClick={() => onDelete?.(layer.id)} style={{ ...tileBtn, height: 30, padding: "0 10px", color: "#f87171" }}>
+              <Trash2 size={12} /> Delete
             </button>
           </div>
+        </div>
+      )}
+
+      {show("fill") && (
+        <>
+          {!only && <SectionLabel>Fill</SectionLabel>}
+          <div style={segWrap}>
+            <button onClick={() => uc({ gradient: null })} style={segBtn(!layer.gradient)}>Solid</button>
+            <button onClick={() => uc({ gradient: layer.gradient || DARK_SCRIM_GRADIENT })} style={segBtn(!!layer.gradient)}>Gradient</button>
+          </div>
           {layer.gradient ? (
-            <GradientEditor
-              value={layer.gradient}
-              onChange={(g) => u({ gradient: g })}
-              showAlpha
-            />
+            <GradientEditor value={layer.gradient} onChange={(g) => u({ gradient: g })} showAlpha />
           ) : (
             <>
-              <PropRow label="Color">
-                <LColorInput
-                  value={layer.fill || "#e63946"}
-                  onChange={(v) => u({ fill: v })}
-                />
+              <PropRow label={layer.type === "text" ? "Box colour" : "Colour"}>
+                <LColorInput value={layer.fill && layer.fill !== "transparent" ? layer.fill : "#e63946"} onChange={(v) => u({ fill: v })} />
               </PropRow>
-              <LSlider
-                label="Fill Opacity"
-                value={layer.fillOpacity ?? 100}
-                min={0}
-                max={100}
-                onChange={(v) => u({ fillOpacity: v })}
-                fmt={(v) => `${v}%`}
-              />
+              <LSlider label="Opacity" value={layer.fillOpacity ?? 100} min={0} max={100} onChange={(v) => u({ fillOpacity: v })} fmt={(v) => `${v}%`} />
             </>
           )}
-          {(layer.type === "rect" || layer.type === "circle") && (
-            <LSlider
-              label="Corner Radius"
-              value={layer.borderRadius || 0}
-              min={0}
-              max={100}
-              onChange={(v) => u({ borderRadius: v })}
-              fmt={(v) => `${v}px`}
-            />
+        </>
+      )}
+
+      {show("border") && (
+        <>
+          {!only && <SectionLabel>Border</SectionLabel>}
+          <LSlider label="Width" value={layer.borderWidth ?? 0} min={0} max={20} onChange={(v) => u({ borderWidth: v })} fmt={(v) => `${v}px`} />
+          {(layer.borderWidth || 0) > 0 && (
+            <>
+              <PropRow label="Colour">
+                <LColorInput value={layer.borderColor || "#ffffff"} onChange={(v) => u({ borderColor: v })} />
+              </PropRow>
+              <LSlider label="Opacity" value={layer.borderOpacity ?? 100} min={0} max={100} onChange={(v) => u({ borderOpacity: v })} fmt={(v) => `${v}%`} />
+            </>
+          )}
+          {layer.type !== "circle" && layer.type !== "triangle" && (
+            <LSlider label="Corner radius" value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
           )}
         </>
       )}
 
-      {/* Border — width / colour / opacity */}
-      <SectionLabel>Border</SectionLabel>
-      <LSlider
-        label="Width"
-        value={layer.borderWidth ?? 0}
-        min={0}
-        max={20}
-        onChange={(v) => u({ borderWidth: v })}
-        fmt={(v) => `${v}px`}
-      />
-      {(layer.borderWidth || 0) > 0 && (
+      {show("content") && (
         <>
-          <PropRow label="Color">
-            <LColorInput
-              value={layer.borderColor || "#ffffff"}
-              onChange={(v) => u({ borderColor: v })}
-            />
-          </PropRow>
-          <LSlider
-            label="Border Opacity"
-            value={layer.borderOpacity ?? 100}
-            min={0}
-            max={100}
-            onChange={(v) => u({ borderOpacity: v })}
-            fmt={(v) => `${v}%`}
-          />
-        </>
-      )}
-
-      {/* Issue 4: Text — full controls for text/rect/circle/triangle */}
-      {(layer.type === "text" ||
-        layer.type === "rect" ||
-        layer.type === "circle" ||
-        layer.type === "triangle") && (
-        <>
-          <SectionLabel>Text</SectionLabel>
-          <PropRow label="Content">
+          {!only && <SectionLabel>Text</SectionLabel>}
+          <PropRow label="Text">
             <textarea
               value={layer.text || ""}
               onChange={(e) => u({ text: e.target.value })}
               onBlur={() => onCommit?.()}
               rows={3}
-              placeholder="Enter text…"
+              placeholder="Type here"
               style={{
                 width: "100%",
-                background: "rgba(255,255,255,0.05)",
+                background: "#181b21",
                 border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6,
-                padding: "5px 8px",
-                color: "rgba(255,255,255,0.8)",
-                fontSize: 11,
+                borderRadius: 10,
+                padding: "8px 10px",
+                color: "#f2f4f7",
+                fontSize: 14,
                 outline: "none",
                 boxSizing: "border-box",
                 resize: "vertical",
@@ -1648,500 +1207,175 @@ export function LayerPropertiesPanel({
               }}
             />
           </PropRow>
-
-          {/* Font family */}
-          <PropRow label="Font">
-            <select
-              value={layer.fontFamily || "DM Sans"}
-              onChange={(e) => u({ fontFamily: e.target.value })}
-              style={selectStyle}
-            >
-              {TEXT_FONTS.map((f) => (
-                <option key={f} value={f} style={{ fontFamily: f }}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          </PropRow>
-
-          <LSlider
-            label="Font Size"
-            value={layer.fontSize || 24}
-            min={8}
-            max={200}
-            onChange={(v) => u({ fontSize: v })}
-            fmt={(v) => `${v}px`}
-          />
-
-          <PropRow label="Color">
-            <LColorInput
-              value={layer.textColor || "#ffffff"}
-              onChange={(v) => u({ textColor: v })}
-            />
-          </PropRow>
-
-          {/* Align + Bold/Italic in one row */}
-          <PropRow label="Style">
-            <div style={{ display: "flex", gap: 4 }}>
-              {[
-                [<AlignLeft key="left-icon" size={11} />, "left"],
-                [<AlignCenter key="center-icon" size={11} />, "center"],
-                [<AlignRight key="right-icon" size={11} />, "right"],
-              ].map(([icon, val]) => (
-                <button
-                  key={val}
-                  onClick={() => u({ textAlign: val })}
-                  style={{
-                    flex: 1,
-                    padding: "5px 0",
-                    borderRadius: 6,
-                    fontSize: 10,
-                    background:
-                      (layer.textAlign || "center") === val
-                        ? "rgba(59,130,246,0.2)"
-                        : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${(layer.textAlign || "center") === val ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-                    color:
-                      (layer.textAlign || "center") === val
-                        ? "#60a5fa"
-                        : "rgba(255,255,255,0.5)",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {icon}
-                </button>
-              ))}
-              <button
-                onClick={() =>
-                  u({
-                    fontWeight: layer.fontWeight === "bold" ? "normal" : "bold",
-                  })
-                }
-                style={{
-                  flex: 1,
-                  padding: "5px 0",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: 700,
-                  background:
-                    layer.fontWeight === "bold"
-                      ? "rgba(59,130,246,0.2)"
-                      : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${layer.fontWeight === "bold" ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-                  color:
-                    layer.fontWeight === "bold"
-                      ? "#60a5fa"
-                      : "rgba(255,255,255,0.5)",
-                  cursor: "pointer",
-                }}
-              >
-                B
-              </button>
-              <button
-                onClick={() =>
-                  u({
-                    fontStyle:
-                      layer.fontStyle === "italic" ? "normal" : "italic",
-                  })
-                }
-                style={{
-                  flex: 1,
-                  padding: "5px 0",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontStyle: "italic",
-                  fontWeight: 600,
-                  background:
-                    layer.fontStyle === "italic"
-                      ? "rgba(59,130,246,0.2)"
-                      : "rgba(255,255,255,0.05)",
-                  border: `1px solid ${layer.fontStyle === "italic" ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-                  color:
-                    layer.fontStyle === "italic"
-                      ? "#60a5fa"
-                      : "rgba(255,255,255,0.5)",
-                  cursor: "pointer",
-                }}
-              >
-                I
-              </button>
-            </div>
-          </PropRow>
-
-          {/* Vertical align */}
-          <PropRow label="Vertical">
-            <div style={{ display: "flex", gap: 4 }}>
-              {[
-                ["top", "Top"],
-                ["center", "Mid"],
-                ["bottom", "Bot"],
-              ].map(([val, lbl]) => (
-                <button
-                  key={val}
-                  onClick={() => u({ textVerticalAlign: val })}
-                  style={{
-                    flex: 1,
-                    padding: "4px 0",
-                    borderRadius: 6,
-                    fontSize: 9,
-                    background:
-                      (layer.textVerticalAlign || "center") === val
-                        ? "rgba(59,130,246,0.2)"
-                        : "rgba(255,255,255,0.05)",
-                    border: `1px solid ${(layer.textVerticalAlign || "center") === val ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-                    color:
-                      (layer.textVerticalAlign || "center") === val
-                        ? "#60a5fa"
-                        : "rgba(255,255,255,0.5)",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                  }}
-                >
-                  {lbl}
-                </button>
-              ))}
-            </div>
-          </PropRow>
         </>
       )}
 
-      {/* Issue 3: Z-Order controls */}
-      <SectionLabel>Z-Order</SectionLabel>
-      <div
-        style={{ display: "flex", gap: 4, marginBottom: 8, flexWrap: "wrap" }}
-      >
-        {[
-          [<ChevronsUp key="front-icon" size={11} />, "Front", () => uc({ zIndex: Z_FRONT })],
-          [
-            <ChevronUp key="fwd-icon" size={11} />,
-            "Fwd +1",
-            () => uc({ zIndex: clamp(curZ + 1, 1, 199) }),
-          ],
-          [
-            <ChevronDown key="back-icon" size={11} />,
-            "Back -1",
-            () => uc({ zIndex: clamp(curZ - 1, 1, 199) }),
-          ],
-          [
-            <ChevronsDown key="behind-icon" size={11} />,
-            "Behind",
-            () => uc({ zIndex: Z_BELOW_TEMPLATE }),
-          ],
-        ].map(([icon, label, fn]) => (
-          <button
-            key={label}
-            onClick={fn}
-            style={{
-              flex: 1,
-              minWidth: 54,
-              padding: "5px 2px",
-              fontSize: 9,
-              fontWeight: 600,
-              borderRadius: 6,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 3,
-              background:
-                label === "Behind"
-                  ? "rgba(251,191,36,0.08)"
-                  : "rgba(255,255,255,0.05)",
-              border: `1px solid ${label === "Behind" ? "rgba(251,191,36,0.3)" : "rgba(255,255,255,0.08)"}`,
-              color: label === "Behind" ? "#fbbf24" : "rgba(255,255,255,0.55)",
-            }}
-          >
-            {icon} {label}
-          </button>
-        ))}
-      </div>
-      <div
-        style={{
-          fontSize: 9,
-          color: "rgba(255,255,255,0.25)",
-          marginBottom: 8,
-        }}
-      >
-        z={curZ} · template at z=10 · "Behind" puts layer below template
-      </div>
-
-      {/* Transform */}
-      <SectionLabel>Transform</SectionLabel>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 6,
-          marginBottom: 8,
-        }}
-      >
-        {[
-          ["X %", layer.x, (v) => u({ x: v }), 0, 100],
-          ["Y %", layer.y, (v) => u({ y: v }), 0, 100],
-          ["W %", layer.width, (v) => u({ width: v }), 1, 100],
-          ["H %", layer.height, (v) => u({ height: v }), 1, 100],
-        ].map(([lbl, val, fn, lo, hi]) => (
-          <div key={lbl}>
-            <div style={{ fontSize: 9, color: "#9ca3af", marginBottom: 3 }}>
-              {lbl}
-            </div>
-            <LNumInput value={val} onChange={fn} min={lo} max={hi} />
-          </div>
-        ))}
-      </div>
-      <LSlider
-        label="Rotation"
-        value={layer.rotation || 0}
-        min={-180}
-        max={180}
-        onChange={(v) => u({ rotation: v })}
-        fmt={(v) => `${v}°`}
-      />
-
-      {/* Image source */}
-      {layer.type === "image" && (
+      {show("font") && (
         <>
-          <SectionLabel>Image</SectionLabel>
-          <PropRow label="URL">
+          <PropRow label="Font">
+            <select value={layer.fontFamily || "DM Sans"} onChange={(e) => uc({ fontFamily: e.target.value })} style={selectStyle}>
+              {TEXT_FONTS.map((fnt) => (
+                <option key={fnt} value={fnt} style={{ fontFamily: fnt }}>{fnt}</option>
+              ))}
+            </select>
+          </PropRow>
+          <LSlider label="Size" value={layer.fontSize || 24} min={8} max={200} onChange={(v) => u({ fontSize: v })} fmt={(v) => `${v}px`} />
+        </>
+      )}
+
+      {show("textColour") && (
+        <PropRow label="Text colour">
+          <LColorInput value={layer.textColor || "#ffffff"} onChange={(v) => u({ textColor: v })} />
+        </PropRow>
+      )}
+
+      {show("textStyle") && (
+        <>
+          <PropRow label="Align">
+            <div style={{ ...segWrap, marginBottom: 0 }}>
+              {[
+                [<AlignLeft key="l" size={15} />, "left"],
+                [<AlignCenter key="c" size={15} />, "center"],
+                [<AlignRight key="r" size={15} />, "right"],
+              ].map(([icon, val]) => (
+                <button key={val} aria-label={`Align ${val}`} onClick={() => uc({ textAlign: val })} style={segBtn((layer.textAlign || "center") === val)}>{icon}</button>
+              ))}
+            </div>
+          </PropRow>
+          <PropRow label="Up / down">
+            <div style={{ ...segWrap, marginBottom: 0 }}>
+              {[["top", "Top"], ["center", "Middle"], ["bottom", "Bottom"]].map(([val, lbl]) => (
+                <button key={val} onClick={() => uc({ textVerticalAlign: val })} style={segBtn((layer.textVerticalAlign || "center") === val)}>{lbl}</button>
+              ))}
+            </div>
+          </PropRow>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+            <button onClick={() => uc({ fontWeight: layer.fontWeight === "bold" || Number(layer.fontWeight) >= 700 ? "normal" : "bold" })}
+              style={{ ...tileBtn, fontWeight: 800, background: layer.fontWeight === "bold" || Number(layer.fontWeight) >= 700 ? "#2a2f38" : "#181b21" }}>Bold</button>
+            <button onClick={() => uc({ fontStyle: layer.fontStyle === "italic" ? "normal" : "italic" })}
+              style={{ ...tileBtn, fontStyle: "italic", background: layer.fontStyle === "italic" ? "#2a2f38" : "#181b21" }}>Italic</button>
+          </div>
+        </>
+      )}
+
+      {show("image") && (
+        <>
+          <label style={{ ...tileBtn, width: "100%", marginBottom: 10 }}>
+            <ImagePlus size={16} /> Replace image
             <input
-              value={layer.src || ""}
-              placeholder="https://…"
-              onChange={(e) => u({ src: e.target.value })}
-              onBlur={() => onCommit?.()}
-              style={{
-                width: "100%",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 6,
-                padding: "5px 8px",
-                color: "rgba(255,255,255,0.8)",
-                fontSize: 11,
-                outline: "none",
-                boxSizing: "border-box",
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) uc({ src: URL.createObjectURL(file) });
+                e.target.value = "";
               }}
             />
+          </label>
+          <PropRow label="Or paste an image link">
+            <input
+              value={layer.src && !String(layer.src).startsWith("blob:") ? layer.src : ""}
+              placeholder="https://"
+              onChange={(e) => u({ src: e.target.value })}
+              onBlur={() => onCommit?.()}
+              style={{ width: "100%", background: "#181b21", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 10px", color: "#f2f4f7", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+            />
           </PropRow>
-          <PropRow label="Fit">
-            <select
-              value={layer.objectFit || "cover"}
-              onChange={(e) => uc({ objectFit: e.target.value })}
-              style={selectStyle}
-            >
-              {["cover", "contain", "fill", "none"].map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
-          </PropRow>
-          <LSlider
-            label="Corner Radius"
-            value={layer.borderRadius || 0}
-            min={0}
-            max={100}
-            onChange={(v) => u({ borderRadius: v })}
-            fmt={(v) => `${v}px`}
-          />
         </>
       )}
 
-      {/* Label — rarely used, lives at the bottom */}
-      <SectionLabel>Label</SectionLabel>
-      <PropRow label="Label">
-        <input
-          value={layer.label || ""}
-          onChange={(e) => u({ label: e.target.value })}
-          onBlur={() => onCommit?.()}
-          style={{
-            width: "100%",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            borderRadius: 6,
-            padding: "5px 8px",
-            color: "rgba(255,255,255,0.8)",
-            fontSize: 11,
-            outline: "none",
-            boxSizing: "border-box",
-          }}
-        />
-      </PropRow>
+      {show("fit") && (
+        <>
+          <PropRow label="Fit">
+            <div style={{ ...segWrap, marginBottom: 0 }}>
+              {[["cover", "Fill the box"], ["contain", "Show it all"]].map(([val, lbl]) => (
+                <button key={val} onClick={() => uc({ objectFit: val })} style={segBtn((layer.objectFit || "cover") === val)}>{lbl}</button>
+              ))}
+            </div>
+          </PropRow>
+          <LSlider label="Corner radius" value={layer.borderRadius || 0} min={0} max={100} onChange={(v) => u({ borderRadius: v })} fmt={(v) => `${v}px`} />
+        </>
+      )}
 
-      {/* Filters */}
-      <SectionLabel>Filters</SectionLabel>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 5,
-          marginBottom: 10,
-        }}
-      >
-        {Object.keys(FILTER_PRESETS).map((name) => (
-          <button
-            key={name}
-            onClick={() => applyPreset(name)}
-            style={{
-              padding: "5px 4px",
-              fontSize: 9,
-              fontWeight: 600,
-              borderRadius: 6,
-              border: `1px solid ${f.preset === name ? "rgba(59,130,246,0.5)" : "rgba(255,255,255,0.08)"}`,
-              background:
-                f.preset === name
-                  ? "rgba(59,130,246,0.12)"
-                  : "rgba(255,255,255,0.04)",
-              color: f.preset === name ? "#60a5fa" : "rgba(255,255,255,0.55)",
-              cursor: "pointer",
-              textTransform: "capitalize",
-            }}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-      <LSlider
-        label="Brightness"
-        value={f.brightness}
-        min={0}
-        max={200}
-        onChange={(v) => u({ filters: { ...f, brightness: v, preset: null } })}
-        fmt={(v) => `${v}%`}
-      />
-      <LSlider
-        label="Contrast"
-        value={f.contrast}
-        min={0}
-        max={200}
-        onChange={(v) => u({ filters: { ...f, contrast: v, preset: null } })}
-        fmt={(v) => `${v}%`}
-      />
-      <LSlider
-        label="Saturation"
-        value={f.saturation}
-        min={0}
-        max={200}
-        onChange={(v) => u({ filters: { ...f, saturation: v, preset: null } })}
-        fmt={(v) => `${v}%`}
-      />
-      <LSlider
-        label="Blur"
-        value={f.blur}
-        min={0}
-        max={20}
-        onChange={(v) => u({ filters: { ...f, blur: v, preset: null } })}
-        fmt={(v) => `${v}px`}
-      />
-      <LSlider
-        label="Opacity"
-        value={f.opacity}
-        min={0}
-        max={100}
-        onChange={(v) => u({ filters: { ...f, opacity: v, preset: null } })}
-        fmt={(v) => `${v}%`}
-      />
-      <LSlider
-        label="Hue Rotate"
-        value={f.hue}
-        min={0}
-        max={360}
-        onChange={(v) => u({ filters: { ...f, hue: v, preset: null } })}
-        fmt={(v) => `${v}°`}
-      />
-      <LSlider
-        label="Sepia"
-        value={f.sepia}
-        min={0}
-        max={100}
-        onChange={(v) => u({ filters: { ...f, sepia: v, preset: null } })}
-        fmt={(v) => `${v}%`}
-      />
-      <button
-        onClick={() => uc({ filters: { ...FILTER_DEFAULTS } })}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          padding: "5px 10px",
-          fontSize: 10,
-          background: "rgba(255,255,255,0.05)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 6,
-          color: "rgba(255,255,255,0.45)",
-          cursor: "pointer",
-          marginTop: 4,
-        }}
-      >
-        <RotateCcw size={11} /> Reset filters
-      </button>
+      {show("effects") && (
+        <>
+          {!only && <SectionLabel>Effects</SectionLabel>}
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, scrollbarWidth: "none" }}>
+            {Object.keys(FILTER_PRESETS).map((name) => (
+              <button
+                key={name}
+                onClick={() => applyPreset(name)}
+                style={{ flex: "0 0 auto", height: 34, padding: "0 12px", borderRadius: 999, border: "none", fontSize: 12, fontWeight: f.preset === name ? 600 : 500, cursor: "pointer", background: f.preset === name ? "#2a2f38" : "#181b21", color: f.preset === name ? "#f2f4f7" : "#a3a9b5", textTransform: "capitalize", fontFamily: "inherit" }}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <AdjustStrip
+            items={LAYER_ADJUST}
+            values={f}
+            onChange={(key, v) => u({ filters: { ...f, [key]: v, preset: null } })}
+            onResetAll={() => uc({ filters: { ...FILTER_DEFAULTS, opacity: f.opacity } })}
+          />
+          <PropRow label="Blend with what is behind">
+            <select value={layer.blendMode || "normal"} onChange={(e) => uc({ blendMode: e.target.value })} style={{ ...selectStyle, marginTop: 4 }}>
+              {["normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"].map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </PropRow>
+        </>
+      )}
 
-      {/* Layer */}
-      <SectionLabel>Layer</SectionLabel>
-      <PropRow label="Blend Mode">
-        <select
-          value={layer.blendMode || "normal"}
-          onChange={(e) => uc({ blendMode: e.target.value })}
-          style={selectStyle}
-        >
-          {[
-            "normal",
-            "multiply",
-            "screen",
-            "overlay",
-            "darken",
-            "lighten",
-            "color-dodge",
-            "color-burn",
-            "hard-light",
-            "soft-light",
-            "difference",
-            "exclusion",
-            "hue",
-            "saturation",
-            "color",
-            "luminosity",
-          ].map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-      </PropRow>
-      <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
-        {[
-          ["locked", "Locked"],
-          ["visible", "Visible"],
-        ].map(([key, lbl]) => (
-          <label
-            key={key}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              fontSize: 10,
-              color: "rgba(255,255,255,0.5)",
-              cursor: "pointer",
-            }}
-          >
+      {show("arrange") && (
+        <>
+          {!only && <SectionLabel>Arrange</SectionLabel>}
+          <LSlider label="Opacity" value={f.opacity} min={0} max={100} onChange={(v) => u({ filters: { ...f, opacity: v } })} fmt={(v) => `${v}%`} />
+          <LSlider label="Rotate" value={Math.round(((layer.rotation || 0) + 540) % 360) - 180} min={-180} max={180} onChange={(v) => u({ rotation: v })} fmt={(v) => `${v}°`} />
+          <PropRow label="Order">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+              {[
+                ["To front", () => setZ(Z_FRONT)],
+                ["Forward", () => setZ(clamp(curZ + 1, 1, 199))],
+                ["Back", () => setZ(clamp(curZ - 1, 1, 199))],
+                ["To back", () => setZ(Z_BELOW_TEMPLATE)],
+              ].map(([lbl, fn]) => (
+                <button key={lbl} onClick={fn} style={tileBtn}>{lbl}</button>
+              ))}
+            </div>
+          </PropRow>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
+            <button onClick={() => uc({ locked: !layer.locked })} style={{ ...tileBtn, background: layer.locked ? "#2a2f38" : "#181b21" }}>
+              {layer.locked ? <Lock size={15} /> : <Unlock size={15} />} {layer.locked ? "Locked" : "Lock in place"}
+            </button>
+            <button onClick={() => uc({ visible: layer.visible === false })} style={{ ...tileBtn, background: layer.visible === false ? "#2a2f38" : "#181b21" }}>
+              {layer.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {layer.visible === false ? "Hidden" : "Hide"}
+            </button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6, marginBottom: 10 }}>
+            {[
+              ["X", layer.x, (v) => u({ x: v }), 0, 100],
+              ["Y", layer.y, (v) => u({ y: v }), 0, 100],
+              ["W", layer.width, (v) => u({ width: v }), 1, 100],
+              ["H", layer.height, (v) => u({ height: v }), 1, 100],
+            ].map(([lbl, val, fn, lo, hi]) => (
+              <div key={lbl}>
+                <div style={{ fontSize: 10, color: "#848b98", marginBottom: 3 }}>{lbl} %</div>
+                <LNumInput value={val} onChange={fn} min={lo} max={hi} />
+              </div>
+            ))}
+          </div>
+          <PropRow label="Name (in the Layers list)">
             <input
-              type="checkbox"
-              checked={
-                key === "visible" ? layer.visible !== false : !!layer[key]
-              }
-              onChange={(e) =>
-                uc(
-                  key === "visible"
-                    ? { visible: e.target.checked }
-                    : { [key]: e.target.checked },
-                )
-              }
+              value={layer.label || ""}
+              onChange={(e) => u({ label: e.target.value })}
+              onBlur={() => onCommit?.()}
+              style={{ width: "100%", background: "#181b21", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "8px 10px", color: "#f2f4f7", fontSize: 13, outline: "none", boxSizing: "border-box" }}
             />
-            {lbl}
-          </label>
-        ))}
-      </div>
+          </PropRow>
+        </>
+      )}
     </div>
   );
 }

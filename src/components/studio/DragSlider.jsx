@@ -12,7 +12,7 @@ export default function DragSlider({
   step = 1,
   onChange,
   onCommit,
-  accent = "#3b82f6",
+  accent = "#e4e7ec",
   height = 28,
 }) {
   const trackRef = useRef(null);
