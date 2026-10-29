@@ -1972,6 +1972,21 @@ smear) on any surface. AI scenes behind the car (Gemini / FLUX, ~US$0.02-0.04 ea
 PARKED until revenue covers them: if built, the key lives in an edge function, never the
 browser, and the AI never draws the car or the numbers.
 
+## Studio editor gestures (STUDIO-UX-1, 2026-10-29) — the rules that keep it usable
+Tap selects, tap empty canvas unselects, double-tap a text edits it (measured in
+`CanvasElement`'s onClick, 320ms: phones do not fire dblclick reliably). A press only moves an
+object after 5px of travel (`DRAG_START_PX`; `LayerCanvas` the same), so a tap is not a drag and
+not an Undo step; `touchcancel` ends a drag. Text elements carry `touch-action: none`, and the
+phone canvas area never scrolls: it is SIZED to its measured box (`mobAreaRef`, ResizeObserver).
+- **Never render a component declared INSIDE `TikTokStudioV3` as JSX** (`<BgAdjustPanel/>`):
+  it is a new type every render, so React remounts it on every change and a slider drag dies
+  after one step. Call it as a function (`BgAdjustPanel({...})`), and use the ONE slider,
+  `studio/DragSlider.jsx` (a second copy inside the studio was the bug). No `<input type=range>`.
+- The full-canvas dark gradient (`makeOverlayLayer`) is created LOCKED, or it catches every
+  tap meant for empty space. Unlock it from the Layers list to edit it.
+- Still open (owner, 2026-10-29): merge the two text systems (elements in px vs layers in %)
+  and cut the panels down. One change of its own, not mixed into fixes.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
