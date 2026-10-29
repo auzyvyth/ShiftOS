@@ -60,6 +60,7 @@ import SimilarCars from "../components/car/SimilarCars";
 import { recordCarProgress, scrollProgress } from "../utils/viewProgress";
 import BookingCalendar, { prefetchBookingSlots } from "../components/BookingCalendar";
 import { fetchCarRow, getCarPreview } from "../utils/carPrefetch";
+import ErrorScreen from "../components/ErrorScreen";
 import Turnstile from "../components/Turnstile";
 import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
@@ -1058,6 +1059,11 @@ export default function CarDetailPage() {
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // A lookup that failed or timed out is NOT "this car is gone" (2026-10-28):
+  // the DB stalled, a live car read "no longer available", and the seller
+  // thought their listing was deleted. Only a clean empty answer is notFound.
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [simBuckets, setSimBuckets] = useState(null);
   // The mobile and desktop sections are display:none in the other layout, and
   // a display:none node never intersects — so both are registered and whichever
@@ -1315,6 +1321,8 @@ export default function CarDetailPage() {
     let alive = true;
     async function load() {
       setLoading(true);
+      setNotFound(false);
+      setLoadError(false);
       // The car paints before the seller lookups land (see below), so a
       // previous car's seller must never sit beside this one.
       setDealer(null);
@@ -1323,9 +1331,21 @@ export default function CarDetailPage() {
       // Usually already in flight: the card the buyer tapped started it on
       // pointer-down (src/utils/carPrefetch.js). Same fields, same slug-then-id
       // lookup as before, through publicClient with a time cap.
-      const { data: carData, error } = await fetchCarRow(slug);
+      let { data: carData, error } = await fetchCarRow(slug);
+      // One quiet retry: a stall usually clears in a few seconds, and failures
+      // are not cached, so this goes back to the database.
+      if (error && alive) {
+        await new Promise((r) => setTimeout(r, 1500));
+        if (!alive) return;
+        ({ data: carData, error } = await fetchCarRow(slug));
+      }
       if (!alive) return;
-      if (error || !carData) {
+      if (error) {
+        setLoadError(true);
+        setLoading(false);
+        return;
+      }
+      if (!carData) {
         setNotFound(true);
         setLoading(false);
         return;
@@ -1461,7 +1481,7 @@ export default function CarDetailPage() {
     }
     load();
     return () => { alive = false; };
-  }, [slug]);
+  }, [slug, retryKey]);
 
   useCarSchema(car, dealer);
 
@@ -1887,30 +1907,37 @@ export default function CarDetailPage() {
 
   /* ── early returns ── */
   if (loading) return <Skeleton preview={getCarPreview(slug)} />;
-  if (notFound)
+  if (loadError || notFound) {
+    const browseTo = isSubdomain() ? "/cars" : "/showroom";
+    if (loadError)
+      return (
+        <ErrorScreen
+          variant="load"
+          eyebrow="Slow connection"
+          title="Hold up, we're stuck in traffic"
+          body="Our side is running slow right now. The car's still here, we just couldn't fetch it. Give it another go."
+          actions={[
+            { label: "Try again", onClick: () => setRetryKey((k) => k + 1) },
+            { label: "Browse all cars", to: browseTo },
+          ]}
+        />
+      );
+    // The view no longer returns the car, so its name comes from the card the
+    // buyer tapped (carPrefetch preview), when there was one.
+    const gone = getCarPreview(slug);
+    const like = gone?.brand && gone?.model
+      ? { label: `See other ${gone.brand} ${gone.model}`, to: `${browseTo}?${new URLSearchParams({ brand: gone.brand, model: gone.model })}` }
+      : null;
     return (
-      <div
-        style={{
-          background: "#060c14",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "var(--xd-font-body)",
-        }}
-      >
-        <p style={{ fontSize: 15, color: th.textMuted, marginBottom: 20 }}>
-          This listing is no longer available.
-        </p>
-        <Link
-          to="/showroom"
-          style={{ color: "#dc2626", fontSize: 13, textDecoration: "none" }}
-        >
-          ← Browse all cars
-        </Link>
-      </div>
+      <ErrorScreen
+        variant="gone"
+        eyebrow="Listing ended"
+        title="Someone beat you to it"
+        body="This one found a new home, or the seller took it down. Plenty more where that came from."
+        actions={[like, { label: "Browse all cars", to: browseTo }].filter(Boolean)}
+      />
     );
+  }
 
   const images = car.images?.length ? car.images : ["/placeholder-car.jpg"];
   // Resized WebP for the on-page gallery (full-res is kept for the lightbox zoom).
