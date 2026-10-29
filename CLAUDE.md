@@ -2021,6 +2021,11 @@ https://claude.ai/artifact/7egMaKbR5ux5xsqdb43odu
   under it. So a canvas press closes the sheet only after it ends (`pressingCanvas`,
   `closeSheetSoon`), a sheet whose tool the new selection lacks keeps its height until then,
   and a late close never shuts a sheet opened after it was scheduled (`sheetVer`).
+- **Remove BG is ONE photo at a time, this slide only, never on a cut-out** (owner, 2026-10-29:
+  "it loses quality"). No batch over All slides; a cut slide offers "Put the background back".
+- **Changing the frame size fits from the layout as it was before the first switch** (`fmtBase`
+  in the format effect). Fitting the last fit shrank the design every round trip (9:16 -> 1:1 ->
+  9:16 came back at 56%). An edit in between makes the current layout the new base.
 - Photo/image adjustments are `AdjustStrip` (one row of named adjustments, ONE slider, a ring
   on changed ones, snaps to the default, double-tap resets). Removed as dead: the slide Template
   text grid and "Generate All Slides" (wrote to text ids nothing creates), watermark position

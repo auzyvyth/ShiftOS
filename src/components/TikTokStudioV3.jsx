@@ -2297,23 +2297,31 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   // Uniform scale + center (via fitCanvasContent) so switching format keeps
   // every element/layer INSIDE the frame and scales fontSize with it — the old
   // per-axis rescale distorted shapes and left text overflowing.
+  // Always fit from the layout as it was BEFORE the first switch (`fmtBase`),
+  // never from the last fit: fitting a fit shrank the design on every round
+  // trip (9:16 -> 1:1 -> 9:16 came back at 56%). Any edit in between makes the
+  // current layout the new base.
+  const fmtBase = useRef(null);
   useEffect(() => {
     if (prevFormatRef.current === canvasFormat) return;
     const oldFmt = FORMATS.find((f) => f.id === prevFormatRef.current) || FORMATS[0];
     const newFmt = FORMATS.find((f) => f.id === canvasFormat) || FORMATS[0];
-    const dims = { fromW: oldFmt.w, fromH: oldFmt.h, toW: newFmt.w, toH: newFmt.h };
-    setSlides((ss) =>
-      ss.map((s) => {
-        const fitted = fitCanvasContent({
-          elements: s.elements || [],
-          layers: s.layers || [],
-          ...dims,
-        });
-        return { ...s, elements: fitted.elements, layers: fitted.layers };
-      }),
-    );
-    // Keep the live layer-editor state (active slide) in sync with the refit.
-    setLayers(fitCanvasContent({ elements: [], layers, ...dims }).layers);
+    // The active slide's layers live in the layer editor.
+    const cur = slides.map((s, i) => (i === active ? { ...s, layers } : s));
+    const keyOf = (ss) => JSON.stringify(ss.map((s) => [s.id, s.elements || [], s.layers || []]));
+    let base = fmtBase.current;
+    if (!base || base.key !== keyOf(cur)) {
+      base = { w: oldFmt.w, h: oldFmt.h, byId: new Map(cur.map((s) => [s.id, { elements: s.elements || [], layers: s.layers || [] }])) };
+    }
+    const next = cur.map((s) => {
+      const b = base.byId.get(s.id);
+      if (!b) return s;
+      const fitted = fitCanvasContent({ elements: b.elements, layers: b.layers, fromW: base.w, fromH: base.h, toW: newFmt.w, toH: newFmt.h });
+      return { ...s, elements: fitted.elements, layers: fitted.layers };
+    });
+    fmtBase.current = { ...base, key: keyOf(next) };
+    setSlides(next);
+    setLayers(next[active]?.layers || []);
     prevFormatRef.current = canvasFormat;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasFormat]);
@@ -3120,33 +3128,31 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   // ── Remove Background ────────────────────────────────────────────────────
   // Runs on the phone (src/lib/cutout): the photo is never uploaded, and the
   // car's pixels are the real photo. The tool downloads once (~47 MB).
+  // One photo at a time, always this slide only (owner, 2026-10-29): never a
+  // batch over every slide, and never a cut-out of a cut-out (each pass loses
+  // edge detail), so a slide already cut offers "put it back" instead.
   const removeBg = useCallback(async () => {
-    // All slides: one photo after another, each on its own slide.
-    const todo = (allOn ? slides : [slide]).filter((s) => s?.imageUrl && !s.originalImageUrl);
-    if (!todo.length) return;
+    const s = slide;
+    if (!s?.imageUrl || s.originalImageUrl) return;
     setRemovingBg(true);
     setRemoveBgError(null);
     setRemoveBgStatus(null);
     try {
-      for (let k = 0; k < todo.length; k++) {
-        const s = todo[k];
-        const which = todo.length > 1 ? `Photo ${k + 1} of ${todo.length}: ` : "";
-        const resultBlob = await cutOutBackground(s.imageUrl, {
-          onProgress: (p) => setRemoveBgStatus(which + (p.stage === "download"
-            ? `getting the tool, once only: ${Math.round(p.loaded / 1e6)} of ${Math.round(p.total / 1e6)} MB`
-            : "removing the background...")),
-        });
-        const resultUrl = URL.createObjectURL(resultBlob);
-        setSlides((ss) =>
-          ss.map((x) => {
-            if (x.id !== s.id) return x;
-            // Premium: land straight on a scene, unless the seller switched it off before.
-            const scene = backdrops && x.backdrop == null ? { backdrop: DEFAULT_BACKDROP } : {};
-            return { ...x, originalImageUrl: s.imageUrl, imageUrl: resultUrl, ...scene };
-          }),
-        );
-        setCutoutSaved(true);
-      }
+      const resultBlob = await cutOutBackground(s.imageUrl, {
+        onProgress: (p) => setRemoveBgStatus(p.stage === "download"
+          ? `Getting the tool, once only: ${Math.round(p.loaded / 1e6)} of ${Math.round(p.total / 1e6)} MB`
+          : "Removing the background..."),
+      });
+      const resultUrl = URL.createObjectURL(resultBlob);
+      setSlides((ss) =>
+        ss.map((x) => {
+          if (x.id !== s.id || x.originalImageUrl) return x;
+          // Premium: land straight on a scene, unless the seller switched it off before.
+          const scene = backdrops && x.backdrop == null ? { backdrop: DEFAULT_BACKDROP } : {};
+          return { ...x, originalImageUrl: s.imageUrl, imageUrl: resultUrl, ...scene };
+        }),
+      );
+      setCutoutSaved(true);
       scheduleHistory();
     } catch (e) {
       setRemoveBgError(cutoutErrorText(e));
@@ -3155,11 +3161,12 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       setRemoveBgStatus(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allOn, slides, slide, backdrops]);
+  }, [slide, backdrops]);
 
   const restoreBg = useCallback(() => {
-    patchPhoto((s) => (s.originalImageUrl ? { imageUrl: s.originalImageUrl, originalImageUrl: null } : {}));
-  }, [patchPhoto]);
+    if (!slide?.originalImageUrl) return;
+    patchSlide({ imageUrl: slide.originalImageUrl, originalImageUrl: null });
+  }, [slide?.originalImageUrl, patchSlide]);
 
   // ── Export ───────────────────────────────────────────────────────────────
   const exportName = (idx) => {
@@ -3661,29 +3668,28 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     </div>
   );
 
-  const cutTodo = (allOn ? slides : [slide]).filter((s) => s.imageUrl && !s.originalImageUrl).length;
-  const cutDone = (allOn ? slides : [slide]).filter((s) => s.originalImageUrl).length;
+  const cutDoneHere = !!slide.originalImageUrl;
   const photoCutout = () => (
     <div>
       <SNote>
         {cutoutSaved
-          ? "Done on your phone. Your photo is not uploaded."
-          : `Done on your phone. The first time downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
+          ? "Done on your phone, one photo at a time. Your photo is not uploaded."
+          : `Done on your phone, one photo at a time. The first time downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
       </SNote>
-      {cutTodo > 0 && (
+      {allOn && <SNote>This works on this slide's photo only, even in All slides.</SNote>}
+      {!slide.imageUrl && <SNote>This slide has no photo yet.</SNote>}
+      {slide.imageUrl && !cutDoneHere && (
         <button onClick={removeBg} disabled={removingBg} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
-          <Scissors size={15} />
-          {removingBg ? "Working..." : allOn && cutTodo > 1 ? `Remove the background on ${cutTodo} photos` : "Remove the background"}
+          <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
         </button>
       )}
       {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
       {removeBgError && <p style={{ fontSize: 12, color: C.redText, margin: "8px 0" }}>{removeBgError}</p>}
-      {cutDone > 0 && !removingBg && (
-        <button onClick={restoreBg} style={{ ...tileStyle(), width: "100%", marginTop: 8 }}>
-          <RotateCcw size={15} /> {allOn && cutDone > 1 ? `Put the background back on ${cutDone} photos` : "Put the background back"}
+      {cutDoneHere && !removingBg && (
+        <button onClick={restoreBg} style={{ ...tileStyle(), width: "100%" }}>
+          <RotateCcw size={15} /> Put the background back
         </button>
       )}
-      {!cutTodo && !cutDone && <SNote>{allOn ? "No slide has a photo yet." : "This slide has no photo yet."}</SNote>}
     </div>
   );
 
@@ -3715,7 +3721,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       return (
         <div>
           <SNote>Backdrops go behind the car once its background is removed.</SNote>
-          <button onClick={removeBg} disabled={removingBg || !cutTodo} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
+          <button onClick={removeBg} disabled={removingBg || !slide.imageUrl} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
             <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
           </button>
           {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
