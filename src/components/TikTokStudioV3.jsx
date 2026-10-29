@@ -61,6 +61,7 @@ import LayerCanvas, {
   renderLayersToCanvas,
 } from "./studio/LayerCanvas";
 import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
+import { BACKDROPS, DEFAULT_BACKDROP, DEFAULT_CAR_FIT, placeCar, cutoutBounds, drawBackdrop, drawCarShadow } from "./studio/backdrops";
 import CameraCapture from "./studio/CameraCapture";
 import DragSlider from "./studio/DragSlider";
 import GradientEditor, { gradientCss, DEFAULT_GRADIENT, DARK_SCRIM_GRADIENT } from "./studio/GradientEditor";
@@ -665,8 +666,25 @@ async function renderBackground(
   // ── Car photo ────────────────────────────────────────────────────────────
   if (slide.imageUrl) {
     const img = await loadImage(slide.imageUrl);
-    if (img) {
-      // Blurred background — cover fill (no black bars)
+    // A cut-out (Remove BG done) has no scene of its own. With a backdrop
+    // picked (Premium) the scene is drawn and the car stands on its floor.
+    const cutout = !!(img && slide.originalImageUrl);
+    const backdrop = cutout && slide.backdrop && slide.backdrop !== "none" ? slide.backdrop : null;
+    if (img && backdrop) {
+      const adj = slide.bgAdjust || {};
+      const place = placeCar({ bounds: cutoutBounds(img), W, H, zone: slide.carZone, fit: slide.carFit });
+      drawBackdrop(ctx, backdrop, W, H, place.floorY, theme.accentColor);
+      if (slide.carShadow !== false) drawCarShadow(ctx, place, backdrop === "light");
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.filter = `brightness(${adj.brightness ?? 1}) contrast(${adj.contrast ?? 1}) saturate(${adj.saturation ?? 1}) sepia(${(adj.warmth ?? 0) * 0.6})${(adj.blur ?? 0) > 0 ? ` blur(${adj.blur}px)` : ""}`;
+      ctx.drawImage(img, place.sx, place.sy, place.sw, place.sh, place.dx, place.dy, place.dw, place.dh);
+      ctx.restore();
+    } else if (img) {
+      // Blurred background — cover fill (no black bars). Skipped for a
+      // cut-out: blurring a clear PNG only smears a dark ghost of the car.
+      if (!cutout) {
       ctx.save();
       ctx.filter = `blur(${theme.blurIntensity ?? 18}px) brightness(0.35)`;
       const bAr = img.naturalWidth / img.naturalHeight;
@@ -685,6 +703,7 @@ async function renderBackground(
       }
       ctx.drawImage(img, bx, by, bw, bh);
       ctx.restore();
+      }
 
       // Main image — CONTAIN so full car is always visible
       ctx.save();
@@ -715,6 +734,18 @@ async function renderBackground(
 
       // Vignette overlay
       const vg = adj.vignette ?? 0;
+      if (vg > 0) {
+        const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.15, W / 2, H * 0.5, H * 0.72);
+        vig.addColorStop(0, "rgba(0,0,0,0)");
+        vig.addColorStop(1, `rgba(0,0,0,${(vg * 0.85).toFixed(2)})`);
+        ctx.save();
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+    }
+    if (img && backdrop) {
+      const vg = slide.bgAdjust?.vignette ?? 0;
       if (vg > 0) {
         const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.15, W / 2, H * 0.5, H * 0.72);
         vig.addColorStop(0, "rgba(0,0,0,0)");
@@ -1599,6 +1630,12 @@ function CanvasPreview({
     theme.watermarkPos,
     // bgAdjust — stringify so any slider change triggers re-render
     JSON.stringify(slide.bgAdjust),
+    // Backdrop (Premium, after Remove BG)
+    slide.originalImageUrl,
+    slide.backdrop,
+    slide.carShadow,
+    JSON.stringify(slide.carFit),
+    JSON.stringify(slide.carZone),
   ]);
 
   return (
@@ -2102,7 +2139,34 @@ function PInput({ value, onChange, placeholder }) {
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function TikTokStudioV3({ listing, onClose }) {
+// Small preview tile of a backdrop scene for the picker.
+function BackdropSwatch({ id, accent, active, label, onPick }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    c.width = 54;
+    c.height = 84;
+    ctx.fillStyle = "#1f2128";
+    ctx.fillRect(0, 0, 54, 84);
+    if (id !== "none") drawBackdrop(ctx, id, 54, 84, 84 * 0.66, accent);
+  }, [id, accent]);
+  return (
+    <button onClick={onPick} aria-pressed={active}
+      style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <span style={{ display: "block", width: 54, height: 84, borderRadius: 8, overflow: "hidden", boxShadow: active ? "0 0 0 2px #fff" : "0 0 0 1px rgba(255,255,255,0.12)", position: "relative" }}>
+        <canvas ref={ref} style={{ width: 54, height: 84, display: "block" }} />
+        {id === "none" && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>Off</span>}
+      </span>
+      <span style={{ fontSize: 10, color: active ? "#fff" : "rgba(255,255,255,0.5)", fontWeight: active ? 700 : 500 }}>{label}</span>
+    </button>
+  );
+}
+
+// `backdrops`: Salesman Premium only (SalesmanPremium.jsx passes it). Unlocks
+// drawn scenes behind a cut-out car; see src/components/studio/backdrops.js.
+export default function TikTokStudioV3({ listing, onClose, backdrops = false }) {
   // ── State ────────────────────────────────────────────────────────────────
   const [slides, setSlides] = useState([]);
   const [active, setActive] = useState(0);
@@ -3236,7 +3300,9 @@ export default function TikTokStudioV3({ listing, onClose }) {
           : "Removing the background..."),
       });
       const resultUrl = URL.createObjectURL(resultBlob);
-      patchSlide({ originalImageUrl: url, imageUrl: resultUrl });
+      // Premium: land straight on a scene, unless the seller switched it off before.
+      const scene = backdrops && slide?.backdrop == null ? { backdrop: DEFAULT_BACKDROP } : {};
+      patchSlide({ originalImageUrl: url, imageUrl: resultUrl, ...scene });
       setCutoutSaved(true);
     } catch (e) {
       setRemoveBgError(cutoutErrorText(e));
@@ -3244,7 +3310,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       setRemovingBg(false);
       setRemoveBgStatus(null);
     }
-  }, [slide?.imageUrl, patchSlide]);
+  }, [slide?.imageUrl, slide?.backdrop, backdrops, patchSlide]);
 
   const restoreBg = useCallback(() => {
     if (!slide?.originalImageUrl) return;
@@ -4892,6 +4958,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
         removeBgError={removeBgError}
         removeBgStatus={removeBgStatus}
         cutoutSaved={cutoutSaved}
+        showBackdrops={backdrops}
+        backdrop={slide?.backdrop}
+        carShadow={slide?.carShadow}
+        carFit={slide?.carFit}
+        accent={theme.accentColor}
+        onPatchSlide={patchSlide}
       />
     );
   };
@@ -5017,7 +5089,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
   }
 
-  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved }) {
+  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved, showBackdrops, backdrop, carShadow, carFit, accent, onPatchSlide }) {
     const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
     const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
     const sliders = [
@@ -5074,6 +5146,50 @@ export default function TikTokStudioV3({ listing, onClose }) {
             {removeBgError && <p style={{ fontSize: 10, color: "#f87171", marginTop: 6, marginBottom: 0 }}>{removeBgError}</p>}
           </div>
         )}
+
+        {/* Backdrop card: Premium, only once the background is removed */}
+        {showBackdrops && bgRemoved && (() => {
+          const current = backdrop || "none";
+          const fit = { ...DEFAULT_CAR_FIT, ...(carFit || {}) };
+          const setFit = (p) => onPatchSlide({ carFit: { ...fit, ...p } });
+          return (
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)", margin: 0 }}>Backdrop</p>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 8px" }}>Drawn behind your car. Your car photo is not changed.</p>
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+                <BackdropSwatch id="none" label="None" accent={accent} active={current === "none"} onPick={() => onPatchSlide({ backdrop: "none" })} />
+                {BACKDROPS.map((b) => (
+                  <BackdropSwatch key={b.id} id={b.id} label={b.name} accent={accent} active={current === b.id} onPick={() => onPatchSlide({ backdrop: b.id })} />
+                ))}
+              </div>
+              {current !== "none" && (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>Shadow under car</span>
+                    <button onClick={() => onPatchSlide({ carShadow: carShadow === false })}
+                      style={{ fontSize: 10, padding: "3px 10px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.15)", background: carShadow === false ? "transparent" : "rgba(255,255,255,0.14)", color: "rgba(255,255,255,0.8)", cursor: "pointer", fontWeight: 600 }}>
+                      {carShadow === false ? "Off" : "On"}
+                    </button>
+                  </div>
+                  <div style={{ marginBottom: 6 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>Car size</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>{Math.round(fit.size * 100)}%</span>
+                    </div>
+                    <DragSlider min={0.6} max={1.4} step={0.01} value={fit.size} onChange={(v) => setFit({ size: v })} />
+                  </div>
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>Car height</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>{fit.lift > 0 ? "+" : ""}{Math.round(fit.lift * 100)}</span>
+                    </div>
+                    <DragSlider min={-0.25} max={0.25} step={0.005} value={fit.lift} onChange={(v) => setFit({ lift: v })} />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Adjustment sliders */}
         {sliders.map(({ key, label, min, max, step, fmt }) => (
@@ -5160,7 +5276,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         );
       }
       if (sheetPanel === "photo") {
-        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} removeBgStatus={removeBgStatus} cutoutSaved={cutoutSaved} />;
+        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} removeBgStatus={removeBgStatus} cutoutSaved={cutoutSaved} showBackdrops={backdrops} backdrop={slide?.backdrop} carShadow={slide?.carShadow} carFit={slide?.carFit} accent={theme.accentColor} onPatchSlide={patchSlide} />;
       }
       if (sheetPanel === "shapes") {
         return (

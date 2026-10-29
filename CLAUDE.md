@@ -1958,6 +1958,20 @@ which only paid accounts can open (Premium, dealers, dealer-linked salesmen; Lit
 - **Photos are fetched with `?cors=1`** (`fetchPhoto`): the service worker holds car photos as opaque <img> copies and a CORS fetch of one fails as "Failed to fetch" (first staging test, 2026-10-23).
 - Speed (owner, 2026-10-23): about 30 s on an Oppo Reno 10 5G, 1 min 20 s on a 4 GB Chromebook. Faster path if needed: WebGPU (`onnxruntime-web/webgpu`, +~7 MB gzipped engine).
 
+## Studio backdrops behind a cut-out (BACKDROP-1, 2026-10-29) — Premium only
+After Remove BG (CUTOUT-1) the Studio offers drawn scenes BEHIND the car: Studio, Spotlight,
+Stripes, Brand (theme accent), Dusk, Light, plus a ground shadow and Car size / Car height
+sliders (`src/components/studio/backdrops.js`, `npm run test:backdrops`). Drawn in canvas: no
+AI, no server, no cost. Gate = the `backdrops` prop on `TikTokStudioV3`, passed ONLY by
+SalesmanPremium.jsx (dealer dashboard and linked salesman do not get it). The picker shows only
+once the background is removed; the first cut-out lands on Studio. The car is placed by the
+opaque pixels of the cut-out (`cutoutBounds`), standing on the floor line, inside the
+template's `carZone` when one is set. Slide fields: `backdrop` ('none' = off), `carShadow`,
+`carFit {size, lift}`. A cut-out no longer gets the blurred copy behind it (it was a dark
+smear) on any surface. AI scenes behind the car (Gemini / FLUX, ~US$0.02-0.04 each) are
+PARKED until revenue covers them: if built, the key lives in an edge function, never the
+browser, and the AI never draws the car or the numbers.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
