@@ -35,7 +35,7 @@
     "test:analytics": "node tests/analyticsEvent.test.mjs",
     "articles:build": "node tools/generate-article-pages.mjs",
     "articles:check": "node tools/generate-article-pages.mjs --check",
-    "test": "npm run test:tour && npm run test:phone && npm run test:aftercare && npm run test:analytics && npm run test:accountstate && npm run test:agentseo && npm run test:agenttrust && npm run test:live && npm run test:livechannel && npm run test:loancheck && npm run test:pagebudget && npm run test:revisit && npm run test:realtimeidle && npm run test:poster && npm run test:backdrops && npm run test:newcarcaption && npm run test:financing && npm run test:hubs && npm run test:panelcache && npm run test:followup && npm run test:perf && npm run test:plan && npm run test:postauth && npm run test:site && npm run test:chassis && npm run test:modelkey && npm run test:chassisspec && npm run test:specs && npm run specs:check && npm run articles:check",
+    "test": "npm run test:tour && npm run test:phone && npm run test:aftercare && npm run test:analytics && npm run test:accountstate && npm run test:agentseo && npm run test:agenttrust && npm run test:live && npm run test:livechannel && npm run test:loancheck && npm run test:pagebudget && npm run test:revisit && npm run test:realtimeidle && npm run test:poster && npm run test:backdrops && npm run test:scope && npm run test:newcarcaption && npm run test:financing && npm run test:hubs && npm run test:panelcache && npm run test:followup && npm run test:perf && npm run test:plan && npm run test:postauth && npm run test:site && npm run test:chassis && npm run test:modelkey && npm run test:chassisspec && npm run test:specs && npm run specs:check && npm run articles:check",
     "specs:build": "node tools/specs/generate.mjs",
     "specs:check": "node tools/specs/generate.mjs --check",
     "test:specs": "node tests/specsPipeline.test.mjs",
@@ -44,7 +44,8 @@
     "test:realtimeidle": "node tests/realtimeIdle.test.mjs",
     "test:livechannel": "node tests/liveChannel.test.mjs",
     "test:loancheck": "node tests/loanReadiness.test.mjs",
-    "test:phone": "node tests/phone.test.mjs"
+    "test:phone": "node tests/phone.test.mjs",
+    "test:scope": "node tests/studioScope.test.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.2",
