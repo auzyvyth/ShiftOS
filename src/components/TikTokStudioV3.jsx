@@ -28,12 +28,8 @@ import {
   Triangle,
   ImagePlus,
   Layers,
-  Sliders,
   Palette,
   Type,
-  Star,
-  Zap,
-  BookMarked,
   AlignLeft,
   AlignCenter,
   AlignRight,
@@ -42,31 +38,53 @@ import {
   MoveUp,
   MoveDown,
   RotateCcw,
-  FlipHorizontal,
   SlidersHorizontal,
   Sparkles,
-  Film,
   LayoutTemplate,
-  Brush,
   Tag,
-  Library,
   Smartphone,
   Monitor,
+  Pencil,
+  CaseSensitive,
+  Droplet,
+  Move,
+  RefreshCw,
+  Scissors,
+  Sunrise,
+  PaintBucket,
+  Wand2,
+  Crop,
+  Stamp,
+  Camera,
+  Upload,
+  ChevronDown,
 } from "lucide-react";
 import { useLayerEditor, makeLayer } from "../hooks/useLayerEditor";
 import LayerCanvas, {
-  LayerToolbar,
-  LayerStack,
   LayerPropertiesPanel,
   renderLayersToCanvas,
 } from "./studio/LayerCanvas";
+import AdjustStrip from "./studio/AdjustStrip";
+import {
+  linkKey,
+  patchElements,
+  removeElements,
+  shiftElements,
+  patchOtherLayers,
+  removeOtherLayers,
+  addToOthers,
+  patchPhotos,
+} from "./studio/scope";
 import { CAR_TEMPLATES, buildTemplateCtx } from "./studio/carTemplates";
+import { BACKDROPS, DEFAULT_BACKDROP, DEFAULT_CAR_FIT, placeCar, cutoutBounds, drawBackdrop, drawCarShadow } from "./studio/backdrops";
 import CameraCapture from "./studio/CameraCapture";
 import DragSlider from "./studio/DragSlider";
 import GradientEditor, { gradientCss, DEFAULT_GRADIENT, DARK_SCRIM_GRADIENT } from "./studio/GradientEditor";
 import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+// A press moves the object only after the finger travels this far.
+const DRAG_START_PX = 5;
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
 // zIndex plane the interactive text/badge elements render on (see CanvasPreview
@@ -425,15 +443,6 @@ const STYLE_PRESETS = [
   },
 ];
 
-// ─── Templates ────────────────────────────────────────────────────────────────
-const SLIDE_TEMPLATES = [
-  { id: "hype", label: "Hype", icon: "🔥" },
-  { id: "hero-hook", label: "Hook", icon: "⚡" },
-  { id: "pricing", label: "Pricing", icon: "💰" },
-  { id: "cta", label: "CTA", icon: "📲" },
-  { id: "story", label: "Story", icon: "✨" },
-  { id: "minimal", label: "Minimal", icon: "🖤" },
-];
 
 // ─── Default Theme ────────────────────────────────────────────────────────────
 const DEFAULT_THEME = {
@@ -497,6 +506,11 @@ function makeOverlayLayer(overrides = {}) {
     borderWidth: 0,
     borderRadius: 0,
     zIndex: OVERLAY_Z,
+    // Covers the whole canvas: unlocked, it caught every tap meant for "empty
+    // space", so nothing ever unselected. Unlock it from the Layers list to edit.
+    locked: true,
+    // The same gradient on every slide: All slides mode edits them together.
+    link: "overlay",
     ...overrides,
   });
 }
@@ -603,35 +617,6 @@ async function applyAICommand(command, elements, theme, selectedElementId) {
   return JSON.parse(text.replace(/```json|```/g, "").trim());
 }
 
-// ─── AI: generate slide copy ──────────────────────────────────────────────────
-async function generateSlidesCopy(listing, slideCount, language, hookText) {
-  const price = listing?.selling_price || listing?.price;
-  const priceStr = price ? "RM " + Number(price).toLocaleString() : "N/A";
-  const lang =
-    language === "bm"
-      ? "Bahasa Malaysia (casual dealer tone)"
-      : "English (punchy Malaysian car market)";
-  const prompt = `Malaysian car dealer TikTok copywriter. Write ${slideCount} slides.
-CAR: ${listing?.year || ""} ${listing?.brand || ""} ${listing?.model || ""} ${listing?.variant || ""}
-Price: ${priceStr} | Mileage: ${listing?.mileage ? Number(listing.mileage).toLocaleString() + " km" : "N/A"}
-Condition: ${listing?.condition || ""} | Trans: ${listing?.transmission || ""} | Fuel: ${listing?.fuel_type || ""}
-${hookText ? 'Hook: "' + hookText + '"' : ""} | Language: ${lang}
-Return ONLY JSON array: [{"hookText":"max 6 words ALL CAPS","headline":"full car title"}]`;
-  const res = await fetch(AI_MESSAGES_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await getAIAuthHeaders()) },
-    body: JSON.stringify({
-      feature: "tiktok_studio",
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error("API error");
-  const data = await res.json();
-  const text = Array.isArray(data?.content)
-    ? data.content.map((b) => b.text || "").join("")
-    : "";
-  return JSON.parse(text.replace(/```json|```/g, "").trim());
-}
 
 // ─── renderBackground: image + gradient + chrome (no text elements) ───────────
 // Used by both CanvasPreview (live background) and renderToCanvas (export).
@@ -665,8 +650,25 @@ async function renderBackground(
   // ── Car photo ────────────────────────────────────────────────────────────
   if (slide.imageUrl) {
     const img = await loadImage(slide.imageUrl);
-    if (img) {
-      // Blurred background — cover fill (no black bars)
+    // A cut-out (Remove BG done) has no scene of its own. With a backdrop
+    // picked (Premium) the scene is drawn and the car stands on its floor.
+    const cutout = !!(img && slide.originalImageUrl);
+    const backdrop = cutout && slide.backdrop && slide.backdrop !== "none" ? slide.backdrop : null;
+    if (img && backdrop) {
+      const adj = slide.bgAdjust || {};
+      const place = placeCar({ bounds: cutoutBounds(img), W, H, zone: slide.carZone, fit: slide.carFit });
+      drawBackdrop(ctx, backdrop, W, H, place.floorY, theme.accentColor);
+      if (slide.carShadow !== false) drawCarShadow(ctx, place, backdrop === "light");
+      ctx.save();
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.filter = `brightness(${adj.brightness ?? 1}) contrast(${adj.contrast ?? 1}) saturate(${adj.saturation ?? 1}) sepia(${(adj.warmth ?? 0) * 0.6})${(adj.blur ?? 0) > 0 ? ` blur(${adj.blur}px)` : ""}`;
+      ctx.drawImage(img, place.sx, place.sy, place.sw, place.sh, place.dx, place.dy, place.dw, place.dh);
+      ctx.restore();
+    } else if (img) {
+      // Blurred background — cover fill (no black bars). Skipped for a
+      // cut-out: blurring a clear PNG only smears a dark ghost of the car.
+      if (!cutout) {
       ctx.save();
       ctx.filter = `blur(${theme.blurIntensity ?? 18}px) brightness(0.35)`;
       const bAr = img.naturalWidth / img.naturalHeight;
@@ -685,6 +687,7 @@ async function renderBackground(
       }
       ctx.drawImage(img, bx, by, bw, bh);
       ctx.restore();
+      }
 
       // Main image — CONTAIN so full car is always visible
       ctx.save();
@@ -715,6 +718,18 @@ async function renderBackground(
 
       // Vignette overlay
       const vg = adj.vignette ?? 0;
+      if (vg > 0) {
+        const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.15, W / 2, H * 0.5, H * 0.72);
+        vig.addColorStop(0, "rgba(0,0,0,0)");
+        vig.addColorStop(1, `rgba(0,0,0,${(vg * 0.85).toFixed(2)})`);
+        ctx.save();
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+    }
+    if (img && backdrop) {
+      const vg = slide.bgAdjust?.vignette ?? 0;
       if (vg > 0) {
         const vig = ctx.createRadialGradient(W / 2, H * 0.5, H * 0.15, W / 2, H * 0.5, H * 0.72);
         vig.addColorStop(0, "rgba(0,0,0,0)");
@@ -1024,6 +1039,8 @@ function CanvasElement({
   onStartDrag,
   onDoubleClick,
 }) {
+  // Double-tap to edit, measured here: phones do not reliably fire dblclick.
+  const lastTap = React.useRef(0);
   if (!el.visible) return null;
 
   const sharedStyle = {
@@ -1035,6 +1052,9 @@ function CanvasElement({
     transformOrigin: "center",
     cursor: el.locked ? "default" : "pointer",
     userSelect: "none",
+    WebkitUserSelect: "none",
+    // This finger is ours: without it a vertical drag scrolled the page instead.
+    touchAction: "none",
     animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
   };
 
@@ -1042,6 +1062,13 @@ function CanvasElement({
     onClick: (e) => {
       e.stopPropagation();
       onSelect(el.id);
+      const now = Date.now();
+      if (now - lastTap.current < 320 && !el.locked) {
+        lastTap.current = 0;
+        onDoubleClick(el.id);
+      } else {
+        lastTap.current = now;
+      }
     },
     onMouseDown: (e) => {
       if (el.locked) return;
@@ -1053,7 +1080,6 @@ function CanvasElement({
       e.stopPropagation();
       onStartDrag(e, el.id);
     },
-    onDoubleClick: () => !el.locked && onDoubleClick(el.id),
   };
 
   if (el.type === "badge") {
@@ -1137,6 +1163,7 @@ function SelectionOverlay({
   onStartRotate,
   onUpdate,
   onDuplicate,
+  onToggleLock,
   onDelete,
 }) {
   const [bounds, setBounds] = React.useState(null);
@@ -1320,8 +1347,10 @@ function SelectionOverlay({
         </div>
       </div>
 
-      {/* Floating mini toolbar — flips below the element when near the top
-          edge so it can never be cut off */}
+      {/* Mini bar: Duplicate / Lock / Delete, the same three as over a shape
+          (STUDIO-UX-2). Every other setting lives in the text's own tools, so
+          nothing here repeats a panel control. Flips below the element near
+          the top edge so it is never cut off. */}
       <div
         style={{
           position: "absolute",
@@ -1332,141 +1361,47 @@ function SelectionOverlay({
           transform: "translateX(-50%)",
           display: "flex",
           alignItems: "center",
-          gap: 1,
+          gap: 2,
           pointerEvents: "all",
-          background: "rgba(10,13,20,0.97)",
-          border: "1px solid rgba(255,255,255,0.1)",
-          borderRadius: 9,
-          padding: "3px 5px",
-          boxShadow: "0 6px 24px rgba(0,0,0,0.55)",
+          background: "#181b21",
+          borderRadius: 12,
+          padding: "0 2px",
+          height: 44,
+          boxShadow: "0 8px 24px rgba(0,0,0,0.55)",
           whiteSpace: "nowrap",
           zIndex: 5,
         }}
       >
-        {/* Bold */}
-        <MiniBtn
-          active={el?.fontWeight >= "700"}
-          onClick={() =>
-            onUpdate({ fontWeight: el?.fontWeight >= "700" ? "400" : "700" })
-          }
-          title="Bold"
-        >
-          <b>B</b>
-        </MiniBtn>
-        {/* Italic */}
-        <MiniBtn
-          active={el?.fontStyle === "italic"}
-          onClick={() =>
-            onUpdate({
-              fontStyle: el?.fontStyle === "italic" ? "normal" : "italic",
-            })
-          }
-          title="Italic"
-        >
-          <i>I</i>
-        </MiniBtn>
-        <MiniSep />
-        {/* Align */}
-        {[
-          ["left", "◀"],
-          ["center", "■"],
-          ["right", "▶"],
-        ].map(([a, icon]) => (
-          <MiniBtn
-            key={a}
-            active={el?.align === a}
-            onClick={() => onUpdate({ align: a })}
-            title={`Align ${a}`}
-          >
-            <span style={{ fontSize: 8 }}>{icon}</span>
-          </MiniBtn>
-        ))}
-        <MiniSep />
-        {/* Color swatch */}
-        <label title="Color" style={{ display: "flex", cursor: "pointer" }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: 3,
-              background: el?.color || "#fff",
-              border: "1px solid rgba(255,255,255,0.25)",
-              overflow: "hidden",
-              position: "relative",
-              flexShrink: 0,
-            }}
-          >
-            <input
-              type="color"
-              value={el?.color || "#ffffff"}
-              onChange={(e) => onUpdate({ color: e.target.value })}
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0,
-                cursor: "pointer",
-                width: "100%",
-                height: "100%",
-              }}
-            />
-          </div>
-        </label>
-        <MiniSep />
-        {/* Duplicate */}
-        <MiniBtn onClick={onDuplicate} title="Duplicate">
-          ⧉
-        </MiniBtn>
-        {/* Delete */}
-        <MiniBtn danger onClick={onDelete} title="Delete">
-          ✕
-        </MiniBtn>
+        <MiniBtn onClick={onDuplicate} title="Duplicate"><Copy size={17} /></MiniBtn>
+        <MiniBtn onClick={onToggleLock} title="Lock"><Lock size={17} /></MiniBtn>
+        <MiniBtn danger onClick={onDelete} title="Delete"><Trash2 size={17} /></MiniBtn>
       </div>
     </div>
   );
 }
 
-function MiniBtn({ children, onClick, active, danger, title }) {
+function MiniBtn({ children, onClick, danger, title }) {
   return (
     <button
       onClick={onClick}
       title={title}
+      aria-label={title}
       style={{
-        width: 22,
-        height: 22,
+        width: 40,
+        height: 40,
         border: "none",
-        borderRadius: 5,
+        borderRadius: 10,
         cursor: "pointer",
-        background: active
-          ? "rgba(37,99,235,0.2)"
-          : danger
-            ? "rgba(37,99,235,0.08)"
-            : "transparent",
-        color: danger
-          ? "#f87171"
-          : active
-            ? "#60a5fa"
-            : "rgba(255,255,255,0.6)",
+        background: "transparent",
+        color: danger ? "#f87171" : "#f2f4f7",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: 10,
-        fontFamily: "inherit",
+        padding: 0,
       }}
     >
       {children}
     </button>
-  );
-}
-function MiniSep() {
-  return (
-    <div
-      style={{
-        width: 1,
-        height: 14,
-        background: "rgba(255,255,255,0.1)",
-        margin: "0 1px",
-      }}
-    />
   );
 }
 
@@ -1599,6 +1534,12 @@ function CanvasPreview({
     theme.watermarkPos,
     // bgAdjust — stringify so any slider change triggers re-render
     JSON.stringify(slide.bgAdjust),
+    // Backdrop (Premium, after Remove BG)
+    slide.originalImageUrl,
+    slide.backdrop,
+    slide.carShadow,
+    JSON.stringify(slide.carFit),
+    JSON.stringify(slide.carZone),
   ]);
 
   return (
@@ -1754,361 +1695,223 @@ function CanvasPreview({
   );
 }
 
-// ─── FilmThumb ────────────────────────────────────────────────────────────────
-const FilmThumb = React.memo(function FilmThumb({
-  slide,
-  idx,
-  active,
-  onSelect,
-  onDelete,
-}) {
-  return (
-    <div
-      onClick={() => onSelect(idx)}
-      style={{
-        position: "relative",
-        width: 44,
-        height: 78,
-        flexShrink: 0,
-        borderRadius: 5,
-        overflow: "hidden",
-        cursor: "pointer",
-        background: "#1e2130",
-        border: `2px solid ${active ? "#2563eb" : "rgba(255,255,255,0.1)"}`,
-        transition: "border-color 0.15s",
-      }}
-    >
-      {slide.imageUrl && (
-        <img
-          src={slide.imageUrl}
-          alt=""
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            opacity: 0.65,
-          }}
-        />
-      )}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 2,
-          left: 0,
-          right: 0,
-          textAlign: "center",
-          fontSize: 8,
-          color: "rgba(255,255,255,0.4)",
-        }}
-      >
-        {idx + 1}
-      </div>
-      {active && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(idx);
-          }}
-          style={{
-            position: "absolute",
-            top: 2,
-            right: 2,
-            width: 13,
-            height: 13,
-            borderRadius: "50%",
-            background: "rgba(239,68,68,0.9)",
-            border: "none",
-            color: "#fff",
-            cursor: "pointer",
-            fontSize: 8,
-            padding: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          ✕
-        </button>
-      )}
-    </div>
-  );
+
+
+
+
+
+
+
+// ─── Studio UI kit (STUDIO-UX-2) ──────────────────────────────────────────────
+// The tool panels' look: premiumDark tones (src/theme/tokens.js), depth by
+// tone, red only as a fill, 44px touch targets. Module-level so they are
+// stable component types (safe to render as JSX).
+const C = {
+  bg: "#08090c",
+  card: "#111318",
+  raised: "#181b21",
+  hover: "#1f232a",
+  sel: "#2a2f38",
+  line: "rgba(255,255,255,0.06)",
+  text: "#f2f4f7",
+  sec: "#a3a9b5",
+  muted: "#848b98",
+  red: "#dc2626",
+  redText: "#f87171",
+};
+const STUDIO_FONT = "var(--xd-font-body, system-ui), system-ui, sans-serif";
+const segStyle = (on) => ({
+  flex: 1,
+  minWidth: 0,
+  height: 36,
+  borderRadius: 9,
+  border: "none",
+  background: on ? C.sel : "transparent",
+  color: on ? C.text : C.sec,
+  fontSize: 13,
+  fontWeight: on ? 600 : 500,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 5,
+  fontFamily: "inherit",
+  whiteSpace: "nowrap",
 });
+const tileStyle = (on = false) => ({
+  height: 44,
+  borderRadius: 12,
+  border: "none",
+  background: on ? C.sel : C.raised,
+  color: C.text,
+  fontSize: 13,
+  fontWeight: 500,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  fontFamily: "inherit",
+  padding: "0 10px",
+});
+const primaryBtn = { ...tileStyle(), background: C.red, color: "#fff", fontWeight: 600, flex: 1 };
+const inputStyle = {
+  width: "100%",
+  height: 44,
+  padding: "0 12px",
+  background: C.raised,
+  border: `1px solid ${C.line}`,
+  borderRadius: 12,
+  color: C.text,
+  fontSize: 15,
+  outline: "none",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+};
 
-// ─── ImagePicker ──────────────────────────────────────────────────────────────
-function ImagePicker({ images, current, onSelect, onClose }) {
+function SLabel({ children, style }) {
+  return <div style={{ fontSize: 12, color: C.sec, margin: "14px 0 8px", ...style }}>{children}</div>;
+}
+function SNote({ children }) {
+  return <p style={{ fontSize: 12, color: C.muted, lineHeight: 1.45, margin: "0 0 10px" }}>{children}</p>;
+}
+function SSeg({ items, value, onPick, label }) {
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        background: "rgba(0,0,0,0.97)",
-        zIndex: 30,
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "12px 14px",
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          flexShrink: 0,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "rgba(255,255,255,0.4)",
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-          }}
-        >
-          Choose Photo · {images.length} available
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.05)",
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          ✕
+    <div role="group" aria-label={label} style={{ display: "flex", padding: 3, borderRadius: 12, background: C.raised, gap: 2 }}>
+      {items.map(([v, l]) => (
+        <button key={String(v)} aria-pressed={value === v} onClick={() => onPick(v)} style={segStyle(value === v)}>
+          {l}
         </button>
+      ))}
+    </div>
+  );
+}
+function SSlider({ label, value, min, max, step = 1, onChange, fmt }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+        <span style={{ fontSize: 12, color: C.sec }}>{label}</span>
+        <span style={{ fontSize: 12, color: C.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmt ? fmt(value) : value}</span>
       </div>
-      <div
-        style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: 10,
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 6,
-        }}
-      >
-        {images.map((url, i) => (
-          <div
-            key={i}
-            onClick={() => {
-              onSelect(url);
-              onClose();
-            }}
+      <DragSlider value={value} min={min} max={max} step={step} onChange={onChange} />
+    </div>
+  );
+}
+function SSwitch({ label, value, onChange }) {
+  return (
+    <button
+      role="switch"
+      aria-checked={!!value}
+      onClick={() => onChange(!value)}
+      style={{ ...tileStyle(), width: "100%", justifyContent: "space-between", padding: "0 12px", marginBottom: 6 }}
+    >
+      <span>{label}</span>
+      <span style={{ width: 38, height: 22, borderRadius: 999, background: value ? C.text : "#3a404b", position: "relative", flexShrink: 0 }}>
+        <span style={{ position: "absolute", top: 3, left: value ? 19 : 3, width: 16, height: 16, borderRadius: 999, background: value ? C.bg : C.sec }} />
+      </span>
+    </button>
+  );
+}
+// Quick colours + any colour. `presets` are hex strings.
+function SColorPick({ label, value, onChange, presets }) {
+  const cur = (value || "").toLowerCase();
+  return (
+    <div style={{ marginBottom: 10 }}>
+      {label && <div style={{ fontSize: 12, color: C.sec, marginBottom: 8 }}>{label}</div>}
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        {presets.map((p) => (
+          <button
+            key={p}
+            aria-label={`Colour ${p}`}
+            aria-pressed={cur === p.toLowerCase()}
+            onClick={() => onChange(p)}
             style={{
-              position: "relative",
-              aspectRatio: "4/3",
-              borderRadius: 8,
-              overflow: "hidden",
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              padding: 0,
               cursor: "pointer",
-              border:
-                current === url ? "2px solid #2563eb" : "2px solid transparent",
+              background: p,
+              border: `2px solid ${C.card}`,
+              boxShadow: cur === p.toLowerCase() ? `0 0 0 2px ${C.text}` : "0 0 0 1px rgba(255,255,255,0.14)",
             }}
-          >
-            <img
-              src={url}
-              alt=""
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-            {current === url && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  background: "rgba(220,38,38,0.25)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 18,
-                  color: "#fff",
-                }}
-              >
-                ✓
-              </div>
-            )}
-          </div>
+          />
         ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── UI Primitives ────────────────────────────────────────────────────────────
-function ColorRow({ label, value, onChange }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "9px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)" }}>
-        {label}
-      </span>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,0.3)",
-            fontFamily: "monospace",
-          }}
+        <label
+          aria-label="Pick any colour"
+          style={{ position: "relative", width: 34, height: 34, borderRadius: 999, border: `1px dashed ${C.muted}`, display: "flex", alignItems: "center", justifyContent: "center", color: C.sec, cursor: "pointer" }}
         >
-          {value}
-        </span>
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width: 30,
-            height: 30,
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 8,
-            cursor: "pointer",
-            padding: 2,
-            background: "transparent",
-          }}
-        />
+          <Plus size={14} />
+          <input
+            type="color"
+            value={/^#[0-9a-f]{6}$/i.test(value || "") ? value : "#ffffff"}
+            onChange={(e) => onChange(e.target.value)}
+            style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
+          />
+        </label>
       </div>
     </div>
   );
 }
 
-function SliderRow({ label, value, min, max, step = 0.01, onChange, fmt }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: 2,
-        }}
-      >
-        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>
-          {label}
-        </span>
-        <span
-          style={{
-            fontSize: 12,
-            color: "rgba(255,255,255,0.9)",
-            fontWeight: 600,
-          }}
-        >
-          {fmt ? fmt(value) : value}
-        </span>
-      </div>
-      <DragSlider
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={onChange}
-      />
-    </div>
-  );
-}
-
-function Toggle({ value, onChange, label }) {
-  return (
-    <label
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        cursor: "pointer",
-      }}
-    >
-      <div
-        onClick={() => onChange(!value)}
-        style={{
-          width: 36,
-          height: 20,
-          borderRadius: 999,
-          background: value ? "#2563eb" : "rgba(255,255,255,0.12)",
-          position: "relative",
-          transition: "background 0.2s",
-          flexShrink: 0,
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 2,
-            left: value ? 18 : 2,
-            width: 16,
-            height: 16,
-            borderRadius: "50%",
-            background: "#fff",
-            transition: "left 0.2s",
-          }}
-        />
-      </div>
-      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-        {label}
-      </span>
-    </label>
-  );
-}
-
-function SectionHead({ label }) {
-  return (
-    <p
-      style={{
-        fontSize: 9,
-        fontWeight: 700,
-        letterSpacing: "0.13em",
-        textTransform: "uppercase",
-        color: "rgba(255,255,255,0.3)",
-        margin: "18px 0 9px",
-        paddingBottom: 6,
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
-      {label}
-    </p>
-  );
-}
-
-function PInput({ value, onChange, placeholder }) {
-  return (
-    <input
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      style={{
-        width: "100%",
-        padding: "9px 12px",
-        background: "rgba(255,255,255,0.05)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 10,
-        color: "rgba(255,255,255,0.9)",
-        fontFamily: "system-ui,sans-serif",
-        fontSize: 12,
-        outline: "none",
-        boxSizing: "border-box",
-      }}
-      onFocus={(e) => (e.target.style.borderColor = "#2563eb")}
-      onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
-    />
-  );
-}
+const DEF_ADJ = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 };
+const signedOf = (v, d) => {
+  const n = Math.round((v - d) * 100);
+  return (n > 0 ? "+" : "") + n;
+};
+const PHOTO_ADJUST = [
+  { key: "brightness", label: "Brightness", min: 0, max: 2, step: 0.01, def: 1, fmt: (v) => signedOf(v, 1) },
+  { key: "contrast", label: "Contrast", min: 0, max: 2, step: 0.01, def: 1, fmt: (v) => signedOf(v, 1) },
+  { key: "saturation", label: "Saturation", min: 0, max: 2, step: 0.01, def: 1, fmt: (v) => signedOf(v, 1) },
+  { key: "warmth", label: "Warmth", min: 0, max: 1, step: 0.01, def: 0, fmt: (v) => `${Math.round(v * 100)}` },
+  { key: "blur", label: "Blur", min: 0, max: 20, step: 0.5, def: 0, fmt: (v) => `${v}` },
+  { key: "vignette", label: "Vignette", min: 0, max: 1, step: 0.01, def: 0, fmt: (v) => `${Math.round(v * 100)}` },
+];
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function TikTokStudioV3({ listing, onClose }) {
+// Small preview tile of a backdrop scene for the picker.
+function BackdropSwatch({ id, accent, active, label, onPick }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    c.width = 54;
+    c.height = 84;
+    ctx.fillStyle = "#1f2128";
+    ctx.fillRect(0, 0, 54, 84);
+    if (id !== "none") drawBackdrop(ctx, id, 54, 84, 84 * 0.66, accent);
+  }, [id, accent]);
+  return (
+    <button onClick={onPick} aria-pressed={active}
+      style={{ flex: "0 0 auto", background: "transparent", border: "none", padding: 0, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <span style={{ display: "block", width: 54, height: 84, borderRadius: 8, overflow: "hidden", boxShadow: active ? "0 0 0 2px #fff" : "0 0 0 1px rgba(255,255,255,0.12)", position: "relative" }}>
+        <canvas ref={ref} style={{ width: 54, height: 84, display: "block" }} />
+        {id === "none" && <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "rgba(255,255,255,0.5)" }}>Off</span>}
+      </span>
+      <span style={{ fontSize: 10, color: active ? "#fff" : "rgba(255,255,255,0.5)", fontWeight: active ? 700 : 500 }}>{label}</span>
+    </button>
+  );
+}
+
+// `backdrops`: Salesman Premium only (SalesmanPremium.jsx passes it). Unlocks
+// drawn scenes behind a cut-out car; see src/components/studio/backdrops.js.
+export default function TikTokStudioV3({ listing, onClose, backdrops = false }) {
   // ── State ────────────────────────────────────────────────────────────────
   const [slides, setSlides] = useState([]);
   const [active, setActive] = useState(0);
   const [selectedId, setSelectedId] = useState(null);
   const [editingId, setEditingId] = useState(null);
-  const [activeTab, setActiveTab] = useState("slide");
+  // The slide photo is a selectable thing too (its own tools), entered from
+  // the slide's Photo tool. Tapping empty canvas leaves it (STUDIO-UX-2).
+  const [photoSel, setPhotoSel] = useState(false);
+  // "This slide | All slides": in All, an edit reaches the same object on
+  // every slide, live (src/components/studio/scope.js).
+  const [scopeAll, setScopeAll] = useState(false);
+  // Desktop: the tool tab last used per kind of object, so it reopens there.
+  const [lastTool, setLastTool] = useState({});
+  // Desktop inspector showing the Add list or the Layers list instead.
+  const [deskMode, setDeskMode] = useState(null);
   const [theme, setTheme] = useState(DEFAULT_THEME);
   const [font, setFont] = useState("dm");
   const [aiCmd, setAiCmd] = useState("");
@@ -2119,16 +1922,28 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [dlIdx, setDlIdx] = useState(null);
   const [savedBrand, setSavedBrand] = useState(false);
   const [genError, setGenError] = useState(null);
-  const [language, setLanguage] = useState("en");
-  const [hookText, setHookText] = useState("");
-  const [showImagePicker, setShowImagePicker] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [removeBgError, setRemoveBgError] = useState(null);
   const [removeBgStatus, setRemoveBgStatus] = useState(null); // "Downloading 12 of 47 MB" / "Removing..."
   const [cutoutSaved, setCutoutSaved] = useState(true); // tool already on this phone? (checked below)
   useEffect(() => { isCutoutModelSaved().then(setCutoutSaved); }, []);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  // Phone: the canvas area's REAL size, measured. It used to be guessed from
+  // window.innerHeight once, so rotating, the browser bar hiding or a panel
+  // opening left the canvas the wrong size (cut off or overflowing).
+  const [mobArea, setMobArea] = useState({ w: 0, h: 0 });
+  const mobAreaObs = useRef(null);
+  const mobAreaRef = useCallback((node) => {
+    mobAreaObs.current?.disconnect();
+    mobAreaObs.current = null;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setMobArea((p) => (Math.abs(p.w - width) < 1 && Math.abs(p.h - height) < 1 ? p : { w: width, h: height }));
+    });
+    ro.observe(node);
+    mobAreaObs.current = ro;
+  }, []);
   const [sheetPanel, setSheetPanel] = useState(null); // mobile bottom sheet
   // Measured size of the desktop canvas workspace div (excluding padding)
   const [desktopWrapperSize, setDesktopWrapperSize] = useState({
@@ -2136,11 +1951,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
     h: 600,
   });
   const desktopWrapperRef = useRef(null);
-  // Measured CONTENT size of the desktop single-slide canvas area (the flex row
-  // that sits BELOW the LayerStack). desktopWrapperSize measures the whole
-  // column incl. the LayerStack, so using it here oversized the canvas and let
-  // it (and the floating QuickPanel) spill below the fold. Measured separately
-  // so slideScale fits the true available box without touching the top-level
+  // Measured CONTENT size of the desktop single-slide canvas row, so the
+  // canvas fits the true available box without touching the top-level
   // `scale` that element-drag math depends on.
   const [canvasAreaSize, setCanvasAreaSize] = useState({ w: 0, h: 0 });
   const canvasAreaObs = useRef(null);
@@ -2165,7 +1977,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const [canvasFormat, setCanvasFormat] = useState("9:16");
   const [uploadedImages, setUploadedImages] = useState([]);
   const [showCamera, setShowCamera] = useState(false);
-  useModalHistory(showImagePicker, () => setShowImagePicker(false));
   useModalHistory(!!sheetPanel, () => setSheetPanel(null));
   const [camOverlay, setCamOverlay] = useState(null);
   const [libMsg, setLibMsg] = useState(null);
@@ -2277,7 +2088,6 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const initialSlidesJson = useRef(null);
   useModalHistory(true, onClose, {
     isDirty: () =>
-      !!hookText.trim() ||
       !!aiCmd.trim() ||
       (initialSlidesJson.current !== null && JSON.stringify(slides) !== initialSlidesJson.current),
   });
@@ -2288,15 +2098,38 @@ export default function TikTokStudioV3({ listing, onClose }) {
     history.current = trimmed.slice(-30);
     historyIdx.current = history.current.length - 1;
   }
+  // ONE history for the whole design (STUDIO-UX-2). Layers used to keep their
+  // own, behind a second Undo that only the desktop had, so a phone could not
+  // undo a shape at all. Layer edits now land in the slides (the effect below)
+  // and are recorded here; undo hands the restored slide's layers back to the
+  // layer editor.
+  const syncingLayers = useRef(true);
+  const histTimer = useRef(null);
+  function scheduleHistory() {
+    clearTimeout(histTimer.current);
+    histTimer.current = setTimeout(() => {
+      setSlides((ss) => {
+        pushHistory(ss);
+        return ss;
+      });
+    }, 400);
+  }
+  function restoreHistory(idx) {
+    const snap = JSON.parse(JSON.stringify(history.current[idx]));
+    setSlides(snap);
+    syncingLayers.current = true;
+    setLayers(snap[Math.min(active, snap.length - 1)]?.layers || []);
+  }
   function undo() {
     if (historyIdx.current <= 0) return;
+    clearTimeout(histTimer.current);
     historyIdx.current--;
-    setSlides(JSON.parse(JSON.stringify(history.current[historyIdx.current])));
+    restoreHistory(historyIdx.current);
   }
   function redo() {
     if (historyIdx.current >= history.current.length - 1) return;
     historyIdx.current++;
-    setSlides(JSON.parse(JSON.stringify(history.current[historyIdx.current])));
+    restoreHistory(historyIdx.current);
   }
 
   // ── Interaction refs ─────────────────────────────────────────────────────
@@ -2332,13 +2165,20 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
   // Sync layer editor when active slide changes (each slide stores its own layers)
   useEffect(() => {
+    syncingLayers.current = true;
     setLayers(slides[active]?.layers || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  // Persist layers back to the slide whenever they change
+  // Persist layers back to the slide whenever they change, and record the
+  // change in the one history (not when the editor was only loaded from it).
   useEffect(() => {
     setSlides((ss) => ss.map((s, i) => (i === active ? { ...s, layers } : s)));
+    if (syncingLayers.current) {
+      syncingLayers.current = false;
+      return;
+    }
+    scheduleHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layers]);
 
@@ -2403,6 +2243,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
     setSlides(initial);
     initialSlidesJson.current = JSON.stringify(initial);
+    syncingLayers.current = true;
     // The layer editor is synced from the slide only when `active` changes, and
     // `active` is already 0 when these first slides arrive. Without this, the
     // editor keeps the empty list it mounted with, and the persist effect below
@@ -2456,23 +2297,31 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // Uniform scale + center (via fitCanvasContent) so switching format keeps
   // every element/layer INSIDE the frame and scales fontSize with it — the old
   // per-axis rescale distorted shapes and left text overflowing.
+  // Always fit from the layout as it was BEFORE the first switch (`fmtBase`),
+  // never from the last fit: fitting a fit shrank the design on every round
+  // trip (9:16 -> 1:1 -> 9:16 came back at 56%). Any edit in between makes the
+  // current layout the new base.
+  const fmtBase = useRef(null);
   useEffect(() => {
     if (prevFormatRef.current === canvasFormat) return;
     const oldFmt = FORMATS.find((f) => f.id === prevFormatRef.current) || FORMATS[0];
     const newFmt = FORMATS.find((f) => f.id === canvasFormat) || FORMATS[0];
-    const dims = { fromW: oldFmt.w, fromH: oldFmt.h, toW: newFmt.w, toH: newFmt.h };
-    setSlides((ss) =>
-      ss.map((s) => {
-        const fitted = fitCanvasContent({
-          elements: s.elements || [],
-          layers: s.layers || [],
-          ...dims,
-        });
-        return { ...s, elements: fitted.elements, layers: fitted.layers };
-      }),
-    );
-    // Keep the live layer-editor state (active slide) in sync with the refit.
-    setLayers(fitCanvasContent({ elements: [], layers, ...dims }).layers);
+    // The active slide's layers live in the layer editor.
+    const cur = slides.map((s, i) => (i === active ? { ...s, layers } : s));
+    const keyOf = (ss) => JSON.stringify(ss.map((s) => [s.id, s.elements || [], s.layers || []]));
+    let base = fmtBase.current;
+    if (!base || base.key !== keyOf(cur)) {
+      base = { w: oldFmt.w, h: oldFmt.h, byId: new Map(cur.map((s) => [s.id, { elements: s.elements || [], layers: s.layers || [] }])) };
+    }
+    const next = cur.map((s) => {
+      const b = base.byId.get(s.id);
+      if (!b) return s;
+      const fitted = fitCanvasContent({ elements: b.elements, layers: b.layers, fromW: base.w, fromH: base.h, toW: newFmt.w, toH: newFmt.h });
+      return { ...s, elements: fitted.elements, layers: fitted.layers };
+    });
+    fmtBase.current = { ...base, key: keyOf(next) };
+    setSlides(next);
+    setLayers(next[active]?.layers || []);
     prevFormatRef.current = canvasFormat;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasFormat]);
@@ -2499,23 +2348,31 @@ export default function TikTokStudioV3({ listing, onClose }) {
         return;
       }
 
+      const layerId = layerSelectedIds[0];
       if (e.key === "Escape") {
-        selectedId ? setSelectedId(null) : onClose();
+        selectedId || layerId || photoSel ? clearSelectionAll() : onClose();
       }
       if (e.key === "ArrowLeft") setActive((i) => Math.max(0, i - 1));
       if (e.key === "ArrowRight") setActive((i) => Math.min(total - 1, i + 1));
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedId)
-        deleteSelected();
-      if ((e.metaKey || e.ctrlKey) && e.key === "d" && selectedId) {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedId) deleteSelected();
+        else if (layerId) removeLayer(layerId);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "d" && (selectedId || layerId)) {
         e.preventDefault();
-        duplicateSelected();
+        if (selectedId) duplicateSelected();
+        else dupLayer(layerId);
       }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, [onClose, total, selectedId]);
+  });
 
   // ── Element helpers ──────────────────────────────────────────────────────
+  // Every element write goes through scope.js: This slide edits this object,
+  // All slides edits it and its linked copies on every slide (STUDIO-UX-2).
+  const allOn = scopeAll && total > 1;
+
   const updateElement = useCallback(
     (id, patch) => {
       // Clamp position patches so elements can't land outside canvas bounds
@@ -2523,16 +2380,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       if (safePatch.x !== undefined) safePatch.x = Math.max(0, Math.min(CW - 40, safePatch.x));
       if (safePatch.y !== undefined) safePatch.y = Math.max(0, Math.min(CH - 40, safePatch.y));
       setSlides((ss) => {
-        const newSlides = ss.map((s, i) =>
-          i !== active
-            ? s
-            : {
-                ...s,
-                elements: s.elements.map((e) =>
-                  e.id === id ? { ...e, ...safePatch } : e,
-                ),
-              },
-        );
+        const newSlides = patchElements(ss, active, id, safePatch, allOn);
         // Only push history when not actively dragging/resizing/rotating
         if (!dragging.current && !resizing.current && !rotating.current) {
           pushHistory(newSlides);
@@ -2540,7 +2388,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
         return newSlides;
       });
     },
-    [active],
+    [active, allOn, CW, CH],
   );
 
   const updateSelectedElement = useCallback(
@@ -2553,89 +2401,217 @@ export default function TikTokStudioV3({ listing, onClose }) {
   const deleteSelected = useCallback(() => {
     if (!selectedId) return;
     setSlides((ss) => {
-      const newSlides = ss.map((s, i) =>
-        i !== active
-          ? s
-          : { ...s, elements: s.elements.filter((e) => e.id !== selectedId) },
-      );
+      const newSlides = removeElements(ss, active, selectedId, allOn);
       pushHistory(newSlides);
       return newSlides;
     });
     setSelectedId(null);
-  }, [selectedId, active]);
+  }, [selectedId, active, allOn]);
 
   const duplicateSelected = useCallback(() => {
     if (!selectedId || !slide) return;
     const el = slide.elements.find((e) => e.id === selectedId);
     if (!el) return;
-    const dup = { ...el, id: uid(), x: el.x + 30, y: el.y + 30, locked: false };
+    const link = uid();
+    const copyOf = (src) => ({ ...src, id: uid(), x: src.x + 30, y: src.y + 30, locked: false, link });
+    const dup = copyOf(el);
+    const key = allOn ? linkKey(el) : null;
     setSlides((ss) => {
-      const newSlides = ss.map((s, i) =>
-        i !== active ? s : { ...s, elements: [...s.elements, dup] },
-      );
+      const newSlides = ss.map((s, i) => {
+        if (i === active) return { ...s, elements: [...s.elements, dup] };
+        const src = key && (s.elements || []).find((e) => linkKey(e) === key);
+        return src ? { ...s, elements: [...s.elements, copyOf(src)] } : s;
+      });
       pushHistory(newSlides);
       return newSlides;
     });
     setSelectedId(dup.id);
-  }, [selectedId, slide, active]);
+  }, [selectedId, slide, active, allOn]);
 
-  const addTextElement = useCallback(() => {
-    const el = {
-      id: uid(),
-      type: "text",
-      content: "New Text",
-      x: Math.round(CW * 0.18),
-      y: Math.round(CH * 0.31),
-      fontSize: 48,
-      fontWeight: "700",
-      color: "#ffffff",
-      rotation: 0,
-      opacity: 1,
-      align: "left",
-      visible: true,
-      locked: false,
-    };
-    setSlides((ss) => {
-      const newSlides = ss.map((s, i) =>
-        i !== active ? s : { ...s, elements: [...s.elements, el] },
-      );
-      pushHistory(newSlides);
-      return newSlides;
-    });
-    setSelectedId(el.id);
-  }, [active, CW, CH]);
+  const shiftElement = useCallback(
+    (id, dir) => {
+      setSlides((ss) => {
+        const newSlides = shiftElements(ss, active, id, dir, allOn);
+        pushHistory(newSlides);
+        return newSlides;
+      });
+    },
+    [active, allOn],
+  );
 
-  const addBadgeElement = useCallback(() => {
-    const el = {
-      id: uid(),
-      type: "badge",
-      content: "HOT DEAL",
-      x: 60,
-      y: 200,
-      fontSize: 52,
-      fontWeight: "700",
-      color: "#fff",
-      bgColor: theme.accentColor || "#dc2626",
-      rotation: 0,
-      opacity: 1,
-      align: "center",
-      visible: true,
-      locked: false,
-    };
-    setSlides((ss) => {
-      const newSlides = ss.map((s, i) =>
-        i !== active ? s : { ...s, elements: [...s.elements, el] },
-      );
-      pushHistory(newSlides);
-      return newSlides;
-    });
-    setSelectedId(el.id);
-  }, [active, theme.accentColor]);
+  // A new element is always linked; in All slides mode it is added to every
+  // slide at once, so the seller can keep editing it everywhere.
+  const addElementScoped = useCallback(
+    (base) => {
+      const link = uid();
+      const el = { ...base, id: uid(), link };
+      setSlides((ss) => {
+        let newSlides = ss.map((s, i) => (i !== active ? s : { ...s, elements: [...s.elements, el] }));
+        if (allOn) newSlides = addToOthers(newSlides, active, "elements", () => ({ ...base, id: uid(), link }));
+        pushHistory(newSlides);
+        return newSlides;
+      });
+      clearLayerSelection();
+      setPhotoSel(false);
+      setSelectedId(el.id);
+      return el;
+    },
+    [active, allOn, clearLayerSelection],
+  );
+
+  const addTextElement = useCallback(
+    () =>
+      addElementScoped({
+        type: "text",
+        content: "New Text",
+        x: Math.round(CW * 0.18),
+        y: Math.round(CH * 0.31),
+        fontSize: 48,
+        fontWeight: "700",
+        color: "#ffffff",
+        rotation: 0,
+        opacity: 1,
+        align: "left",
+        visible: true,
+        locked: false,
+      }),
+    [addElementScoped, CW, CH],
+  );
+
+  const addBadgeElement = useCallback(
+    () =>
+      addElementScoped({
+        type: "badge",
+        content: "HOT DEAL",
+        x: 60,
+        y: 200,
+        fontSize: 52,
+        fontWeight: "700",
+        color: "#fff",
+        bgColor: theme.accentColor || "#dc2626",
+        rotation: 0,
+        opacity: 1,
+        align: "center",
+        visible: true,
+        locked: false,
+      }),
+    [addElementScoped, theme.accentColor],
+  );
+
+  // ── Layer helpers (scope-aware) ──────────────────────────────────────────
+  // The active slide's layers live in the layer editor; the other slides'
+  // linked copies are patched in `slides` directly.
+  const layersRef = useRef(layers);
+  layersRef.current = layers;
+
+  const patchLayer = useCallback(
+    (id, patch, silent = false) => {
+      updateLayer(id, patch, silent);
+      if (!allOn) return;
+      const key = linkKey(layersRef.current.find((l) => l.id === id));
+      if (key) setSlides((ss) => patchOtherLayers(ss, active, key, patch));
+    },
+    [updateLayer, allOn, active],
+  );
+
+  const removeLayer = useCallback(
+    (id) => {
+      const key = allOn ? linkKey(layersRef.current.find((l) => l.id === id)) : null;
+      deleteLayer(id);
+      if (key) setSlides((ss) => removeOtherLayers(ss, active, key));
+    },
+    [deleteLayer, allOn, active],
+  );
+
+  const addLayerScoped = useCallback(
+    (type, overrides = {}) => {
+      const link = uid();
+      const l = addLayer(type, { ...overrides, link });
+      if (allOn) setSlides((ss) => addToOthers(ss, active, "layers", () => makeLayer(type, { ...overrides, link })));
+      setSelectedId(null);
+      setEditingId(null);
+      setPhotoSel(false);
+      return l;
+    },
+    [addLayer, allOn, active],
+  );
+
+  const dupLayer = useCallback(
+    (id) => {
+      const src = layersRef.current.find((l) => l.id === id);
+      if (!src) return;
+      const link = uid();
+      // eslint-disable-next-line no-unused-vars
+      const copyOf = ({ id: _id, ...o }) => ({
+        ...o,
+        x: o.x + 3,
+        y: o.y + 3,
+        label: `${o.label || o.type} copy`,
+        zIndex: (o.zIndex ?? 20) + 1,
+        locked: false,
+        link,
+      });
+      addLayer(src.type, copyOf(src));
+      const key = allOn ? linkKey(src) : null;
+      if (key) {
+        setSlides((ss) =>
+          ss.map((s, i) => {
+            if (i === active) return s;
+            const o = (s.layers || []).find((l) => linkKey(l) === key);
+            return o ? { ...s, layers: [...s.layers, makeLayer(o.type, copyOf(o))] } : s;
+          }),
+        );
+      }
+    },
+    [addLayer, allOn, active],
+  );
+
+  const toggleLockLayer = useCallback(
+    (id) => {
+      const l = layersRef.current.find((x) => x.id === id);
+      if (l) patchLayer(id, { locked: !l.locked });
+    },
+    [patchLayer],
+  );
+
+  // ── Selection: one thing at a time (element, layer, the photo, or none) ──
+  const selectElement = useCallback(
+    (id) => {
+      setSelectedId(id);
+      setEditingId(null);
+      clearLayerSelection();
+      setPhotoSel(false);
+    },
+    [clearLayerSelection],
+  );
+  const selectLayerOnly = useCallback(
+    (id) => {
+      selectLayer(id);
+      setSelectedId(null);
+      setEditingId(null);
+      setPhotoSel(false);
+    },
+    [selectLayer],
+  );
+  const clearSelectionAll = useCallback(() => {
+    setSelectedId(null);
+    setEditingId(null);
+    clearLayerSelection();
+    setPhotoSel(false);
+  }, [clearLayerSelection]);
+  const selectPhoto = useCallback(() => {
+    setSelectedId(null);
+    setEditingId(null);
+    clearLayerSelection();
+    setPhotoSel(true);
+  }, [clearLayerSelection]);
 
   // ── Drag / Resize / Rotate ───────────────────────────────────────────────
   const onStartDrag = useCallback(
     (e, id, dragScale) => {
       setSelectedId(id);
+      clearLayerSelection();
+      setPhotoSel(false);
       const el = slide?.elements?.find((el) => el.id === id);
       if (!el || el.locked) return;
       // Two-finger pinch on element → resize + move simultaneously
@@ -2668,10 +2644,11 @@ export default function TikTokStudioV3({ listing, onClose }) {
         origX: el.x,
         origY: el.y,
         dragScale,
+        moved: false,
       };
       e.preventDefault();
     },
-    [slide],
+    [slide, clearLayerSelection],
   );
 
   const onStartResize = useCallback(
@@ -2758,6 +2735,12 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
       if (dragging.current) {
         const { id, startX, startY, origX, origY, dragScale } = dragging.current;
+        if (e.touches) e.preventDefault();
+        // A tap wobbles a few pixels: only a real move drags the text.
+        if (!dragging.current.moved) {
+          if (Math.hypot(cx - startX, cy - startY) < DRAG_START_PX) return;
+          dragging.current.moved = true;
+        }
         const s = dragScale || scale;
         updateElement(id, {
           x: Math.max(0, Math.min(CW - 40, origX + (cx - startX) / s)),
@@ -2786,7 +2769,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
 
     const onUp = () => {
       const wasDragging = !!(
-        dragging.current ||
+        dragging.current?.moved ||
         resizing.current ||
         rotating.current ||
         pinching.current
@@ -2808,11 +2791,15 @@ export default function TikTokStudioV3({ listing, onClose }) {
     document.addEventListener("mouseup", onUp);
     document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("touchend", onUp);
+    // A phone can cancel a touch mid-drag (a call, a system gesture); without
+    // this the text stayed stuck to the next finger.
+    document.addEventListener("touchcancel", onUp);
     return () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onUp);
+      document.removeEventListener("touchcancel", onUp);
     };
   }, [scale, updateElement, CW, CH]);
 
@@ -2900,150 +2887,67 @@ export default function TikTokStudioV3({ listing, onClose }) {
       setSlides((ss) =>
         ss.map((s, i) => (i === active ? { ...s, ...patch } : s)),
       );
+      scheduleHistory();
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [active],
   );
 
-  const applyTemplateContent = useCallback(
-    (templateId) => {
-      const brand = listing?.brand || "";
-      const model = listing?.model || "";
-      const variant = listing?.variant || "";
-      const year = String(listing?.year || "");
-      const price = listing?.selling_price || listing?.price;
-      const priceStr = price ? "RM " + Number(price).toLocaleString() : "";
-      const monthly = calcMonthly(price);
-      const monthlyStr = monthly ? `RM ${monthly.toLocaleString()}/mo` : "";
-      const mileage = listing?.mileage
-        ? Number(listing.mileage).toLocaleString() + " km"
-        : "";
-      const trans = listing?.transmission || "";
-      const fuel = listing?.fuel_type || listing?.fuel || "";
-      const cond = listing?.condition || "";
-      const condLabel =
-        { new: "Brand New", recon: "Recon", used: "Used" }[cond] || cond;
-      const whatsapp = slide?.whatsapp || listing?.whatsapp_number || "";
-      const featureList = features.slice(0, 3).join(", ");
-
-      const contentMap = {
-        hype: {
-          hook: "POV: You just found your dream car 🚗",
-          headline:
-            [`${year} ${brand} ${model}`, variant]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || "Your Car",
-          price: priceStr || "Price on Request",
-          stats: [mileage, trans, fuel].filter(Boolean).join(" · "),
-        },
-        "hero-hook": {
-          hook: `This ${brand} ${model} will CHANGE your life 🔥`,
-          headline:
-            [`${year} ${brand} ${model}`, variant]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || "Your Car",
-          price: priceStr || "Price on Request",
-          stats: [condLabel, mileage].filter(Boolean).join(" · "),
-        },
-
-        pricing: {
-          hook: `Best deal in Malaysia 💰`,
-          headline: priceStr || "Price on Request",
-          price: monthlyStr ? `As low as ${monthlyStr}` : priceStr,
-          stats: `${condLabel} · ${mileage}`.replace(/^·\s*|·\s*$/, "").trim(),
-        },
-        cta: {
-          hook: `DM us now! Limited unit 📲`,
-          headline:
-            [`${year} ${brand} ${model}`].join(" ").trim() || "Your Car",
-          price: priceStr || "Price on Request",
-          stats: whatsapp ? `WhatsApp: ${whatsapp}` : "Contact us today",
-        },
-        story: {
-          hook: `${condLabel ? condLabel + " · " : ""}${year} ${brand} ${model} ✨`,
-          headline:
-            [`${year} ${brand} ${model}`, variant]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || "Your Car",
-          price: priceStr || "Price on Request",
-          stats: [mileage, trans, fuel].filter(Boolean).join(" · "),
-        },
-        minimal: {
-          hook: `${brand} ${model}`,
-          headline:
-            [`${year} ${brand} ${model}`, variant]
-              .filter(Boolean)
-              .join(" ")
-              .trim() || "Your Car",
-          price: priceStr || "Price on Request",
-          stats: "",
-        },
-      };
-
-      const c = contentMap[templateId];
-      if (!c) return;
-
-      setSlides((ss) =>
-        ss.map((s, i) =>
-          i !== active
-            ? s
-            : {
-                ...s,
-                template: templateId,
-                elements: s.elements.map((el) => {
-                  if (el.id === "hook") return { ...el, content: c.hook };
-                  if (el.id === "headline")
-                    return { ...el, content: c.headline };
-                  if (el.id === "price") return { ...el, content: c.price };
-                  if (el.id === "stats") return { ...el, content: c.stats };
-                  return el;
-                }),
-              },
-        ),
-      );
+  // Photo settings: this slide, or every slide in All slides mode. `fn(slide)`
+  // returns the patch so one adjustment changes without wiping the others.
+  const patchPhoto = useCallback(
+    (fn) => {
+      setSlides((ss) => patchPhotos(ss, active, fn, allOn));
+      scheduleHistory();
     },
-    [active, listing, slide, features],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [active, allOn],
   );
 
-  // ── Pro templates: apply a full ready-made design to the current slide ────
+  // ── Pro templates: apply a ready-made design to this slide, or all ─────
+  // In All slides mode every slide gets the template built from ITS own data,
+  // and the same object on each slide shares a link (`<run>-e<n>`), so later
+  // edits in All slides mode reach all of them.
   const applyProTemplate = useCallback(
     (tpl) => {
-      const ctx = buildTemplateCtx(listing, slide, features, [...uploadedImages, ...rawImages]);
       (tpl.fonts || []).forEach(ensureFont);
       setTheme((t) => ({ ...t, ...tpl.theme }));
+      const images = [...uploadedImages, ...rawImages];
       // Templates are authored at CANVAS_W×CANVAS_H (1080×1920). Fit them into
       // the currently-selected format so they never spill off-frame.
-      const fitted = fitCanvasContent({
-        elements: tpl.buildElements(ctx),
-        layers: tpl.buildLayers ? tpl.buildLayers(ctx) : [],
-        fromW: CANVAS_W,
-        fromH: CANVAS_H,
-        toW: CW,
-        toH: CH,
-      });
+      const build = (s) =>
+        fitCanvasContent({
+          elements: tpl.buildElements(buildTemplateCtx(listing, s, features, images)),
+          layers: tpl.buildLayers ? tpl.buildLayers(buildTemplateCtx(listing, s, features, images)) : [],
+          fromW: CANVAS_W,
+          fromH: CANVAS_H,
+          toW: CW,
+          toH: CH,
+        });
+      const run = uid();
+      const elsOf = (f) => f.elements.map((e, j) => ({ ...e, id: uid(), link: `${run}-e${j}` }));
+      // The dark gradient overlay sits behind the template's own graphics so
+      // the scrim is always present (and always a movable shape).
+      const laysOf = (f) => [makeOverlayLayer(), ...f.layers.map((l, j) => makeLayer(l.type, { ...l, link: `${run}-l${j}` }))];
+      const mine = build(slide);
       setSlides((ss) =>
-        ss.map((s, i) =>
-          i !== active
-            ? s
-            : {
-                ...s,
-                template: "minimal", // pro templates draw their own chrome
-                carZone: tpl.carZone,
-                elements: [
-                  ...s.elements.filter((e) => e.id === "watermark"),
-                  ...fitted.elements.map((e) => ({ ...e, id: uid() })),
-                ],
-              },
-        ),
+        ss.map((s, i) => {
+          if (i !== active && !allOn) return s;
+          const f = i === active ? mine : build(s);
+          const next = {
+            ...s,
+            template: "minimal", // pro templates draw their own chrome
+            carZone: tpl.carZone,
+            elements: [...s.elements.filter((e) => e.id === "watermark"), ...elsOf(f)],
+          };
+          if (i !== active) next.layers = laysOf(f);
+          return next;
+        }),
       );
-      // Seed the dark gradient overlay behind the template's own graphics so the
-      // scrim is always present (and always a movable shape) on a fresh template.
-      setLayers([makeOverlayLayer(), ...fitted.layers.map((l) => makeLayer(l.type, l))]);
+      setLayers(laysOf(mine));
       setSelectedId(null);
     },
-    [active, listing, slide, features, setLayers, uploadedImages, rawImages, CW, CH],
+    [active, allOn, listing, slide, features, setLayers, uploadedImages, rawImages, CW, CH],
   );
 
   // Shapes are stored as % of width AND % of height — on a 9:16 canvas equal
@@ -3053,19 +2957,19 @@ export default function TikTokStudioV3({ listing, onClose }) {
     (type) => {
       const sq = (wPct, ratio = 1) => ({ width: wPct, height: ((wPct / 100) * CW * ratio / CH) * 100 });
       if (type === "gradient")
-        return addLayer("rect", {
+        return addLayerScoped("rect", {
           label: "Gradient",
           gradient: DARK_SCRIM_GRADIENT,
           x: 0, y: 0, width: 100, height: 100,
           borderWidth: 0, borderRadius: 0,
           zIndex: OVERLAY_Z,
         });
-      if (type === "circle") return addLayer("circle", sq(24, 1));
-      if (type === "rect") return addLayer("rect", sq(40, 0.62));
-      if (type === "triangle") return addLayer("triangle", sq(30, 0.9));
-      return addLayer(type);
+      if (type === "circle") return addLayerScoped("circle", sq(24, 1));
+      if (type === "rect") return addLayerScoped("rect", sq(40, 0.62));
+      if (type === "triangle") return addLayerScoped("triangle", sq(30, 0.9));
+      return addLayerScoped(type);
     },
-    [addLayer, CW, CH],
+    [addLayerScoped, CW, CH],
   );
 
   // ── Camera: snapshot the current design (minus photo) as a ghost overlay ──
@@ -3161,6 +3065,7 @@ export default function TikTokStudioV3({ listing, onClose }) {
       whatsapp: slide?.whatsapp || "",
       monthly: calcMonthly(listing?.selling_price),
       elements: buildDefaultElements(listing, theme, slide?.dealerName || ""),
+      layers: [makeOverlayLayer()],
       bgAdjust: { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 },
     };
     setSlides((ss) => {
@@ -3223,28 +3128,40 @@ export default function TikTokStudioV3({ listing, onClose }) {
   // ── Remove Background ────────────────────────────────────────────────────
   // Runs on the phone (src/lib/cutout): the photo is never uploaded, and the
   // car's pixels are the real photo. The tool downloads once (~47 MB).
+  // One photo at a time, always this slide only (owner, 2026-10-29): never a
+  // batch over every slide, and never a cut-out of a cut-out (each pass loses
+  // edge detail), so a slide already cut offers "put it back" instead.
   const removeBg = useCallback(async () => {
-    const url = slide?.imageUrl;
-    if (!url) return;
+    const s = slide;
+    if (!s?.imageUrl || s.originalImageUrl) return;
     setRemovingBg(true);
     setRemoveBgError(null);
     setRemoveBgStatus(null);
     try {
-      const resultBlob = await cutOutBackground(url, {
+      const resultBlob = await cutOutBackground(s.imageUrl, {
         onProgress: (p) => setRemoveBgStatus(p.stage === "download"
           ? `Getting the tool, once only: ${Math.round(p.loaded / 1e6)} of ${Math.round(p.total / 1e6)} MB`
           : "Removing the background..."),
       });
       const resultUrl = URL.createObjectURL(resultBlob);
-      patchSlide({ originalImageUrl: url, imageUrl: resultUrl });
+      setSlides((ss) =>
+        ss.map((x) => {
+          if (x.id !== s.id || x.originalImageUrl) return x;
+          // Premium: land straight on a scene, unless the seller switched it off before.
+          const scene = backdrops && x.backdrop == null ? { backdrop: DEFAULT_BACKDROP } : {};
+          return { ...x, originalImageUrl: s.imageUrl, imageUrl: resultUrl, ...scene };
+        }),
+      );
       setCutoutSaved(true);
+      scheduleHistory();
     } catch (e) {
       setRemoveBgError(cutoutErrorText(e));
     } finally {
       setRemovingBg(false);
       setRemoveBgStatus(null);
     }
-  }, [slide?.imageUrl, patchSlide]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slide, backdrops]);
 
   const restoreBg = useCallback(() => {
     if (!slide?.originalImageUrl) return;
@@ -3380,17 +3297,29 @@ export default function TikTokStudioV3({ listing, onClose }) {
     setTheme(d.theme);
     setFont(d.font);
     if (d.format) setCanvasFormat(d.format);
+    const run = uid();
+    const elsOf = (s) => [
+      ...(s.elements || []).filter((e) => e.id === "watermark"),
+      ...(d.elements || []).filter((e) => e.id !== "watermark").map((e, j) => ({ ...e, id: uid(), link: `${run}-e${j}` })),
+    ];
+    const laysOf = () =>
+      (d.layers || []).map((l, j) => ({
+        ...JSON.parse(JSON.stringify(l)),
+        id: uid(),
+        link: l.link === "overlay" ? "overlay" : `${run}-l${j}`,
+      }));
     setSlides((ss) =>
       ss.map((s, i) => {
-        if (i !== active) return s;
+        if (i !== active && !allOn) return s;
         const next = { ...s, carZone: d.carZone || s.carZone || null };
-        if (d.elements?.length) next.elements = d.elements.map((e) => ({ ...e, id: uid() }));
+        if (d.elements?.length) next.elements = elsOf(s);
+        if (i !== active && d.layers) next.layers = laysOf();
         return next;
       }),
     );
-    if (d.layers) setLayers(JSON.parse(JSON.stringify(d.layers)));
-    setActiveTab("slide");
-  }, [active, setLayers]);
+    if (d.layers) setLayers(laysOf());
+    setSelectedId(null);
+  }, [active, allOn, setLayers]);
 
   const deleteDesign = useCallback(async (id) => {
     setSavedDesigns((p) => p.filter((d) => d.id !== id));
@@ -3398,1029 +3327,262 @@ export default function TikTokStudioV3({ listing, onClose }) {
     await supabase.from("studio_designs").delete().eq("id", id);
   }, []);
 
+  // ── What is selected (STUDIO-UX-2) ───────────────────────────────────────
+  // One thing at a time: a text/badge element, a layer, the slide photo, or
+  // nothing (= the slide). Its kind picks the tools shown.
+  const selLayer = layers.find((l) => layerSelectedIds.includes(l.id)) || null;
+  const selKind = selectedEl
+    ? selectedEl.type === "badge" ? "badge" : "text"
+    : selLayer
+      ? selLayer.type === "image" ? "image" : selLayer.type === "text" ? "text" : "shape"
+      : photoSel ? "photo" : "slide";
+  // A new selection closes the open tool panel (its tools may not exist for
+  // the new thing), except right after Add opened the new text's Edit.
+  // Closed a moment LATER, never mid-tap: closing grows the canvas, and a
+  // phone sends the tap's click after the finger lifts, so an instant close
+  // moved the canvas under the finger and the click picked whatever slid
+  // under it (a tap on a text selected the shape behind it).
+  // A late close never shuts a panel opened after it was scheduled.
+  const keepSheetRef = useRef(false);
+  const sheetVer = useRef(0);
+  useEffect(() => {
+    if (sheetPanel) sheetVer.current++;
+  }, [sheetPanel]);
+  const closeSheetSoon = useCallback((ms = 350) => {
+    const v = sheetVer.current;
+    setTimeout(() => {
+      if (keepSheetRef.current) {
+        keepSheetRef.current = false;
+        return;
+      }
+      if (sheetVer.current === v) setSheetPanel(null);
+    }, ms);
+  }, []);
+  // A press on the phone canvas closes the sheet itself, when it ends.
+  const pressingCanvas = useRef(false);
+  const sheetH = useRef(0);
+  const selIdentity = selectedId || selLayer?.id || (photoSel ? "photo" : "slide");
+  useEffect(() => {
+    if (!pressingCanvas.current) closeSheetSoon();
+    setDeskMode(null);
+  }, [selIdentity, closeSheetSoon]);
+
   if (!slide) return null;
 
-  // ── Tab panels ────────────────────────────────────────────────────────────
+  // ── Tools per kind of selection (STUDIO-UX-2) ────────────────────────────
+  // One place, different tools: the phone's bottom bar and the desktop's side
+  // panel both show the tools of what is selected. Nothing selected = the
+  // slide. Order: the object's own tools first, Arrange (the same for every
+  // object) last.
+  const TOOLSETS = {
+    slide: [
+      ["templates", "Templates", LayoutTemplate],
+      ["photo", "Photo", ImagePlus],
+      ["design", "Design", Palette],
+      ["brand", "Brand", Stamp],
+      ["ai", "AI", Sparkles],
+    ],
+    photo: [
+      ["replace", "Replace", RefreshCw],
+      ["cutout", "Remove BG", Scissors],
+      ["adjust", "Adjust", SlidersHorizontal],
+      ...(backdrops ? [["backdrop", "Backdrop", Sunrise]] : []),
+    ],
+    text: [
+      ["edit", "Edit", Pencil],
+      ["font", "Font", CaseSensitive],
+      ["colour", "Colour", Droplet],
+      ["style", "Style", Bold],
+      ["arrange", "Arrange", Move],
+    ],
+    badge: [
+      ["edit", "Edit", Pencil],
+      ["font", "Font", CaseSensitive],
+      ["colour", "Colour", Droplet],
+      ["shape", "Shape", Square],
+      ["arrange", "Arrange", Move],
+    ],
+    shape: [
+      ["fill", "Fill", PaintBucket],
+      ["border", "Border", Square],
+      ["text", "Text", Type],
+      ["effects", "Effects", Wand2],
+      ["arrange", "Arrange", Move],
+    ],
+    image: [
+      ["replace", "Replace", RefreshCw],
+      ["fit", "Fit", Crop],
+      ["effects", "Effects", Wand2],
+      ["border", "Border", Square],
+      ["arrange", "Arrange", Move],
+    ],
+  };
+  const kindTools = TOOLSETS[selKind];
+  const KIND_LABEL = { slide: "Slide", photo: "Photo", text: "Text", badge: "Badge", shape: "Shape", image: "Image" };
+  const selObj = selectedEl || selLayer;
+  const onlyHere = allOn && selObj && !linkKey(selObj);
+  const deskTool =
+    (kindTools.find((t) => t[0] === lastTool[selKind] && t[0] !== "photo") || kindTools.find((t) => t[0] !== "photo"))[0];
+  const images = [...uploadedImages, ...rawImages];
+  const swatches = Array.from(new Set(["#ffffff", "#0b0c0f", theme.accentColor || "#dc2626", "#dc2626", "#e8c15a", "#9aa0aa"].map((c) => c.toLowerCase())));
 
-  // ── Element Properties Panel ─────────────────────────────────────────────
-  const ElPropsPanel = () => {
-    if (!selectedEl) return null;
-    return (
-      <div
-        style={{
-          background: "rgba(220,38,38,0.05)",
-          border: "1px solid rgba(220,38,38,0.15)",
-          borderRadius: 10,
-          padding: 12,
-          marginBottom: 14,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 10,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: "#60a5fa",
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            {selectedEl.type === "badge" ? "✎ Badge" : "✎ Text"}
-          </span>
-          <button
-            onClick={() => setSelectedId(null)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "rgba(255,255,255,0.3)",
-              cursor: "pointer",
-              fontSize: 12,
-            }}
-          >
-            ✕
-          </button>
-        </div>
+  // ── This slide | All slides ─────────────────────────────────────────────
+  const scopeToggle = () =>
+    total > 1 ? (
+      <SSeg
+        label="Edit this slide or every slide"
+        items={[[false, "This slide"], [true, "All slides"]]}
+        value={scopeAll}
+        onPick={setScopeAll}
+      />
+    ) : null;
+  const scopeNote = () => {
+    if (!allOn) return null;
+    if (onlyHere) return "This object is only on this slide";
+    if (selKind === "slide" || selKind === "photo") return `Changes apply to all ${total} slides`;
+    return `Editing it on all ${total} slides`;
+  };
 
-        {/* Content input */}
-        <PInput
-          value={selectedEl.content || ""}
-          placeholder="Text content"
-          onChange={(e) => updateSelectedElement({ content: e.target.value })}
-        />
-
-        {/* Font size */}
-        <SliderRow
-          label="Font Size"
-          value={selectedEl.fontSize || 32}
-          min={16}
-          max={200}
-          step={1}
-          onChange={(v) => updateSelectedElement({ fontSize: v })}
-          fmt={(v) => `${v}px`}
-        />
-
-        {/* Opacity */}
-        <SliderRow
-          label="Opacity"
-          value={selectedEl.opacity ?? 1}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => updateSelectedElement({ opacity: v })}
-          fmt={(v) => `${Math.round(v * 100)}%`}
-        />
-
-        {/* Rotation */}
-        <SliderRow
-          label="Rotation"
-          value={selectedEl.rotation || 0}
-          min={-180}
-          max={180}
-          step={1}
-          onChange={(v) => updateSelectedElement({ rotation: v })}
-          fmt={(v) => `${v}°`}
-        />
-
-        {/* Text color — solid or gradient */}
-        {selectedEl.type !== "badge" && (
-          <div style={{ marginTop: 4 }}>
-            <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-              <button
-                onClick={() => { updateSelectedElement({ gradient: null, color: selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff" }); setShowGradient(false); }}
-                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${!selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: !selectedEl.gradient ? "rgba(37,99,235,0.12)" : "transparent", color: !selectedEl.gradient ? "#60a5fa" : "rgba(255,255,255,0.5)", fontWeight: 600 }}
-              >
-                Solid
-              </button>
-              <button
-                onClick={() => { updateSelectedElement({ gradient: selectedEl.gradient || DEFAULT_GRADIENT, bgColor: null }); setShowGradient(true); }}
-                style={{ flex: 1, padding: "6px 0", borderRadius: 7, fontSize: 11, cursor: "pointer", border: `1px solid ${selectedEl.gradient ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`, background: selectedEl.gradient ? gradientCss(selectedEl.gradient) : "transparent", color: "#fff", fontWeight: 600 }}
-              >
-                Gradient
-              </button>
-            </div>
-
-            {!selectedEl.gradient ? (
-              <ColorRow
-                label="Text color"
-                value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
-                onChange={(v) => updateSelectedElement({ color: v })}
-              />
-            ) : (
-              <GradientEditor
-                value={selectedEl.gradient}
-                onChange={(g) => updateSelectedElement({ gradient: g })}
-              />
-            )}
-          </div>
-        )}
-        {selectedEl.type === "badge" && (
-          <ColorRow
-            label="Badge color"
-            value={selectedEl.bgColor || selectedEl.color || "#dc2626"}
-            onChange={(v) => updateSelectedElement({ bgColor: v })}
-          />
-        )}
-
-        {/* Font weight */}
-        <div
-          style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}
-        >
-          {[
-            { w: "300", label: "Thin" },
-            { w: "400", label: "Reg" },
-            { w: "600", label: "Med" },
-            { w: "700", label: "Bold" },
-            { w: "800", label: "Black" },
-          ].map(({ w, label }) => (
-            <button
-              key={w}
-              onClick={() => updateSelectedElement({ fontWeight: w })}
-              style={{
-                flex: 1,
-                padding: "5px 3px",
-                borderRadius: 6,
-                border: `1px solid ${selectedEl.fontWeight === w ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
-                background:
-                  selectedEl.fontWeight === w
-                    ? "rgba(37,99,235,0.1)"
-                    : "transparent",
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 9,
-                cursor: "pointer",
-                fontWeight: w,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        {/* Align */}
-        <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
-          {["left", "center", "right"].map((a) => (
-            <button
-              key={a}
-              onClick={() => updateSelectedElement({ align: a })}
-              style={{
-                flex: 1,
-                padding: "5px 4px",
-                borderRadius: 6,
-                border: `1px solid ${selectedEl.align === a ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
-                background:
-                  selectedEl.align === a
-                    ? "rgba(37,99,235,0.1)"
-                    : "transparent",
-                color: "rgba(255,255,255,0.6)",
-                fontSize: 10,
-                cursor: "pointer",
-              }}
-            >
-              {a === "left" ? "◀" : a === "center" ? "■" : "▶"}
-            </button>
-          ))}
-        </div>
-        {/* Italic + Shadow toggles */}
-        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <button
-            onClick={() =>
-              updateSelectedElement({
-                fontStyle:
-                  selectedEl.fontStyle === "italic" ? "normal" : "italic",
-              })
-            }
-            style={{
-              flex: 1,
-              padding: "6px 4px",
-              borderRadius: 6,
-              border: `1px solid ${selectedEl.fontStyle === "italic" ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
-              background:
-                selectedEl.fontStyle === "italic"
-                  ? "rgba(37,99,235,0.1)"
-                  : "transparent",
-              color:
-                selectedEl.fontStyle === "italic"
-                  ? "#60a5fa"
-                  : "rgba(255,255,255,0.5)",
-              fontSize: 11,
-              cursor: "pointer",
-              fontStyle: "italic",
-            }}
-          >
-            Italic
-          </button>
-          <button
-            onClick={() =>
-              updateSelectedElement({ shadow: !selectedEl.shadow })
-            }
-            style={{
-              flex: 1,
-              padding: "6px 4px",
-              borderRadius: 6,
-              border: `1px solid ${selectedEl.shadow ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.08)"}`,
-              background: selectedEl.shadow
-                ? "rgba(37,99,235,0.1)"
-                : "transparent",
-              color: selectedEl.shadow ? "#60a5fa" : "rgba(255,255,255,0.5)",
-              fontSize: 11,
-              cursor: "pointer",
-            }}
-          >
-            Shadow
-          </button>
-        </div>
-
-        {/* Fill / invisible-text / background — full Canva-style text styling */}
-        {selectedEl.type !== "badge" && (
-          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            {/* Fill color + invisible toggle */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Fill</span>
-              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.color === "transparent" ? "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px" : selectedEl.color || "#ffffff", cursor: "pointer", flexShrink: 0 }}>
-                <input
-                  type="color"
-                  value={selectedEl.color === "transparent" ? "#ffffff" : selectedEl.color || "#ffffff"}
-                  onChange={(e) => updateSelectedElement({ color: e.target.value })}
-                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
-                />
-              </label>
-              <button
-                onClick={() =>
-                  updateSelectedElement({
-                    color: selectedEl.color === "transparent" ? "#ffffff" : "transparent",
-                    ...(selectedEl.color !== "transparent" && !(selectedEl.strokeWidth > 0)
-                      ? { strokeWidth: 2, strokeColor: selectedEl.strokeColor || "#ffffff" }
-                      : {}),
-                  })
-                }
-                style={{
-                  padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer",
-                  border: `1px solid ${selectedEl.color === "transparent" ? "rgba(37,99,235,0.5)" : "rgba(255,255,255,0.1)"}`,
-                  background: selectedEl.color === "transparent" ? "rgba(37,99,235,0.12)" : "transparent",
-                  color: selectedEl.color === "transparent" ? "#60a5fa" : "rgba(255,255,255,0.5)",
-                }}
-                title="Outline-only text (invisible fill)"
-              >
-                Invisible fill
-              </button>
-            </div>
-
-            {/* Text border (stroke) */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Border</span>
-              <div style={{ flex: 1 }}>
-                <DragSlider
-                  value={selectedEl.strokeWidth || 0}
-                  min={0}
-                  max={14}
-                  step={0.5}
-                  onChange={(v) => updateSelectedElement({ strokeWidth: v })}
-                />
-              </div>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.6)", width: 24, textAlign: "right" }}>{selectedEl.strokeWidth || 0}</span>
-              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.strokeColor || "#000000", cursor: "pointer", flexShrink: 0 }} title="Border color">
-                <input
-                  type="color"
-                  value={selectedEl.strokeColor || "#000000"}
-                  onChange={(e) => updateSelectedElement({ strokeColor: e.target.value })}
-                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
-                />
-              </label>
-            </div>
-
-            {/* Text background chip */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", width: 62, flexShrink: 0 }}>Background</span>
-              <label style={{ position: "relative", width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: selectedEl.bgColor || "repeating-conic-gradient(#444 0% 25%, #222 0% 50%) 50%/8px 8px", cursor: "pointer", flexShrink: 0 }}>
-                <input
-                  type="color"
-                  value={selectedEl.bgColor || "#dc2626"}
-                  onChange={(e) => updateSelectedElement({ bgColor: e.target.value })}
-                  style={{ position: "absolute", inset: 0, opacity: 0, width: "100%", height: "100%", cursor: "pointer" }}
-                />
-              </label>
-              {selectedEl.bgColor && (
-                <button
-                  onClick={() => updateSelectedElement({ bgColor: null })}
-                  style={{ padding: "5px 10px", borderRadius: 6, fontSize: 10, cursor: "pointer", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.5)" }}
-                >
-                  None
+  // ── Slide tools ──────────────────────────────────────────────────────────
+  const slideTemplates = () => (
+    <div>
+      {allOn && <SNote>A template goes on all {total} slides, each with its own photo.</SNote>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {CAR_TEMPLATES.map((t) => (
+          <div key={t.id} style={{ background: C.raised, borderRadius: 14, padding: "12px 14px" }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: C.text, margin: 0 }}>{t.name}</p>
+            <p style={{ fontSize: 12, color: C.sec, lineHeight: 1.45, margin: "3px 0 10px" }}>{t.tagline}</p>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => applyProTemplate(t)} style={primaryBtn}>Use template</button>
+              {/* The camera only exists on a phone */}
+              {isMobile && (
+                <button onClick={() => openCameraWithTemplate(t)} style={{ ...tileStyle(), flex: 1, background: C.sel }}>
+                  <Camera size={15} /> Use + shoot
                 </button>
               )}
             </div>
           </div>
-        )}
-
-        {/* Font family — built-in + user-uploaded, with an uploader */}
-        <div style={{ marginTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Font</span>
-            <label style={{ fontSize: 10, color: "#60a5fa", cursor: "pointer", fontWeight: 600 }}>
-              + Upload font
-              <input type="file" accept=".ttf,.otf,.woff,.woff2,font/*" style={{ display: "none" }} onChange={(e) => { handleFontUpload(e.target.files?.[0]); e.target.value = ""; }} />
-            </label>
-          </div>
-          {fontUploadErr && (
-            <p style={{ fontSize: 10, color: "#f87171", marginBottom: 6 }}>{fontUploadErr}</p>
-          )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 5 }}>
-            {[...customFonts.map((cf) => ({ id: cf.id, label: cf.label, stack: `"${cf.family}", sans-serif`, custom: true })),
-              ...FONTS.map((f) => ({ id: f.id, label: f.label, stack: f.stack, custom: false }))].map((f) => {
-              const active = selectedEl.fontFamily === f.stack;
-              return (
-                <button
-                  key={f.id}
-                  onClick={() => updateSelectedElement({ fontFamily: f.stack })}
-                  style={{
-                    position: "relative",
-                    padding: "8px 8px",
-                    borderRadius: 7,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    border: `1px solid ${active ? "rgba(37,99,235,0.6)" : "rgba(255,255,255,0.08)"}`,
-                    background: active ? "rgba(37,99,235,0.12)" : "rgba(255,255,255,0.03)",
-                    color: "rgba(255,255,255,0.85)",
-                    fontFamily: f.stack,
-                    fontSize: 15,
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {f.label}
-                  {f.custom && (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); removeCustomFont(f.id); }}
-                      style={{ position: "absolute", top: 2, right: 4, fontSize: 10, color: "rgba(255,255,255,0.35)", fontFamily: "system-ui" }}
-                    >✕</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            onClick={() => updateSelectedElement({ fontFamily: "" })}
-            style={{ marginTop: 6, width: "100%", padding: "5px 0", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.4)", fontSize: 10, cursor: "pointer" }}
-          >
-            Use template default
-          </button>
-        </div>
-
-        {/* Corner radius — badge elements */}
-        {selectedEl.type === "badge" && (
-          <div style={{ marginTop: 8 }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: 3,
-              }}
-            >
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)" }}>
-                Corner Radius
-              </span>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: "rgba(255,255,255,0.8)",
-                  fontWeight: 600,
-                }}
-              >
-                {selectedEl.borderRadius ?? 999}px
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={999}
-              step={1}
-              value={selectedEl.borderRadius ?? 999}
-              onChange={(e) =>
-                updateSelectedElement({ borderRadius: Number(e.target.value) })
-              }
-              style={{ width: "100%", accentColor: "#3b82f6", touchAction: "none" }}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // ── TemplateCards — 5 pro ready-made designs (shared desktop + mobile) ───
-  const TemplateCards = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {CAR_TEMPLATES.map((t) => (
-        <div
-          key={t.id}
-          style={{
-            background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 10,
-            padding: "10px 12px",
-          }}
-        >
-          <p style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 2 }}>{t.name}</p>
-          <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.45, marginBottom: 9 }}>{t.tagline}</p>
-          <div style={{ display: "flex", gap: 6 }}>
-            <button
-              onClick={() => applyProTemplate(t)}
-              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "none", background: "#2563eb", color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-            >
-              Use template
-            </button>
-            <button
-              onClick={() => openCameraWithTemplate(t)}
-              title="Apply this template and shoot the car photo with its guide"
-              style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: "1px solid rgba(37,99,235,0.4)", background: "rgba(37,99,235,0.1)", color: "#7cb1ff", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
-            >
-              📷 Use + shoot
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-
-  // ── Photo source buttons (picker / upload) — camera lives on each template ─
-  const PhotoSourceButtons = () => (
-    <div style={{ display: "flex", gap: 6 }}>
-      <button
-        onClick={() => setShowImagePicker(true)}
-        style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11 }}
-      >
-        🖼 Photos
-      </button>
-      <label style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", background: "transparent", color: "rgba(255,255,255,0.5)", cursor: "pointer", fontSize: 11, textAlign: "center" }}>
-        ⬆ Upload
-        <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { uploadBgImage(e.target.files?.[0]); e.target.value = ""; }} />
-      </label>
-    </div>
-  );
-
-  // ── SlidePanel ───────────────────────────────────────────────────────────
-  const SlidePanel = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Element properties — shown when an element is selected */}
-      {ElPropsPanel()}
-
-      <SectionHead label="Pro Templates" />
-      <TemplateCards />
-
-      <SectionHead label="Image" />
-      <PhotoSourceButtons />
-
-      <SectionHead label="Template" />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4,1fr)",
-          gap: 5,
-        }}
-      >
-        {SLIDE_TEMPLATES.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => applyTemplateContent(t.id)}
-            style={{
-              padding: "7px 4px",
-              borderRadius: 8,
-              cursor: "pointer",
-              border: `1px solid ${
-                slide.template === t.id
-                  ? "rgba(37,99,235,0.5)"
-                  : "rgba(255,255,255,0.07)"
-              }`,
-              background:
-                slide.template === t.id ? "rgba(37,99,235,0.1)" : "transparent",
-              color:
-                slide.template === t.id ? "#60a5fa" : "rgba(255,255,255,0.45)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 2,
-            }}
-          >
-            <span style={{ fontSize: 14 }}>{t.icon}</span>
-            <span style={{ fontSize: 9 }}>{t.label}</span>
-          </button>
         ))}
       </div>
 
-      <SectionHead label="Elements" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {slide.elements.map((el) => (
-          <div
-            key={el.id}
-            onClick={() => setSelectedId(el.id)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "7px 10px",
-              borderRadius: 8,
-              cursor: "pointer",
-              background:
-                selectedId === el.id
-                  ? "rgba(37,99,235,0.08)"
-                  : "rgba(255,255,255,0.025)",
-              border: `1px solid ${
-                selectedId === el.id
-                  ? "rgba(37,99,235,0.28)"
-                  : "rgba(255,255,255,0.05)"
-              }`,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.65)",
-                flex: 1,
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {el.type === "badge" ? "🏷 " : ""}
-              {el.content || "(empty)"}
-            </span>
-            <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateElement(el.id, { visible: !el.visible });
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 12,
-                  color: el.visible
-                    ? "rgba(255,255,255,0.45)"
-                    : "rgba(255,255,255,0.2)",
-                }}
-              >
-                {el.visible ? "👁" : "○"}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  updateElement(el.id, { locked: !el.locked });
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 11,
-                  color: el.locked ? "#3b82f6" : "rgba(255,255,255,0.25)",
-                }}
-              >
-                {el.locked ? "🔒" : "🔓"}
-              </button>
+      <SLabel>My designs ({savedDesigns.length}/5)</SLabel>
+      {libMsg && <SNote>{libMsg}</SNote>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {savedDesigns.map((d) => (
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 10, background: C.raised, borderRadius: 12, padding: "6px 6px 6px 8px" }}>
+            <div style={{ width: 27, height: 48, borderRadius: 5, overflow: "hidden", flexShrink: 0, background: d.theme?.bgColor || "#060910" }}>
+              {d.thumb && <img src={d.thumb} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
             </div>
+            <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+            <button onClick={() => loadDesign(d)} style={{ ...tileStyle(), height: 36, background: C.sel }}>Apply</button>
+            <button aria-label={`Delete ${d.name}`} onClick={() => deleteDesign(d.id)} style={{ ...tileStyle(), height: 36, width: 36, padding: 0, color: C.redText }}>
+              <Trash2 size={15} />
+            </button>
           </div>
         ))}
-
-        {/* Add element buttons */}
-        <div style={{ display: "flex", gap: 5, marginTop: 2 }}>
-          <button
-            onClick={addTextElement}
-            style={{
-              flex: 1,
-              padding: "8px 0",
-              borderRadius: 8,
-              border: "1px dashed rgba(255,255,255,0.1)",
-              background: "transparent",
-              color: "rgba(255,255,255,0.28)",
-              cursor: "pointer",
-              fontSize: 11,
-            }}
-          >
-            + Add text
-          </button>
-          <button
-            onClick={addBadgeElement}
-            style={{
-              flex: 1,
-              padding: "8px 0",
-              borderRadius: 8,
-              border: "1px dashed rgba(37,99,235,0.2)",
-              background: "transparent",
-              color: "rgba(37,99,235,0.5)",
-              cursor: "pointer",
-              fontSize: 11,
-            }}
-          >
-            + Add badge
-          </button>
-        </div>
       </div>
+      {savedDesigns.length < 5 && (
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <input value={designName} onChange={(e) => setDesignName(e.target.value)} placeholder="Name this design" style={{ ...inputStyle, flex: 1, fontSize: 14 }} />
+          <button onClick={saveDesign} style={{ ...tileStyle(), background: C.sel, whiteSpace: "nowrap" }}>Save</button>
+        </div>
+      )}
     </div>
   );
 
-  // ── Canvas Format selector (shared: desktop DesignPanel + mobile sheet) ────
-  const FormatSelector = () => (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2,1fr)",
-        gap: 5,
-        marginBottom: 14,
-      }}
-    >
-      {FORMATS.map((f) => (
-        <button
-          key={f.id}
-          onClick={() => setCanvasFormat(f.id)}
-          style={{
-            padding: "8px 6px",
-            borderRadius: 8,
-            cursor: "pointer",
-            border: `1px solid ${
-              canvasFormat === f.id
-                ? "rgba(37,99,235,0.5)"
-                : "rgba(255,255,255,0.07)"
-            }`,
-            background:
-              canvasFormat === f.id
-                ? "rgba(37,99,235,0.1)"
-                : "rgba(255,255,255,0.02)",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            textAlign: "left",
-          }}
-        >
-          <span style={{ fontSize: 14 }}>{f.icon}</span>
-          <div>
-            <div
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color:
-                  canvasFormat === f.id
-                    ? "#dc2626"
-                    : "rgba(255,255,255,0.55)",
-              }}
-            >
-              {f.id}
-            </div>
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)" }}>
-              {f.label}
-            </div>
-          </div>
-        </button>
-      ))}
-    </div>
-  );
-
-  // ── DesignPanel ──────────────────────────────────────────────────────────
-  const DesignPanel = () => (
+  const slideDesign = () => (
     <div>
-      {/* Canvas Format — at TOP of DesignPanel */}
-      <SectionHead label="Canvas Format" />
-      {FormatSelector()}
-
-      <SectionHead label="Style Preset" />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3,1fr)",
-          gap: 6,
-          marginBottom: 14,
-        }}
-      >
-        {STYLE_PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setTheme((t) => ({ ...t, ...p.theme }))}
-            style={{
-              padding: "7px 6px",
-              borderRadius: 8,
-              cursor: "pointer",
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "rgba(255,255,255,0.03)",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-            }}
-          >
-            <div style={{ display: "flex", gap: 3 }}>
-              {p.dots.map((c, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: 11,
-                    height: 11,
-                    borderRadius: "50%",
-                    background: c,
-                  }}
-                />
-              ))}
-            </div>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.45)" }}>
-              {p.label}
-            </span>
+      <SNote>Design settings apply to every slide.</SNote>
+      <SLabel style={{ marginTop: 0 }}>Size</SLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+        {FORMATS.map((f) => (
+          <button key={f.id} aria-pressed={canvasFormat === f.id} onClick={() => setCanvasFormat(f.id)} style={{ ...tileStyle(canvasFormat === f.id), justifyContent: "flex-start", height: 48 }}>
+            <span style={{ fontWeight: 600 }}>{f.id}</span>
+            <span style={{ fontSize: 11, color: C.sec }}>{f.label}</span>
           </button>
         ))}
       </div>
-
-      <SectionHead label="Colors" />
-      <ColorRow
-        label="Accent"
-        value={theme.accentColor}
-        onChange={(v) => setTheme((t) => ({ ...t, accentColor: v }))}
-      />
-      <ColorRow
-        label="Background"
-        value={theme.bgColor}
-        onChange={(v) => setTheme((t) => ({ ...t, bgColor: v }))}
-      />
-
-      <SectionHead label="Font" />
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <SLabel>Style</SLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+        {STYLE_PRESETS.map((p) => (
+          <button key={p.id} onClick={() => setTheme((t) => ({ ...t, ...p.theme }))} style={{ ...tileStyle(), justifyContent: "flex-start" }}>
+            <span style={{ display: "flex", gap: 3 }}>
+              {p.dots.map((c, i) => (
+                <span key={i} style={{ width: 12, height: 12, borderRadius: 999, background: c, boxShadow: "0 0 0 1px rgba(255,255,255,0.15)" }} />
+              ))}
+            </span>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      <SLabel>Colours</SLabel>
+      <SColorPick label="Accent" value={theme.accentColor} onChange={(v) => setTheme((t) => ({ ...t, accentColor: v }))} presets={["#dc2626", "#c9a84c", "#00d4ff", "#00c853", "#ffffff"]} />
+      <SColorPick label="Background" value={theme.bgColor} onChange={(v) => setTheme((t) => ({ ...t, bgColor: v }))} presets={["#0b0c0f", "#0d0d0d", "#020918", "#f0f0f0"]} />
+      <SLabel>Font for every text</SLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
         {FONTS.map((f) => (
           <button
             key={f.id}
+            aria-pressed={font === f.id}
             onClick={() => {
               setFont(f.id);
               ensureFont(f.id);
             }}
-            style={{
-              padding: "8px 12px",
-              borderRadius: 8,
-              textAlign: "left",
-              cursor: "pointer",
-              border: `1px solid ${
-                font === f.id
-                  ? "rgba(220,38,38,0.45)"
-                  : "rgba(255,255,255,0.06)"
-              }`,
-              background:
-                font === f.id ? "rgba(220,38,38,0.07)" : "transparent",
-              color: "rgba(255,255,255,0.7)",
-              fontFamily: f.stack,
-              fontSize: 13,
-            }}
+            style={{ ...tileStyle(font === f.id), fontFamily: f.stack, fontSize: 15, justifyContent: "flex-start", overflow: "hidden", whiteSpace: "nowrap" }}
           >
             {f.label}
           </button>
         ))}
       </div>
-
-      <SectionHead label="Background" />
-      <SliderRow
-        label="Blur intensity"
-        value={theme.blurIntensity ?? 18}
-        min={0}
-        max={30}
-        step={1}
-        onChange={(v) => setTheme((t) => ({ ...t, blurIntensity: v }))}
-        fmt={(v) => `${v}px`}
-      />
-      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.4, margin: "2px 2px 10px" }}>
-        The dark gradient is now a shape on the canvas — select it to move, rotate,
-        restyle or delete it, or add another from the Layers toolbar.
-      </p>
-
-      <SectionHead label="Options" />
-      <Toggle
-        value={theme.showAccentBar !== false}
-        onChange={(v) => setTheme((t) => ({ ...t, showAccentBar: v }))}
-        label="Top accent bar"
-      />
+      <div style={{ marginTop: 12 }}>
+        <SSwitch label="Accent bar at the top" value={theme.showAccentBar !== false} onChange={(v) => setTheme((t) => ({ ...t, showAccentBar: v }))} />
+      </div>
     </div>
   );
 
-  // ── BrandPanel ───────────────────────────────────────────────────────────
-  const BrandPanel = () => (
+  const setWatermark = (patch) => {
+    setTheme((t) => ({ ...t, ...(patch.content !== undefined ? { watermarkText: patch.content } : {}), ...(patch.opacity !== undefined ? { watermarkOpacity: patch.opacity } : {}) }));
+    setSlides((ss) => ss.map((s) => ({ ...s, elements: s.elements.map((el) => (el.id === "watermark" ? { ...el, ...patch } : el)) })));
+  };
+  const slideBrand = () => (
     <div>
-      <SectionHead label="Watermark" />
-      <PInput
-        value={theme.watermarkText}
-        placeholder="Your brand name"
-        onChange={(e) => {
-          const text = e.target.value;
-          setTheme((t) => ({ ...t, watermarkText: text }));
-          setSlides((ss) =>
-            ss.map((s) => ({
-              ...s,
-              elements: s.elements.map((el) =>
-                el.id === "watermark" ? { ...el, content: text } : el,
-              ),
-            })),
-          );
-        }}
-      />
-      <div style={{ display: "flex", gap: 5, marginTop: 7 }}>
-        {["top-right", "top-left", "bottom-right", "bottom-left"].map((p) => (
-          <button
-            key={p}
-            onClick={() => setTheme((t) => ({ ...t, watermarkPos: p }))}
-            style={{
-              flex: 1,
-              padding: "5px 2px",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 8,
-              border: `1px solid ${
-                theme.watermarkPos === p
-                  ? "rgba(220,38,38,0.4)"
-                  : "rgba(255,255,255,0.08)"
-              }`,
-              background:
-                theme.watermarkPos === p
-                  ? "rgba(37,99,235,0.08)"
-                  : "transparent",
-              color: "rgba(255,255,255,0.4)",
-            }}
-          >
-            {p.replace("-", "\n")}
-          </button>
-        ))}
-      </div>
-      <div style={{ marginTop: 10 }}>
-        <SliderRow
-          label="Watermark opacity"
-          value={theme.watermarkOpacity}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(v) => {
-            setTheme((t) => ({ ...t, watermarkOpacity: v }));
-            setSlides((ss) =>
-              ss.map((s) => ({
-                ...s,
-                elements: s.elements.map((el) =>
-                  el.id === "watermark" ? { ...el, opacity: v } : el,
-                ),
-              })),
-            );
-          }}
-          fmt={(v) => `${Math.round(v * 100)}%`}
-        />
-      </div>
-
-      <SectionHead label="Logo" />
-      <PInput
-        value={theme.logoUrl || ""}
-        placeholder="Logo image URL"
-        onChange={(e) =>
-          setTheme((t) => ({ ...t, logoUrl: e.target.value || null }))
-        }
-      />
+      <SNote>Brand settings apply to every slide.</SNote>
+      <SLabel style={{ marginTop: 0 }}>Logo</SLabel>
+      <input value={theme.logoUrl || ""} placeholder="Logo image link (https://)" onChange={(e) => setTheme((t) => ({ ...t, logoUrl: e.target.value || null }))} style={inputStyle} />
       {theme.logoUrl && (
         <div style={{ marginTop: 10 }}>
-          <SliderRow
-            label="Logo size"
-            value={theme.logoSize || 80}
-            min={40}
-            max={200}
-            step={4}
-            onChange={(v) => setTheme((t) => ({ ...t, logoSize: v }))}
-            fmt={(v) => `${v}px`}
-          />
+          <SSlider label="Logo size" value={theme.logoSize || 80} min={40} max={200} step={4} onChange={(v) => setTheme((t) => ({ ...t, logoSize: v }))} fmt={(v) => `${v}px`} />
         </div>
       )}
-      <button
-        onClick={saveBranding}
-        style={{
-          width: "100%",
-          padding: "11px 0",
-          marginTop: 12,
-          borderRadius: 10,
-          border: "none",
-          background: savedBrand
-            ? "rgba(34,197,94,0.85)"
-            : "rgba(220,38,38,0.85)",
-          color: "#fff",
-          fontWeight: 700,
-          cursor: "pointer",
-          fontSize: 13,
-          transition: "background 0.3s",
-        }}
-      >
-        {savedBrand ? "✓ Saved!" : "Save Brand Kit"}
+      <SLabel>Watermark</SLabel>
+      <input value={theme.watermarkText || ""} placeholder="Your name or business" onChange={(e) => setWatermark({ content: e.target.value })} style={inputStyle} />
+      <div style={{ marginTop: 10 }}>
+        <SSlider label="Watermark strength" value={theme.watermarkOpacity ?? 0.5} min={0} max={1} step={0.01} onChange={(v) => setWatermark({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      </div>
+      <SLabel>Badges on every slide</SLabel>
+      <SSwitch
+        label={`Condition (${{ new: "Brand New", recon: "Recon", used: "Used" }[listing?.condition || ""] || "not set"})`}
+        value={!!theme.showConditionBadge}
+        onChange={(v) => setTheme((t) => ({ ...t, showConditionBadge: v }))}
+      />
+      <SSwitch label="Hot Deal" value={!!theme.showHotDealBadge} onChange={(v) => setTheme((t) => ({ ...t, showHotDealBadge: v }))} />
+      <input value={theme.customBadgeText || ""} placeholder="Your own badge text (empty = none)" onChange={(e) => setTheme((t) => ({ ...t, customBadgeText: e.target.value }))} style={{ ...inputStyle, marginTop: 4 }} />
+      <div style={{ marginTop: 10 }}>
+        <SColorPick label="Badge colour" value={theme.badgeColor || "#dc2626"} onChange={(v) => setTheme((t) => ({ ...t, badgeColor: v }))} presets={["#dc2626", "#0b0c0f", "#e8c15a", "#ffffff"]} />
+      </div>
+      <button onClick={saveBranding} style={{ ...primaryBtn, width: "100%", marginTop: 6 }}>
+        {savedBrand ? "Saved" : "Save as my brand kit"}
       </button>
     </div>
   );
 
-  // ── BadgesPanel ──────────────────────────────────────────────────────────
-  const BadgesPanel = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <SectionHead label="Badges" />
-      <Toggle
-        value={theme.showConditionBadge}
-        onChange={(v) => setTheme((t) => ({ ...t, showConditionBadge: v }))}
-        label={`Condition (${
-          { new: "Brand New", recon: "Recon", used: "Used" }[
-            listing?.condition || ""
-          ] || "N/A"
-        })`}
-      />
-      <Toggle
-        value={theme.showHotDealBadge}
-        onChange={(v) => setTheme((t) => ({ ...t, showHotDealBadge: v }))}
-        label="🔥 Hot Deal badge"
-      />
-      <SectionHead label="Custom badge" />
-      <PInput
-        value={theme.customBadgeText}
-        placeholder="Badge text (empty = hidden)"
-        onChange={(e) =>
-          setTheme((t) => ({ ...t, customBadgeText: e.target.value }))
-        }
-      />
-      <ColorRow
-        label="Badge color"
-        value={theme.badgeColor || "#dc2626"}
-        onChange={(v) => setTheme((t) => ({ ...t, badgeColor: v }))}
-      />
-    </div>
-  );
-
-  // ── AIPanel ──────────────────────────────────────────────────────────────
   const aiPct = Math.round((aiUsage.count / AI_LIMIT) * 100);
-  const aiNear = aiUsage.count >= 90;
-
-  const AIPanel = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Usage meter */}
-      <div
-        style={{
-          background: "rgba(220,38,38,0.05)",
-          border: "1px solid rgba(220,38,38,0.15)",
-          borderRadius: 12,
-          padding: 14,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 8,
-          }}
-        >
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: "#60a5fa",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          >
-            ✦ AI Canvas Edit
-          </span>
-          <span
-            style={{
-              fontSize: 11,
-              color: aiNear ? "#f97316" : "rgba(255,255,255,0.35)",
-            }}
-          >
-            {aiUsage.loaded ? `${aiUsage.count}/${AI_LIMIT} today` : "…"}
-          </span>
-        </div>
-        <div
-          style={{
-            height: 4,
-            borderRadius: 2,
-            background: "rgba(255,255,255,0.07)",
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              height: "100%",
-              width: `${Math.min(100, aiPct)}%`,
-              borderRadius: 2,
-              background: aiAtLimit
-                ? "#ef4444"
-                : aiNear
-                  ? "#f97316"
-                  : "#dc2626",
-              transition: "width 0.3s",
-            }}
-          />
-        </div>
-        {aiNear && !aiAtLimit && (
-          <p style={{ fontSize: 10, color: "#f97316", marginTop: 5 }}>
-            Almost at daily limit
-          </p>
-        )}
-        {aiAtLimit && (
-          <p style={{ fontSize: 10, color: "#ef4444", marginTop: 5 }}>
-            Daily limit reached. Resets tomorrow.
-          </p>
-        )}
+  const slideAI = () => (
+    <div>
+      <SNote>Tell it what to change on this slide. {aiUsage.loaded ? `${aiUsage.count} of ${AI_LIMIT} used today.` : ""}</SNote>
+      <div style={{ height: 4, borderRadius: 2, background: C.raised, overflow: "hidden", marginBottom: 12 }}>
+        <div style={{ height: "100%", width: `${Math.min(100, aiPct)}%`, background: aiAtLimit ? C.redText : C.text }} />
       </div>
-
-      {/* Command input */}
       <div style={{ display: "flex", gap: 6 }}>
         <input
           ref={aiInputRef}
@@ -4428,514 +3590,543 @@ export default function TikTokStudioV3({ listing, onClose }) {
           onChange={(e) => setAiCmd(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && runAICommand()}
           disabled={aiAtLimit}
-          placeholder="e.g. make price bigger, red accent…"
-          style={{
-            flex: 1,
-            padding: "10px 13px",
-            background: "rgba(0,0,0,0.3)",
-            border: "1px solid rgba(220,38,38,0.22)",
-            borderRadius: 9,
-            color: "#fff",
-            fontFamily: "system-ui,sans-serif",
-            fontSize: 12,
-            outline: "none",
-            opacity: aiAtLimit ? 0.4 : 1,
-          }}
+          placeholder="Make the price bigger"
+          style={{ ...inputStyle, flex: 1, opacity: aiAtLimit ? 0.4 : 1 }}
         />
-        <button
-          onClick={runAICommand}
-          disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 9,
-            border: "none",
-            background: applyingCmd ? "rgba(220,38,38,0.45)" : "#dc2626",
-            color: "#fff",
-            cursor: applyingCmd || aiAtLimit ? "default" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          {applyingCmd ? (
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                border: "2px solid rgba(255,255,255,0.3)",
-                borderTop: "2px solid #fff",
-                borderRadius: "50%",
-                animation: "ttsv3-spin 0.8s linear infinite",
-              }}
-            />
-          ) : (
-            "⚡"
-          )}
+        <button onClick={runAICommand} disabled={applyingCmd || !aiCmd.trim() || aiAtLimit} style={{ ...primaryBtn, flex: "0 0 auto", padding: "0 16px", opacity: applyingCmd || !aiCmd.trim() || aiAtLimit ? 0.5 : 1 }}>
+          {applyingCmd ? "..." : "Go"}
         </button>
       </div>
-      {genError && <p style={{ fontSize: 11, color: "#f87171" }}>{genError}</p>}
-
-      {/* Suggestion chips */}
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {suggestions.map((s) => (
+      {aiAtLimit && <SNote>Daily limit reached. It resets tomorrow.</SNote>}
+      {genError && <p style={{ fontSize: 12, color: C.redText, margin: "8px 0 0" }}>{genError}</p>}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
+        {suggestions.map((sg) => (
           <button
-            key={s}
+            key={sg}
             onClick={() => {
-              setAiCmd(s);
+              setAiCmd(sg);
               setTimeout(() => aiInputRef.current?.focus(), 0);
             }}
-            style={{
-              padding: "4px 9px",
-              borderRadius: 999,
-              border: "1px solid rgba(37,99,235,0.2)",
-              background: "transparent",
-              color: "rgba(220,38,38,0.65)",
-              fontSize: 9,
-              fontWeight: 700,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
+            style={{ height: 34, padding: "0 12px", borderRadius: 999, border: "none", background: C.raised, color: C.sec, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}
           >
-            {s}
+            {sg}
           </button>
         ))}
       </div>
-
-      {/* Command history */}
       {cmdHistory.length > 0 && (
-        <div
-          style={{
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-            paddingTop: 8,
-          }}
-        >
-          <p
-            style={{
-              fontSize: 9,
-              color: "rgba(255,255,255,0.2)",
-              marginBottom: 5,
-              textTransform: "uppercase",
-              letterSpacing: "0.08em",
-            }}
-          >
-            Recent
-          </p>
-          {cmdHistory.map((c, i) => (
-            <button
-              key={i}
-              onClick={() => setAiCmd(c)}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "left",
-                padding: "5px 0",
-                background: "none",
-                border: "none",
-                color: "rgba(255,255,255,0.32)",
-                fontSize: 11,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                borderBottom:
-                  i < cmdHistory.length - 1
-                    ? "1px solid rgba(255,255,255,0.04)"
-                    : "none",
-              }}
-            >
-              ↺ {c}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Generate slide copy */}
-      <div
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          paddingTop: 14,
-        }}
-      >
-        <SectionHead label="Generate slide text" />
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-          {["en", "bm"].map((l) => (
-            <button
-              key={l}
-              onClick={() => setLanguage(l)}
-              style={{
-                flex: 1,
-                padding: "6px 0",
-                borderRadius: 8,
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 600,
-                border: `1px solid ${
-                  language === l
-                    ? "rgba(220,38,38,0.4)"
-                    : "rgba(255,255,255,0.07)"
-                }`,
-                background:
-                  language === l ? "rgba(37,99,235,0.1)" : "transparent",
-                color: language === l ? "#dc2626" : "rgba(255,255,255,0.35)",
-              }}
-            >
-              {l === "en" ? "English" : "Bahasa M"}
-            </button>
-          ))}
-        </div>
-        <PInput
-          value={hookText}
-          placeholder="Your hook idea (optional)"
-          onChange={(e) => setHookText(e.target.value)}
-        />
-        <button
-          onClick={async () => {
-            setApplyingCmd(true);
-            setGenError(null);
-            try {
-              const res = await generateSlidesCopy(
-                listing,
-                total,
-                language,
-                hookText,
-              );
-              if (Array.isArray(res)) {
-                setSlides((ss) => {
-                  const newSlides = ss.map((s, i) => {
-                    const d = res[i];
-                    if (!d) return s;
-                    return {
-                      ...s,
-                      elements: s.elements.map((el) =>
-                        el.id === "hook"
-                          ? { ...el, content: d.hookText || el.content }
-                          : el.id === "headline"
-                            ? { ...el, content: d.headline || el.content }
-                            : el,
-                      ),
-                    };
-                  });
-                  pushHistory(newSlides);
-                  return newSlides;
-                });
-              }
-            } catch {
-              setGenError("Generation failed.");
-              setTimeout(() => setGenError(null), 4000);
-            }
-            setApplyingCmd(false);
-          }}
-          style={{
-            width: "100%",
-            padding: "10px 0",
-            marginTop: 8,
-            borderRadius: 9,
-            border: "none",
-            background: "rgba(37,99,235,0.85)",
-            color: "#fff",
-            fontWeight: 700,
-            cursor: applyingCmd ? "wait" : "pointer",
-            fontSize: 12,
-          }}
-        >
-          {applyingCmd ? "Generating…" : "Generate All Slides"}
-        </button>
-      </div>
-    </div>
-  );
-
-  // ── Tab bar + routing ────────────────────────────────────────────────────
-  const TABS = [
-    { id: "slide", label: "Slides", icon: <LayoutTemplate size={16} /> },
-    { id: "photo", label: "Photo", icon: <ImagePlus size={16} /> },
-    { id: "design", label: "Design", icon: <Palette size={16} /> },
-    { id: "brand", label: "Brand", icon: <Brush size={16} /> },
-    { id: "badges", label: "Badges", icon: <Tag size={16} /> },
-    { id: "layers", label: "Layers", icon: <Layers size={16} /> },
-    { id: "ai", label: "AI", icon: <Zap size={16} /> },
-    { id: "library", label: "Library", icon: <Library size={16} /> },
-  ];
-
-  // ── Library Panel ────────────────────────────────────────────────────────
-  const LibraryPanel = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <SectionHead label={`Save current design · ${savedDesigns.length}/5 slots`} />
-      {libMsg && (
-        <p style={{ fontSize: 11, color: "#fbbf24", background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.25)", borderRadius: 8, padding: "8px 10px" }}>
-          {libMsg}
-        </p>
-      )}
-      <input
-        value={designName}
-        onChange={(e) => setDesignName(e.target.value)}
-        placeholder="Name this design (optional)"
-        style={{
-          width: "100%",
-          padding: "8px 10px",
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 8,
-          color: "#fff",
-          fontFamily: "system-ui,sans-serif",
-          fontSize: 12,
-          outline: "none",
-          boxSizing: "border-box",
-        }}
-        onFocus={(e) => (e.target.style.borderColor = "rgba(220,38,38,0.45)")}
-        onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
-      />
-      <button
-        onClick={saveDesign}
-        disabled={savedDesigns.length >= 5}
-        style={{
-          width: "100%",
-          padding: "10px 0",
-          borderRadius: 9,
-          border: "none",
-          background: savedDesigns.length >= 5 ? "rgba(255,255,255,0.08)" : "#2563eb",
-          color: savedDesigns.length >= 5 ? "rgba(255,255,255,0.3)" : "#fff",
-          fontWeight: 700,
-          cursor: savedDesigns.length >= 5 ? "not-allowed" : "pointer",
-          fontSize: 12,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-        }}
-      >
-        {savedDesigns.length >= 5 ? "Library full — delete a design first" : "💾 Save design (theme + text + shapes)"}
-      </button>
-
-      {savedDesigns.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "32px 0",
-            color: "rgba(255,255,255,0.2)",
-            fontSize: 11,
-          }}
-        >
-          <div style={{ fontSize: 28, marginBottom: 8 }}>🗂</div>
-          No saved designs yet
-        </div>
-      ) : (
         <>
-          <SectionHead
-            label={`${savedDesigns.length} saved design${savedDesigns.length !== 1 ? "s" : ""}`}
-          />
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {savedDesigns.map((d) => (
-              <div
-                key={d.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  background: "rgba(255,255,255,0.03)",
-                  border: "1px solid rgba(255,255,255,0.06)",
-                  borderRadius: 10,
-                  padding: "8px 10px",
-                  cursor: "pointer",
-                }}
-                onClick={() => loadDesign(d)}
-              >
-                {/* Thumbnail */}
-                <div
-                  style={{
-                    width: 32,
-                    height: 57,
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    flexShrink: 0,
-                    background: d.theme?.bgColor || "#060910",
-                    position: "relative",
-                  }}
-                >
-                  {d.thumb && (
-                    <img
-                      src={d.thumb}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                  )}
-                  {/* Accent color dot */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 2,
-                      right: 2,
-                      width: 6,
-                      height: 6,
-                      borderRadius: "50%",
-                      background: d.theme?.accentColor || "#dc2626",
-                    }}
-                  />
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: "rgba(255,255,255,0.8)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {d.name}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 9,
-                      color: "rgba(255,255,255,0.3)",
-                    }}
-                  >
-                    {new Date(d.savedAt).toLocaleDateString()} ·{" "}
-                    {d.elements?.length || 0} elements ·{" "}
-                    <span
-                      style={{
-                        display: "inline-block",
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: d.theme?.accentColor || "#dc2626",
-                        verticalAlign: "middle",
-                      }}
-                    />
-                  </p>
-                </div>
-
-                {/* Apply + delete */}
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 4 }}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      loadDesign(d);
-                    }}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(37,99,235,0.3)",
-                      background: "rgba(37,99,235,0.1)",
-                      color: "#60a5fa",
-                      cursor: "pointer",
-                      fontSize: 9,
-                      fontWeight: 700,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Apply
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteDesign(d.id);
-                    }}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: 6,
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      background: "transparent",
-                      color: "rgba(255,255,255,0.25)",
-                      cursor: "pointer",
-                      fontSize: 9,
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          <SLabel>Recent</SLabel>
+          {cmdHistory.map((c, i) => (
+            <button key={i} onClick={() => setAiCmd(c)} style={{ display: "block", width: "100%", textAlign: "left", minHeight: 36, background: "none", border: "none", color: C.sec, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: "6px 0" }}>
+              {c}
+            </button>
+          ))}
         </>
       )}
     </div>
   );
 
-  const LayersPanel = () => (
-    <LayerPropertiesPanel
-      layer={layers.find((l) => layerSelectedIds.includes(l.id)) || null}
-      onUpdate={(id, patch) => updateLayer(id, patch)}
-      onCommit={commitLayerHistory}
-      onDelete={deleteLayer}
-      onDuplicate={duplicateLayer}
-    />
-  );
-
-  const renderTab = () => {
-    if (activeTab === "slide") return SlidePanel();
-    if (activeTab === "design") return DesignPanel();
-    if (activeTab === "brand") return BrandPanel();
-    if (activeTab === "badges") return BadgesPanel();
-    if (activeTab === "layers") return LayersPanel();
-    if (activeTab === "ai") return AIPanel();
-    if (activeTab === "library") return LibraryPanel();
-    if (activeTab === "photo") return (
-      <BgAdjustPanel
-        adj={slide?.bgAdjust || {}}
-        onPatch={(p) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...p } })}
-        onChangeBg={() => setShowImagePicker(true)}
-        imageUrl={slide?.imageUrl}
-        originalImageUrl={slide?.originalImageUrl}
-        onRemoveBg={removeBg}
-        onRestoreBg={restoreBg}
-        removingBg={removingBg}
-        removeBgError={removeBgError}
-        removeBgStatus={removeBgStatus}
-        cutoutSaved={cutoutSaved}
-      />
-    );
-  };
-
-  // tabBar used only in mobile sidebar
-  const tabBar = (
-    <div
-      style={{
-        display: "flex",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        flexShrink: 0,
-        background: "#1e2130",
-      }}
-    >
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => setActiveTab(t.id)}
-          style={{
-            flex: 1,
-            padding: "8px 2px",
-            border: "none",
-            fontFamily: "system-ui,sans-serif",
-            borderBottom: `2px solid ${activeTab === t.id ? "#2563eb" : "transparent"}`,
-            background: "transparent",
-            color: activeTab === t.id ? "#60a5fa" : "rgba(255,255,255,0.35)",
-            cursor: "pointer",
-            fontSize: 9,
-            fontWeight: 600,
-            transition: "all 0.15s",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <span>{t.icon}</span>
-          <span>{t.label}</span>
-        </button>
-      ))}
+  // ── Photo tools ──────────────────────────────────────────────────────────
+  const photoReplace = () => (
+    <div>
+      {allOn && <SNote>A new photo changes this slide only.</SNote>}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+        {images.map((url, i) => {
+          const on = url === slide.imageUrl || url === slide.originalImageUrl;
+          return (
+            <button
+              key={url + i}
+              aria-label={`Use photo ${i + 1}`}
+              aria-pressed={on}
+              onClick={() => patchSlide({ imageUrl: url, originalImageUrl: null })}
+              style={{ aspectRatio: "3 / 4", borderRadius: 10, overflow: "hidden", padding: 0, border: "none", cursor: "pointer", boxShadow: on ? `0 0 0 2px ${C.text}` : "none", background: C.raised }}
+            >
+              <img src={url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        <label style={{ ...tileStyle(), flex: 1 }}>
+          <Upload size={15} /> Upload
+          <input
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              uploadBgImage(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {isMobile && (
+          <button onClick={openCamera} style={{ ...tileStyle(), flex: 1 }}>
+            <Camera size={15} /> Take photo
+          </button>
+        )}
+      </div>
     </div>
   );
 
-  // ── Shared CanvasPreview props ───────────────────────────────────────────
+  const cutDoneHere = !!slide.originalImageUrl;
+  const photoCutout = () => (
+    <div>
+      <SNote>
+        {cutoutSaved
+          ? "Done on your phone, one photo at a time. Your photo is not uploaded."
+          : `Done on your phone, one photo at a time. The first time downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
+      </SNote>
+      {allOn && <SNote>This works on this slide's photo only, even in All slides.</SNote>}
+      {!slide.imageUrl && <SNote>This slide has no photo yet.</SNote>}
+      {slide.imageUrl && !cutDoneHere && (
+        <button onClick={removeBg} disabled={removingBg} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
+          <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
+        </button>
+      )}
+      {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
+      {removeBgError && <p style={{ fontSize: 12, color: C.redText, margin: "8px 0" }}>{removeBgError}</p>}
+      {cutDoneHere && !removingBg && (
+        <button onClick={restoreBg} style={{ ...tileStyle(), width: "100%" }}>
+          <RotateCcw size={15} /> Put the background back
+        </button>
+      )}
+    </div>
+  );
+
+  const photoAdjust = () => (
+    <div>
+      <AdjustStrip
+        key={allOn ? "all" : slide.id}
+        items={PHOTO_ADJUST}
+        values={{ ...DEF_ADJ, ...(slide.bgAdjust || {}) }}
+        onChange={(k, v) => patchPhoto((s) => ({ bgAdjust: { ...DEF_ADJ, ...(s.bgAdjust || {}), [k]: v } }))}
+        onResetAll={() => patchPhoto(() => ({ bgAdjust: { ...DEF_ADJ } }))}
+      />
+      <div style={{ marginTop: 14 }}>
+        <SSlider
+          label="Blurred fill around the photo (every slide)"
+          value={theme.blurIntensity ?? 18}
+          min={0}
+          max={30}
+          step={1}
+          onChange={(v) => setTheme((t) => ({ ...t, blurIntensity: v }))}
+          fmt={(v) => `${v}`}
+        />
+      </div>
+    </div>
+  );
+
+  const photoBackdrop = () => {
+    if (!slide.originalImageUrl) {
+      return (
+        <div>
+          <SNote>Backdrops go behind the car once its background is removed.</SNote>
+          <button onClick={removeBg} disabled={removingBg || !slide.imageUrl} style={{ ...primaryBtn, width: "100%", opacity: removingBg ? 0.6 : 1 }}>
+            <Scissors size={15} /> {removingBg ? "Working..." : "Remove the background"}
+          </button>
+          {removingBg && removeBgStatus && <SNote>{removeBgStatus}</SNote>}
+        </div>
+      );
+    }
+    const current = slide.backdrop || "none";
+    const fit = { ...DEFAULT_CAR_FIT, ...(slide.carFit || {}) };
+    const setFit = (p) => patchPhoto((s) => ({ carFit: { ...DEFAULT_CAR_FIT, ...(s.carFit || {}), ...p } }));
+    return (
+      <div>
+        <SNote>Drawn behind your car. The car photo itself is not changed.</SNote>
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+          <BackdropSwatch id="none" label="None" accent={theme.accentColor} active={current === "none"} onPick={() => patchPhoto(() => ({ backdrop: "none" }))} />
+          {BACKDROPS.map((b) => (
+            <BackdropSwatch key={b.id} id={b.id} label={b.name} accent={theme.accentColor} active={current === b.id} onPick={() => patchPhoto(() => ({ backdrop: b.id }))} />
+          ))}
+        </div>
+        {current !== "none" && (
+          <div style={{ marginTop: 12 }}>
+            <SSwitch label="Shadow under the car" value={slide.carShadow !== false} onChange={(v) => patchPhoto(() => ({ carShadow: v }))} />
+            <SSlider label="Car size" value={fit.size} min={0.6} max={1.4} step={0.01} onChange={(v) => setFit({ size: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+            <SSlider label="Car height" value={fit.lift} min={-0.25} max={0.25} step={0.005} onChange={(v) => setFit({ lift: v })} fmt={(v) => `${v > 0 ? "+" : ""}${Math.round(v * 100)}`} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── Text / badge tools (elements) ────────────────────────────────────────
+  const el = selectedEl;
+  const up = updateSelectedElement;
+  const elEdit = () => (
+    <div>
+      <input value={el.content || ""} onChange={(e) => up({ content: e.target.value })} placeholder="Type here" style={{ ...inputStyle, fontSize: 16 }} />
+      <SNote>Or double-tap the text on the slide.</SNote>
+    </div>
+  );
+  const elFont = () => (
+    <div>
+      <SSlider label="Size" value={el.fontSize || 32} min={16} max={200} step={1} onChange={(v) => up({ fontSize: v })} fmt={(v) => `${v}`} />
+      <SSeg
+        label="Weight"
+        items={[["300", "Thin"], ["400", "Regular"], ["600", "Medium"], ["700", "Bold"], ["800", "Black"]]}
+        value={String(el.fontWeight || "700")}
+        onPick={(w) => up({ fontWeight: w })}
+      />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "14px 0 8px" }}>
+        <span style={{ fontSize: 12, color: C.sec }}>Font</span>
+        <label style={{ fontSize: 12, color: C.text, cursor: "pointer", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+          <Upload size={13} /> Upload a font
+          <input
+            type="file"
+            accept=".ttf,.otf,.woff,.woff2,font/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              handleFontUpload(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      </div>
+      {fontUploadErr && <p style={{ fontSize: 12, color: C.redText, margin: "0 0 6px" }}>{fontUploadErr}</p>}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6 }}>
+        <button aria-pressed={!el.fontFamily} onClick={() => up({ fontFamily: "" })} style={{ ...tileStyle(!el.fontFamily), justifyContent: "flex-start" }}>
+          Slide default
+        </button>
+        {[
+          ...customFonts.map((cf) => ({ id: cf.id, label: cf.label, stack: `"${cf.family}", sans-serif`, custom: true })),
+          ...FONTS.map((f) => ({ id: f.id, label: f.label, stack: f.stack, custom: false })),
+        ].map((f) => {
+          const on = el.fontFamily === f.stack;
+          return (
+            <div key={f.id} style={{ position: "relative" }}>
+              <button aria-pressed={on} onClick={() => up({ fontFamily: f.stack })} style={{ ...tileStyle(on), width: "100%", justifyContent: "flex-start", fontFamily: f.stack, fontSize: 15, overflow: "hidden", whiteSpace: "nowrap" }}>
+                {f.label}
+              </button>
+              {f.custom && (
+                <button aria-label={`Remove ${f.label}`} onClick={() => removeCustomFont(f.id)} style={{ position: "absolute", top: 2, right: 2, width: 28, height: 28, border: "none", background: "transparent", color: C.muted, cursor: "pointer" }}>
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+  const textColour = () => (
+    <div>
+      <SSeg
+        label="Colour type"
+        items={[["solid", "Solid"], ["gradient", "Gradient"]]}
+        value={el.gradient ? "gradient" : "solid"}
+        onPick={(v) =>
+          v === "solid"
+            ? up({ gradient: null, color: el.color === "transparent" ? "#ffffff" : el.color || "#ffffff" })
+            : up({ gradient: el.gradient || DEFAULT_GRADIENT, bgColor: null })
+        }
+      />
+      <div style={{ marginTop: 12 }}>
+        {el.gradient ? (
+          <GradientEditor value={el.gradient} onChange={(g) => up({ gradient: g })} />
+        ) : (
+          <SColorPick value={el.color === "transparent" ? "" : el.color || "#ffffff"} onChange={(v) => up({ color: v })} presets={swatches} />
+        )}
+      </div>
+      <SSwitch
+        label="Outline only (see-through letters)"
+        value={el.color === "transparent"}
+        onChange={(on) =>
+          up({
+            color: on ? "transparent" : "#ffffff",
+            ...(on && !(el.strokeWidth > 0) ? { strokeWidth: 2, strokeColor: el.strokeColor || "#ffffff" } : {}),
+          })
+        }
+      />
+      <SLabel>Outline</SLabel>
+      <SSlider label="Thickness" value={el.strokeWidth || 0} min={0} max={14} step={0.5} onChange={(v) => up({ strokeWidth: v })} fmt={(v) => `${v}`} />
+      {(el.strokeWidth || 0) > 0 && <SColorPick value={el.strokeColor || "#000000"} onChange={(v) => up({ strokeColor: v })} presets={swatches} />}
+      <SLabel>Box behind the text</SLabel>
+      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <button aria-pressed={!el.bgColor} onClick={() => up({ bgColor: null })} style={{ ...tileStyle(!el.bgColor), height: 36 }}>None</button>
+        <div style={{ flex: 1 }}>
+          <SColorPick value={el.bgColor || ""} onChange={(v) => up({ bgColor: v })} presets={["#0b0c0f", theme.accentColor || "#dc2626", "#ffffff"]} />
+        </div>
+      </div>
+    </div>
+  );
+  const textStyle = () => (
+    <div>
+      <SLabel style={{ marginTop: 0 }}>Align</SLabel>
+      <SSeg
+        label="Align"
+        items={[["left", <AlignLeft key="l" size={16} />], ["center", <AlignCenter key="c" size={16} />], ["right", <AlignRight key="r" size={16} />]]}
+        value={el.align || "left"}
+        onPick={(a) => up({ align: a })}
+      />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginTop: 12 }}>
+        <button aria-pressed={el.fontStyle === "italic"} onClick={() => up({ fontStyle: el.fontStyle === "italic" ? "normal" : "italic" })} style={{ ...tileStyle(el.fontStyle === "italic"), fontStyle: "italic" }}>
+          <Italic size={15} /> Italic
+        </button>
+        <button aria-pressed={!!el.shadow} onClick={() => up({ shadow: !el.shadow })} style={tileStyle(!!el.shadow)}>
+          Shadow
+        </button>
+      </div>
+    </div>
+  );
+  const badgeColour = () => (
+    <div>
+      <SColorPick label="Badge" value={el.bgColor || "#dc2626"} onChange={(v) => up({ bgColor: v })} presets={swatches} />
+      <SColorPick label="Text" value={el.color || "#ffffff"} onChange={(v) => up({ color: v })} presets={["#ffffff", "#0b0c0f", "#e8c15a"]} />
+    </div>
+  );
+  const badgeShape = () => {
+    const r = el.borderRadius ?? 999;
+    return (
+      <div>
+        <SSeg label="Corners" items={[["pill", "Round ends"], ["custom", "Custom"]]} value={r >= 999 ? "pill" : "custom"} onPick={(v) => up({ borderRadius: v === "pill" ? 999 : 12 })} />
+        {r < 999 && (
+          <div style={{ marginTop: 12 }}>
+            <SSlider label="Corner radius" value={Math.min(r, 80)} min={0} max={80} step={1} onChange={(v) => up({ borderRadius: v })} fmt={(v) => `${v}`} />
+          </div>
+        )}
+      </div>
+    );
+  };
+  const elArrange = () => (
+    <div>
+      <SSlider label="Opacity" value={el.opacity ?? 1} min={0} max={1} step={0.01} onChange={(v) => up({ opacity: v })} fmt={(v) => `${Math.round(v * 100)}%`} />
+      <SSlider label="Rotate" value={((((el.rotation || 0) + 540) % 360) - 180)} min={-180} max={180} step={1} onChange={(v) => up({ rotation: v })} fmt={(v) => `${v}°`} />
+      <SLabel>Order (among texts and badges)</SLabel>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 6 }}>
+        {[["front", "To front"], ["up", "Forward"], ["down", "Back"], ["back", "To back"]].map(([d, l]) => (
+          <button key={d} onClick={() => shiftElement(el.id, d)} style={{ ...tileStyle(), padding: 0, fontSize: 12 }}>{l}</button>
+        ))}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginTop: 10 }}>
+        <button aria-pressed={!!el.locked} onClick={() => up({ locked: !el.locked })} style={tileStyle(!!el.locked)}>
+          {el.locked ? <Lock size={15} /> : <Unlock size={15} />} {el.locked ? "Locked" : "Lock in place"}
+        </button>
+        <button aria-pressed={el.visible === false} onClick={() => up({ visible: el.visible === false })} style={tileStyle(el.visible === false)}>
+          {el.visible === false ? <EyeOff size={15} /> : <Eye size={15} />} {el.visible === false ? "Hidden" : "Hide"}
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Layer tools: the layer panel, one section set per tab ───────────────
+  const LAYER_ONLY = {
+    text: { edit: ["content"], font: ["font"], colour: ["textColour", "fill"], style: ["textStyle"], arrange: ["arrange"] },
+    shape: { fill: ["fill"], border: ["border"], text: ["content", "font", "textColour", "textStyle"], effects: ["effects"], arrange: ["arrange"] },
+    image: { replace: ["image"], fit: ["fit"], effects: ["effects"], border: ["border"], arrange: ["arrange"] },
+  };
+  const layerTool = (tool) => (
+    <LayerPropertiesPanel
+      layer={selLayer}
+      onUpdate={(id, patch) => patchLayer(id, patch)}
+      onCommit={commitLayerHistory}
+      onZ={(z) => patchLayer(selLayer.id, { zIndex: z })}
+      only={LAYER_ONLY[selKind]?.[tool] || ["arrange"]}
+    />
+  );
+
+  const renderTool = (tool) => {
+    if (selKind === "slide") {
+      if (tool === "templates") return slideTemplates();
+      if (tool === "design") return slideDesign();
+      if (tool === "brand") return slideBrand();
+      if (tool === "ai") return slideAI();
+    }
+    if (selKind === "photo") {
+      if (tool === "replace") return photoReplace();
+      if (tool === "cutout") return photoCutout();
+      if (tool === "adjust") return photoAdjust();
+      if (tool === "backdrop") return photoBackdrop();
+    }
+    if (selLayer && !selectedEl) return layerTool(tool);
+    if (el) {
+      if (tool === "edit") return elEdit();
+      if (tool === "font") return elFont();
+      if (tool === "arrange") return elArrange();
+      if (el.type === "badge") {
+        if (tool === "colour") return badgeColour();
+        if (tool === "shape") return badgeShape();
+      } else {
+        if (tool === "colour") return textColour();
+        if (tool === "style") return textStyle();
+      }
+    }
+    return null;
+  };
+
+  // ── Add + Layers (document level, never tied to a selection) ────────────
+  const afterAdd = (openEdit = false) => {
+    setDeskMode(null);
+    if (openEdit && isMobile) {
+      keepSheetRef.current = true;
+      setSheetPanel("edit");
+    } else {
+      setSheetPanel(null);
+    }
+  };
+  const addPanel = () => {
+    const tiles = [
+      ["Text", Type, () => { addTextElement(); afterAdd(true); }],
+      ["Badge", Tag, () => { addBadgeElement(); afterAdd(true); }],
+      ["Rectangle", Square, () => { addShapeAspect("rect"); afterAdd(); }],
+      ["Circle", Circle, () => { addShapeAspect("circle"); afterAdd(); }],
+      ["Triangle", Triangle, () => { addShapeAspect("triangle"); afterAdd(); }],
+      ["Dark fade", Layers, () => { addShapeAspect("gradient"); afterAdd(); }],
+    ];
+    return (
+      <div>
+        {allOn && <SNote>Adds to all {total} slides.</SNote>}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+          {tiles.map(([label, Icon, fn]) => (
+            <button key={label} onClick={fn} style={{ ...tileStyle(), height: 72, flexDirection: "column", gap: 6, fontSize: 12 }}>
+              <Icon size={20} /> {label}
+            </button>
+          ))}
+          <label style={{ ...tileStyle(), height: 72, flexDirection: "column", gap: 6, fontSize: 12 }}>
+            <ImagePlus size={20} /> Image
+            <input
+              type="file"
+              accept="image/*"
+              style={{ display: "none" }}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  addLayerScoped("image", { src: URL.createObjectURL(f) });
+                  afterAdd();
+                }
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+      </div>
+    );
+  };
+
+  const layersPanel = () => {
+    const els = [...(slide.elements || [])].filter((e) => e.id !== "watermark").reverse();
+    const lays = [...layers].sort((a, b) => (b.zIndex ?? 20) - (a.zIndex ?? 20));
+    const row = (key, Icon, name, on, visible, locked, onPick, onEye, onLock) => (
+      <div key={key} style={{ display: "flex", alignItems: "center", gap: 4, borderRadius: 12, background: on ? C.sel : "transparent" }}>
+        <button onClick={onPick} style={{ flex: 1, minWidth: 0, minHeight: 44, display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", color: visible ? C.text : C.muted, fontSize: 13, cursor: "pointer", textAlign: "left", padding: "0 8px", fontFamily: "inherit" }}>
+          <Icon size={15} style={{ flexShrink: 0, color: C.sec }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
+        </button>
+        <button aria-label={visible ? "Hide" : "Show"} onClick={onEye} style={{ width: 40, height: 40, border: "none", background: "transparent", color: visible ? C.sec : C.muted, cursor: "pointer" }}>
+          {visible ? <Eye size={16} /> : <EyeOff size={16} />}
+        </button>
+        <button aria-label={locked ? "Unlock" : "Lock"} onClick={onLock} style={{ width: 40, height: 40, border: "none", background: "transparent", color: locked ? C.text : C.muted, cursor: "pointer" }}>
+          {locked ? <Lock size={16} /> : <Unlock size={16} />}
+        </button>
+      </div>
+    );
+    return (
+      <div>
+        <SNote>Top of the list = in front. Locked things can only be picked from here.</SNote>
+        {els.map((e) =>
+          row(
+            e.id,
+            e.type === "badge" ? Tag : Type,
+            e.content || (e.type === "badge" ? "Badge" : "Text"),
+            selectedId === e.id,
+            e.visible !== false,
+            !!e.locked,
+            () => selectElement(e.id),
+            () => updateElement(e.id, { visible: e.visible === false }),
+            () => updateElement(e.id, { locked: !e.locked }),
+          ),
+        )}
+        {lays.map((l) =>
+          row(
+            l.id,
+            l.type === "image" ? ImagePlus : l.type === "text" ? Type : l.type === "circle" ? Circle : l.type === "triangle" ? Triangle : Square,
+            l.label || l.type,
+            layerSelectedIds.includes(l.id),
+            l.visible !== false,
+            !!l.locked,
+            () => selectLayerOnly(l.id),
+            () => patchLayer(l.id, { visible: l.visible === false }),
+            () => patchLayer(l.id, { locked: !l.locked }),
+          ),
+        )}
+        <button onClick={selectPhoto} style={{ ...tileStyle(photoSel), width: "100%", justifyContent: "flex-start", marginTop: 4 }}>
+          <ImagePlus size={15} style={{ color: C.sec }} /> Photo (at the back)
+        </button>
+      </div>
+    );
+  };
+
+  // The canvas chrome shared by phone and desktop.
+  const canvasLayers = (sc) => (
+    <>
+      <LayerCanvas
+        layers={layers}
+        selectedIds={layerSelectedIds}
+        scale={sc}
+        canvasW={CW}
+        canvasH={CH}
+        onSelectLayer={(id) => selectLayerOnly(id)}
+        onClearSelection={clearSelectionAll}
+        onUpdateLayer={patchLayer}
+        onCommitHistory={commitLayerHistory}
+        onDeleteLayer={removeLayer}
+        onDuplicateLayer={dupLayer}
+        onToggleLockLayer={toggleLockLayer}
+      />
+      {photoSel && (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 3, border: `3px dashed ${C.text}`, borderRadius: 6, pointerEvents: "none", zIndex: 24 }} />
+      )}
+      <div
+        ref={canvasInnerRef}
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 25,
+          // overflow stays visible so the selection box, rotate handle and
+          // mini bar never clip at the canvas edge
+          borderRadius: 4,
+          pointerEvents: "none",
+        }}
+      >
+        {(slide.elements || [])
+          .filter((e) => e.id !== "watermark")
+          .map((e) => (
+            <div key={e.id} style={{ pointerEvents: "auto" }}>
+              {editingId === e.id ? (
+                <InlineEditor el={e} scale={sc} onCommit={(v) => onCommitEdit(e.id, v)} onCancel={() => setEditingId(null)} />
+              ) : (
+                <CanvasElement
+                  el={e}
+                  scale={sc}
+                  highlighted={(highlightIds || []).includes(e.id)}
+                  fontStack={fontObj.stack}
+                  onSelect={selectElement}
+                  onStartDrag={(ev, id) => onStartDrag(ev, id, sc)}
+                  onDoubleClick={(id) => setEditingId(id)}
+                />
+              )}
+            </div>
+          ))}
+        {selectedEl && selectedId && !editingId && !selectedEl.locked && (
+          <div style={{ pointerEvents: "auto" }}>
+            <SelectionOverlay
+              elId={selectedId}
+              el={selectedEl}
+              canvasInnerRef={canvasInnerRef}
+              onStartResize={(ev, id, handle) => onStartResize(ev, id, handle, sc)}
+              onStartRotate={onStartRotate}
+              onUpdate={updateSelectedElement}
+              onDuplicate={duplicateSelected}
+              onToggleLock={() => updateSelectedElement({ locked: true })}
+              onDelete={deleteSelected}
+            />
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   const previewProps = {
     slide,
     theme,
@@ -4946,17 +4137,8 @@ export default function TikTokStudioV3({ listing, onClose }) {
     aiLoading: applyingCmd,
     canvasW: CW,
     canvasH: CH,
-    onSelectElement: (id) => {
-      setSelectedId(id);
-      setEditingId(null);
-      clearLayerSelection();
-      setActiveTab("slide");
-    },
-    onDeselectAll: () => {
-      setSelectedId(null);
-      setEditingId(null);
-      clearLayerSelection();
-    },
+    onSelectElement: selectElement,
+    onDeselectAll: clearSelectionAll,
     onStartDrag,
     onStartResize,
     onStartRotate,
@@ -4970,351 +4152,68 @@ export default function TikTokStudioV3({ listing, onClose }) {
     onDeleteSelected: deleteSelected,
   };
 
-  // ── BgAdjustPanel ────────────────────────────────────────────────────────
-  // Custom slider — pointer events so drag works on both touch and mouse
-  function DragSlider({ min, max, step, value, onChange }) {
-    const trackRef = useRef(null);
-    const dragging = useRef(false);
-    const pct = ((value - min) / (max - min)) * 100;
+  const canUndo = historyIdx.current > 0;
+  const canRedo = historyIdx.current < history.current.length - 1;
+  const iconBtn = (extra = {}) => ({
+    width: 44,
+    height: 44,
+    border: "none",
+    background: "transparent",
+    color: C.text,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    cursor: "pointer",
+    padding: 0,
+    flexShrink: 0,
+    ...extra,
+  });
 
-    const valueFromPointer = (e) => {
-      const rect = trackRef.current.getBoundingClientRect();
-      const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
-      const ratio = Math.max(0, Math.min(1, x / rect.width));
-      const raw = min + ratio * (max - min);
-      const snapped = Math.round(raw / step) * step;
-      return parseFloat(Math.max(min, Math.min(max, snapped)).toFixed(4));
-    };
+  // The chip that says what is selected (or that nothing is).
+  const selChip = (compact) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+      {selKind === "slide" ? (
+        <span style={{ fontSize: compact ? 13 : 15, fontWeight: compact ? 500 : 600, color: compact ? C.sec : C.text, whiteSpace: "nowrap" }}>
+          {compact ? "Nothing selected" : `Slide ${active + 1} of ${total}`}
+        </span>
+      ) : (
+        <>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: C.text, flexShrink: 0 }} />
+          <span style={{ fontSize: compact ? 13 : 15, fontWeight: 600, color: C.text }}>{KIND_LABEL[selKind]}</span>
+          <span style={{ fontSize: compact ? 13 : 15, color: C.sec }}>selected</span>
+        </>
+      )}
+    </div>
+  );
 
-    const onPointerDown = (e) => {
-      e.preventDefault();
-      dragging.current = true;
-      trackRef.current.setPointerCapture(e.pointerId);
-      onChange(valueFromPointer(e));
-    };
-    const onPointerMove = (e) => {
-      if (!dragging.current) return;
-      e.preventDefault();
-      onChange(valueFromPointer(e));
-    };
-    const onPointerUp = () => { dragging.current = false; };
-
-    return (
-      <div
-        ref={trackRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        style={{ position: "relative", height: 28, cursor: "pointer", touchAction: "none", userSelect: "none" }}
-      >
-        {/* Track */}
-        <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 3, marginTop: -1.5, borderRadius: 999, background: "rgba(255,255,255,0.1)" }} />
-        {/* Fill */}
-        <div style={{ position: "absolute", top: "50%", left: 0, width: pct + "%", height: 3, marginTop: -1.5, borderRadius: 999, background: "#2563eb" }} />
-        {/* Thumb */}
-        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 16, height: 16, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.4)", border: "2px solid #2563eb" }} />
-      </div>
-    );
-  }
-
-  function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved }) {
-    const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
-    const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
-    const sliders = [
-      { key: "brightness", label: "Brightness", min: 0, max: 2, step: 0.01, fmt: signed },
-      { key: "contrast",   label: "Contrast",   min: 0, max: 2, step: 0.01, fmt: signed },
-      { key: "saturation", label: "Saturation", min: 0, max: 2, step: 0.01, fmt: signed },
-      { key: "warmth",     label: "Warmth",     min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
-      { key: "blur",       label: "Blur",       min: 0, max: 20, step: 0.5, fmt: (v) => v + "px" },
-      { key: "vignette",   label: "Vignette",   min: 0, max: 1, step: 0.01, fmt: (v) => Math.round(v * 100) + "%" },
-    ];
-    const bgRemoved = !!originalImageUrl;
-    return (
-      <div style={{ padding: "10px 16px 18px" }}>
-        {/* Header row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Photo</span>
-          <div style={{ display: "flex", gap: 5 }}>
-            <button onClick={() => onPatch({ brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0 })}
-              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.45)", cursor: "pointer" }}>
-              Reset
-            </button>
-            <button onClick={onChangeBg}
-              style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
-              <ImagePlus size={11} /> Change
-            </button>
-          </div>
-        </div>
-
-        {/* Remove BG card */}
-        {imageUrl && (
-          <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div>
-                <p style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.8)", margin: 0 }}>Remove Background</p>
-                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>
-                  {bgRemoved ? "Background removed. Place it on any scene."
-                    : cutoutSaved ? "Done on your phone. Your photo is not uploaded."
-                    : `Done on your phone. First use downloads the tool once (${Math.round(CUTOUT_MODEL_BYTES / 1e6)} MB), best on Wi-Fi.`}
-                </p>
-              </div>
-              {bgRemoved ? (
-                <button onClick={onRestoreBg}
-                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}>
-                  Restore
-                </button>
-              ) : (
-                <button onClick={onRemoveBg} disabled={removingBg}
-                  style={{ fontSize: 11, padding: "6px 12px", borderRadius: 7, border: "none", background: removingBg ? "rgba(37,99,235,0.5)" : "#2563eb", color: "#fff", cursor: removingBg ? "default" : "pointer", fontWeight: 700, whiteSpace: "nowrap", minWidth: 76, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-                  {removingBg ? "Working..." : "Remove BG"}
-                </button>
-              )}
-            </div>
-            {removingBg && removeBgStatus && <p style={{ fontSize: 10, color: "rgba(255,255,255,0.55)", marginTop: 6, marginBottom: 0 }}>{removeBgStatus}</p>}
-            {removeBgError && <p style={{ fontSize: 10, color: "#f87171", marginTop: 6, marginBottom: 0 }}>{removeBgError}</p>}
-          </div>
-        )}
-
-        {/* Adjustment sliders */}
-        {sliders.map(({ key, label, min, max, step, fmt }) => (
-          <div key={key} style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)" }}>{label}</span>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>{fmt(a[key])}</span>
-            </div>
-            <DragSlider min={min} max={max} step={step} value={a[key]} onChange={v => onPatch({ [key]: v })} />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  // ── Mobile layout ────────────────────────────────────────────────────────
+  // ── Phone ──────────────────────────────────────────────────────────────
   if (isMobile) {
-    const HEADER_H = 46;
-    const STRIP_H = 36;
-    const DOCK_H = 52;
+    const HEADER_H = 52;
+    const STRIP_H = 48;
+    const CHIP_H = 44;
+    const BAR_H = 76;
+    // 16 = the inner wrapper's 8px padding top and bottom / side gutter.
     const { displayW: mobW, displayH: mobH } = computeDisplaySize(
       CW / CH,
-      window.innerWidth - 16,
-      window.innerHeight - HEADER_H - STRIP_H - DOCK_H - 12,
+      Math.max(80, (mobArea.w || window.innerWidth) - 16),
+      Math.max(80, (mobArea.h || window.innerHeight - HEADER_H - STRIP_H - CHIP_H - BAR_H) - 16),
     );
     const mobScale = CW > 0 ? mobW / CW : 0.3;
 
-    const mobSelectedLayer = layers.find((l) => layerSelectedIds.includes(l.id)) || null;
-    const hasTextSel = !!(selectedId && selectedEl);
-    const hasLayerSel = layerSelectedIds.length > 0;
-    const patchBg = (patch) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...patch } });
-
-    const toggleSheet = (id) => setSheetPanel((p) => (p === id ? null : id));
-
-    const mobOnSelectElement = (id) => {
-      setSelectedId(id);
-      setEditingId(null);
-      clearLayerSelection();
+    const sheetTool = kindTools.find((t) => t[0] === sheetPanel && t[0] !== "photo");
+    const sheetOpen = sheetPanel === "add" || sheetPanel === "layers" || !!sheetTool;
+    const sheetTitle = sheetPanel === "add" ? "Add" : sheetPanel === "layers" ? "Layers" : sheetTool?.[1];
+    const sheetBody = () => (sheetPanel === "add" ? addPanel() : sheetPanel === "layers" ? layersPanel() : sheetTool ? renderTool(sheetTool[0]) : null);
+    const onBarTool = (id) => {
+      if (selKind === "slide" && id === "photo") {
+        selectPhoto();
+        setSheetPanel(null);
+        return;
+      }
+      setSheetPanel((p) => (p === id ? null : id));
     };
-
-    // Dock items — context-sensitive
-    const dockItems = [
-      ...(hasTextSel
-        ? [{ id: "text", icon: <Type size={17} />, label: "Text" }]
-        : []),
-      ...(hasLayerSel
-        ? [{ id: "layer", icon: <Layers size={17} />, label: "Shape" }]
-        : []),
-      { id: "tpl", icon: <LayoutTemplate size={17} />, label: "Design" },
-      { id: "shapes", icon: <Square size={17} />, label: "Add" },
-      { id: "components", icon: <Sliders size={17} />, label: "Layers" },
-      { id: "photo", icon: <ImagePlus size={17} />, label: "Photo" },
-      { id: "ai", icon: <Zap size={17} />, label: "AI" },
-    ];
-
-    // Bottom sheet content
-    const sheetBody = () => {
-      if (sheetPanel === "tpl") {
-        return (
-          <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-            <SectionHead label="Canvas Format" />
-            {FormatSelector()}
-            <PhotoSourceButtons />
-            <TemplateCards />
-          </div>
-        );
-      }
-      if (sheetPanel === "text") {
-        const p = ElPropsPanel();
-        if (!p) return null;
-        return <div style={{ padding: "0 14px 16px" }}>{p}</div>;
-      }
-      if (sheetPanel === "layer" && mobSelectedLayer) {
-        return (
-          <div style={{ padding: "0 0 16px" }}>
-            <LayerPropertiesPanel
-              layer={mobSelectedLayer}
-              onUpdate={(id, patch) => updateLayer(id, patch)}
-              onCommit={commitLayerHistory}
-              onDelete={deleteLayer}
-              onDuplicate={duplicateLayer}
-            />
-          </div>
-        );
-      }
-      if (sheetPanel === "photo") {
-        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} removeBgStatus={removeBgStatus} cutoutSaved={cutoutSaved} />;
-      }
-      if (sheetPanel === "shapes") {
-        return (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 16px" }}>
-            {[
-              ["▭", "Rect", () => { addShapeAspect("rect"); setSheetPanel("layer"); }],
-              ["◯", "Circle", () => { addShapeAspect("circle"); setSheetPanel("layer"); }],
-              ["△", "Triangle", () => { addShapeAspect("triangle"); setSheetPanel("layer"); }],
-              ["◨", "Gradient", () => { addShapeAspect("gradient"); setSheetPanel("layer"); }],
-              ["T", "Text", () => { addTextElement(); setSheetPanel("text"); }],
-            ].map(([icon, lbl, fn]) => (
-              <button
-                key={lbl}
-                onClick={fn}
-                style={{
-                  flex: "1 0 60px",
-                  padding: "12px 6px",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 10,
-                  color: "rgba(255,255,255,0.85)",
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 5,
-                }}
-              >
-                <span style={{ fontSize: 22 }}>{icon}</span>
-                {lbl}
-              </button>
-            ))}
-            <label
-              style={{
-                flex: "1 0 60px",
-                padding: "12px 6px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 10,
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <span style={{ fontSize: 22 }}>🖼</span>
-              Image
-              <input
-                type="file"
-                accept="image/*"
-                style={{ display: "none" }}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    addLayer("image", { src: URL.createObjectURL(f) });
-                    setSheetPanel("layer");
-                  }
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          </div>
-        );
-      }
-      if (sheetPanel === "components") {
-        const allEls = (slide?.elements || []).filter(el => el.id !== "watermark");
-        return (
-          <div style={{ padding: "10px 14px 16px" }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>Components</p>
-            {allEls.length === 0 && layers.length === 0 && (
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "12px 0" }}>No components</p>
-            )}
-            {allEls.map(el => (
-              <div key={el.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>
-                  <Type size={11} style={{ display: "inline", marginRight: 4, opacity: 0.5 }} />
-                  {el.content?.slice(0, 20) || el.type}
-                </span>
-                <button
-                  onClick={() => updateElement(el.id, { locked: !el.locked })}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: el.locked ? "#f87171" : "rgba(255,255,255,0.3)", padding: 4 }}
-                  title={el.locked ? "Unlock" : "Lock"}
-                >
-                  {el.locked ? <Lock size={14} /> : <Unlock size={14} />}
-                </button>
-              </div>
-            ))}
-            {layers.map(l => (
-              <div key={l.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>
-                  <Square size={11} style={{ display: "inline", marginRight: 4, opacity: 0.5 }} />
-                  {l.label || l.type}
-                </span>
-                <button
-                  onClick={() => updateLayer(l.id, { locked: !l.locked })}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: l.locked ? "#f87171" : "rgba(255,255,255,0.3)", padding: 4 }}
-                  title={l.locked ? "Unlock" : "Lock"}
-                >
-                  {l.locked ? <Lock size={14} /> : <Unlock size={14} />}
-                </button>
-              </div>
-            ))}
-          </div>
-        );
-      }
-      if (sheetPanel === "ai") {
-        return (
-          <div style={{ padding: "12px 16px 16px", display: "flex", gap: 8 }}>
-            <input
-              value={aiCmd}
-              onChange={(e) => setAiCmd(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && runAICommand()}
-              disabled={aiAtLimit}
-              placeholder="AI: make price bigger, red accent…"
-              autoFocus
-              style={{
-                flex: 1,
-                padding: "10px 12px",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8,
-                color: "rgba(255,255,255,0.9)",
-                fontFamily: "system-ui,sans-serif",
-                fontSize: 12,
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={runAICommand}
-              disabled={applyingCmd || !aiCmd.trim() || aiAtLimit}
-              style={{
-                padding: "10px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: "#2563eb",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
-              {applyingCmd ? "…" : "⚡"}
-            </button>
-          </div>
-        );
-      }
-      return null;
-    };
+    const note = sheetPanel === "add" || sheetPanel === "layers" ? null : scopeNote();
 
     return (
       <div
@@ -5322,14 +4221,17 @@ export default function TikTokStudioV3({ listing, onClose }) {
           position: "fixed",
           inset: 0,
           zIndex: 9999,
-          background: "#131620",
+          background: C.bg,
+          color: C.text,
           display: "flex",
           flexDirection: "column",
-          fontFamily: "system-ui,sans-serif",
+          fontFamily: STUDIO_FONT,
           overflow: "hidden",
           touchAction: "pan-y",
         }}
-        onTouchMove={e => { if (e.touches.length > 1) e.preventDefault(); }}
+        onTouchMove={(e) => {
+          if (e.touches.length > 1) e.preventDefault();
+        }}
       >
         {showCamera && (
           <CameraCapture
@@ -5341,353 +4243,148 @@ export default function TikTokStudioV3({ listing, onClose }) {
             canvasH={CH}
           />
         )}
-        {/* Header */}
-        <div
-          style={{
-            height: HEADER_H,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 12px",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
-            background: "#1e2130",
-          }}
-        >
-          <span
-            style={{
-              fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: 18,
-              letterSpacing: "0.05em",
-              color: "rgba(255,255,255,0.9)",
-            }}
-          >
-            TT STUDIO V3
-          </span>
-          <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-            {[
-              { fn: undo, dis: historyIdx.current <= 0, icon: <Undo2 size={12} /> },
-              { fn: redo, dis: historyIdx.current >= history.current.length - 1, icon: <Redo2 size={12} /> },
-            ].map(({ fn, dis, icon }, i) => (
+
+        {/* Header: what never moves */}
+        <div style={{ height: HEADER_H, flexShrink: 0, display: "flex", alignItems: "center", gap: 2, padding: "0 6px" }}>
+          <button aria-label="Close studio" onClick={onClose} style={iconBtn({ color: C.sec })}><X size={20} /></button>
+          <span style={{ flex: 1, fontSize: 16, fontWeight: 600, paddingLeft: 2 }}>Studio</span>
+          <button aria-label="Undo" onClick={undo} disabled={!canUndo} style={iconBtn({ color: canUndo ? C.text : "#4b515c" })}><Undo2 size={19} /></button>
+          <button aria-label="Redo" onClick={redo} disabled={!canRedo} style={iconBtn({ color: canRedo ? C.text : "#4b515c" })}><Redo2 size={19} /></button>
+          <button aria-label="Save this slide" onClick={() => saveSingle(active)} style={iconBtn()}><Download size={19} /></button>
+          <button onClick={saveAll} disabled={downloading} style={{ height: 38, padding: "0 16px", marginLeft: 2, border: "none", borderRadius: 999, background: C.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+            {downloading ? "..." : "Export"}
+          </button>
+        </div>
+
+        {/* Slides + This slide | All slides */}
+        <div style={{ height: STRIP_H, flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "0 10px" }}>
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1, minWidth: 0, scrollbarWidth: "none" }}>
+            {slides.map((s, i) => (
               <button
-                key={i}
-                onClick={fn}
-                disabled={dis}
-                style={{
-                  width: 26,
-                  height: 26,
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "transparent",
-                  color: dis ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.6)",
-                  cursor: dis ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                key={s.id}
+                aria-label={`Slide ${i + 1}`}
+                aria-current={i === active}
+                onClick={() => {
+                  setActive(i);
+                  clearSelectionAll();
                 }}
+                style={{ minWidth: 36, height: 36, borderRadius: 10, flexShrink: 0, border: "none", background: i === active ? C.text : C.raised, color: i === active ? C.bg : C.sec, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
               >
-                {icon}
+                {i + 1}
               </button>
             ))}
-            <button
-              onClick={() => saveSingle(active)}
-              style={{
-                padding: "5px 10px",
-                borderRadius: 7,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.75)",
-                cursor: "pointer",
-                fontSize: 10,
-                fontWeight: 600,
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <Download size={11} /> Save
-            </button>
-            <button
-              onClick={saveAll}
-              disabled={downloading}
-              style={{
-                padding: "5px 12px",
-                borderRadius: 7,
-                border: "none",
-                background: "#2563eb",
-                color: "#fff",
-                cursor: "pointer",
-                fontSize: 11,
-                fontWeight: 700,
-              }}
-            >
-              {downloading ? "…" : "Export"}
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.5)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <X size={14} />
+            <button aria-label="Add slide" onClick={addSlide} style={{ minWidth: 36, height: 36, borderRadius: 10, flexShrink: 0, border: "1px dashed #3a404b", background: "transparent", color: C.sec, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Plus size={15} />
             </button>
           </div>
+          {total > 1 && <div style={{ flexShrink: 0, width: 184 }}>{scopeToggle()}</div>}
         </div>
 
-        {/* Slide numbers strip */}
+        {/* What is selected + the Layers list */}
+        <div style={{ height: CHIP_H, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", gap: 8 }}>
+          <div style={{ height: 34, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 999, background: C.raised, minWidth: 0 }}>{selChip(true)}</div>
+          <button onClick={() => setSheetPanel((p) => (p === "layers" ? null : "layers"))} style={{ height: 34, display: "flex", alignItems: "center", gap: 6, padding: "0 12px", border: "none", borderRadius: 999, background: sheetPanel === "layers" ? C.sel : C.raised, color: C.sec, fontSize: 13, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+            <Layers size={15} /> Layers
+          </button>
+        </div>
+
+        {/* Canvas — sized to the measured area, shrinks when the sheet opens.
+            A press on it closes the sheet once the press is over. */}
         <div
-          style={{
-            height: STRIP_H,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "0 12px",
-            overflowX: "auto",
-            flexShrink: 0,
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            background: "#141a28",
-            WebkitOverflowScrolling: "touch",
+          ref={mobAreaRef}
+          onTouchStartCapture={() => {
+            pressingCanvas.current = true;
           }}
-        >
-          {slides.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => { setActive(i); setSelectedId(null); }}
-              style={{
-                minWidth: 26, height: 26, borderRadius: 6, flexShrink: 0,
-                border: i === active ? "2px solid #2563eb" : "1px solid rgba(255,255,255,0.1)",
-                background: i === active ? "#2563eb" : "rgba(255,255,255,0.05)",
-                color: i === active ? "#fff" : "rgba(255,255,255,0.45)",
-                fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "0 7px",
-              }}
-            >{i + 1}</button>
-          ))}
-          <button
-            onClick={addSlide}
-            style={{
-              minWidth: 26, height: 26, borderRadius: 6, flexShrink: 0,
-              border: "1px dashed rgba(37,99,235,0.4)",
-              background: "transparent", color: "#3b82f6",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          ><Plus size={13} /></button>
-        </div>
-
-        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved.
-            Any press (tap OR drag start) outside the sheet closes it — capture
-            phase, so canvas gestures continue uninterrupted. */}
-        <div
-          onTouchStartCapture={() => { if (sheetPanel) setSheetPanel(null); }}
-          onMouseDownCapture={() => { if (sheetPanel) setSheetPanel(null); }}
+          onTouchEndCapture={() => {
+            pressingCanvas.current = false;
+            if (sheetPanel) closeSheetSoon();
+          }}
+          onTouchCancelCapture={() => {
+            pressingCanvas.current = false;
+          }}
+          onMouseDownCapture={() => {
+            pressingCanvas.current = true;
+          }}
+          onMouseUpCapture={() => {
+            pressingCanvas.current = false;
+            if (sheetPanel) closeSheetSoon(60);
+          }}
           style={{
             flex: 1,
             minHeight: 0,
-            overflowY: "auto",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            touchAction: "pan-y",
+            // The canvas is sized to fit (mobArea), so this area never scrolls:
+            // a scrollable area here stole every vertical drag of a text.
+            overflow: "hidden",
+            touchAction: "none",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
           }}
         >
-          {/* inner wrapper: centered when space allows, scrollable when compressed */}
           <div style={{ margin: "auto", padding: "8px 0", flexShrink: 0, position: "relative" }}>
-          {showImagePicker ? (
-            <div style={{ position: "relative", width: mobW, height: mobH }}>
-              <ImagePicker
-                images={[...uploadedImages, ...rawImages]}
-                current={slide.imageUrl}
-                onSelect={(url) => patchSlide({ imageUrl: url })}
-                onClose={() => setShowImagePicker(false)}
-              />
-            </div>
-          ) : (
-            <div
-              style={{
-                position: "relative",
-                width: mobW,
-                height: mobH,
-                flexShrink: 0,
-                borderRadius: 4,
-                boxShadow: "0 4px 24px rgba(0,0,0,0.6)",
-                isolation: "isolate",
-              }}
-            >
+            <div style={{ position: "relative", width: mobW, height: mobH, flexShrink: 0, borderRadius: 4, boxShadow: "0 4px 24px rgba(0,0,0,0.6)", isolation: "isolate" }}>
               <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 4, zIndex: 0 }}>
-                <CanvasPreview
-                  {...previewProps}
-                  scale={mobScale}
-                  canvasW={CW}
-                  canvasH={CH}
-                  hideInteractive
-                />
+                <CanvasPreview {...previewProps} scale={mobScale} canvasW={CW} canvasH={CH} hideInteractive />
               </div>
-              {/* BG image edit button */}
-              <button
-                onClick={() => { setShowImagePicker(true); setSheetPanel(null); }}
-                style={{
-                  position: "absolute", bottom: 8, left: 8, zIndex: 30,
-                  background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.15)",
-                  borderRadius: 8, color: "#fff", cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 4,
-                  padding: "4px 8px", fontSize: 10, fontWeight: 600,
-                }}
-              ><ImagePlus size={12} /> BG</button>
-              <LayerCanvas
-                layers={layers}
-                selectedIds={layerSelectedIds}
-                scale={mobScale}
-                canvasW={CW}
-                canvasH={CH}
-                onSelectLayer={(id) => {
-                  selectLayer(id);
-                  setSelectedId(null);
-                }}
-                onClearSelection={() => {
-                  clearLayerSelection();
-                  setSelectedId(null);
-                  setSheetPanel(null);
-                }}
-                onUpdateLayer={updateLayer}
-                onCommitHistory={commitLayerHistory}
-                onDeleteLayer={deleteLayer}
-              />
-              <div
-                ref={canvasInnerRef}
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  zIndex: 25,
-                  // overflow stays visible so the selection box, rotate handle
-                  // and mini toolbar never clip at the canvas edge on mobile
-                  borderRadius: 4,
-                  pointerEvents: "none",
-                }}
-              >
-                {(slide.elements || [])
-                  .filter((el) => el.id !== "watermark")
-                  .map((el) => (
-                    <div key={el.id} style={{ pointerEvents: "auto" }}>
-                      {editingId === el.id ? (
-                        <InlineEditor
-                          el={el}
-                          scale={mobScale}
-                          onCommit={(v) => onCommitEdit(el.id, v)}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      ) : (
-                        <CanvasElement
-                          el={el}
-                          scale={mobScale}
-                          highlighted={(highlightIds || []).includes(el.id)}
-                          fontStack={fontObj.stack}
-                          onSelect={mobOnSelectElement}
-                          onStartDrag={(e, id) => onStartDrag(e, id, mobScale)}
-                          onDoubleClick={(id) => setEditingId(id)}
-                        />
-                      )}
-                    </div>
-                  ))}
-                {selectedEl && selectedId && !editingId && !selectedEl.locked && (
-                  <div style={{ pointerEvents: "auto" }}>
-                    <SelectionOverlay
-                      elId={selectedId}
-                      el={selectedEl}
-                      canvasInnerRef={canvasInnerRef}
-                      onStartResize={(e, id, handle) => onStartResize(e, id, handle, mobScale)}
-                      onStartRotate={onStartRotate}
-                      onUpdate={updateSelectedElement}
-                      onDuplicate={duplicateSelected}
-                      onDelete={deleteSelected}
-                    />
-                  </div>
-                )}
-              </div>
+              {canvasLayers(mobScale)}
             </div>
-          )}
-          </div>{/* end inner wrapper */}
-        </div>
-
-        {/* Sheet — in flow, pushes canvas up when open */}
-        <div
-          style={{
-            maxHeight: sheetPanel ? "40vh" : 0,
-            overflow: "hidden",
-            transition: "max-height 0.22s ease",
-            background: "#1e2130",
-            borderTop: sheetPanel ? "1px solid rgba(255,255,255,0.1)" : "none",
-            borderRadius: "14px 14px 0 0",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ overflowY: "auto", maxHeight: "40vh", WebkitOverflowScrolling: "touch" }}>
-            {sheetBody()}
           </div>
         </div>
 
-        {/* Dock icons */}
-        <div
-          style={{
-            height: DOCK_H,
-            display: "flex",
-            alignItems: "stretch",
-            background: "#1e2130",
-            borderTop: "1px solid rgba(255,255,255,0.09)",
-            flexShrink: 0,
-          }}
-        >
-          {dockItems.map((item) => {
-            const on = sheetPanel === item.id;
+        {/* Tool sheet — in flow, the canvas above shrinks to stay visible.
+            Selecting another object can leave the sheet on a tool the new
+            object does not have: it keeps its height, empty, until it closes,
+            so the canvas does not jump under a finger mid-tap. */}
+        {sheetPanel && !sheetOpen && <div style={{ flexShrink: 0, height: sheetH.current, background: C.card, borderRadius: "22px 22px 0 0" }} />}
+        {sheetOpen && (
+          <div ref={(n) => { if (n) sheetH.current = n.offsetHeight; }} style={{ flexShrink: 0, background: C.card, borderRadius: "22px 22px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.45)", display: "flex", flexDirection: "column", maxHeight: "46vh" }}>
+            <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: "#2a2f38" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", padding: "2px 6px 0 16px", minHeight: 44 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600 }}>{sheetTitle}</div>
+                {note && <div style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>{note}</div>}
+              </div>
+              <button aria-label="Close panel" onClick={() => setSheetPanel(null)} style={iconBtn({ color: C.sec })}><ChevronDown size={20} /></button>
+            </div>
+            <div style={{ overflowY: "auto", padding: "4px 16px 16px", WebkitOverflowScrolling: "touch" }}>{sheetBody()}</div>
+          </div>
+        )}
+
+        {/* The bar: Add (or Done) + the tools of what is selected */}
+        <div style={{ height: BAR_H, flexShrink: 0, display: "flex", alignItems: "stretch", padding: "0 4px", borderTop: `1px solid ${C.line}`, background: C.bg }}>
+          {selKind === "slide" ? (
+            <button onClick={() => setSheetPanel((p) => (p === "add" ? null : "add"))} style={{ width: 62, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", background: "transparent", color: C.text, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+              <span style={{ width: 44, height: 32, borderRadius: 12, background: C.red, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Plus size={20} /></span>
+              Add
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                clearSelectionAll();
+                setSheetPanel(null);
+              }}
+              style={{ width: 62, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", background: "transparent", color: C.text, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit" }}
+            >
+              <span style={{ width: 44, height: 32, borderRadius: 12, background: C.raised, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={20} /></span>
+              Done
+            </button>
+          )}
+          <div style={{ width: 1, background: "rgba(255,255,255,0.08)", margin: "18px 2px" }} />
+          {kindTools.map(([id, label, Icon]) => {
+            const on = sheetPanel === id;
             return (
               <button
-                key={item.id}
-                onClick={() => toggleSheet(item.id)}
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 0,
-                  border: "none",
-                  background: "transparent",
-                  color: on ? "#8db9ff" : "rgba(255,255,255,0.45)",
-                  cursor: "pointer",
-                  fontSize: 8.5,
-                  fontWeight: 600,
-                  letterSpacing: "0.05em",
-                  transition: "color 0.15s",
-                  padding: "6px 0 7px",
-                  fontFamily: "system-ui,sans-serif",
-                }}
+                key={id}
+                onClick={() => onBarTool(id)}
+                aria-pressed={on}
+                style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", background: "transparent", padding: 0, fontSize: 11, fontWeight: on ? 600 : 500, color: on ? C.text : C.sec, cursor: "pointer", fontFamily: "inherit" }}
               >
-                {/* Pill highlight around the icon — calmer than a full-cell tint */}
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 42,
-                    height: 26,
-                    borderRadius: 13,
-                    background: on ? "rgba(59,130,246,0.22)" : "transparent",
-                    transition: "background 0.15s",
-                    marginBottom: 3,
-                  }}
-                >
-                  {item.icon}
+                <span style={{ width: 44, height: 32, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: on ? C.hover : "transparent" }}>
+                  <Icon size={20} />
                 </span>
-                <span>{item.label}</span>
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{label}</span>
               </button>
             );
           })}
@@ -5696,21 +4393,20 @@ export default function TikTokStudioV3({ listing, onClose }) {
     );
   }
 
-  // ── Desktop layout — Canva-style ─────────────────────────────────────────
+  // ── Desktop ────────────────────────────────────────────────────────────
+  const onDeskTab = (id) => {
+    if (selKind === "slide" && id === "photo") {
+      selectPhoto();
+      return;
+    }
+    setLastTool((t) => ({ ...t, [selKind]: id }));
+  };
+  const deskNote = deskMode ? null : scopeNote();
   return (
     <>
       {/* Backdrop dimmer */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 9998,
-          background: "rgba(0,0,0,0.65)",
-        }}
-      />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9998, background: "rgba(0,0,0,0.65)" }} />
 
-      {/* Main popup — almost full page, Canva-style */}
       <div
         style={{
           position: "fixed",
@@ -5718,358 +4414,112 @@ export default function TikTokStudioV3({ listing, onClose }) {
           zIndex: 9999,
           borderRadius: 16,
           overflow: "hidden",
-          background: "#131620",
-          boxShadow:
-            "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
+          background: C.bg,
+          color: C.text,
+          boxShadow: "0 32px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.07)",
           display: "flex",
           flexDirection: "column",
-          fontFamily: "system-ui,sans-serif",
+          fontFamily: STUDIO_FONT,
         }}
       >
-        {/* ── TOP HEADER ─────────────────────────────────────────── */}
-        <div
-          style={{
-            height: 48,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 16px",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
-            flexShrink: 0,
-            background: "#1e2130",
-          }}
-        >
-          {/* Left: logo */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                fontFamily: "'Bebas Neue',sans-serif",
-                fontSize: 19,
-                letterSpacing: "0.06em",
-                color: "rgba(255,255,255,0.9)",
-              }}
-            >
-              SHIFTOS STUDIO
-            </span>
-            <span
-              style={{
-                fontSize: 8,
-                background: "#2563eb",
-                color: "#fff",
-                padding: "2px 6px",
-                borderRadius: 999,
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-              }}
-            >
-              V3
-            </span>
-            <span
-              style={{
-                fontSize: 9,
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.4)",
-                padding: "2px 8px",
-                borderRadius: 999,
-                border: "1px solid rgba(255,255,255,0.08)",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              {currentFormat.icon} {canvasFormat} · {total} slide
-              {total !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {/* Center: undo/redo */}
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            {[
-              {
-                fn: undo,
-                dis: historyIdx.current <= 0,
-                icon: <Undo2 size={14} />,
-                title: "Undo (Ctrl+Z)",
-              },
-              {
-                fn: redo,
-                dis: historyIdx.current >= history.current.length - 1,
-                icon: <Redo2 size={14} />,
-                title: "Redo (Ctrl+Y)",
-              },
-            ].map(({ fn, dis, icon, title }) => (
-              <button
-                key={title}
-                onClick={fn}
-                disabled={dis}
-                title={title}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 7,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "transparent",
-                  color: dis
-                    ? "rgba(255,255,255,0.2)"
-                    : "rgba(255,255,255,0.65)",
-                  cursor: dis ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "background 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!dis)
-                    e.currentTarget.style.background = "rgba(255,255,255,0.07)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
-                }}
-              >
-                {icon}
-              </button>
-            ))}
-          </div>
-
-          {/* Right: actions */}
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <button
-              onClick={() => saveSingle(active)}
-              disabled={dlIdx === active}
-              style={{
-                padding: "6px 14px",
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.06)",
-                color: "rgba(255,255,255,0.75)",
-                cursor: "pointer",
-                fontSize: 12,
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-              }}
-            >
-              <Download size={13} /> Save slide
-            </button>
-            <button
-              onClick={saveAll}
-              disabled={downloading}
-              style={{
-                padding: "6px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: "#2563eb",
-                color: "#fff",
-                cursor: downloading ? "wait" : "pointer",
-                fontSize: 12,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-              }}
-            >
-              <Download size={13} /> {downloading ? "Exporting…" : "Export all"}
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                border: "1px solid rgba(255,255,255,0.1)",
-                background: "rgba(255,255,255,0.05)",
-                color: "rgba(255,255,255,0.5)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-              }}
-            >
-              <X size={14} />
-            </button>
-          </div>
+        {/* Header: what never moves */}
+        <div style={{ height: 56, flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "0 12px", borderBottom: `1px solid ${C.line}` }}>
+          <button aria-label="Close studio" onClick={onClose} style={iconBtn({ color: C.sec, width: 40, height: 40 })}><X size={20} /></button>
+          <span style={{ fontSize: 16, fontWeight: 600 }}>Studio</span>
+          <span style={{ fontSize: 13, color: C.muted, marginLeft: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {[listing?.year, listing?.brand, listing?.model].filter(Boolean).join(" ")} · {canvasFormat} · {total} slide{total !== 1 ? "s" : ""}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button aria-label="Undo" title="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo} style={iconBtn({ width: 40, height: 40, color: canUndo ? C.text : "#4b515c" })}><Undo2 size={18} /></button>
+          <button aria-label="Redo" title="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo} style={iconBtn({ width: 40, height: 40, color: canRedo ? C.text : "#4b515c" })}><Redo2 size={18} /></button>
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)", margin: "0 6px" }} />
+          <button onClick={() => saveSingle(active)} disabled={dlIdx === active} style={{ height: 38, padding: "0 16px", border: "none", borderRadius: 999, background: C.raised, color: C.text, fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+            <Download size={15} /> Save slide
+          </button>
+          <button onClick={saveAll} disabled={downloading} style={{ height: 38, padding: "0 18px", border: "none", borderRadius: 999, background: C.red, color: "#fff", fontSize: 14, fontWeight: 600, cursor: downloading ? "wait" : "pointer", fontFamily: "inherit" }}>
+            {downloading ? "Exporting..." : "Export all"}
+          </button>
         </div>
 
-        {/* ── BODY ───────────────────────────────────────────────── */}
-        <div
-          style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}
-        >
-          {/* ── LEFT ICON STRIP (54px) ───────────────────────────── */}
-          <div
-            style={{
-              width: 54,
-              background: "#1e2130",
-              borderRight: "1px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              paddingTop: 8,
-              gap: 2,
-              flexShrink: 0,
-              zIndex: 2,
-            }}
-          >
-            {TABS.map((t) => {
-              const isActive = activeTab === t.id;
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
+          {/* Rail: Add + Layers, the two things that are never about a selection */}
+          <div style={{ width: 76, flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, paddingTop: 14, borderRight: `1px solid ${C.line}` }}>
+            {[
+              ["add", "Add", Plus],
+              ["layers", "Layers", Layers],
+            ].map(([id, label, Icon]) => {
+              const on = deskMode === id;
               return (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTab(t.id)}
-                  title={t.label}
-                  style={{
-                    width: 46,
-                    height: 52,
-                    borderRadius: 10,
-                    border: "none",
-                    background: isActive ? "#1a2a4a" : "transparent",
-                    color: isActive ? "#60a5fa" : "rgba(255,255,255,0.35)",
-                    cursor: "pointer",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 3,
-                    position: "relative",
-                    transition: "all 0.15s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isActive)
-                      e.currentTarget.style.background =
-                        "rgba(255,255,255,0.06)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isActive)
-                      e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  {isActive && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: -4,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        width: 3,
-                        height: 24,
-                        borderRadius: "0 3px 3px 0",
-                        background: "#2563eb",
-                      }}
-                    />
-                  )}
-                  <span style={{ lineHeight: 1 }}>{t.icon}</span>
-                  <span
-                    style={{
-                      fontSize: 8,
-                      fontWeight: 600,
-                      letterSpacing: "0.03em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {t.label}
+                <button key={id} aria-pressed={on} onClick={() => setDeskMode((m) => (m === id ? null : id))} style={{ width: 64, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, border: "none", background: "transparent", color: on || id === "add" ? C.text : C.sec, fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "4px 0", fontFamily: "inherit" }}>
+                  <span style={{ width: 44, height: 36, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: id === "add" ? C.red : on ? C.sel : C.raised, color: id === "add" ? "#fff" : "inherit" }}>
+                    <Icon size={20} />
                   </span>
+                  {label}
                 </button>
               );
             })}
           </div>
 
-          {/* ── LEFT PANEL (280px) ───────────────────────────────── */}
-          <div
-            style={{
-              width: 280,
-              background: "#1e2130",
-              borderRight: "1px solid rgba(255,255,255,0.06)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            {/* Panel header */}
-            <div
-              style={{
-                height: 40,
-                display: "flex",
-                alignItems: "center",
-                padding: "0 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.05)",
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: "rgba(255,255,255,0.25)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                }}
-              >
-                {TABS.find((t) => t.id === activeTab)?.label}
-              </span>
+          {/* Inspector: the tools of what is selected, in one place */}
+          <div style={{ width: 340, flexShrink: 0, background: C.card, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ minHeight: 60, display: "flex", alignItems: "center", gap: 6, padding: "8px 10px 4px 16px" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {deskMode ? (
+                  <span style={{ fontSize: 15, fontWeight: 600 }}>{deskMode === "add" ? "Add" : "Layers"}</span>
+                ) : (
+                  selChip(false)
+                )}
+                {deskNote && <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{deskNote}</div>}
+              </div>
+              {!deskMode && selectedEl && (
+                <>
+                  <button aria-label="Duplicate" title="Duplicate" onClick={duplicateSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
+                  <button aria-label="Delete" title="Delete" onClick={deleteSelected} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
+                </>
+              )}
+              {!deskMode && !selectedEl && selLayer && (
+                <>
+                  <button aria-label="Duplicate" title="Duplicate" onClick={() => dupLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10 })}><Copy size={16} /></button>
+                  <button aria-label="Delete" title="Delete" onClick={() => removeLayer(selLayer.id)} style={iconBtn({ width: 36, height: 36, background: C.raised, borderRadius: 10, color: C.redText })}><Trash2 size={16} /></button>
+                </>
+              )}
+              {(deskMode || selKind !== "slide") && (
+                <button
+                  aria-label={deskMode ? "Close" : "Unselect"}
+                  title={deskMode ? "Close" : "Unselect (Esc)"}
+                  onClick={() => (deskMode ? setDeskMode(null) : clearSelectionAll())}
+                  style={iconBtn({ width: 36, height: 36, color: C.sec })}
+                >
+                  <X size={18} />
+                </button>
+              )}
             </div>
-            {/* Panel content */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
-              {renderTab()}
+            {total > 1 && <div style={{ padding: "4px 12px 8px" }}>{scopeToggle()}</div>}
+            {!deskMode && (
+              <div style={{ display: "flex", gap: 2, padding: "0 8px 10px", borderBottom: `1px solid ${C.line}` }}>
+                {kindTools.map(([id, label, Icon]) => {
+                  const on = id === deskTool;
+                  return (
+                    <button
+                      key={id}
+                      aria-pressed={on}
+                      onClick={() => onDeskTab(id)}
+                      style={{ flex: 1, minWidth: 0, height: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, border: "none", borderRadius: 12, padding: 0, fontSize: 11, fontWeight: on ? 600 : 500, color: on ? C.text : C.sec, background: on ? C.hover : "transparent", cursor: "pointer", fontFamily: "inherit" }}
+                    >
+                      <Icon size={18} />
+                      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 20px" }}>
+              {deskMode === "add" ? addPanel() : deskMode === "layers" ? layersPanel() : renderTool(deskTool)}
             </div>
           </div>
 
-          {/* ── LAYER TOOLBAR (44px vertical strip) ─────────────── */}
-          <LayerToolbar
-            canUndo={canUndoLayer}
-            canRedo={canRedoLayer}
-            onUndo={undoLayer}
-            onRedo={redoLayer}
-            onAddShape={(type) => {
-              // Text is an element (tight box + rich text panel), not a shape layer
-              if (type === "text") { addTextElement(); setActiveTab("slide"); return; }
-              addShapeAspect(type);
-              setActiveTab("layers");
-            }}
-            onAddImage={(src) => {
-              addLayer("image", { src });
-              setActiveTab("layers");
-            }}
-          />
-
-          {/* ── CANVAS CENTER AREA (vertically scrollable all-slides) ── */}
-          <div
-            ref={desktopWrapperRef}
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              background: "#1a1d27",
-              minWidth: 0,
-            }}
-          >
-            {/* Layer stack pinned at top */}
-            <LayerStack
-              layers={layers}
-              selectedIds={layerSelectedIds}
-              onSelectLayer={selectLayer}
-              onUpdateLayer={updateLayer}
-              onDeleteLayer={deleteLayer}
-              onDuplicateLayer={duplicateLayer}
-              onShiftZ={shiftZ}
-            />
-
-            {/* Single-slide view with side controls */}
+          {/* Canvas */}
+          <div ref={desktopWrapperRef} style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#0c0e12", minWidth: 0 }}>
             {(() => {
               const SIDE_W = 44;
               // canvasAreaSize is the measured CONTENT box of the row below
@@ -6080,206 +4530,61 @@ export default function TikTokStudioV3({ listing, onClose }) {
               const availH = Math.max(measured ? canvasAreaSize.h : desktopWrapperSize.h - 24, 80);
               const { displayW: slideW, displayH: slideH } = computeDisplaySize(CW / CH, availW, availH);
               const slideScale = CW > 0 ? slideW / CW : 0.3;
-              const btnBase = {
-                width: 28, height: 28, borderRadius: 6, border: "none",
-                background: "transparent", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "background 0.15s, color 0.15s",
+              const sideBtn = (dis) => ({
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: "none",
+                background: "transparent",
+                color: dis ? "#3a404b" : C.sec,
+                cursor: dis ? "default" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 flexShrink: 0,
-              };
+              });
               return (
                 <div ref={measureCanvasArea} style={{ flex: 1, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", overflow: "hidden", padding: "12px 24px", minHeight: 0 }}>
-                  {/* Active slide canvas — no header/nav, fills panel */}
-                  <div
-                    style={{
-                      position: "relative",
-                      width: slideW,
-                      height: slideH,
-                      borderRadius: 8,
-                      flexShrink: 0,
-                      boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-                      isolation: "isolate",
-                    }}
-                  >
+                  <div style={{ position: "relative", width: slideW, height: slideH, borderRadius: 8, flexShrink: 0, boxShadow: "0 8px 32px rgba(0,0,0,0.6)", isolation: "isolate" }}>
                     <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 8, zIndex: 0 }}>
-                      <CanvasPreview
-                        {...previewProps}
-                        slide={slide}
-                        scale={slideScale}
-                        canvasW={CW}
-                        canvasH={CH}
-                        hideInteractive
-                      />
+                      <CanvasPreview {...previewProps} slide={slide} scale={slideScale} canvasW={CW} canvasH={CH} hideInteractive />
                     </div>
-
-                    {showImagePicker && (
-                      <div style={{ position: "absolute", inset: 0, borderRadius: 8, overflow: "hidden", zIndex: 30 }}>
-                        <ImagePicker
-                          images={[...uploadedImages, ...rawImages]}
-                          current={slide.imageUrl}
-                          onSelect={(url) => patchSlide({ imageUrl: url })}
-                          onClose={() => setShowImagePicker(false)}
-                        />
-                      </div>
-                    )}
-
-                    {!showImagePicker && (
-                      <>
-                        <LayerCanvas
-                          layers={layers}
-                          selectedIds={layerSelectedIds}
-                          scale={slideScale}
-                          canvasW={CW}
-                          canvasH={CH}
-                          onSelectLayer={(id, multi) => {
-                            selectLayer(id, multi);
-                            setSelectedId(null);
-                            setActiveTab("layers");
-                          }}
-                          onClearSelection={clearLayerSelection}
-                          onUpdateLayer={updateLayer}
-                          onCommitHistory={commitLayerHistory}
-                          onDeleteLayer={deleteLayer}
-                        />
-                        <div
-                          ref={canvasInnerRef}
-                          style={{
-                            position: "absolute",
-                            inset: 0,
-                            zIndex: 25,
-                            overflow: "hidden",
-                            borderRadius: 8,
-                            pointerEvents: "none",
-                          }}
-                        >
-                          {(slide.elements || [])
-                            .filter((el) => el.id !== "watermark")
-                            .map((el) => (
-                              <div key={el.id} style={{ pointerEvents: "auto" }}>
-                                {editingId === el.id ? (
-                                  <InlineEditor
-                                    el={el}
-                                    scale={slideScale}
-                                    onCommit={(v) => onCommitEdit(el.id, v)}
-                                    onCancel={() => setEditingId(null)}
-                                  />
-                                ) : (
-                                  <CanvasElement
-                                    el={el}
-                                    scale={slideScale}
-                                    highlighted={(highlightIds || []).includes(el.id)}
-                                    fontStack={fontObj.stack}
-                                    onSelect={previewProps.onSelectElement}
-                                    onStartDrag={(e, id) => onStartDrag(e, id, slideScale)}
-                                    onDoubleClick={(id) => setEditingId(id)}
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          {selectedEl && selectedId && !editingId && !selectedEl.locked && (
-                            <div style={{ pointerEvents: "auto" }}>
-                              <SelectionOverlay
-                                elId={selectedId}
-                                el={selectedEl}
-                                canvasInnerRef={canvasInnerRef}
-                                onStartResize={(e, id, handle) => onStartResize(e, id, handle, slideScale)}
-                                onStartRotate={onStartRotate}
-                                onUpdate={updateSelectedElement}
-                                onDuplicate={duplicateSelected}
-                                onDelete={deleteSelected}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
+                    {canvasLayers(slideScale)}
                   </div>
 
-                  {/* Right side controls column */}
-                  <div style={{
-                    display: "flex", flexDirection: "column", alignItems: "center",
-                    justifyContent: "space-between",
-                    height: slideH, width: SIDE_W, marginLeft: 8, flexShrink: 0,
-                    paddingTop: 4, paddingBottom: 4,
-                  }}>
-                    {/* Top: slide label + manage buttons */}
+                  {/* Slides column: order, copy, delete, move between */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between", height: slideH, width: SIDE_W, marginLeft: 8, flexShrink: 0, padding: "4px 0" }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                      <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700, letterSpacing: "0.06em", marginBottom: 4 }}>
-                        {active + 1}/{total}
-                      </span>
+                      <span style={{ fontSize: 11, color: C.muted, fontWeight: 600, marginBottom: 4, fontVariantNumeric: "tabular-nums" }}>{active + 1}/{total}</span>
                       {[
-                        { icon: <MoveUp size={12} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move up" },
-                        { icon: <MoveDown size={12} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move down" },
-                        { icon: <Copy size={12} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate" },
-                        { icon: <Trash2 size={12} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete" },
+                        { icon: <MoveUp size={15} />, fn: () => moveSlide(active, -1), dis: active === 0, title: "Move slide up" },
+                        { icon: <MoveDown size={15} />, fn: () => moveSlide(active, 1), dis: active === total - 1, title: "Move slide down" },
+                        { icon: <Copy size={15} />, fn: () => duplicateSlideAt(active), dis: false, title: "Duplicate slide" },
+                        { icon: <Trash2 size={15} />, fn: () => removeSlide(active), dis: total <= 1, title: "Delete slide" },
                       ].map(({ icon, fn, dis, title }) => (
-                        <button
-                          key={title}
-                          onClick={fn}
-                          disabled={dis}
-                          title={title}
-                          style={{
-                            ...btnBase,
-                            color: dis ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.4)",
-                            cursor: dis ? "default" : "pointer",
-                          }}
-                          onMouseEnter={e => { if (!dis) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = dis ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.4)"; }}
-                        >{icon}</button>
+                        <button key={title} aria-label={title} title={title} onClick={fn} disabled={dis} style={sideBtn(dis)}>{icon}</button>
                       ))}
                     </div>
-
-                    {/* Bottom: prev / vertical dots / next / add */}
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <button
-                        onClick={() => { setActive(Math.max(0, active - 1)); setSelectedId(null); }}
-                        disabled={active === 0}
-                        title="Previous slide"
-                        style={{ ...btnBase, color: active === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)", cursor: active === 0 ? "default" : "pointer" }}
-                        onMouseEnter={e => { if (active > 0) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)"; }}
-                      ><ChevronLeft size={14} style={{ transform: "rotate(90deg)" }} /></button>
-
-                      {/* Vertical dots */}
+                      <button aria-label="Previous slide" onClick={() => { setActive(Math.max(0, active - 1)); clearSelectionAll(); }} disabled={active === 0} style={sideBtn(active === 0)}>
+                        <ChevronLeft size={16} style={{ transform: "rotate(90deg)" }} />
+                      </button>
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-                        {slides.map((_, i) => (
+                        {slides.map((s, i) => (
                           <button
-                            key={i}
-                            onClick={() => { setActive(i); setSelectedId(null); }}
-                            title={`Slide ${i + 1}`}
-                            style={{
-                              width: 6, height: i === active ? 18 : 6,
-                              borderRadius: 3, border: "none",
-                              background: i === active ? "#2563eb" : "rgba(255,255,255,0.2)",
-                              cursor: "pointer", padding: 0, flexShrink: 0,
-                              transition: "height 0.15s, background 0.15s",
-                            }}
+                            key={s.id}
+                            aria-label={`Slide ${i + 1}`}
+                            onClick={() => { setActive(i); clearSelectionAll(); }}
+                            style={{ width: 6, height: i === active ? 18 : 6, borderRadius: 3, border: "none", background: i === active ? C.text : "rgba(255,255,255,0.2)", cursor: "pointer", padding: 0, flexShrink: 0 }}
                           />
                         ))}
                       </div>
-
-                      <button
-                        onClick={() => { setActive(Math.min(total - 1, active + 1)); setSelectedId(null); }}
-                        disabled={active === total - 1}
-                        title="Next slide"
-                        style={{ ...btnBase, color: active === total - 1 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)", cursor: active === total - 1 ? "default" : "pointer" }}
-                        onMouseEnter={e => { if (active < total - 1) { e.currentTarget.style.background = "rgba(255,255,235,0.08)"; e.currentTarget.style.color = "#fff"; }}}
-                        onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = active === total - 1 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.5)"; }}
-                      ><ChevronRight size={14} style={{ transform: "rotate(90deg)" }} /></button>
-
-                      <button
-                        onClick={addSlide}
-                        title="Add slide"
-                        style={{
-                          width: 28, height: 28, borderRadius: 6,
-                          border: "1px solid rgba(37,99,235,0.35)",
-                          background: "transparent", color: "#3b82f6",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          transition: "background 0.15s", flexShrink: 0,
-                        }}
-                        onMouseEnter={e => e.currentTarget.style.background = "rgba(37,99,235,0.1)"}
-                        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                      ><Plus size={13} /></button>
+                      <button aria-label="Next slide" onClick={() => { setActive(Math.min(total - 1, active + 1)); clearSelectionAll(); }} disabled={active === total - 1} style={sideBtn(active === total - 1)}>
+                        <ChevronRight size={16} style={{ transform: "rotate(90deg)" }} />
+                      </button>
+                      <button aria-label="Add slide" title="Add slide" onClick={addSlide} style={{ ...sideBtn(false), border: "1px dashed #3a404b" }}>
+                        <Plus size={15} />
+                      </button>
                     </div>
                   </div>
                 </div>

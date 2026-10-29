@@ -1958,6 +1958,80 @@ which only paid accounts can open (Premium, dealers, dealer-linked salesmen; Lit
 - **Photos are fetched with `?cors=1`** (`fetchPhoto`): the service worker holds car photos as opaque <img> copies and a CORS fetch of one fails as "Failed to fetch" (first staging test, 2026-10-23).
 - Speed (owner, 2026-10-23): about 30 s on an Oppo Reno 10 5G, 1 min 20 s on a 4 GB Chromebook. Faster path if needed: WebGPU (`onnxruntime-web/webgpu`, +~7 MB gzipped engine).
 
+## Studio backdrops behind a cut-out (BACKDROP-1, 2026-10-29) — Premium only
+After Remove BG (CUTOUT-1) the Studio offers drawn scenes BEHIND the car: Studio, Spotlight,
+Stripes, Brand (theme accent), Dusk, Light, plus a ground shadow and Car size / Car height
+sliders (`src/components/studio/backdrops.js`, `npm run test:backdrops`). Drawn in canvas: no
+AI, no server, no cost. Gate = the `backdrops` prop on `TikTokStudioV3`, passed ONLY by
+SalesmanPremium.jsx (dealer dashboard and linked salesman do not get it). It is the Photo's
+Backdrop tool; before a cut-out it offers Remove BG instead; the first cut-out lands on Studio. The car is placed by the
+opaque pixels of the cut-out (`cutoutBounds`), standing on the floor line, inside the
+template's `carZone` when one is set. Slide fields: `backdrop` ('none' = off), `carShadow`,
+`carFit {size, lift}`. A cut-out no longer gets the blurred copy behind it (it was a dark
+smear) on any surface. AI scenes behind the car (Gemini / FLUX, ~US$0.02-0.04 each) are
+PARKED until revenue covers them: if built, the key lives in an edge function, never the
+browser, and the AI never draws the car or the numbers.
+
+## Studio editor gestures (STUDIO-UX-1, 2026-10-29) — the rules that keep it usable
+Tap selects, tap empty canvas unselects, double-tap a text edits it (measured in
+`CanvasElement`'s onClick, 320ms: phones do not fire dblclick reliably). A press only moves an
+object after 5px of travel (`DRAG_START_PX`; `LayerCanvas` the same), so a tap is not a drag and
+not an Undo step; `touchcancel` ends a drag. Text elements carry `touch-action: none`, and the
+phone canvas area never scrolls: it is SIZED to its measured box (`mobAreaRef`, ResizeObserver).
+- **Never render a component declared INSIDE `TikTokStudioV3` as JSX** (`<BgAdjustPanel/>`):
+  it is a new type every render, so React remounts it on every change and a slider drag dies
+  after one step. Call it as a function (`BgAdjustPanel({...})`), and use the ONE slider,
+  `studio/DragSlider.jsx` (a second copy inside the studio was the bug). No `<input type=range>`.
+- The full-canvas dark gradient (`makeOverlayLayer`) is created LOCKED, or it catches every
+  tap meant for empty space. Unlock it from the Layers list to edit it.
+- Still open (owner, 2026-10-29): merge the two text systems (elements in px vs layers in %).
+  One change of its own, not mixed into fixes. (Cutting the panels down was STUDIO-UX-2.)
+
+## Studio tools follow the selection (STUDIO-UX-2, 2026-10-29) — one place, per object
+The 8 fixed tabs (Slides, Photo, Design, Brand, Badges, Layers, AI, Library) are gone. What is
+selected picks the tools (`TOOLSETS`, `renderTool` in TikTokStudioV3.jsx), shown in ONE place:
+the phone's bottom bar (a tool opens a half-height sheet, the canvas shrinks above it) and the
+desktop's side panel (tabs; the last tab per kind reopens). Mockup: the canvas artifact
+https://claude.ai/artifact/7egMaKbR5ux5xsqdb43odu
+- Kinds: nothing = the slide (Templates incl. My designs, Photo, Design, Brand, AI) · photo
+  (Replace, Remove BG, Adjust, Backdrop) · text · badge · shape · image. Arrange is the same for
+  every object and always last. A template text layer counts as text; its tabs are
+  `LayerPropertiesPanel only={[...]}` sections. Never add a tab that mixes two kinds again.
+- Fixed, never contextual: Undo/Redo/Save/Export (header), Add + Layers (phone: bar's first slot
+  and the chip row; desktop: the left rail). Duplicate/Lock/Delete float over the selection
+  (`SelectionOverlay`, `ObjectMiniBar` in LayerCanvas), the same three for every object.
+- ONE selection at a time: `selectElement` / `selectLayerOnly` / `selectPhoto` /
+  `clearSelectionAll`. Tapping empty canvas = the slide. The photo is selected from the slide's
+  Photo tool or the Layers list (tapping the photo IS tapping empty space).
+- **This slide | All slides** (`scopeAll`, logic in `src/components/studio/scope.js`,
+  `npm run test:scope`). Objects that are "the same thing" on every slide share a `link` key:
+  a template applied in All slides mode (`<run>-e<n>` / `-l<n>`), anything added in All slides
+  mode, the dark gradient (`link: "overlay"`), the watermark (fixed id). In All slides mode every
+  write (panel, drag, resize, delete, duplicate, order) reaches all linked copies, live; an
+  object with no link edits only itself and the header says so. Photo settings apply per FIELD
+  (`patchPhotos(fn)`), so one adjustment never wipes a slide's others; Replace photo is always
+  this slide only. New element/layer writes go through these helpers, never a raw `setSlides`
+  on one slide, or All slides silently skips them.
+- ONE history: layer edits are recorded in the slides history (the layers persist effect +
+  `scheduleHistory`), and undo hands the slide's layers back to the layer editor
+  (`syncingLayers` guards that reload). The layer editor's own undo is unused; there is no
+  second Undo button (the phone could not undo a shape at all before).
+- **Never resize the phone canvas mid-tap.** A phone sends the tap's click after the finger
+  lifts; if the canvas moved in between (the sheet closing), the click picks whatever slid
+  under it. So a canvas press closes the sheet only after it ends (`pressingCanvas`,
+  `closeSheetSoon`), a sheet whose tool the new selection lacks keeps its height until then,
+  and a late close never shuts a sheet opened after it was scheduled (`sheetVer`).
+- **Remove BG is ONE photo at a time, this slide only, never on a cut-out** (owner, 2026-10-29:
+  "it loses quality"). No batch over All slides; a cut slide offers "Put the background back".
+- **Changing the frame size fits from the layout as it was before the first switch** (`fmtBase`
+  in the format effect). Fitting the last fit shrank the design every round trip (9:16 -> 1:1 ->
+  9:16 came back at 56%). An edit in between makes the current layout the new base.
+- Photo/image adjustments are `AdjustStrip` (one row of named adjustments, ONE slider, a ring
+  on changed ones, snaps to the default, double-tap resets). Removed as dead: the slide Template
+  text grid and "Generate All Slides" (wrote to text ids nothing creates), watermark position
+  (drew nothing), badge italic/shadow/align (ignored by the badge), desktop "Use + shoot" (no
+  camera on desktop), the layer QuickPanel's +/-5 order and the duplicate colour controls.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
