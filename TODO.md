@@ -2708,6 +2708,20 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-25: Owner's own supercar concierge storefront (owner, 2026-10-29)** — a separate
+  account (auzyvyth+premium@gmail.com), same seller dashboard, a brand-new page: "Your personal
+  online supercar concierge". Only high-end cars (RM100k+ floor, the owner's target is 5 sales a
+  month), sourced from salesmen across Malaysia, sold by the owner as broker. Reuse, don't build:
+  the dealer/salesman storefront + `/s/:slug` already give "same dashboard, own page"; the new part
+  is the page design. Do NOT copy other sellers' cars into this account (duplicate cards on the
+  marketplace, stale price/sold status, the won-trigger marks the copy sold not the real car, and
+  their photos are their copyright). Feature their real listing instead, with the source seller's
+  WRITTEN opt-in + agreed split, because the platform owner brokering on his own platform with
+  admin sight of every listing and lead is a conflict sellers must agree to. Legal to verify
+  before selling: Second-Hand Dealers Act 1946 licence (PDRM) for trading used cars; customs
+  duty status of each car (Customs seizes duty-unpaid/grey supercars; a buyer's car being seized
+  ends the brand); AP/import papers, ownership + HP settlement before any deposit; deposits into a
+  company account, never personal. Domain from `src/config/site.js`, copy says Drevo.
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
