@@ -68,6 +68,8 @@ import GradientEditor, { gradientCss, DEFAULT_GRADIENT, DARK_SCRIM_GRADIENT } fr
 import { loadCustomFonts, saveCustomFont, deleteCustomFont } from "./studio/customFonts";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
+// A press moves the object only after the finger travels this far.
+const DRAG_START_PX = 5;
 const CANVAS_W = 1080;
 const CANVAS_H = 1920;
 // zIndex plane the interactive text/badge elements render on (see CanvasPreview
@@ -498,6 +500,9 @@ function makeOverlayLayer(overrides = {}) {
     borderWidth: 0,
     borderRadius: 0,
     zIndex: OVERLAY_Z,
+    // Covers the whole canvas: unlocked, it caught every tap meant for "empty
+    // space", so nothing ever unselected. Unlock it from the Layers list to edit.
+    locked: true,
     ...overrides,
   });
 }
@@ -1055,6 +1060,8 @@ function CanvasElement({
   onStartDrag,
   onDoubleClick,
 }) {
+  // Double-tap to edit, measured here: phones do not reliably fire dblclick.
+  const lastTap = React.useRef(0);
   if (!el.visible) return null;
 
   const sharedStyle = {
@@ -1066,6 +1073,9 @@ function CanvasElement({
     transformOrigin: "center",
     cursor: el.locked ? "default" : "pointer",
     userSelect: "none",
+    WebkitUserSelect: "none",
+    // This finger is ours: without it a vertical drag scrolled the page instead.
+    touchAction: "none",
     animation: highlighted ? "ttsv3-highlight 0.6s ease" : "none",
   };
 
@@ -1073,6 +1083,13 @@ function CanvasElement({
     onClick: (e) => {
       e.stopPropagation();
       onSelect(el.id);
+      const now = Date.now();
+      if (now - lastTap.current < 320 && !el.locked) {
+        lastTap.current = 0;
+        onDoubleClick(el.id);
+      } else {
+        lastTap.current = now;
+      }
     },
     onMouseDown: (e) => {
       if (el.locked) return;
@@ -1084,7 +1101,6 @@ function CanvasElement({
       e.stopPropagation();
       onStartDrag(e, el.id);
     },
-    onDoubleClick: () => !el.locked && onDoubleClick(el.id),
   };
 
   if (el.type === "badge") {
@@ -2193,6 +2209,22 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   useEffect(() => { isCutoutModelSaved().then(setCutoutSaved); }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  // Phone: the canvas area's REAL size, measured. It used to be guessed from
+  // window.innerHeight once, so rotating, the browser bar hiding or a panel
+  // opening left the canvas the wrong size (cut off or overflowing).
+  const [mobArea, setMobArea] = useState({ w: 0, h: 0 });
+  const mobAreaObs = useRef(null);
+  const mobAreaRef = useCallback((node) => {
+    mobAreaObs.current?.disconnect();
+    mobAreaObs.current = null;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setMobArea((p) => (Math.abs(p.w - width) < 1 && Math.abs(p.h - height) < 1 ? p : { w: width, h: height }));
+    });
+    ro.observe(node);
+    mobAreaObs.current = ro;
+  }, []);
   const [sheetPanel, setSheetPanel] = useState(null); // mobile bottom sheet
   // Measured size of the desktop canvas workspace div (excluding padding)
   const [desktopWrapperSize, setDesktopWrapperSize] = useState({
@@ -2732,6 +2764,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         origX: el.x,
         origY: el.y,
         dragScale,
+        moved: false,
       };
       e.preventDefault();
     },
@@ -2822,6 +2855,12 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
       if (dragging.current) {
         const { id, startX, startY, origX, origY, dragScale } = dragging.current;
+        if (e.touches) e.preventDefault();
+        // A tap wobbles a few pixels: only a real move drags the text.
+        if (!dragging.current.moved) {
+          if (Math.hypot(cx - startX, cy - startY) < DRAG_START_PX) return;
+          dragging.current.moved = true;
+        }
         const s = dragScale || scale;
         updateElement(id, {
           x: Math.max(0, Math.min(CW - 40, origX + (cx - startX) / s)),
@@ -2850,7 +2889,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
     const onUp = () => {
       const wasDragging = !!(
-        dragging.current ||
+        dragging.current?.moved ||
         resizing.current ||
         rotating.current ||
         pinching.current
@@ -2872,11 +2911,15 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     document.addEventListener("mouseup", onUp);
     document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("touchend", onUp);
+    // A phone can cancel a touch mid-drag (a call, a system gesture); without
+    // this the text stayed stuck to the next finger.
+    document.addEventListener("touchcancel", onUp);
     return () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("touchend", onUp);
+      document.removeEventListener("touchcancel", onUp);
     };
   }, [scale, updateElement, CW, CH]);
 
@@ -3860,16 +3903,12 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
                 {selectedEl.borderRadius ?? 999}px
               </span>
             </div>
-            <input
-              type="range"
+            <DragSlider
               min={0}
               max={999}
               step={1}
               value={selectedEl.borderRadius ?? 999}
-              onChange={(e) =>
-                updateSelectedElement({ borderRadius: Number(e.target.value) })
-              }
-              style={{ width: "100%", accentColor: "#3b82f6", touchAction: "none" }}
+              onChange={(v) => updateSelectedElement({ borderRadius: v })}
             />
           </div>
         )}
@@ -3935,10 +3974,10 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
       {ElPropsPanel()}
 
       <SectionHead label="Pro Templates" />
-      <TemplateCards />
+      {TemplateCards()}
 
       <SectionHead label="Image" />
-      <PhotoSourceButtons />
+      {PhotoSourceButtons()}
 
       <SectionHead label="Template" />
       <div
@@ -4945,27 +4984,25 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     if (activeTab === "layers") return LayersPanel();
     if (activeTab === "ai") return AIPanel();
     if (activeTab === "library") return LibraryPanel();
-    if (activeTab === "photo") return (
-      <BgAdjustPanel
-        adj={slide?.bgAdjust || {}}
-        onPatch={(p) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...p } })}
-        onChangeBg={() => setShowImagePicker(true)}
-        imageUrl={slide?.imageUrl}
-        originalImageUrl={slide?.originalImageUrl}
-        onRemoveBg={removeBg}
-        onRestoreBg={restoreBg}
-        removingBg={removingBg}
-        removeBgError={removeBgError}
-        removeBgStatus={removeBgStatus}
-        cutoutSaved={cutoutSaved}
-        showBackdrops={backdrops}
-        backdrop={slide?.backdrop}
-        carShadow={slide?.carShadow}
-        carFit={slide?.carFit}
-        accent={theme.accentColor}
-        onPatchSlide={patchSlide}
-      />
-    );
+    if (activeTab === "photo") return BgAdjustPanel({
+        adj: slide?.bgAdjust || {},
+        onPatch: (p) => patchSlide({ bgAdjust: { ...(slide?.bgAdjust || {}), ...p } }),
+        onChangeBg: () => setShowImagePicker(true),
+        imageUrl: slide?.imageUrl,
+        originalImageUrl: slide?.originalImageUrl,
+        onRemoveBg: removeBg,
+        onRestoreBg: restoreBg,
+        removingBg,
+        removeBgError,
+        removeBgStatus,
+        cutoutSaved,
+        showBackdrops: backdrops,
+        backdrop: slide?.backdrop,
+        carShadow: slide?.carShadow,
+        carFit: slide?.carFit,
+        accent: theme.accentColor,
+        onPatchSlide: patchSlide,
+      });
   };
 
   // tabBar used only in mobile sidebar
@@ -5043,52 +5080,9 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
   };
 
   // ── BgAdjustPanel ────────────────────────────────────────────────────────
-  // Custom slider — pointer events so drag works on both touch and mouse
-  function DragSlider({ min, max, step, value, onChange }) {
-    const trackRef = useRef(null);
-    const dragging = useRef(false);
-    const pct = ((value - min) / (max - min)) * 100;
-
-    const valueFromPointer = (e) => {
-      const rect = trackRef.current.getBoundingClientRect();
-      const x = (e.clientX ?? e.touches?.[0]?.clientX) - rect.left;
-      const ratio = Math.max(0, Math.min(1, x / rect.width));
-      const raw = min + ratio * (max - min);
-      const snapped = Math.round(raw / step) * step;
-      return parseFloat(Math.max(min, Math.min(max, snapped)).toFixed(4));
-    };
-
-    const onPointerDown = (e) => {
-      e.preventDefault();
-      dragging.current = true;
-      trackRef.current.setPointerCapture(e.pointerId);
-      onChange(valueFromPointer(e));
-    };
-    const onPointerMove = (e) => {
-      if (!dragging.current) return;
-      e.preventDefault();
-      onChange(valueFromPointer(e));
-    };
-    const onPointerUp = () => { dragging.current = false; };
-
-    return (
-      <div
-        ref={trackRef}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        style={{ position: "relative", height: 28, cursor: "pointer", touchAction: "none", userSelect: "none" }}
-      >
-        {/* Track */}
-        <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 3, marginTop: -1.5, borderRadius: 999, background: "rgba(255,255,255,0.1)" }} />
-        {/* Fill */}
-        <div style={{ position: "absolute", top: "50%", left: 0, width: pct + "%", height: 3, marginTop: -1.5, borderRadius: 999, background: "#2563eb" }} />
-        {/* Thumb */}
-        <div style={{ position: "absolute", top: "50%", left: pct + "%", transform: "translate(-50%,-50%)", width: 16, height: 16, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.4)", border: "2px solid #2563eb" }} />
-      </div>
-    );
-  }
-
+  // Called as a FUNCTION, never as <BgAdjustPanel/>: a component declared inside
+  // the studio is a new type every render, so React remounted it (and its
+  // sliders) on every value change and a drag died after the first step.
   function BgAdjustPanel({ adj, onPatch, onChangeBg, imageUrl, originalImageUrl, onRemoveBg, onRestoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved, showBackdrops, backdrop, carShadow, carFit, accent, onPatchSlide }) {
     const a = { brightness: 1, contrast: 1, saturation: 1, warmth: 0, blur: 0, vignette: 0, ...adj };
     const signed = (v) => { const n = Math.round((v - 1) * 100); return (n > 0 ? "+" : "") + n; };
@@ -5210,10 +5204,11 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     const HEADER_H = 46;
     const STRIP_H = 36;
     const DOCK_H = 52;
+    // 16 = the inner wrapper's 8px padding top and bottom / side gutter.
     const { displayW: mobW, displayH: mobH } = computeDisplaySize(
       CW / CH,
-      window.innerWidth - 16,
-      window.innerHeight - HEADER_H - STRIP_H - DOCK_H - 12,
+      Math.max(80, (mobArea.w || window.innerWidth) - 16),
+      Math.max(80, (mobArea.h || window.innerHeight - HEADER_H - STRIP_H - DOCK_H) - 16),
     );
     const mobScale = CW > 0 ? mobW / CW : 0.3;
 
@@ -5252,8 +5247,8 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           <div style={{ padding: "12px 14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
             <SectionHead label="Canvas Format" />
             {FormatSelector()}
-            <PhotoSourceButtons />
-            <TemplateCards />
+            {PhotoSourceButtons()}
+            {TemplateCards()}
           </div>
         );
       }
@@ -5276,7 +5271,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
         );
       }
       if (sheetPanel === "photo") {
-        return <BgAdjustPanel adj={slide?.bgAdjust || {}} onPatch={patchBg} onChangeBg={() => { setShowImagePicker(true); setSheetPanel(null); }} imageUrl={slide?.imageUrl} originalImageUrl={slide?.originalImageUrl} onRemoveBg={removeBg} onRestoreBg={restoreBg} removingBg={removingBg} removeBgError={removeBgError} removeBgStatus={removeBgStatus} cutoutSaved={cutoutSaved} showBackdrops={backdrops} backdrop={slide?.backdrop} carShadow={slide?.carShadow} carFit={slide?.carFit} accent={theme.accentColor} onPatchSlide={patchSlide} />;
+        return BgAdjustPanel({ adj: slide?.bgAdjust || {}, onPatch: patchBg, onChangeBg: () => { setShowImagePicker(true); setSheetPanel(null); }, imageUrl: slide?.imageUrl, originalImageUrl: slide?.originalImageUrl, onRemoveBg: removeBg, onRestoreBg: restoreBg, removingBg, removeBgError, removeBgStatus, cutoutSaved, showBackdrops: backdrops, backdrop: slide?.backdrop, carShadow: slide?.carShadow, carFit: slide?.carFit, accent: theme.accentColor, onPatchSlide: patchSlide });
       }
       if (sheetPanel === "shapes") {
         return (
@@ -5598,19 +5593,20 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
           ><Plus size={13} /></button>
         </div>
 
-        {/* Canvas — scrollable, shrinks when sheet opens, scroll pos preserved.
+        {/* Canvas — sized to the measured area, shrinks when the sheet opens.
             Any press (tap OR drag start) outside the sheet closes it — capture
             phase, so canvas gestures continue uninterrupted. */}
         <div
+          ref={mobAreaRef}
           onTouchStartCapture={() => { if (sheetPanel) setSheetPanel(null); }}
           onMouseDownCapture={() => { if (sheetPanel) setSheetPanel(null); }}
           style={{
             flex: 1,
             minHeight: 0,
-            overflowY: "auto",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            touchAction: "pan-y",
+            // The canvas is sized to fit (mobArea), so this area never scrolls:
+            // a scrollable area here stole every vertical drag of a text.
+            overflow: "hidden",
+            touchAction: "none",
             display: "flex",
             flexDirection: "column",
             alignItems: "center",

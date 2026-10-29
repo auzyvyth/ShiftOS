@@ -774,7 +774,7 @@ export default function LayerCanvas({
       const cx = e.touches?.[0]?.clientX ?? e.clientX;
       const cy = e.touches?.[0]?.clientY ?? e.clientY;
       const p = pxOf(layer);
-      dragRef.current = { id: layer.id, startX: cx, startY: cy, origX: p.x, origY: p.y, w: p.w, h: p.h };
+      dragRef.current = { id: layer.id, startX: cx, startY: cy, origX: p.x, origY: p.y, w: p.w, h: p.h, moved: false };
     },
     [onSelectLayer, startPinch, pxOf],
   );
@@ -866,6 +866,11 @@ export default function LayerCanvas({
       if (dragRef.current) {
         if (e.touches) e.preventDefault();
         const { id, startX, startY, origX, origY, w, h } = dragRef.current;
+        // A tap wobbles a few pixels: only a real move drags the shape.
+        if (!dragRef.current.moved) {
+          if (Math.hypot(cx - startX, cy - startY) < 5) return;
+          dragRef.current.moved = true;
+        }
         let nx = origX + (cx - startX);
         let ny = origY + (cy - startY);
         let sV = false, sH = false;
@@ -944,7 +949,7 @@ export default function LayerCanvas({
         pinchRef.current = null;
         return;
       }
-      if (dragRef.current || resizeRef.current || rotateRef.current || pinchRef.current) {
+      if (dragRef.current?.moved || resizeRef.current || rotateRef.current || pinchRef.current) {
         onCommitHistory?.();
       }
       dragRef.current = null;
@@ -959,7 +964,9 @@ export default function LayerCanvas({
     document.addEventListener("touchmove", onMove, { passive: false });
     document.addEventListener("mouseup", onUp);
     document.addEventListener("touchend", onUp);
+    document.addEventListener("touchcancel", onUp);
     return () => {
+      document.removeEventListener("touchcancel", onUp);
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("touchmove", onMove);
       document.removeEventListener("mouseup", onUp);
