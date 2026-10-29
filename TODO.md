@@ -2742,6 +2742,8 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   Never let AI draw the car or print the numbers (wrong car = misleading ad; numbers come
   from financing.js). remove.bg self-service API shuts 1 Dec 2026, so POSTER-2 must not
   be fixed on remove.bg. Our edge they lack: seller page, leads, chat, marketplace, EIR maths.
+  2026-10-29: drawn backdrops behind the cut-out shipped for Premium (BACKDROP-1, see
+  CLAUDE.md). The paid AI scene is the open half: parked until revenue covers ~RM0.10-0.18 each.
 
 - **IDEA-20: Sell the loan calculator on its own, ~RM25 one-time (owner, 2026-10-23)** —
   owner met a seller who paid RM300 for a bare Excel file (basic instalment maths, no

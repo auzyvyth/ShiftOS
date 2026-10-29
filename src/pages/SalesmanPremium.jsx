@@ -7939,7 +7939,7 @@ export default function SalesmanPremium() {
      stacking context can clip it (overlay rule 1). */}
  {studioCar && (
  <Suspense fallback={null}>
- <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} />
+ <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} backdrops />
  </Suspense>
  )}
  {posterCar && (
