@@ -147,6 +147,8 @@ export default function SellerFeedbackTab({ feedback, listings = [], sellerName,
   const [view, setView] = useState('questions');
   const carById = useMemo(() => Object.fromEntries(listings.map((c) => [c.id, c])), [listings]);
   const { threads, reviews, likes, unanswered, loading, reply } = feedback;
+  // Only the section on screen waits for its own read; the others may still be loading.
+  const busy = !!loading?.[view];
 
   const sortedThreads = useMemo(
     () => [...threads].sort((a, b) => (a.answered - b.answered) || (new Date(b.created_at) - new Date(a.created_at))),
@@ -199,15 +201,15 @@ export default function SellerFeedbackTab({ feedback, listings = [], sellerName,
         })}
       </div>
 
-      {loading && <p style={{ margin: 0, fontSize: 13, color: th.muted }}>{t('feedback.loading')}</p>}
+      {busy && <p style={{ margin: 0, fontSize: 13, color: th.muted }}>{t('feedback.loading')}</p>}
 
-      {!loading && view === 'questions' && (sortedThreads.length === 0
+      {!busy && view === 'questions' && (sortedThreads.length === 0
         ? empty(<MessageSquare size={22} />, t('feedback.empty.questionsTitle'), t('feedback.empty.questionsBody'))
         : sortedThreads.map((q) => (
           <QuestionCard key={q.id} q={q} car={carById[q.listing_id]} th={th} t={t} onReply={reply} sellerName={sellerName} />
         )))}
 
-      {!loading && view === 'reviews' && (reviews.length === 0
+      {!busy && view === 'reviews' && (reviews.length === 0
         ? empty(<Star size={22} />, t('feedback.empty.reviewsTitle'), t('feedback.empty.reviewsBody'))
         : (
           <>
@@ -235,7 +237,7 @@ export default function SellerFeedbackTab({ feedback, listings = [], sellerName,
           </>
         ))}
 
-      {!loading && view === 'likes' && (likeRows.length === 0
+      {!busy && view === 'likes' && (likeRows.length === 0
         ? empty(<Heart size={22} />, t('feedback.empty.likesTitle'), t('feedback.empty.likesBody'))
         : (
           <>
