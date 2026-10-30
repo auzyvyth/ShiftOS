@@ -132,6 +132,7 @@ import {
 } from "../utils/panelCache";
 import { refreshListingFromNotice } from "../utils/listingNotice";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+import ProfileLoadError from "../components/ProfileLoadError";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
@@ -821,6 +822,8 @@ export default function SalesmanLite() {
   // later and every access gate below (pending / deleted / wrong role) re-runs
   // against it. Without a cached profile this is the old blocking spinner.
   const [loading, setLoading] = useState(!seed.profile);
+  // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   // Unread buyer-chat count for the nav badge. Deliberately a second hook
   // instance rather than lifting state out of SellerInbox — each gets its own
   // realtime channel, and the badge stays live while the tab is closed.
@@ -1536,11 +1539,17 @@ export default function SalesmanLite() {
         .eq("id", uid)
         .maybeSingle();
 
-      if (profileErr) console.error("fetchProfile:", profileErr);
+      // A timeout / server error is the database stalling, not a missing
+      // account: the session is fine, so never bounce to /login for it.
+      if (profileErr) {
+        console.error("fetchProfile:", profileErr);
+        setLoading(false);
+        setProfileLoadFailed(true);
+        return;
+      }
       if (!profileData) {
         setLoading(false);
-        // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
-        navigate(profileErr ? "/login?error=auth_failed&reason=profile" : "/login");
+        navigate("/login");
         return;
       }
 
@@ -7449,6 +7458,8 @@ export default function SalesmanLite() {
       document.body,
     );
   };
+
+  if (profileLoadFailed) return <ProfileLoadError />;
 
   // ── LOADING ───────────────────────────────────────────────────────────────
 

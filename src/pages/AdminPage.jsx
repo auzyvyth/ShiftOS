@@ -36,6 +36,7 @@ import { useLiveSellers } from "../hooks/useLiveSellers";
 import { liveChannel } from "../lib/liveChannel";
 import PhoneInput from "../components/ui/PhoneInput";
 import { normalizePhone } from "../lib/phone";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 // The console's own session pauses live updates on a hidden tab too (IO-6).
 installRealtimeIdle(supabase);
@@ -456,8 +457,15 @@ export default function AdminPage() {
   // Confirm the (platform) session belongs to a superadmin before rendering the
   // console. A non-superadmin session is signed out locally, not just redirected.
   async function verifyAndLoad(userId) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from("profiles").select("role").eq("id", userId).maybeSingle();
+    // A timeout / server error is the database stalling: it used to fall into
+    // the branch below and SIGN THE ADMIN OUT. Keep the session, offer a retry.
+    if (profileErr) {
+      setLoginBusy(false);
+      setAuthState("loadError");
+      return;
+    }
     if (profile?.role !== "superadmin") {
       await supabase.auth.signOut({ scope: "local" });
       setAuthError("That account is not a platform administrator.");
@@ -1099,6 +1107,7 @@ export default function AdminPage() {
       fontFamily: "system-ui, sans-serif", display: "flex",
       alignItems: "center", justifyContent: "center", padding: 24,
     };
+    if (authState === "loadError") return <ProfileLoadError />;
     if (authState === "checking") {
       return <div style={gateWrap}><span style={{ color: "#4b5563", fontSize: 14 }}>Loading…</span></div>;
     }

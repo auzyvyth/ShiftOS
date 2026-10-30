@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase, INITIAL_URL } from '../supabaseClient';
 import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
+import ProfileLoadError from '../components/ProfileLoadError';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -32,6 +33,7 @@ export default function SalesmanSetup() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
 
   useEffect(() => {
     const query = new URLSearchParams(INITIAL_URL.includes('?') ? INITIAL_URL.slice(INITIAL_URL.indexOf('?') + 1).split('#')[0] : '');
@@ -95,7 +97,10 @@ export default function SalesmanSetup() {
           onboarding_tour_done: false, starter_tasks: {},
         })
         .eq('id', session.user.id);
-      const { data: profile } = await supabase.from('profiles').select(POST_AUTH_COLUMNS).eq('id', session.user.id).maybeSingle();
+      const { data: profile, error: profileErr } = await supabase.from('profiles').select(POST_AUTH_COLUMNS).eq('id', session.user.id).maybeSingle();
+      // The password is saved; a failed read here is the database stalling.
+      // Retry goes via /login, which forwards a signed-in seller to their panel.
+      if (profileErr) { setProfileLoadFailed(true); return; }
       setPhase('done');
       setTimeout(() => {
         if (profile) goPostAuth(resolvePostAuthRoute(profile, { session }), navigate);
@@ -108,6 +113,8 @@ export default function SalesmanSetup() {
       setLoading(false);
     }
   };
+
+  if (profileLoadFailed) return <ProfileLoadError onRetry={() => window.location.assign('/login')} />;
 
   return (
     <div style={S.root}>
