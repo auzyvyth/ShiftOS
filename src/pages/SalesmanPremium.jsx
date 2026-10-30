@@ -15,6 +15,7 @@ import { supabase } from "../supabaseClient";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
+import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
 import { warmChunks } from "../utils/warmChunks";
@@ -51,6 +52,7 @@ const ListingsTab = React.lazy(loadListingsTab);
 const CarDetailPopup = React.lazy(() => import("../components/CarDetailPopup"));
 const loadAnalyticsTab = () => import("./salesmanPremium/AnalyticsTab");
 const AnalyticsTab = React.lazy(loadAnalyticsTab);
+const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 import {
  LogOut,
  Copy,
@@ -117,6 +119,7 @@ import {
  PartyPopper,
  Calculator,
  Download,
+ Star,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
@@ -216,7 +219,7 @@ function useWindowSize() {
 
 // Top-level Premium tabs, each backed by its own /salesman-premium/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "sold", "customers", "handover", "merge", "settings"];
+const VALID_PREMIUM_TABS = ["dashboard", "listings", "leads", "enquiries", "bookings", "leadhistory", "analytics", "loans", "outreach", "chat", "feedback", "sold", "customers", "handover", "merge", "settings"];
 
 // Tabs that no longer own a slot in the nav. Their routes still resolve, so old
 // links, in-app deep links (switchTab) and the tour all keep working — they just
@@ -267,7 +270,7 @@ const SETTINGS_GROUPS = [
 ];
 
 // Which tab each tour step rings: `tourTabs` in the component, built from
-// navTabs (all ten links). Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
+// navTabs (all eleven links). Step 0 is the welcome card and rings nothing. SAME ORDER AS TABS_DESKTOP: Chat sat 3rd in
 // the sidebar but was introduced 9th, so the ring jumped back up the menu. One step per sidebar link — exactly the
 // 10 tabs in TABS_DESKTOP, nothing past the nav. The tour never navigates
 // anymore (see the tourStep effect): it opens the nav (the drawer on
@@ -922,6 +925,9 @@ export default function SalesmanPremium() {
  // its own, which is why a deal won in the pipeline stayed invisible everywhere
  // else until a full page reload. See hooks/useHandover.
  const handover = useHandover(getDealerIdFromProfile(profile), userId);
+ // Questions, reviews and likes on this seller's cars (FEEDBACK-1). One copy for
+ // the nav badge and the Feedback tab.
+ const feedback = useSellerFeedback(userId, myListings.map((c) => c.id));
  // The next thing blocking the longest-open handover — what the Dashboard's
  // Sold shortcut says is waiting. Label only; the board owns the detail.
  const soldNextStep = (() => {
@@ -1668,7 +1674,7 @@ export default function SalesmanPremium() {
  // work went into what is INSIDE each tab instead. The per-tab intros still
  // wait for real data before they play (TAB_INTROS). Same order as the
  // sidebar (TABS_DESKTOP), so the tour walks down the menu.
- const navTabs = ["dashboard", "listings", "chat", "leads", "enquiries", "sold", "analytics", "loans", "outreach", "settings"];
+ const navTabs = ["dashboard", "listings", "chat", "leads", "enquiries", "feedback", "sold", "analytics", "loans", "outreach", "settings"];
  const tourTabs = [null, ...navTabs];
  const tourTabsKey = tourTabs.join(",");
 
@@ -2138,6 +2144,12 @@ export default function SalesmanPremium() {
  case "listing_approved":
  switchTab("listings");
  setFilterStatus("available");
+ break;
+ case "new_question":
+ case "new_review":
+ case "like_first":
+ case "like_digest":
+ switchTab("feedback");
  break;
  case "listing_rejected":
  switchTab("listings");
@@ -2928,6 +2940,14 @@ export default function SalesmanPremium() {
  label: t("salesmanPremium.tabs.inbox", { defaultValue: "Inbox" }),
  icon: <MessageSquare style={{ width: 16, height: 16 }} />,
  badge: inboxBadge || null,
+ },
+ {
+ // Buyer questions, reviews and likes (FEEDBACK-1). The badge counts
+ // unanswered questions only: the one thing here that needs a reply.
+ tab: "feedback",
+ label: t("salesmanPremium.tabs.feedback", { defaultValue: "Feedback" }),
+ icon: <Star style={{ width: 16, height: 16 }} />,
+ badge: feedback.unanswered || null,
  },
  {
  // The end of the funnel: leads -> won -> paperwork + owner. Sold used to have
@@ -6177,6 +6197,7 @@ export default function SalesmanPremium() {
  chat: { icon: MessageCircle, title: t("salesmanPremium.tour.chat.title"), body: t("salesmanPremium.tour.chat.body") },
  leads: { icon: Users, title: t("salesmanPremium.tour.leads.title"), body: t("salesmanPremium.tour.leads.body") },
  enquiries: { icon: MessageSquare, title: t("salesmanPremium.tour.inbox.title"), body: t("salesmanPremium.tour.inbox.body") },
+ feedback: { icon: Star, title: t("salesmanPremium.tour.feedback.title"), body: t("salesmanPremium.tour.feedback.body") },
  sold: { icon: ClipboardList, title: t("salesmanPremium.tour.sold.title"), body: t("salesmanPremium.tour.sold.body") },
  analytics: { icon: TrendingUp, title: t("salesmanPremium.tour.analytics.title"), body: t("salesmanPremium.tour.analytics.body") },
  loans: { icon: Banknote, title: t("salesmanPremium.tour.loans.title"), body: t("salesmanPremium.tour.loans.body") },
@@ -7207,6 +7228,11 @@ export default function SalesmanPremium() {
  here; Lite passes "dark". Premium has the AI bar for real, Lite the
  upgrade strip. */}
  <SellerInbox salesmanId={userId} theme="premium" aiAssist={isPremium} aiUpgrade={!isPremium} fullHeight bottomInset={24} />
+ </Suspense>
+ )}
+ {activeTab === "feedback" && (
+ <Suspense fallback={<TabLoadingFallback />}>
+ <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="premium" />
  </Suspense>
  )}
  {activeTab === "sold" && renderSold()}

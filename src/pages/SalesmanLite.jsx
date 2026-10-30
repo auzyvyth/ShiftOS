@@ -22,6 +22,7 @@ import { compressImageFile } from "../utils/compressImage";
 import { copyListingCaption } from "../utils/copyListingCaption";
 import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
+import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
@@ -117,6 +118,7 @@ import {
   ThumbsDown,
   Store,
   Download,
+  Star,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -137,6 +139,7 @@ const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPoster
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
 const CarForm = React.lazy(() => import("../components/CarForm"));
+const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 
 // Cache namespace for this panel (keys look like `slite_leads_<uid>`).
 const PANEL_CACHE_KEY = "slite";
@@ -749,7 +752,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 
 // Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "performance", "services", "settings", "help"];
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "feedback", "performance", "services", "settings", "help"];
 
 // Settings sections, one subject each. Mirrors Premium's SETTINGS_GROUPS
 // (SalesmanPremium.jsx:200) so the two panels are the same screen with
@@ -900,6 +903,10 @@ export default function SalesmanLite() {
 
   // listings
   const [myListings, setMyListings] = useState(seed.listings);
+  // Questions, reviews and likes on this seller's cars (FEEDBACK-1). One copy
+  // for the nav badge and the Feedback tab. Free on Lite: it is a buyer
+  // reaching the seller, and Lite never gates that.
+  const feedback = useSellerFeedback(userId, myListings.map((c) => c.id));
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   // The IC number and MyKad photos are asked for in ONE place: the step-by-step
@@ -2138,6 +2145,7 @@ export default function SalesmanLite() {
     { key: "leads", anchor: { tab: "leads" } },
     { key: "inbox", anchor: { tab: "enquiries" } },
     { key: "bookings", anchor: { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") } },
+    { key: "feedback", anchor: { tab: "feedback" } },
     { key: "performance", anchor: { tab: "performance" } },
     { key: "chat", anchor: { tab: "dashboard", targetId: "chat" }, show: !startingOut },
     { key: "services", anchor: { tab: "dashboard", targetId: "services" }, show: !startingOut },
@@ -2691,6 +2699,12 @@ export default function SalesmanLite() {
         break;
       // Open the tab the car is actually on — the list defaults to Available,
       // so a rejected car was invisible after tapping its own notification.
+      case "new_question":
+      case "new_review":
+      case "like_first":
+      case "like_digest":
+        switchTab("feedback");
+        break;
       case "listing_approved":
         listingFilterIntent.current = "available";
         switchTab("listings");
@@ -3078,6 +3092,12 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     {
+      tab: "feedback",
+      label: t("salesmanLite.tabs.feedback"),
+      icon: <Star style={{ width: 14, height: 14 }} />,
+      badge: feedback.unanswered || null,
+    },
+    {
       tab: "performance",
       label: t("salesmanLite.tabs.performance"),
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
@@ -3109,6 +3129,7 @@ export default function SalesmanLite() {
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
+    { tab: "feedback", label: t("salesmanLite.tabs.feedbackMobile"), icon: <Star size={18} />, badge: feedback.unanswered || null },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
   ];
@@ -7126,7 +7147,7 @@ export default function SalesmanLite() {
 
   const TOUR_ICONS = {
     welcome: Zap, dashboard: LayoutGrid, listings: Car, leads: Users, inbox: MessageSquare,
-    bookings: Calendar, performance: BarChart2, chat: MessageCircle, services: Package,
+    bookings: Calendar, feedback: Star, performance: BarChart2, chat: MessageCircle, services: Package,
     settings: Settings, help: BookOpen,
   };
   const TOUR_STEPS = TOUR_PLAN.map(({ key }) => ({
@@ -8094,6 +8115,11 @@ export default function SalesmanLite() {
               bottomInset={isMobile ? 80 : 24}
             />
           ))}
+          {activeTab === "feedback" && (
+            <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
+              <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="dark" />
+            </React.Suspense>
+          )}
           {activeTab === "services" && renderPremiumPanel("services")}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}
