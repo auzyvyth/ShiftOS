@@ -2,7 +2,7 @@
 // Run: npm run test:live
 import { salaryGuide, eirForTenure, liveReport, fmtRate, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll, netPrice, carLabel,
   maxTenureYears, tenuresFor, rebatesForMonth, myMonth, monthEnd, clampRateInput, depositToFit, rateWarning, eirCap, isLocalNew, LOCAL_NEW_EIR,
-  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras } from '../src/utils/liveMaths.js';
+  dsrOf, DSR_TIGHT, tightCapFromPay, priceForMonthly, shortVariantNames, variantExtras, revealPick, viewerHandle, LADDER_MAX, HANDLE_MAX } from '../src/utils/liveMaths.js';
 import { monthlyPayment } from '../src/utils/financing.js';
 import { motorPremium, insuranceRegion, NCD_TIERS, ncdLabel } from '../src/utils/motorInsurance.js';
 import { accentTheme, hexToRgb, contrastWithWhite, ACCENT_PRESETS, DEFAULT_ACCENT } from '../src/utils/liveAccent.js';
@@ -291,5 +291,28 @@ is('extras: a seat change is its own field, not a +', variantExtras(vv, vX).seat
 is('extras: cheapest gets headline items', variantExtras(vv, vLite), { over: null, seats: null, items: ['6 airbags', 'Reverse camera', '12.3-inch touchscreen'] });
 is('extras: unknown variant is empty', variantExtras(vv, { model_id: 'z', specs: {} }), { over: null, seats: null, items: [] });
 is('extras: capped', variantExtras(vv, vPrime, 2).items.length, 2);
+
+// Budget > Viewer view: one answer from the same budgetAll rows.
+const rv = (n, price, status) => ({ n, price, status, monthly: price / 100, car: { id: String(n) } });
+const rRows = [rv(3, 59000, 'fit'), rv(1, 38600, 'fit'), rv(2, 43000, 'fit'), rv(4, 63000, 'near'), rv(5, 89000, 'near'), rv(6, 122000, 'over')];
+const rp = revealPick(rRows);
+is('reveal: best is the first fit (dearest, budgetAll order)', rp.best.n, 3);
+is('reveal: next is the first near row', rp.next.n, 4);
+is('reveal: ladder by price, cheapest first', rp.ladder.map((r) => r.n), [1, 2, 3, 4, 5, 6]);
+is('reveal: ladder marks only the best', rp.ladder.filter((r) => r.best).map((r) => r.n), [3]);
+is('reveal: nothing fits, no best, next still offered', revealPick([rv(4, 63000, 'near'), rv(6, 122000, 'over')]).best, null);
+is('reveal: no near, no next', revealPick([rv(1, 38600, 'fit'), rv(6, 122000, 'over')]).next, null);
+is('reveal: empty rows', revealPick([]), { best: null, next: null, ladder: [] });
+const rMany = Array.from({ length: 20 }, (_, i) => rv(i + 1, 30000 + i * 5000, i < 15 ? 'fit' : 'near')).reverse()
+  .sort((a, b) => (a.status === b.status ? (a.status === 'fit' ? b.price - a.price : a.price - b.price) : a.status === 'fit' ? -1 : 1));
+const rm = revealPick(rMany);
+is('reveal: ladder capped', rm.ladder.length, LADDER_MAX);
+is('reveal: capped ladder keeps best', rm.ladder.some((r) => r.best), true);
+is('reveal: capped ladder keeps next', rm.ladder.some((r) => r.n === rm.next.n), true);
+is('handle: adds one @', viewerHandle('aina_s'), '@aina_s');
+is('handle: keeps a typed @', viewerHandle('@@aina'), '@aina');
+is('handle: no spaces', viewerHandle(' kak long '), '@kaklong');
+is('handle: empty stays empty', viewerHandle('  @ '), '');
+is('handle: capped', viewerHandle('x'.repeat(40)).length, HANDLE_MAX);
 console.log(`${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);

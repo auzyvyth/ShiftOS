@@ -290,6 +290,37 @@ export function budgetAll(listings, opts) {
     .sort((a, b) => a.rank - b.rank || (a.status === 'fit' ? b.price - a.price : a.monthly - b.monthly));
 }
 
+// Budget > Viewer view (REVEAL-1, owner 2026-10-30: "Gaji korang berapa? Dapat
+// kereta apa?"): the same budgetAll rows, told as one answer. No maths of its own.
+//   best:   the dearest comfortable car (budgetAll lists fits dearest first)
+//   next:   the cheapest tight / just-above car, with what would make it fit
+//   ladder: up to `max` cars by price, a window that keeps best and next in view
+// A row's verdict never changes here, so the reveal and the List view agree.
+export const LADDER_MAX = 10;
+export function revealPick(rows, max = LADDER_MAX) {
+  const all = Array.isArray(rows) ? rows : [];
+  const best = all.find((r) => r.status === 'fit') || null;
+  const next = all.find((r) => r.status === 'near') || null;
+  const byPrice = [...all].sort((a, b) => a.price - b.price || a.n - b.n);
+  const anchor = best || next;
+  let start = 0;
+  if (anchor && byPrice.length > max) {
+    const at = byPrice.indexOf(anchor);
+    // Most of the window below the answer (what they can have), a few above it.
+    start = Math.min(Math.max(0, at - Math.ceil(max * 0.6)), byPrice.length - max);
+  }
+  const ladder = byPrice.slice(start, start + max).map((r) => ({ ...r, best: r === best }));
+  return { best, next, ladder };
+}
+
+// A viewer's handle as the seller typed it from the comments: one "@", no
+// spaces, short enough for one line on camera. Empty in, empty out.
+export const HANDLE_MAX = 24;
+export function viewerHandle(text) {
+  const s = String(text ?? '').replace(/\s+/g, '').replace(/^@+/, '').slice(0, HANDLE_MAX - 1);
+  return s ? `@${s}` : '';
+}
+
 // Saved rebates (every car, liveCopy.js) last until the month ends, Malaysia
 // time: promos run by the month, and a rebate that quietly outlived its promo
 // would put a wrong price on stream.
