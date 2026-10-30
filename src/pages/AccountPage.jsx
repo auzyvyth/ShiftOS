@@ -15,6 +15,7 @@ import { useCompare, MAX as COMPARE_MAX } from '../hooks/useCompare';
 import ShowroomCard from '../components/ShowroomCard';
 import PushToggle from '../components/PushToggle';
 import { POST_SALE_STEPS, STATUS_CONFIG } from '../utils/postSaleSteps';
+import ProfileLoadError from "../components/ProfileLoadError";
 
 const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label]));
 
@@ -27,7 +28,7 @@ const PURCHASE_TRACKER_ENABLED = false;
 
 export default function AccountPage() {
   useEffect(() => { document.title = 'My Account | XDrive'; }, []);
-  const { session, profile, setProfile, checking } = useBuyerGuard();
+  const { session, profile, setProfile, checking, loadFailed } = useBuyerGuard();
   const { savedIds, ready } = useSavedCars();
   const { cars } = useSavedCarsDetails(savedIds, ready);
   const { totalUnread } = useBuyerThreads();
@@ -151,6 +152,7 @@ export default function AccountPage() {
     window.location.reload();
   };
 
+  if (loadFailed) return <ProfileLoadError />;
   if (checking) {
     return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "system-ui,sans-serif", fontSize: 14 }}>Loading…</div>;
   }

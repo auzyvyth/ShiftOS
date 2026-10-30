@@ -6,6 +6,7 @@ import { liveChannel } from "../lib/liveChannel";
 import PhoneInput from "../components/ui/PhoneInput";
 import { toast } from "sonner";
 import { isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 const ACC = "#dc2626";
 
@@ -14,6 +15,7 @@ export default function AdminPanel() {
   const [profile, setProfile] = useState(null);
   const [dealerId, setDealerId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [activeNav, setActiveNav] = useState("listings");
 
   // Listings state
@@ -59,11 +61,17 @@ export default function AdminPanel() {
         navigate("/login");
         return;
       }
-      const { data: p } = await supabase
+      const { data: p, error: pErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.session.user.id)
         .maybeSingle();
+      // A timeout / server error is the database stalling, not a missing account.
+      if (pErr) {
+        setProfileLoadFailed(true);
+        setLoading(false);
+        return;
+      }
       if (!p || !["admin", "superadmin"].includes(p.role)) {
         navigate("/login");
         return;
@@ -279,6 +287,7 @@ export default function AdminPanel() {
 
   const maxBarCount = Math.max(...analytics.daily.map((d) => d.count), 1);
 
+  if (profileLoadFailed) return <ProfileLoadError />;
   if (loading)
     return (
       <div

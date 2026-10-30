@@ -22,6 +22,8 @@ import { compressImageFile } from "../utils/compressImage";
 import { copyListingCaption } from "../utils/copyListingCaption";
 import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
+import { useSellerFeedback } from "../hooks/useSellerFeedback";
+import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite, privateCount } from "../utils/privateCars";
 import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
@@ -117,6 +119,7 @@ import {
   ThumbsDown,
   Store,
   Download,
+  Star,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -132,10 +135,12 @@ import {
 } from "../utils/panelCache";
 import { refreshListingFromNotice } from "../utils/listingNotice";
 import AvailabilityEditor from "../components/AvailabilityEditor";
+import ProfileLoadError from "../components/ProfileLoadError";
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
 // The add/edit form (with photo drag-and-drop and the chassis decoder) loads
 // when it opens, not with the dashboard.
 const CarForm = React.lazy(() => import("../components/CarForm"));
+const SellerFeedbackTab = React.lazy(() => import("../components/feedback/SellerFeedbackTab"));
 
 // Cache namespace for this panel (keys look like `slite_leads_<uid>`).
 const PANEL_CACHE_KEY = "slite";
@@ -748,7 +753,7 @@ function SellerBookingModal({ lead, dateValue, onChangeDate, onClose, onConfirm,
 
 // Top-level Lite tabs, each backed by its own /salesman-lite/:tab route.
 // Anything not in this list falls back to the dashboard.
-const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "performance", "services", "settings", "help"];
+const VALID_LITE_TABS = ["dashboard", "listings", "leads", "enquiries", "chat", "feedback", "performance", "services", "settings", "help"];
 
 // Settings sections, one subject each. Mirrors Premium's SETTINGS_GROUPS
 // (SalesmanPremium.jsx:200) so the two panels are the same screen with
@@ -821,6 +826,8 @@ export default function SalesmanLite() {
   // later and every access gate below (pending / deleted / wrong role) re-runs
   // against it. Without a cached profile this is the old blocking spinner.
   const [loading, setLoading] = useState(!seed.profile);
+  // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   // Unread buyer-chat count for the nav badge. Deliberately a second hook
   // instance rather than lifting state out of SellerInbox — each gets its own
   // realtime channel, and the badge stays live while the tab is closed.
@@ -897,6 +904,10 @@ export default function SalesmanLite() {
 
   // listings
   const [myListings, setMyListings] = useState(seed.listings);
+  // Questions, reviews and likes on this seller's cars (FEEDBACK-1). One copy
+  // for the nav badge and the Feedback tab. Free on Lite: it is a buyer
+  // reaching the seller, and Lite never gates that.
+  const feedback = useSellerFeedback(userId, myListings.map((c) => c.id));
   const [listingCopied, setListingCopied] = useState({});
   const [showAddForm, setShowAddForm] = useState(false);
   // The IC number and MyKad photos are asked for in ONE place: the step-by-step
@@ -1263,7 +1274,9 @@ export default function SalesmanLite() {
     // Optimistically stamp sold_at so commission goal/count pick the deal up immediately
     // (the DB trigger stamp_sold_at sets the authoritative value, backfilled via realtime).
     const optimisticSoldAt = newStatus === "sold" ? (prevSoldAt || new Date().toISOString()) : prevSoldAt;
-    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+    // Publishing a private car goes to review first (PRIVATE-1), like a new car.
+    const shownStatus = statusAfterWrite(car, newStatus);
+    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: shownStatus, sold_at: optimisticSoldAt } : c));
     // Use RPC to avoid PostgREST bug with GENERATED ALWAYS columns (gross_profit)
     const { error: statusErr } = await supabase.rpc("update_listing_status", {
       p_listing_id: car.id,
@@ -1279,12 +1292,15 @@ export default function SalesmanLite() {
           setLeads(reopenWonLeads(car.id));
           refreshCommissionData();
         });
+      } else if (isPrivateLimitError(statusErr)) {
+        toast.error(t("privateCars.limit", { n: PRIVATE_CAR_LIMIT }));
       } else {
         toast.error(t("salesmanLite.toast.statusUpdateFailed"));
       }
       return;
     }
-    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+    if (shownStatus === "pending_approval") toast.success(t("privateCars.sentForReview"));
+    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: shownStatus, sold_at: optimisticSoldAt } : c));
     // Keep the "This Month" revenue/commission card in sync when selling from the Listings tab
     refreshCommissionData();
   };
@@ -1536,11 +1552,17 @@ export default function SalesmanLite() {
         .eq("id", uid)
         .maybeSingle();
 
-      if (profileErr) console.error("fetchProfile:", profileErr);
+      // A timeout / server error is the database stalling, not a missing
+      // account: the session is fine, so never bounce to /login for it.
+      if (profileErr) {
+        console.error("fetchProfile:", profileErr);
+        setLoading(false);
+        setProfileLoadFailed(true);
+        return;
+      }
       if (!profileData) {
         setLoading(false);
-        // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
-        navigate(profileErr ? "/login?error=auth_failed&reason=profile" : "/login");
+        navigate("/login");
         return;
       }
 
@@ -2129,6 +2151,7 @@ export default function SalesmanLite() {
     { key: "leads", anchor: { tab: "leads" } },
     { key: "inbox", anchor: { tab: "enquiries" } },
     { key: "bookings", anchor: { tab: "enquiries", targetId: "bookings", onSwitch: () => setInboxSubTab("bookings") } },
+    { key: "feedback", anchor: { tab: "feedback" } },
     { key: "performance", anchor: { tab: "performance" } },
     { key: "chat", anchor: { tab: "dashboard", targetId: "chat" }, show: !startingOut },
     { key: "services", anchor: { tab: "dashboard", targetId: "services" }, show: !startingOut },
@@ -2682,6 +2705,12 @@ export default function SalesmanLite() {
         break;
       // Open the tab the car is actually on — the list defaults to Available,
       // so a rejected car was invisible after tapping its own notification.
+      case "new_question":
+      case "new_review":
+      case "like_first":
+      case "like_digest":
+        switchTab("feedback");
+        break;
       case "listing_approved":
         listingFilterIntent.current = "available";
         switchTab("listings");
@@ -3069,6 +3098,12 @@ export default function SalesmanLite() {
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
     {
+      tab: "feedback",
+      label: t("salesmanLite.tabs.feedback"),
+      icon: <Star style={{ width: 14, height: 14 }} />,
+      badge: feedback.unanswered || null,
+    },
+    {
       tab: "performance",
       label: t("salesmanLite.tabs.performance"),
       icon: <BarChart2 style={{ width: 14, height: 14 }} />,
@@ -3100,6 +3135,7 @@ export default function SalesmanLite() {
       icon: <MessageSquare size={18} />,
       badge: (enquiries.filter((e) => e.status === "new").length + pendingBookingsCount) || null,
     },
+    { tab: "feedback", label: t("salesmanLite.tabs.feedbackMobile"), icon: <Star size={18} />, badge: feedback.unanswered || null },
     { tab: "performance", label: t("salesmanLite.tabs.performanceMobile"), icon: <BarChart2 size={18} /> },
     { tab: "settings", label: t("salesmanLite.tabs.settings"), icon: <Settings size={18} /> },
   ];
@@ -3830,6 +3866,9 @@ export default function SalesmanLite() {
                   { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available" || isLockedCar(c)).length },
                   { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
                   { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
+                  // Private only gets a tab while it holds a car (or is the one picked).
+                  ...(privateCount(myListings) > 0 || filterStatus === "private"
+                    ? [{ key: "private", label: t("privateCars.tab"), count: privateCount(myListings) }] : []),
                 ].map(({ key, label, count }) => (
                   <button
                     key={key}
@@ -3986,6 +4025,7 @@ export default function SalesmanLite() {
               const isReserved = car.status === "reserved";
               const isPending  = car.status === "pending_approval";
               const isRejected = car.status === "rejected";
+              const isPrivate  = car.status === "private";
               const isLocked   = isLockedCar(car);
               const isInactive = isSold || isPending || isRejected;
               const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
@@ -4015,7 +4055,10 @@ export default function SalesmanLite() {
                             ? `1px solid ${withAlpha(C.danger, 0.22)}`
                             : `1px solid ${C.border}`,
                     borderRadius: R.lg,
-                    overflow: "hidden",
+                    // No overflow:hidden: it cut the status menu off at the card's
+                    // bottom edge. Only the top (banners + photo) is clipped below.
+                    position: "relative",
+                    zIndex: statusMenuCarId === car.id || actionMenuCarId === car.id ? 5 : undefined,
                     opacity: isSold ? 0.62 : 1,
                     transition: "opacity 0.2s",
                     display: "flex",
@@ -4026,6 +4069,7 @@ export default function SalesmanLite() {
                   {/* Rejected — the reason is the first thing on the card: it is the
                       only thing the seller needs to act on. No left accent bar (anti-slop);
                       a full-width tint carries the state. */}
+                  <div style={{ display: "flex", flexDirection: "column", borderRadius: `${R.lg - 1}px ${R.lg - 1}px 0 0`, overflow: "hidden" }}>
                   {isRejected && (
                     <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -4088,6 +4132,7 @@ export default function SalesmanLite() {
                       <Car size={32} color={C.textDim} />
                     </div>
                   )}
+                  </div>
 
                   {/* Status indicator — compact single-line strip */}
                   {(isSold || isReserved || isPending) && (
@@ -4163,7 +4208,7 @@ export default function SalesmanLite() {
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         {(() => {
                           const curStatus = normStatus(car.status || "available");
-                          const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : C.successText;
+                          const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : curStatus === "private" ? C.textMuted : C.successText;
                           const locked = isPending || isRejected;
                           const open = statusMenuCarId === car.id;
                           // Locked (pending / rejected): the state is already said above the
@@ -4187,7 +4232,7 @@ export default function SalesmanLite() {
                               }}
                             >
                               <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                              <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{car.status || "available"}</span>
+                              <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{isPrivate ? t("privateCars.label") : (car.status || "available")}</span>
                               {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
                             </button>
                           );
@@ -4202,6 +4247,9 @@ export default function SalesmanLite() {
                               { key: "available", label: "Available", color: C.successText, hint: "Live for buyers" },
                               { key: "reserved",  label: "Reserved",  color: C.warnText, hint: "Deposit / on hold" },
                               { key: "sold",      label: "Sold",      color: C.textSec, hint: "Deal closed" },
+                              // PRIVATE-1: only you see it. Offered while under the limit (or already private).
+                              ...(isPrivate || privateCount(myListings) < PRIVATE_CAR_LIMIT
+                                ? [{ key: "private", label: t("privateCars.label"), color: C.textMuted, hint: t("privateCars.hint", { n: PRIVATE_CAR_LIMIT }) }] : []),
                             ].map(({ key, label, color, hint }) => {
                               const active = normStatus(car.status || "available") === key;
                               return (
@@ -4348,15 +4396,15 @@ export default function SalesmanLite() {
                         </button>
                       ) : (
                         <>
-                          {/* Copy link */}
-                          <button
+                          {/* Copy link: a private car has no public page to link to */}
+                          {!isPrivate && <button
                             onClick={() => handleListingCopy(car, "link")}
                             title="Copy link"
                             style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link" ? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link" ? C.successText : C.textSec }}
                           >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             {listingCopied[car.id] === "link" ? "Copied" : "Link"}
-                          </button>
+                          </button>}
                           {/* WA */}
                           <button
                             onClick={() => handleListingCopy(car, "wa")}
@@ -7117,7 +7165,7 @@ export default function SalesmanLite() {
 
   const TOUR_ICONS = {
     welcome: Zap, dashboard: LayoutGrid, listings: Car, leads: Users, inbox: MessageSquare,
-    bookings: Calendar, performance: BarChart2, chat: MessageCircle, services: Package,
+    bookings: Calendar, feedback: Star, performance: BarChart2, chat: MessageCircle, services: Package,
     settings: Settings, help: BookOpen,
   };
   const TOUR_STEPS = TOUR_PLAN.map(({ key }) => ({
@@ -7449,6 +7497,8 @@ export default function SalesmanLite() {
       document.body,
     );
   };
+
+  if (profileLoadFailed) return <ProfileLoadError />;
 
   // ── LOADING ───────────────────────────────────────────────────────────────
 
@@ -8083,6 +8133,11 @@ export default function SalesmanLite() {
               bottomInset={isMobile ? 80 : 24}
             />
           ))}
+          {activeTab === "feedback" && (
+            <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
+              <SellerFeedbackTab feedback={feedback} listings={myListings} sellerName={profile?.full_name || profile?.slug} theme="dark" />
+            </React.Suspense>
+          )}
           {activeTab === "services" && renderPremiumPanel("services")}
           {activeTab === "settings" && renderSettings()}
           {activeTab === "help" && <SalesmanLiteHelp />}

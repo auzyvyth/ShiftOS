@@ -201,6 +201,7 @@ import {
   ShieldCheck,
   Activity,
 } from "lucide-react";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -9558,6 +9559,8 @@ export default function DashboardPage() {
   // A cached profile is enough to render; the fresh one lands moments later and
   // the role gate in loadSession re-runs against it.
   const [loading, setLoading] = useState(!seed.profile);
+  // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [activeTab, setActiveTab] = useState(tabParam || "overview");
   const [analyticsSub, setAnalyticsSub] = useState(() => new URLSearchParams(window.location.search).get('sub') || 'revenue'); // revenue | performance
   const [storefrontSub, setStorefrontSub] = useState("hero");   // hero | services
@@ -9712,12 +9715,19 @@ export default function DashboardPage() {
       setUserId(uid);
       rememberPanelUid(PANEL_CACHE_KEY, uid);
 
-      const { data: p } = await supabase
+      const { data: p, error: pErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", uid)
         .maybeSingle();
       if (!active) return;
+      // A timeout / server error is the database stalling, not a missing account.
+      if (pErr) {
+        setLoading(false);
+        setProfileLoadFailed(true);
+        return;
+      }
+      setProfileLoadFailed(false);
 
       if (p) {
         if (redirectByRole(p.role)) return;
@@ -10478,6 +10488,7 @@ export default function DashboardPage() {
 
   const showOnboardingBanner = profile && profile.onboarding_complete === false && !onboardingDismissed;
 
+  if (profileLoadFailed) return <ProfileLoadError />;
   if (!profile) return <SciFiLoader />;
 
   // MOBILE-7 follow-up: self-service restore within the 30-day grace window

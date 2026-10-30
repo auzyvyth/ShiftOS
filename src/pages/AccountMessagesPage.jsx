@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useBuyerGuard } from '../hooks/useBuyerGuard';
 import BuyerInbox from '../components/chat/BuyerInbox';
+import ProfileLoadError from "../components/ProfileLoadError";
 
 // Full-page buyer inbox at /account/messages. Used to live embedded inside
 // AccountPage — pulled out to its own page so a chat thread gets real room to
@@ -10,8 +11,9 @@ import BuyerInbox from '../components/chat/BuyerInbox';
 // and so /account can show just a strip + unread count.
 export default function AccountMessagesPage() {
   useEffect(() => { document.title = 'Messages | XDrive'; }, []);
-  const { checking } = useBuyerGuard();
+  const { checking, loadFailed } = useBuyerGuard();
 
+  if (loadFailed) return <ProfileLoadError />;
   if (checking) {
     return <div style={{ minHeight: '100vh', background: '#F7F6F2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontFamily: "system-ui,sans-serif", fontSize: 14 }}>Loading…</div>;
   }

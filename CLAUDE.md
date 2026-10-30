@@ -2042,6 +2042,38 @@ https://claude.ai/artifact/7egMaKbR5ux5xsqdb43odu
   (drew nothing), badge italic/shadow/align (ignored by the badge), desktop "Use + shoot" (no
   camera on desktop), the layer QuickPanel's +/-5 order and the duplicate colour controls.
 
+## Feedback tab: questions, reviews, likes reach the seller (FEEDBACK-1, 2026-10-30)
+Before this, a car-page question (`listing_comments`), a review (`reviews`) or a heart
+(`saved_cars`) was saved and nothing else: no push, no seller screen. Now:
+- ONE tab, `feedback`, in Lite AND Premium (free on Lite: a buyer reaching the seller):
+  `src/components/feedback/SellerFeedbackTab.jsx` (`theme="dark"|"premium"`) fed by ONE
+  page-level `useSellerFeedback` (the nav badge = unanswered questions). Pills: Questions
+  (unanswered first, reply in place, the reply shows on the car page), Reviews, Likes.
+- Pushes are DB triggers (migration `20261030a`): `new_question`, `new_review` (15-min burst
+  guard), `like_first` = the FIRST save of a car pushes at once (`like_first_ping`, once per car
+  ever), every later save is only counted and goes in ONE daily `like_digest` (cron 04:00 UTC).
+  Owner wanted a push per like; not built on purpose: an unactionable push gets notifications
+  blocked, and a block also kills the lead pushes. Do not add per-like pushes.
+- The seller is `feedback_recipient(listing)` (assigned rep, else a self-owned salesman).
+  Dealers without an assigned rep get nothing (dealer dashboard unused).
+- Likes are COUNTS only (`get_my_car_likes()`), never who saved a car (PDPA). Saves made
+  without signing in live on the device and are not counted.
+
+## Private cars (PRIVATE-1, 2026-10-30) — up to 4, only the seller sees them
+A standalone seller can keep up to 4 cars private (owner's limit) to work out cost and margin
+(asked for by seller `iskandar`). A private car is `car_listings.status = 'private'`: a STATUS,
+not a flag, because every public surface whitelists statuses (`public_car_listings`, marketplace
+stats, search, booking, live), so buyers never see it with no change to any of them. Never add a
+public read that BLACKLISTS statuses (`status <> 'sold'`): it would leak private cars.
+- Rules in the DB (migration `20261030b`): `trg_private_car_rules` (max 4, never a model card,
+  never from sold/pending/rejected/archived); the live-car limit ignores private cars (both cap
+  triggers, `salesman_under_listing_limit`, the insert policy, `sweep_premium_lapses`).
+- Publishing a private car = `update_listing_status(..., 'available')`, which a salesman's car
+  turns into `pending_approval`: same review as a new car, so private-and-back skips nothing.
+- UI: CarForm's "Keep it private" box (new car, standalone seller, last step); the status menu's
+  Private option + a Private tab in Lite and Premium; no share/link button on a private car.
+  Shared rules: `src/utils/privateCars.js` (`PRIVATE_CAR_LIMIT` = the SQL's 4).
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+
@@ -2095,6 +2127,11 @@ network before showing anything. Two layers, both purged on logout:
   the IC. Check the same thing on any tab whose edit form spreads the row back.
 - DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
 - A failed read keeps the cached value; never overwrite a good cache with [] on error.
+- **A failed read of the user's OWN profile is never "signed out"** (2026-10-30). Every panel
+  (Lite, Premium, linked salesman, dealer dashboard, manager, admin, accountant, F&I, /account,
+  /platform, /salesman-setup) shows `src/components/ProfileLoadError.jsx` (the ErrorScreen "stuck
+  in traffic" scene + Try again) on a timeout / server error. Only a clean empty answer goes to
+  /login. A DB stall bounced a Premium seller to /login, and /platform used to SIGN THE ADMIN OUT.
 - **A number that is still loading is a placeholder, never a 0** (2026-10-18).
   `src/components/ui/StatSkeleton.jsx`. The Lite + Premium dashboards showed 0 views /
   0 visits / 0 taps and "your pipeline is clear" until their requests answered.

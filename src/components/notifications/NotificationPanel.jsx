@@ -29,6 +29,10 @@ import { ChevronRight } from "lucide-react";
 //   new_enquiry         -> whatsapp_enquiries.id
 //   listing_approved    -> car_listings.id
 //   listing_rejected    -> car_listings.id
+//   new_question        -> listing_comments.id   (FEEDBACK-1)
+//   new_review          -> reviews.id
+//   like_first          -> car_listings.id
+//   like_digest         -> car_listings.id (the most recently saved car)
 // broadcast / platform_broadcast carry no ref_id and go nowhere — they are the
 // message, so they render as plain rows with no affordance.
 export const NOTIF_TARGETS = {
@@ -38,6 +42,10 @@ export const NOTIF_TARGETS = {
   new_enquiry: "View enquiry",
   listing_approved: "View listing",
   listing_rejected: "View listing",
+  new_question: "Answer",
+  new_review: "View review",
+  like_first: "View likes",
+  like_digest: "View likes",
 };
 
 export const notifTargetLabel = (n) =>

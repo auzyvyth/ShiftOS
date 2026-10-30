@@ -305,7 +305,9 @@
       "mergeMobile": "Merge",
       "services": "Services",
       "settings": "Settings",
-      "help": "Help"
+      "help": "Help",
+      "feedback": "Feedback",
+      "feedbackMobile": "Feedback"
     },
     "header": {
       "litePanel": "Lite Panel",
@@ -474,6 +476,10 @@
         "help": {
           "title": "Help",
           "body": "Step-by-step guides, sales tips and FAQs. Come back here any time you're stuck."
+        },
+        "feedback": {
+          "title": "Feedback",
+          "body": "Questions buyers ask on your car pages, your reviews, and how many buyers saved each car. Answer questions here: your reply shows on the car page."
         }
       },
       "start": "Start"
@@ -1019,7 +1025,8 @@
       "analytics": "Analytics",
       "loans": "Loans",
       "outreach": "Outreach",
-      "settings": "Settings"
+      "settings": "Settings",
+      "feedback": "Feedback"
     },
     "settings": {
       "navLanguage": "Language",
@@ -1652,7 +1659,11 @@
         "title": "Settings",
         "body": "Your public profile, WhatsApp templates and account settings live here. Have an invite code from a dealer? Enter it under Join a Dealership to unlock the full panel — shared stock, team leads, commission tracking and more."
       },
-      "tapHint": "Tap the ringed button"
+      "tapHint": "Tap the ringed button",
+      "feedback": {
+        "title": "Feedback",
+        "body": "Questions buyers ask on your car pages, your reviews, and how many buyers saved each car. Answer questions here: your reply shows on the car page."
+      }
     },
     "greet": {
       "morning": "Good morning",
@@ -1852,7 +1863,8 @@
         "reserved": "Reserved",
         "sold": "Sold",
         "pending_approval": "Pending approval",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "private": "Private"
       },
       "title": "My Listings ({{n}})",
       "fast": "Fast",
@@ -2542,5 +2554,55 @@
     "lockedTitle": "Locked",
     "lockedBody": "Hidden from buyers. Lite shows {{cap}} cars; renew Premium to bring this one back.",
     "lockedCta": "Renew Premium"
+  },
+  "feedback": {
+    "tabs": {
+      "questions": "Questions",
+      "reviews": "Reviews",
+      "likes": "Likes"
+    },
+    "ago": {
+      "min": "{{n}}m ago",
+      "hour": "{{n}}h ago",
+      "day": "{{n}}d ago"
+    },
+    "buyer": "Buyer",
+    "removedCar": "Car no longer listed",
+    "notAnswered": "Not answered",
+    "replyPlaceholder": "Type your answer",
+    "replyMore": "Add another reply",
+    "replyPublic": "Your reply shows on the car page for every buyer.",
+    "replyFailed": "Couldn't send. Try again.",
+    "send": "Reply",
+    "sending": "Sending...",
+    "viewCar": "Car page",
+    "loading": "Loading...",
+    "reviewCount_one": "from {{count}} review",
+    "reviewCount_other": "from {{count}} reviews",
+    "reviewFew_one": "review so far. The average shows from 3.",
+    "reviewFew_other": "reviews so far. The average shows from 3.",
+    "likesTotal_one": "buyer saved one of your cars",
+    "likesTotal_other": "times buyers saved your cars",
+    "likesWeek_one": "{{count}} this week",
+    "likesWeek_other": "{{count}} this week",
+    "likesWeekShort_one": "+{{count}} this week",
+    "likesWeekShort_other": "+{{count}} this week",
+    "likesNote": "Counts only. Buyers who save a car stay anonymous; saves made without signing in are not counted.",
+    "empty": {
+      "questionsTitle": "No questions yet",
+      "questionsBody": "When a buyer asks something on one of your car pages, it lands here and you get a notification.",
+      "reviewsTitle": "No reviews yet",
+      "reviewsBody": "Ask happy buyers to leave a review on your car page. Reviews show beside your name.",
+      "likesTitle": "No saves yet",
+      "likesBody": "When a buyer taps the heart on one of your cars, it is counted here. Sharp photos and a fair price get more saves."
+    }
+  },
+  "privateCars": {
+    "tab": "Private",
+    "label": "Private",
+    "onlyYou": "only you see it",
+    "hint": "Only you. Not on the marketplace (max {{n}})",
+    "limit": "You already have {{n}} private cars. Publish or delete one first.",
+    "sentForReview": "Sent for review. It goes live once approved."
   }
 }
