@@ -240,6 +240,12 @@ export default function SalesmanOnboarding() {
   const [done, setDone] = useState(false);
   const [slugTaken, setSlugTaken] = useState(false);
   const [slugChecking, setSlugChecking] = useState(false);
+  // The handle whose availability answer we hold. Continue needs it to equal the
+  // typed handle: the check runs 450ms after typing, and a stale "available" for
+  // an earlier value let a taken handle through to a raw duplicate-key error.
+  const [slugCheckedFor, setSlugCheckedFor] = useState('');
+  // Once the seller types in the handle box, the brand name stops filling it.
+  const [slugEdited, setSlugEdited] = useState(false);
 
   const [showPw, setShowPw] = useState(false);
   const [form, setForm] = useState({
@@ -259,6 +265,7 @@ export default function SalesmanOnboarding() {
   });
 
   const slugTimer = useRef(null);
+  const slugLatest = useRef('');
 
   const upd = (k) => (val) => setForm(p => ({ ...p, [k]: val }));
   const starterModels = useStarterModels(form.sells.includes('new_car') ? form.newCarBrand : '');
@@ -287,8 +294,17 @@ export default function SalesmanOnboarding() {
       return next;
     });
     // The link may have been taken by someone else since; re-check it.
-    if (draft.slug) checkSlug(draft.slug);
+    if (draft.slug) { setSlugEdited(true); checkSlug(draft.slug); }
   }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Catch-all: the handle step never waits on an answer nobody asked for (a
+  // restored handle, or a check that errored). Continue needs slugCheckedFor.
+  useEffect(() => {
+    if (step !== 4 || form.slug.length < 3 || slugCheckedFor === form.slug) return;
+    if (slugLatest.current === form.slug && slugChecking) return;
+    const id = setTimeout(() => checkSlug(form.slug), 450);
+    return () => clearTimeout(id);
+  }, [step, form.slug, slugCheckedFor, slugChecking]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Mirror Supabase's password policy (8+ chars + one of each class) so users
   // never hit an opaque server-side rejection on sign-up.
@@ -373,6 +389,9 @@ export default function SalesmanOnboarding() {
           sells: profile.seller_type ? sellsFromDb(profile.seller_type, profile.new_car_brand) : p.sells,
           newCarBrand: profile.new_car_brand || p.newCarBrand,
         }));
+        // A restored handle is the seller's own pick: check it (Continue waits on
+        // that answer) and stop the brand name from overwriting it.
+        if (profile.slug) { setSlugEdited(true); checkSlug(profile.slug); }
         setResumeIsBuyer(isBuyer);
         setShowResumeChoice(true);
         return;
@@ -519,20 +538,23 @@ export default function SalesmanOnboarding() {
   };
 
   const checkSlug = async (slug) => {
-    if (!slug || slug.length < 3) { setSlugTaken(false); return; }
+    slugLatest.current = slug;
+    if (!slug || slug.length < 3) { setSlugTaken(false); setSlugChecking(false); return; }
     setSlugChecking(true);
     try {
       // SECURITY DEFINER RPC — profiles RLS hides other dealers' rows, so a plain
       // select would wrongly report every taken slug as available.
-      const { data: available } = await supabase.rpc('is_slug_available', { p_slug: slug });
-      setSlugTaken(available === false);
+      const { data: available, error } = await supabase.rpc('is_slug_available', { p_slug: slug });
+      if (slugLatest.current !== slug) return; // a newer handle was typed meanwhile
+      if (!error) { setSlugTaken(available === false); setSlugCheckedFor(slug); }
     } finally {
-      setSlugChecking(false);
+      if (slugLatest.current === slug) setSlugChecking(false);
     }
   };
 
-  const handleSlugChange = (val) => {
+  const handleSlugChange = (val, fromBrand = false) => {
     const clean = val.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 20);
+    if (!fromBrand) setSlugEdited(true);
     upd('slug')(clean);
     clearTimeout(slugTimer.current);
     slugTimer.current = setTimeout(() => checkSlug(clean), 450);
@@ -601,7 +623,12 @@ export default function SalesmanOnboarding() {
       // until an admin confirms payment; lite goes straight in.
       setTimeout(() => navigate(tier === 'premium' ? '/salesman-premium' : '/salesman'), 2400);
     } catch (e) {
-      setErr(e.message);
+      // Someone took the handle between the check and this save: back to the
+      // handle step with a plain message, never the raw constraint name.
+      if (/profiles_slug_unique/.test(e.message || '')) {
+        setSlugTaken(true); setSlugCheckedFor(form.slug); setStep(4);
+        setErr('That page link was just taken. Pick another one.');
+      } else setErr(e.message);
     } finally {
       setLoading(false);
     }
@@ -613,6 +640,7 @@ export default function SalesmanOnboarding() {
     setShowResumeChoice(false);
     setUserId(null);
     setUserEmail('');
+    setSlugEdited(false); setSlugCheckedFor('');
     setForm({ email: '', password: '', confirmPassword: '', fullName: '', icNumber: '', phone: '+60', brand: '', slug: '', state: '', city: '', sells: ['broker'], newCarBrand: '', newCarModels: [] });
     setStep(0);
   };
@@ -691,7 +719,7 @@ export default function SalesmanOnboarding() {
     </>
   );
 
-  const canSlugContinue = form.slug.length >= 3 && !slugTaken && !slugChecking;
+  const canSlugContinue = form.slug.length >= 3 && !slugTaken && !slugChecking && slugCheckedFor === form.slug;
 
   const cfg = TIERS[tier] || TIERS.lite;
 
@@ -932,7 +960,9 @@ export default function SalesmanOnboarding() {
                 <input className="eo-inp" type="text" placeholder="Ahmad Motors" value={form.brand}
                   onChange={e => {
                     upd('brand')(e.target.value);
-                    if (!form.slug) upd('slug')(slugify(e.target.value));
+                    // Suggest the handle from the brand until the seller edits it
+                    // (it used to fill only while empty, so it froze on the first letter).
+                    if (!slugEdited) handleSlugChange(slugify(e.target.value), true);
                   }} />
                 <label className="eo-label">PROFILE URL HANDLE</label>
                 <div className="eo-slug-wrap">
