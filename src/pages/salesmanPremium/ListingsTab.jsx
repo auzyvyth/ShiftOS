@@ -3,8 +3,8 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
- Calculator, Car, Check, ChevronDown, Clock, Download, Flame, Link as LinkIcon,
- Film, Megaphone, Pencil, Plus, Sparkles, Trash2,
+ Calculator, Car, Check, ChevronDown, Clock, Download, Flame,
+ Film, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
 const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
@@ -90,7 +90,7 @@ export default function ListingsTab({
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
- listingScore, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, openBroadcast,
+ listingScore, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
 }) {
  const { t, i18n } = useTranslation();
@@ -326,9 +326,20 @@ export default function ListingsTab({
  </div>
  )}
  {statusPill && (
- <span style={{ position: "absolute", top: 10, left: 10, maxWidth: "calc(100% - 20px)", padding: "4px 10px", borderRadius: P.radius.pill, background: "rgba(8,9,12,0.82)", color: P.text, fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+ <span style={{ position: "absolute", top: 10, left: 10, maxWidth: "calc(100% - 66px)", padding: "4px 10px", borderRadius: P.radius.pill, background: "rgba(8,9,12,0.82)", color: P.text, fontSize: 11.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
  {statusPill}
  </span>
+ )}
+ {/* Share: the car's tracked link to WhatsApp / socials in one tap.
+     Live cars only, same as the Copy link it replaced in ···. */}
+ {isLive && handleListingShare && (
+ <button
+ onClick={(e) => { e.stopPropagation(); handleListingShare(car); }}
+ title={t("salesmanPremium.lst.shareTitle")} aria-label={t("salesmanPremium.lst.shareTitle")}
+ style={{ position: "absolute", top: 8, right: 8, width: 40, height: 40, borderRadius: "50%", background: "rgba(8,9,12,0.72)", border: "none", color: P.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", WebkitTapHighlightColor: "transparent" }}
+ >
+ <Share2 size={17} />
+ </button>
  )}
  </div>
 
@@ -467,7 +478,7 @@ export default function ListingsTab({
  </>
  )}
 
- {/* ··· overflow — Link, Broadcast, AI Caption, posters, photos, Delete */}
+ {/* ··· overflow — Broadcast, AI Caption, posters, photos, Delete */}
  <div style={{ position: "relative", flexShrink: 0 }}>
  <button
  data-tour-id="lst-more"
@@ -479,11 +490,6 @@ export default function ListingsTab({
  </button>
  {actionMenuCarId === car.id && (
  <div onClick={(e) => e.stopPropagation()} style={{ ...menuBox, bottom: "calc(100% + 6px)" }}>
- {isLive && (
- <button onClick={() => { handleListingCopy(car, "link"); setActionMenuCarId(null); }} title={t("salesmanPremium.lst.copyLinkTitle")} style={menuItem}>
- <LinkIcon size={13} /> {t("salesmanPremium.carActions.copyLink")}
- </button>
- )}
  {!isSold && (
  <>
  <button onClick={() => { openBroadcast(car); setActionMenuCarId(null); }} style={menuItem}>

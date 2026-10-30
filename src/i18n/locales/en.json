@@ -1903,6 +1903,8 @@
       "fix": "Fix",
       "view": "View",
       "copyLinkTitle": "Copy link",
+      "shareTitle": "Share this car",
+      "linkCopied": "Link copied",
       "copied": "Copied",
       "link": "Link",
       "copyCaptionTitle": "Copy caption",

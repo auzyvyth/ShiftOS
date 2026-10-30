@@ -208,7 +208,7 @@ Project ID: lemdkdizdlcirhbzqlos
   breakdown (Analytics has it), no second follow-up list (This week is the one), the goal is
   the bar in "Sold this month". Listings card = photo (state as a pill on it), name + status
   menu, price + margin (only when computable), specs, one traffic line, ONE "improve" line
-  (`listingScore`'s first fix), Caption + Edit + ···; Link lives in ···. No page-link bar
+  (`listingScore`'s first fix), Caption + Edit + ···; sharing is the round Share button top-right on the photo (live cars, `handleListingShare`: share sheet, copies on desktop, link carries `?ref=<slug>&src=share`), so ··· has no Copy link. No page-link bar
   (Dashboard has it) and no "Live on XDrive" strip (the Available pill says it). Settings: each section's name is said once (rail/breadcrumb +
   header); the shared cards inside take `theme="premium"` and then drop their own heading
   (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard, MyNewModels);
