@@ -2708,6 +2708,17 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-25: A private car (cost tracker only), not on the marketplace (seller `iskandar`, 2026-10-30)**
+  — found us through ChatGPT, signed up on Lite, listed 1 car with its purchase price, and wants
+  it only "untuk kira cost" (his costs and margin), not public: "org lain blh tgk eh? klau nk off
+  xblh ke". Today every car a seller adds goes on the marketplace; the only hidden state,
+  `status='unpublished'`, is used by the Premium-lapse lock, and no seller control sets it. Idea: a
+  "Private (only you)" switch per car: still in the seller's list, the cost/margin maths and loan
+  poster work, never in `public_car_listings`, the mini page or the sitemap; one tap to publish.
+  Questions before building: does it count toward the Lite 10-car cap (probably not, or the
+  cap stops meaning "live cars"); does it reuse `unpublished` (it would collide with
+  `plan_locked_at` locks, so likely a separate `is_private` flag); and is a pure cost-tracker
+  user worth serving, or the start of a dealer-stock tool (IDEA-24, the deal record).
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
