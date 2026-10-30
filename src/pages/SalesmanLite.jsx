@@ -4046,7 +4046,10 @@ export default function SalesmanLite() {
                             ? `1px solid ${withAlpha(C.danger, 0.22)}`
                             : `1px solid ${C.border}`,
                     borderRadius: R.lg,
-                    overflow: "hidden",
+                    // No overflow:hidden: it cut the status menu off at the card's
+                    // bottom edge. Only the top (banners + photo) is clipped below.
+                    position: "relative",
+                    zIndex: statusMenuCarId === car.id || actionMenuCarId === car.id ? 5 : undefined,
                     opacity: isSold ? 0.62 : 1,
                     transition: "opacity 0.2s",
                     display: "flex",
@@ -4057,6 +4060,7 @@ export default function SalesmanLite() {
                   {/* Rejected — the reason is the first thing on the card: it is the
                       only thing the seller needs to act on. No left accent bar (anti-slop);
                       a full-width tint carries the state. */}
+                  <div style={{ display: "flex", flexDirection: "column", borderRadius: `${R.lg - 1}px ${R.lg - 1}px 0 0`, overflow: "hidden" }}>
                   {isRejected && (
                     <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
@@ -4119,6 +4123,7 @@ export default function SalesmanLite() {
                       <Car size={32} color={C.textDim} />
                     </div>
                   )}
+                  </div>
 
                   {/* Status indicator — compact single-line strip */}
                   {(isSold || isReserved || isPending) && (

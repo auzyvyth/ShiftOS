@@ -305,8 +305,12 @@ export default function ListingsTab({
  return (
  <div
  key={car.id}
- style={{ background: P.card, borderRadius: P.radius.card, overflow: "hidden", opacity: isSold ? 0.62 : 1, display: "flex", flexDirection: "column", height: "100%", minWidth: 0 }}
+ style={{ position: "relative", zIndex: statusMenuCarId === car.id || actionMenuCarId === car.id ? 5 : undefined, background: P.card, borderRadius: P.radius.card, opacity: isSold ? 0.62 : 1, display: "flex", flexDirection: "column", height: "100%", minWidth: 0 }}
  >
+ {/* No overflow:hidden on the card: it cut the status menu off at the
+     card's bottom edge (Sold and Private unreachable). Only the top
+     (banner + photo) is clipped, to keep the rounded corners. */}
+ <div style={{ borderRadius: `${P.radius.card}px ${P.radius.card}px 0 0`, overflow: "hidden" }}>
  {/* Rejected — the reason is the first thing on the card: it is the
      only thing the seller needs to act on. */}
  {isRejected && (
@@ -346,6 +350,7 @@ export default function ListingsTab({
  <Share2 size={17} />
  </button>
  )}
+ </div>
  </div>
 
  <div style={{ padding: "14px 16px 16px", flex: 1, display: "flex", flexDirection: "column" }}>
