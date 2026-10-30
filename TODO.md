@@ -70,6 +70,15 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PRIVATE-1: private cars, max 4 (was IDEA-25) — built 2026-10-30, on staging, NOT live
+Seller `iskandar` (found us via ChatGPT) wanted cars only he sees, to work out cost. Owner: 4 per
+seller. Code on staging; migration `20261030b_private_cars.sql` is QUEUED (with `20261030a`),
+apply after midnight with nobody live. Until it runs (staging shares the live DB): the status
+menu's Private silently does nothing (the old `update_listing_status` ignores the value and
+returns no error, so the card snaps back on reload), while the form's "Keep it private" DOES save
+a private car, just without the 4-car limit. Test both after the migration.
+Open: CarFormFast (Premium quick add) has no private box; linked salesmen + dealers get none.
+
 ## INPUT-1: one phone rule + input limits — built 2026-10-28, on staging, NOT live
 Owner: "on sign up a user can put in fake numbers with extra digits". Every phone box
 had its own check (or none) and no Malaysian maximum. Now ONE rule, `src/lib/phone.js`

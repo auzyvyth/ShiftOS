@@ -46,6 +46,7 @@ import { CONDITIONS, BODY_TYPES, FUEL_TYPES, CC_PRESETS } from "../utils/carForm
 import QuickCarFlow from "./carform/QuickCarFlow";
 import NewCarForm from "./newcar/NewCarForm";
 import CarKindChooser from "./newcar/CarKindChooser";
+import { PRIVATE_CAR_LIMIT, isPrivateLimitError } from "../utils/privateCars";
 import QuickSteps, { Tile, BigNumber, fmtNum } from "./carform/QuickSteps";
 import { getListingGaps } from "../utils/listingCompleteness";
 import { TRUST_DOCS, TRUST_DOC_KEYS, GERAN_REASONS, getTrustTier } from "../utils/trustDocs";
@@ -709,6 +710,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // Cross-dealer clone signal: same VIN/plate live on another dealer's listing.
   const [conflictWarning, setConflictWarning] = useState({ plate: null, vin: null });
   const [capError, setCapError] = useState(false);
+  // PRIVATE-1: a standalone seller can save a new car privately (only they see
+  // it; up to PRIVATE_CAR_LIMIT, enforced by trg_private_car_rules). Not offered
+  // to dealers or linked salesmen, and never on an edit (the status menu does that).
+  const [keepPrivate, setKeepPrivate] = useState(false);
   // entry shape: { name: string, status: 'uploading'|'done'|'error' }
   const DEFAULT_ORDER = STEPS.map((s) => s.id);
   const [sectionOrder, setSectionOrder] = useState(DEFAULT_ORDER);
@@ -2019,7 +2024,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           setUploading(false);
           return;
         }
-        const publishStatus = needsApproval ? "pending_approval" : "available";
+        const canPrivate = profile?.role === "salesman" && !profile?.dealer_id;
+        const publishStatus = keepPrivate && canPrivate ? "private" : needsApproval ? "pending_approval" : "available";
         let savedListing;
         if (draftId) {
           const { data, error } = await supabase
@@ -2086,6 +2092,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       // account/permission problem (see uploadImages).
       if (err?.__imageUpload) {
         toast.error(`${msg}. Remove that photo and add it again, then publish.`);
+      } else if (isPrivateLimitError(err)) {
+        toast.error(`You already have ${PRIVATE_CAR_LIMIT} private cars. Publish or delete one, or untick "Keep it private".`);
       } else if (msg.includes('listing_cap_exceeded') || (err?.code === 'P0001' && msg.includes('listing cap'))) {
         setCapError(true);
       } else if (msg.includes('subscription_inactive')) {
@@ -4169,8 +4177,26 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
         {renderSectionContent(step)}
       </div>
 
+      {/* Keep it private (PRIVATE-1): new car, standalone seller, last step only */}
+      {!listing && isSalesman && !profile?.dealer_id && step === STEPS.length && (
+        <label className="flex items-start gap-3 mt-4 p-3 rounded-xl border border-gray-200 bg-white cursor-pointer">
+          <input
+            type="checkbox"
+            checked={keepPrivate}
+            onChange={(e) => { setKeepPrivate(e.target.checked); setCapError(false); }}
+            className="mt-0.5 w-4 h-4 accent-red-600 flex-shrink-0"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-gray-900">Keep it private</span>
+            <span className="block text-xs text-gray-500 mt-0.5 leading-relaxed">
+              Only you see it: not on the marketplace or your page. Good for working out cost and margin first. Up to {PRIVATE_CAR_LIMIT} private cars; publish it any time from its status menu.
+            </span>
+          </span>
+        </label>
+      )}
+
       {/* Listing cap warning */}
-      {capError && step === STEPS.length && (
+      {capError && !keepPrivate && step === STEPS.length && (
         <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.3)', borderRadius: 10, padding: '14px 16px', marginTop: 16 }}>
           <p style={{ color: '#dc2626', fontSize: 13, fontWeight: 600, marginBottom: 4 }}>Listing cap reached</p>
           <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
@@ -4228,13 +4254,13 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || capError || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
+            disabled={uploading || (capError && !keepPrivate) || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (
               <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Uploading…</>
             ) : (
-              <><Check className="w-4 h-4" />{listing ? "Save Changes" : "Publish Listing"}</>
+              <><Check className="w-4 h-4" />{listing ? "Save Changes" : keepPrivate ? "Save privately" : "Publish Listing"}</>
             )}
           </button>
         )}

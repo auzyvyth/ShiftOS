@@ -2059,6 +2059,21 @@ Before this, a car-page question (`listing_comments`), a review (`reviews`) or a
 - Likes are COUNTS only (`get_my_car_likes()`), never who saved a car (PDPA). Saves made
   without signing in live on the device and are not counted.
 
+## Private cars (PRIVATE-1, 2026-10-30) — up to 4, only the seller sees them
+A standalone seller can keep up to 4 cars private (owner's limit) to work out cost and margin
+(asked for by seller `iskandar`). A private car is `car_listings.status = 'private'`: a STATUS,
+not a flag, because every public surface whitelists statuses (`public_car_listings`, marketplace
+stats, search, booking, live), so buyers never see it with no change to any of them. Never add a
+public read that BLACKLISTS statuses (`status <> 'sold'`): it would leak private cars.
+- Rules in the DB (migration `20261030b`): `trg_private_car_rules` (max 4, never a model card,
+  never from sold/pending/rejected/archived); the live-car limit ignores private cars (both cap
+  triggers, `salesman_under_listing_limit`, the insert policy, `sweep_premium_lapses`).
+- Publishing a private car = `update_listing_status(..., 'available')`, which a salesman's car
+  turns into `pending_approval`: same review as a new car, so private-and-back skips nothing.
+- UI: CarForm's "Keep it private" box (new car, standalone seller, last step); the status menu's
+  Private option + a Private tab in Lite and Premium; no share/link button on a private car.
+  Shared rules: `src/utils/privateCars.js` (`PRIVATE_CAR_LIMIT` = the SQL's 4).
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

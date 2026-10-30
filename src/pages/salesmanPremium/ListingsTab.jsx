@@ -7,6 +7,7 @@ import {
  Film, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
+import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
@@ -136,6 +137,7 @@ export default function ListingsTab({
  { key: "available", label: statusLabel("available"), count: myListings.filter((c) => (c.status || "available") === "available").length },
  { key: "reserved", label: statusLabel("reserved"), count: myListings.filter((c) => c.status === "reserved").length },
  { key: "sold", label: statusLabel("sold"), count: myListings.filter((c) => c.status === "sold").length },
+ { key: "private", label: statusLabel("private"), count: privateCount(myListings), optional: true },
  ].filter((s) => !s.optional || s.count > 0 || s.key === filterStatus);
 
  const pill = (active) => ({
@@ -271,7 +273,9 @@ export default function ListingsTab({
  const isReserved = car.status === "reserved";
  const isPending = car.status === "pending_approval";
  const isRejected = car.status === "rejected";
- const isLive = !isSold && !isReserved && !isPending && !isRejected;
+ // Private (PRIVATE-1): only the seller sees it, so no share button and no public link.
+ const isPrivate = car.status === "private";
+ const isLive = !isSold && !isReserved && !isPending && !isRejected && !isPrivate;
  const img = car.images?.[0];
  const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
  const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "—";
@@ -296,6 +300,7 @@ export default function ListingsTab({
  ? `${statusLabel("sold")}${car.sold_at ? ` · ${new Date(car.sold_at).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}` : ""}`
  : isReserved ? statusLabel("reserved")
  : isPending ? `${statusLabel("pending_approval")} · ${t("salesmanPremium.lst.notVisible")}`
+ : isPrivate ? `${statusLabel("private")} · ${t("privateCars.onlyYou")}`
  : null;
  return (
  <div
@@ -378,6 +383,8 @@ export default function ListingsTab({
  { key: "available", hint: t("salesmanPremium.lst.hintAvailable") },
  { key: "reserved", hint: t("salesmanPremium.lst.hintReserved") },
  { key: "sold", hint: t("salesmanPremium.lst.hintSold") },
+ ...(isPrivate || privateCount(myListings) < PRIVATE_CAR_LIMIT
+ ? [{ key: "private", hint: t("privateCars.hint", { n: PRIVATE_CAR_LIMIT }) }] : []),
  ].map(({ key, hint }) => {
  const active = normStatus(car.status || "available") === key;
  return (

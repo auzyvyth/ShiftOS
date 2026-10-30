@@ -1863,7 +1863,8 @@
         "reserved": "Reserved",
         "sold": "Sold",
         "pending_approval": "Pending approval",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "private": "Private"
       },
       "title": "My Listings ({{n}})",
       "fast": "Fast",
@@ -2595,5 +2596,13 @@
       "likesTitle": "No saves yet",
       "likesBody": "When a buyer taps the heart on one of your cars, it is counted here. Sharp photos and a fair price get more saves."
     }
+  },
+  "privateCars": {
+    "tab": "Private",
+    "label": "Private",
+    "onlyYou": "only you see it",
+    "hint": "Only you. Not on the marketplace (max {{n}})",
+    "limit": "You already have {{n}} private cars. Publish or delete one first.",
+    "sentForReview": "Sent for review. It goes live once approved."
   }
 }
