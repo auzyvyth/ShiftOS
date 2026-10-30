@@ -2564,6 +2564,23 @@ export default function SalesmanPremium() {
  };
 
 
+ // Share button on the listing photo: the phone's share sheet (WhatsApp,
+ // Telegram, Facebook...) with the tracked link. ?ref= credits the rep
+ // (resolve_lead_salesman rule 2); ?src=share files the visit under "Shared
+ // link" (refTracking.js). Desktop has no share sheet, so it copies instead.
+ const handleListingShare = async (car) => {
+ const url = `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(profile?.slug || "")}&src=share`;
+ const title = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+ if (navigator.share) {
+ try { await navigator.share({ title, url }); } catch { /* closed the sheet */ }
+ return;
+ }
+ try {
+ await navigator.clipboard.writeText(url);
+ toast.success(t("salesmanPremium.lst.linkCopied"));
+ } catch { window.prompt(t("salesmanPremium.lst.copyLinkTitle"), url); }
+ };
+
  const handleListingCopy = (car, type) => {
  const link = `${SITE_URL}/showroom/${car.slug}?ref=${profile?.slug || ""}`;
  // "wa" = the same full caption Lite copies (copyListingCaption: buildCopyText
@@ -7121,7 +7138,7 @@ export default function SalesmanPremium() {
       setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
       listingScore={listingScore} updateListingStatus={updateListingStatus}
-      handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy}
+      handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy} handleListingShare={handleListingShare}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
       openLoanPoster={setPosterCar}
