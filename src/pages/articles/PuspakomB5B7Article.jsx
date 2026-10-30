@@ -11,11 +11,15 @@ const ARTICLE = {
   description:
     'B5 untuk tukar nama kereta (RM30, laporan sah 120 hari). B7 untuk loan kereta terpakai (RM60, bank yang minta). Apa yang diperiksa, kos sebenar dan bila perlu buat kedua-duanya.',
   datePublished: '2026-06-13',
-  dateModified: '2026-10-05',
+  dateModified: '2026-10-30',
   readMins: 5,
 };
 
 const FAQS = [
+  {
+    q: 'Apa itu B5 Puspakom?',
+    a: 'B5 ialah pemeriksaan Puspakom untuk tukar nama (pindah milik) kereta terpakai. Sejak 2025 ia dipanggil MV15. JPJ hanya akan proses pindah milik jika kereta itu lulus B5.',
+  },
   {
     q: 'Puspakom B5 untuk apa?',
     a: 'B5 (kini dipanggil MV15) ialah pemeriksaan tukar hak milik. JPJ perlukan laporan B5 yang lulus sebelum boleh pindah milik kereta terpakai. Ia mengesahkan nombor casis dan nombor enjin sepadan dengan rekod, dan memeriksa perkara asas seperti lampu dan tahap kegelapan tint. Yuran pemeriksaan RM30.',
@@ -23,6 +27,10 @@ const FAQS = [
   {
     q: 'Puspakom B7 untuk apa?',
     a: 'B7 ialah pemeriksaan sewa beli. Bank atau syarikat kewangan minta laporan B7 sebelum meluluskan pinjaman untuk kereta terpakai. Jika anda bayar tunai, B7 biasanya tidak diperlukan. Yuran pemeriksaan RM60.',
+  },
+  {
+    q: 'B7 Puspakom check apa?',
+    a: 'Semua yang diperiksa dalam B5 (nombor casis dan enjin), ditambah keadaan fizikal kereta: antara lain brek, suspensyen, asap ekzos, lampu dan ciri keselamatan lain. Tujuannya supaya bank yakin kereta yang menjadi cagaran pinjaman itu tulen dan selamat dipandu.',
   },
   {
     q: 'Berapa lama laporan Puspakom B5 sah?',
@@ -152,6 +160,38 @@ export default function PuspakomB5B7Article() {
             </section>
 
             <section>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Puspakom B5 vs B7: Beza Dalam Satu Jadual</h2>
+              <div style={{ overflowX: 'auto', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, color: '#374151' }}>
+                  <thead>
+                    <tr style={{ background: '#f9fafb' }}>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: 600, color: '#6b7280' }}></th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: 700, color: '#111827' }}>B5 (MV15)</th>
+                      <th style={{ textAlign: 'left', padding: '10px 12px', fontWeight: 700, color: '#111827' }}>B7</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['Untuk apa', 'Tukar nama (pindah milik)', 'Pinjaman sewa beli (loan kereta terpakai)'],
+                      ['Siapa minta', 'JPJ', 'Bank atau syarikat kewangan'],
+                      ['Bila perlu', 'Setiap pindah milik kereta terpakai', 'Hanya jika pembeli ambil loan'],
+                      ['Apa diperiksa', 'Nombor casis & enjin, tint, lampu, pemeriksaan asas', 'Semua dalam B5 + brek, suspensyen, asap ekzos, ciri keselamatan'],
+                      ['Yuran', 'RM30', 'RM60'],
+                      ['Di mana', 'Puspakom atau pusat MV15 yang dilantik', 'Puspakom'],
+                      ['Laporan sah', '120 hari (mulai 1 Julai 2026)', 'Semak dengan bank anda'],
+                    ].map(([label, b5, b7]) => (
+                      <tr key={label} style={{ borderTop: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap', verticalAlign: 'top' }}>{label}</td>
+                        <td style={{ padding: '10px 12px', lineHeight: 1.55, verticalAlign: 'top' }}>{b5}</td>
+                        <td style={{ padding: '10px 12px', lineHeight: 1.55, verticalAlign: 'top' }}>{b7}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: '#111827', marginBottom: 12 }}>Puspakom B5 Untuk Apa? (Tukar Hak Milik)</h2>
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 18, marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -197,13 +237,16 @@ export default function PuspakomB5B7Article() {
                   Pemeriksaan sewa beli. Bank atau syarikat kewangan minta laporan ini sebelum meluluskan pinjaman untuk kereta terpakai.
                 </p>
               </div>
-              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>B7 diperlukan apabila <strong style={{ color: '#111827' }}>pembeli mengambil pinjaman sewa beli (hire purchase) untuk membeli kereta terpakai itu</strong>. Ia lebih menyeluruh daripada B5, sebab itu yurannya dua kali ganda:</p>
+              <p style={{ color: '#4b5563', lineHeight: 1.75, marginBottom: 12 }}>B7 diperlukan apabila <strong style={{ color: '#111827' }}>pembeli mengambil pinjaman sewa beli (hire purchase) untuk membeli kereta terpakai itu</strong>. Ia lebih menyeluruh daripada B5, sebab itu yurannya dua kali ganda.</p>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#111827', margin: '0 0 10px' }}>B7 Puspakom check apa?</h3>
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  'Semua yang diperiksa dalam B5',
-                  'Pemeriksaan identiti kenderaan yang lebih mendalam',
-                  'Pemeriksaan fizikal keadaan dan keselamatan, termasuk brek',
-                  'Tujuannya: bank perlu yakin kereta yang menjadi cagaran pinjaman itu tulen dan dalam keadaan baik',
+                  'Semua yang diperiksa dalam B5: nombor casis dan nombor enjin sepadan dengan rekod JPJ',
+                  'Brek',
+                  'Suspensyen',
+                  'Asap ekzos (emisi)',
+                  'Lampu dan ciri keselamatan lain',
+                  'Tujuannya: bank perlu yakin kereta yang menjadi cagaran pinjaman itu tulen dan selamat dipandu',
                 ].map((item, i) => (
                   <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 14, color: '#374151' }}>
                     <CheckCircle size={13} style={{ color: '#2563eb', flexShrink: 0, marginTop: 2 }} />
@@ -287,7 +330,7 @@ export default function PuspakomB5B7Article() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari Kereta Terpakai Terpercaya</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Setiap penjual di XDrive disemak oleh pasukan kami sebelum boleh menyiarkan kereta. Minta laporan Puspakom B5 daripada penjual sebelum anda bayar deposit.
+                Minta laporan Puspakom B5 daripada penjual sebelum anda bayar deposit, dan B7 jika anda ambil loan.
               </p>
               <Link to="/showroom" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat Kereta Tersedia
