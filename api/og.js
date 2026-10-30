@@ -860,6 +860,10 @@ const STATIC_PAGES = {
     <h2>${esc(c.crawler.faq)}</h2>
     ${c.faq.items.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
     <p>${esc(c.faq.reviewed)} ${esc(c.faq.reviewedLabel)}.</p>
+    <section lang="en">
+    <h2>${esc(SL.landingCopy("en").crawler.faq)} (English)</h2>
+    ${SL.FAQS_EN.map((f) => `<h3>${esc(f.q)}</h3><p>${esc(f.a)}</p>`).join("\n    ")}
+    </section>
     <p><a href="${SITE_URL}/showroom">${esc(c.crawler.browse)}</a> · <a href="${SITE_URL}/articles/cara-kira-komisen-salesman-kereta">Cara kira komisen salesman kereta</a> · <a href="${SITE_URL}/articles/cara-kira-loan-kereta-excel">Cara kira loan kereta guna Excel</a> · <a href="${SITE_URL}/articles/template-excel-rekod-prospek-salesman-kereta">Template Excel rekod prospek</a> · <a href="${SITE_URL}/shiftos">${esc(c.crawler.dealers)}</a></p>
   </main>`;
     return htmlShell({
@@ -867,7 +871,7 @@ const STATIC_PAGES = {
       title: c.seoTitle,
       description: c.seoDesc,
       canonical: SL.CANON,
-      jsonLd: [SL.webpageLd("ms"), SL.SOFTWARE_LD, SL.FAQ_LD],
+      jsonLd: [SL.webpageLd("ms"), SL.SOFTWARE_LD, SL.FAQ_LD_BOTH],
       body,
     });
   },

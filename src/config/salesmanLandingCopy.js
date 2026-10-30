@@ -58,7 +58,7 @@ export const LANG_KEY = "xd_for_salesmen_lang";
 export const CANON = "https://xdrive.my/for-salesmen";
 // Bump when the copy changes: it feeds dateModified (webpageLd) and the
 // "last reviewed" line, a freshness signal search and AI answers both read.
-export const REVIEWED_ISO = "2026-10-28";
+export const REVIEWED_ISO = "2026-10-30";
 // XDrive's own example Salesman Premium page, linked so agents and crawlers can
 // see the product rather than a mock-up. Must stay an active account with cars.
 export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
@@ -68,6 +68,13 @@ export const SEO_KEYWORDS = [
   "CRM salesman kereta", "rekod prospek pelanggan", "template prospek excel", "cara follow up customer kereta",
   "app salesman kereta Malaysia", "jual kereta TikTok live", "salesman kereta live",
   "car loan calculator Malaysia", "car salesman CRM Malaysia", "TikTok live car salesman",
+  // Independent agents' tool searches (owner, 2026-10-30). Kept word for word,
+  // typo included ("untk"): the FAQ answers carry the readable versions.
+  "create free car catalog link", "web page untk ejen kereta", "used car dms free Malaysia",
+  "aplikasi urus stok kereta secondhand", "cara buat digital showroom recon car",
+  "free online inventory tracker for car salesmen", "cheaper alternative to Mudah for car agents",
+  "free vehicle listing page for solo agents", "how to share car stock without listing fees",
+  "ad-free personal car showroom link", "share car stock directly to WhatsApp status",
 ].join(", ");
 
 // ─── English ────────────────────────────────────────────────────────────────
@@ -394,6 +401,23 @@ const EN = {
         a: "Yes. xdrive.my/s/premiummotors is XDrive's example Salesman Premium page: stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
       { q: "How long does setup take?",
         a: "A few minutes. Sign up with email or Google, add your phone and a link name, and you're in your panel. You're asked for your IC number when you add your first car, and each car goes public once we've checked it." },
+      // Independent agents' tool searches (owner, 2026-10-30): each question is
+      // the searcher's own words, so Google snippets and AI answers can match it.
+      // New copy says Drevo (BRAND-1). No claims about Mudah's prices.
+      { q: "What is the best free inventory app for independent car dealers in Malaysia?",
+        a: `For a solo agent or a small independent dealer, Drevo Salesman Lite is a free online inventory tracker for car salesmen. Add up to ${LITE_CAP} cars with photos, price and specs, mark each one available, reserved or sold, and every car shows on your own page and the Drevo marketplace. It costs RM0 with no time limit. Premium raises the cap to ${PREMIUM_CAP} cars.` },
+      { q: "Is there a free used car dealer management system with no trial limit?",
+        a: `Yes, for solo agents. Drevo Salesman Lite is a free used car DMS for Malaysia with no trial and no end date, up to ${LITE_CAP} cars: your stock, a page that shows it, and a lead list for every buyer who contacts you. It is not a full dealership system with stock costing and team accounts; dealerships have their own plans.` },
+      { q: "How do I create a custom landing page for my used car inventory?",
+        a: "Sign up for Drevo Salesman Lite and add your cars. You get a ready page with a link ending in /s/yourname: every car with photos, price and a contact button. That is your free car catalog link for your TikTok or Instagram bio, WhatsApp and Facebook groups. It is an ad-free personal car showroom link: only your cars, no ads and no other agents' cars. It works the same as a digital showroom for recon cars. No website, hosting or design work." },
+      { q: "How do I share car stock without listing fees?",
+        a: `Drevo charges no fee per listing. Salesman Lite is a free vehicle listing page for solo agents: up to ${LITE_CAP} cars on your own page, and each car also appears on the Drevo marketplace. Share one link and buyers see all your stock.` },
+      { q: "Is there a cheaper alternative to Mudah for car agents?",
+        a: `Drevo Salesman Lite costs RM0: up to ${LITE_CAP} cars, your own page and no fee per listing. We don't compare prices with other platforms, so check their current rates. Many agents use both: keep your Mudah ads and share your Drevo link with buyers who want to see all your stock in one place.` },
+      { q: "Can I share car stock directly to WhatsApp status?",
+        a: `Yes. Each car can be turned into a loan poster: one image with the photo, price and monthly instalments over 9, 7 and 5 years, saved to your phone to post on WhatsApp Status, TikTok or Facebook. Lite includes posters for ${LITE_POSTERS} cars a month; Premium has no limit. You can also share your page link straight into a WhatsApp chat or Status.` },
+      { q: "How can a solo car salesman track leads and WhatsApp clicks?",
+        a: "On Drevo, every buyer who taps WhatsApp, sends a chat or books a viewing lands in your lead list with a stage, and you get an alert. Each car shows its views and WhatsApp taps, so you can see which cars pull buyers. Free on Lite. Premium adds follow-up reminders, a call log and a Performance view that shows where deals are lost." },
     ],
   },
 
@@ -717,6 +741,21 @@ const MS = {
         a: "Ada. xdrive.my/s/premiummotors ialah contoh page Salesman Premium dari XDrive: stok, harga dan butang contact di setiap kereta, sama macam yang pembeli nampak bila anda share link anda." },
       { q: "Berapa lama nak setup?",
         a: "Beberapa minit sahaja. Daftar dengan email atau Google, masukkan nombor telefon dan nama link, dan anda terus masuk panel. Nombor IC diminta bila anda masukkan kereta pertama, dan setiap kereta keluar untuk umum selepas kami semak." },
+      // Same seven questions as the English list, in the searcher's own BM.
+      { q: "Apa aplikasi urus stok kereta secondhand percuma untuk ejen bebas?",
+        a: `Untuk ejen solo atau dealer kecil, Drevo Salesman Lite ialah aplikasi urus stok kereta secondhand yang percuma. Masukkan sampai ${LITE_CAP} kereta dengan gambar, harga dan spec, tanda setiap satu available, reserved atau sold, dan setiap kereta keluar di page anda sendiri dan marketplace Drevo. RM0, tiada had masa. Premium naikkan had ke ${PREMIUM_CAP} kereta.` },
+      { q: "Ada sistem DMS kereta terpakai percuma tanpa had trial?",
+        a: `Ada, untuk ejen solo. Drevo Salesman Lite ialah DMS kereta terpakai percuma di Malaysia, tiada trial dan tiada tarikh tamat, sampai ${LITE_CAP} kereta: stok anda, page yang tunjuk stok tu, dan senarai lead untuk setiap pembeli yang hubungi anda. Ia bukan sistem penuh untuk dealership (tiada kos stok atau akaun team); dealership ada pelan sendiri.` },
+      { q: "Cara buat digital showroom recon car atau web page untuk ejen kereta?",
+        a: "Daftar Drevo Salesman Lite dan masukkan kereta anda. Anda terus dapat page siap dengan link yang berakhir /s/namaanda: setiap kereta dengan gambar, harga dan butang contact. Itulah digital showroom anda, untuk recon car atau kereta terpakai, dan link katalog kereta percuma untuk bio TikTok, Instagram, WhatsApp dan group Facebook. Page ni hanya ada kereta anda: tiada iklan dan tiada kereta ejen lain. Tak perlu website, hosting atau design." },
+      { q: "Macam mana nak share stok kereta tanpa bayar listing?",
+        a: `Drevo tak caj untuk setiap listing. Salesman Lite ialah page listing kereta percuma untuk ejen solo: sampai ${LITE_CAP} kereta di page anda sendiri, dan setiap kereta keluar juga di marketplace Drevo. Share satu link, pembeli nampak semua stok anda.` },
+      { q: "Ada alternatif lebih murah daripada Mudah untuk ejen kereta?",
+        a: `Drevo Salesman Lite RM0: sampai ${LITE_CAP} kereta, page sendiri dan tiada caj setiap listing. Kami tak banding harga dengan platform lain, jadi semak kadar semasa mereka. Ramai ejen guna dua-dua: teruskan iklan Mudah anda dan share link Drevo kepada pembeli yang nak tengok semua stok di satu tempat.` },
+      { q: "Bagaimana cara ejen kereta promosi stok guna WhatsApp?",
+        a: `Setiap kereta boleh jadi poster loan: satu gambar dengan foto, harga dan ansuran bulanan 9, 7 dan 5 tahun, disimpan ke telefon untuk post di WhatsApp Status, TikTok atau Facebook. Lite dapat poster untuk ${LITE_POSTERS} kereta sebulan; Premium tiada had. Anda juga boleh share link page terus ke chat atau Status WhatsApp, dan pembeli yang tap WhatsApp masuk terus ke senarai lead anda.` },
+      { q: "Macam mana salesman solo nak jejak lead dan klik WhatsApp?",
+        a: "Di Drevo, setiap pembeli yang tap WhatsApp, hantar chat atau buat booking masuk ke senarai lead anda dengan stage, dan anda dapat alert. Setiap kereta tunjuk jumlah view dan tap WhatsApp, jadi anda nampak kereta mana yang tarik pembeli. Percuma dengan Lite. Premium tambah reminder follow up, log panggilan dan Performance yang tunjuk di mana deal terlepas." },
     ],
   },
 
@@ -760,6 +799,9 @@ export function faqLd(items) {
 // The crawler page is Malay, so the default FAQ JSON-LD is the Malay FAQ.
 export const FAQ_LD = faqLd(FAQS_MS);
 export const FAQ_LD_EN = faqLd(FAQS_EN);
+// The crawler page prints both lists (BM, then English), so its FAQPage holds
+// both. One FAQPage per page: never send FAQ_LD and FAQ_LD_EN side by side.
+export const FAQ_LD_BOTH = faqLd([...FAQS_MS, ...FAQS_EN]);
 
 export function webpageLd(lang = DEFAULT_LANG) {
   const c = landingCopy(lang);
@@ -797,6 +839,9 @@ export const SOFTWARE_LD = {
     `Up to ${LITE_CAP} listings free, ${PREMIUM_CAP} on Premium`,
     "Buyer enquiries by WhatsApp, in-app chat and booking requests",
     "Alerts on new leads and a simple lead list with stages",
+    "Free online inventory tracker and car catalog link for independent agents",
+    "Per-car views and WhatsApp taps",
+    "Loan poster images for WhatsApp Status, TikTok and Facebook",
     ...SALESMAN_PREMIUM_FEATURES,
   ],
   offers: [
