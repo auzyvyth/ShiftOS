@@ -70,6 +70,15 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## PRIVATE-1: private cars, max 4 (was IDEA-25) — built 2026-10-30, on staging, NOT live
+Seller `iskandar` (found us via ChatGPT) wanted cars only he sees, to work out cost. Owner: 4 per
+seller. Code on staging; migration `20261030b_private_cars.sql` is QUEUED (with `20261030a`),
+apply after midnight with nobody live. Until it runs (staging shares the live DB): the status
+menu's Private silently does nothing (the old `update_listing_status` ignores the value and
+returns no error, so the card snaps back on reload), while the form's "Keep it private" DOES save
+a private car, just without the 4-car limit. Test both after the migration.
+Open: CarFormFast (Premium quick add) has no private box; linked salesmen + dealers get none.
+
 ## INPUT-1: one phone rule + input limits — built 2026-10-28, on staging, NOT live
 Owner: "on sign up a user can put in fake numbers with extra digits". Every phone box
 had its own check (or none) and no Malaysian maximum. Now ONE rule, `src/lib/phone.js`
@@ -2708,17 +2717,6 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
-- **IDEA-25: A private car (cost tracker only), not on the marketplace (seller `iskandar`, 2026-10-30)**
-  — found us through ChatGPT, signed up on Lite, listed 1 car with its purchase price, and wants
-  it only "untuk kira cost" (his costs and margin), not public: "org lain blh tgk eh? klau nk off
-  xblh ke". Today every car a seller adds goes on the marketplace; the only hidden state,
-  `status='unpublished'`, is used by the Premium-lapse lock, and no seller control sets it. Idea: a
-  "Private (only you)" switch per car: still in the seller's list, the cost/margin maths and loan
-  poster work, never in `public_car_listings`, the mini page or the sitemap; one tap to publish.
-  Questions before building: does it count toward the Lite 10-car cap (probably not, or the
-  cap stops meaning "live cars"); does it reuse `unpublished` (it would collide with
-  `plan_locked_at` locks, so likely a separate `is_private` flag); and is a pure cost-tracker
-  user worth serving, or the start of a dealer-stock tool (IDEA-24, the deal record).
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to

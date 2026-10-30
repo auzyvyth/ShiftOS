@@ -16,6 +16,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
+import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite } from "../utils/privateCars";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
 import { warmChunks } from "../utils/warmChunks";
@@ -2633,7 +2634,9 @@ export default function SalesmanPremium() {
  // Optimistically stamp sold_at so commission/goal figures pick the deal up
  // immediately — the DB trigger backfills the authoritative value.
  const optimisticSoldAt = newStatus === "sold" ? (prevSoldAt || new Date().toISOString()) : prevSoldAt;
- setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+ // Publishing a private car goes to review first (PRIVATE-1), like a new car.
+ const shownStatus = statusAfterWrite(car, newStatus);
+ setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: shownStatus, sold_at: optimisticSoldAt } : c));
  // RPC avoids a PostgREST bug with GENERATED ALWAYS columns (gross_profit).
  const { error: statusErr } = await supabase.rpc("update_listing_status", {
  p_listing_id: car.id,
@@ -2654,11 +2657,14 @@ export default function SalesmanPremium() {
  refreshCommissionData();
  refreshSales();
  });
+ } else if (isPrivateLimitError(statusErr)) {
+ toast.error(t("privateCars.limit", { n: PRIVATE_CAR_LIMIT }));
  } else {
  toast.error(t("salesmanPremium.errors.updateStatus"));
  }
  return;
  }
+ if (shownStatus === "pending_approval") toast.success(t("privateCars.sentForReview"));
  refreshCommissionData();
  // Analytics/Performance keeps its OWN sold+commission state (refreshSales).
  // Without this the Dashboard moved and Performance sat at 0 sold / RM 0

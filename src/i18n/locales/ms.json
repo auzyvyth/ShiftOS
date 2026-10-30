@@ -1852,7 +1852,8 @@
         "reserved": "Ditempah",
         "sold": "Terjual",
         "pending_approval": "Menunggu kelulusan",
-        "rejected": "Ditolak"
+        "rejected": "Ditolak",
+        "private": "Peribadi"
       },
       "title": "Listing saya ({{n}})",
       "fast": "Cepat",
@@ -2612,5 +2613,13 @@
       "likesTitle": "Belum ada yang simpan",
       "likesBody": "Bila buyer tekan butang hati pada kereta anda, ia dikira di sini. Gambar cantik dan harga berpatutan dapat lebih banyak simpanan."
     }
+  },
+  "privateCars": {
+    "tab": "Peribadi",
+    "label": "Peribadi",
+    "onlyYou": "hanya anda nampak",
+    "hint": "Hanya anda. Tidak di marketplace (maks {{n}})",
+    "limit": "Anda sudah ada {{n}} kereta peribadi. Siarkan atau padam satu dulu.",
+    "sentForReview": "Dihantar untuk semakan. Akan disiarkan selepas diluluskan."
   }
 }

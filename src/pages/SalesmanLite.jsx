@@ -23,6 +23,7 @@ import { copyListingCaption } from "../utils/copyListingCaption";
 import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
+import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite, privateCount } from "../utils/privateCars";
 import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
@@ -1270,7 +1271,9 @@ export default function SalesmanLite() {
     // Optimistically stamp sold_at so commission goal/count pick the deal up immediately
     // (the DB trigger stamp_sold_at sets the authoritative value, backfilled via realtime).
     const optimisticSoldAt = newStatus === "sold" ? (prevSoldAt || new Date().toISOString()) : prevSoldAt;
-    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+    // Publishing a private car goes to review first (PRIVATE-1), like a new car.
+    const shownStatus = statusAfterWrite(car, newStatus);
+    setMyListings((p) => p.map((c) => c.id === car.id ? { ...c, status: shownStatus, sold_at: optimisticSoldAt } : c));
     // Use RPC to avoid PostgREST bug with GENERATED ALWAYS columns (gross_profit)
     const { error: statusErr } = await supabase.rpc("update_listing_status", {
       p_listing_id: car.id,
@@ -1286,12 +1289,15 @@ export default function SalesmanLite() {
           setLeads(reopenWonLeads(car.id));
           refreshCommissionData();
         });
+      } else if (isPrivateLimitError(statusErr)) {
+        toast.error(t("privateCars.limit", { n: PRIVATE_CAR_LIMIT }));
       } else {
         toast.error(t("salesmanLite.toast.statusUpdateFailed"));
       }
       return;
     }
-    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: newStatus, sold_at: optimisticSoldAt } : c));
+    if (shownStatus === "pending_approval") toast.success(t("privateCars.sentForReview"));
+    writeCache(`slite_listings_${userId}`, myListings.map((c) => c.id === car.id ? { ...c, status: shownStatus, sold_at: optimisticSoldAt } : c));
     // Keep the "This Month" revenue/commission card in sync when selling from the Listings tab
     refreshCommissionData();
   };
@@ -3851,6 +3857,9 @@ export default function SalesmanLite() {
                   { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available" || isLockedCar(c)).length },
                   { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
                   { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
+                  // Private only gets a tab while it holds a car (or is the one picked).
+                  ...(privateCount(myListings) > 0 || filterStatus === "private"
+                    ? [{ key: "private", label: t("privateCars.tab"), count: privateCount(myListings) }] : []),
                 ].map(({ key, label, count }) => (
                   <button
                     key={key}
@@ -4007,6 +4016,7 @@ export default function SalesmanLite() {
               const isReserved = car.status === "reserved";
               const isPending  = car.status === "pending_approval";
               const isRejected = car.status === "rejected";
+              const isPrivate  = car.status === "private";
               const isLocked   = isLockedCar(car);
               const isInactive = isSold || isPending || isRejected;
               const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
@@ -4184,7 +4194,7 @@ export default function SalesmanLite() {
                       <div style={{ position: "relative", flexShrink: 0 }}>
                         {(() => {
                           const curStatus = normStatus(car.status || "available");
-                          const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : C.successText;
+                          const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : curStatus === "private" ? C.textMuted : C.successText;
                           const locked = isPending || isRejected;
                           const open = statusMenuCarId === car.id;
                           // Locked (pending / rejected): the state is already said above the
@@ -4208,7 +4218,7 @@ export default function SalesmanLite() {
                               }}
                             >
                               <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                              <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{car.status || "available"}</span>
+                              <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{isPrivate ? t("privateCars.label") : (car.status || "available")}</span>
                               {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
                             </button>
                           );
@@ -4223,6 +4233,9 @@ export default function SalesmanLite() {
                               { key: "available", label: "Available", color: C.successText, hint: "Live for buyers" },
                               { key: "reserved",  label: "Reserved",  color: C.warnText, hint: "Deposit / on hold" },
                               { key: "sold",      label: "Sold",      color: C.textSec, hint: "Deal closed" },
+                              // PRIVATE-1: only you see it. Offered while under the limit (or already private).
+                              ...(isPrivate || privateCount(myListings) < PRIVATE_CAR_LIMIT
+                                ? [{ key: "private", label: t("privateCars.label"), color: C.textMuted, hint: t("privateCars.hint", { n: PRIVATE_CAR_LIMIT }) }] : []),
                             ].map(({ key, label, color, hint }) => {
                               const active = normStatus(car.status || "available") === key;
                               return (
@@ -4369,15 +4382,15 @@ export default function SalesmanLite() {
                         </button>
                       ) : (
                         <>
-                          {/* Copy link */}
-                          <button
+                          {/* Copy link: a private car has no public page to link to */}
+                          {!isPrivate && <button
                             onClick={() => handleListingCopy(car, "link")}
                             title="Copy link"
                             style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link" ? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link" ? C.successText : C.textSec }}
                           >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                             {listingCopied[car.id] === "link" ? "Copied" : "Link"}
-                          </button>
+                          </button>}
                           {/* WA */}
                           <button
                             onClick={() => handleListingCopy(car, "wa")}
