@@ -2085,6 +2085,11 @@ network before showing anything. Two layers, both purged on logout:
   the IC. Check the same thing on any tab whose edit form spreads the row back.
 - DocumentsTab is deliberately NOT cached: documents carry buyer IC and address.
 - A failed read keeps the cached value; never overwrite a good cache with [] on error.
+- **A failed read of the user's OWN profile is never "signed out"** (2026-10-30). Every panel
+  (Lite, Premium, linked salesman, dealer dashboard, manager, admin, accountant, F&I, /account,
+  /platform, /salesman-setup) shows `src/components/ProfileLoadError.jsx` (the ErrorScreen "stuck
+  in traffic" scene + Try again) on a timeout / server error. Only a clean empty answer goes to
+  /login. A DB stall bounced a Premium seller to /login, and /platform used to SIGN THE ADMIN OUT.
 - **A number that is still loading is a placeholder, never a 0** (2026-10-18).
   `src/components/ui/StatSkeleton.jsx`. The Lite + Premium dashboards showed 0 views /
   0 visits / 0 taps and "your pipeline is clear" until their requests answered.

@@ -4,6 +4,7 @@ import { Bell } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import { flatToEir, loanTotals } from "../utils/financing";
 import { liveChannel } from "../lib/liveChannel";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 const ACCENT = "#22c55e";
 
@@ -140,6 +141,7 @@ export default function AccountantPanel() {
   const [profile, setProfile] = useState(null);
   const [dealerPlan, setDealerPlan] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [activeNav, setActiveNav] = useState("overview");
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -243,11 +245,17 @@ export default function AccountantPanel() {
         navigate("/login");
         return;
       }
-      const { data: p } = await supabase
+      const { data: p, error: pErr } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .maybeSingle();
+      // A timeout / server error is the database stalling, not a missing account.
+      if (pErr) {
+        setProfileLoadFailed(true);
+        setLoading(false);
+        return;
+      }
       if (!p || p.role !== "accountant") {
         navigate("/login");
         return;
@@ -1160,6 +1168,7 @@ export default function AccountantPanel() {
   }, [activeNav, profile]);
 
   // ─────────────────────────────────────────────────────────────
+  if (profileLoadFailed) return <ProfileLoadError />;
   if (loading)
     return (
       <div

@@ -18,13 +18,15 @@ export function useBuyerGuard() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [checking, setChecking] = useState(true);
+  // Reading the profile failed (DB stall): the page shows ProfileLoadError.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return;
       if (!data.session) { navigate('/login', { replace: true }); return; }
-      const { data: prof } = await supabase
+      const { data: prof, error: profErr } = await supabase
         // dealer_id + plan so a standalone salesman who lands here is sent to
         // their own panel directly, not via /salesman and a second redirect.
         // account_status + deleted_at drive AccountPage's restore-my-account
@@ -32,6 +34,9 @@ export function useBuyerGuard() {
         .from('profiles').select(`${ROUTE_PROFILE_COLUMNS}, full_name, avatar_url, phone, account_status, deleted_at`)
         .eq('id', data.session.user.id).maybeSingle();
       if (!active) return;
+      // Without this a failed read looked like "no profile" -> routeForProfile
+      // kept a SELLER on the buyer page with nothing loaded.
+      if (profErr) { setLoadFailed(true); setChecking(false); return; }
       const home = routeForProfile(prof);
       if (home !== '/account') { navigate(home, { replace: true }); return; }
       setSession(data.session);
@@ -41,7 +46,7 @@ export function useBuyerGuard() {
     return () => { active = false; };
   }, [navigate]);
 
-  return { session, profile, setProfile, checking };
+  return { session, profile, setProfile, checking, loadFailed };
 }
 
 export default useBuyerGuard;

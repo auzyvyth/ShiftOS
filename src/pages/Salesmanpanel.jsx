@@ -107,6 +107,7 @@ import {
   rememberPanelUid,
   seedPanelCache,
 } from "../utils/panelCache";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 // Cache namespace for this panel (keys look like `spanel_leads_<uid>`).
 const PANEL_CACHE_KEY = "spanel";
@@ -246,6 +247,8 @@ export default function SalesmanPanel() {
  // A cached profile is enough to render the panel; the fresh one lands moments
  // later and the role / dealer_id gates below re-run against it.
  const [loading, setLoading] = useState(!seed.profile);
+ // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
+ const [profileLoadFailed, setProfileLoadFailed] = useState(false);
  const [activeTab, setActiveTab] = useState("dashboard");
  const [moreOpen, setMoreOpen] = useState(false);
  const [subTab, setSubTab] = useState("overview");
@@ -677,10 +680,15 @@ export default function SalesmanPanel() {
  .eq("id", user.id)
  .maybeSingle();
 
- if (profileError ||!profileData) {
+ // A timeout / server error is the database stalling, not a missing account.
+ if (profileError) {
  setLoading(false);
- // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
- navigate(profileError ? "/login?error=auth_failed&reason=profile" : "/login");
+ setProfileLoadFailed(true);
+ return;
+ }
+ if (!profileData) {
+ setLoading(false);
+ navigate("/login");
  return;
  }
  if (redirectByRole(profileData.role)) {
@@ -1535,6 +1543,8 @@ Rules:
  </div>
  );
  };
+
+ if (profileLoadFailed) return <ProfileLoadError />;
 
  if (loading) {
  return (

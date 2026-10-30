@@ -192,6 +192,7 @@ import {
  LEAD_STAGES, STAGE_COLOR, STAGE_WEIGHT, getHeatScore, LOST_REASONS, SubTabs,
  ListingFormModal, stageLabel,
 } from "./salesmanPremium/shared";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 // Cache namespace for this panel (keys look like `sp_leads_<uid>`).
 const PANEL_CACHE_KEY = "sp";
@@ -342,6 +343,8 @@ export default function SalesmanPremium() {
  // later and every access gate below (pending pay / wrong role)
  // re-runs against it. Without a cached profile this is the old blocking spinner.
  const [loading, setLoading] = useState(!seed.profile);
+ // A failed read of our own profile (DB stall) shows ProfileLoadError, not /login.
+ const [profileLoadFailed, setProfileLoadFailed] = useState(false);
  // Once the first screen and its data are up, fetch the other tabs' code in the
  // background so their first tap is instant and works offline.
  useEffect(() => (loading ? undefined : warmChunks(WARM_TABS)), [loading]);
@@ -1110,11 +1113,17 @@ export default function SalesmanPremium() {
  .eq("id", uid)
  .maybeSingle();
 
- if (!profileData) {
- if (profileErr) console.error("fetchProfile:", profileErr);
+ // A timeout / server error is the database stalling, not a missing account:
+ // the session is fine, so never bounce to /login for it (2026-10-30).
+ if (profileErr) {
+ console.error("fetchProfile:", profileErr);
  setLoading(false);
- // Say why on /login (LoginPage reads ?reason=) instead of a bare form.
- navigate(profileErr ? "/login?error=auth_failed&reason=profile" : "/login");
+ setProfileLoadFailed(true);
+ return;
+ }
+ if (!profileData) {
+ setLoading(false);
+ navigate("/login");
  return;
  }
 
@@ -6660,6 +6669,8 @@ export default function SalesmanPremium() {
  document.body,
  );
  };
+
+ if (profileLoadFailed) return <ProfileLoadError />;
 
  // LOADING 
 

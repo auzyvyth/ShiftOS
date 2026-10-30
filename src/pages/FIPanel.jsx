@@ -9,6 +9,7 @@ import { DEFAULT_EIR, monthlyPayment } from '../utils/financing';
 import FinancingCalculator from '../components/FinancingCalculator';
 import { toast } from 'sonner';
 import { liveChannel } from "../lib/liveChannel";
+import ProfileLoadError from "../components/ProfileLoadError";
 
 const ACCENT = '#a855f7';
 
@@ -557,6 +558,7 @@ export default function FIPanel() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false);
   const [activeNav, setActiveNav] = useState('deals');
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -572,7 +574,9 @@ export default function FIPanel() {
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!data.session) { navigate('/login'); return; }
-      const { data: p } = await supabase.from('profiles').select('*').eq('id', data.session.user.id).maybeSingle();
+      const { data: p, error: pErr } = await supabase.from('profiles').select('*').eq('id', data.session.user.id).maybeSingle();
+      // A timeout / server error is the database stalling, not a missing account.
+      if (pErr) { setProfileLoadFailed(true); setLoading(false); return; }
       if (!p || p.role !== 'fi_officer') { navigate('/login'); return; }
       setProfile(p);
       setLoading(false);
@@ -646,6 +650,7 @@ export default function FIPanel() {
     { id: 'documents', label: 'Documents' },
   ];
 
+  if (profileLoadFailed) return <ProfileLoadError />;
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#05070e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <p style={{ color: '#6b7280', fontFamily: "system-ui,sans-serif" }}>Loading...</p>
