@@ -9,7 +9,7 @@ import {
 import {
   salaryGuide, eirForTenure, fmtRate, liveReport, SALARY_SHARE, maxMonthlyFromPay, budgetMatches, budgetAll,
   netPrice, carLabel, isLocalNew, LOCAL_NEW_EIR, rebatesForMonth, myMonth, monthEnd, clampRateInput, RATE_MAX, tenuresFor, maxTenureYears, depositToFit, rateWarning, eirCap, MAX_CAR_AGE_AT_END,
-  tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT,
+  tightCapFromPay, shortVariantNames, variantExtras, dsrOf, DSR_TIGHT, revealPick, viewerHandle, HANDLE_MAX,
 } from '../../utils/liveMaths';
 import {
   LIVE_COPY, initialLiveLang, saveLiveLang, initialLiveCta, saveLiveCta, ctaLine, CTA_MAX,
@@ -343,6 +343,14 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Pages belong to one budget: `key` is the inputs they were turned under, and
   // a new number or setting starts every column on its first page again.
   const [budgetPage, setBudgetPage] = useState({ key: '', fit: 0, side: 0 });
+  // Take-home mode has two views of the SAME rows (REVEAL-1, owner 2026-10-30):
+  // List (the columns) or Viewer, one viewer's name and one answer, for the
+  // "gaji korang berapa?" segment. Names are typed by the seller from the
+  // comments, held in memory only, never saved and never in the live report.
+  const [budgetView, setBudgetView] = useState('list'); // 'list' | 'reveal'
+  const [viewer, setViewer] = useState('');
+  const [viewerQueue, setViewerQueue] = useState([]);
+  const [viewerDraft, setViewerDraft] = useState('');
   const pickBudgetVariant = (n, variantId) => setBudgetPick((p) => ({ ...p, [n]: variantId }));
   const [report, setReport] = useState(null); // null = presenting; {loading} | result
   // Back while presenting asks first (a stray swipe must not end a live),
@@ -796,6 +804,28 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Take-home pay mode: each row's commitments as a share of pay, coloured by
   // its own band (it follows the variant a model card row is switched to).
   const dsrFor = (monthly) => (payMode ? dsrOf(monthly, commit, amount) : null);
+  // Viewer view: the same rows, told as one answer (liveMaths revealPick).
+  const revealOn = budgetKind === 'pay' && budgetView === 'reveal';
+  // A phone stage holds one row of the ladder, the desktop stage two.
+  const reveal = revealOn && payMode ? revealPick(allRows, deskZoom ? 10 : 5) : null;
+  const addToQueue = () => {
+    const h = viewerHandle(viewerDraft);
+    if (h) setViewerQueue((q) => [...q, h].slice(-20));
+    setViewerDraft('');
+  };
+  // Next viewer: their name from the queue, and a clean slate for their numbers.
+  const nextViewer = () => {
+    setViewer(viewerQueue[0] || '');
+    setViewerQueue((q) => q.slice(1));
+    setBudgetAmount('');
+    setBudgetCommit('');
+  };
+  const budgetViewSwitch = budgetKind === 'pay' && (
+    <div className="lp-chips lp-chips2 lp-ink lp-bview" role="group" aria-label={t.budgetViewAria}>
+      <button type="button" className="lp-chip" aria-pressed={budgetView === 'list'} onClick={() => setBudgetView('list')}>{t.viewList}</button>
+      <button type="button" className="lp-chip" aria-pressed={budgetView === 'reveal'} onClick={() => setBudgetView('reveal')}>{t.viewReveal}</button>
+    </div>
+  );
   const budgetKindSwitch = (
     <div className="lp-chips lp-chips2 lp-ink lp-bkind" role="group" aria-label={t.budgetIs}>
       <button type="button" className="lp-chip" aria-pressed={budgetKind === 'monthly'} onClick={() => setBudgetKind('monthly')}>{t.monthlyBudget}</button>
@@ -1365,6 +1395,47 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-bud .lp-bkind .lp-chip { min-height: 30px; font-size: 14px; }
         .lp-desk .lp-bcols { padding-top: 4px; }
         .lp-desk .lp-bud .lp-note { margin: 0; }
+        /* Budget > Viewer (REVEAL-1): the seller's name + queue row, then one answer.
+           Ink hero, the accent only on the big monthly and the best ladder step. */
+        .lp-bview { flex: none; display: flex; gap: 3px; padding: 3px; border-radius: 10px; background: #F4F3F1; }
+        .lp-bview .lp-chip { min-height: 30px; padding: 2px 10px; border: none; font-size: 13px; white-space: nowrap; }
+        /* Phone: the settings line keeps its full width, the view switch goes under it. */
+        .lp:not(.lp-desk) .lp-bud .lp-bsetrow { flex-wrap: wrap; gap: 6px; }
+        .lp:not(.lp-desk) .lp-bud .lp-bsetrow > .lp-bsetline { flex: 1 1 100%; }
+        .lp:not(.lp-desk) .lp-bview { flex: 1 1 100%; }
+        .lp:not(.lp-desk) .lp-bview .lp-chip { flex: 1; }
+        .lp-rv { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
+        .lp-rv-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .lp-rv-name { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 2px solid #0f1115; border-radius: 10px; background: #fff; font: inherit; font-size: clamp(18px, 5.4cqw, 24px); font-weight: 800; color: #0f1115; }
+        .lp-rv-name:focus { outline: none; border-color: var(--lp-a); }
+        .lp-rv-q { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; font-size: 13px; }
+        .lp-rv-ql { color: #6b7280; font-weight: 700; }
+        .lp-rv-chip { padding: 3px 9px; border-radius: 999px; background: #F4F3F1; color: #111827; font-weight: 700; }
+        .lp-rv-add { display: flex; gap: 6px; flex: 1 1 200px; min-width: 0; margin: 0 0 0 auto; }
+        .lp-rv-add input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: #fff; font: inherit; font-size: 14px; color: #0f1115; }
+        .lp-rv-add input:focus { outline: none; border-color: var(--lp-a); }
+        .lp-rv-add button { flex: none; height: 34px; padding: 0 12px; border: 1.5px solid #0f1115; border-radius: 999px; background: #fff; color: #0f1115; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+        .lp-rv-hero { display: flex; align-items: stretch; gap: 12px; width: 100%; padding: 12px; border: none; border-radius: 14px; background: #0f1115; color: #fff; font: inherit; text-align: left; cursor: pointer; }
+        .lp-rv-hero:disabled { cursor: default; }
+        .lp-rv-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+        .lp-rv-txt > small { font-size: clamp(11px, 3.2cqw, 14px); font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #d1d5db; }
+        .lp-rv-txt > b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: clamp(20px, 6.4cqw, 32px); font-weight: 800; line-height: 1.12; }
+        .lp-rv-m { align-self: flex-start; padding: 2px 12px; border-radius: 10px; background: var(--lp-a); color: #fff; font-size: clamp(24px, 7.4cqw, 38px); font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .lp-rv-m small { font-size: 13px; font-weight: 600; opacity: .9; }
+        .lp-bimg.lp-rv-img { flex: 0 0 clamp(112px, 32cqw, 190px); min-height: clamp(88px, 24cqw, 120px); }
+        .lp-rv-next { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1.5px solid #E5E7EB; border-radius: 12px; background: #FBF8F1; color: #0f1115; font: inherit; text-align: left; cursor: pointer; }
+        .lp-rv-tag { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--st-bg); color: var(--st); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+        .lp-rv-nn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
+        .lp-rv-fix { flex: none; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .lp-rv-lad { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+        .lp-rv-step { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 5px 6px; border: 1.5px solid #E5E7EB; border-radius: 8px; background: #fff; color: #6b7280; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lp-rv-step i { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--st); }
+        .lp-rv-step b { color: #111827; font-variant-numeric: tabular-nums; }
+        .lp-rv-step.lp-s-fit { background: #0f1115; border-color: #0f1115; color: #fff; }
+        .lp-rv-step.lp-s-fit b { color: #fff; }
+        .lp-rv-step.lp-rv-best { background: var(--lp-a); border-color: var(--lp-a); }
+        .lp-rv-step.lp-rv-best i { background: #fff; }
+        .lp-desk .lp-rv-hero { padding: 14px 16px; }
 
         /* Top bar + nav: ink for what is picked, never the accent. */
         .lp-top > .lp-seg { min-width: 0; background: #fff; border: 1px solid #E5E7EB; }
@@ -1747,6 +1818,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             <div className="lp-bsetrow">
               <p className="lp-cta">{t.budgetCta}</p>
               {budgetSetLine}
+              {budgetViewSwitch}
             </div>
           </>) : (<>
           <div className="lp-head">
@@ -1768,11 +1840,21 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               <mark className="lp-hl">{t.upTo}RM {fmt(maxMonthly)}{t.perMonth}</mark>
             </p>
           )}
-          {budgetSetLine}
+          {budgetKind === 'pay' ? <div className="lp-bsetrow">{budgetSetLine}{budgetViewSwitch}</div> : budgetSetLine}
           </>)}
 
           <div className="lp-res">
-            {!budgetOn ? (
+            {revealOn ? (
+              <BudgetReveal reveal={reveal} on={budgetOn} amount={amount} viewer={viewer} queue={viewerQueue}
+                onViewer={(v) => setViewer(String(v).slice(0, HANDLE_MAX))} onViewerDone={() => setViewer((v) => viewerHandle(v))}
+                draft={viewerDraft} onDraft={setViewerDraft} onAdd={addToQueue} onNext={nextViewer} onOpen={openFromBudget} t={t}
+                note={(
+                  <p className="lp-note">
+                    {maxMonthly === 0 ? `${t.noRoom(Math.round(SALARY_SHARE * 100))} ` : ''}
+                    {t.budgetNote}{anyHighValue ? t.budgetHigh : ''} {t.dsrRule(Math.round(SALARY_SHARE * 100))}
+                  </p>
+                )} />
+            ) : !budgetOn ? (
               <p className="lp-empty">{t.budgetEmpty}</p>
             ) : (<>
               {payMode && maxMonthly === 0 && <p className="lp-warn">{t.noRoom(Math.round(SALARY_SHARE * 100))}</p>}
@@ -2097,6 +2179,74 @@ function BudgetRow({ m, over, years, dsrFor, pay, pick, onPick, onOpen, t }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Budget > Viewer (REVEAL-1, owner 2026-10-30): one viewer's name, their take-home
+// pay, and ONE answer: the dearest comfortable car, the next one up with what
+// would make it fit, and a short ladder of the stock by price. Rows come from
+// budgetAll via revealPick, so this view and the List view can never disagree.
+// Never worded as approval: "best fit", with the 35% rule printed under it.
+function BudgetReveal({ reveal, on, amount, viewer, queue, onViewer, onViewerDone, draft, onDraft, onAdd, onNext, onOpen, note, t }) {
+  const { best, next, ladder } = reveal || { best: null, next: null, ladder: [] };
+  const img = best && Array.isArray(best.car.images) ? best.car.images.find(Boolean) : null;
+  const fixOf = (m) => (m.fitYears ? t.fitIfYears(m.fitYears, true)
+    : m.topUp > 0 ? t.topUpComfort(`RM ${fmt(m.topUp)}`) : `RM ${fmt(m.monthly)}${t.perMonth}`);
+  const shown = queue.slice(0, 4);
+  return (
+    <div className="lp-rv">
+      <div className="lp-rv-who">
+        <input className="lp-rv-name" type="text" value={viewer} placeholder={t.viewerPh} aria-label={t.viewerAria}
+          onChange={(e) => onViewer(e.target.value)} onBlur={onViewerDone}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
+        <button type="button" className="lp-bchange" onClick={onNext}>{t.nextViewer}</button>
+      </div>
+      <div className="lp-rv-q">
+        <span className="lp-rv-ql">{t.queueLabel}:</span>
+        {shown.length ? shown.map((q, i) => <span key={`${q}-${i}`} className="lp-rv-chip">{q}</span>) : <span className="lp-rv-ql">{t.queueEmpty}</span>}
+        {queue.length > shown.length && <span className="lp-rv-ql">+{queue.length - shown.length}</span>}
+        <form className="lp-rv-add" onSubmit={(e) => { e.preventDefault(); onAdd(); }}>
+          <input type="text" value={draft} placeholder={t.queuePh} aria-label={t.queueAria} maxLength={40}
+            onChange={(e) => onDraft(e.target.value)} />
+          <button type="submit">{t.queueAdd}</button>
+        </form>
+      </div>
+      {!on ? (
+        <p className="lp-empty">{t.revealEmpty(viewer)}</p>
+      ) : (<>
+        <button type="button" className="lp-rv-hero" disabled={!best} onClick={() => best && onOpen(best)}>
+          <span className="lp-rv-txt">
+            <small>{best ? t.revealHead(viewer, fmt(amount)) : (viewer || t.revealNone)}</small>
+            <b>{best ? carLabel(best.car) : t.revealNone}</b>
+            {best && <span className="lp-rv-m">RM {fmt(best.monthly)}<small>{t.perMonth} · {t.yrsShort(best.years)}</small></span>}
+          </span>
+          {best && (
+            <span className="lp-bimg lp-rv-img">
+              {img ? <img src={cdnImg(img, 480, 70)} alt="" decoding="async" onError={imgFallback(img)} /> : null}
+              <span className="lp-n">#{best.n}</span>
+            </span>
+          )}
+        </button>
+        {next && (
+          <button type="button" className="lp-rv-next lp-s-near" onClick={() => onOpen(next)}>
+            <span className="lp-rv-tag">{t.revealNear}</span>
+            <span className="lp-rv-nn">#{next.n} {carLabel(next.car)}</span>
+            <span className="lp-rv-fix">{fixOf(next)}</span>
+          </button>
+        )}
+        {ladder.length > 0 && (
+          <div className="lp-rv-lad" role="list" aria-label={t.ladderAria}>
+            {ladder.map((m) => (
+              <span role="listitem" key={`${m.car.id}-${m.car._variantId || ''}`}
+                className={`lp-rv-step lp-s-${m.status}${m.best ? ' lp-rv-best' : ''}`}>
+                <i aria-hidden="true" /><b>#{m.n}</b>{m.car.model || carLabel(m.car)}
+              </span>
+            ))}
+          </div>
+        )}
+        {note}
+      </>)}
     </div>
   );
 }

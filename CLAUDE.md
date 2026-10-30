@@ -1755,6 +1755,16 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   too generous. Verdict colours are MUTED green / amber / red, on the column dots
   only. The seller's own settings are ink when picked; the accent stays on the viewer's
   number. `npm run test:live`.
+- **Budget > Viewer view (REVEAL-1, owner 2026-10-30: "gaji korang berapa? dapat kereta apa?")**:
+  take-home mode only, a List | Viewer switch beside the settings line (`budgetView`,
+  LivePresenter.jsx). Viewer = the seller types the viewer's @name from the comments, a queue
+  of names (`viewerQueue`, "Seterusnya" loads the next and clears pay + komitmen), then ONE
+  answer: the dearest comfortable car, the next car up with what makes it fit, and a ladder of
+  the stock by price (10 on desktop, 5 on a phone). All from `revealPick` (liveMaths.js) over
+  the SAME `budgetAll` rows, so Viewer and List never disagree; same 35% rule (owner kept it
+  over a stricter "fun" %), per-car rebates apply on their own (no rebate box). Worded "paling
+  muat bajet", never approval, with the dsrRule printed under it. Names live in memory only:
+  never saved, never in the live report. `npm run test:live`.
 - Contact, once switched on, is a loud accent "Contact me" banner UNDER THE COMMENT LINE at
   the top (2026-10-24: at the foot it fell below the fold on a model card), OFF by default
   (TikTok rule above).
