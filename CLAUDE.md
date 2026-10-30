@@ -639,6 +639,11 @@ refresh tokens. Before adding anything that runs on a timer or on every page ope
   ~288 MB archived in 44 min. Scattered minutes froze the DB on 2026-10-22. A new job picks one
   of those four minutes, never its own. appointment-reminders is every 15 min; its edge function
   AND its cron guard look back 35 min (`20261028b`; was 20), so ONE skipped run loses no reminder. Change cadence and look-back together or reminders drop.
+- **The DB runs on the free-size server (0.5 GB memory: `shared_buffers` 224 MB, checked
+  2026-10-25).** Freezes on 22, 23 and 24 Oct (24 Oct: 15:30-18:00 MYT, nearly every API call
+  failed, ended by a restart at 18:03 MYT) were the machine starving, not a slow query: the
+  5-minute checkpoints stopped entirely while real writes were tiny. Diagnose a new freeze
+  in the dashboard's memory / swap / disk IO charts; SQL stats reset at every restart.
 - **Never re-save something unchanged on every app open.** `healPushSubscription` re-saved
   the device (a delete + insert) on every open; it now saves at most once a day per account
   + endpoint (`xd_push_saved_<uid>`), and Settings re-saves if the row is missing.
@@ -1456,7 +1461,7 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)
 Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around that:
 - **Cars over the Lite cap are LOCKED, not left live** (owner). `sweep_premium_lapses()`
-  (cron hourly :41) keeps reserved cars, then the newest, up to the Lite cap; the rest go
+  (cron daily 00:00 UTC since IO-7, `20261023a`) keeps reserved cars, then the newest, up to the Lite cap; the rest go
   `status='unpublished'` + `plan_locked_at` (+ `plan_locked_status` to restore). Lite shows
   them under Available, blacked out (`get_my_locked_listings`). `trg_zz_unlock_plan_cars`
   (on profiles) puts them back the moment Premium returns, whatever restored it.
