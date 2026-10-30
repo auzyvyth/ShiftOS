@@ -134,7 +134,7 @@ One rule: **insert a row into a notifications table and the push happens by itse
 
 ```mermaid
 flowchart LR
-  EV["Something happens<br/>new lead, chat, booking,<br/>overdue step, due nudge"] --> N[("dealer_notifications /<br/>salesman_notifications")]
+  EV["Something happens<br/>new lead, chat, booking,<br/>overdue step, due nudge,<br/>car question, review, first save"] --> N[("dealer_notifications /<br/>salesman_notifications")]
   N -->|trigger| P["push_to_users()"]
   P --> SP["send-push<br/>edge function"] --> DEV["Phone / browser<br/>push_subscriptions"]
 
@@ -165,6 +165,7 @@ flowchart LR
 | 15 jpj-refresh-parse | Mon 02:20 | loads it into `reg_car_month`; alerts you on failure |
 | 16 ask-viewing-outcomes | hourly :17, 01-13 | asks sellers how a past viewing went |
 | 17 notify-seller-unread | every 15 min | email sellers about unseen leads |
+| like-digest | 04:00 daily | one push per seller: how many buyers saved their cars since the last digest (the first save on a car pushes at once, `notify_seller_on_like`) |
 | sweep-premium-lapses | hourly :41 | Premium ending in 3 days / ended pushes; hides cars over the Lite cap when Premium lapses (renewal unhides them) |
 
 ### JPJ data, end to end

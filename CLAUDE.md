@@ -2042,6 +2042,23 @@ https://claude.ai/artifact/7egMaKbR5ux5xsqdb43odu
   (drew nothing), badge italic/shadow/align (ignored by the badge), desktop "Use + shoot" (no
   camera on desktop), the layer QuickPanel's +/-5 order and the duplicate colour controls.
 
+## Feedback tab: questions, reviews, likes reach the seller (FEEDBACK-1, 2026-10-30)
+Before this, a car-page question (`listing_comments`), a review (`reviews`) or a heart
+(`saved_cars`) was saved and nothing else: no push, no seller screen. Now:
+- ONE tab, `feedback`, in Lite AND Premium (free on Lite: a buyer reaching the seller):
+  `src/components/feedback/SellerFeedbackTab.jsx` (`theme="dark"|"premium"`) fed by ONE
+  page-level `useSellerFeedback` (the nav badge = unanswered questions). Pills: Questions
+  (unanswered first, reply in place, the reply shows on the car page), Reviews, Likes.
+- Pushes are DB triggers (migration `20261030a`): `new_question`, `new_review` (15-min burst
+  guard), `like_first` = the FIRST save of a car pushes at once (`like_first_ping`, once per car
+  ever), every later save is only counted and goes in ONE daily `like_digest` (cron 04:00 UTC).
+  Owner wanted a push per like; not built on purpose: an unactionable push gets notifications
+  blocked, and a block also kills the lead pushes. Do not add per-like pushes.
+- The seller is `feedback_recipient(listing)` (assigned rep, else a self-owned salesman).
+  Dealers without an assigned rep get nothing (dealer dashboard unused).
+- Likes are COUNTS only (`get_my_car_likes()`), never who saved a car (PDPA). Saves made
+  without signing in live on the device and are not counted.
+
 ## Equity mining / trade-up list (RAPTOR-3) — built, don't rebuild
 Customers tab in `SalesmanPremium.jsx` (`renderCustomers`) has a `Trade-up
 ready` filter. Two triggers, OR'd: owned 3+ years (`purchase_date`) or a car 5+

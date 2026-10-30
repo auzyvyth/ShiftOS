@@ -305,7 +305,9 @@
       "mergeMobile": "Gabung",
       "services": "Servis",
       "settings": "Tetapan",
-      "help": "Bantuan"
+      "help": "Bantuan",
+      "feedback": "Maklum Balas",
+      "feedbackMobile": "Ulasan"
     },
     "header": {
       "litePanel": "Panel Lite",
@@ -468,6 +470,10 @@
         "help": {
           "title": "Bantuan",
           "body": "Panduan langkah demi langkah, tip jualan dan soalan lazim. Rujuk di sini bila-bila masa anda tersekat."
+        },
+        "feedback": {
+          "title": "Maklum Balas",
+          "body": "Soalan buyer di page kereta anda, ulasan anda, dan berapa ramai buyer simpan setiap kereta. Jawab soalan di sini: jawapan anda keluar di page kereta."
         }
       },
       "start": "Mula"
@@ -1008,7 +1014,8 @@
       "analytics": "Analitik",
       "loans": "Pinjaman",
       "outreach": "Outreach",
-      "settings": "Tetapan"
+      "settings": "Tetapan",
+      "feedback": "Maklum Balas"
     },
     "settings": {
       "navLanguage": "Bahasa",
@@ -1641,7 +1648,11 @@
         "title": "Tetapan",
         "body": "Profil awam, templat WhatsApp dan tetapan akaun anda ada di sini. Ada kod jemputan dari dealer? Masukkan di Sertai Dealer untuk buka panel penuh — stok dikongsi, lead pasukan, jejak komisen dan banyak lagi."
       },
-      "tapHint": "Tekan butang yang ditanda"
+      "tapHint": "Tekan butang yang ditanda",
+      "feedback": {
+        "title": "Maklum Balas",
+        "body": "Soalan buyer di page kereta anda, ulasan anda, dan berapa ramai buyer simpan setiap kereta. Jawab soalan di sini: jawapan anda keluar di page kereta."
+      }
     },
     "greet": {
       "morning": "Selamat pagi",
@@ -2559,5 +2570,47 @@
     "lockedTitle": "Dikunci",
     "lockedBody": "Disembunyikan daripada pembeli. Lite memaparkan {{cap}} kereta; perbaharui Premium untuk memaparkannya semula.",
     "lockedCta": "Perbaharui Premium"
+  },
+  "feedback": {
+    "tabs": {
+      "questions": "Soalan",
+      "reviews": "Ulasan",
+      "likes": "Disimpan"
+    },
+    "ago": {
+      "min": "{{n}}m lalu",
+      "hour": "{{n}}j lalu",
+      "day": "{{n}}h lalu"
+    },
+    "buyer": "Buyer",
+    "removedCar": "Kereta tidak lagi disenaraikan",
+    "notAnswered": "Belum dijawab",
+    "replyPlaceholder": "Taip jawapan anda",
+    "replyMore": "Tambah jawapan",
+    "replyPublic": "Jawapan anda keluar di page kereta untuk semua buyer.",
+    "replyFailed": "Tak dapat hantar. Cuba lagi.",
+    "send": "Jawab",
+    "sending": "Menghantar...",
+    "viewCar": "Page kereta",
+    "loading": "Memuatkan...",
+    "reviewCount_one": "daripada {{count}} ulasan",
+    "reviewCount_other": "daripada {{count}} ulasan",
+    "reviewFew_one": "ulasan setakat ini. Purata keluar bila ada 3.",
+    "reviewFew_other": "ulasan setakat ini. Purata keluar bila ada 3.",
+    "likesTotal_one": "kali buyer simpan kereta anda",
+    "likesTotal_other": "kali buyer simpan kereta anda",
+    "likesWeek_one": "{{count}} minggu ini",
+    "likesWeek_other": "{{count}} minggu ini",
+    "likesWeekShort_one": "+{{count}} minggu ini",
+    "likesWeekShort_other": "+{{count}} minggu ini",
+    "likesNote": "Kiraan sahaja. Buyer yang simpan kereta tidak dinamakan; simpanan tanpa log masuk tidak dikira.",
+    "empty": {
+      "questionsTitle": "Belum ada soalan",
+      "questionsBody": "Bila buyer tanya sesuatu di page kereta anda, ia masuk sini dan anda dapat notifikasi.",
+      "reviewsTitle": "Belum ada ulasan",
+      "reviewsBody": "Minta buyer yang puas hati tinggalkan ulasan di page kereta anda. Ulasan keluar di sebelah nama anda.",
+      "likesTitle": "Belum ada yang simpan",
+      "likesBody": "Bila buyer tekan butang hati pada kereta anda, ia dikira di sini. Gambar cantik dan harga berpatutan dapat lebih banyak simpanan."
+    }
   }
 }
