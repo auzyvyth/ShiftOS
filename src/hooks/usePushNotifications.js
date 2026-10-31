@@ -69,6 +69,20 @@ export function isIOS() {
   return /iphone|ipad|ipod/i.test(navigator.userAgent);
 }
 
+// The browser built into Instagram / Facebook / TikTok / Messenger / LINE. Web
+// push does not exist inside them (no service worker push on Android webviews,
+// nothing at all on iOS), and ad clicks land exactly there. The UI uses this to
+// say "open it in Chrome / Safari" instead of a button that can never work.
+export function isInAppBrowser() {
+  if (typeof navigator === 'undefined') return false;
+  return /FBAN|FBAV|FB_IAB|Instagram|musical_ly|TikTok|Bytedance|Line\/|Messenger/i.test(navigator.userAgent || '');
+}
+
+export function isAndroid() {
+  if (typeof navigator === 'undefined') return false;
+  return /android/i.test(navigator.userAgent || '');
+}
+
 function pushSupported() {
   return typeof window !== 'undefined'
     && 'serviceWorker' in navigator

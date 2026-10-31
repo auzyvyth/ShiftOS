@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NEW_CAR_BRANDS } from '../utils/newCars';
+import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import StarterModelPicker, { useStarterModels } from '../components/newcar/StarterModelPicker';
 import { SELLS_OPTIONS, sellsFromDb, sellsToDb, toggleSells } from '../utils/sellsHow';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -220,6 +221,7 @@ export default function SalesmanOnboarding() {
   const tier = requestedTier === 'premium' && !PREMIUM_ENABLED ? 'lite' : requestedTier;
 
   const [step, setStep] = useState(0);
+  const [alertsStep, setAlertsStep] = useState(false);
   const [showPlans, setShowPlans] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
@@ -618,10 +620,9 @@ export default function SalesmanOnboarding() {
       sessionStorage.removeItem('ob_plan_slug');
       sessionStorage.removeItem('ob_account_type');
       clearDraft(userId);
-      setDone(true);
-      // Premium lands on the premium panel, which shows the payment-pending gate
-      // until an admin confirms payment; lite goes straight in.
-      setTimeout(() => navigate(tier === 'premium' ? '/salesman-premium' : '/salesman'), 2400);
+      // PUSH-ONBOARD: the account is saved; lead alerts are the last screen
+      // (LeadAlertsStep), and only then ACTIVATED + the panel.
+      setAlertsStep(true);
     } catch (e) {
       // Someone took the handle between the check and this save: back to the
       // handle step with a plain message, never the raw constraint name.
@@ -702,6 +703,16 @@ export default function SalesmanOnboarding() {
         </div>
       </div>
     </>
+  );
+
+  if (alertsStep && !done) return (
+    <LeadAlertsStep
+      userId={userId}
+      onDone={() => {
+        setDone(true);
+        setTimeout(() => navigate(tier === 'premium' ? '/salesman-premium' : '/salesman'), 1500);
+      }}
+    />
   );
 
   if (done) return (

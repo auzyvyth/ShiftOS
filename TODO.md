@@ -70,6 +70,110 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## LAUNCH-1212: money before the 12 Dec ads (owner's birthday) — planned 2026-10-31
+Owner: Supabase Pro in ~2 days; at least RM200 on ads around 12 Dec; xdrive.my renewed
+for another year.
+- [ ] **Convert the 2 real Premium trials FIRST** (owner, 2026-10-31: of the 5 non-owner
+  trials only 2 are real; the others never signed in after the setup email). One payment
+  ever so far. Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
+  car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
+  tell real from not, the owner signs in as console-made sellers to add their cars.
+- [ ] **PUSH-ONBOARD: notifications are the LAST signup step, required to finish (owner,
+  2026-10-31). Part 1 BUILT 2026-10-31, on staging, NOT live:** `LeadAlertsStep`
+  (`src/components/onboarding/`) is the last screen of BOTH the signup wizard
+  (`SalesmanOnboarding.jsx`) and the set-up email page (`SalesmanSetup.jsx`). iPhone does
+  not wait for the home-screen open (that app has its own login, so it cannot finish the
+  same step); the dashboard's required strip asks again in there. Part 2 BUILT same day:
+  the same screen gates Live presentation (`openLive`, SalesmanProfilePage.jsx), which is
+  where existing sellers spend their time, so it doubles as the ask for existing accounts. Measured 2026-10-31: ZERO real sellers have a push device; only the owner's
+  two accounts do. So every buyer message to a real seller reached them by email at best.
+  Step = one big "Turn on lead alerts" button -> browser prompt -> done. Where the browser
+  physically cannot do it, the step changes instead of trapping them (a hard gate with no
+  way out loses the signup):
+  - iPhone in Safari, app not on the home screen: web push only exists for installed apps
+    (iOS 16.4+), so the step shows "Add to Home Screen", and finishing waits for the first
+    open from the home screen (progress kept on the account).
+  - In-app browser (Instagram / Facebook / TikTok, i.e. where the ads will land): push does
+    not exist there; step = "Open in Chrome / Safari" with the link copied.
+  - Permission already BLOCKED: the browser will never ask again; show how to unblock it in
+    settings, and only here allow "finish anyway" (email backup `notify-seller-unread` covers).
+  Reuse `usePushNotifications` (it owns every browser trap), never a new permission path.
+  Existing sellers: the `required` strip already sits on every seller surface; it clearly
+  is not enough, so also consider a one-time full-screen ask on next open.
+- [ ] **Switch to drevo.my in NOVEMBER, before any ad money** (BRAND-1). In one go, not
+  bit by bit: Google handles a clean 301 move; a half-moved site is the risky version.
+  Search Console Change of Address for each domain variant; keep xdrive.my redirecting
+  well past Google's 180-day minimum. Gotcha: logins, saved cars on the device, the
+  home-screen app and push notifications belong to the OLD domain in the browser, so every
+  user signs in again, re-adds the app and turns notifications back on. Cheap with ~7
+  sellers, painful at 70: one more reason to do it now. Also Google sign-in origins
+  (`ID_TOKEN_ORIGINS` + Google Cloud), Supabase auth redirect URLs, edge CORS,
+  `<sub>.xdrive.my` storefronts. After midnight, nobody live.
+- [ ] **Ads (RM200): to SELLERS, not buyers.** 78 cars cannot hold a buyer campaign, and a
+  seller is the one who pays. Meta (FB + IG), Click-to-WhatsApp to the owner (a human
+  answers, 5 sign-ups beat 200 clicks), BM video of the Live presenter (free on Lite, the
+  hook). Malaysia benchmarks (agency data, rough): ~RM0.84 per click, RM15-65 per lead,
+  so RM200 = roughly 3-10 real conversations. Run 7-10 days at RM20-30/day, not one day:
+  Meta needs days to learn. Avoid 12.12 itself (sale days are commonly reported to push
+  ad prices up), launch a few days before. Meta adds 8% service tax on Malaysian accounts.
+  Free channels at the same time: Proton/Perodua SA Facebook groups, TikTok.
+
+## SEO-PLAN: six-part SEO plan — scoped 2026-10-31, nothing built yet
+Source: six "SEO screenshots" the owner saved (Lawrence Hitches / hawkacademy.co).
+**Owner's call: the name change (BRAND-1) comes FIRST.** Content + on-site work
+moves to drevo.my with the 301s; business listings and profiles do not, so anything
+outside the site is done once, as "Drevo", on switch day. The "AI visibility =
+(O x U x R x C) / S" formula in the screenshots is that author's branding, not a Google
+metric; the real anchors are Google's information-gain patent (US 11,354,342) and
+Google's own line that AI Overviews need no special optimisation.
+- [ ] **SEO-0 (owner): Google Search Console.** Is xdrive.my verified? Add drevo.my as
+  its own property on switch day and file a Change of Address. Every "measure" step
+  needs GSC data; Claude cannot see it.
+- [ ] **SEO-1 (Claude): FAQ + answer-first pass on the articles.** Only 5 of 17 files in
+  `src/pages/articles/` carry FAQPage markup. Add a real FAQ (the sub-questions a buyer
+  would ask before the main one) and open each section with the answer. Then
+  `npm run articles:build` + bump `dateModified`. Owner checks the Malay facts.
+- [ ] **SEO-2 (Claude, owner picks the topic): one topic hub, wired.** Recommended:
+  car loans in Malaysia (buyers search far more than salesmen). Pieces exist:
+  `FlatRateVsEirArticle`, `AktaSewaBeli2026Article`, `KiraLoanKeretaExcelArticle`,
+  `/calculator`. Missing: one hub page linking them, links back from each, gap articles.
+  New page = crawler entry in `api/og.js` + sitemap + `docs/ARCHITECTURE.md`.
+- [ ] **SEO-3 (owner first, then Claude): first-hand stories.** 3-5 real deal stories
+  ("buyer came in with X, bank said Y, we fixed it with Z"), voice notes fine. Claude
+  writes them into the articles. Claude adds figures only we hold, totals only, never a
+  buyer (e.g. common loan-check flags from `loan_checks`, median seller reply time).
+- [ ] **SEO-4 (Claude builds, owner pitches): a data story for digital PR.** Base it on
+  JPJ registrations (`data.gov.my`, IDEA-6, already refreshed by cron), not our own
+  prices: ~70 listings is too few to be news. Claude builds the data page + drafts the
+  pitch email and one follow-up (day 5-7, then stop). Owner sends it to 20-30 named
+  reporters (Paultan, SoyaCincau, The Star Motoring...). Do it after SEO-2 so the
+  coverage links into the hub. A person sends every email; never a blast.
+- [ ] **SEO-5 (owner, ON SWITCH DAY, as "Drevo"): listings + free links.** Google Business
+  Profile, Bing Places, LinkedIn, TikTok/IG/FB handles, journalist-request sites
+  (Qwoted, SourceBottle, Featured), Malaysian car directories. Same name, address and
+  phone everywhere. Never buy links, PBNs, link swaps or press-release blasts.
+  Claude's half: one Organization schema with that same name/address/phone, and make
+  the loan calculator a tool worth linking to.
+- [ ] **SEO-6 (Claude): seller-side keywords before buyer keywords.** A competitor
+  write-up the owner pasted (2026-10-31, AI-generated, no real positions) said nobody
+  leads salesman-tool searches yet ("aplikasi salesman kereta", "kira loan kereta",
+  "komisen salesman", selling on TikTok Live), while "kereta terpakai" is Mudah/Carlist
+  ground. Aim `/for-salesmen` + seller articles (`KomisenSalesmanArticle`,
+  `TemplateProspekSalesmanArticle`, `JadiSalesmanKeretaArticle`) at those first: every
+  seller who signs up lists cars, which are the buyer pages we lack.
+- [ ] **SEO-7 (PARKED until volume): model + state pages** ("Myvi terpakai Selangor").
+  Only when a model has several live cars in one state, switched on by count, same
+  rule as the model hubs (no live cars = 404, never an empty page). Built now, most
+  pages would hold 0-1 car and read as thin content.
+- **The real limit is inventory, not SEO.** Baseline 2026-10-31 (`public_car_listings`):
+  78 live used/recon cars, 23 models, 5 states, plus 37 new-car model cards. Re-run that
+  count to measure growth. The same write-up was WRONG on these, so do not act on them:
+  "English-heavy" (16 of 17 articles are Malay), "no model pages" (`/used-cars/:brand/:model`),
+  "no vehicle schema" (`CarDetailPage.jsx` + `api/og.js` emit `Car`), "no sold handling".
+  Its "Mudah = 45% of volume / 71% preference" figure has no source: never quote it.
+- Order: SEO-0 + SEO-1 now (they survive the switch) -> SEO-6 -> SEO-2 -> SEO-3 ->
+  SEO-4 -> BRAND-1 switch -> SEO-5. SEO-7 waits for inventory.
+
 ## REVIEW-1: listing review rules — part 1 built 2026-10-31, NOT on staging yet
 Owner asked for automatic approve/reject. Scoped 2026-10-31; owner picked ONLY the
 photo rule for now ("leave it at that").
@@ -2731,6 +2835,59 @@ Background (from the idea):
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-27: Luxury showcase, "premium eyes" (owner, 2026-10-31)** — a car at RM700k+ gets
+  asked "Want premium eyes?" On yes it ALSO appears on a luxury-only showcase: its own look,
+  no RM20k cars around it, and its own booking (private viewing / concierge appointment
+  instead of the public Book a Viewing). We take a commission when it sells from there
+  (owner knows the rules). Live 2026-10-31: 6 cars at RM700k+, 14 at RM300k+ (of 78), top
+  RM1.96m, so the slice is real. Claude's view: start as a SECTION of the main domain
+  (`/luxury`, own design), not a second website: a new domain starts with zero Google trust,
+  a second brand mid-rename (BRAND-1), second login. Split it out later if it earns it. Open:
+  **Entry is the car's STORY, not its price (owner, 2026-10-31):** a used M3/M4 at RM600k
+  is expensive, not luxury; a CS, low mileage for its age, good history is. So price only
+  decides who gets ASKED; a person (console Review queue, same as listings) lets a car in
+  against a short checklist: special variant (CS, GT3, limited run), mileage low for the
+  year, service history, owners, docs checked (`docs_verified`, superadmin-only). The
+  seller writes the story when applying. Curated beats a count: 3 real cars > 14 dear ones.
+  Still open: the price that triggers the ask, how a sale is proven
+  to have come FROM the showcase (tag the lead at booking; `leads.lead_source` CHECK needs a
+  new value, and the won-trigger records the sale), and pairing it with IDEA-26 (d), the
+  off-platform ad, since luxury buyers mostly are not on marketplaces.
+
+- **IDEA-26: Beat Carlist for sellers: better car info first, then bumps that hit the
+  RIGHT buyer (owner, 2026-10-31)** — a seller paid Carlist RM250 to bump a BMW M5 F90 CS
+  (~RM900k) and got zero buyers: a bump shows the car to everyone, and the M5 buyer is not
+  scrolling a feed of RM20k Sagas. Two steps, in this order:
+  1. **BUILT 2026-10-31 as COACH-1 (on staging, NOT live; see CLAUDE.md).** Still open from
+     this step: the weekly push to sellers who do not open the app (needs a cron, release after
+     midnight). Original note:
+     **Per-car info Carlist never gives (free, wins sellers now).** A plain "why no buyers"
+     read per car: "40 views, 0 taps = price or photos" vs "3 views = nobody sees it, share
+     it". Where views came from (channels exist), saves + questions (FEEDBACK-1), Find me
+     posts it matches, budget-finder searches it would fit (counts only), JPJ demand for the
+     model (IDEA-6 data). Built on `listingScore`. A per-car drop-off funnel (photos ->
+     price -> WhatsApp) needs NEW consented events: `viewProgress` stays device-only.
+     **Every read ends in an action plan with a button that does it (owner, 2026-10-31)**,
+     never a bare number: "3 views -> nobody sees it: post the link on your socials" [Share
+     sheet, link carries `?ref=<slug>&src=share`]; "40 views, 0 taps -> buyers look and
+     leave: add photos / check the price" [opens Edit at that step]; "don't bump yet, only 2
+     buyers looked in this price range -> share first" [Share]. The app talks like a sales
+     manager: what happened, why, the one thing to do today.
+  2. **Matched bumps, paid per result.** (a) The bump is shown only to buyers whose OWN
+     signals fit (price band they browse, budget they typed, models viewed), matched ON THE
+     DEVICE: the server sends the bumped pool, the phone picks, no buyer data leaves it
+     (PDPA, same rule as REVISIT-1). (b) The seller pays per real WhatsApp tap / chat /
+     booking, capped, not per day; taps deduped per device or rivals can burn a budget.
+     (c) We REFUSE to sell a bump with no audience ("2 buyers looked above RM500k this
+     month") - the honesty Carlist does not offer. (d) Supercars: the buyer is off-platform,
+     so the "bump" is a Studio reel run as a Meta/TikTok ad at car-enthusiast/high-income
+     audiences, ad cost passed through + our fee.
+  Supersedes IDEA-1 (region is one signal of many). BLOCKED on traffic for step 2:
+  2026-10-31, last 30 days = 379 car views across 79 cars, 3 WhatsApp taps (consented
+  analytics only, so an undercount). A bump on that sells nothing; step 1 + SEO-PLAN first.
+  Payments are manual (PAY-2 parked), so a per-result charge needs a gateway or a prepaid
+  credit balance. Check Malaysian ad rules (ASA Code / CMA s.233) before (d).
 
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->

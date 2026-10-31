@@ -11,6 +11,7 @@ import ThisWeek from "../../components/crm/ThisWeek";
 import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/StarterTasks";
 import SalesHistorySheet from "./SalesHistorySheet";
 import StatSkeleton from "../../components/ui/StatSkeleton";
+import SilentCarCard from "../../components/coach/SilentCarCard";
 
 // Dashboard tab (Salesman Premium). Rebuilt 2026-10-25 (SIMPLE-2) in the
 // `premiumDark` palette: each fact is shown ONCE. It used to show follow-ups
@@ -32,6 +33,7 @@ export default function DashboardTab({
  setShowAddForm, setInboxSubTab,
  saveGoal, triggerGlow, switchTab, handleThisWeekContacted,
  onVisitMinipage, starterHidden, starterTasksReady, onStarterDismiss, onEditBio, onEditPhoto, onVerify,
+ silentPick, onShareTour,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -453,6 +455,17 @@ export default function DashboardTab({
  onVerify={onVerify}
  onEditBio={onEditBio}
  onDismiss={onStarterDismiss}
+ />
+ )}
+
+ {/* COACH-1: the car nobody has seen for 2+ days, and "Show me how".
+     Only once the traffic numbers have loaded: before that every car reads
+     as unseen, and that alarm would be false. */}
+ {trafficReady && (
+ <SilentCarCard
+ pick={silentPick} lang={i18n.language}
+ colors={{ card: P.card, radius: P.radius.card, text: P.text, sub: P.textSec, accent: P.accent, onAccent: P.onAccent }}
+ onShowMe={onShareTour}
  />
  )}
 

@@ -985,6 +985,22 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   dealers had zero devices. The iOS-not-installed and browser-denied states
   keep their close button: nothing on the page can fix either. Buyers stay
   dismissible.
+- **Lead alerts are the LAST step of every seller signup (PUSH-ONBOARD, 2026-10-31):**
+  `src/components/onboarding/LeadAlertsStep.jsx`, shown by `SalesmanOnboarding` (after the
+  profile saves) and `SalesmanSetup` (after the password, the console-made path). Where the
+  browser can do push there is NO skip. Where it cannot (in-app browser, iPhone outside the
+  home-screen app, permission blocked, our own save failing) it says what to do and lets
+  them through: a gate with no way out loses the signup. On 2026-10-31 no real seller had a
+  push device. A new way to create a seller account must end on this step too.
+  **Also in front of Live presentation** (owner, 2026-10-31: sellers mostly use Live):
+  `openLive` in `SalesmanProfilePage.jsx` opens the same component as a pop-up (`onCancel`
+  given: portal, scroll lock, Back = do not go live), ONCE A DAY per device until alerts are
+  on (`xd_live_alerts_day`, Malaysia date). **The button never holds anyone on the screen
+  (owner, 2026-10-31):** the tap starts `enable()` (it must start inside the tap or the browser
+  will not ask), closes the screen at once, and the outcome is a toast (`reportAlertsResult`).
+  Chrome's QUIET permission mode shows no pop-up, only a crossed bell in the address bar, and
+  the request never answers: the owner's own test sat on "Turning on..." in front of a live.
+  After 15s still open, the toast says to tap that bell. Signup's last step works the same way.
 - **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
   every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
   sellers did not, so a lead whose push had no device to land on was simply
@@ -2065,6 +2081,26 @@ Before this, a car-page question (`listing_comments`), a review (`reviews`) or a
   Dealers without an assigned rep get nothing (dealer dashboard unused).
 - Likes are COUNTS only (`get_my_car_likes()`), never who saved a car (PDPA). Saves made
   without signing in live on the device and are not counted.
+
+## Each car tells the seller ONE next step (COACH-1, 2026-10-31) — Lite and Premium
+Owner: "make the app communicate and tell the seller what they need to hear", with an action.
+Rules: `src/utils/carCoach.js` (`carNextStep`, `pickSilentCar`, `carListingScore`;
+`npm run test:coach`), words: `src/components/coach/coachCopy.js` (en + ms, a new line goes in
+BOTH). First match wins: unanswered buyer question > photos under the minimum (5) > no price >
+buyers messaging > SILENT (listed 2+ days, no views for 2+ days, owner's rule) > fresh > 20+
+views and no taps > saved but no taps > under 10 views this week.
+- The car card shows the facts (views, enquiries) and ONE line, `CarNextStep`, with one button
+  (Answer / Edit / Share / Show me how). It REPLACED Lite's quality bar, conversion bar + Hot/Stale
+  tags, photo warning and listings quality banner (two of those quoted invented "3x more views"
+  stats), and Premium's improve line. Do not put any of them back beside it.
+- `carListingScore` is the ONE completeness score (Lite and Premium each had a copy, both still
+  asking for 3 photos after the minimum went to 5). It returns keys, not words.
+- Dashboard: `SilentCarCard` = the car silent the longest, "Show me how" -> switches to Listings
+  and `ShareTour` rings that car's button (`data-share-car="<id>"`: Premium's round Share, Lite's
+  Link) and waits for the seller's own tap, then says where to post. It never presses or posts
+  anything for them. Card and lines wait for `trafficReady`: before that every car reads unseen.
+- Never invent a number or a promise in coach copy. Views need the buyer's analytics consent,
+  so they undercount; say only what was counted.
 
 ## Private cars (PRIVATE-1, 2026-10-30) — up to 4, only the seller sees them
 A standalone seller can keep up to 4 cars private (owner's limit) to work out cost and margin

@@ -23,6 +23,10 @@ import { copyListingCaption } from "../utils/copyListingCaption";
 import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
+import { carNextStep, pickSilentCar } from "../utils/carCoach";
+import CarNextStep from "../components/coach/CarNextStep";
+import SilentCarCard from "../components/coach/SilentCarCard";
+import ShareTour from "../components/coach/ShareTour";
 import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite, privateCount } from "../utils/privateCars";
 import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
@@ -114,7 +118,6 @@ import {
   CheckCircle,
   BookOpen,
   Package,
-  Camera,
   ThumbsUp,
   ThumbsDown,
   Store,
@@ -1175,7 +1178,7 @@ export default function SalesmanLite() {
   // placeholders until every request behind them has answered.
   const [trafficFetched, setTrafficFetched] = useState(false);
   const trafficReady = trafficFetched || (carStatsCached && minipageCached);
-  const [cvrHover, setCvrHover] = useState(null);
+  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
 
   // car detail popup
   const [selectedCar, setSelectedCar] = useState(null);
@@ -3078,6 +3081,37 @@ export default function SalesmanLite() {
     );
   };
 
+  // COACH-1: each car's ONE next step + the dashboard's silent car. Rules live
+  // in src/utils/carCoach.js (shared with Premium); the inputs are already
+  // loaded here: traffic (carStatsMap), questions + saves (useSellerFeedback).
+  const coachExtra = (car) => ({
+    unanswered: feedback.threads.filter((q) => q.listing_id === car.id && !q.answered).length,
+    likes: Number(feedback.likes.find((l) => l.listing_id === car.id)?.likes) || 0,
+  });
+  const coachFor = (car) => (trafficReady ? carNextStep(car, carStatsMap[car.id], coachExtra(car)) : null);
+  const silentPick = trafficReady ? pickSilentCar(myListings, carStatsMap, coachExtra) : null;
+  const startShareTour = (car) => {
+    setFilterStatus("available");
+    setShareTourCar(car.id);
+    setActiveTab("listings");
+  };
+  // Share: the phone's share sheet when there is one, else copy the link.
+  const shareCarLink = async (car) => {
+    const url = `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(profile?.slug || "")}&src=share`;
+    const title = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
+    if (navigator.share) {
+      try { await navigator.share({ title, url }); } catch { /* closed the sheet */ }
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); toast.success("Link copied"); } catch { window.prompt("Copy this link", url); }
+  };
+  const onCoach = (action, car) => {
+    if (action === "answer") setActiveTab("feedback");
+    else if (action === "edit") setEditListing(car);
+    else if (action === "share") shareCarLink(car);
+    else if (action === "tour") startShareTour(car);
+  };
+
   // ── TABS ──────────────────────────────────────────────────────────────────
 
   // Pending bookings the salesman hasn't confirmed yet — a real inbound request
@@ -3199,24 +3233,6 @@ export default function SalesmanLite() {
 
   // ── RENDER DASHBOARD ──────────────────────────────────────────────────────
 
-  // ── Listing completeness score ──────────────────────────────────────────
-  const listingScore = (car) => {
-    const checks = [
-      { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: `${Math.max(0, 3 - (car.images?.length || 0))} more photo${Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""}` },
-      { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: "add a photo" },
-      { pts: 15, ok: !!car.selling_price, hint: "set a price" },
-      { pts: 10, ok: !!car.mileage, hint: "add mileage" },
-      { pts: 10, ok: !!car.colour, hint: "add colour" },
-      { pts: 10, ok: !!car.variant, hint: "add variant" },
-      { pts: 10, ok: !!car.state, hint: "add location" },
-      { pts: 5,  ok: !!car.condition, hint: "add condition" },
-    ];
-    const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
-    const total   = checks.reduce((s, c) => s + c.pts, 0);
-    const missing = checks.filter(c => !c.ok).map(c => c.hint);
-    return { pct: Math.round((earned / total) * 100), missing };
-  };
-
   // ── Profile completeness score ───────────────────────────────────────────
   const profileScore = () => {
     const checks = [
@@ -3334,6 +3350,17 @@ export default function SalesmanLite() {
             onVisitMinipage={openMyMinipage}
             noBio
             onDismiss={dismissStarterTasks}
+          />
+        )}
+
+        {/* COACH-1: the car nobody has seen for 2+ days, and "Show me how".
+            Waits for the traffic numbers: before they load every car reads as
+            unseen, and that alarm would be false. */}
+        {trafficReady && (
+          <SilentCarCard
+            pick={silentPick} lang={i18n.language}
+            colors={{ card: C.surface, radius: R.lg, text: C.text, sub: C.textSec, accent: C.accent, onAccent: "#ffffff" }}
+            onShowMe={startShareTour}
           />
         )}
 
@@ -3817,19 +3844,6 @@ export default function SalesmanLite() {
           </div>
         )}
 
-        {/* Listing quality banner */}
-        {!showAddForm && myListings.filter(c => c.status === "available").length > 0 && (() => {
-          const scores = myListings.filter(c => c.status === "available").map(c => listingScore(c).pct);
-          const avg = Math.round(scores.reduce((s, p) => s + p, 0) / scores.length);
-          if (avg >= 80) return null;
-          return (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 12px", padding: "9px 14px", borderRadius: R.md, background: withAlpha(C.warn, 0.04), border: `1px solid ${withAlpha(C.warn, 0.15)}` }}>
-              <BarChart2 size={13} style={{ flexShrink: 0, color: C.warnText }} />
-              <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, flex: 1 }}>Your listings average <strong style={{ color: C.warnText }}>{avg}% quality</strong>. Complete listings get 3× more views.</p>
-            </div>
-          );
-        })()}
-
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
@@ -4033,7 +4047,7 @@ export default function SalesmanLite() {
               gap: 14,
             }}
           >
-            {sorted.map(({ car, views, enqs, cvr, isHot, isStale }) => {
+            {sorted.map(({ car, views, enqs }) => {
               const isSold     = car.status === "sold";
               const isReserved = car.status === "reserved";
               const isPending  = car.status === "pending_approval";
@@ -4041,7 +4055,6 @@ export default function SalesmanLite() {
               const isPrivate  = car.status === "private";
               const isLocked   = isLockedCar(car);
               const isInactive = isSold || isPending || isRejected;
-              const cvrFill    = cvr !== null ? Math.min(cvr * 10, 100) : 0;
               const img  = car.images?.[0];
               const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
               const price = car.selling_price
@@ -4050,8 +4063,6 @@ export default function SalesmanLite() {
               const disambiguator = nameCounts[name] > 1
                 ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
                 : null;
-              const cvrLabel   = cvr !== null ? cvr.toFixed(1) : "0";
-              const isHovering = cvrHover === car.id;
               const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
               return (
                 <div
@@ -4318,70 +4329,21 @@ export default function SalesmanLite() {
                       ].filter(Boolean).join(" · ")}
                     </p>
 
-                    {/* Listing completeness bar */}
-                    {!isSold && (() => {
-                      const { pct, missing } = listingScore(car);
-                      if (pct >= 90) return null;
-                      const barColor = pct >= 70 ? C.warnText : C.dangerText;
-                      return (
-                        <div style={{ marginBottom: 8 }} title={missing.length ? `Improve: ${missing.join(", ")}` : ""}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                            <span style={{ fontSize: T.size.xs, color: C.textDim }}>Listing quality</span>
-                            <span style={{ fontSize: T.size.xs, color: barColor, fontWeight: T.weight.semibold }}>{pct}%</span>
-                          </div>
-                          <div style={{ height: 3, borderRadius: R.pill, background: C.fillStrong, overflow: "hidden" }}>
-                            <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: R.pill }} />
-                          </div>
-                          {missing.length > 0 && (
-                            <p style={{ margin: "3px 0 0", fontSize: T.size.xs, color: C.textDim }}>+ {missing[0]}</p>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* CVR bar — hidden for sold, and for rejected (never shown to buyers) */}
-                    {!isSold && !isRejected && (
-                      <div
-                        style={{ marginBottom: 10, position: "relative" }}
-                        onMouseEnter={() => setCvrHover(car.id)}
-                        onMouseLeave={() => setCvrHover(null)}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                          <span style={{ fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
-                            <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> views · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enqs}</span> enquiries
-                          </span>
-                          {isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold }}><Flame size={12} /> Hot</span>}
-                          {isStale && !isHot && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.sm, color: C.textSec }}><Clock size={12} /> Stale</span>}
-                        </div>
-                        <div style={{ height: 4, borderRadius: R.pill, background: C.fillStrong, overflow: "visible" }}>
-                          <div style={{ height: "100%", width: `${cvrFill}%`, background: isHot ? C.danger : C.textDim, borderRadius: R.pill, transition: "width 0.3s" }} />
-                        </div>
-                        {isHovering && (
-                          <div style={{
-                            position: "absolute", bottom: "calc(100% + 6px)", left: 0,
-                            background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`,
-                            borderRadius: R.sm, padding: "5px 10px", fontSize: T.size.sm, color: C.text,
-                            whiteSpace: "nowrap", zIndex: 10, pointerEvents: "none",
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                          }}>
-                            {views} views · {enqs} enquiries ·{" "}
-                            <span style={{ color: isHot ? C.danger : C.infoText, fontWeight: T.weight.semibold }}>
-                              {cvrLabel}% CVR
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                    {/* Traffic, as facts, then the ONE next step for this car
+                        (COACH-1, src/utils/carCoach.js). They replaced a quality
+                        bar, a conversion bar with Hot/Stale tags and a photo
+                        warning: four signals, none of which said what to do. */}
+                    {!isSold && !isRejected && !isPending && !isLocked && (
+                      <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textSec }}>
+                        <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> views · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enqs}</span> enquiries
+                      </p>
                     )}
-
-                    {/* Photo nudge — fewer than 3 photos hurts views */}
-                    {!isSold && !isRejected && (!car.images || car.images.length < 3) && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8, padding: "5px 8px", borderRadius: R.sm, background: withAlpha(C.warn, 0.05), border: `1px solid ${withAlpha(C.warn, 0.14)}` }}>
-                        <Camera size={11} style={{ flexShrink: 0, color: C.warn }} />
-                        <span style={{ fontSize: T.size.xs, color: C.warn, flex: 1 }}>
-                          Add {Math.max(0, 3 - (car.images?.length || 0))} more photo{Math.max(0, 3 - (car.images?.length || 0)) !== 1 ? "s" : ""} — listings with 3+ photos get 3× more views
-                        </span>
-                        <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.warnText), fontSize: T.size.xs, padding: "2px 7px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.bold, whiteSpace: "nowrap", fontFamily: "inherit" }}>Fix</button>
-                      </div>
+                    {!isLocked && (
+                      <CarNextStep
+                        step={coachFor(car)} car={car} lang={i18n.language}
+                        colors={{ text: C.text, sub: C.textSec, accent: C.accent, onAccent: "#ffffff", soft: C.fill, line: C.border }}
+                        onAction={onCoach}
+                      />
                     )}
 
                     {/* Action bar */}
@@ -4411,6 +4373,7 @@ export default function SalesmanLite() {
                         <>
                           {/* Copy link: a private car has no public page to link to */}
                           {!isPrivate && <button
+                            data-share-car={car.id}
                             onClick={() => handleListingCopy(car, "link")}
                             title="Copy link"
                             style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link" ? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link" ? C.successText : C.textSec }}
@@ -8055,6 +8018,10 @@ export default function SalesmanLite() {
               way to fix it is what turns a seller into a support ticket. */}
           {/* Suspension used to be invisible here: the seller lost the
               marketplace but kept a working dashboard with no explanation (A5). */}
+          {/* COACH-1 share tour: rings the car's Link button on Listings. */}
+          {shareTourCar && activeTab === "listings" && (
+            <ShareTour carId={shareTourCar} mode="copy" lang={i18n.language} onClose={() => setShareTourCar(null)} />
+          )}
           <SuspendedBanner />
           {/* Premium lapsed: one line saying so, and how many cars it hid. */}
           {activeTab !== "settings" && (

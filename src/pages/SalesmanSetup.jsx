@@ -4,6 +4,7 @@ import { supabase, INITIAL_URL } from '../supabaseClient';
 import { resolvePostAuthRoute, goPostAuth, POST_AUTH_COLUMNS } from '../utils/postAuthRoute';
 import { authErrorMessage, reportAuthFailure } from '../utils/authErrors';
 import ProfileLoadError from '../components/ProfileLoadError';
+import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 
 const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
@@ -24,8 +25,10 @@ const STRONG_PW = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 // already live; that path shows the same form and skips the verify.
 export default function SalesmanSetup() {
   const navigate = useNavigate();
-  // loading | form | expired | done
+  // loading | form | expired | alerts | done
   const [phase, setPhase] = useState('loading');
+  // PUSH-ONBOARD: who to send where once the alerts step is done.
+  const [handoff, setHandoff] = useState(null);
   const [tokenHash, setTokenHash] = useState(null);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -101,11 +104,10 @@ export default function SalesmanSetup() {
       // The password is saved; a failed read here is the database stalling.
       // Retry goes via /login, which forwards a signed-in seller to their panel.
       if (profileErr) { setProfileLoadFailed(true); return; }
-      setPhase('done');
-      setTimeout(() => {
-        if (profile) goPostAuth(resolvePostAuthRoute(profile, { session }), navigate);
-        else navigate('/login', { replace: true });
-      }, 900);
+      // PUSH-ONBOARD: lead alerts are the last step here too. A console-made
+      // seller is exactly who never opened Settings to find the toggle.
+      setHandoff({ profile, session, userId: session.user.id });
+      setPhase('alerts');
     } catch (err) {
       reportAuthFailure('setup_finish', err);
       setError(authErrorMessage(err));
@@ -115,6 +117,19 @@ export default function SalesmanSetup() {
   };
 
   if (profileLoadFailed) return <ProfileLoadError onRetry={() => window.location.assign('/login')} />;
+
+  if (phase === 'alerts' && handoff) return (
+    <LeadAlertsStep
+      userId={handoff.userId}
+      onDone={() => {
+        setPhase('done');
+        setTimeout(() => {
+          if (handoff.profile) goPostAuth(resolvePostAuthRoute(handoff.profile, { session: handoff.session }), navigate);
+          else navigate('/login', { replace: true });
+        }, 900);
+      }}
+    />
+  );
 
   return (
     <div style={S.root}>
