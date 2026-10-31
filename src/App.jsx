@@ -287,7 +287,7 @@ function App() {
           <Route path="/fi" element={<FIPanel />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/accounts" element={<AccountsPanel />} />
-          <Route path="/platform" element={<AdminPage />} />
+          <Route path="/platform/:tab?" element={<AdminPage />} />
 
           {/* Public — ShiftOS marketing */}
           <Route path="/shiftos" element={<ShiftOSPage />} />

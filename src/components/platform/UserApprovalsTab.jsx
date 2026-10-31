@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles, sweepOrphanKycFiles } from "../../utils/kycPurge";
 
 // XDrive Ops — identity approval queue. Every self-signup seller (dealer / solo
@@ -50,6 +51,7 @@ const PLAN_CHIP = {
 
 function DocThumb({ label, url }) {
   const [open, setOpen] = useState(false);
+  useModalHistory(open, () => setOpen(false));
   if (!url) return null;
   return (
     <>
