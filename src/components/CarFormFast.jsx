@@ -7,6 +7,7 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
 import { MY_STATES as STATES } from "../utils/locations";
 import { compressListingPhoto } from "../utils/compressImage";
+import { MIN_LISTING_PHOTOS } from "../utils/listingRules";
 
 const MAKES = ["Perodua","Proton","Toyota","Honda","Mazda","Mitsubishi","Nissan","Hyundai","Kia","BMW","Mercedes-Benz","Audi","Volkswagen","Ford","Subaru","Suzuki","Isuzu","Peugeot","Renault","Volvo","Other"];
 const YEARS = Array.from({ length: 35 }, (_, i) => String(new Date().getFullYear() - i));
@@ -74,7 +75,7 @@ function UsedCarFormFast({ onCreate, recon = false }) {
   };
 
   const canProceed = step === 1
-    ? images.length > 0
+    ? images.length >= MIN_LISTING_PHOTOS
     : f.brand && f.model && f.year && f.selling_price && f.state;
 
   const handleSubmit = async () => {
@@ -192,7 +193,7 @@ function UsedCarFormFast({ onCreate, recon = false }) {
                   </button>
                 )}
               </div>
-              <p style={{ margin: 0, fontSize: 11, color: "#4b5563", textAlign: "center" }}>{previews.length} photo{previews.length !== 1 ? "s" : ""} added</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#4b5563", textAlign: "center" }}>{previews.length} photo{previews.length !== 1 ? "s" : ""} added{previews.length < MIN_LISTING_PHOTOS ? ` · add ${MIN_LISTING_PHOTOS - previews.length} more (min ${MIN_LISTING_PHOTOS})` : ""}</p>
             </div>
           )}
         </div>

@@ -70,6 +70,21 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## REVIEW-1: listing review rules — part 1 built 2026-10-31, NOT on staging yet
+Owner asked for automatic approve/reject. Scoped 2026-10-31; owner picked ONLY the
+photo rule for now ("leave it at that").
+- [x] 5 photos minimum for a new listing (`src/utils/listingRules.js`, read by
+  CarForm + CarFormFast). An edit of an older car keeps its own count. Form only;
+  no DB trigger yet.
+- [x] Console Back steps through tabs (`/platform/:tab`), and console pop-ups
+  (account record, suspend, delete, prospects, ID photo) close on Back.
+- [ ] BUG: Premium's quick add (`CarFormFast.jsx`, insert `status: "available"`)
+  skips the review queue and the geran question entirely. Any rule only runs on
+  cars that reach the queue, so this comes first.
+- [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
+  no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
+  auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
+
 ## PRIVATE-1: private cars, max 4 (was IDEA-25) — built 2026-10-30, on staging, NOT live
 Seller `iskandar` (found us via ChatGPT) wanted cars only he sees, to work out cost. Owner: 4 per
 seller. Code on staging; migration `20261030b_private_cars.sql` is QUEUED (with `20261030a`),

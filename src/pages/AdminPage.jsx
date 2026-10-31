@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 // The platform console runs on an ISOLATED auth client (its own storageKey) so a
 // dealer/salesman/buyer login in another tab can't clobber the superadmin
 // session. Everything in this file queries as that session. It never reads or
@@ -255,6 +256,18 @@ function BillingTab({ dealers, salesmen, dealerStats }) {
   );
 }
 
+// Which section each tab lives in. Tab ids are unique across sections, so the
+// URL carries only the tab (/platform/review) and the section follows from it.
+// Keep in step with NAV below: a tab missing here falls back to Home.
+const TAB_SECTION = {
+  home: "work", review: "work", reports: "work",
+  accounts: "people", waitlist: "people", prospects: "people", sensus: "people",
+  marketplace: "marketplace", funnel: "marketplace", engagement: "marketplace",
+  buyers: "marketplace", newcars: "marketplace", broadcast: "marketplace", platform: "marketplace",
+  billing: "money",
+  activity: "safety", sessions: "safety", posture: "safety", errors: "safety", alerts: "safety",
+};
+
 export default function AdminPage() {
   // AUTH-6. The captcha is a PROJECT-wide Supabase setting, so it applies to the
   // isolated platformClient session too — this console login needs a token like
@@ -307,14 +320,22 @@ export default function AdminPage() {
   const [globalOpen, setGlobalOpen] = useState(false);
   // The console lands on Home, not a directory (P3). The daily job is the review
   // queue; an operator should never have to go looking for their own work.
-  const [activeTab, setActiveTab] = useState("home");
+  // Each tab is its own history entry (/platform/<tab>), so the phone's back
+  // swipe steps back through the tabs you opened instead of leaving the
+  // console. It used to be plain state: one entry, and Back closed the page.
+  const navigate = useNavigate();
+  const { tab: tabParam } = useParams();
+  const activeTab = TAB_SECTION[tabParam] ? tabParam : "home";
+  const activeSection = TAB_SECTION[activeTab];
+  const setActiveTab = (tab) => {
+    if (tab !== activeTab) navigate(tab === "home" ? "/platform" : `/platform/${tab}`);
+  };
   // Review queue type filter: "all" | "listings" | "signups" | "ids" (P4).
   const [reviewFilter, setReviewFilter] = useState("all");
   const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
   // Top-level consoles in the superadmin panel. "shiftos" = the existing SaaS ops
   // (dealers/approvals/billing…); "xdrive" = public marketplace analytics;
   // "security" = audit forensics, sessions and posture.
-  const [activeSection, setActiveSection] = useState("work");
   // Surfaces a failed account action instead of leaving the console looking
   // like nothing happened (A2).
   const [actionError, setActionError] = useState(null);
@@ -908,14 +929,12 @@ export default function AdminPage() {
   function switchSection(id) {
     const sec = NAV.find(n => n.id === id);
     if (!sec) return;
-    setActiveSection(id);
     setActiveTab(sec.tabs[0].id);
   }
 
   // Jump straight from a Home queue card into the right slice of Review.
   function openReview(filter) {
     setReviewFilter(filter);
-    setActiveSection("work");
     setActiveTab("review");
   }
 
@@ -959,7 +978,6 @@ export default function AdminPage() {
     setGlobalOpen(false);
     setGlobalQ("");
     if (r.kind === "account") {
-      setActiveSection("people");
       setActiveTab("accounts");
       setFocusAccount(r.id);
     } else if (r.kind === "listing") {
@@ -967,7 +985,6 @@ export default function AdminPage() {
       openReview("listings");
       setReviewListingId(r.id);
     } else {
-      setActiveSection("people");
       setActiveTab("waitlist");
     }
   }
