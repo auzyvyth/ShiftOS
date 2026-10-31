@@ -992,6 +992,11 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   home-screen app, permission blocked, our own save failing) it says what to do and lets
   them through: a gate with no way out loses the signup. On 2026-10-31 no real seller had a
   push device. A new way to create a seller account must end on this step too.
+  **Also in front of Live presentation** (owner, 2026-10-31: sellers mostly use Live):
+  `openLive` in `SalesmanProfilePage.jsx` opens the same component as a pop-up (`onCancel`
+  given: portal, scroll lock, Back = do not go live). Where the browser can do push it asks
+  on EVERY live until alerts are on; where it cannot it shows once per visit
+  (`xd_live_alerts_seen`, sessionStorage), never a nag before every stream.
 - **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
   every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
   sellers did not, so a lead whose push had no device to land on was simply

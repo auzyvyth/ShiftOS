@@ -21,6 +21,8 @@ import { starterTodoKeys } from '../components/onboarding/StarterTasks';
 import BudgetFinder from '../components/agent/BudgetFinder';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
+import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
+import { usePushNotifications, isIOS, isStandalone, isInAppBrowser } from '../hooks/usePushNotifications';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -269,6 +271,8 @@ export default function SalesmanProfilePage() {
   // slug for every visitor, so a viewer arriving from a TikTok bio link sees
   // the car on screen pinned at the top. See src/components/live/LivePresenter.jsx.
   const [presenting, setPresenting] = useState(false);
+  // PUSH-ONBOARD: the lead-alerts ask in front of Live presentation.
+  const [alertsGate, setAlertsGate] = useState(false);
   // Why Live cannot open yet ('pending' | 'empty'): the presenter shows the
   // cars on this page, and a car waiting for review is not on it.
   const [liveBlock, setLiveBlock] = useState(null);
@@ -516,8 +520,31 @@ export default function SalesmanProfilePage() {
   // never be told what the seller hasn't filled in.
   // Ordered by what actually earns them a buyer — a car first, decoration after.
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
+  // PUSH-ONBOARD (owner, 2026-10-31): sellers mostly use Live, and viewers
+  // WhatsApp, chat and book during and after it, so the alerts ask sits in
+  // front of it. Where this browser CAN turn alerts on, it asks on every live
+  // until they are on (no skip, only Back to not go live). Where it cannot (iPhone
+  // outside the home-screen app, Instagram/TikTok's browser, blocked), it shows
+  // once per visit so it is not a nag before every stream.
+  const ownerPush = usePushNotifications(isOwner ? viewerId : null);
+  const alertsNeeded = () => {
+    if (!isOwner || !ownerPush.configured || ownerPush.subscribed) return false;
+    const canAsk = ownerPush.supported && ownerPush.permission !== 'denied'
+      && !isInAppBrowser() && !(isIOS() && !isStandalone());
+    if (canAsk) return true;
+    try { return sessionStorage.getItem('xd_live_alerts_seen') !== '1'; } catch { return true; }
+  };
+  const startPresenting = () => { setAlertsGate(false); setLiveBlock(null); setPresenting(true); };
   const openLive = async () => {
-    if (listings.length > 0) { setLiveBlock(null); setPresenting(true); return; }
+    if (listings.length > 0) {
+      if (alertsNeeded()) {
+        try { sessionStorage.setItem('xd_live_alerts_seen', '1'); } catch { /* private mode */ }
+        setAlertsGate(true);
+        return;
+      }
+      startPresenting();
+      return;
+    }
     // The owner can read their own rows (RLS), so we can say WHY it is empty.
     const { count } = await supabase.from('car_listings').select('id', { count: 'exact', head: true })
       .eq('dealer_id', viewerId).eq('status', 'pending_approval');
@@ -1119,6 +1146,16 @@ export default function SalesmanProfilePage() {
           </div>
         )}
       </div>
+
+      {alertsGate && (
+        <LeadAlertsStep
+          userId={viewerId}
+          eyebrow="Before you go live"
+          intro="Viewers WhatsApp you, chat and book viewings during the live and after it. Turn on alerts so every one reaches you, even with this page closed."
+          onDone={startPresenting}
+          onCancel={() => setAlertsGate(false)}
+        />
+      )}
 
       {presenting && (
         <Suspense fallback={null}>

@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalHistory } from '../../hooks/useModalHistory';
 import { Bell, Check, Copy, ExternalLink } from 'lucide-react';
 import {
   usePushNotifications, isIOS, isStandalone, isInAppBrowser, isAndroid,
@@ -19,11 +21,23 @@ import {
 //   - permission already blocked: the browser never asks again; how to unblock it
 //   - our own failure (save failed, no key configured): never trap on our bug
 // Uses usePushNotifications, which owns every browser trap. No second path.
+//
+// Also the gate in front of Live presentation (SalesmanProfilePage openLive):
+// sellers mostly use Live, and viewers message during and after it. Passing
+// `onCancel` turns it into a portalled pop-up (scroll lock, Back closes it and
+// does NOT start the live), with its own eyebrow / title / intro.
 
 const DONE_PAUSE_MS = 1200;
 
-export default function LeadAlertsStep({ userId, onDone }) {
+export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'Last step', title = 'TURN ON LEAD ALERTS', intro }) {
   const push = usePushNotifications(userId);
+  const overlay = typeof onCancel === 'function';
+  useModalHistory(overlay, overlay ? onCancel : () => {});
+  useEffect(() => {
+    if (!overlay) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [overlay]);
   const [result, setResult] = useState(null); // null | 'dismissed' | 'failed'
   const [copied, setCopied] = useState(false);
   // The device check waits on the service worker. If it never comes up, stop
@@ -88,21 +102,21 @@ export default function LeadAlertsStep({ userId, onDone }) {
 
   // A supported browser still checking whether this device is already on.
   if (mode === 'ask' && !push.checked && !waitedOut) {
-    return <Shell><p style={S.sub}>Checking this device...</p></Shell>;
+    return <Shell overlay={overlay} onCancel={onCancel}><p style={S.sub}>Checking this device...</p></Shell>;
   }
 
   return (
-    <Shell>
+    <Shell overlay={overlay} onCancel={onCancel}>
       <div style={S.ring}>{mode === 'on' ? <Check size={26} color="#4ade80" /> : <Bell size={26} color="#dc2626" />}</div>
-      <p style={S.eyebrow}>Last step</p>
-      <h1 style={S.title}>{mode === 'on' ? 'ALERTS ARE ON' : 'TURN ON LEAD ALERTS'}</h1>
+      <p style={S.eyebrow}>{eyebrow}</p>
+      <h1 style={S.title}>{mode === 'on' ? 'ALERTS ARE ON' : title}</h1>
 
       {mode === 'on' && <p style={S.sub}>A buyer's message, booking or WhatsApp tap will reach this phone, even with the app closed.</p>}
 
       {mode === 'ask' && (
         <>
           <p style={S.sub}>
-            Buyers move on fast. Turn on alerts so a new message, booking or enquiry reaches your phone the moment it happens, even with the app closed.
+            {intro || 'Buyers move on fast. Turn on alerts so a new message, booking or enquiry reaches your phone the moment it happens, even with the app closed.'}
           </p>
           <button type="button" style={{ ...S.btn, opacity: push.busy ? 0.6 : 1 }} disabled={push.busy} onClick={turnOn}>
             <Bell size={16} /> {push.busy ? 'Turning on...' : 'Turn on alerts'}
@@ -168,16 +182,27 @@ export default function LeadAlertsStep({ userId, onDone }) {
   );
 }
 
-function Shell({ children }) {
-  return (
-    <div style={S.root}>
+function Shell({ children, overlay, onCancel }) {
+  if (!overlay) {
+    return (
+      <div style={S.root}>
+        <div style={S.card}>{children}</div>
+      </div>
+    );
+  }
+  return createPortal(
+    <div style={S.overlay} role="dialog" aria-modal="true">
+      <button type="button" aria-label="Close" style={S.close} onClick={onCancel}>×</button>
       <div style={S.card}>{children}</div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 const S = {
   root: { minHeight: '100vh', background: '#070A12', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 20px', fontFamily: "var(--xd-font-body, 'Outfit', system-ui, sans-serif)", boxSizing: 'border-box' },
+  overlay: { position: 'fixed', inset: 0, zIndex: 10050, background: '#070A12', overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '56px 20px 32px', fontFamily: "var(--xd-font-body, 'Outfit', system-ui, sans-serif)", boxSizing: 'border-box' },
+  close: { position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: 20, border: 'none', background: 'rgba(255,255,255,0.08)', color: '#fff', fontSize: 24, lineHeight: 1, cursor: 'pointer' },
   card: { width: 'min(420px, 100%)', textAlign: 'center' },
   ring: { width: 64, height: 64, borderRadius: '50%', background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 22px' },
   eyebrow: { fontSize: 10, letterSpacing: '3px', textTransform: 'uppercase', color: '#dc2626', fontWeight: 600, margin: '0 0 8px' },
