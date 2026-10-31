@@ -2788,6 +2788,31 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-26: Beat Carlist for sellers: better car info first, then bumps that hit the
+  RIGHT buyer (owner, 2026-10-31)** — a seller paid Carlist RM250 to bump a BMW M5 F90 CS
+  (~RM900k) and got zero buyers: a bump shows the car to everyone, and the M5 buyer is not
+  scrolling a feed of RM20k Sagas. Two steps, in this order:
+  1. **Per-car info Carlist never gives (free, wins sellers now).** A plain "why no buyers"
+     read per car: "40 views, 0 taps = price or photos" vs "3 views = nobody sees it, share
+     it". Where views came from (channels exist), saves + questions (FEEDBACK-1), Find me
+     posts it matches, budget-finder searches it would fit (counts only), JPJ demand for the
+     model (IDEA-6 data). Built on `listingScore`. A per-car drop-off funnel (photos ->
+     price -> WhatsApp) needs NEW consented events: `viewProgress` stays device-only.
+  2. **Matched bumps, paid per result.** (a) The bump is shown only to buyers whose OWN
+     signals fit (price band they browse, budget they typed, models viewed), matched ON THE
+     DEVICE: the server sends the bumped pool, the phone picks, no buyer data leaves it
+     (PDPA, same rule as REVISIT-1). (b) The seller pays per real WhatsApp tap / chat /
+     booking, capped, not per day; taps deduped per device or rivals can burn a budget.
+     (c) We REFUSE to sell a bump with no audience ("2 buyers looked above RM500k this
+     month") - the honesty Carlist does not offer. (d) Supercars: the buyer is off-platform,
+     so the "bump" is a Studio reel run as a Meta/TikTok ad at car-enthusiast/high-income
+     audiences, ad cost passed through + our fee.
+  Supersedes IDEA-1 (region is one signal of many). BLOCKED on traffic for step 2:
+  2026-10-31, last 30 days = 379 car views across 79 cars, 3 WhatsApp taps (consented
+  analytics only, so an undercount). A bump on that sells nothing; step 1 + SEO-PLAN first.
+  Payments are manual (PAY-2 parked), so a per-result charge needs a gateway or a prepaid
+  credit balance. Check Malaysian ad rules (ASA Code / CMA s.233) before (d).
+
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
