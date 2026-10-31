@@ -2717,6 +2717,15 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-26: Omnichannel chat tab in /platform (owner, 2026-10-31)** — one console inbox for
+  Drevo's OWN channels: Facebook Page Messenger, Instagram DMs, Threads replies (no Threads DM
+  API), later WhatsApp. Meta webhooks -> Supabase edge function -> one messages table, shown
+  with the existing `chat/ChatThread` (no second chat UI). AI drafts, human sends; replies only
+  inside Meta's 24h window. BLOCKED: unlike posting (SOCIAL-1, dev mode, no review), receiving
+  strangers' messages needs the app Live = Meta App Review + business verification
+  (`pages_messaging`, `instagram_business_manage_messages`), plus a Drevo Page + IG business
+  account. Seller-side WhatsApp inbox is separate (WA-1/WA-2). Build once DMs actually arrive.
+
 - **IDEA-24: Own the deal record, not the traffic (owner, 2026-10-28)** — beat Mudah/Carlist
   by being where the SALE is recorded (lead source -> won -> sold price -> gross -> F&I ->
   handover -> renewal), which they never see because the deal leaves them for WhatsApp. Pitch to
