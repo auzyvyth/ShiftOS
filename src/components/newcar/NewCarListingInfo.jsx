@@ -23,13 +23,17 @@ const STEPS = [
 ];
 
 // CarDetailPage mounts this twice (mobile + desktop blocks, one CSS-hidden),
-// so both share one request per listing.
+// so both share one request per listing. A failed read REJECTS and is dropped
+// at once (2026-10-31): it used to settle as null and be kept for 60s, so one
+// slow moment (a statement timeout) left a Live presenter card with no
+// variants, no insurance estimate and no NCD for the rest of the live.
 const pending = new Map();
 function loadInfo(id) {
   if (!pending.has(id)) {
-    pending.set(id, publicClient.rpc("get_new_car_listing_info", { p_listing_id: id }).maybeSingle()
-      .then(({ data }) => data || null, () => null)
-      .finally(() => setTimeout(() => pending.delete(id), 60000)));
+    const p = publicClient.rpc("get_new_car_listing_info", { p_listing_id: id }).maybeSingle()
+      .then(({ data, error }) => { if (error) throw error; return data || null; });
+    pending.set(id, p);
+    p.then(() => setTimeout(() => pending.delete(id), 60000), () => pending.delete(id));
   }
   return pending.get(id);
 }
@@ -80,8 +84,14 @@ export function useNewCarInfo(listingId) {
     let alive = true;
     setInfo(null);
     if (!listingId) return undefined;
-    loadInfo(listingId).then((d) => { if (alive) setInfo(d); });
-    return () => { alive = false; };
+    // Retry a failed read while this car is on screen: 1.5s, 3s, 4.5s, 6s.
+    let timer;
+    const attempt = (n) => loadInfo(listingId).then(
+      (d) => { if (alive) setInfo(d); },
+      () => { if (alive && n < 4) timer = setTimeout(() => attempt(n + 1), 1500 * (n + 1)); },
+    );
+    attempt(0);
+    return () => { alive = false; clearTimeout(timer); };
   }, [listingId]);
   return info;
 }
@@ -98,7 +108,7 @@ export function useNewCarInfos(listingIds) {
     let alive = true;
     const ids = key ? key.split(",") : [];
     if (!ids.length) return undefined;
-    const perCard = () => Promise.all(ids.map((id) => loadInfo(id).then((d) => [id, d])))
+    const perCard = () => Promise.all(ids.map((id) => loadInfo(id).then((d) => [id, d], () => [id, null])))
       .then((pairs) => Object.fromEntries(pairs.filter(([, d]) => d)));
     publicClient.rpc("get_new_car_variants_batch", { p_listing_ids: ids })
       .then(({ data, error }) => (error
