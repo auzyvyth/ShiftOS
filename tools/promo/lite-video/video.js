@@ -64,9 +64,11 @@ const CARS = [
   { k: 'axia', name: 'Perodua Axia', price: '29,500' }, { k: 'bezza', name: 'Perodua Bezza', price: '41,800' },
   { k: 'alza', name: 'Perodua Alza', price: '72,900' }, { k: 'persona', name: 'Proton Persona', price: '45,600' },
 ];
-const carList = () => { const a = CARS.filter((c) => AVAIL.has(c.k)); return a.length >= 4 ? a : CARS.slice(0, 2); };
+const MINI = { k: 'mini', name: 'MINI Cooper JCW', price: '170,000' };
+const carList = () => { if (AVAIL.has('mini')) return [MINI]; const a = CARS.filter((c) => AVAIL.has(c.k)); return a.length >= 4 ? a : CARS.slice(0, 2); };
 const carOf = (i) => carList()[i % carList().length];
 function photo(k, w, pos = 'center') {
+  if (AVAIL.has('mini')) { k = 'mini'; if (pos === 'center') pos = 'center 62%'; }
   if (AVAIL.has(k)) return `background:url('assets/${k}.jpg') ${pos}/cover no-repeat`;
   return k === 'myvi'
     ? `background-image:url('${SCR}tour-chat-ms.webp');background-repeat:no-repeat;${myviBg(w)}`
@@ -502,7 +504,7 @@ scene(29.0, 'dark', (root) => {
     tiles.push({ el, i });
   }
   const fl = floor(root, 540, 1730, 620, 90);
-  const card = (x, i) => { const c = i === 0 && AVAIL.has('mini') ? { k: 'mini', name: 'MINI Cooper JCW', price: '170,000' } : carOf(i); const yr = [2022, 2022, 2021, 2022][i];
+  const card = (x, i) => { const c = i === 0 && AVAIL.has('mini') ? { k: 'mini', name: 'MINI Cooper JCW', price: '170,000' } : carOf(i); const yr = 2022;
     return `<div style="border-radius:20px;overflow:hidden;background:#181b21"><div style="height:150px;${photo(c.k, c.k === 'myvi' ? 250 : 320, c.k === 'mini' ? 'center 62%' : 'center')}"></div>
      <div style="padding:12px 14px"><div style="font-size:21px;font-weight:700">${yr} ${c.name}</div><div style="font-size:24px;font-weight:700;margin-top:4px">RM ${c.price}</div></div></div>`; };
   const ph = phoneEl(root, `<div style="height:300px;background:linear-gradient(135deg,#4a1416,#1a0d10 60%,#0e0f14)"></div>
