@@ -70,6 +70,33 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## LAUNCH-1212: money before the 12 Dec ads (owner's birthday) — planned 2026-10-31
+Owner: Supabase Pro in ~2 days; at least RM200 on ads around 12 Dec; xdrive.my renewed
+for another year.
+- [ ] **Convert the Premium trials FIRST: fastest revenue there is.** 2026-10-31: 1 payment
+  ever. Real sellers on trial (premiummotors / airymotors are the owner's): ezatul (ends
+  2 Nov, 0 cars), shamsulsa (7 Nov, 1 car), drivenbyyazeed (16 Nov, 7 cars), bydann + aps
+  (18 Nov, 6 + 8 cars). The three with 6-8 cars have ZERO leads: they will not pay for a
+  tool that brought nobody. Owner WhatsApps each before their date; IDEA-26 step 1 (what
+  to do per car + Share button) is the build that gives them a reason.
+- [ ] **Switch to drevo.my in NOVEMBER, before any ad money** (BRAND-1). In one go, not
+  bit by bit: Google handles a clean 301 move; a half-moved site is the risky version.
+  Search Console Change of Address for each domain variant; keep xdrive.my redirecting
+  well past Google's 180-day minimum. Gotcha: logins, saved cars on the device, the
+  home-screen app and push notifications belong to the OLD domain in the browser, so every
+  user signs in again, re-adds the app and turns notifications back on. Cheap with ~7
+  sellers, painful at 70: one more reason to do it now. Also Google sign-in origins
+  (`ID_TOKEN_ORIGINS` + Google Cloud), Supabase auth redirect URLs, edge CORS,
+  `<sub>.xdrive.my` storefronts. After midnight, nobody live.
+- [ ] **Ads (RM200): to SELLERS, not buyers.** 78 cars cannot hold a buyer campaign, and a
+  seller is the one who pays. Meta (FB + IG), Click-to-WhatsApp to the owner (a human
+  answers, 5 sign-ups beat 200 clicks), BM video of the Live presenter (free on Lite, the
+  hook). Malaysia benchmarks (agency data, rough): ~RM0.84 per click, RM15-65 per lead,
+  so RM200 = roughly 3-10 real conversations. Run 7-10 days at RM20-30/day, not one day:
+  Meta needs days to learn. Avoid 12.12 itself (sale days are commonly reported to push
+  ad prices up), launch a few days before. Meta adds 8% service tax on Malaysian accounts.
+  Free channels at the same time: Proton/Perodua SA Facebook groups, TikTok.
+
 ## SEO-PLAN: six-part SEO plan — scoped 2026-10-31, nothing built yet
 Source: six "SEO screenshots" the owner saved (Lawrence Hitches / hawkacademy.co).
 **Owner's call: the name change (BRAND-1) comes FIRST.** Content + on-site work
