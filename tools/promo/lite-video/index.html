@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<title>Drevo Lite promo (render source)</title>
+<style>
+@font-face { font-family: 'Outfit'; font-weight: 700; src: url('../../../api/_fonts/outfit-latin-700-normal.woff') format('woff'); }
+@font-face { font-family: 'Outfit'; font-weight: 500; src: url('../../../api/_fonts/outfit-latin-500-normal.woff') format('woff'); }
+:root { --red: #dc2626; --red2: #ef4444; --ink: #0f1115; --paper: #f3f1ee; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+body { font-family: 'Outfit', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+#stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #07090e; }
+.scene { position: absolute; inset: 0; overflow: hidden; will-change: clip-path; }
+.abs { position: absolute; }
+
+/* ---------- backgrounds ---------- */
+.bg { position: absolute; inset: -40px; }
+.dark .bg { background: radial-gradient(120% 70% at 50% 108%, #2a0b0d 0%, #0d0b10 45%, #07090e 75%); }
+.light .bg { background: radial-gradient(110% 70% at 50% 100%, #f6e3df 0%, #f4f1ee 45%, #efede9 100%); }
+.glow { position: absolute; border-radius: 50%; filter: blur(90px); }
+.dark .glow.a { width: 1300px; height: 900px; left: -110px; top: 1250px; background: rgba(220,38,38,.42); }
+.dark .glow.b { width: 700px; height: 700px; left: -300px; top: -200px; background: rgba(90,100,140,.16); }
+.light .glow.a { width: 1200px; height: 800px; left: -60px; top: 1350px; background: rgba(220,38,38,.13); }
+.light .glow.b { width: 900px; height: 700px; left: 300px; top: -300px; background: rgba(255,255,255,.9); }
+.orb { position: absolute; border-radius: 50%; }
+.vig { position: absolute; inset: 0; pointer-events: none; }
+.dark .vig { background: radial-gradient(85% 60% at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,.65) 100%); }
+.light .vig { background: radial-gradient(90% 65% at 50% 50%, rgba(0,0,0,0) 60%, rgba(70,40,30,.14) 100%); }
+.floor { position: absolute; border-radius: 50%; filter: blur(34px); }
+.dark .floor { background: rgba(0,0,0,.8); }
+.light .floor { background: rgba(70,30,25,.32); }
+.rays { position: absolute; left: 540px; top: 1100px; width: 0; height: 0; }
+.rays i { position: absolute; left: -40px; top: -1400px; width: 80px; height: 1400px; transform-origin: 50% 100%;
+  background: linear-gradient(to top, rgba(239,68,68,.28), rgba(239,68,68,0)); filter: blur(18px); }
+
+/* ---------- chrome ---------- */
+#grain { position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .10; pointer-events: none; z-index: 50; }
+#logo { position: absolute; top: 74px; left: 50%; transform: translateX(-50%); z-index: 40; display: flex; align-items: center; gap: 12px;
+  padding: 12px 26px 12px 16px; border-radius: 999px; font-weight: 700; font-size: 34px; letter-spacing: -.02em; }
+#logo .mk { width: 38px; height: 38px; border-radius: 11px; background: linear-gradient(140deg,#ef4444,#991b1b); position: relative;
+  box-shadow: 0 6px 16px rgba(220,38,38,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+#logo .mk::after { content: ''; position: absolute; left: 11px; top: 10px; width: 10px; height: 18px; border: 4px solid #fff; border-left: 0; border-radius: 0 12px 12px 0; }
+#sample { position: absolute; bottom: 46px; left: 0; right: 0; text-align: center; z-index: 40; font-weight: 500; font-size: 24px; letter-spacing: .08em; text-transform: uppercase; }
+
+/* ---------- captions ---------- */
+#caps { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; z-index: 30; pointer-events: none; }
+.cap { position: absolute; left: 60px; top: 205px; width: 960px; text-align: center; font-weight: 700; font-size: 80px;
+  line-height: 1.04; letter-spacing: -.04em; }
+.cap .w { display: inline-block; margin: 0 .11em; }
+.grad { background: linear-gradient(95deg, #b91c1c 0%, #ef4444 55%, #ff7f6e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.light .grad, .cap.light .grad { background-image: linear-gradient(95deg, #7f1d1d 0%, #dc2626 55%, #f05252 100%); }
+.cap .u { position: relative; }
+.cap .u::after { content: ''; position: absolute; left: 0; right: 0; bottom: .02em; height: .07em; border-radius: 9px; background: var(--red2);
+  transform-origin: left; transform: scaleX(var(--ul, 0)); }
+.hero { position: absolute; left: 0; top: 0; white-space: nowrap; font-weight: 700; font-size: 230px; line-height: 1; letter-spacing: -.05em;
+  transform-origin: 50% 50%; z-index: 31;
+  background: linear-gradient(100deg, #b91c1c 0%, #ef4444 38%, #ff9a8a 46%, #fff 50%, #ff9a8a 54%, #ef4444 62%, #ff7f6e 100%);
+  background-size: 320% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.hero.light { background-image: linear-gradient(100deg, #7f1d1d 0%, #dc2626 38%, #ff8f80 46%, #fff 50%, #ff8f80 54%, #dc2626 62%, #f05252 100%); }
+.spark { position: absolute; left: 0; top: 0; border-radius: 50%; z-index: 32; }
+
+/* ---------- objects ---------- */
+.phone { position: absolute; width: 600px; height: 1110px; border-radius: 74px; padding: 16px; background: linear-gradient(160deg,#23262e,#0b0d12 40%,#0b0d12);
+  border: 1.5px solid rgba(255,255,255,.10); }
+.phone .scr { position: relative; width: 100%; height: 100%; border-radius: 58px; overflow: hidden; background: #0b0d12; }
+.phone .scr img { width: 100%; display: block; }
+.sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,0) 35%, rgba(255,255,255,.10) 45%, rgba(255,255,255,0) 58%); background-size: 260% 100%; }
+.panel { position: absolute; border-radius: 46px; overflow: hidden; background: #0b0d12; border: 1.5px solid rgba(255,255,255,.08); }
+.panel img { display: block; width: 100%; }
+.sh-d { box-shadow: 0 80px 140px rgba(0,0,0,.65), 0 24px 50px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04), 0 -1px 0 rgba(255,255,255,.08) inset; }
+.sh-l { box-shadow: 0 70px 120px rgba(80,30,25,.30), 0 20px 40px rgba(80,30,25,.18), 0 2px 6px rgba(0,0,0,.08); }
+.redglow { position: absolute; border-radius: 50%; background: rgba(239,68,68,.55); filter: blur(80px); }
+.card { position: absolute; border-radius: 40px; }
+.card.d { background: linear-gradient(170deg,#171a21,#111318); color: #fff; border: 1.5px solid rgba(255,255,255,.07); }
+.card.l { background: #fff; color: var(--ink); border: 1.5px solid rgba(0,0,0,.04); }
+.car { background-image: url('../../../public/for-salesmen/tour-listings-ms.webp'); background-repeat: no-repeat; }
+.myvi { background-image: url('../../../public/for-salesmen/tour-chat-ms.webp'); background-repeat: no-repeat; }
+.lbl { font-weight: 500; font-size: 28px; opacity: .6; letter-spacing: -.01em; }
+.big { font-weight: 700; letter-spacing: -.04em; }
+.chip { position: absolute; display: flex; align-items: center; gap: 18px; padding: 22px 34px 22px 24px; border-radius: 32px; font-weight: 700; }
+.ico { width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; flex: none; }
+.ico svg { width: 36px; height: 36px; }
+.bub { position: absolute; padding: 22px 30px; border-radius: 34px; font-size: 38px; font-weight: 500; display: flex; gap: 18px; align-items: center; white-space: nowrap; }
+.av { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 24px; color: #fff; flex: none; }
+.ring { position: absolute; border-radius: 50%; border: 3px solid rgba(239,68,68,.7); }
+.notif { position: absolute; left: 70px; width: 940px; border-radius: 40px; padding: 30px 34px; display: flex; gap: 26px; align-items: center;
+  background: rgba(30,33,41,.82); backdrop-filter: blur(30px); border: 1.5px solid rgba(255,255,255,.10); color: #fff; }
+.notif .t { font-size: 36px; font-weight: 700; letter-spacing: -.02em; }
+.notif .s { font-size: 30px; font-weight: 500; opacity: .7; margin-top: 4px; }
+.notif .when { margin-left: auto; align-self: flex-start; font-size: 26px; opacity: .5; font-weight: 500; }
+.btn { position: absolute; border-radius: 999px; display: grid; place-items: center; font-weight: 700; color: #fff;
+  background: linear-gradient(180deg,#ef4444,#c81e1e); box-shadow: 0 30px 70px rgba(220,38,38,.5), inset 0 2px 0 rgba(255,255,255,.3); }
+.tile { position: absolute; border-radius: 22px; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="scenes"></div>
+  <div id="caps"></div>
+  <div id="logo"><span class="mk"></span><span>Drevo</span></div>
+  <div id="sample">Paparan contoh</div>
+  <canvas id="grain" width="1080" height="1920"></canvas>
+</div>
+<script src="video.js"></script>
+</body>
+</html>
