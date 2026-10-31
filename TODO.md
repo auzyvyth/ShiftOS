@@ -2796,7 +2796,13 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   RM1.96m, so the slice is real. Claude's view: start as a SECTION of the main domain
   (`/luxury`, own design), not a second website: a new domain starts with zero Google trust,
   a second brand mid-rename (BRAND-1), second login. Split it out later if it earns it. Open:
-  threshold (RM700k = 6 cars, a thin page; show it only from N cars), how a sale is proven
+  **Entry is the car's STORY, not its price (owner, 2026-10-31):** a used M3/M4 at RM600k
+  is expensive, not luxury; a CS, low mileage for its age, good history is. So price only
+  decides who gets ASKED; a person (console Review queue, same as listings) lets a car in
+  against a short checklist: special variant (CS, GT3, limited run), mileage low for the
+  year, service history, owners, docs checked (`docs_verified`, superadmin-only). The
+  seller writes the story when applying. Curated beats a count: 3 real cars > 14 dear ones.
+  Still open: the price that triggers the ask, how a sale is proven
   to have come FROM the showcase (tag the lead at booking; `leads.lead_source` CHECK needs a
   new value, and the won-trigger records the sale), and pairing it with IDEA-26 (d), the
   off-platform ad, since luxury buyers mostly are not on marketplaces.
