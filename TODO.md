@@ -79,7 +79,12 @@ for another year.
   car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
   tell real from not, the owner signs in as console-made sellers to add their cars.
 - [ ] **PUSH-ONBOARD: notifications are the LAST signup step, required to finish (owner,
-  2026-10-31).** Measured 2026-10-31: ZERO real sellers have a push device; only the owner's
+  2026-10-31). Part 1 BUILT 2026-10-31, on staging, NOT live:** `LeadAlertsStep`
+  (`src/components/onboarding/`) is the last screen of BOTH the signup wizard
+  (`SalesmanOnboarding.jsx`) and the set-up email page (`SalesmanSetup.jsx`). iPhone does
+  not wait for the home-screen open (that app has its own login, so it cannot finish the
+  same step); the dashboard's required strip asks again in there. Still to do: the
+  one-time full-screen ask for sellers who already have accounts. Measured 2026-10-31: ZERO real sellers have a push device; only the owner's
   two accounts do. So every buyer message to a real seller reached them by email at best.
   Step = one big "Turn on lead alerts" button -> browser prompt -> done. Where the browser
   physically cannot do it, the step changes instead of trapping them (a hard gate with no

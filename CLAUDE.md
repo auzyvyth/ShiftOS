@@ -985,6 +985,13 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   dealers had zero devices. The iOS-not-installed and browser-denied states
   keep their close button: nothing on the page can fix either. Buyers stay
   dismissible.
+- **Lead alerts are the LAST step of every seller signup (PUSH-ONBOARD, 2026-10-31):**
+  `src/components/onboarding/LeadAlertsStep.jsx`, shown by `SalesmanOnboarding` (after the
+  profile saves) and `SalesmanSetup` (after the password, the console-made path). Where the
+  browser can do push there is NO skip. Where it cannot (in-app browser, iPhone outside the
+  home-screen app, permission blocked, our own save failing) it says what to do and lets
+  them through: a gate with no way out loses the signup. On 2026-10-31 no real seller had a
+  push device. A new way to create a seller account must end on this step too.
 - **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
   every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
   sellers did not, so a lead whose push had no device to land on was simply
