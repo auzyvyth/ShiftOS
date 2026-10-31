@@ -3377,6 +3377,23 @@ until these are done:**
 
 ---
 
+### THREADS-1 — Threads auto-posting: AI drafts, owner approves, posts on schedule (started 2026-10-31)
+
+Runbook: `tools/threads/README.md`. Script: `tools/threads/threads.mjs` (official
+Threads API, dry run unless `--live`). Queue: `tools/threads/queue.json`.
+
+- [x] Posting script + queue + rules test (`npm run test:threads`).
+- [ ] **Owner: which account** (personal or a Drevo brand account).
+- [ ] **Owner: one-time Meta setup** (README "One-time setup"), token saved as an
+  environment secret. Blocks everything below.
+- [ ] Run `threads.mjs whoami` to prove the token, then post ONE approved test post.
+- [ ] Voice: read the owner's last ~14 days of posts (needs `threads_basic`), write the
+  pillars (topics) and a short voice guide into the README.
+- [ ] First weekly batch of 5-7 drafts for the owner to approve.
+- [ ] Scheduled tasks: publish due posts (a few times a day) + weekly insights + draft.
+  Publishing writes `queue.json` back, so the task must commit and push it.
+- [ ] Decide if drafts should leave the public repo (README "Gotcha").
+
 ### SESSION 2026-09-26 — WhatsApp into the CRM + owner prospecting CRM (scoped, nothing built)
 
 Framing correction: Premium + dealer dash already HAVE a CRM (pipeline, This

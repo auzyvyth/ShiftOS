@@ -1,0 +1,12 @@
+{
+  "account": "PENDING: personal or Drevo brand account (owner call)",
+  "posts": [
+    {
+      "id": "example-1",
+      "status": "draft",
+      "post_at": null,
+      "pillar": "example",
+      "text": "Example draft. Drafts never post: only status \"approved\" does."
+    }
+  ]
+}
