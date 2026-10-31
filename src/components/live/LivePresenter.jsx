@@ -528,7 +528,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // cc is on the picked variant). null = no cc (EV / not filled): tap to type.
   const insFor = (c, value, cc, variantId) => {
     const typed = insTyped[insKey(c, variantId)];
-    if (typed !== undefined && typed !== '') return Math.max(0, Number(typed) || 0);
+    // A typed figure is the premium BEFORE NCD (owner, 2026-10-31: the NCD row
+    // must never disappear). The seller cannot know a viewer's NCD before the
+    // live, so the viewer's pick takes it off the typed figure too.
+    if (typed !== undefined && typed !== '') return Math.round(Math.max(0, Number(typed) || 0) * (1 - (Number(ncd) || 0) / 100));
     const est = motorPremium({ sumInsured: value, cc, ncd, region: insuranceRegion(c?.state) });
     return est ? est.total : null;
   };
@@ -1666,7 +1669,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   {price > 0 && (
                     insEdit ? (
                       <tr>
-                        <td>{t.insurance}</td>
+                        <td>{t.insuranceBeforeNcd}</td>
                         <td>
                           <input className="lp-cellin" autoFocus type="text" inputMode="numeric" placeholder={ins ? String(ins) : '0'}
                             aria-label={t.insuranceEdit} value={insTyped[insK] ?? ''}
@@ -1729,11 +1732,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {rateInfo && <p className="lp-tip" role="tooltip">{t.rateInfo(fmtRate(rate), basis === 'flat')}</p>}
             </div>
 
-            {/* The viewer's NCD: tap, never type. Hidden once a figure is typed
-                for this car (the typed quote already has its NCD in it). Its own grid
-                area: under the working on desktop, so the photo keeps the whole row
-                (under the photo it shrank the photo, 2026-10-24). */}
-            {price > 0 && !insIsTyped && ins !== null && (
+            {/* The viewer's NCD: tap, never type. ALWAYS shown on a priced car
+                (owner, 2026-10-31): it applies to the estimate and to a typed figure
+                alike, and hiding it left sellers unable to answer "I have 55% NCD".
+                Its own grid area: under the working on desktop, so the photo keeps
+                the whole row (under the photo it shrank the photo, 2026-10-24). */}
+            {price > 0 && (
               <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                 <span>{t.ncd}</span>
                 {NCD_TIERS.map((n) => (

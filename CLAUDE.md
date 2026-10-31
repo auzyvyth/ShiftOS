@@ -1456,12 +1456,15 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)
 Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around that:
 - **Cars over the Lite cap are LOCKED, not left live** (owner). `sweep_premium_lapses()`
-  (cron hourly :41) keeps reserved cars, then the newest, up to the Lite cap; the rest go
+  (live cron is DAILY 00:00 UTC, not hourly) keeps reserved cars, then the newest, up to the Lite cap; the rest go
   `status='unpublished'` + `plan_locked_at` (+ `plan_locked_status` to restore). Lite shows
   them under Available, blacked out (`get_my_locked_listings`). `trg_zz_unlock_plan_cars`
   (on profiles) puts them back the moment Premium returns, whatever restored it.
   `enforce_listing_cap_on_publish` now uses the entitlement cap, or a locked car could be
   republished on the 30-car Premium cap.
+  **Instant on the seller's side (owner, 2026-10-31, `20261031a`):** Lite calls
+  `apply_my_premium_lapse()` on load, which runs the same per-seller lock (`_apply_premium_lapse`)
+  for the caller and returns the locked ids. No grace and no due date: the trial ends, they are Lite.
 - **Two pushes per lapse, never more:** `premium_ending` 3 days before, `premium_ended` on
   the day. Banners: `src/components/premium/PremiumStatusBanner.jsx` (one line, closes until
   tomorrow; owner: "make it not annoying"). Pay screen is ONE component, `PremiumPayBox.jsx`.
@@ -1792,8 +1795,12 @@ generated. The default cell equals `calcMonthly`, so it matches the card.
   RM1,000 by cc + RM26/RM1,000 Peninsular, RM20.30 Sabah/Sarawak/Labuan, - NCD, + 8% SST
   + RM10), checked against a seller's Excel (X50 RM2,840 vs his RM2,869). The tariff
   ended in 2017, so it is always labelled an estimate. No cc (EVs) = no estimate: the row
-  shows "-" and the seller taps it to type the figure, which wins for that car and hides
-  the pills (Adjust no longer has its own insurance box: one place to set it). **The Insurance line is typed in place like Rebate, and a typed
+  shows "-" and the seller taps it to type the figure, which wins for that car (Adjust no
+  longer has its own insurance box: one place to set it). **The NCD pills NEVER disappear on a
+  priced car (owner, 2026-10-31):** a typed figure is the premium BEFORE NCD and the viewer's
+  pick comes off it too (the seller cannot know a viewer's NCD before the live). The variant
+  read (`NewCarListingInfo.jsx loadInfo`) never keeps a failure and retries 4 times: one
+  statement timeout used to leave a model card with no variants, estimate or NCD all live. **The Insurance line is typed in place like Rebate, and a typed
   figure is REMEMBERED on the device until changed** (owner, 2026-10-24, a Proton advisor quotes
   his insurer's number per model): `xd_live_insfig`, keyed by listing, `<listing>:<variant>` on a
   model card (`insKey`), no month end. Never saved to the listing or the server. Budget adds
