@@ -44,10 +44,21 @@ Every command without `--live` is a dry run. `npm run test:social` checks the ru
    the Threads app (Settings -> Account -> Website permissions -> Invites).
 3. Permissions: `threads_basic`, `threads_content_publish`, `threads_manage_insights`.
 4. Generate a **long-lived token** (60 days) in the use case's settings.
-5. Save it as environment secrets, never in the repo:
+5. Cloud environment settings -> Network access: allow `graph.threads.net`
+   (later `graph.facebook.com` + `graph.instagram.com`). The default policy blocks it
+   (checked 2026-10-31: CONNECT 403).
+6. Save it as environment secrets, never in the repo:
    `THREADS_ACCESS_TOKEN`, and `THREADS_USER_ID` (from `threads.mjs whoami`).
-6. The token runs out after 60 days: `threads.mjs refresh` renews it (needs to be at
+7. The token runs out after 60 days: `threads.mjs refresh` renews it (needs to be at
    least a day old); save the printed token over the old secret.
+
+## Safety
+- Keep the Meta app in **Development mode**. It can then only post to accounts added as
+  testers (yours). No App Review, no business verification needed. Never switch to Live.
+- Leaked token: Threads app -> Settings -> Account -> Website permissions -> Active ->
+  remove the app. That kills the token at once; generate a new one.
+- Never give a third-party "auto-poster" your password. The official flow never asks for
+  it outside Meta's own pages.
 
 ## Gotcha
 This repo is PUBLIC (CLAUDE.md, Vercel Hobby), so drafts in `queue.json` are visible
