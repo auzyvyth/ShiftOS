@@ -52,7 +52,7 @@ kick_n = int(0.35 * SR); kt = np.arange(kick_n) / SR
 kick = np.sin(2 * np.pi * (45 * kt + 60 * (1 - np.exp(-kt * 25)) / 25)) * np.exp(-kt * 9)
 duck = np.ones(N)
 b = 0.0
-while b < 42.6:
+while b < ev['beatEnd']:
     add(kick, b, 0.32)
     i = int(b * SR); dn = int(0.25 * SR); j = min(N, i + dn)
     duck[i:j] = np.minimum(duck[i:j], 0.55 + 0.45 * np.linspace(0, 1, j - i))
@@ -94,7 +94,7 @@ add(np.sin(2 * np.pi * 900 * ct) * np.exp(-ct * 90), ev['tap'], 0.35)
 # final chord bloom at the CTA
 fn = int(4 * SR); ft = np.arange(fn) / SR
 bloom = sum(np.sin(2 * np.pi * f * ft) for f in (220, 261.63, 329.63, 440)) * np.clip(ft / 0.4, 0, 1) * np.exp(-ft * 0.6) / 4
-add(bloom, 42.7, 0.18)
+add(bloom, ev['cta'], 0.18)
 
 # fade out + master
 fade = np.clip((ev['duration'] - t) / 1.2, 0, 1)

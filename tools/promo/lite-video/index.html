@@ -48,6 +48,7 @@ body { font-family: 'Outfit', system-ui, sans-serif; -webkit-font-smoothing: ant
 .cap { position: absolute; left: 60px; top: 205px; width: 960px; text-align: center; font-weight: 700; font-size: 80px;
   line-height: 1.04; letter-spacing: -.04em; }
 .cap .w { display: inline-block; margin: 0 .11em; }
+.cap.dark .w:not(.grad) { text-shadow: 0 4px 26px rgba(0,0,0,.6); }
 .grad { background: linear-gradient(95deg, #b91c1c 0%, #ef4444 55%, #ff7f6e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .light .grad, .cap.light .grad { background-image: linear-gradient(95deg, #7f1d1d 0%, #dc2626 55%, #f05252 100%); }
 .cap .u { position: relative; }
@@ -68,7 +69,7 @@ body { font-family: 'Outfit', system-ui, sans-serif; -webkit-font-smoothing: ant
 .sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,0) 35%, rgba(255,255,255,.10) 45%, rgba(255,255,255,0) 58%); background-size: 260% 100%; }
 .panel { position: absolute; border-radius: 46px; overflow: hidden; background: #0b0d12; border: 1.5px solid rgba(255,255,255,.08); }
 .panel img { display: block; width: 100%; }
-.sh-d { box-shadow: 0 80px 140px rgba(0,0,0,.65), 0 24px 50px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04), 0 -1px 0 rgba(255,255,255,.08) inset; }
+.sh-d { box-shadow: 0 80px 140px rgba(0,0,0,.65), 0 24px 50px rgba(0,0,0,.5), 0 0 0 1.5px rgba(255,255,255,.10), 0 0 140px rgba(255,255,255,.06), 0 -1px 0 rgba(255,255,255,.08) inset; }
 .sh-l { box-shadow: 0 70px 120px rgba(80,30,25,.30), 0 20px 40px rgba(80,30,25,.18), 0 2px 6px rgba(0,0,0,.08); }
 .redglow { position: absolute; border-radius: 50%; background: rgba(239,68,68,.55); filter: blur(80px); }
 .card { position: absolute; border-radius: 40px; }
@@ -85,9 +86,9 @@ body { font-family: 'Outfit', system-ui, sans-serif; -webkit-font-smoothing: ant
 .av { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 24px; color: #fff; flex: none; }
 .ring { position: absolute; border-radius: 50%; border: 3px solid rgba(239,68,68,.7); }
 .notif { position: absolute; left: 70px; width: 940px; border-radius: 40px; padding: 30px 34px; display: flex; gap: 26px; align-items: center;
-  background: rgba(30,33,41,.82); backdrop-filter: blur(30px); border: 1.5px solid rgba(255,255,255,.10); color: #fff; }
-.notif .t { font-size: 36px; font-weight: 700; letter-spacing: -.02em; }
-.notif .s { font-size: 30px; font-weight: 500; opacity: .7; margin-top: 4px; }
+  background: linear-gradient(180deg,#2a2e3a,#1c1f27); border: 1.5px solid rgba(255,255,255,.16); color: #fff; }
+.notif .t { font-size: 40px; font-weight: 700; letter-spacing: -.02em; }
+.notif .s { font-size: 32px; font-weight: 500; opacity: .78; margin-top: 4px; }
 .notif .when { margin-left: auto; align-self: flex-start; font-size: 26px; opacity: .5; font-weight: 500; }
 .btn { position: absolute; border-radius: 999px; display: grid; place-items: center; font-weight: 700; color: #fff;
   background: linear-gradient(180deg,#ef4444,#c81e1e); box-shadow: 0 30px 70px rgba(220,38,38,.5), inset 0 2px 0 rgba(255,255,255,.3); }

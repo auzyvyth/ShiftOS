@@ -1,7 +1,19 @@
 /* Drevo Lite promo: a deterministic timeline. render(t) paints the frame at
    time t (seconds); render.mjs steps it frame by frame and pipes to ffmpeg.
    No CSS animations anywhere: every value is a function of t. */
-const DURATION = 46.5;
+const SCRIPT_END = 46.5;
+// Script time S (what every timing below is written in) -> video time. Each
+// scene gets EXTRA seconds, played as a slight slow-down, not a freeze.
+const KNOTS = [0, 3.6, 7.2, 11.8, 15.6, 18.6, 21.2, 26.0, 29.0, 32.6, 39.0, 42.6, 46.5];
+const EXTRA = [0.3, 0.4, 0.6, 0.6, 0.5, 0.4, 0.6, 0.3, 0.6, 1.0, 0.8, 0.3];
+const OUT = KNOTS.reduce((a, k, i) => (i === 0 ? [0] : [...a, a[i - 1] + (k - KNOTS[i - 1]) + EXTRA[i - 1]]), []);
+function mapPiece(x, from, to) {
+  for (let i = 1; i < from.length; i++) if (x <= from[i]) return to[i - 1] + ((x - from[i - 1]) / (from[i] - from[i - 1])) * (to[i] - to[i - 1]);
+  return to[to.length - 1] + (x - from[from.length - 1]);
+}
+const toScript = (T) => mapPiece(T, OUT, KNOTS);
+const toVideo = (s) => mapPiece(s, KNOTS, OUT);
+const DURATION = OUT[OUT.length - 1];
 const W = 1080, H = 1920;
 
 // ---------- maths ----------
@@ -42,6 +54,21 @@ const SCR = '../../../public/for-salesmen/';
 
 // Car photo crops out of the real listing screenshot (760x1091; car at x25-735, y405-722).
 function carBg(w) { const k = w / 710; return `background-size:${760 * k}px auto;background-position:${-25 * k}px ${-405 * k}px`; }
+// Real car photos (fetch-assets.sh -> assets/). Without them, fall back to crops.
+let PHOTOS = false;
+const CARS = [
+  { k: 'x50', name: 'Proton X50', price: '109,800' }, { k: 'myvi', name: 'Perodua Myvi', price: '52,800' },
+  { k: 'saga', name: 'Proton Saga', price: '38,900' }, { k: 'x70', name: 'Proton X70', price: '128,800' },
+  { k: 'axia', name: 'Perodua Axia', price: '29,500' }, { k: 'bezza', name: 'Perodua Bezza', price: '41,800' },
+  { k: 'alza', name: 'Perodua Alza', price: '72,900' }, { k: 'persona', name: 'Proton Persona', price: '45,600' },
+];
+const carOf = (i) => (PHOTOS ? CARS[i % CARS.length] : CARS[i % 2]);
+function photo(k, w) {
+  if (PHOTOS) return `background:url('assets/${k}.jpg') center/cover no-repeat`;
+  return k === 'myvi'
+    ? `background-image:url('${SCR}tour-chat-ms.webp');background-repeat:no-repeat;${myviBg(w)}`
+    : `background-image:url('${SCR}tour-listings-ms.webp');background-repeat:no-repeat;${carBg(w)}`;
+}
 // Red Myvi thumbnail out of the chat screenshot (760x1091; thumb at x56-140, y290-374).
 function myviBg(w) { const k = w / 84; return `background-size:${760 * k}px auto;background-position:${-56 * k}px ${-290 * k}px`; }
 
@@ -248,7 +275,7 @@ scene(0, 'dark', (root) => {
   const fl = floor(root, 540, 1640, 760, 90);
   const glow = mk(root, '<div class="redglow" style="left:240px;top:1200px;width:600px;height:400px"></div>');
   const card = mk(root, `<div class="card d sh-d" style="left:180px;top:720px;width:720px;padding:32px">
-    <div class="car" style="width:656px;height:293px;border-radius:26px;${carBg(656)}"></div>
+    <div style="width:656px;height:293px;border-radius:26px;${photo('x50', 656)}"></div>
     <div style="margin-top:30px;font-size:46px;font-weight:700;letter-spacing:-.03em">2023 Proton X50</div>
     <div class="lbl" style="margin-top:6px">1.5 TGDi Flagship · 29,000 km · Auto</div>
     <div class="big" style="font-size:76px;margin-top:22px">RM 109,800</div>
@@ -287,7 +314,7 @@ scene(3.6, 'light', (root) => {
       <div class="sk" style="margin-left:auto;width:150px;height:44px;border-radius:14px;background:linear-gradient(90deg,#eceae7 0%,#f7f6f4 50%,#eceae7 100%);background-size:200% 100%"></div>
       <div class="qm" style="font-size:52px;font-weight:700;color:#9ca3af;width:40px;text-align:right">?</div></div>`;
   const card = mk(root, `<div class="card l sh-l" style="left:140px;top:820px;width:800px;padding:40px 46px 18px">
-    <div style="display:flex;align-items:center;gap:20px;margin-bottom:26px"><div class="car" style="width:150px;height:96px;border-radius:18px;${carBg(150)}"></div>
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:26px"><div style="width:150px;height:96px;border-radius:18px;${photo('x50', 150)}"></div>
     <div><div style="font-size:40px;font-weight:700;letter-spacing:-.03em">2023 Proton X50</div><div class="lbl">Dah 14 hari post</div></div></div>
     ${row('eye', 'Orang tengok')}${row('chat', 'Tekan WhatsApp')}${row('user', 'Siapa berminat')}</div>`);
   const cur = mk(root, `<div style="position:absolute;left:0;top:0;width:76px;height:76px;filter:drop-shadow(0 10px 14px rgba(0,0,0,.25))">${ICON.cursor}</div>`);
@@ -465,15 +492,16 @@ scene(29.0, 'dark', (root) => {
   const tiles = [];
   for (let i = 0; i < 18; i++) {
     const col = i % 6, row = Math.floor(i / 6);
-    const isX = (i + row) % 2 === 0;
+    const c = carOf(i + row);
     const el = mk(plane, `<div class="tile sh-d" style="left:${col * 245}px;top:${row * 300}px;width:225px;height:280px;background:#141720;border:1.5px solid rgba(255,255,255,.07)">
-      <div class="${isX ? 'car' : 'myvi'}" style="width:225px;height:150px;${isX ? carBg(300) : myviBg(225)}"></div>
-      <div style="padding:14px 16px;color:#fff"><div style="font-size:22px;font-weight:700">${isX ? 'Proton X50' : 'Perodua Myvi'}</div><div style="font-size:26px;font-weight:700;margin-top:6px;color:#ef4444">RM ${isX ? '109,800' : '52,800'}</div></div></div>`);
+      <div style="width:225px;height:150px;${photo(c.k, c.k === 'myvi' ? 225 : 300)}"></div>
+      <div style="padding:14px 16px;color:#fff"><div style="font-size:22px;font-weight:700">${c.name}</div><div style="font-size:26px;font-weight:700;margin-top:6px;color:#ef4444">RM ${c.price}</div></div></div>`);
     tiles.push({ el, i });
   }
   const fl = floor(root, 540, 1730, 620, 90);
-  const card = (x, i) => `<div style="border-radius:20px;overflow:hidden;background:#181b21"><div class="${x ? 'car' : 'myvi'}" style="height:150px;${x ? carBg(320) : myviBg(250)}"></div>
-     <div style="padding:12px 14px"><div style="font-size:21px;font-weight:700">${['2023 Proton X50', '2022 Perodua Myvi', '2022 Proton X50', '2021 Perodua Myvi'][i]}</div><div style="font-size:24px;font-weight:700;margin-top:4px">RM ${['109,800', '52,800', '96,500', '45,900'][i]}</div></div></div>`;
+  const card = (x, i) => { const c = PHOTOS ? CARS[[0, 1, 2, 3][i]] : CARS[i % 2]; const yr = [2023, 2022, 2021, 2022][i];
+    return `<div style="border-radius:20px;overflow:hidden;background:#181b21"><div style="height:150px;${photo(c.k, c.k === 'myvi' ? 250 : 320)}"></div>
+     <div style="padding:12px 14px"><div style="font-size:21px;font-weight:700">${yr} ${c.name}</div><div style="font-size:24px;font-weight:700;margin-top:4px">RM ${c.price}</div></div></div>`; };
   const ph = phoneEl(root, `<div style="height:300px;background:linear-gradient(135deg,#4a1416,#1a0d10 60%,#0e0f14)"></div>
     <div style="position:absolute;top:220px;left:40px;width:150px;height:150px;border-radius:50%;background:linear-gradient(140deg,#6b7280,#374151);border:6px solid #0b0d12;display:grid;place-items:center;color:#fff;font-weight:700;font-size:54px">AH</div>
     <div style="padding:90px 40px 0;color:#fff"><div style="font-size:50px;font-weight:700;letter-spacing:-.03em">Aiman Hakim</div><div style="font-size:28px;opacity:.6;font-weight:500;margin-top:4px">Ejen kereta · Shah Alam</div>
@@ -503,7 +531,7 @@ scene(32.6, 'dark', (root) => {
   const D = 'card d sh-d';
   const items = [
     mk(root, `<div class="${D}" style="left:230px;top:0;width:620px;overflow:hidden">
-      <div class="car" style="height:300px;position:relative;${carBg(620)}"><div style="position:absolute;left:0;right:0;bottom:0;padding:80px 30px 20px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-size:42px;font-weight:700">2023 Proton X50</div></div>
+      <div style="height:300px;position:relative;${photo('x50', 620)}"><div style="position:absolute;left:0;right:0;bottom:0;padding:80px 30px 20px;background:linear-gradient(transparent,rgba(0,0,0,.8));font-size:42px;font-weight:700">2023 Proton X50</div></div>
       <div style="padding:28px 30px 34px"><div class="lbl">Harga</div><div class="big" style="font-size:64px">RM 109,800</div>
       ${[['9 tahun', '1,253'], ['7 tahun', '1,518'], ['5 tahun', '2,000']].map(([a, b], i) => `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:20px 24px;border-radius:20px;background:${i === 1 ? 'rgba(239,68,68,.16)' : '#1c2028'};font-size:34px;font-weight:700"><span style="font-weight:500;opacity:.75">${a}</span><span>RM ${b}<span style="font-size:24px;opacity:.6">/bln</span></span></div>`).join('')}
       <div style="display:flex;align-items:center;gap:14px;margin-top:26px"><div class="av" style="background:#4b5563">AH</div><div style="font-size:28px;font-weight:700">Aiman Hakim</div></div></div></div>`),
@@ -513,7 +541,7 @@ scene(32.6, 'dark', (root) => {
       <div style="margin-top:36px;padding-top:30px;border-top:1.5px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;color:#fff">${Array(5).fill(`<span style="width:46px;height:46px;display:inline-block">${ICON.star}</span>`).join('')}
       <span style="margin-left:16px;font-size:32px;font-weight:500;opacity:.7">"Layan laju, jujur."</span></div></div>`),
     mk(root, `<div class="${D}" style="left:200px;top:0;width:680px;padding:30px;overflow:hidden">
-      <div style="position:relative;border-radius:26px;overflow:hidden"><div class="car" style="height:300px;filter:blur(14px) brightness(.6);transform:scale(1.1);${carBg(620)}"></div>
+      <div style="position:relative;border-radius:26px;overflow:hidden"><div style="height:300px;filter:blur(14px) brightness(.6);transform:scale(1.1);${photo('x70', 620)}"></div>
       <div style="position:absolute;inset:0;display:grid;place-items:center"><div style="width:140px;height:140px;border-radius:50%;background:rgba(15,17,21,.75);border:2px solid rgba(255,255,255,.15);display:grid;place-items:center;color:#fff"><span style="width:64px;height:64px">${ICON.lock}</span></div></div></div>
       <div style="margin-top:26px;font-size:42px;font-weight:700">Private</div><div class="lbl" style="margin-top:6px">Hanya anda nampak. Kira kos dan untung dulu.</div></div>`),
     mk(root, `<div class="${D}" style="left:180px;top:0;width:720px;padding:40px">
@@ -522,7 +550,7 @@ scene(32.6, 'dark', (root) => {
       <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:34px">${['Standard', 'Executive', 'Premium', 'Flagship'].map((v, i) => `<div style="padding:18px 26px;border-radius:999px;font-size:30px;font-weight:700;background:${i === 3 ? '#dc2626' : '#1c2028'}">${v}</div>`).join('')}</div>
       <div class="lbl" style="margin-top:30px">Pilih model, kad siap.</div></div>`),
     mk(root, `<div class="${D}" style="left:140px;top:0;width:800px;padding:34px">
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">${Array.from({ length: 10 }, (_, i) => `<div class="tl ${i % 2 ? 'myvi' : 'car'}" style="height:110px;border-radius:16px;${i % 2 ? myviBg(130) : carBg(190)}"></div>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">${Array.from({ length: 10 }, (_, i) => `<div class="tl" style="height:110px;border-radius:16px;${photo(carOf(i).k, carOf(i).k === 'myvi' ? 130 : 190)}"></div>`).join('')}</div>
       <div style="display:flex;align-items:baseline;gap:16px;margin-top:30px"><div class="big n" style="font-size:96px">0</div><div class="lbl" style="font-size:34px">/ 10 kereta live</div></div></div>`),
   ];
   items.forEach((el) => (el.style.opacity = 0));
@@ -605,7 +633,7 @@ function buildScenes() {
     s.root = mk(host, `<div class="scene ${s.theme}"></div>`);
     s.root.style.zIndex = i + 1;
     s.update = s.build(s.root);
-    s.end = i < SCENES.length - 1 ? SCENES[i + 1].start + TR : DURATION;
+    s.end = i < SCENES.length - 1 ? SCENES[i + 1].start + TR : SCRIPT_END;
   });
   edge = mk($('#stage'), '<div style="position:absolute;left:0;width:1080px;height:6px;z-index:28;background:linear-gradient(90deg,transparent,#fff 30%,#fff 70%,transparent);box-shadow:0 0 30px 10px rgba(239,68,68,.75),0 0 90px 30px rgba(239,68,68,.35)"></div>');
 }
@@ -623,7 +651,8 @@ function buildGrain() {
   ctx.putImageData(img, 0, 0);
 }
 
-function render(t) {
+function render(T) {
+  const t = toScript(T);
   let edgeY = -100;
   for (const s of SCENES) {
     const vis = t >= s.start && t < s.end;
@@ -653,21 +682,24 @@ function render(t) {
   const sample = $('#sample');
   sample.style.color = th === 'dark' ? 'rgba(255,255,255,.3)' : 'rgba(15,17,21,.32)';
   sample.style.opacity = t >= 7.4 && t < 39.0 ? 1 : 0;
-  const f = Math.floor(t * 30), r = rng(f * 7919 + 1);
+  const f = Math.floor(T * 30), r = rng(f * 7919 + 1);
   $('#grain').style.transform = `translate(${Math.floor(r() * 100) - 50}px, ${Math.floor(r() * 100) - 50}px)`;
   $('#grain').style.opacity = th === 'dark' ? 0.11 : 0.07;
 }
 
 window.EVENTS = () => ({
   duration: DURATION,
-  heroes: CAPS.flatMap((c) => c.words.filter((x) => x.kind === 'H').map((x) => x.t)),
-  words: CAPS.flatMap((c) => c.words.filter((x) => x.text && x.kind !== 'H').map((x) => x.t)),
-  wipes: SCENES.slice(1).map((s) => s.start),
-  dings: [16.15, 17.55],
-  tap: 44.6,
+  heroes: CAPS.flatMap((c) => c.words.filter((x) => x.kind === 'H').map((x) => toVideo(x.t))),
+  words: CAPS.flatMap((c) => c.words.filter((x) => x.text && x.kind !== 'H').map((x) => toVideo(x.t))),
+  wipes: SCENES.slice(1).map((s) => toVideo(s.start)),
+  dings: [16.15, 17.55].map(toVideo),
+  tap: toVideo(44.6),
+  cta: toVideo(42.7),
+  beatEnd: toVideo(42.6),
 });
 
 window.READY = (async () => {
+  PHOTOS = await new Promise((r) => { const im = new Image(); im.onload = () => r(true); im.onerror = () => r(false); im.src = 'assets/x50.jpg'; });
   buildScenes();
   buildCaps();
   buildGrain();
