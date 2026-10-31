@@ -994,9 +994,13 @@ never committed to this repo, and dead because of a few missing pieces. Anyone p
   push device. A new way to create a seller account must end on this step too.
   **Also in front of Live presentation** (owner, 2026-10-31: sellers mostly use Live):
   `openLive` in `SalesmanProfilePage.jsx` opens the same component as a pop-up (`onCancel`
-  given: portal, scroll lock, Back = do not go live). Where the browser can do push it asks
-  on EVERY live until alerts are on; where it cannot it shows once per visit
-  (`xd_live_alerts_seen`, sessionStorage), never a nag before every stream.
+  given: portal, scroll lock, Back = do not go live), ONCE A DAY per device until alerts are
+  on (`xd_live_alerts_day`, Malaysia date). **The button never holds anyone on the screen
+  (owner, 2026-10-31):** the tap starts `enable()` (it must start inside the tap or the browser
+  will not ask), closes the screen at once, and the outcome is a toast (`reportAlertsResult`).
+  Chrome's QUIET permission mode shows no pop-up, only a crossed bell in the address bar, and
+  the request never answers: the owner's own test sat on "Turning on..." in front of a live.
+  After 15s still open, the toast says to tap that bell. Signup's last step works the same way.
 - **SELLERS have an email backup too: `notify-seller-unread`** (cron jobid 17,
   every 15 min, migration `20260926b`). Buyers had one (`notify-chat-unread`);
   sellers did not, so a lead whose push had no device to land on was simply

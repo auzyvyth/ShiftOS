@@ -22,7 +22,7 @@ import BudgetFinder from '../components/agent/BudgetFinder';
 import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
-import { usePushNotifications, isIOS, isStandalone, isInAppBrowser } from '../hooks/usePushNotifications';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -522,23 +522,20 @@ export default function SalesmanProfilePage() {
   const isOwner = !!viewerId && !!profile && viewerId === profile.id;
   // PUSH-ONBOARD (owner, 2026-10-31): sellers mostly use Live, and viewers
   // WhatsApp, chat and book during and after it, so the alerts ask sits in
-  // front of it. Where this browser CAN turn alerts on, it asks on every live
-  // until they are on (no skip, only Back to not go live). Where it cannot (iPhone
-  // outside the home-screen app, Instagram/TikTok's browser, blocked), it shows
-  // once per visit so it is not a nag before every stream.
+  // front of it, ONCE A DAY per device until alerts are on. Its button closes
+  // the ask and opens the presenter at once; the result comes back as a toast
+  // (LeadAlertsStep), so it never keeps a seller from their live.
   const ownerPush = usePushNotifications(isOwner ? viewerId : null);
+  const todayMy = () => new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
   const alertsNeeded = () => {
     if (!isOwner || !ownerPush.configured || ownerPush.subscribed) return false;
-    const canAsk = ownerPush.supported && ownerPush.permission !== 'denied'
-      && !isInAppBrowser() && !(isIOS() && !isStandalone());
-    if (canAsk) return true;
-    try { return sessionStorage.getItem('xd_live_alerts_seen') !== '1'; } catch { return true; }
+    try { return localStorage.getItem('xd_live_alerts_day') !== todayMy(); } catch { return true; }
   };
   const startPresenting = () => { setAlertsGate(false); setLiveBlock(null); setPresenting(true); };
   const openLive = async () => {
     if (listings.length > 0) {
       if (alertsNeeded()) {
-        try { sessionStorage.setItem('xd_live_alerts_seen', '1'); } catch { /* private mode */ }
+        try { localStorage.setItem('xd_live_alerts_day', todayMy()); } catch { /* private mode */ }
         setAlertsGate(true);
         return;
       }

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { toast } from 'sonner';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { Bell, Check, Copy, ExternalLink } from 'lucide-react';
 import {
@@ -28,6 +29,28 @@ import {
 // does NOT start the live), with its own eyebrow / title / intro.
 
 const DONE_PAUSE_MS = 1200;
+const SLOW_MS = 15000;
+
+// The screen has already closed when this runs, so every outcome is a toast.
+// A request still open after 15s is almost always Chrome's quiet prompt: say
+// where to look. If it then succeeds, the success toast follows.
+function reportAlertsResult(attempt) {
+  let settled = false;
+  const slow = setTimeout(() => {
+    if (!settled) toast('Alerts are not on yet. If you see a bell in the address bar, tap it and choose Allow.', { duration: 12000 });
+  }, SLOW_MS);
+  attempt.then((r) => {
+    settled = true;
+    clearTimeout(slow);
+    if (r?.ok) toast.success('Lead alerts are on. Buyers will reach this device.');
+    else if (r?.reason === 'denied') toast.error('Alerts are blocked for this site. Unblock them from the icon left of the address bar.', { duration: 10000 });
+    else toast.error('Alerts did not turn on. We will ask again tomorrow.', { duration: 8000 });
+  }).catch(() => {
+    settled = true;
+    clearTimeout(slow);
+    toast.error('Alerts did not turn on. We will ask again tomorrow.', { duration: 8000 });
+  });
+}
 
 export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'Last step', title = 'TURN ON LEAD ALERTS', intro }) {
   const push = usePushNotifications(userId);
@@ -38,7 +61,6 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, [overlay]);
-  const [result, setResult] = useState(null); // null | 'dismissed' | 'failed'
   const [copied, setCopied] = useState(false);
   // The device check waits on the service worker. If it never comes up, stop
   // waiting after a few seconds and show the button rather than a spinner forever.
@@ -79,18 +101,16 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
     return 'ask';
   })();
 
-  const turnOn = async () => {
-    setResult(null);
-    // enable() waits on the service worker; a worker that never comes up must
-    // not leave the seller staring at "Turning on..." with no way forward.
-    const r = await Promise.race([
-      push.enable(),
-      new Promise((res) => setTimeout(() => res({ ok: false, reason: 'timeout' }), 20000)),
-    ]);
-    if (r.ok) { setTimeout(finish, DONE_PAUSE_MS); return; }
-    if (r.reason === 'dismissed') setResult('dismissed');
-    else if (r.reason !== 'denied') setResult('failed');
-    // 'denied' re-renders as the blocked screen via push.permission
+  // Owner, 2026-10-31: the tap never holds them on this screen. Turning alerts
+  // on can hang with no prompt at all (Chrome's quiet mode only shows a small
+  // crossed bell in the address bar and waits), which left a seller staring at
+  // "Turning on..." in front of their own live. So the tap starts the request
+  // (it must start inside the tap, or the browser will not ask), closes the
+  // screen at once, and the result arrives later as a toast.
+  const turnOn = () => {
+    const attempt = push.enable();
+    finish();
+    reportAlertsResult(attempt);
   };
 
   const appUrl = `${window.location.origin}/login`;
@@ -101,7 +121,7 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
   const chromeIntent = `intent://${window.location.host}/login#Intent;scheme=https;package=com.android.chrome;end`;
 
   // A supported browser still checking whether this device is already on.
-  if (mode === 'ask' && !push.checked && !waitedOut) {
+  if (!overlay && mode === 'ask' && !push.checked && !waitedOut) {
     return <Shell overlay={overlay} onCancel={onCancel}><p style={S.sub}>Checking this device...</p></Shell>;
   }
 
@@ -118,16 +138,9 @@ export default function LeadAlertsStep({ userId, onDone, onCancel, eyebrow = 'La
           <p style={S.sub}>
             {intro || 'Buyers move on fast. Turn on alerts so a new message, booking or enquiry reaches your phone the moment it happens, even with the app closed.'}
           </p>
-          <button type="button" style={{ ...S.btn, opacity: push.busy ? 0.6 : 1 }} disabled={push.busy} onClick={turnOn}>
-            <Bell size={16} /> {push.busy ? 'Turning on...' : 'Turn on alerts'}
+          <button type="button" style={S.btn} onClick={turnOn}>
+            <Bell size={16} /> Turn on alerts
           </button>
-          {result === 'dismissed' && <p style={S.warn}>Your phone asked and nothing was picked. Tap the button again and choose Allow.</p>}
-          {result === 'failed' && (
-            <>
-              <p style={S.warn}>That did not save on our side. Try once more.</p>
-              <button type="button" style={S.ghost} onClick={finish}>Continue, I will turn it on in Settings</button>
-            </>
-          )}
         </>
       )}
 
