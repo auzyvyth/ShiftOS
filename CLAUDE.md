@@ -2078,6 +2078,26 @@ Before this, a car-page question (`listing_comments`), a review (`reviews`) or a
 - Likes are COUNTS only (`get_my_car_likes()`), never who saved a car (PDPA). Saves made
   without signing in live on the device and are not counted.
 
+## Each car tells the seller ONE next step (COACH-1, 2026-10-31) — Lite and Premium
+Owner: "make the app communicate and tell the seller what they need to hear", with an action.
+Rules: `src/utils/carCoach.js` (`carNextStep`, `pickSilentCar`, `carListingScore`;
+`npm run test:coach`), words: `src/components/coach/coachCopy.js` (en + ms, a new line goes in
+BOTH). First match wins: unanswered buyer question > photos under the minimum (5) > no price >
+buyers messaging > SILENT (listed 2+ days, no views for 2+ days, owner's rule) > fresh > 20+
+views and no taps > saved but no taps > under 10 views this week.
+- The car card shows the facts (views, enquiries) and ONE line, `CarNextStep`, with one button
+  (Answer / Edit / Share / Show me how). It REPLACED Lite's quality bar, conversion bar + Hot/Stale
+  tags, photo warning and listings quality banner (two of those quoted invented "3x more views"
+  stats), and Premium's improve line. Do not put any of them back beside it.
+- `carListingScore` is the ONE completeness score (Lite and Premium each had a copy, both still
+  asking for 3 photos after the minimum went to 5). It returns keys, not words.
+- Dashboard: `SilentCarCard` = the car silent the longest, "Show me how" -> switches to Listings
+  and `ShareTour` rings that car's button (`data-share-car="<id>"`: Premium's round Share, Lite's
+  Link) and waits for the seller's own tap, then says where to post. It never presses or posts
+  anything for them. Card and lines wait for `trafficReady`: before that every car reads unseen.
+- Never invent a number or a promise in coach copy. Views need the buyer's analytics consent,
+  so they undercount; say only what was counted.
+
 ## Private cars (PRIVATE-1, 2026-10-30) — up to 4, only the seller sees them
 A standalone seller can keep up to 4 cars private (owner's limit) to work out cost and margin
 (asked for by seller `iskandar`). A private car is `car_listings.status = 'private'`: a STATUS,

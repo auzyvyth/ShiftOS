@@ -2859,7 +2859,10 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   RIGHT buyer (owner, 2026-10-31)** — a seller paid Carlist RM250 to bump a BMW M5 F90 CS
   (~RM900k) and got zero buyers: a bump shows the car to everyone, and the M5 buyer is not
   scrolling a feed of RM20k Sagas. Two steps, in this order:
-  1. **Per-car info Carlist never gives (free, wins sellers now).** A plain "why no buyers"
+  1. **BUILT 2026-10-31 as COACH-1 (on staging, NOT live; see CLAUDE.md).** Still open from
+     this step: the weekly push to sellers who do not open the app (needs a cron, release after
+     midnight). Original note:
+     **Per-car info Carlist never gives (free, wins sellers now).** A plain "why no buyers"
      read per car: "40 views, 0 taps = price or photos" vs "3 views = nobody sees it, share
      it". Where views came from (channels exist), saves + questions (FEEDBACK-1), Find me
      posts it matches, budget-finder searches it would fit (counts only), JPJ demand for the

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
- Calculator, Car, Check, ChevronDown, Clock, Download, Flame,
+ Calculator, Car, Check, ChevronDown, Download,
  Film, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
@@ -11,6 +11,7 @@ import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
+import CarNextStep from "../../components/coach/CarNextStep";
 import { premiumDark as P } from "../../theme/tokens";
 import { ListingFormModal, tp } from "./shared";
 
@@ -91,7 +92,7 @@ export default function ListingsTab({
  setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
- listingScore, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
+ coachFor, onCoach, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
  generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
 }) {
  const { t, i18n } = useTranslation();
@@ -101,10 +102,7 @@ export default function ListingsTab({
  const stats = carStatsMap[car.id] ?? {};
  const views = stats.views || 0;
  const enqs = stats.enquiries || 0;
- const cvr = views > 0 ? (enqs / views) * 100 : null;
- const isHot = cvr !== null && cvr > 6 && views > 3;
- const isStale = views > 10 && (cvr === null || cvr === 0);
- return { car, views, enqs, isHot, isStale };
+ return { car, views, enqs };
  });
 
  const normStatus = (s) => {
@@ -268,7 +266,7 @@ export default function ListingsTab({
  onClick={() => { setStatusMenuCarId(null); setActionMenuCarId(null); }}
  style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill,minmax(270px,1fr))", gap: 14 }}
  >
- {sorted.map(({ car, views, enqs: enquiries, isHot, isStale }) => {
+ {sorted.map(({ car, views, enqs: enquiries }) => {
  const isSold = car.status === "sold";
  const isReserved = car.status === "reserved";
  const isPending = car.status === "pending_approval";
@@ -294,7 +292,8 @@ export default function ListingsTab({
  const base = Number(car.base_price);
  const sell = Number(car.selling_price);
  const margin = base > 0 && sell > 0 ? sell - base : null;
- const score = !isSold && !isRejected ? listingScore(car) : null;
+ // COACH-1: the ONE next step for this car (src/utils/carCoach.js).
+ const step = coachFor ? coachFor(car) : null;
  const copied = listingCopied[car.id];
  const statusPill = isSold
  ? `${statusLabel("sold")}${car.sold_at ? ` · ${new Date(car.sold_at).toLocaleDateString(dateLocale, { day: "numeric", month: "short" })}` : ""}`
@@ -343,6 +342,7 @@ export default function ListingsTab({
      Live cars only, same as the Copy link it replaced in ···. */}
  {isLive && handleListingShare && (
  <button
+ data-share-car={car.id}
  onClick={(e) => { e.stopPropagation(); handleListingShare(car); }}
  title={t("salesmanPremium.lst.shareTitle")} aria-label={t("salesmanPremium.lst.shareTitle")}
  style={{ position: "absolute", top: 8, right: 8, width: 40, height: 40, borderRadius: "50%", background: "rgba(8,9,12,0.72)", border: "none", color: P.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", WebkitTapHighlightColor: "transparent" }}
@@ -447,30 +447,16 @@ export default function ListingsTab({
  <span style={{ fontVariantNumeric: "tabular-nums" }}>
  <strong style={{ color: P.text, fontWeight: 600 }}>{views}</strong> {t("salesmanPremium.lst.viewsLower")} · <strong style={{ color: P.text, fontWeight: 600 }}>{enquiries}</strong> {t("salesmanPremium.lst.enquiriesLower")}
  </span>
- {isHot && <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: P.accentText, fontWeight: 600 }}><Flame size={12} /> {t("salesmanPremium.lst.hot")}</span>}
- {isStale && !isHot && <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 3, color: P.textMuted }}><Clock size={12} /> {t("salesmanPremium.lst.stale")}</span>}
  </div>
  )}
 
- {/* Improve: one line, the first fix (photos rank first), one tap. */}
- {score && score.pct < 90 && (
- <button
- onClick={() => setEditListing(car)}
- title={score.missing.length ? t("salesmanPremium.lst.improve", { list: score.missing.join(", ") }) : ""}
- style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: P.radius.row, background: P.raised, border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
- >
- <span style={{ flex: 1, minWidth: 0 }}>
- <span style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: P.textSec, marginBottom: 5 }}>
- <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{score.missing[0] || t("salesmanPremium.lst.quality")}</span>
- <span style={{ fontWeight: 600, color: P.text, fontVariantNumeric: "tabular-nums", marginLeft: 8 }}>{score.pct}%</span>
- </span>
- <span style={{ display: "block", height: 3, borderRadius: P.radius.pill, background: P.hover, overflow: "hidden" }}>
- <span style={{ display: "block", height: "100%", width: `${score.pct}%`, background: P.accent, borderRadius: P.radius.pill }} />
- </span>
- </span>
- <span style={{ fontSize: 12, fontWeight: 600, color: P.text, flexShrink: 0 }}>{t("salesmanPremium.lst.fix")}</span>
- </button>
- )}
+ {/* Next step: what happened to this car + the one thing to do (COACH-1).
+     It replaced the quality bar, whose first fix it also covers. */}
+ <CarNextStep
+ step={step} car={car} lang={i18n.language}
+ colors={{ text: P.text, sub: P.textSec, accent: P.accent, onAccent: P.onAccent, soft: P.raised, line: P.line }}
+ onAction={onCoach}
+ />
 
  {/* Actions: Caption + Edit, everything else behind ··· */}
  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: "auto" }}>

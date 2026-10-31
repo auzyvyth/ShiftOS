@@ -16,6 +16,8 @@ import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { routeForRole } from "../hooks/useRoleRedirect";
 import useHandover from "../hooks/useHandover";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
+import { carNextStep, pickSilentCar } from "../utils/carCoach";
+import ShareTour from "../components/coach/ShareTour";
 import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite } from "../utils/privateCars";
 import { useHideOnScroll } from "../hooks/useHideOnScroll";
 import { placeTourCard } from "../utils/tourPlacement";
@@ -386,6 +388,7 @@ export default function SalesmanPremium() {
  chatThreads.forEach((th) => { if (th.lead_id && !threadByLead.has(th.lead_id)) threadByLead.set(th.lead_id, th); });
  const [chatSheet, setChatSheet] = useState(null);
  const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
+ const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
@@ -2617,23 +2620,25 @@ export default function SalesmanPremium() {
  );
  };
 
- // Listing completeness score — ported from Salesman Lite so both panels
- // agree on what "finish this listing" means.
- const listingScore = (car) => {
- const checks = [
- { pts: 25, ok: Array.isArray(car.images) && car.images.length >= 3, hint: t("salesmanPremium.score.morePhotos", { count: Math.max(0, 3 - (car.images?.length || 0)) }) },
- { pts: 15, ok: Array.isArray(car.images) && car.images.length >= 1, hint: t("salesmanPremium.score.addPhoto") },
- { pts: 15, ok: !!car.selling_price, hint: t("salesmanPremium.score.setPrice") },
- { pts: 10, ok: !!car.mileage, hint: t("salesmanPremium.score.addMileage") },
- { pts: 10, ok: !!car.colour, hint: t("salesmanPremium.score.addColour") },
- { pts: 10, ok: !!car.variant, hint: t("salesmanPremium.score.addVariant") },
- { pts: 10, ok: !!car.state, hint: t("salesmanPremium.score.addLocation") },
- { pts: 5, ok: !!car.condition, hint: t("salesmanPremium.score.addCondition") },
- ];
- const earned = checks.reduce((s, c) => s + (c.ok ? c.pts : 0), 0);
- const total = checks.reduce((s, c) => s + c.pts, 0);
- const missing = checks.filter(c => !c.ok).map(c => c.hint);
- return { pct: Math.round((earned / total) * 100), missing };
+ // COACH-1: each car's ONE next step + the dashboard's silent car. Rules live in
+ // src/utils/carCoach.js (shared with Lite); the inputs are already loaded:
+ // traffic (carStatsMap), unanswered questions + saves (useSellerFeedback).
+ const coachExtra = (car) => ({
+ unanswered: feedback.threads.filter((q) => q.listing_id === car.id && !q.answered).length,
+ likes: Number(feedback.likes.find((l) => l.listing_id === car.id)?.likes) || 0,
+ });
+ const coachFor = (car) => (trafficReady ? carNextStep(car, carStatsMap[car.id], coachExtra(car)) : null);
+ const silentPick = trafficReady ? pickSilentCar(myListings, carStatsMap, coachExtra) : null;
+ const startShareTour = (car) => {
+ setFilterStatus("available");
+ setShareTourCar(car.id);
+ setActiveTab("listings");
+ };
+ const onCoach = (action, car) => {
+ if (action === "answer") setActiveTab("feedback");
+ else if (action === "edit") setEditListing(car);
+ else if (action === "share") handleListingShare(car);
+ else if (action === "tour") startShareTour(car);
  };
 
  const updateListingStatus = async (car, newStatus) => {
@@ -7136,6 +7141,7 @@ export default function SalesmanPremium() {
  onVisitMinipage={openMyMinipage} starterHidden={starterHidden}
  starterTasksReady={listingsLoaded && !profile?.starter_tasks?.dismissed}
  onStarterDismiss={dismissStarterTasks}
+ silentPick={silentPick} onShareTour={startShareTour}
  onEditBio={() => {
  openSettings("profile");
  setTimeout(() => document.getElementById("sp-bio-field")?.scrollIntoView({ behavior: "smooth", block: "center" }), 200);
@@ -7175,7 +7181,7 @@ export default function SalesmanPremium() {
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
       setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
-      listingScore={listingScore} updateListingStatus={updateListingStatus}
+      coachFor={coachFor} onCoach={onCoach} updateListingStatus={updateListingStatus}
       handleDeleteListing={handleDeleteListing} deletingId={deletingId} handleListingCopy={handleListingCopy} handleListingShare={handleListingShare}
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
@@ -7997,6 +8003,10 @@ export default function SalesmanPremium() {
 
  {/* ShiftOS Studio: full-screen, mounted at page level so no parent
      stacking context can clip it (overlay rule 1). */}
+ {/* COACH-1 share tour: rings the car's Share button on Listings. */}
+ {shareTourCar && activeTab === "listings" && (
+ <ShareTour carId={shareTourCar} mode="share" lang={i18n.language} onClose={() => setShareTourCar(null)} />
+ )}
  {studioCar && (
  <Suspense fallback={null}>
  <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} backdrops />
