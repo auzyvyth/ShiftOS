@@ -70,6 +70,45 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## SEO-PLAN: six-part SEO plan — scoped 2026-10-31, nothing built yet
+Source: six "SEO screenshots" the owner saved (Lawrence Hitches / hawkacademy.co).
+**Owner's call: the name change (BRAND-1) comes FIRST.** Content + on-site work
+moves to drevo.my with the 301s; business listings and profiles do not, so anything
+outside the site is done once, as "Drevo", on switch day. The "AI visibility =
+(O x U x R x C) / S" formula in the screenshots is that author's branding, not a Google
+metric; the real anchors are Google's information-gain patent (US 11,354,342) and
+Google's own line that AI Overviews need no special optimisation.
+- [ ] **SEO-0 (owner): Google Search Console.** Is xdrive.my verified? Add drevo.my as
+  its own property on switch day and file a Change of Address. Every "measure" step
+  needs GSC data; Claude cannot see it.
+- [ ] **SEO-1 (Claude): FAQ + answer-first pass on the articles.** Only 5 of 17 files in
+  `src/pages/articles/` carry FAQPage markup. Add a real FAQ (the sub-questions a buyer
+  would ask before the main one) and open each section with the answer. Then
+  `npm run articles:build` + bump `dateModified`. Owner checks the Malay facts.
+- [ ] **SEO-2 (Claude, owner picks the topic): one topic hub, wired.** Recommended:
+  car loans in Malaysia (buyers search far more than salesmen). Pieces exist:
+  `FlatRateVsEirArticle`, `AktaSewaBeli2026Article`, `KiraLoanKeretaExcelArticle`,
+  `/calculator`. Missing: one hub page linking them, links back from each, gap articles.
+  New page = crawler entry in `api/og.js` + sitemap + `docs/ARCHITECTURE.md`.
+- [ ] **SEO-3 (owner first, then Claude): first-hand stories.** 3-5 real deal stories
+  ("buyer came in with X, bank said Y, we fixed it with Z"), voice notes fine. Claude
+  writes them into the articles. Claude adds figures only we hold, totals only, never a
+  buyer (e.g. common loan-check flags from `loan_checks`, median seller reply time).
+- [ ] **SEO-4 (Claude builds, owner pitches): a data story for digital PR.** Base it on
+  JPJ registrations (`data.gov.my`, IDEA-6, already refreshed by cron), not our own
+  prices: ~70 listings is too few to be news. Claude builds the data page + drafts the
+  pitch email and one follow-up (day 5-7, then stop). Owner sends it to 20-30 named
+  reporters (Paultan, SoyaCincau, The Star Motoring...). Do it after SEO-2 so the
+  coverage links into the hub. A person sends every email; never a blast.
+- [ ] **SEO-5 (owner, ON SWITCH DAY, as "Drevo"): listings + free links.** Google Business
+  Profile, Bing Places, LinkedIn, TikTok/IG/FB handles, journalist-request sites
+  (Qwoted, SourceBottle, Featured), Malaysian car directories. Same name, address and
+  phone everywhere. Never buy links, PBNs, link swaps or press-release blasts.
+  Claude's half: one Organization schema with that same name/address/phone, and make
+  the loan calculator a tool worth linking to.
+- Order: SEO-0 + SEO-1 now (they survive the switch) -> SEO-2 -> SEO-3 -> SEO-4 ->
+  BRAND-1 switch -> SEO-5.
+
 ## REVIEW-1: listing review rules — part 1 built 2026-10-31, NOT on staging yet
 Owner asked for automatic approve/reject. Scoped 2026-10-31; owner picked ONLY the
 photo rule for now ("leave it at that").
