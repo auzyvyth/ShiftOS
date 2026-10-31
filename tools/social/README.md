@@ -1,4 +1,13 @@
-# THREADS-1: Threads posting (draft, owner approves, auto-post)
+# SOCIAL-1: Threads, Facebook, Instagram (draft, owner approves, auto-post)
+
+One Meta app covers all three. Built so far: **Threads** (`threads.mjs`).
+Facebook and Instagram are planned (see `TODO.md` SOCIAL-1); their limits:
+- **Facebook posts only to a PAGE**, never a personal profile (Meta removed that in 2018).
+  Permission `pages_manage_posts`, a Page access token.
+- **Instagram needs a Business or Creator account, and every post needs an image or
+  video** (no text-only posts). The image must be at a public URL. Reuse the images the
+  app already makes (loan poster, Studio); do not build a second image maker.
+- **One idea, written per platform.** Same text pasted to all three does badly on all three.
 
 Claude drafts posts in the owner's voice. The owner approves them. Approved posts
 go out on schedule through Meta's **official Threads API**, and their numbers come
@@ -12,12 +21,12 @@ ban automated access like that, and the account can be flagged or banned.
    each with a `pillar` (topic) and a suggested `post_at` (ISO time, UTC).
 2. **Approve** (owner, ~5 min): edit the text, then set `status: "approved"`.
    Only `approved` ever posts. A draft is never published by any command.
-3. **Publish** (scheduled task): `node tools/threads/threads.mjs publish --live`
+3. **Publish** (scheduled task): `node tools/social/threads.mjs publish --live`
    posts what is due and marks it `posted` with its `threads_id`.
-4. **Learn**: `node tools/threads/threads.mjs insights` saves views / likes /
+4. **Learn**: `node tools/social/threads.mjs insights` saves views / likes /
    replies / reposts / quotes / shares per post; next week's drafts use them.
 
-Every command without `--live` is a dry run. `npm run test:threads` checks the rules.
+Every command without `--live` is a dry run. `npm run test:social` checks the rules.
 
 ## Rules the script enforces
 - Max 500 characters (Threads' limit).

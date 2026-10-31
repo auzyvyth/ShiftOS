@@ -1,13 +1,13 @@
 #!/usr/bin/env node
-// THREADS-1: post the owner's APPROVED drafts to Threads through Meta's official
+// SOCIAL-1 (Threads part): post the owner's APPROVED drafts to Threads through Meta's official
 // Threads API (never a logged-in browser: that breaks Meta's terms and gets the
-// account flagged). Runbook: tools/threads/README.md.
+// account flagged). Runbook: tools/social/README.md.
 //
-//   node tools/threads/threads.mjs whoami             check the token, print the account
-//   node tools/threads/threads.mjs due                list approved posts whose time has come
-//   node tools/threads/threads.mjs publish [--live]   post the due ones (dry run without --live)
-//   node tools/threads/threads.mjs insights           views/likes/replies for posted ones
-//   node tools/threads/threads.mjs refresh            renew the 60-day token, print the new one
+//   node tools/social/threads.mjs whoami             check the token, print the account
+//   node tools/social/threads.mjs due                list approved posts whose time has come
+//   node tools/social/threads.mjs publish [--live]   post the due ones (dry run without --live)
+//   node tools/social/threads.mjs insights           views/likes/replies for posted ones
+//   node tools/social/threads.mjs refresh            renew the 60-day token, print the new one
 //
 // Secrets come from the environment ONLY: THREADS_ACCESS_TOKEN (+ THREADS_USER_ID,
 // else "me"). Never put a token in this folder: the repo is public.

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { duePosts, checkText } from '../tools/threads/threads.mjs';
+import { duePosts, checkText } from '../tools/social/threads.mjs';
 
 const now = new Date('2026-11-01T10:00:00Z');
 const q = {

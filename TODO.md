@@ -3377,12 +3377,13 @@ until these are done:**
 
 ---
 
-### THREADS-1 — Threads auto-posting: AI drafts, owner approves, posts on schedule (started 2026-10-31)
+### SOCIAL-1 — Threads + Facebook + Instagram: AI drafts, owner approves, posts on schedule (started 2026-10-31, was THREADS-1)
 
-Runbook: `tools/threads/README.md`. Script: `tools/threads/threads.mjs` (official
-Threads API, dry run unless `--live`). Queue: `tools/threads/queue.json`.
+Runbook: `tools/social/README.md`. Official Meta APIs only, never a logged-in browser.
+Order: Threads first (proves token, approval, scheduling), then Facebook, then Instagram.
 
-- [x] Posting script + queue + rules test (`npm run test:threads`).
+**Threads**
+- [x] Posting script + queue + rules test (`tools/social/threads.mjs`, `npm run test:social`).
 - [ ] **Owner: which account** (personal or a Drevo brand account).
 - [ ] **Owner: one-time Meta setup** (README "One-time setup"), token saved as an
   environment secret. Blocks everything below.
@@ -3392,6 +3393,20 @@ Threads API, dry run unless `--live`). Queue: `tools/threads/queue.json`.
 - [ ] First weekly batch of 5-7 drafts for the owner to approve.
 - [ ] Scheduled tasks: publish due posts (a few times a day) + weekly insights + draft.
   Publishing writes `queue.json` back, so the task must commit and push it.
+
+**Facebook** (after Threads works)
+- [ ] **Owner: a Drevo Facebook PAGE** (personal profiles cannot be posted to by API).
+- [ ] Add `pages_manage_posts` to the same Meta app; Page access token as a secret.
+- [ ] `facebook.mjs` on the same queue (text + link + photo); `platform` field per post.
+
+**Instagram** (after Facebook)
+- [ ] **Owner: switch Instagram to a Business or Creator account.**
+- [ ] Decide where each post's image comes from (loan poster / Studio export /
+  car photo) and where it is hosted publicly (Supabase storage).
+- [ ] `instagram.mjs`: single photo + carousel first; Reels later.
+
+**Shared**
+- [ ] Weekly draft = one idea written three ways, approved together.
 - [ ] Decide if drafts should leave the public repo (README "Gotcha").
 
 ### SESSION 2026-09-26 — WhatsApp into the CRM + owner prospecting CRM (scoped, nothing built)
