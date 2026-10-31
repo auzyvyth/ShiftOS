@@ -73,12 +73,27 @@
 ## LAUNCH-1212: money before the 12 Dec ads (owner's birthday) — planned 2026-10-31
 Owner: Supabase Pro in ~2 days; at least RM200 on ads around 12 Dec; xdrive.my renewed
 for another year.
-- [ ] **Convert the Premium trials FIRST: fastest revenue there is.** 2026-10-31: 1 payment
-  ever. Real sellers on trial (premiummotors / airymotors are the owner's): ezatul (ends
-  2 Nov, 0 cars), shamsulsa (7 Nov, 1 car), drivenbyyazeed (16 Nov, 7 cars), bydann + aps
-  (18 Nov, 6 + 8 cars). The three with 6-8 cars have ZERO leads: they will not pay for a
-  tool that brought nobody. Owner WhatsApps each before their date; IDEA-26 step 1 (what
-  to do per car + Share button) is the build that gives them a reason.
+- [ ] **Convert the 2 real Premium trials FIRST** (owner, 2026-10-31: of the 5 non-owner
+  trials only 2 are real; the others never signed in after the setup email). One payment
+  ever so far. Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
+  car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
+  tell real from not, the owner signs in as console-made sellers to add their cars.
+- [ ] **PUSH-ONBOARD: notifications are the LAST signup step, required to finish (owner,
+  2026-10-31).** Measured 2026-10-31: ZERO real sellers have a push device; only the owner's
+  two accounts do. So every buyer message to a real seller reached them by email at best.
+  Step = one big "Turn on lead alerts" button -> browser prompt -> done. Where the browser
+  physically cannot do it, the step changes instead of trapping them (a hard gate with no
+  way out loses the signup):
+  - iPhone in Safari, app not on the home screen: web push only exists for installed apps
+    (iOS 16.4+), so the step shows "Add to Home Screen", and finishing waits for the first
+    open from the home screen (progress kept on the account).
+  - In-app browser (Instagram / Facebook / TikTok, i.e. where the ads will land): push does
+    not exist there; step = "Open in Chrome / Safari" with the link copied.
+  - Permission already BLOCKED: the browser will never ask again; show how to unblock it in
+    settings, and only here allow "finish anyway" (email backup `notify-seller-unread` covers).
+  Reuse `usePushNotifications` (it owns every browser trap), never a new permission path.
+  Existing sellers: the `required` strip already sits on every seller surface; it clearly
+  is not enough, so also consider a one-time full-screen ask on next open.
 - [ ] **Switch to drevo.my in NOVEMBER, before any ad money** (BRAND-1). In one go, not
   bit by bit: Google handles a clean 301 move; a half-moved site is the risky version.
   Search Console Change of Address for each domain variant; keep xdrive.my redirecting
