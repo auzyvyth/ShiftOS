@@ -106,8 +106,25 @@ Google's own line that AI Overviews need no special optimisation.
   phone everywhere. Never buy links, PBNs, link swaps or press-release blasts.
   Claude's half: one Organization schema with that same name/address/phone, and make
   the loan calculator a tool worth linking to.
-- Order: SEO-0 + SEO-1 now (they survive the switch) -> SEO-2 -> SEO-3 -> SEO-4 ->
-  BRAND-1 switch -> SEO-5.
+- [ ] **SEO-6 (Claude): seller-side keywords before buyer keywords.** A competitor
+  write-up the owner pasted (2026-10-31, AI-generated, no real positions) said nobody
+  leads salesman-tool searches yet ("aplikasi salesman kereta", "kira loan kereta",
+  "komisen salesman", selling on TikTok Live), while "kereta terpakai" is Mudah/Carlist
+  ground. Aim `/for-salesmen` + seller articles (`KomisenSalesmanArticle`,
+  `TemplateProspekSalesmanArticle`, `JadiSalesmanKeretaArticle`) at those first: every
+  seller who signs up lists cars, which are the buyer pages we lack.
+- [ ] **SEO-7 (PARKED until volume): model + state pages** ("Myvi terpakai Selangor").
+  Only when a model has several live cars in one state, switched on by count, same
+  rule as the model hubs (no live cars = 404, never an empty page). Built now, most
+  pages would hold 0-1 car and read as thin content.
+- **The real limit is inventory, not SEO.** Baseline 2026-10-31 (`public_car_listings`):
+  78 live used/recon cars, 23 models, 5 states, plus 37 new-car model cards. Re-run that
+  count to measure growth. The same write-up was WRONG on these, so do not act on them:
+  "English-heavy" (16 of 17 articles are Malay), "no model pages" (`/used-cars/:brand/:model`),
+  "no vehicle schema" (`CarDetailPage.jsx` + `api/og.js` emit `Car`), "no sold handling".
+  Its "Mudah = 45% of volume / 71% preference" figure has no source: never quote it.
+- Order: SEO-0 + SEO-1 now (they survive the switch) -> SEO-6 -> SEO-2 -> SEO-3 ->
+  SEO-4 -> BRAND-1 switch -> SEO-5. SEO-7 waits for inventory.
 
 ## REVIEW-1: listing review rules — part 1 built 2026-10-31, NOT on staging yet
 Owner asked for automatic approve/reject. Scoped 2026-10-31; owner picked ONLY the
