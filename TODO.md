@@ -3396,6 +3396,12 @@ Order: Threads first (proves token, approval, scheduling), then Facebook, then I
 - [ ] **Owner: which account** (personal or a Drevo brand account).
 - [ ] **Owner: one-time Meta setup** (README "One-time setup"), token saved as an
   environment secret. Blocks everything below.
+  **2026-10-31: app "Drevo social" created (Development mode, unpublished). STUCK at
+  adding `airyauzy_` as Threads tester:** "Form can't be saved / Error performing query"
+  on phone Chrome, laptop and Firefox, with one account in the box. Looks server-side at
+  Meta (same error reported on their forum, no answer). Retry next day; if still failing,
+  report it via developers.facebook.com/support/bugs with a screenshot. Meanwhile: drafts
+  get scheduled by hand in the Threads app.
 - [ ] Run `threads.mjs whoami` to prove the token, then post ONE approved test post.
 - [ ] Voice: read the owner's last ~14 days of posts (needs `threads_basic`), write the
   pillars (topics) and a short voice guide into the README.
