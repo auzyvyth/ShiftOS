@@ -12,6 +12,7 @@
     "lint:warn": "eslint .",
     "start-server": "node server/index.js",
     "test:tour": "node tests/tourPlacement.test.mjs",
+    "test:threads": "node tests/threadsQueue.test.mjs",
     "test:perf": "node tests/salesPerformance.test.mjs",
     "test:plan": "node tests/salesmanPlan.test.mjs",
     "test:postauth": "node tests/postAuthRoute.test.mjs",
