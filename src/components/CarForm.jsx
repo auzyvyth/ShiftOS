@@ -56,6 +56,7 @@ import { decodeChassis, isChassisCode, isMalaysianVin, generationYears, specVari
 import { isPremiumSalesman } from "../utils/salesmanPlan";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { CAR_DOCS_BUCKET, openDoc, removeDocFile } from "../utils/carDocs";
+import { minPhotosFor, photosMissingLabel } from "../utils/listingRules";
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 const initialListing = {
@@ -905,6 +906,9 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // as a red flag.
   const isNewCar = form.condition === "new";
   const geranSatisfied = isNewCar || !!docInSlot("registration_card") || !!form.geranReason;
+  // 5 photos for a new listing; an edit of an older car keeps its own count.
+  const minPhotos = minPhotosFor(listing ? (Array.isArray(listing.images) ? listing.images.filter(Boolean).length : 0) : null);
+  const photosOk = form.images.length >= minPhotos;
 
   // ── Included services state ──────────────────────────────────────────────
   const [servicesOpen, setServicesOpen] = useState(quickMode);
@@ -1725,7 +1729,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   };
 
   const canNext = () => {
-    if (step === 1) return form.images.length > 0;
+    if (step === 1) return photosOk;
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
     if (step === 4) return form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice;
@@ -1737,7 +1741,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // step can be validated — not just the current one — so Publish can pre-flight
   // every step even when the user jumped straight to Review via the step tabs.
   const missingForStep = (s) => {
-    if (s === 1) return form.images.length > 0 ? [] : ["at least 1 photo"];
+    if (s === 1) return photosOk ? [] : [photosMissingLabel(form.images.length, minPhotos)];
     if (s === 2) return (intakeDone ? [
       [!form.condition, "Condition"],
     ] : [
@@ -1842,8 +1846,8 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       toast.error(`Required field${incomplete.fields.length > 1 ? "s" : ""} not filled: ${incomplete.fields.join(", ")}. Complete "${label}" before publishing.`);
       return;
     }
-    if (!form.images.length) {
-      toast.error("Please add at least 1 photo");
+    if (!photosOk) {
+      toast.error(`Please add at least ${minPhotos} photos`);
       return;
     }
     const mileage = parseInt(form.mileage);
@@ -2127,7 +2131,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
 
   function isSectionComplete(id) {
     switch (id) {
-      case 1: return form.images.length > 0;
+      case 1: return photosOk;
       // In intakeDone mode the identity/technical/pricing fields are hidden here
       // (already captured by AddCarForm — some, like colour, are optional there),
       // so only require what this form still shows.
@@ -3316,7 +3320,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
             >
               <Camera className="w-10 h-10 text-gray-400 group-hover:text-red-500 mx-auto mb-3 transition-colors" />
               <p className="text-gray-900 font-medium mb-1">Choose Photos</p>
-              <p className="text-gray-500 text-sm">Up to 30 images — JPG, PNG, WEBP</p>
+              <p className="text-gray-500 text-sm">At least {minPhotos}, up to 30 images — JPG, PNG, WEBP</p>
               <p className="text-blue-400 text-xs mt-2 font-medium">{form.images.length}/30 selected</p>
             </label>
           ) : (
@@ -3327,7 +3331,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium transition-colors"
               >
                 <Camera className="w-3.5 h-3.5" />
-                Add more · {form.images.length}/30
+                Add more · {form.images.length}/30{!photosOk ? ` · need ${minPhotos - form.images.length} more` : ""}
               </button>
             </div>
           )}
@@ -4254,7 +4258,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || (capError && !keepPrivate) || !(form.images.length > 0 && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
+            disabled={uploading || (capError && !keepPrivate) || !(photosOk && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

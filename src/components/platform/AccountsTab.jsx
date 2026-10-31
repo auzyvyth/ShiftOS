@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 import CreateSellerModal from "./CreateSellerModal";
+import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles } from "../../utils/kycPurge";
 import { routeForProfile } from "../../hooks/useRoleRedirect";
 import { SITE_URL } from "../../config/site";
@@ -278,6 +279,10 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   }, [accounts, stats, search, roleFilter, statusFilter, reachFilter, sortBy, teamOf]);
 
   const open = openId ? byId[openId] : null;
+  // Overlay rule 5: Back closes the top pop-up, never the console under it.
+  useModalHistory(!!open, () => setOpenId(null));
+  useModalHistory(!!suspendFor, () => setSuspendFor(null), { isDirty: () => !!suspendReason.trim() });
+  useModalHistory(!!confirmDelete, () => setConfirmDelete(null));
 
   // Billing extras for the open record: the payment log and who invited them
   // (REFER-1, migration 20261004a). Fetched here rather than in the console's

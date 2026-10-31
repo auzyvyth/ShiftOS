@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import PhoneInput from "../ui/PhoneInput";
+import { useModalHistory } from "../../hooks/useModalHistory";
 
 // OPS-CRM-1: the owner's own prospecting list -- salesmen and dealers being
 // signed up, where each conversation stands, and who to follow up today.
@@ -130,6 +131,8 @@ export default function ProspectsTab({ onOpenAccount }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
+  // Overlay rule 5: Back closes the add sheet, never the console under it.
+  useModalHistory(adding, () => setAdding(false), { isDirty: () => form !== EMPTY });
 
   async function load() {
     setLoading(true);
@@ -358,6 +361,8 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
   const [composer, setComposer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Mounted only while open, so it registers itself (overlay rule 5).
+  useModalHistory(true, onClose);
 
   async function loadActivity() {
     const { data } = await supabase.from("platform_prospect_activity").select("*").eq("prospect_id", p.id).order("created_at", { ascending: false }).limit(100);
