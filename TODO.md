@@ -2788,6 +2788,19 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-27: Luxury showcase, "premium eyes" (owner, 2026-10-31)** — a car at RM700k+ gets
+  asked "Want premium eyes?" On yes it ALSO appears on a luxury-only showcase: its own look,
+  no RM20k cars around it, and its own booking (private viewing / concierge appointment
+  instead of the public Book a Viewing). We take a commission when it sells from there
+  (owner knows the rules). Live 2026-10-31: 6 cars at RM700k+, 14 at RM300k+ (of 78), top
+  RM1.96m, so the slice is real. Claude's view: start as a SECTION of the main domain
+  (`/luxury`, own design), not a second website: a new domain starts with zero Google trust,
+  a second brand mid-rename (BRAND-1), second login. Split it out later if it earns it. Open:
+  threshold (RM700k = 6 cars, a thin page; show it only from N cars), how a sale is proven
+  to have come FROM the showcase (tag the lead at booking; `leads.lead_source` CHECK needs a
+  new value, and the won-trigger records the sale), and pairing it with IDEA-26 (d), the
+  off-platform ad, since luxury buyers mostly are not on marketplaces.
+
 - **IDEA-26: Beat Carlist for sellers: better car info first, then bumps that hit the
   RIGHT buyer (owner, 2026-10-31)** — a seller paid Carlist RM250 to bump a BMW M5 F90 CS
   (~RM900k) and got zero buyers: a bump shows the car to everyone, and the M5 buyer is not
@@ -2798,6 +2811,12 @@ not scoped, not prioritized — just parked here until picked up on purpose.
      posts it matches, budget-finder searches it would fit (counts only), JPJ demand for the
      model (IDEA-6 data). Built on `listingScore`. A per-car drop-off funnel (photos ->
      price -> WhatsApp) needs NEW consented events: `viewProgress` stays device-only.
+     **Every read ends in an action plan with a button that does it (owner, 2026-10-31)**,
+     never a bare number: "3 views -> nobody sees it: post the link on your socials" [Share
+     sheet, link carries `?ref=<slug>&src=share`]; "40 views, 0 taps -> buyers look and
+     leave: add photos / check the price" [opens Edit at that step]; "don't bump yet, only 2
+     buyers looked in this price range -> share first" [Share]. The app talks like a sales
+     manager: what happened, why, the one thing to do today.
   2. **Matched bumps, paid per result.** (a) The bump is shown only to buyers whose OWN
      signals fit (price band they browse, budget they typed, models viewed), matched ON THE
      DEVICE: the server sends the bumped pool, the phone picks, no buyer data leaves it
