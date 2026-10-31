@@ -1456,12 +1456,15 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)
 Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around that:
 - **Cars over the Lite cap are LOCKED, not left live** (owner). `sweep_premium_lapses()`
-  (cron hourly :41) keeps reserved cars, then the newest, up to the Lite cap; the rest go
+  (live cron is DAILY 00:00 UTC, not hourly) keeps reserved cars, then the newest, up to the Lite cap; the rest go
   `status='unpublished'` + `plan_locked_at` (+ `plan_locked_status` to restore). Lite shows
   them under Available, blacked out (`get_my_locked_listings`). `trg_zz_unlock_plan_cars`
   (on profiles) puts them back the moment Premium returns, whatever restored it.
   `enforce_listing_cap_on_publish` now uses the entitlement cap, or a locked car could be
   republished on the 30-car Premium cap.
+  **Instant on the seller's side (owner, 2026-10-31, `20261031a`):** Lite calls
+  `apply_my_premium_lapse()` on load, which runs the same per-seller lock (`_apply_premium_lapse`)
+  for the caller and returns the locked ids. No grace and no due date: the trial ends, they are Lite.
 - **Two pushes per lapse, never more:** `premium_ending` 3 days before, `premium_ended` on
   the day. Banners: `src/components/premium/PremiumStatusBanner.jsx` (one line, closes until
   tomorrow; owner: "make it not annoying"). Pay screen is ONE component, `PremiumPayBox.jsx`.

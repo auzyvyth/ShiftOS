@@ -1202,13 +1202,26 @@ export default function SalesmanLite() {
   // in the DB but show under Available, blacked out, so the seller can still
   // see them and their numbers. Renewal unlocks them server side.
   const [lockedIds, setLockedIds] = useState(() => new Set());
+  // apply_my_premium_lapse (20261031a) locks a just-lapsed seller's extra cars
+  // NOW instead of waiting for the daily sweep, then returns the locked ids.
+  // Until that migration is live it errors and we fall back to the plain read.
   useEffect(() => {
     if (!listingsLoaded || !userId) return;
     let alive = true;
-    supabase.rpc("get_my_locked_listings").then(({ data, error }) => {
-      // Missing function (migration not applied yet) = nothing locked.
-      if (alive && !error) setLockedIds(new Set((data || []).map((r) => (typeof r === "string" ? r : r.get_my_locked_listings))));
-    });
+    const toIds = (data, key) => new Set((data || []).map((r) => (typeof r === "string" ? r : r[key])));
+    (async () => {
+      let { data, error } = await supabase.rpc("apply_my_premium_lapse");
+      let ids = error ? null : toIds(data, "apply_my_premium_lapse");
+      if (error) {
+        ({ data, error } = await supabase.rpc("get_my_locked_listings"));
+        // Missing function (migration not applied yet) = nothing locked.
+        if (!error) ids = toIds(data, "get_my_locked_listings");
+      }
+      if (!alive || !ids) return;
+      setLockedIds(ids);
+      // A car locked by this very call still says "available" in our list.
+      if (ids.size) setMyListings((p) => p.map((c) => (ids.has(c.id) && c.status !== "unpublished" ? { ...c, status: "unpublished" } : c)));
+    })();
     return () => { alive = false; };
   }, [listingsLoaded, userId]);
   const isLockedCar = (c) => c.status === "unpublished" && lockedIds.has(c.id);
