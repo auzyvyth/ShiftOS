@@ -1530,6 +1530,10 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
   column can never fail the main profile load or save. No phone numbers in them (CDP-3).
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
+  **Premium shows 6 cars, then "See all N cars"** (`PRO_CAR_CAP`, owner 2026-11-01), and the About /
+  Why / Track record / Find me sections sit OUTSIDE the two columns, full width (`.ap-pro-wide`, two
+  columns on desktop): beside them the left column was empty. The name card is sticky beside the cars;
+  `.ap` uses `overflow-x: clip`, never `hidden` (hidden makes it a scroll box and kills sticky).
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 
