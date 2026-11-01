@@ -78,6 +78,12 @@ for another year.
   ever so far. Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
   car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
   tell real from not, the owner signs in as console-made sellers to add their cars.
+- [ ] **LIVE-BASIC: Lite's Live presenter cut to basic (owner, 2026-11-01). BUILT, NOT on staging/live.**
+  Both real trials use ONLY the Live calculator, and Live was fully free, so ending the trial
+  cost them nothing. Lite now gets one car + deposit + monthly + tenures; Budget/Viewer, Docs,
+  rebates, insurance+NCD, totals, salary guide, colour, car list are Premium (rules: CLAUDE.md
+  "Lite vs Premium split"). Owner: tell the 2 trial sellers BEFORE their trial ends, and tell
+  existing Lite sellers on WhatsApp, or the first they hear of it is mid-live.
 - [ ] **PUSH-ONBOARD: notifications are the LAST signup step, required to finish (owner,
   2026-10-31). Part 1 BUILT 2026-10-31, on staging, NOT live:** `LeadAlertsStep`
   (`src/components/onboarding/`) is the last screen of BOTH the signup wizard

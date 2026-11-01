@@ -20,6 +20,11 @@ const en = {
   docsNote: 'Each bank sets its own list and may ask for more.',
   docsPrivacy: 'Never post your IC or payslip in the comments.',
   liveEnded: 'Live ended',
+  // Lite's basic presenter (LIVE-BASIC): what Premium adds, said once in
+  // Settings and once on the report. Never on the stage itself.
+  basicNote: 'Premium adds Budget, Viewer, Docs, rebates, insurance with NCD, your own colour and comment line.',
+  basicReport: 'Premium turns this into the full Live: Budget and Viewer for "what fits my salary?", Docs, rebates, insurance with NCD.',
+  basicReportCta: 'See Premium',
   langLabel: 'Presenter language',
   showContact: 'Show contact',
   fullScreen: 'Full screen',
@@ -209,6 +214,9 @@ const ms = {
   docsNote: 'Setiap bank ada senarai sendiri dan mungkin minta lebih.',
   docsPrivacy: 'Jangan kongsi IC atau slip gaji di ruang komen.',
   liveEnded: 'Live tamat',
+  basicNote: 'Premium tambah Bajet, Penonton, Dokumen, rebat, insurans dengan NCD, warna dan ayat komen sendiri.',
+  basicReport: 'Premium jadikan ini Live penuh: Bajet dan Penonton untuk "gaji saya dapat kereta apa?", Dokumen, rebat, insurans dengan NCD.',
+  basicReportCta: 'Lihat Premium',
   langLabel: 'Bahasa paparan',
   showContact: 'Tunjuk hubungan',
   fullScreen: 'Skrin penuh',
