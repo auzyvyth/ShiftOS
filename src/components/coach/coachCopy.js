@@ -22,6 +22,7 @@ const COPY = {
       more: (n) => (n > 1 ? ` (and ${n - 1} more car${n - 1 === 1 ? '' : 's'})` : ''),
       body: 'Buyers cannot message a car they never see. Post its link on your WhatsApp status, Facebook or TikTok bio. We will show you how.',
       btn: 'Show me how',
+      close: 'Hide until tomorrow',
     },
     tour: {
       step1Share: 'Tap Share to send this car to your WhatsApp status, Facebook or Instagram.',
@@ -49,6 +50,7 @@ const COPY = {
       more: (n) => (n > 1 ? ` (dan ${n - 1} lagi kereta)` : ''),
       body: 'Pembeli tak boleh mesej kereta yang mereka tak nampak. Letak pautannya di status WhatsApp, Facebook atau bio TikTok anda. Kami tunjukkan caranya.',
       btn: 'Tunjuk caranya',
+      close: 'Sembunyi hingga esok',
     },
     tour: {
       step1Share: 'Tekan Kongsi untuk hantar kereta ini ke status WhatsApp, Facebook atau Instagram anda.',

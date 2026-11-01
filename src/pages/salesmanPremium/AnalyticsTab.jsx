@@ -243,9 +243,9 @@ export default function AnalyticsTab({
             </p>
             <p style={{ margin: "6px 0 0", fontSize: T.size.base, color: PD.textSec, lineHeight: 1.6 }}>{insText(focus, "body")}</p>
             {focus.cta && onOpenTab && (
-              <button
+              <button className="lk-red"
                 onClick={() => onOpenTab(focus.ctaTab)}
-                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
+                style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
               >
                 {ctaText(focus)} <ChevronRight size={14} />
               </button>
@@ -514,9 +514,9 @@ export default function AnalyticsTab({
             {t("salesmanPremium.perf.noTrafficBody")}
           </p>
           {onAddListing && (
-            <button
+            <button className="lk-red"
               onClick={onAddListing}
-              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
+              style={{ marginTop: 14, display: "inline-flex", alignItems: "center", gap: 6, fontSize: T.size.base, fontWeight: T.weight.bold, padding: "9px 16px", borderRadius: PD.radius.pill, border: "none", color: PD.onAccent, cursor: "pointer", fontFamily: "inherit" }}
             >
               <Plus size={14} /> {t("salesmanPremium.perf.addListing")}
             </button>
