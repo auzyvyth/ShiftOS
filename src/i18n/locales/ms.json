@@ -1082,7 +1082,22 @@
       "replayTour": "Ulang panduan",
       "dangerZone": "Zon Bahaya",
       "dangerDesc": "Padam akaun akan sembunyikan page awam dan listing anda serta-merta. Tiada apa yang dibuang selama 30 hari — log masuk semula dalam tempoh tu akan pulihkan semuanya. Selepas tu, ia kekal.",
-      "deleteMyAccount": "Padam akaun saya"
+      "deleteMyAccount": "Padam akaun saya",
+      "coverAdjust": {
+        "title": "Pilih bahagian yang orang nampak",
+        "hint": "Seret foto ke atas atau ke bawah. Inilah jalur yang link anda tunjuk di WhatsApp dan Facebook, dan di page anda.",
+        "fits": "Foto ini sudah muat dengan banner, tiada apa untuk dialihkan.",
+        "share": "Pratonton link (WhatsApp, Facebook)",
+        "page": "Page anda di telefon",
+        "drag": "Seret untuk alih",
+        "top": "Atas",
+        "middle": "Tengah",
+        "bottom": "Bawah",
+        "apply": "Guna",
+        "cancel": "Batal",
+        "saving": "Menyimpan...",
+        "adjust": "Laras kedudukan"
+      }
     },
     "sold": {
       "subtitle": "Setiap buyer selepas deal: handover, pembaharuan dan servis selepas jualan.",

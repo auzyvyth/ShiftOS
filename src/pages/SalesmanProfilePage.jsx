@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
+import { coverObjectPosition } from '../utils/coverFocus';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
@@ -864,7 +865,7 @@ export default function SalesmanProfilePage() {
               marketplace's warm wave bands (colour lives here and nowhere else). */}
           <div className="ap-cover">
             {profile.cover_url ? (
-              <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" />
+              <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
             ) : (
               <svg className="ap-waves" viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fillOpacity=".85" />

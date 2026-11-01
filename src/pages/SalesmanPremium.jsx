@@ -32,6 +32,8 @@ import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
+import CoverAdjuster from "../components/premium/CoverAdjuster";
+import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import { buildListingFacts } from "../utils/listingCopy";
 import { copyListingCaption } from "../utils/copyListingCaption";
@@ -123,6 +125,7 @@ import {
  Calculator,
  Download,
  Star,
+ Move,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
@@ -681,6 +684,9 @@ export default function SalesmanPremium() {
  const avatarInputRef = useRef(null);
  const [coverUrl, setCoverUrl] = useState("");
  const [coverUploading, setCoverUploading] = useState(false);
+ // BANNER-FOCUS: the cover waiting in the adjuster. { file?, src, y } — a new
+ // file is uploaded only on Apply; without a file, Apply re-frames the saved one.
+ const [coverAdjust, setCoverAdjust] = useState(null);
  const coverInputRef = useRef(null);
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
@@ -5233,28 +5239,45 @@ export default function SalesmanPremium() {
  toast.success(t("salesmanPremium.settings.photoUpdated"));
  };
 
- const handleCoverUpload = async (e) => {
+ // Picking a cover opens the adjuster first (BANNER-FOCUS); nothing uploads
+ // until Apply, so Cancel leaves the old cover exactly as it was.
+ const handleCoverUpload = (e) => {
  const file = e.target.files?.[0];
+ e.target.value = ""; // picking the same file again still opens the adjuster
  if (!file) return;
  if (!file.type.startsWith("image/")) { toast.error(t("salesmanPremium.settings.selectImage")); return; }
+ setCoverAdjust({ file, src: URL.createObjectURL(file), y: COVER_FOCUS_DEFAULT });
+ };
+ const closeCoverAdjust = () => {
+ setCoverAdjust((cur) => { if (cur?.file) URL.revokeObjectURL(cur.src); return null; });
+ };
+ const applyCover = async (y) => {
+ if (!coverAdjust) return;
  setCoverUploading(true);
- const compressed = await compressImageFile(file, { maxDim: 1600 });
+ let base = coverUrl;
+ if (coverAdjust.file) {
+ const compressed = await compressImageFile(coverAdjust.file, { maxDim: 1600 });
  const path = `${userId}/cover.jpg`;
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error(t("salesmanPremium.settings.uploadFailed", { msg: upErr.message })); setCoverUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  // Persist the busted URL (see handleAvatarUpload) so re-uploads aren't
  // served stale from a browser/CDN cache keyed on the fixed storage path.
- const bustedUrl = `${publicUrl}?t=${Date.now()}`;
- const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: bustedUrl }).eq("id", userId);
+ base = `${publicUrl}?t=${Date.now()}`;
+ }
+ // The focus rides on the URL (src/utils/coverFocus.js): the page and the share
+ // picture both read cover_url, and a new URL is a new share-picture version.
+ const nextUrl = withCoverFocus(base, y);
+ const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: nextUrl }).eq("id", userId);
  setCoverUploading(false);
  if (coverProfileErr) {
- console.error("handleCoverUpload profile update:", coverProfileErr);
+ console.error("applyCover profile update:", coverProfileErr);
  toast.error(t("salesmanPremium.settings.photoNotSaved"));
  return;
  }
- setCoverUrl(bustedUrl);
- setProfile((p) => ({ ...p, cover_url: bustedUrl }));
+ setCoverUrl(nextUrl);
+ setProfile((p) => ({ ...p, cover_url: nextUrl }));
+ closeCoverAdjust();
  toast.success(t("salesmanPremium.settings.coverUpdated"));
  };
 
@@ -5421,18 +5444,29 @@ export default function SalesmanPremium() {
      (banner, photo over its corner). They were two cards, and the photo card
      repeated the name typed in the field below and had two buttons for the
      same upload. */}
- <div id="sp-photo-field" style={{ ...card, padding: 0, overflow: "hidden" }}>
+ <div id="sp-photo-field" style={{ ...card, padding: 0, overflow: "hidden", position: "relative" }}>
  <button
  type="button"
  onClick={() => !coverUploading && coverInputRef.current?.click()}
  aria-label={coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover")}
- style={{ position: "relative", display: "block", width: "100%", height: 116, padding: 0, border: "none", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : `linear-gradient(135deg, ${PD.hover} 0%, ${PD.raised} 60%, ${PD.card} 100%)` }}
+ style={{ position: "relative", display: "block", width: "100%", height: 116, padding: 0, border: "none", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `${coverObjectPosition(coverUrl)} / cover no-repeat url(${coverUrl})` : `linear-gradient(135deg, ${PD.hover} 0%, ${PD.raised} 60%, ${PD.card} 100%)` }}
  >
  <span style={{ position: "absolute", right: 12, top: 12, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: PD.radius.pill, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 11, fontWeight: 600 }}>
  {coverUploading ? spinner(11) : (coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover"))}
  </span>
  </button>
  <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
+ {/* Re-frame the saved cover without uploading it again (BANNER-FOCUS). A
+     sibling of the cover button, not inside it: a button in a button is invalid. */}
+ {coverUrl && !coverUploading && (
+ <button type="button" onClick={() => setCoverAdjust({ src: coverUrl, y: coverFocusY(coverUrl) })}
+ style={{ position: "absolute", left: 12, top: 12, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: PD.radius.pill, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+ <Move size={11} /> {t("salesmanPremium.settings.coverAdjust.adjust", { defaultValue: "Adjust position" })}
+ </button>
+ )}
+ {coverAdjust && (
+ <CoverAdjuster src={coverAdjust.src} initialY={coverAdjust.y} busy={coverUploading} onApply={applyCover} onCancel={closeCoverAdjust} />
+ )}
  <div style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 14, padding: "0 18px 16px", marginTop: -34 }}>
  <button
  type="button"

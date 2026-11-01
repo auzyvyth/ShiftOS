@@ -1,5 +1,6 @@
 import React from "react";
 import { cdnImg } from "../../utils/img";
+import { coverObjectPosition } from "../../utils/coverFocus";
 
 // Lite vs Premium, drawn as the seller's OWN page side by side (owner,
 // 2026-10-22: "both feel the same"). Every Premium tool works on leads, and a
@@ -51,7 +52,7 @@ function MiniPage({ profile, cars, full }) {
       {/* Banner: Premium only. Lite pages have none at all. */}
       {full ? (
         profile?.cover_url
-          ? <img src={cdnImg(profile.cover_url, 400)} alt="" style={{ width: "100%", height: 44, objectFit: "cover", display: "block" }} />
+          ? <img src={cdnImg(profile.cover_url, 400)} alt="" style={{ width: "100%", height: 44, objectFit: "cover", objectPosition: coverObjectPosition(profile.cover_url), display: "block" }} />
           : <div style={{ height: 44, background: `${accent}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, color: MUTED }}>Your banner</div>
       ) : (
         <div style={{ height: 14 }} />

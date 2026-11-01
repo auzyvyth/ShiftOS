@@ -17,6 +17,7 @@ import fs from 'node:fs';
 import sharp from 'sharp';
 import satori from 'satori';
 import { agentName, agentLocation } from '../src/utils/agentSeo.js';
+import { coverFocusY } from '../src/utils/coverFocus.js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
@@ -83,10 +84,23 @@ const FALLBACK_BANNER = svg(W, BANNER, `<defs><linearGradient id="g" x1="0" y1="
   <stop offset="0" stop-color="#DCE8F2"/><stop offset="0.45" stop-color="#EEF0EA"/><stop offset="1" stop-color="#F6E3CF"/>
   </linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/>`);
 
-async function banner(cover) {
+// The seller picks which part of the cover shows (BANNER-FOCUS, the `fy` on the
+// cover URL, src/utils/coverFocus.js). Same rule as CSS `object-position: 50% fy%`
+// on the page, so the share picture and the page show the same slice. It used to
+// be sharp's `attention` guess, which moved the banner photo by photo.
+async function banner(cover, fy) {
   if (cover) {
     try {
-      return await sharp(cover).rotate().resize(W, BANNER, { fit: 'cover', position: 'attention' }).png().toBuffer();
+      const img = sharp(cover).rotate();
+      const { width = 0, height = 0, orientation } = await img.metadata();
+      const [w, h] = orientation >= 5 ? [height, width] : [width, height];
+      if (!w || !h) throw new Error('size');
+      const scale = Math.max(W / w, BANNER / h);            // cover the strip
+      const sw = Math.max(W, Math.round(w * scale));
+      const sh = Math.max(BANNER, Math.round(h * scale));
+      const left = Math.round((sw - W) / 2);                // centred side to side
+      const top = Math.round((sh - BANNER) * (fy / 100));   // the seller's height
+      return await img.resize(sw, sh).extract({ left, top, width: W, height: BANNER }).png().toBuffer();
     } catch { /* unreadable cover: the gradient */ }
   }
   return sharp(FALLBACK_BANNER).png().toBuffer();
@@ -175,7 +189,7 @@ export default async function handler(req, res) {
     const [cover, avatar, cars] = await Promise.all([getImage(agent.cover_url), getImage(agent.avatar_url), carCount(agent.id)]);
     const name = plain(agentName(agent));
     const [top, disc, words] = await Promise.all([
-      banner(cover),
+      banner(cover, coverFocusY(agent.cover_url)),
       avatarDisc(avatar, (name[0] || '?').toUpperCase()),
       satori(textLayer(agent, cars), { width: W, height: H, fonts: FONTS }),
     ]);

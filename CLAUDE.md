@@ -1633,6 +1633,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+**Which part of the cover shows is the seller's pick (BANNER-FOCUS, 2026-11-01)**: it rides on
+`cover_url` as `fy=<0..100>` (`src/utils/coverFocus.js`, `npm run test:coverfocus`; no DB column),
+set in Premium Settings by `CoverAdjuster` (opens before a new cover uploads, and from "Adjust
+position"). The page, `PagePreview` and the share picture all show `object-position: 50% fy%`; the
+picture used to use sharp's `attention` guess, so the banner sat at a different height per photo.
+Never crop the cover any other way in a new surface. Lite has no cover at all (basic page).
 The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
 new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
 under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`

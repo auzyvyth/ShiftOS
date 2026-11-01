@@ -1093,7 +1093,22 @@
       "replayTour": "Replay the tour",
       "dangerZone": "Danger Zone",
       "dangerDesc": "Deleting your account hides your public page and listings immediately. Nothing is destroyed for 30 days — logging back in within that window restores everything. After that it's permanent.",
-      "deleteMyAccount": "Delete my account"
+      "deleteMyAccount": "Delete my account",
+      "coverAdjust": {
+        "title": "Choose what people see",
+        "hint": "Drag the photo up or down. This is the strip your link shows on WhatsApp and Facebook, and on your page.",
+        "fits": "This photo already fits the banner, there is nothing to move.",
+        "share": "Link preview (WhatsApp, Facebook)",
+        "page": "Your page on a phone",
+        "drag": "Drag to move",
+        "top": "Top",
+        "middle": "Middle",
+        "bottom": "Bottom",
+        "apply": "Apply",
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "adjust": "Adjust position"
+      }
     },
     "sold": {
       "subtitle": "Every buyer after the win: handover, renewals and aftercare.",
