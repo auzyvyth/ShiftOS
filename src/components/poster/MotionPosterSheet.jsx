@@ -2,13 +2,16 @@
 // ··· menu in Salesman Premium's Listings tab. Lite shows the row locked and
 // sends the tap to the upgrade screen. Five designs play from the car's own
 // photos; the numbers come from loanPosterNumbers(), the same as the loan
-// poster. Saving as a video (MP4, so iPhone WhatsApp plays it) is the next step.
+// poster. Download records the preview canvas itself while it plays once
+// (MediaRecorder), so the file is the preview, frame for frame. MP4 where the
+// browser can (Chrome 126+, Safari), else WebM with a warning: iPhone WhatsApp
+// will not play WebM. A frame-exact WebCodecs MP4 export can replace this later.
 //
 // Portalled to document.body, body scroll locked, registered with
 // useModalHistory (overlay rules 1, 2, 5).
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { DEFAULT_EIR } from '../../utils/financing';
 import { defaultDeposit, fmtRM, loanPosterNumbers, POSTER_COPY, POSTER_ERRORS, posterTitle } from '../../utils/loanPoster';
 import { fetchDataUrl, loadImg } from '../../utils/posterImage';
@@ -21,7 +24,7 @@ export const MOTION_DESIGNS = [
   { key: 'slide', label: 'Classic', note: 'Photo, title and the three monthly figures on one screen.' },
   { key: 'beats', label: 'Beats, tall photos', note: 'One fact per screen. The photo fills the screen, so use it with tall (portrait) photos.' },
   { key: 'wide', label: 'Beats, wide photos', note: 'One fact per screen. The photo shows whole in a band, never cut, so it suits wide photos.' },
-  { key: 'stretch', label: 'Stretch', note: 'A light card. The photo sits across the middle, its edges stretched to fill. The words stay still, the photo changes every 2.5 seconds.' },
+  { key: 'stretch', label: 'Stretch', note: 'A light card. The photo sits across the middle, its edges stretched to fill. The words stay still; each photo zooms in slowly for 2.5 seconds, then the next one cuts in.' },
   { key: 'calc', label: 'Calculator', note: 'The deposit slides 0 to 30% and the monthly rolls down, then the years switch 9, 7, 5. Shows the take-home pay it fits, with the 35% rule.' },
 ];
 
@@ -29,6 +32,12 @@ const LANG_KEY = 'xd_poster_lang';
 const readLang = () => { try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'ms'; } catch { return 'ms'; } };
 const num = (v) => Number(String(v ?? '').replace(/[^0-9.]/g, '')) || 0;
 const titleCase = (s) => String(s || '').trim();
+const MIMES = ['video/mp4;codecs=avc1.640028', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'];
+const pickMime = () => {
+  if (typeof window === 'undefined' || !window.MediaRecorder?.isTypeSupported) return null;
+  return MIMES.find((m) => window.MediaRecorder.isTypeSupported(m)) || null;
+};
+const fileSafe = (s) => String(s || 'car').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'car';
 
 export default function MotionPosterSheet({ car, seller, onClose }) {
   useModalHistory(true, onClose);
@@ -44,6 +53,9 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
   const [startAt, setStartAt] = useState(() => performance.now());
   const [fontsReady, setFontsReady] = useState(false);
   const canvasRef = useRef(null);
+  const [rec, setRec] = useState(null); // null | { left } while recording
+  const [saved, setSaved] = useState(null); // { ext, mb, secs } | { error }
+  const recRef = useRef(null);
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -120,6 +132,55 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
     return () => cancelAnimationFrame(raf);
   }, [design, frame, imgs, startAt, fontsReady]);
 
+  // Record the preview canvas while it plays once from the start, then save.
+  const startDownload = () => {
+    const canvas = canvasRef.current;
+    const mime = pickMime();
+    if (!canvas || !design || !imgs || rec) return;
+    if (!mime || !canvas.captureStream) { setSaved({ error: 'This browser cannot save video. Try Chrome or Safari.' }); return; }
+    const len = TEMPLATE_LEN[design] || 8;
+    let recorder;
+    try {
+      recorder = new MediaRecorder(canvas.captureStream(30), { mimeType: mime, videoBitsPerSecond: 8_000_000 });
+    } catch { setSaved({ error: 'Could not start the recording on this browser.' }); return; }
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data?.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      clearInterval(recRef.current?.timer);
+      recRef.current = null;
+      setRec(null);
+      const type = mime.split(';')[0];
+      const blob = new Blob(chunks, { type });
+      if (!blob.size) { setSaved({ error: 'The recording came out empty. Keep this screen open while it records.' }); return; }
+      const ext = type === 'video/mp4' ? 'mp4' : 'webm';
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `${fileSafe(posterTitle(car))}-${design}.${ext}`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      setSaved({ ext, mb: (blob.size / 1048576).toFixed(1), secs: len });
+    };
+    // Paint frame 0 before the first captured frame, then replay from the start.
+    const ctx = canvas.getContext('2d');
+    drawMotionFrame(ctx, 0, design, frame, imgs);
+    setSaved(null);
+    recorder.start(250);
+    const t0 = performance.now();
+    setStartAt(t0);
+    const stopAt = (len + 0.4) * 1000; // the hold at the end is in the file
+    const timer = setInterval(() => {
+      const el = performance.now() - t0;
+      if (el >= stopAt) { clearInterval(timer); if (recorder.state !== 'inactive') recorder.stop(); return; }
+      setRec({ left: Math.ceil((stopAt - el) / 1000) });
+    }, 200);
+    recRef.current = { recorder, timer };
+    setRec({ left: Math.ceil(stopAt / 1000) });
+  };
+  useEffect(() => () => {
+    const r = recRef.current;
+    if (r) { clearInterval(r.timer); r.recorder.ondataavailable = null; r.recorder.onstop = null; if (r.recorder.state !== 'inactive') r.recorder.stop(); }
+  }, []);
+
   const pick = (key) => { setDesign(key); setStartAt(performance.now()); };
   const switchLang = (next) => {
     if (headline === POSTER_COPY[lang].kicker) setHeadline(POSTER_COPY[next].kicker);
@@ -165,7 +226,21 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
                 <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: 12, background: 'rgba(0,0,0,0.7)', color: P.textSec, fontSize: 12, textAlign: 'center' }}>This car has no photos yet. Add some in Edit.</div>
               )}
             </div>
-            <button onClick={() => setStartAt(performance.now())} style={{ ...pill(false), width: '100%', maxWidth: 'min(320px, 70vw)' }}>Play again</button>
+            <div style={{ display: 'flex', gap: 8, width: '100%', maxWidth: 'min(320px, 70vw)' }}>
+              <button onClick={() => setStartAt(performance.now())} disabled={!!rec} style={{ ...pill(false), flex: 1, opacity: rec ? 0.5 : 1 }}>Play again</button>
+              <button onClick={startDownload} disabled={!!rec || !imgs || !design || !numbers.ok}
+                style={{ ...pill(false), flex: 1.4, background: P.accent, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: (!imgs || !design || !numbers.ok) ? 0.5 : 1 }}>
+                <Download size={14} /> {rec ? `Recording ${rec.left}s` : 'Download video'}
+              </button>
+            </div>
+            {rec && <p style={{ margin: 0, fontSize: 12, color: P.textMuted, textAlign: 'center', maxWidth: 320 }}>Keep this screen open until it finishes.</p>}
+            {saved && !saved.error && (
+              <p style={{ margin: 0, fontSize: 12, color: saved.ext === 'mp4' ? P.textSec : P.accentText, textAlign: 'center', maxWidth: 320, lineHeight: 1.45 }}>
+                Saved as {saved.ext.toUpperCase()}, {saved.mb} MB, {saved.secs}s.
+                {saved.ext !== 'mp4' && ' This browser only makes WebM, which iPhone WhatsApp will not play. Use Chrome or Safari for MP4.'}
+              </p>
+            )}
+            {saved?.error && <p style={{ margin: 0, fontSize: 12, color: P.accentText, textAlign: 'center', maxWidth: 320 }}>{saved.error}</p>}
           </div>
 
           <div style={{ flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -173,7 +248,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
               <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: P.textSec, marginBottom: 6 }}>Design</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {MOTION_DESIGNS.map((d, i) => (
-                  <button key={d.key} onClick={() => pick(d.key)} style={pill(design === d.key)}>{i + 1} · {d.label}</button>
+                  <button key={d.key} onClick={() => pick(d.key)} disabled={!!rec} style={pill(design === d.key)}>{i + 1} · {d.label}</button>
                 ))}
               </div>
               {current && <p style={{ margin: '8px 0 0', fontSize: 12, color: P.textMuted, lineHeight: 1.45 }}>{current.note}</p>}
@@ -188,7 +263,7 @@ export default function MotionPosterSheet({ car, seller, onClose }) {
             {field('Offer (leave empty to hide)', offer, setOffer, { maxLength: 40, placeholder: 'e.g. Free tinted + 1 year warranty' })}
             {field('Your name', name, setName, { maxLength: 40 })}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ flex: 1, fontSize: 12, color: P.textMuted }}>Saving as a video is coming next.</span>
+              <span style={{ flex: 1 }} />
               {['ms', 'en'].map((l) => (
                 <button key={l} onClick={() => switchLang(l)} style={pill(lang === l)}>{l === 'ms' ? 'BM' : 'EN'}</button>
               ))}

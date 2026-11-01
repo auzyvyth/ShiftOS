@@ -473,6 +473,7 @@ function drawWide(ctx, t, f, imgs, c) {
 // space above and below filled by stretching the photo's own top and bottom
 // edge, under a white wash. The words never move; the photo hard-cuts.
 export const STRETCH_EVERY = 2.5;
+const STRETCH_ZOOM = 0.06; // how much each photo grows before the next one
 
 function drawStretch(ctx, t, f, imgs, c) {
   ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, MOTION_W, MOTION_H);
@@ -482,11 +483,16 @@ function drawStretch(ctx, t, f, imgs, c) {
   const bh = Math.round(MOTION_W / Math.max(0.9, ar));
   const by = Math.round(MOTION_H * 0.47 - bh / 2);
   if (img) {
+    // Slow push-in: each photo grows 1 -> 1.06 over its 2.5s, linear (no ease),
+    // so it is still moving when the next photo cuts in. The words do not move.
+    const z = 1 + STRETCH_ZOOM * ((t % STRETCH_EVERY) / STRETCH_EVERY);
+    const zw = MOTION_W * z, zh = bh * z;
+    const zx = (MOTION_W - zw) / 2, zy = by + bh / 2 - zh / 2;
     // Stretch a thin strip of the top and bottom edge to fill the card.
     const strip = Math.max(1, Math.round(img.height * 0.01));
-    ctx.drawImage(img, 0, 0, img.width, strip, 0, 0, MOTION_W, by + 2);
-    ctx.drawImage(img, 0, img.height - strip, img.width, strip, 0, by + bh - 2, MOTION_W, MOTION_H - by - bh + 2);
-    ctx.drawImage(img, 0, 0, img.width, img.height, 0, by, MOTION_W, bh);
+    ctx.drawImage(img, 0, 0, img.width, strip, 0, 0, MOTION_W, zy + 2);
+    ctx.drawImage(img, 0, img.height - strip, img.width, strip, 0, zy + zh - 2, MOTION_W, MOTION_H - zy - zh + 2);
+    ctx.drawImage(img, 0, 0, img.width, img.height, zx, zy, zw, zh);
   } else {
     ctx.fillStyle = '#e5e7eb'; ctx.fillRect(0, by, MOTION_W, bh);
   }
