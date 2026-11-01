@@ -146,6 +146,7 @@ const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
 // ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
+const MotionPosterSheet = React.lazy(() => import("../components/poster/MotionPosterSheet"));
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -396,6 +397,7 @@ export default function SalesmanPremium() {
  const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
+ const [motionCar, setMotionCar] = useState(null); // Moving poster sheet target (IDEA-29)
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
  // invisible unless you happened to open that tab.
@@ -7319,6 +7321,7 @@ export default function SalesmanPremium() {
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
       openLoanPoster={setPosterCar}
+      openMotionPoster={setMotionCar}
       onVerifyId={() => openSettings("profile")}
       onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
      />
@@ -8143,6 +8146,11 @@ export default function SalesmanPremium() {
  {studioCar && (
  <Suspense fallback={null}>
  <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} backdrops />
+ </Suspense>
+ )}
+ {motionCar && (
+ <Suspense fallback={null}>
+ <MotionPosterSheet car={motionCar} seller={profile} onClose={() => setMotionCar(null)} />
  </Suspense>
  )}
  {posterCar && (
