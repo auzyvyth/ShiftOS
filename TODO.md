@@ -2846,6 +2846,12 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   rules (slow, large moves, no confetti) and the same numbers from `loanPoster.js`. Open
   question answered: a video, with simple editable templates. Owner wants a PREVIEW in
   chat first, not app code (2026-11-01): the /poster-lab prototype was pulled back out.
+  Five designs agreed for preview (artifact "Moving loan poster - preview"): 1 Classic, 2 Beats
+  for TALL photos (full-bleed), 3 Beats for WIDE photos (photo whole in a band), 4 Stretch (light
+  card, photo edges stretched to fill, words fixed, hard cut every 2.5s; motion modelled on a
+  paultan ad the owner sent, our own type and colours), 5 Calculator (deposit 0-30% slides, monthly
+  rolls, then 9/7/5 years, take-home pay with the 35% rule always printed). All inside the TikTok
+  safe zone except Classic. Next: owner picks, then MP4 export (WebCodecs, not WebM) + Premium entry.
 - **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
   the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
   a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",
