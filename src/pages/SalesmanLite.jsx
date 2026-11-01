@@ -159,33 +159,6 @@ function loadJSZip() {
   return _jszipPromise;
 }
 
-// Shared style helpers for the dark salesman panel — module scope so every
-// render* function in this file uses the same card/pill/text shapes instead
-// of each redefining its own.
-const CARD = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, overflow: "hidden" };
-// Soft tinted control (WA button, badge, pill) in a given state hue.
-const SOFT = (hue) => ({ background: withAlpha(hue, 0.1), border: `1px solid ${withAlpha(hue, 0.2)}`, color: hue });
-
-// Lite is "get found, get the lead"; working the lead is Premium (owner,
-// 2026-10-13). Where a Premium tool used to sit in Lite, this one quiet row
-// says what it is and opens the single upgrade screen (goPremium). One row,
-// no modal, no second upgrade surface.
-function PremiumRow({ title, sub, onClick, cta }) {
-  return (
-    <button type="button" onClick={onClick}
-      style={{ ...CARD, display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "14px 16px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.accent, 0.1), color: C.dangerText, flexShrink: 0 }}>
-        <Lock size={14} strokeWidth={2.5} />
-      </span>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: "block", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>{title}</span>
-        {sub && <span style={{ display: "block", marginTop: 2, fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>{sub}</span>}
-      </span>
-      <span style={{ flexShrink: 0, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.dangerText, whiteSpace: "nowrap" }}>{cta}</span>
-    </button>
-  );
-}
-
 function useWindowSize() {
   const [w, setW] = useState(window.innerWidth);
   useEffect(() => {
@@ -4738,22 +4711,26 @@ export default function SalesmanLite() {
   // ── RENDER SETTINGS ──────────────────────────────────────────────────────
 
   const renderSettings = () => {
+    // premiumDark (PD), the same language as Premium's Settings (2026-11-01):
+    // tone not borders, one red fill (Save), mint only for "connected".
     const inputStyle = {
       width: "100%",
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.1)",
-      borderRadius: 8,
-      color: "#e5e7eb",
-      fontSize: 13,
-      padding: "10px 12px",
+      background: PD.raised,
+      border: "none",
+      borderRadius: PD.radius.row,
+      color: PD.text,
+      fontSize: 14,
+      padding: "11px 14px",
       outline: "none",
       boxSizing: "border-box",
-      fontFamily: "system-ui, sans-serif",
+      fontFamily: "inherit",
+      colorScheme: "dark",
     };
-    // Shared card + section-heading styling so every settings group reads as
-    // one consistent, scannable block instead of loose fields hugging the sidebar.
-    const cardStyle = { padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 };
-    const sectionLabelStyle = { margin: "0 0 12px", fontSize: 11, fontWeight: 600, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.07em" };
+    const cardStyle = { padding: 18, background: PD.card, borderRadius: PD.radius.card };
+    const sectionLabelStyle = { margin: "0 0 14px", fontSize: 11, fontWeight: 600, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" };
+    const lbl = { fontSize: 12, color: PD.textSec, display: "block", marginBottom: 6 };
+    const hint = { margin: "6px 0 0", fontSize: 11.5, color: PD.textMuted, lineHeight: 1.5 };
+    const softBtn = { display: "inline-flex", alignItems: "center", gap: 6, height: 36, padding: "0 14px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, fontSize: 12.5, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" };
 
     // Strip the country code AND any leading trunk 0 — a MY mobile under +60 is
     // written without the leading 0 (011… -> +6011…). Without the /^0+/ strip a
@@ -4931,55 +4908,36 @@ export default function SalesmanLite() {
     // persists everything — same contract as Premium's Settings.
     const saveBtn = (
           <button
+            className="lk-red"
             onClick={handleSave}
             disabled={settingsSaving}
-            style={{
-              padding: "10px 16px",
-              borderRadius: 8,
-              background: "#dc2626",
-              border: "none",
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: settingsSaving ? "not-allowed" : "pointer",
-              opacity: settingsSaving ? 0.6 : 1,
-            }}
+            style={{ alignSelf: "flex-start", height: 42, padding: "0 22px", borderRadius: PD.radius.pill, border: "none", color: PD.onAccent, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: settingsSaving ? "not-allowed" : "pointer" }}
           >
             {settingsSaving ? t("salesmanLite.settings.savingBtn") : t("salesmanLite.settings.saveBtn")}
           </button>
     );
 
     return (
-      <div style={{ maxWidth: isMobile ? 560 : 880, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
-          <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: "#f1f5f9" }}>
+      <div style={{ maxWidth: isMobile ? 560 : 880, margin: "0 auto", width: "100%", boxSizing: "border-box", color: PD.text }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 18 }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
             {t("salesmanLite.settings.title")}
           </p>
-          {/* Manual/help — moved off the footer/sidebar nav (it doesn't need its
-              own permanent slot) and parked here, next to the settings the user
-              is most likely to need it while filling in. */}
-          <button
-            data-tour-id="help"
-            onClick={() => setActiveTab("help")}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}
-          >
+          {/* Manual/help — parked here, next to the settings the user is most
+              likely to need it while filling in. The tour rings it. */}
+          <button data-tour-id="help" onClick={() => setActiveTab("help")} style={{ ...softBtn, color: PD.textSec, flexShrink: 0 }}>
             <BookOpen size={13} /> {t("salesmanLite.tabs.help")}
           </button>
         </div>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}} div:hover .avatar-cam-icon{opacity:1!important}`}</style>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
 
-        {/* Settings was ONE ~570-line scroll holding thirteen unrelated subjects —
-            avatar, cover, viewing hours, ID, profile, push, terms, location, IC,
-            bio, socials, language and account deletion — so finding any one of
-            them meant scrolling past the other twelve. Same grouped shape Premium
-            already uses (SETTINGS_GROUPS), and the house rule for this layout:
-            a rail on desktop, a horizontal scrolling pill row on mobile. */}
+        {/* Grouped sections: a rail on desktop, a pill row on a phone. */}
         <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 0 : 24, alignItems: "flex-start" }}>
           <div
             role="tablist"
             style={isMobile
-              ? { display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 10, marginBottom: 14, WebkitOverflowScrolling: "touch" }
-              : { display: "flex", flexDirection: "column", gap: 2, width: 190, flexShrink: 0, position: "sticky", top: 16 }}
+              ? { display: "flex", gap: 6, overflowX: "auto", width: "100%", paddingBottom: 12, marginBottom: 10, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }
+              : { display: "flex", flexDirection: "column", gap: 2, width: 200, flexShrink: 0, position: "sticky", top: 16, background: PD.card, borderRadius: PD.radius.card, padding: 10, boxSizing: "border-box" }}
           >
             {LITE_SETTINGS_NAV.map(({ key, labelKey, fallback }) => {
               const on = snav === key;
@@ -4990,21 +4948,9 @@ export default function SalesmanLite() {
                   role="tab"
                   aria-selected={on}
                   onClick={() => setSettingsNav(key)}
-                  style={{
-                    textAlign: isMobile ? "center" : "left",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    padding: isMobile ? "7px 14px" : "9px 12px",
-                    borderRadius: isMobile ? 999 : 8,
-                    fontSize: 12.5,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    fontFamily: "inherit",
-                    background: on ? "rgba(220,38,38,0.12)" : "transparent",
-                    border: `1px solid ${on ? "rgba(220,38,38,0.35)" : "rgba(255,255,255,0.08)"}`,
-                    color: on ? "#fca5a5" : "#9ca3af",
-                    transition: "all 0.15s",
-                  }}
+                  style={isMobile
+                    ? { whiteSpace: "nowrap", flexShrink: 0, height: 34, padding: "0 14px", borderRadius: PD.radius.pill, fontSize: 13, fontWeight: on ? 600 : 500, cursor: "pointer", fontFamily: "inherit", border: "none", background: on ? PD.text : PD.raised, color: on ? PD.card : PD.textSec }
+                    : { textAlign: "left", whiteSpace: "nowrap", height: 40, padding: "0 12px", borderRadius: 12, fontSize: 13.5, fontWeight: on ? 600 : 500, cursor: "pointer", fontFamily: "inherit", border: "none", background: on ? PD.raised : "transparent", color: on ? PD.text : PD.textSec }}
                 >
                   {t(labelKey, { defaultValue: fallback })}
                 </button>
@@ -5012,14 +4958,14 @@ export default function SalesmanLite() {
             })}
           </div>
 
-          <div style={{ flex: 1, minWidth: 0, width: "100%", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ flex: 1, minWidth: 0, width: "100%", maxWidth: 600, display: "flex", flexDirection: "column", gap: 14 }}>
             {snav === "profile" && (
               <>
           {/* The ONE place a seller is asked for ID (owner, 2026-10-12), step by
               step: Get verified -> IC number -> MyKad photos. It earns the
               Verified badge (cars go live without it, 20261017b). */}
-          <div style={{ marginBottom: 16 }}>
           <VerifyIdentity
+            theme="premium"
             profile={profile}
             userId={userId}
             onIcSaved={() => setProfile((p) => ({ ...p, ic_hash: "set", ic_verified_at: new Date().toISOString(), ic_deadline: null }))}
@@ -5027,85 +4973,78 @@ export default function SalesmanLite() {
               setProfile((p) => ({ ...p, kyc_submitted_at: new Date().toISOString() }))
             }
           />
-          </div>
-        {/* Avatar */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24, padding: "16px", background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <div
-            style={{ position: "relative", flexShrink: 0, cursor: avatarUploading ? "default" : "pointer" }}
-            onClick={() => !avatarUploading && avatarInputRef.current?.click()}
-            title={t("salesmanLite.settings.changePhotoTitle")}
-          >
-            {avatarUrl
-              ? <img src={avatarUrl} alt="Profile" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.1)", display: "block" }} />
-              : <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 700, color: "#fff", border: "2px solid rgba(255,255,255,0.1)" }}>
-                  {initials}
-                </div>
-            }
-            {/* Hover / loading overlay */}
-            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: avatarUploading ? "rgba(0,0,0,0.55)" : "rgba(0,0,0,0)", display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.2s" }}
-              onMouseEnter={e => { if (!avatarUploading) e.currentTarget.style.background = "rgba(0,0,0,0.45)"; }}
-              onMouseLeave={e => { if (!avatarUploading) e.currentTarget.style.background = "rgba(0,0,0,0)"; }}
+          {/* Photo */}
+          <div style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 16 }}>
+            <button
+              type="button"
+              onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+              disabled={avatarUploading}
+              title={t("salesmanLite.settings.changePhotoTitle")}
+              aria-label={t("salesmanLite.settings.changePhoto")}
+              style={{ position: "relative", flexShrink: 0, width: 72, height: 72, padding: 0, borderRadius: "50%", border: "none", background: PD.hover, overflow: "hidden", cursor: avatarUploading ? "default" : "pointer" }}
             >
-              {avatarUploading
-                ? <div style={{ width: 22, height: 22, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
-                : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0, transition: "opacity 0.2s" }} className="avatar-cam-icon"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              }
-            </div>
-            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#f1f5f9" }}>{profile?.full_name || profile?.slug || t("salesmanLite.settings.yourName")}</p>
-            <p style={{ margin: "3px 0 8px", fontSize: 11, color: "#4b5563" }}>{t("salesmanLite.settings.photoSubtext")}</p>
-            <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer" }}>
-              {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
+              {avatarUrl
+                ? <img src={avatarUrl} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                : <span style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", fontSize: 28, fontWeight: 700, color: PD.text }}>{initials}</span>}
+              {avatarUploading && (
+                <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}>
+                  <span style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+                </span>
+              )}
             </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleAvatarUpload} />
+            <div style={{ minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile?.full_name || profile?.slug || t("salesmanLite.settings.yourName")}</p>
+              <p style={{ ...hint, margin: "3px 0 10px" }}>{t("salesmanLite.settings.photoSubtext")}</p>
+              <button onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading} style={softBtn}>
+                {avatarUploading ? t("salesmanLite.settings.uploading") : t("salesmanLite.settings.changePhoto")}
+              </button>
+            </div>
           </div>
-        </div>
-        {/* Banner, bio and social links are the Premium page (2026-10-13).
-            get_salesman_by_slug returns them NULL for a Lite seller, so a field
-            here would save something the page never shows. */}
-        <div style={{ marginBottom: 24 }}>
-          <PremiumRow
-            onClick={goPremium}
-            cta={t("salesmanLite.premiumRow.cta")}
-            title={t("salesmanLite.premiumRow.pageTitle")}
-            sub={t("salesmanLite.premiumRow.pageSub")}
-          />
-        </div>
+          {/* Banner, bio and social links are the Premium page (2026-10-13).
+              get_salesman_by_slug returns them NULL for a Lite seller, so a field
+              here would save something the page never shows. */}
+          <button type="button" onClick={goPremium}
+            style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, width: "100%", border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "left", boxSizing: "border-box" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 10, background: PD.raised, flexShrink: 0 }}>
+              <Lock size={14} color={PD.textSec} />
+            </span>
+            <span style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ display: "block", fontSize: 14, fontWeight: 600 }}>{t("salesmanLite.premiumRow.pageTitle")}</span>
+              <span style={{ display: "block", marginTop: 2, fontSize: 12, color: PD.textSec, lineHeight: 1.5 }}>{t("salesmanLite.premiumRow.pageSub")}</span>
+            </span>
+            <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, color: PD.accentText, whiteSpace: "nowrap" }}>{t("salesmanLite.premiumRow.cta")}</span>
+          </button>
           {/* Profile basics */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.profileSection")}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.fullName")}</label>
-            <input
-              value={settingsForm.full_name}
-              onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))}
-              placeholder={t("salesmanLite.settings.fullNamePlaceholder")}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.whatsapp")}</label>
-            <PhoneInput
-              mobileOnly
-              value={settingsForm.whatsapp_number}
-              onChange={(v) => setSettingsForm((p) => ({ ...p, whatsapp_number: v }))}
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8 }}
-              prefixStyle={{ padding: "10px 12px", fontSize: 13, color: "#6b7280", background: "rgba(255,255,255,0.03)", borderRight: "1px solid rgba(255,255,255,0.08)" }}
-              inputStyle={{ ...inputStyle, background: "transparent", border: "none", borderRadius: 0, flex: 1, width: "auto", minWidth: 0 }}
-            />
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.whatsappHint")}</p>
-          </div>
-          <div>
-            <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 6 }}>{t("salesmanLite.settings.slug")}</label>
-            <input
-              value={profile?.slug || ""}
-              readOnly
-              style={{ ...inputStyle, color: "#4b5563", cursor: "not-allowed", background: "rgba(255,255,255,0.02)" }}
-            />
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.slugHint")}</p>
-          </div>
+              <div>
+                <label style={lbl}>{t("salesmanLite.settings.fullName")}</label>
+                <input
+                  value={settingsForm.full_name}
+                  onChange={(e) => setSettingsForm((p) => ({ ...p, full_name: e.target.value }))}
+                  placeholder={t("salesmanLite.settings.fullNamePlaceholder")}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label style={lbl}>{t("salesmanLite.settings.whatsapp")}</label>
+                <PhoneInput
+                  mobileOnly
+                  value={settingsForm.whatsapp_number}
+                  onChange={(v) => setSettingsForm((p) => ({ ...p, whatsapp_number: v }))}
+                  style={{ background: PD.raised, border: "none", borderRadius: PD.radius.row, overflow: "hidden" }}
+                  prefixStyle={{ padding: "11px 12px", fontSize: 14, color: PD.textSec, background: PD.hover }}
+                  inputStyle={{ ...inputStyle, background: "transparent", borderRadius: 0, flex: 1, width: "auto", minWidth: 0 }}
+                />
+                <p style={hint}>{t("salesmanLite.settings.whatsappHint")}</p>
+              </div>
+              <div>
+                <label style={lbl}>{t("salesmanLite.settings.slug")}</label>
+                <input value={profile?.slug || ""} readOnly style={{ ...inputStyle, color: PD.textMuted, cursor: "not-allowed", background: "transparent", boxShadow: `inset 0 0 0 1px ${PD.line}` }} />
+                <p style={hint}>{t("salesmanLite.settings.slugHint")}</p>
+              </div>
             </div>
           </div>
             {saveBtn}
@@ -5113,16 +5052,15 @@ export default function SalesmanLite() {
             )}
             {snav === "contact" && (
               <>
-          {/* Location */}
           <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.locationSection")}</p>
-            <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.city")}</label>
+            <div style={{ display: "flex", gap: 10, marginBottom: 14, flexWrap: isMobile ? "wrap" : "nowrap" }}>
+              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                <label style={lbl}>{t("salesmanLite.settings.city")}</label>
                 <input value={settingsForm.city} onChange={(e) => setSettingsForm((p) => ({ ...p, city: e.target.value }))} placeholder={t("salesmanLite.settings.cityPlaceholder")} style={inputStyle} />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.state")}</label>
+              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+                <label style={lbl}>{t("salesmanLite.settings.state")}</label>
                 <select value={settingsForm.state} onChange={(e) => setSettingsForm((p) => ({ ...p, state: e.target.value }))}
                   style={{ ...inputStyle, appearance: "none" }}>
                   <option value="">{t("salesmanLite.settings.stateSelect")}</option>
@@ -5132,10 +5070,10 @@ export default function SalesmanLite() {
                 </select>
               </div>
             </div>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.address")}</label>
+            <div>
+              <label style={lbl}>{t("salesmanLite.settings.address")}</label>
               <input value={settingsForm.location} onChange={(e) => setSettingsForm((p) => ({ ...p, location: e.target.value }))} placeholder={t("salesmanLite.settings.addressPlaceholder")} style={inputStyle} />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151" }}>{t("salesmanLite.settings.addressHint")}</p>
+              <p style={hint}>{t("salesmanLite.settings.addressHint")}</p>
             </div>
           </div>
             {saveBtn}
@@ -5143,21 +5081,20 @@ export default function SalesmanLite() {
             )}
             {snav === "selling" && (
               <>
-        {/* Viewing availability — buyers can only book the days/times set here */}
-        <div style={{ marginBottom: 24, padding: 16, background: "#0d1117", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12 }}>
-          <AvailabilityEditor ownerId={userId} dealerId={userId} dark />
-        </div>
+          {/* Viewing availability — buyers can only book the days/times set here.
+              theme="premium" drops the card's own title, so it is said here. */}
+          <div style={cardStyle}>
+            <p style={sectionLabelStyle}>{t("availability.title")}</p>
+            <AvailabilityEditor ownerId={userId} dealerId={userId} theme="premium" />
+          </div>
           {/* Selling terms — a standalone agent sells their own cars, so the buyer
               questions the dealer dashboard answers (is my deposit safe, what else
-              do I pay) have to be answerable here too. Without these the listing
-              tells the buyer to ask, which is honest but loses the sale's momentum. */}
-          <div style={{ ...cardStyle, marginBottom: 24 }}>
+              do I pay) have to be answerable here too. */}
+          <div style={cardStyle}>
             <p style={sectionLabelStyle}>{t("salesmanLite.settings.sellingTermsSection")}</p>
-            <p style={{ margin: "-6px 0 12px", fontSize: 11, color: "#4b5563", lineHeight: 1.5 }}>
-              {t("salesmanLite.settings.sellingTermsHint")}
-            </p>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositPolicy")}</label>
+            <p style={{ ...hint, margin: "-8px 0 14px" }}>{t("salesmanLite.settings.sellingTermsHint")}</p>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>{t("salesmanLite.settings.depositPolicy")}</label>
               <select
                 value={settingsForm.deposit_policy}
                 onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_policy: e.target.value }))}
@@ -5169,8 +5106,8 @@ export default function SalesmanLite() {
                 <option value="non_refundable">{t("salesmanLite.settings.depositNonRefundable")}</option>
               </select>
             </div>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.depositTerms")}</label>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>{t("salesmanLite.settings.depositTerms")}</label>
               <input
                 value={settingsForm.deposit_terms}
                 onChange={(e) => setSettingsForm((p) => ({ ...p, deposit_terms: e.target.value }))}
@@ -5179,18 +5116,18 @@ export default function SalesmanLite() {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "block", marginBottom: 5 }}>{t("salesmanLite.settings.processingFee")}</label>
+              <label style={lbl}>{t("salesmanLite.settings.processingFee")}</label>
               <div style={{ position: "relative" }}>
-                <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7280", pointerEvents: "none" }}>RM</span>
+                <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: PD.textMuted, pointerEvents: "none" }}>RM</span>
                 <input
                   value={settingsForm.processing_fee}
                   onChange={(e) => setSettingsForm((p) => ({ ...p, processing_fee: e.target.value.replace(/[^0-9.]/g, "") }))}
                   placeholder={t("salesmanLite.settings.processingFeePlaceholder")}
                   inputMode="decimal"
-                  style={{ ...inputStyle, paddingLeft: 40 }}
+                  style={{ ...inputStyle, paddingLeft: 44 }}
                 />
               </div>
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.5 }}>{t("salesmanLite.settings.processingFeeHint")}</p>
+              <p style={hint}>{t("salesmanLite.settings.processingFeeHint")}</p>
             </div>
           </div>
             {saveBtn}
@@ -5198,18 +5135,16 @@ export default function SalesmanLite() {
             )}
             {snav === "alerts" && (
               <>
-          {/* Push notifications — works with the app closed, unlike the in-tab
-              Notification API banner used elsewhere in this file. */}
-          <PushToggle userId={userId} theme="dark" style={cardStyle} />
-              {/* Telegram lived in "Profile basics", three cards away from the push
-                  toggle it belongs beside — the two are the same decision ("where do
-                  alerts reach me"). Premium already pairs them in one Alerts section. */}
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-              <label style={{ fontSize: 11, color: "#6b7280", display: "inline-flex", alignItems: "center", gap: 5 }}><Send size={11} /> {t("salesmanLite.settings.telegram")}</label>
+          {/* Push notifications — works with the app closed. */}
+          <PushToggle userId={userId} theme="premium" style={{ padding: 18 }} />
+          {/* Telegram sits beside the push toggle: the same decision ("where do
+              alerts reach me"). */}
+          <div style={cardStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <label style={{ ...lbl, marginBottom: 0, display: "inline-flex", alignItems: "center", gap: 6 }}><Send size={12} /> {t("salesmanLite.settings.telegram")}</label>
               {profile?.telegram_chat_id
-                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4ade80" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", display: "inline-block" }} />{t("salesmanLite.settings.telegramConnected")}</span>
-                : <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, color: "#4b5563" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4b5563", display: "inline-block" }} />{t("salesmanLite.settings.telegramNotSet")}</span>
+                ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: PD.up }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: PD.up }} />{t("salesmanLite.settings.telegramConnected")}</span>
+                : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, color: PD.textMuted }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: PD.textMuted }} />{t("salesmanLite.settings.telegramNotSet")}</span>
               }
             </div>
             <input
@@ -5222,80 +5157,50 @@ export default function SalesmanLite() {
               type="button"
               onClick={testTelegramConnection}
               disabled={tgTesting || !settingsForm.telegram_chat_id.trim()}
-              style={{
-                marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 12, fontWeight: 600, padding: "8px 14px", borderRadius: 8,
-                background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)",
-                color: "#93c5fd", fontFamily: "inherit",
-                cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer",
-                opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1,
-              }}
+              style={{ ...softBtn, marginTop: 10, cursor: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? "not-allowed" : "pointer", opacity: (tgTesting || !settingsForm.telegram_chat_id.trim()) ? 0.55 : 1 }}
             >
               <Send size={13} /> {tgTesting ? t("salesmanLite.settings.telegramTesting") : t("salesmanLite.settings.telegramTest")}
             </button>
-            <p style={{ margin: "5px 0 0", fontSize: 10, color: "#374151", lineHeight: 1.6 }}>
+            <p style={{ ...hint, lineHeight: 1.6 }}>
               {t("salesmanLite.settings.telegramHint").split("@userinfobot").map((part, i) =>
-                i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: "#93c5fd", textDecoration: "none" }}>@userinfobot</a>{part}</React.Fragment>
+                i === 0 ? part : <React.Fragment key={i}><a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: PD.text, textDecoration: "underline", textDecorationColor: "rgba(242,244,247,0.35)" }}>@userinfobot</a>{part}</React.Fragment>
               )}
             </p>
           </div>
               </>
             )}
             {snav === "premium" && <PremiumUpgradeCard profile={profile} cars={myListings} onRefer={() => setSettingsNav("refer")} />}
-            {snav === "refer" && <ReferralCard slug={profile?.slug} />}
-            {snav === "newcars" && <MyNewModels profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
+            {snav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
+            {snav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
             {snav === "account" && (
               <>
-          <ChangePasswordCard />
-          {/* Language toggle */}
+          {/* theme="premium" drops the password card's own title; this section
+              holds three things, so it is said here. */}
+          <div>
+            <p style={{ ...sectionLabelStyle, margin: "0 0 8px 4px" }}>{t("changePassword.title", { defaultValue: "Password" })}</p>
+            <ChangePasswordCard theme="premium" />
+          </div>
           <div style={cardStyle}>
             <p style={{ ...sectionLabelStyle, marginBottom: 8 }}>{t("salesmanLite.settings.language")}</p>
-            <p style={{ margin: "0 0 10px", fontSize: 11, color: "#374151" }}>{t("salesmanLite.settings.languageSubtext")}</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => (
-                <button
-                  key={code}
-                  onClick={() => i18n.changeLanguage(code)}
-                  style={{
-                    padding: "7px 18px",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    background: i18n.language === code ? "#dc2626" : "rgba(255,255,255,0.04)",
-                    border: `1px solid ${i18n.language === code ? "#dc2626" : "rgba(255,255,255,0.1)"}`,
-                    color: i18n.language === code ? "#fff" : "#9ca3af",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+            <p style={{ ...hint, margin: "0 0 12px" }}>{t("salesmanLite.settings.languageSubtext")}</p>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[{ code: "en", label: "English" }, { code: "ms", label: "Malay" }].map(({ code, label }) => {
+                const on = i18n.language === code;
+                return (
+                  <button key={code} onClick={() => i18n.changeLanguage(code)}
+                    style={{ height: 36, padding: "0 18px", borderRadius: PD.radius.pill, fontSize: 13, fontWeight: on ? 600 : 500, cursor: "pointer", fontFamily: "inherit", border: "none", background: on ? PD.text : PD.raised, color: on ? PD.card : PD.textSec }}>
+                    {label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-          {/* Danger Zone — self-service account deletion */}
-          <div style={{ ...cardStyle, border: "1px solid rgba(248,113,113,0.2)", background: "rgba(248,113,113,0.03)", marginTop: 8 }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "rgba(248,113,113,0.7)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
-              {t("salesmanLite.dangerZone.title")}
-            </p>
-            <p style={{ margin: "0 0 12px", fontSize: 12, color: "#6b7280", lineHeight: 1.6, maxWidth: 460 }}>
-              {t("salesmanLite.dangerZone.subtext")}
-            </p>
-            <button
-              onClick={() => { setDeleteConfirmText(""); setDeleteModalOpen(true); }}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 8,
-                background: "transparent",
-                border: "1px solid rgba(248,113,113,0.4)",
-                color: "#f87171",
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              {t("salesmanLite.dangerZone.deleteBtn")}
+          {/* Danger zone — self-service account deletion. Red TEXT only. */}
+          <div style={cardStyle}>
+            <p style={{ ...sectionLabelStyle, marginBottom: 6, color: PD.accentText }}>{t("salesmanLite.dangerZone.title")}</p>
+            <p style={{ ...hint, margin: "0 0 14px", maxWidth: 460, fontSize: 12.5, color: PD.textSec }}>{t("salesmanLite.dangerZone.subtext")}</p>
+            <button onClick={() => { setDeleteConfirmText(""); setDeleteModalOpen(true); }} style={{ ...softBtn, color: PD.accentText }}>
+              <Trash2 size={13} /> {t("salesmanLite.dangerZone.deleteBtn")}
             </button>
           </div>
               </>
