@@ -2836,6 +2836,13 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
+  the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
+  a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",
+  "At the showroom till 6". Tapping the ring opens it. Why: gives buyers a reason to come back
+  to the page and gives the ring a job. Blocked by: needs a place to store it with an expiry
+  (a table or columns + a cron to clear old ones), and a rule on what may be posted (no
+  phone numbers, no price promises). Future project, not scheduled.
 - **IDEA-27: Luxury showcase, "premium eyes" (owner, 2026-10-31)** — a car at RM700k+ gets
   asked "Want premium eyes?" On yes it ALSO appears on a luxury-only showcase: its own look,
   no RM20k cars around it, and its own booking (private viewing / concierge appointment
