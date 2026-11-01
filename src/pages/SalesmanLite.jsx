@@ -24,10 +24,10 @@ import { SITE_URL } from "../config/site";
 import { usePersistentState } from "../hooks/usePersistentState";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import { carNextStep, pickSilentCar } from "../utils/carCoach";
-import CarNextStep from "../components/coach/CarNextStep";
 import DashboardTab from "./salesmanLite/DashboardTab";
+import ListingsTab from "./salesmanLite/ListingsTab";
 import ShareTour from "../components/coach/ShareTour";
-import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite, privateCount } from "../utils/privateCars";
+import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite } from "../utils/privateCars";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -70,8 +70,6 @@ import {
   Phone,
   X,
   Lock,
-  Film,
-  Calculator,
   LayoutGrid,
   Users,
   MessageSquare,
@@ -79,12 +77,10 @@ import {
   Trash2,
   Send,
   Pencil,
-  ClipboardPen,
   Settings,
   Bell,
   TrendingUp,
   Calendar,
-  ChevronDown,
   ChevronUp,
   ZoomIn,
   ChevronLeft,
@@ -116,12 +112,10 @@ import {
   Package,
   ThumbsUp,
   ThumbsDown,
-  Download,
   Star,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
-import { HIGH_VALUE_THRESHOLD } from "../utils/financing";
 import {
   readCache,
   writeCache,
@@ -161,16 +155,6 @@ function loadJSZip() {
     document.body.appendChild(s);
   });
   return _jszipPromise;
-}
-
-// Price visual weight — a RM45k car and a RM2.4M car shouldn't read at the
-// same size/color; scale the price figure up for higher tiers so the card
-// itself signals value at a glance.
-function priceStyle(sellingPrice) {
-  const sp = Number(sellingPrice) || 0;
-  if (sp >= 1000000) return { fontSize: 18, fontWeight: 800, color: C.warnText };
-  if (sp >= HIGH_VALUE_THRESHOLD) return { fontSize: 16, fontWeight: 800, color: C.infoTextHi };
-  return { fontSize: 14, fontWeight: 700, color: C.infoText };
 }
 
 // Shared style helpers for the dark salesman panel — module scope so every
@@ -3365,117 +3349,26 @@ export default function SalesmanLite() {
   // ── RENDER PERFORMANCE ────────────────────────────────────────────────────
 
   const renderListings = () => {
-    const enriched = myListings.map((car) => {
-      const stats = carStatsMap[car.id] ?? {};
-      const views = stats.views || 0;
-      const enqs = stats.enquiries || 0;
-      const daily = stats.daily || [0,0,0,0,0,0,0];
-      const cvr = views > 0 ? (enqs / views) * 100 : null;
-      const isHot = cvr !== null && cvr > 6 && views > 3;
-      const isStale = views > 10 && (cvr === null || cvr === 0);
-      return { car, views, enqs, daily, cvr, isHot, isStale };
-    });
-
-    const hotCount = enriched.filter((e) => e.isHot).length;
-    const staleCount = enriched.filter((e) => e.isStale).length;
-    const activeCount = myListings.filter(
-      (c) => c.status === "available",
-    ).length;
-
-    const normStatus = (s) => {
-      if (!s || s === "active") return "available";
-      return s;
-    };
-    const filtered = enriched.filter((e) => (isLockedCar(e.car) ? "available" : normStatus(e.car.status)) === filterStatus);
-
-    const sorted = [...filtered].sort((a, b) => {
-      if (sortBy === "price_desc") return (b.car.selling_price || 0) - (a.car.selling_price || 0);
-      if (sortBy === "price_asc")  return (a.car.selling_price || 0) - (b.car.selling_price || 0);
-      if (sortBy === "oldest")     return new Date(a.car.created_at) - new Date(b.car.created_at);
-      return new Date(b.car.created_at) - new Date(a.car.created_at); // newest (default)
-    });
-
-    // Two cars can share the exact same year/brand/model/variant (e.g. two
-    // identical trims bought in one batch) and be visually indistinguishable
-    // in the grid. Only surface a disambiguator (colour / plate) on cards
-    // whose title actually collides with a sibling — no point cluttering
-    // every card with extra text when names are already unique.
-    const nameCounts = {};
-    sorted.forEach(({ car }) => {
-      const n = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
-      nameCounts[n] = (nameCounts[n] || 0) + 1;
-    });
-
-    const SEL_STYLE = (active) => ({
-      fontSize: T.size.sm,
-      padding: "5px 11px",
-      borderRadius: R.sm,
-      cursor: "pointer",
-      background: active ? withAlpha(C.accent, 0.12) : C.line,
-      border: active
-        ? `1px solid ${withAlpha(C.accent, 0.3)}`
-        : `1px solid ${C.border}`,
-      color: active ? C.dangerText : C.textMuted,
-      fontWeight: active ? T.weight.semibold : T.weight.normal,
-    });
-
+    // Drawing lives in src/pages/salesmanLite/ListingsTab.jsx (premiumDark,
+    // 2026-11-01). The add form and every handler stay here, unchanged.
     return (
-      <div>
-        {/* Header row with Add button */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: T.size.lg,
-              fontWeight: T.weight.semibold,
-              color: C.text,
-            }}
-          >
-            {t("salesmanLite.listings.title")} ({myListings.length})
-          </p>
-          <button
-            onClick={() => (showAddForm ? setShowAddForm(false) : openAddListing())}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: C.accent,
-              border: "none",
-              borderRadius: R.md,
-              color: C.onAccent,
-              fontSize: T.size.base,
-              fontWeight: T.weight.semibold,
-              padding: "7px 12px",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={13} /> {showAddForm ? t("salesmanLite.listings.cancel") : t("salesmanLite.listings.addListing")}
-          </button>
-        </div>
-
-        {/* Store exposure bar */}
-        {!showAddForm && profile?.slug && myListings.filter(c => c.status === "available").length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 12px", padding: "7px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.04), border: `1px solid ${withAlpha(C.success, 0.13)}` }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
-            <span style={{ fontSize: T.size.xs, color: C.textMuted, flex: 1 }}>
-              Your listings are <strong style={{ color: C.success }}>live on XDrive</strong> — buyers can find you at xdrive.my/s/{profile.slug}
-            </span>
-            <button
-              onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.linkCopied")); }}
-              style={{ ...SOFT(C.success), fontSize: T.size.xs, padding: "4px 10px", borderRadius: R.sm, cursor: "pointer", fontWeight: T.weight.semibold, whiteSpace: "nowrap", fontFamily: "inherit" }}
-            >
-              {t("salesmanLite.listings.copyLink")}
-            </button>
-          </div>
-        )}
-
+      <ListingsTab
+        isMobile={isMobile}
+        profile={profile}
+        myListings={myListings}
+        carStatsMap={carStatsMap}
+        isLockedCar={isLockedCar}
+        filterStatus={filterStatus}
+        setFilterStatus={setFilterStatus}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        showAddForm={showAddForm}
+        onToggleAdd={() => (showAddForm ? setShowAddForm(false) : openAddListing())}
+        onAddListing={openAddListing}
+        onBackToDashboard={() => switchTab("dashboard")}
+        onCopyPageLink={() => { navigator.clipboard.writeText(`${SITE_URL}/s/${profile.slug}`); toast.success(t("salesmanLite.toast.linkCopied")); }}
+        addForm={(
+          <>
         {showAddForm && (
           <CarFormModal title={t("salesmanLite.listings.addListing")} onClose={() => setShowAddForm(false)}>
             <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanLite.drawer.loading")}</p>}>
@@ -3505,600 +3398,29 @@ export default function SalesmanLite() {
             </React.Suspense>
           </CarFormModal>
         )}
-
-        {myListings.length > 0 && !showAddForm && (
-          <>
-            {/* Status tabs */}
-            <div style={{ borderBottom: `1px solid ${C.border}`, marginBottom: 0 }}>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 0,
-                  overflowX: "auto",
-                  scrollbarWidth: "none",
-                  WebkitOverflowScrolling: "touch",
-                }}
-              >
-                {[
-                  { key: "pending_approval", label: t("salesmanLite.listings.status.pending"),   count: myListings.filter((c) => c.status === "pending_approval").length },
-                  { key: "rejected",         label: t("salesmanLite.listings.status.rejected"),  count: myListings.filter((c) => c.status === "rejected").length },
-                  { key: "available",        label: t("salesmanLite.listings.status.available"), count: myListings.filter((c) => (c.status || "available") === "available" || isLockedCar(c)).length },
-                  { key: "reserved",         label: t("salesmanLite.listings.status.reserved"),  count: myListings.filter((c) => c.status === "reserved").length },
-                  { key: "sold",             label: t("salesmanLite.listings.status.sold"),      count: myListings.filter((c) => c.status === "sold").length },
-                  // Private only gets a tab while it holds a car (or is the one picked).
-                  ...(privateCount(myListings) > 0 || filterStatus === "private"
-                    ? [{ key: "private", label: t("privateCars.tab"), count: privateCount(myListings) }] : []),
-                ].map(({ key, label, count }) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilterStatus(key)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      padding: "10px 13px",
-                      fontSize: T.size.base,
-                      fontWeight: filterStatus === key ? T.weight.semibold : T.weight.normal,
-                      fontFamily: "system-ui, sans-serif",
-                      color: filterStatus === key ? C.text : C.textDim,
-                      borderBottom: filterStatus === key ? `2px solid ${C.accent}` : "2px solid transparent",
-                      marginBottom: -1,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "color 0.15s",
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {label}
-                    <span
-                      style={{
-                        fontSize: T.size.sm,
-                        fontWeight: T.weight.bold,
-                        padding: "1px 6px",
-                        borderRadius: 4,
-                        lineHeight: 1.6,
-                        background: filterStatus === key ? withAlpha(C.accent, 0.12) : C.fill,
-                        color: filterStatus === key ? C.dangerText : C.textDim,
-                      }}
-                    >
-                      {count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sort row */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                flexWrap: "wrap",
-                padding: "10px 0 14px",
-              }}
-            >
-              <span style={{ fontSize: T.size.sm, color: C.textDim, marginRight: 2 }}>{t("salesmanLite.listings.sort")}</span>
-              <button style={SEL_STYLE(sortBy === "newest")} onClick={() => setSortBy("newest")}>{t("salesmanLite.listings.sortNewest")}</button>
-              <button style={SEL_STYLE(sortBy === "price_desc")} onClick={() => setSortBy("price_desc")}>{t("salesmanLite.listings.sortPriceDesc")}</button>
-              <button style={SEL_STYLE(sortBy === "price_asc")} onClick={() => setSortBy("price_asc")}>{t("salesmanLite.listings.sortPriceAsc")}</button>
-              {hotCount > 0 && (
-                <span style={{ fontSize: T.size.sm, color: C.danger, fontWeight: T.weight.semibold, marginLeft: "auto" }}>{hotCount} {t("salesmanLite.heat.hot")}</span>
-              )}
-              {staleCount > 0 && (
-                <span style={{ fontSize: T.size.sm, color: C.textMuted, fontWeight: T.weight.medium }}>{staleCount} stale</span>
-              )}
-            </div>
           </>
         )}
-
-        {myListings.length === 0 && !showAddForm ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 12,
-              padding: "52px 24px",
-              background: C.surface,
-              border: `1px dashed ${C.borderStrong}`,
-              borderRadius: R.lg,
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: "50%",
-                background: C.fill,
-                border: `1px solid ${C.border}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Car size={24} color={C.textDim} />
-            </div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: T.size.lg,
-                fontWeight: T.weight.semibold,
-                color: C.textDim,
-              }}
-            >
-              No listings yet
-            </p>
-            <p
-              style={{
-                margin: 0,
-                fontSize: T.size.base,
-                color: C.textDim,
-                textAlign: "center",
-                maxWidth: 260,
-                lineHeight: 1.6,
-              }}
-            >
-              Add your first car using the button above.
-            </p>
-            <button
-              onClick={openAddListing}
-              style={{ marginTop: 14, fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 20px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, cursor: "pointer" }}
-            >
-              + Add Listing
-            </button>
-            <button
-              onClick={() => switchTab("dashboard")}
-              style={{ marginTop: 8, fontSize: T.size.sm, padding: "7px 16px", borderRadius: R.md, background: "none", border: "none", color: C.textDim, cursor: "pointer" }}
-            >
-              ← Back to Dashboard
-            </button>
-          </div>
-        ) : sorted.length === 0 ? (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "32px 0",
-              color: C.textDim,
-              fontSize: T.size.base,
-            }}
-          >
-            No {filterStatus} listings.
-          </div>
-        ) : (
-          <div
-            onClick={() => { setStatusMenuCarId(null); setActionMenuCarId(null); }}
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile
-                ? "1fr"
-                : "repeat(auto-fill,minmax(260px,1fr))",
-              gap: 14,
-            }}
-          >
-            {sorted.map(({ car, views, enqs }) => {
-              const isSold     = car.status === "sold";
-              const isReserved = car.status === "reserved";
-              const isPending  = car.status === "pending_approval";
-              const isRejected = car.status === "rejected";
-              const isPrivate  = car.status === "private";
-              const isLocked   = isLockedCar(car);
-              const isInactive = isSold || isPending || isRejected;
-              const img  = car.images?.[0];
-              const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
-              const price = car.selling_price
-                ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
-                : "—";
-              const disambiguator = nameCounts[name] > 1
-                ? [car.colour, car.plate_number ? `Plate …${car.plate_number.slice(-4)}` : null].filter(Boolean).join(" · ")
-                : null;
-              const openDetail = () => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); };
-              return (
-                <div
-                  key={car.id}
-                  style={{
-                    background: C.surface,
-                    border: isSold
-                      ? `1px solid ${C.fillStrong}`
-                      : isReserved
-                        ? `1px solid ${withAlpha(C.warn, 0.22)}`
-                        : isPending
-                          ? `1px solid ${withAlpha(C.warn, 0.18)}`
-                          : isRejected
-                            ? `1px solid ${withAlpha(C.danger, 0.22)}`
-                            : `1px solid ${C.border}`,
-                    borderRadius: R.lg,
-                    // No overflow:hidden: it cut the status menu off at the card's
-                    // bottom edge. Only the top (banners + photo) is clipped below.
-                    position: "relative",
-                    zIndex: statusMenuCarId === car.id || actionMenuCarId === car.id ? 5 : undefined,
-                    opacity: isSold ? 0.62 : 1,
-                    transition: "opacity 0.2s",
-                    display: "flex",
-                    flexDirection: "column",
-                    height: "100%",
-                  }}
-                >
-                  {/* Rejected — the reason is the first thing on the card: it is the
-                      only thing the seller needs to act on. No left accent bar (anti-slop);
-                      a full-width tint carries the state. */}
-                  <div style={{ display: "flex", flexDirection: "column", borderRadius: `${R.lg - 1}px ${R.lg - 1}px 0 0`, overflow: "hidden" }}>
-                  {isRejected && (
-                    <div style={{ padding: "12px 14px", background: withAlpha(C.danger, 0.1), borderBottom: `1px solid ${withAlpha(C.danger, 0.22)}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.dangerText, flexShrink: 0 }} />
-                        <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.dangerText }}>Not approved</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, lineHeight: 1.35 }}>
-                        {car.rejection_reason || "No reason was given. Check the details and photos, then resubmit."}
-                      </p>
-                      <button onClick={() => setEditListing(car)} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
-                        <Pencil size={13} /> Edit & Resubmit
-                      </button>
-                    </div>
-                  )}
-                  {/* Locked after Premium lapsed: same full-width strip as a
-                      rejection, photo blacked out below it. Views and
-                      enquiries on the card stay readable on purpose. */}
-                  {isLocked && (
-                    <div style={{ padding: "12px 14px", background: "rgba(0,0,0,0.45)", borderBottom: `1px solid ${C.border}` }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-                        <Lock size={12} style={{ color: C.textMuted, flexShrink: 0 }} />
-                        <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted }}>{t("premiumLapse.lockedTitle")}</span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, lineHeight: 1.45 }}>
-                        {t("premiumLapse.lockedBody", { cap: PLAN_CONFIG.salesman_lite?.listingCap ?? 10 })}
-                      </p>
-                      <button onClick={goPremium} style={{ marginTop: 10, width: "100%", fontSize: T.size.base, fontWeight: T.weight.semibold, padding: "9px 0", borderRadius: R.sm, background: C.accent, border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}>
-                        {t("premiumLapse.lockedCta")}
-                      </button>
-                    </div>
-                  )}
-                  {/* Image */}
-                  {img ? (
-                    <img
-                      src={img}
-                      alt={name}
-                      onClick={openDetail}
-                      style={{
-                        width: "100%",
-                        height: 150,
-                        objectFit: "cover",
-                        cursor: "pointer",
-                        filter: isLocked ? "grayscale(1) brightness(0.3)" : isSold ? "grayscale(0.75) brightness(0.6)" : "none",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      onClick={openDetail}
-                      style={{
-                        width: "100%",
-                        height: 150,
-                        background: C.fill,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                        filter: isLocked ? "grayscale(1) brightness(0.3)" : isSold ? "grayscale(0.75) brightness(0.6)" : "none",
-                      }}
-                    >
-                      <Car size={32} color={C.textDim} />
-                    </div>
-                  )}
-                  </div>
-
-                  {/* Status indicator — compact single-line strip */}
-                  {(isSold || isReserved || isPending) && (
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "5px 12px",
-                      borderBottom: `1px solid ${
-                        isRejected  ? withAlpha(C.danger, 0.18) :
-                        isSold      ? withAlpha(C.textMuted, 0.15) :
-                                      withAlpha(C.warn, 0.15)
-                      }`,
-                      background: `${
-                        isRejected  ? withAlpha(C.danger, 0.05) :
-                        isSold      ? withAlpha(C.textMuted, 0.07) :
-                                      withAlpha(C.warn, 0.05)
-                      }`,
-                    }}>
-                      <span style={{
-                        width: 5, height: 5, borderRadius: "50%", flexShrink: 0,
-                        background: isRejected ? C.dangerText : isSold ? C.textMuted : C.warnText,
-                      }} />
-                      <span style={{
-                        fontSize: T.size.xs, fontWeight: T.weight.semibold,
-                        color: isRejected ? C.dangerText : isSold ? C.textSec : C.warnText,
-                      }}>
-                        {isSold ? t("salesmanLite.listings.status.sold") : isReserved ? t("salesmanLite.listings.status.reserved") : isPending ? t("salesmanLite.listings.status.pendingApproval") : t("salesmanLite.listings.status.rejected")}
-                      </span>
-                      {isSold && car.sold_at && (
-                        <span style={{ fontSize: T.size.xs, color: C.textDim }}>
-                          · {new Date(car.sold_at).toLocaleDateString("en-MY", { day: "numeric", month: "short" })}
-                        </span>
-                      )}
-                      {isPending && (
-                        <span style={{ fontSize: T.size.xs, color: C.textMuted }}>· not visible to buyers yet</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Live on XDrive bar — only for available listings */}
-                  {!isSold && !isReserved && !isPending && !isRejected && (
-                    <div style={{ background: withAlpha(C.success, 0.05), borderBottom: `1px solid ${withAlpha(C.success, 0.13)}`, padding: "4px 14px", display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: "50%", background: C.success, flexShrink: 0 }} />
-                      <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.success, letterSpacing: "0.1em", textTransform: "uppercase" }}>Live on XDrive</span>
-                      <span style={{ marginLeft: "auto", fontSize: T.size.xs, color: C.textDim }}>{views > 0 ? `${views} view${views !== 1 ? "s" : ""}` : "accepting buyers"}</span>
-                    </div>
-                  )}
-
-                  <div style={{ padding: "12px 14px", flex: 1, display: "flex", flexDirection: "column" }}>
-                    {/* Title + badge row */}
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
-                      <p
-                        onClick={openDetail}
-                        style={{
-                          margin: 0,
-                          fontSize: T.size.base,
-                          fontWeight: T.weight.semibold,
-                          color: isSold ? C.textMuted : C.text,
-                          lineHeight: 1.3,
-                          flex: 1,
-                          marginRight: 8,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {name}
-                        {disambiguator && (
-                          <span style={{ display: "block", fontSize: T.size.xs, fontWeight: T.weight.normal, color: C.textMuted, marginTop: 2 }}>
-                            {disambiguator}
-                          </span>
-                        )}
-                      </p>
-                      <div style={{ position: "relative", flexShrink: 0 }}>
-                        {(() => {
-                          const curStatus = normStatus(car.status || "available");
-                          const dotColor = curStatus === "reserved" ? C.warnText : curStatus === "sold" ? C.textSec : curStatus === "private" ? C.textMuted : C.successText;
-                          const locked = isPending || isRejected;
-                          const open = statusMenuCarId === car.id;
-                          // Locked (pending / rejected): the state is already said above the
-                          // title, and a disabled "available" pill just contradicts it.
-                          if (locked) return null;
-                          return (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (locked) return; // locked until the dealer approves/rejects the listing
-                                setStatusMenuCarId(open ? null : car.id);
-                              }}
-                              title={locked ? undefined : "Change listing status"}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 6,
-                                padding: "4px 6px 4px 9px", borderRadius: R.sm,
-                                background: open ? C.fillStrong : C.line,
-                                border: `1px solid ${open ? C.borderStrong : C.border}`,
-                                cursor: locked ? "not-allowed" : "pointer",
-                                opacity: locked ? 0.5 : 1,
-                              }}
-                            >
-                              <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                              <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, textTransform: "capitalize" }}>{isPrivate ? t("privateCars.label") : (car.status || "available")}</span>
-                              {!locked && <ChevronDown size={13} color={C.textSec} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />}
-                            </button>
-                          );
-                        })()}
-                        {!isPending && !isRejected && statusMenuCarId === car.id && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 50, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 146, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}
-                          >
-                            <p style={{ margin: 0, padding: "8px 12px 6px", fontSize: T.size.xs, fontWeight: T.weight.bold, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, borderBottom: `1px solid ${C.border}` }}>Set this listing to</p>
-                            {[
-                              { key: "available", label: "Available", color: C.successText, hint: "Live for buyers" },
-                              { key: "reserved",  label: "Reserved",  color: C.warnText, hint: "Deposit / on hold" },
-                              { key: "sold",      label: "Sold",      color: C.textSec, hint: "Deal closed" },
-                              // PRIVATE-1: only you see it. Offered while under the limit (or already private).
-                              ...(isPrivate || privateCount(myListings) < PRIVATE_CAR_LIMIT
-                                ? [{ key: "private", label: t("privateCars.label"), color: C.textMuted, hint: t("privateCars.hint", { n: PRIVATE_CAR_LIMIT }) }] : []),
-                            ].map(({ key, label, color, hint }) => {
-                              const active = normStatus(car.status || "available") === key;
-                              return (
-                                <button
-                                  key={key}
-                                  onClick={() => updateListingStatus(car, key)}
-                                  style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 12px", background: active ? C.fillStrong : "none", border: "none", cursor: "pointer", textAlign: "left" }}
-                                >
-                                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                                  <span style={{ display: "flex", flexDirection: "column", gap: 1, flex: 1, minWidth: 0 }}>
-                                    <span style={{ fontSize: T.size.base, color: active ? C.text : C.textSec, fontWeight: active ? T.weight.bold : T.weight.medium }}>{label}</span>
-                                    <span style={{ fontSize: T.size.xs, color: C.textMuted }}>{hint}</span>
-                                  </span>
-                                  {active && <Check size={13} color={C.successText} style={{ flexShrink: 0 }} />}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Price — scaled by tier so higher-value cars read heavier */}
-                    <p style={{ margin: "0 0 6px", lineHeight: 1, ...(isSold ? { fontSize: T.size.base, fontWeight: T.weight.bold, color: C.textDim } : priceStyle(car.selling_price)) }}>
-                      {price}
-                    </p>
-
-                    {/* My margin — you're a sole seller, no salesman under you to pay
-                        a commission to, so this is just selling price minus base
-                        price. Computed, not typed in. */}
-                    {(() => {
-                      const base = Number(car.base_price);
-                      const sell = Number(car.selling_price);
-                      const hasBoth = !isNaN(base) && base > 0 && !isNaN(sell) && sell > 0;
-                      const margin = hasBoth ? sell - base : null;
-                      return (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                          <span style={{ fontSize: T.size.xs, color: C.textDim, whiteSpace: "nowrap" }}>My margin:</span>
-                          <span style={{ fontSize: T.size.base, fontWeight: T.weight.bold, color: margin == null ? C.textMuted : margin >= 0 ? C.successText : C.dangerText }}>
-                            {margin == null ? "—" : `RM ${margin.toLocaleString()}`}
-                          </span>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Meta */}
-                    <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textDim }}>
-                      {[
-                        car.mileage ? `${Number(car.mileage).toLocaleString()} km` : null,
-                        car.engine_cc ? `${Number(car.engine_cc).toLocaleString()}cc` : null,
-                        car.transmission,
-                        car.colour,
-                      ].filter(Boolean).join(" · ")}
-                    </p>
-
-                    {/* Traffic, as facts, then the ONE next step for this car
-                        (COACH-1, src/utils/carCoach.js). They replaced a quality
-                        bar, a conversion bar with Hot/Stale tags and a photo
-                        warning: four signals, none of which said what to do. */}
-                    {!isSold && !isRejected && !isPending && !isLocked && (
-                      <p style={{ margin: "0 0 8px", fontSize: T.size.sm, color: C.textSec }}>
-                        <span style={{ color: C.text, fontWeight: T.weight.bold }}>{views}</span> views · <span style={{ color: C.text, fontWeight: T.weight.bold }}>{enqs}</span> enquiries
-                      </p>
-                    )}
-                    {!isLocked && (
-                      <CarNextStep
-                        step={coachFor(car)} car={car} lang={i18n.language}
-                        colors={{ text: C.text, sub: C.textSec, accent: C.accent, onAccent: "#ffffff", soft: C.fill, line: C.border }}
-                        onAction={onCoach}
-                      />
-                    )}
-
-                    {/* Action bar */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, borderTop: `1px solid ${C.line}`, paddingTop: 10, marginTop: "auto" }}>
-                      {isSold ? (
-                        <>
-                          <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
-                            View
-                          </button>
-                        </>
-                      ) : isPending ? (
-                        <>
-                          {/* Pending — only allow editing while waiting for approval */}
-                          <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
-                            View
-                          </button>
-                          <button onClick={() => setEditListing(car)} style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                            <Pencil size={10} /> Edit
-                          </button>
-                        </>
-                      ) : isRejected ? (
-                        // Edit & Resubmit lives in the notice at the top of the card.
-                        <button onClick={openDetail} style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>
-                          View
-                        </button>
-                      ) : (
-                        <>
-                          {/* Copy link: a private car has no public page to link to */}
-                          {!isPrivate && <button
-                            data-share-car={car.id}
-                            onClick={() => handleListingCopy(car, "link")}
-                            title="Copy link"
-                            style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "link" ? withAlpha(C.success, 0.12) : C.fill, border: `1px solid ${C.border}`, color: listingCopied[car.id] === "link" ? C.successText : C.textSec }}
-                          >
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-                            {listingCopied[car.id] === "link" ? "Copied" : "Link"}
-                          </button>}
-                          {/* WA */}
-                          <button
-                            onClick={() => handleListingCopy(car, "wa")}
-                            title="Copy caption"
-                            style={{ flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: listingCopied[car.id] === "wa" ? withAlpha(C.success, 0.12) : withAlpha(C.success, 0.06), border: `1px solid ${withAlpha(C.success, 0.15)}`, color: listingCopied[car.id] === "wa" ? C.successText : C.success }}
-                          >
-                            <ClipboardPen size={11} />
-                            {listingCopied[car.id] === "wa" ? "Copied" : "Caption"}
-                          </button>
-                          {/* Edit */}
-                          <button
-                            onClick={() => setEditListing(car)}
-                            style={{ ...SOFT(C.info), color: C.infoText, flex: 1, fontSize: T.size.sm, padding: "6px 0", borderRadius: R.sm, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
-                          >
-                            <Pencil size={10} /> Edit
-                          </button>
-                        </>
-                      )}
-
-                      {/* ··· overflow */}
-                      <div style={{ position: "relative", flexShrink: 0 }}>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setActionMenuCarId(actionMenuCarId === car.id ? null : car.id); setConfirmDeleteId(null); }}
-                          title="More actions"
-                          aria-label="More actions"
-                          style={{ width: 30, height: 30, borderRadius: R.sm, background: C.fill, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: T.size.base, letterSpacing: 1 }}
-                        >
-                          ···
-                        </button>
-                        {actionMenuCarId === car.id && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ position: "absolute", bottom: "calc(100% + 6px)", right: 0, zIndex: 60, background: C.surfaceRaised, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, overflow: "hidden", minWidth: 190, boxShadow: "0 8px 28px rgba(0,0,0,0.6)" }}
-                          >
-                            {!isSold && (
-                              <>
-                                <button onClick={() => { setQuickBriefCar(car); setBriefCopied(false); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                                  Brief
-                                </button>
-                                {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
-                                <button onClick={() => { setPosterCar(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
-                                  <Calculator size={12} />
-                                  Loan poster
-                                </button>
-                                {/* ShiftOS Studio is Premium. Shown locked here as the upsell;
-                                    the tap goes to the one upgrade screen (goPremium). */}
-                                <button onClick={() => { setActionMenuCarId(null); goPremium(); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textMuted, fontSize: T.size.base, textAlign: "left" }}>
-                                  <Film size={12} />
-                                  <span style={{ flex: 1 }}>TikTok post</span>
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.textMuted, background: C.fill, border: `1px solid ${C.border}`, borderRadius: R.sm, padding: "1px 6px" }}>
-                                    <Lock size={9} strokeWidth={2.5} /> Premium
-                                  </span>
-                                </button>
-                                <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
-                              </>
-                            )}
-                            {Array.isArray(car.images) && car.images.length > 0 && (
-                              <button onClick={() => { downloadListingImages(car); setActionMenuCarId(null); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.textSec, fontSize: T.size.base, textAlign: "left" }}>
-                                <Download size={12} />
-                                Download photos
-                              </button>
-                            )}
-                            <div style={{ height: 1, background: C.line, margin: "2px 0" }} />
-                            {confirmDeleteId === car.id ? (
-                              <div style={{ padding: "8px 14px", display: "flex", gap: 6 }}>
-                                <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: withAlpha(C.danger, 0.2), border: `1px solid ${withAlpha(C.danger, 0.4)}`, color: C.dangerText, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: T.weight.bold }}>{deletingId === car.id ? "Deleting..." : "Delete"}</button>
-                                <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, fontSize: T.size.sm, padding: "5px 0", borderRadius: R.sm, background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>Cancel</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setConfirmDeleteId(car.id)} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "9px 14px", background: "none", border: "none", cursor: "pointer", color: C.danger, fontSize: T.size.base, textAlign: "left" }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+        statusMenuCarId={statusMenuCarId}
+        setStatusMenuCarId={setStatusMenuCarId}
+        actionMenuCarId={actionMenuCarId}
+        setActionMenuCarId={setActionMenuCarId}
+        confirmDeleteId={confirmDeleteId}
+        setConfirmDeleteId={setConfirmDeleteId}
+        deletingId={deletingId}
+        onOpenDetail={(car) => { setSelectedCar(car); setCarDetailImgIdx(0); setCarDetailTab("specs"); }}
+        onEdit={setEditListing}
+        updateListingStatus={updateListingStatus}
+        coachFor={coachFor}
+        onCoach={onCoach}
+        listingCopied={listingCopied}
+        handleListingCopy={handleListingCopy}
+        onBrief={(car) => { setQuickBriefCar(car); setBriefCopied(false); }}
+        onPoster={setPosterCar}
+        onPremium={goPremium}
+        lockedCap={PLAN_CONFIG.salesman_lite?.listingCap ?? 10}
+        downloadListingImages={downloadListingImages}
+        handleDeleteListing={handleDeleteListing}
+      />
     );
   };
 
