@@ -1517,8 +1517,11 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   "glow up Premium", Lite unchanged).** `.ap--pro` on `/s/:slug` when `!page_basic`: taller
   banner (210px phone / 300px desktop) with a soft fade, the banner painted in the seller's
   colour until a cover is uploaded, a ring round the photo, the colour on the WhatsApp buttons.
-  Colour = `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
-  in Premium Settings (`savePageColor`, `profiles.brand_color`). `brand_color` has a DB DEFAULT
+  Colour = a GRADIENT, `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
+  in Premium Settings (`PageGradientPicker`, `savePageColor`). Tasteful = curated (owner, 2026-11-01):
+  8 named pairs (`PAGE_GRADIENTS`) or Custom = ONE colour whose partner is worked out (`partnerColor`),
+  never two free picks (they clash). Stored as ONE hex in `profiles.brand_color` (the first colour; a
+  preset is found again by it), because the TikTok Studio reads and writes that column as a plain hex. `brand_color` has a DB DEFAULT
   of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
   **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
   with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then
@@ -1530,10 +1533,9 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
   column can never fail the main profile load or save. No phone numbers in them (CDP-3).
   The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
-  **Premium shows 6 cars, then "See all N cars"** (`PRO_CAR_CAP`, owner 2026-11-01), and the About /
-  Why / Track record / Find me sections sit OUTSIDE the two columns, full width (`.ap-pro-wide`, two
-  columns on desktop): beside them the left column was empty. The name card is sticky beside the cars;
-  `.ap` uses `overflow-x: clip`, never `hidden` (hidden makes it a scroll box and kills sticky).
+  The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
+  6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a
+  scroll box and silently kills sticky (it had, on every seller page).
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 

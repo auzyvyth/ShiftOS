@@ -33,8 +33,8 @@ import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
-import { PAGE_COLOR_PRESETS, PAGE_COLOR_DEFAULT, chosenPageColor } from "../utils/pageAccent";
-import { accentTheme } from "../utils/liveAccent";
+import { chosenPageColor } from "../utils/pageAccent";
+import PageGradientPicker from "../components/premium/PageGradientPicker";
 import { ABOUT_LANGUAGES, ABOUT_LIMITS, aboutPayload, aboutForm as toAboutForm } from "../utils/agentAbout";
 import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
@@ -5544,16 +5544,7 @@ export default function SalesmanPremium() {
      Saved on tap; the DB default gold counts as "not chosen" (pageAccent.js). */}
  <div style={card}>
  <label style={lbl}>{t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })}</label>
- <div role="radiogroup" aria-label={t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
- {PAGE_COLOR_PRESETS.map((c) => {
- const on = (chosenPageColor(profile) || PAGE_COLOR_DEFAULT).toLowerCase() === c.toLowerCase();
- return (
- <button key={c} type="button" role="radio" aria-checked={on} aria-label={c} disabled={pageColorSaving}
- onClick={() => savePageColor(c)}
- style={{ width: 36, height: 36, borderRadius: "50%", border: "none", cursor: pageColorSaving ? "wait" : "pointer", background: accentTheme(c).accent, boxShadow: on ? `0 0 0 3px ${PD.card}, 0 0 0 5px ${PD.text}` : "none", padding: 0 }} />
- );
- })}
- </div>
+ <PageGradientPicker value={chosenPageColor(profile)} saving={pageColorSaving} onSave={savePageColor} />
  <p style={hint}>{t("salesmanPremium.settings.pageColor.hint", { defaultValue: "Your page's main button and accents. Only Premium pages have one." })}</p>
  </div>
  <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>

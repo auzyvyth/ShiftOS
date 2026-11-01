@@ -1110,9 +1110,23 @@
         "adjust": "Adjust position"
       },
       "pageColor": {
-        "title": "Page colour",
-        "hint": "Your page's main button and accents. Only Premium pages have one.",
-        "saved": "Page colour saved"
+        "title": "Page colours",
+        "hint": "Your banner (until you add a cover), main button and accents. Only Premium pages have them.",
+        "saved": "Page colours saved",
+        "custom": "Custom",
+        "useCustom": "Use this colour",
+        "saving": "Saving...",
+        "cancel": "Cancel",
+        "names": {
+          "drevo": "Drevo",
+          "sunset": "Sunset",
+          "bronze": "Bronze",
+          "forest": "Forest",
+          "lagoon": "Lagoon",
+          "ocean": "Ocean",
+          "orchid": "Orchid",
+          "midnight": "Midnight"
+        }
       },
       "about": {
         "title": "About me (shown below your cars)",

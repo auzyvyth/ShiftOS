@@ -1100,8 +1100,22 @@
       },
       "pageColor": {
         "title": "Warna page",
-        "hint": "Butang utama dan aksen page anda. Hanya page Premium ada warna sendiri.",
-        "saved": "Warna page disimpan"
+        "hint": "Banner anda (sebelum ada gambar cover), butang utama dan aksen. Hanya page Premium ada warna sendiri.",
+        "saved": "Warna page disimpan",
+        "custom": "Pilih sendiri",
+        "useCustom": "Guna warna ini",
+        "saving": "Menyimpan...",
+        "cancel": "Batal",
+        "names": {
+          "drevo": "Drevo",
+          "sunset": "Senja",
+          "bronze": "Gangsa",
+          "forest": "Hutan",
+          "lagoon": "Lagun",
+          "ocean": "Lautan",
+          "orchid": "Orkid",
+          "midnight": "Tengah malam"
+        }
       },
       "about": {
         "title": "Tentang saya (di bawah kereta anda)",

@@ -203,8 +203,6 @@ function AgentCarCard({ car, num, onClick }) {
   );
 }
 
-const PRO_CAR_CAP = 6;
-
 export default function SalesmanProfilePage() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -284,9 +282,6 @@ export default function SalesmanProfilePage() {
   const [liveListingId, setLiveListingId] = useState(null);
   // Newest (the query order, which is also the #N order) or cheapest first.
   const [sortBy, setSortBy] = useState('newest');
-  // Premium page: 6 cars, then "See all" (owner, 2026-11-01), so the person
-  // below is reached without scrolling past every car.
-  const [allCars, setAllCars] = useState(false);
   // Review tally handed up by ReviewsSection (onSummary) for the stats row, so
   // the page does not query reviews a second time.
   const [reviewSummary, setReviewSummary] = useState(null);
@@ -986,12 +981,7 @@ export default function SalesmanProfilePage() {
         /* PAGE-PRO 2: the person, after the cars. */
         .ap-bio--short p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .ap-bio--short .ap-more { display: inline-block; margin-top: 6px; color: var(--ap-a); text-decoration: none; }
-        .ap-pro-sec { scroll-margin-top: 16px; min-width: 0; }
-        .ap-seeall { display: block; width: 100%; margin-top: 16px; height: 46px; border-radius: 999px; border: 1px solid rgba(0,0,0,.12); background: #fff; color: #111827; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
-        .ap-seeall:hover { border-color: var(--ap-a); color: var(--ap-a); }
-        @media (min-width: 1024px) {
-          .ap-pro-wide { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; align-items: start; }
-        }
+        .ap-pro-sec { scroll-margin-top: 16px; }
         .ap-about { padding: 20px; }
         .ap-about-bio { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-line; }
         .ap-facts { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
@@ -1258,7 +1248,7 @@ export default function SalesmanProfilePage() {
                 </div>
               ) : listings.length > 0 ? (
                 <div className="ap-grid">
-                  {(pro && !allCars ? sortedListings.slice(0, PRO_CAR_CAP) : sortedListings).map((car) => (
+                  {sortedListings.map((car) => (
                     <AgentCarCard key={car.id} car={car} num={numById.get(car.id)} onClick={() => trackCardClick(car)} />
                   ))}
                 </div>
@@ -1267,20 +1257,9 @@ export default function SalesmanProfilePage() {
                   No cars for sale right now.
                 </div>
               )}
-              {pro && listings.length > PRO_CAR_CAP && (
-                <button type="button" className="ap-seeall" aria-expanded={allCars} onClick={() => setAllCars((v) => !v)}>
-                  {allCars ? 'Show fewer cars' : `See all ${listings.length} cars`}
-                </button>
-              )}
-
-              {!pro && <>{soldSec}{mapSec}{reviewsSec}</>}
+              {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
             </div>
           </div>
-
-          {/* Premium: the person fills the full width under the cars (owner,
-              2026-11-01: the left side sat empty beside About me). Two columns
-              on desktop, one on a phone, same order. */}
-          {pro && <div className="ap-pro-wide">{aboutSec}{whySec}{trackSec}{mapLocationStr && <section className="ap-pro-sec">{mapSec}</section>}</div>}
 
           {/* Buyer safety — XDrive takes no payment for any car — beside the way
               to flag this agent (report_seller). */}
