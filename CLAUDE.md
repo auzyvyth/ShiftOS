@@ -1513,6 +1513,31 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   dealer-linked salesmen always count as full), plus `page_basic`. Nothing is deleted:
   upgrading brings it all back. Telegram reminders: `trg_zz_lite_no_booking_reminder`
   nulls `remind_at` for Lite sellers. Migrations `20261014a_lite_cap_five.sql` + `20261014b_lite_cap_ten.sql`.
+- **A Premium page LOOKS Premium even with nothing filled in (PAGE-PRO, owner 2026-11-01:
+  "glow up Premium", Lite unchanged).** `.ap--pro` on `/s/:slug` when `!page_basic`: taller
+  banner (210px phone / 300px desktop) with a soft fade, the banner painted in the seller's
+  colour until a cover is uploaded, a ring round the photo, the colour on the WhatsApp buttons.
+  Colour = a GRADIENT, `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
+  in Premium Settings (`PageGradientPicker`, `savePageColor`). Tasteful = curated (owner, 2026-11-01):
+  8 named pairs (`PAGE_GRADIENTS`) or Custom = ONE colour whose partner is worked out (`partnerColor`),
+  never two free picks (they clash). Stored as ONE hex in `profiles.brand_color` (the first colour; a
+  preset is found again by it), because the TikTok Studio reads and writes that column as a plain hex.
+  The gradient is for the BANNER and photo ring only; buttons and ticks are ONE colour (owner: two-colour
+  buttons "look cheap"), and the WHOLE page takes the colour lightly (`.ap--pro`: background 9%, cards and white surfaces 3%). `brand_color` has a DB DEFAULT
+  of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
+  **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
+  with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then
+  About me (full bio + facts), Why buy from me (promise, specialisations as blocks, terms),
+  Track record (recently sold + reviews), Find me. A Lite page keeps its old order. The four
+  answers (`years_selling`, `languages`, `areas_covered`, `my_promise`, migration
+  `20261101a_agent_about.sql`) are read via `get_agent_about(slug)` (Premium pages only), never
+  added to `get_salesman_by_slug`; rules + words in `src/utils/agentAbout.js`
+  (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
+  column can never fail the main profile load or save. No phone numbers in them (CDP-3).
+  The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
+  The name card is sticky beside the cars on desktop (it fills the left column; owner kept this over a
+  6-car cap + full-width sections). `.ap` uses `overflow-x: clip`, never `hidden`: hidden makes it a
+  scroll box and silently kills sticky (it had, on every seller page).
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 
@@ -1633,6 +1658,12 @@ page's: photo, role, name, town, and chips for cars for sale (measured), "Verifi
 number (CDP-3: the image is a public URL) or the bio (WhatsApp already prints it under the
 picture). og.js and the SPA take the URL from `agentShareImage()` (src/utils/agentSeo.js), whose
 `v=` changes with anything drawn, so an edit is a new URL. The endpoint takes a SLUG only, never an image URL.
+**Which part of the cover shows is the seller's pick (BANNER-FOCUS, 2026-11-01)**: it rides on
+`cover_url` as `fy=<0..100>` (`src/utils/coverFocus.js`, `npm run test:coverfocus`; no DB column),
+set in Premium Settings by `CoverAdjuster` (opens before a new cover uploads, and from "Adjust
+position"). The page, `PagePreview` and the share picture all show `object-position: 50% fy%`; the
+picture used to use sharp's `attention` guess, so the banner sat at a different height per photo.
+Never crop the cover any other way in a new surface. Lite has no cover at all (basic page).
 The Share button's link is `/s/<slug>?src=share&v=<agentCardVersion>`: `v` makes an edited card a
 new link to WhatsApp (it caches previews per exact URL, for days), `src=share` files the visit
 under "Shared link". Premium dashboard "visits from shared links" = `shareVisits()`

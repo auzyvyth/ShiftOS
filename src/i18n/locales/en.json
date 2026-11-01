@@ -369,7 +369,11 @@
       "noListingsTitle": "List your stocks to get results",
       "noListingsBody": "Your mini page is live and ready to share — it just needs cars on it. Add your first listing so buyers can start finding you.",
       "noListingsCta": "Add a listing",
-      "startingOutNote": "Leads, bookings, chats and your figures show up here as soon as your first buyer gets in touch."
+      "startingOutNote": "Leads, bookings, chats and your figures show up here as soon as your first buyer gets in touch.",
+      "yourPage": "Your page",
+      "tapsShort": "WhatsApp taps",
+      "closedMonth": "{{n}} closed this month",
+      "carMeta": "{{views}} views · {{taps}} WhatsApp taps"
     },
     "goal": {
       "setTarget": "Set your commission target for {{month}}:",
@@ -1089,7 +1093,57 @@
       "replayTour": "Replay the tour",
       "dangerZone": "Danger Zone",
       "dangerDesc": "Deleting your account hides your public page and listings immediately. Nothing is destroyed for 30 days — logging back in within that window restores everything. After that it's permanent.",
-      "deleteMyAccount": "Delete my account"
+      "deleteMyAccount": "Delete my account",
+      "coverAdjust": {
+        "title": "Choose what people see",
+        "hint": "Drag the photo up or down. This is the strip your link shows on WhatsApp and Facebook, and on your page.",
+        "fits": "This photo already fits the banner, there is nothing to move.",
+        "share": "Link preview (WhatsApp, Facebook)",
+        "page": "Your page on a phone",
+        "drag": "Drag to move",
+        "top": "Top",
+        "middle": "Middle",
+        "bottom": "Bottom",
+        "apply": "Apply",
+        "cancel": "Cancel",
+        "saving": "Saving...",
+        "adjust": "Adjust position"
+      },
+      "pageColor": {
+        "title": "Page colours",
+        "hint": "Your banner (until you add a cover), main button and accents. Only Premium pages have them.",
+        "saved": "Page colours saved",
+        "custom": "Custom",
+        "useCustom": "Use this colour",
+        "saving": "Saving...",
+        "cancel": "Cancel",
+        "names": {
+          "drevo": "Drevo",
+          "sunset": "Sunset",
+          "bronze": "Bronze",
+          "forest": "Forest",
+          "lagoon": "Lagoon",
+          "ocean": "Ocean",
+          "orchid": "Orchid",
+          "midnight": "Midnight"
+        }
+      },
+      "about": {
+        "title": "About me (shown below your cars)",
+        "years": "Years selling cars",
+        "areas": "Areas you cover",
+        "areasPh": "e.g. Klang Valley, Seremban",
+        "languages": "Languages you speak",
+        "promise": "My promise to buyers",
+        "promisePh": "e.g. Every car inspected before you see it",
+        "hint": "Shown under Why buy from me. No phone numbers: buyers reach you with the WhatsApp button.",
+        "pending": "These open after tonight's update.",
+        "err": {
+          "years": "Years selling: a whole number from 0 to 60.",
+          "areas": "Areas you cover can't include a phone number.",
+          "promise": "Your promise can't include a phone number."
+        }
+      }
     },
     "sold": {
       "subtitle": "Every buyer after the win: handover, renewals and aftercare.",

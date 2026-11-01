@@ -32,6 +32,11 @@ import WonVariantPick from "../components/newcar/WonVariantPick";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
+import CoverAdjuster from "../components/premium/CoverAdjuster";
+import { chosenPageColor } from "../utils/pageAccent";
+import PageGradientPicker from "../components/premium/PageGradientPicker";
+import { ABOUT_LANGUAGES, ABOUT_LIMITS, aboutPayload, aboutForm as toAboutForm } from "../utils/agentAbout";
+import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import { buildListingFacts } from "../utils/listingCopy";
 import { copyListingCaption } from "../utils/copyListingCaption";
@@ -123,6 +128,7 @@ import {
  Calculator,
  Download,
  Star,
+ Move,
 } from "lucide-react";
 import { liveChannel } from "../lib/liveChannel";
 import { callClaude } from "../lib/callClaude";
@@ -681,6 +687,16 @@ export default function SalesmanPremium() {
  const avatarInputRef = useRef(null);
  const [coverUrl, setCoverUrl] = useState("");
  const [coverUploading, setCoverUploading] = useState(false);
+ // BANNER-FOCUS: the cover waiting in the adjuster. { file?, src, y } — a new
+ // file is uploaded only on Apply; without a file, Apply re-frames the saved one.
+ const [coverAdjust, setCoverAdjust] = useState(null);
+ const [pageColorSaving, setPageColorSaving] = useState(false);
+ // PAGE-PRO 2: the "About me" answers. Loaded in their OWN query: the columns
+ // arrive with migration 20261101a, and asking for a missing column in the main
+ // profile load would fail it for every Premium seller. aboutReady: null = still
+ // loading, false = not there yet (fields shown disabled), true = editable.
+ const [aboutFields, setAboutFields] = useState(() => toAboutForm(null));
+ const [aboutReady, setAboutReady] = useState(null);
  const coverInputRef = useRef(null);
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
@@ -1083,6 +1099,19 @@ export default function SalesmanPremium() {
  setCoverUrl(profile.cover_url || "");
  }
  }, [profile]);
+
+ useEffect(() => {
+ if (!userId) return undefined;
+ let alive = true;
+ supabase.from("profiles").select("years_selling, languages, areas_covered, my_promise").eq("id", userId).maybeSingle()
+ .then(({ data, error }) => {
+ if (!alive) return;
+ if (error) { setAboutReady(false); return; }
+ setAboutReady(true);
+ setAboutFields(toAboutForm(data));
+ });
+ return () => { alive = false; };
+ }, [userId]);
 
  // auth + profile
  useEffect(() => {
@@ -5233,34 +5262,70 @@ export default function SalesmanPremium() {
  toast.success(t("salesmanPremium.settings.photoUpdated"));
  };
 
- const handleCoverUpload = async (e) => {
+ // Picking a cover opens the adjuster first (BANNER-FOCUS); nothing uploads
+ // until Apply, so Cancel leaves the old cover exactly as it was.
+ const handleCoverUpload = (e) => {
  const file = e.target.files?.[0];
+ e.target.value = ""; // picking the same file again still opens the adjuster
  if (!file) return;
  if (!file.type.startsWith("image/")) { toast.error(t("salesmanPremium.settings.selectImage")); return; }
+ setCoverAdjust({ file, src: URL.createObjectURL(file), y: COVER_FOCUS_DEFAULT });
+ };
+ const closeCoverAdjust = () => {
+ setCoverAdjust((cur) => { if (cur?.file) URL.revokeObjectURL(cur.src); return null; });
+ };
+ const applyCover = async (y) => {
+ if (!coverAdjust) return;
  setCoverUploading(true);
- const compressed = await compressImageFile(file, { maxDim: 1600 });
+ let base = coverUrl;
+ if (coverAdjust.file) {
+ const compressed = await compressImageFile(coverAdjust.file, { maxDim: 1600 });
  const path = `${userId}/cover.jpg`;
  const { error: upErr } = await supabase.storage.from("avatars").upload(path, compressed, { upsert: true, contentType: "image/jpeg" });
  if (upErr) { toast.error(t("salesmanPremium.settings.uploadFailed", { msg: upErr.message })); setCoverUploading(false); return; }
  const { data: { publicUrl } } = supabase.storage.from("avatars").getPublicUrl(path);
  // Persist the busted URL (see handleAvatarUpload) so re-uploads aren't
  // served stale from a browser/CDN cache keyed on the fixed storage path.
- const bustedUrl = `${publicUrl}?t=${Date.now()}`;
- const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: bustedUrl }).eq("id", userId);
+ base = `${publicUrl}?t=${Date.now()}`;
+ }
+ // The focus rides on the URL (src/utils/coverFocus.js): the page and the share
+ // picture both read cover_url, and a new URL is a new share-picture version.
+ const nextUrl = withCoverFocus(base, y);
+ const { error: coverProfileErr } = await supabase.from("profiles").update({ cover_url: nextUrl }).eq("id", userId);
  setCoverUploading(false);
  if (coverProfileErr) {
- console.error("handleCoverUpload profile update:", coverProfileErr);
+ console.error("applyCover profile update:", coverProfileErr);
  toast.error(t("salesmanPremium.settings.photoNotSaved"));
  return;
  }
- setCoverUrl(bustedUrl);
- setProfile((p) => ({ ...p, cover_url: bustedUrl }));
+ setCoverUrl(nextUrl);
+ setProfile((p) => ({ ...p, cover_url: nextUrl }));
+ closeCoverAdjust();
  toast.success(t("salesmanPremium.settings.coverUpdated"));
+ };
+
+ // PAGE-PRO: the page colour, saved on tap (profiles.brand_color).
+ const savePageColor = async (hex) => {
+ if (pageColorSaving) return;
+ const prev = profile?.brand_color;
+ setPageColorSaving(true);
+ setProfile((p) => ({ ...p, brand_color: hex }));
+ const { error } = await supabase.from("profiles").update({ brand_color: hex }).eq("id", userId);
+ setPageColorSaving(false);
+ if (error) {
+ setProfile((p) => ({ ...p, brand_color: prev }));
+ toast.error(t("salesmanPremium.settings.photoNotSaved"));
+ return;
+ }
+ toast.success(t("salesmanPremium.settings.pageColor.saved", { defaultValue: "Page colour saved" }));
  };
 
  const handleSave = async () => {
  const phone = toPlus60(settingsForm.whatsapp_number);
  if (phone && !isValidMyPhone(phone, { mobileOnly: true })) { toast.error(MY_PHONE_ERROR); return; }
+ // Checked BEFORE anything is written, so a bad answer never half-saves.
+ const aboutRow = aboutReady ? aboutPayload(aboutFields) : null;
+ if (aboutRow?.error) { toast.error(t(`salesmanPremium.settings.about.err.${aboutRow.error}`)); return; }
  setSettingsSaving(true);
  // A tag typed but not yet entered is still the user's answer — saving with it
  // sitting in the input used to discard it and write an empty array over the
@@ -5292,6 +5357,15 @@ export default function SalesmanPremium() {
  setProfile((p) => ({ ...p, full_name: settingsForm.full_name, whatsapp_number: phone, ...rest }));
  setSettingsForm((p) => ({ ...p, whatsapp_number: phone, specializations }));
  setTagInput("");
+ if (aboutRow) {
+ const { error: aboutErr } = await supabase.from("profiles").update(aboutRow).eq("id", userId);
+ if (aboutErr) {
+ console.error("handleSave about update:", aboutErr);
+ toast.error(t("salesmanPremium.settings.saveFailed", { msg: aboutErr.message }));
+ return;
+ }
+ setAboutFields(toAboutForm(aboutRow));
+ }
  toast.success(t("salesmanPremium.settings.profileUpdated"));
  };
 
@@ -5421,18 +5495,29 @@ export default function SalesmanPremium() {
      (banner, photo over its corner). They were two cards, and the photo card
      repeated the name typed in the field below and had two buttons for the
      same upload. */}
- <div id="sp-photo-field" style={{ ...card, padding: 0, overflow: "hidden" }}>
+ <div id="sp-photo-field" style={{ ...card, padding: 0, overflow: "hidden", position: "relative" }}>
  <button
  type="button"
  onClick={() => !coverUploading && coverInputRef.current?.click()}
  aria-label={coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover")}
- style={{ position: "relative", display: "block", width: "100%", height: 116, padding: 0, border: "none", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `center / cover no-repeat url(${coverUrl})` : `linear-gradient(135deg, ${PD.hover} 0%, ${PD.raised} 60%, ${PD.card} 100%)` }}
+ style={{ position: "relative", display: "block", width: "100%", height: 116, padding: 0, border: "none", cursor: coverUploading ? "default" : "pointer", background: coverUrl ? `${coverObjectPosition(coverUrl)} / cover no-repeat url(${coverUrl})` : `linear-gradient(135deg, ${PD.hover} 0%, ${PD.raised} 60%, ${PD.card} 100%)` }}
  >
  <span style={{ position: "absolute", right: 12, top: 12, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: PD.radius.pill, background: "rgba(0,0,0,0.55)", color: "#fff", fontSize: 11, fontWeight: 600 }}>
  {coverUploading ? spinner(11) : (coverUrl ? t("salesmanPremium.settings.changeCover") : t("salesmanPremium.settings.addCover"))}
  </span>
  </button>
  <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverUpload} />
+ {/* Re-frame the saved cover without uploading it again (BANNER-FOCUS). A
+     sibling of the cover button, not inside it: a button in a button is invalid. */}
+ {coverUrl && !coverUploading && (
+ <button type="button" onClick={() => setCoverAdjust({ src: coverUrl, y: coverFocusY(coverUrl) })}
+ style={{ position: "absolute", left: 12, top: 12, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 11px", borderRadius: PD.radius.pill, background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+ <Move size={11} /> {t("salesmanPremium.settings.coverAdjust.adjust", { defaultValue: "Adjust position" })}
+ </button>
+ )}
+ {coverAdjust && (
+ <CoverAdjuster src={coverAdjust.src} initialY={coverAdjust.y} busy={coverUploading} onApply={applyCover} onCancel={closeCoverAdjust} />
+ )}
  <div style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 14, padding: "0 18px 16px", marginTop: -34 }}>
  <button
  type="button"
@@ -5454,6 +5539,13 @@ export default function SalesmanPremium() {
  <p style={{ ...hint, margin: "6px 0 0" }}>{t("salesmanPremium.settings.photoHint")}</p>
  </div>
  </div>
+ </div>
+ {/* PAGE-PRO: the page's colour (WhatsApp button, accent line, photo ring).
+     Saved on tap; the DB default gold counts as "not chosen" (pageAccent.js). */}
+ <div style={card}>
+ <label style={lbl}>{t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })}</label>
+ <PageGradientPicker value={chosenPageColor(profile)} saving={pageColorSaving} onSave={savePageColor} />
+ <p style={hint}>{t("salesmanPremium.settings.pageColor.hint", { defaultValue: "Your page's main button and accents. Only Premium pages have one." })}</p>
  </div>
  <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>
@@ -5497,6 +5589,47 @@ export default function SalesmanPremium() {
  </button>
  </div>
  <p style={hint}>{t("salesmanPremium.settings.tagHint")}</p>
+ </div>
+ {/* PAGE-PRO 2: "About me" on the page, below the cars. */}
+ <div style={{ borderTop: `1px solid ${PD.line}`, paddingTop: 16, display: "flex", flexDirection: "column", gap: 14, opacity: aboutReady === false ? 0.55 : 1 }}>
+ <p style={{ margin: 0, fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: PD.textMuted }}>{t("salesmanPremium.settings.about.title")}</p>
+ {aboutReady === false && <p style={{ ...hint, margin: 0 }}>{t("salesmanPremium.settings.about.pending")}</p>}
+ <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+ <div style={{ flex: "0 0 140px" }}>
+ <label style={lbl}>{t("salesmanPremium.settings.about.years")}</label>
+ <input inputMode="numeric" disabled={!aboutReady} value={aboutFields.years} maxLength={2}
+ onChange={(e) => setAboutFields((f) => ({ ...f, years: e.target.value.replace(/[^0-9]/g, "") }))}
+ placeholder="7" style={inputStyle} />
+ </div>
+ <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+ <label style={lbl}>{t("salesmanPremium.settings.about.areas")}</label>
+ <input disabled={!aboutReady} value={aboutFields.areas} maxLength={ABOUT_LIMITS.areas}
+ onChange={(e) => setAboutFields((f) => ({ ...f, areas: e.target.value }))}
+ placeholder={t("salesmanPremium.settings.about.areasPh")} style={inputStyle} />
+ </div>
+ </div>
+ <div>
+ <label style={lbl}>{t("salesmanPremium.settings.about.languages")}</label>
+ <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+ {ABOUT_LANGUAGES.map(({ key, label }) => {
+ const on = aboutFields.languages.includes(key);
+ return (
+ <button key={key} type="button" disabled={!aboutReady} aria-pressed={on}
+ onClick={() => setAboutFields((f) => ({ ...f, languages: on ? f.languages.filter((k) => k !== key) : [...f.languages, key] }))}
+ style={{ height: 34, padding: "0 14px", borderRadius: PD.radius.pill, border: "none", fontFamily: "inherit", fontSize: 12.5, fontWeight: on ? 600 : 500, cursor: aboutReady ? "pointer" : "default", background: on ? PD.text : PD.raised, color: on ? PD.card : PD.textSec }}>
+ {label}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ <div>
+ <label style={lbl}>{t("salesmanPremium.settings.about.promise")}</label>
+ <input disabled={!aboutReady} value={aboutFields.promise} maxLength={ABOUT_LIMITS.promise}
+ onChange={(e) => setAboutFields((f) => ({ ...f, promise: e.target.value }))}
+ placeholder={t("salesmanPremium.settings.about.promisePh")} style={inputStyle} />
+ <p style={hint}>{t("salesmanPremium.settings.about.hint")}</p>
+ </div>
  </div>
  </div>
  {/* Live Google result preview — reads the unsaved form, so the effect of

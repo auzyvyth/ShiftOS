@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, LayoutDashboard, MapPin, ChevronRight, Radio, Share2, User, X, ShieldCheck } from 'lucide-react';
 import { supabase, publicClient } from '../supabaseClient';
 import { cdnImg, cdnSrcSet } from '../utils/img';
+import { coverObjectPosition } from '../utils/coverFocus';
 import { withTimeout } from '../config/marketplaceConfig';
 import { carWarmProps } from '../utils/carPrefetch';
 import ReviewsSection from '../components/reviews/ReviewsSection';
@@ -23,6 +24,8 @@ import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { pageAccent } from '../utils/pageAccent';
+import { aboutFacts } from '../utils/agentAbout';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -450,6 +453,19 @@ export default function SalesmanProfilePage() {
   const terms = termsLines(trust.seller);
   const docsLine = docsCheckedLine(listings);
 
+  // PAGE-PRO 2: the "About me" answers (get_agent_about). Premium pages only;
+  // null on a Lite page, and null before migration 20261101a is applied (the
+  // call fails quietly and the page just leaves those lines out).
+  const [about, setAbout] = useState(null);
+  useEffect(() => {
+    if (!slug || !profile?.id || profile.page_basic) { setAbout(null); return undefined; }
+    let alive = true;
+    withTimeout(publicClient.rpc('get_agent_about', { p_slug: slug }).maybeSingle(), 8000)
+      .then((res) => { if (alive) setAbout(res?.error ? null : (res?.data || null)); })
+      .catch(() => { /* a slow DB just means no About facts this time */ });
+    return () => { alive = false; };
+  }, [slug, profile?.id, profile?.page_basic]);
+
   useEffect(() => {
     if (bioRef.current) {
       setBioOverflows(bioRef.current.scrollHeight > bioRef.current.clientHeight + 2);
@@ -692,6 +708,112 @@ export default function SalesmanProfilePage() {
     hasReviews && { key: 'rating', n: reviewSummary.avg.toFixed(1), suffix: '/5', l: `${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}` },
   ].filter(Boolean);
 
+  const pro = pageAccent(profile);
+  // ── Main-column sections. A Lite page keeps its order (recently sold, map,
+  // reviews). A Premium page reads like a person after the cars (PAGE-PRO 2):
+  // About me, Why buy from me, Track record (recently sold + reviews), Find me.
+  const soldSec = (
+    <>
+              {/* Recently sold — car + month only (get_agent_recent_sales). No price. */}
+              {trust.recentSales.length > 0 && (
+                <>
+                  <div className="ap-sec"><h2>Recently sold</h2></div>
+                  <div className="ap-card ap-sold">
+                    {trust.recentSales.map((c, i) => (
+                      <div key={i}>
+                        <span>{[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}</span>
+                        <span>Sold {soldMonthLabel(c.sold_month)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+    </>
+  );
+  const mapSec = (
+    <>
+              {/* Location: the agent's own address, else (linked) the dealership's. */}
+              {mapLocationStr && (
+                <>
+                  <div className="ap-sec"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
+                  <div className="ap-card ap-map">
+                    <iframe
+                      title={ownLocationStr ? 'My location' : 'Dealership location'}
+                      src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
+                      loading="lazy"
+                    />
+                    <a className="ap-ml" href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`} target="_blank" rel="noopener noreferrer">
+                      <b><MapPin size={14} style={{ verticalAlign: -2, marginRight: 6 }} />{mapLocationStr}</b>
+                      <span>Directions</span>
+                    </a>
+                  </div>
+                </>
+              )}
+    </>
+  );
+  const reviewsSec = (
+    <>
+              {/* Seller reviews (same feature as CarDetailPage, seller-scoped). Its
+                  tally feeds the stats row via onSummary. */}
+              <ReviewsSection
+                dealerId={profile.id}
+                sellerName={profile.full_name || firstName || 'this seller'}
+                isXdrive
+                th={LIGHT_REVIEW_TH}
+                onSummary={setReviewSummary}
+              />
+    </>
+  );
+  const facts = aboutFacts(about);
+  const aboutSec = (profile.bio || facts.length > 0) && (
+    <section id="ap-about" className="ap-pro-sec">
+      <div className="ap-sec"><h2>About me</h2></div>
+      <div className="ap-card ap-about">
+        {profile.bio && <p className="ap-about-bio">{profile.bio}</p>}
+        {facts.length > 0 && (
+          <ul className="ap-facts">
+            {facts.map((f) => <li key={f.key}><Check size={14} strokeWidth={2.6} />{f.text}</li>)}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+  const whySec = (about?.my_promise || profile.specializations?.length > 0 || terms.length > 0) && (
+    <section className="ap-pro-sec">
+      <div className="ap-sec"><h2>Why buy from me</h2></div>
+      {about?.my_promise && (
+        <div className="ap-card ap-promise"><span aria-hidden="true">&ldquo;</span><p>{about.my_promise}</p></div>
+      )}
+      {profile.specializations?.length > 0 && (
+        <div className="ap-specs">
+          {profile.specializations.map((spec, i) => <div key={i} className="ap-card ap-spec"><Check size={15} strokeWidth={2.6} /><span>{spec}</span></div>)}
+        </div>
+      )}
+      {terms.length > 0 && (
+        <div className="ap-card ap-terms ap-terms--pro">
+          <p className="ap-eb">My terms</p>
+          {terms.map((tm) => <div key={tm.key} className="ap-term"><span>{tm.label}</span><span>{tm.text}</span></div>)}
+        </div>
+      )}
+    </section>
+  );
+  const trackSec = (
+    <section className="ap-pro-sec">
+      {trust.recentSales.length > 0 && <div className="ap-sec"><h2>Track record</h2></div>}
+      {trust.recentSales.length > 0 && (
+        <div className="ap-card ap-sold">
+          {trust.recentSales.map((c, i) => (
+            <div key={i}>
+              <span>{[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}</span>
+              <span>Sold {soldMonthLabel(c.sold_month)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {reviewsSec}
+    </section>
+  );
+
   return (
     <>
       <Helmet>
@@ -716,7 +838,7 @@ export default function SalesmanProfilePage() {
       {/* Light, per DESIGN.md and docs/mockups/agent-page-light.html (MINI-LIGHT-1).
           Classes are ap- prefixed: this <style> is global while mounted. */}
       <style>{`
-        .ap { min-height: 100vh; background: #F7F6F2; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        .ap { min-height: 100vh; background: #F7F6F2; color: #111827; font-family: var(--xd-font-body); -webkit-font-smoothing: antialiased; overflow-x: hidden; overflow-x: clip; }
         .ap *, .ap *::before, .ap *::after { box-sizing: border-box; margin: 0; padding: 0; }
         .ap a { color: inherit; }
                 .ap-shell { max-width: 1360px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 48px); }
@@ -826,10 +948,65 @@ export default function SalesmanProfilePage() {
         .ap-who { flex: 1; min-width: 0; font-size: 12px; color: #6b7280; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .ap-who b { display: block; color: #111827; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
         .ap-sticky .ap-btn { flex: 0 0 auto; padding: 0 20px; height: 44px; font-size: 14px; }
+        /* PAGE-PRO: Premium pages only (.ap--pro). A taller banner with a soft
+           fade, the seller's colour on the main button, the accent line, the
+           live dot and a ring round the photo. Lite (.ap alone) is untouched. */
+        .ap--pro .ap-cover { height: 210px; border: none; }
+        /* The WHOLE page takes the seller's colour, lightly (owner, 2026-11-01:
+           "slightly, a little bitty bit"; 4% on the background alone was too faint
+           to see). Background 9%, every white surface (cards, sort switch, the
+           phone's bottom bar, photo ring gap) 3%, so it reads as one tinted page. */
+        .ap--pro { --ap-bg: color-mix(in srgb, var(--ap-a) 9%, #F7F6F2); --ap-surf: color-mix(in srgb, var(--ap-a) 3%, #fff); background: var(--ap-bg); }
+        .ap--pro .ap-card, .ap--pro .ap-seg, .ap--pro .ap-ico, .ap--pro .ap-av { background-color: var(--ap-surf); }
+        .ap--pro .ap-sticky { background: var(--ap-surf); }
+        /* No cover yet: the banner is the seller's colour (the wave bands go soft
+           white on it), so a Premium page reads as one before any upload. */
+        .ap--pro .ap-cover { background: linear-gradient(120deg, var(--ap-a) 0%, var(--ap-a2) 100%); }
+        .ap--pro .ap-cover > svg.ap-waves path { fill: #fff; fill-opacity: .10; }
+        .ap--pro .ap-cover::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.32) 100%); }
+        .ap--pro .ap-back, .ap--pro .ap-share, .ap--pro .ap-owner { z-index: 3; }
+        .ap--pro .ap-btn { background: linear-gradient(var(--ap-a), var(--ap-b2)); box-shadow: 0 6px 18px rgba(var(--ap-rgb), .28); }
+        .ap--pro .ap-btn:hover { background: var(--ap-b2); }
+        .ap--pro .ap-id .ap-eb i { background: var(--ap-a); width: 22px; }
+        .ap--pro .ap-av { padding: 3px; background: linear-gradient(145deg, var(--ap-a), var(--ap-a2)); box-shadow: 0 8px 22px rgba(var(--ap-rgb), .30); }
+        .ap--pro .ap-av img, .ap--pro .ap-av div { border: 3px solid #fff; }
+        .ap--pro .ap-live-h i { background: var(--ap-a); }
+        .ap--pro .ap-id { box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 12px 32px rgba(15,23,42,.08); }
+        /* Raised keys (owner's reel: "4 shadows, 1 gradient"): a light top edge,
+           a dark bottom lip, a tight contact shadow and a soft coloured drop.
+           Pressed: the gradient flips, the shadow goes inside, the key sinks. */
+        .ap--pro .ap-btn { border-radius: 24px; background: linear-gradient(var(--ap-a), var(--ap-b2));
+          box-shadow: inset 0 2px 0 rgb(255 255 255 / .40), inset 0 -3px 0 rgb(9 10 12 / .28), 0 2px 3px rgb(9 10 12 / .40), 0 12px 30px rgba(var(--ap-rgb), .42);
+          transition: translate 90ms ease-out, box-shadow 90ms ease-out; -webkit-tap-highlight-color: transparent; }
+        .ap--pro .ap-btn:hover { background: linear-gradient(var(--ap-a), var(--ap-b2)); filter: brightness(1.05); }
+        .ap--pro .ap-btn:active { background: linear-gradient(var(--ap-b2), var(--ap-a)); box-shadow: inset 0 3px 6px rgb(9 10 12 / .40); translate: 0 2px; filter: none; }
+        .ap--pro .ap-back, .ap--pro .ap-share { background: linear-gradient(#ffffff, #eeede9);
+          box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(9 10 12 / .10), 0 2px 3px rgb(9 10 12 / .25), 0 8px 20px rgb(9 10 12 / .18);
+          transition: translate 90ms ease-out, box-shadow 90ms ease-out; }
+        .ap--pro .ap-back:active, .ap--pro .ap-share:active { background: linear-gradient(#eeede9, #ffffff); box-shadow: inset 0 2px 5px rgb(9 10 12 / .22); translate: 0 2px; }
+        @media (prefers-reduced-motion: reduce) { .ap--pro .ap-btn, .ap--pro .ap-back, .ap--pro .ap-share { transition: none; } .ap--pro .ap-btn:active, .ap--pro .ap-back:active, .ap--pro .ap-share:active { translate: none; } }
+        /* PAGE-PRO 2: the person, after the cars. */
+        .ap-bio--short p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .ap-bio--short .ap-more { display: inline-block; margin-top: 6px; color: var(--ap-a); text-decoration: none; }
+        .ap-pro-sec { scroll-margin-top: 16px; }
+        .ap-about { padding: 20px; }
+        .ap-about-bio { font-size: 15px; line-height: 1.75; color: #374151; white-space: pre-line; }
+        .ap-facts { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+        .ap-about-bio + .ap-facts { padding-top: 16px; border-top: 1px solid rgba(0,0,0,.06); }
+        .ap-facts li { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #111827; background: #F4F2EC; border-radius: 999px; padding: 7px 12px; }
+        .ap-facts svg { color: var(--ap-a); flex-shrink: 0; }
+        .ap-promise { position: relative; padding: 22px 22px 22px 56px; margin-bottom: 12px; overflow: hidden; }
+        .ap-promise span { position: absolute; left: 16px; top: 4px; font-family: 'Bebas Neue', sans-serif; font-size: 72px; line-height: 1; color: var(--ap-a); }
+        .ap-promise p { font-size: 18px; font-weight: 600; line-height: 1.45; color: #0f1115; }
+        .ap-specs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; margin-bottom: 12px; }
+        .ap-spec { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 14px; font-weight: 600; color: #111827; }
+        .ap-spec svg { flex-shrink: 0; width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: var(--ap-a); }
+        .ap-terms--pro { margin-top: 0; padding: 18px 20px; border-top: none; }
         @media (min-width: 1024px) {
           .ap-cover { height: 220px; }
+          .ap--pro .ap-cover { height: 300px; }
           .ap-cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 48px; align-items: start; }
-          .ap-left { position: sticky; top: 20px; }
+          .ap-left { position: sticky; top: 112px; } /* room for the photo that sits above the card */
           .ap-id { padding: 24px; }
           .ap-car { flex: 0 0 calc(50% - 8px); max-width: calc(50% - 8px); }
           .ap-sticky { display: none; }
@@ -837,7 +1014,10 @@ export default function SalesmanProfilePage() {
         }
       `}</style>
 
-      <div className="ap">
+      {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
+          keeps the standard one (owner: "glow up Premium", Lite unchanged).
+          The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>
@@ -864,7 +1044,7 @@ export default function SalesmanProfilePage() {
               marketplace's warm wave bands (colour lives here and nowhere else). */}
           <div className="ap-cover">
             {profile.cover_url ? (
-              <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" />
+              <img src={cdnImg(profile.cover_url, 1280, 72)} srcSet={cdnSrcSet(profile.cover_url, [640, 960, 1280], 72)} sizes="100vw" alt="" style={{ objectPosition: coverObjectPosition(profile.cover_url) }} />
             ) : (
               <svg className="ap-waves" viewBox="0 0 1200 160" preserveAspectRatio="none" aria-hidden="true">
                 <path d="M0 70 C300 20 600 120 1200 50 V160 H0z" fill="#F2E6D6" fillOpacity=".85" />
@@ -964,7 +1144,15 @@ export default function SalesmanProfilePage() {
                   </div>
                 )}
 
-                {profile.bio && (
+                {/* Premium: a 2-line taste here, the whole story under "About me"
+                    below the cars (owner: cars first, then who you are). */}
+                {pro && (profile.bio || aboutFacts(about).length > 0 || about?.my_promise) && (
+                  <div className="ap-bio ap-bio--short">
+                    {profile.bio && <p>{profile.bio}</p>}
+                    <a className="ap-more" href="#ap-about" onClick={(e) => { e.preventDefault(); document.getElementById('ap-about')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>More about me</a>
+                  </div>
+                )}
+                {!pro && profile.bio && (
                   <div className="ap-bio">
                     <p
                       ref={bioRef}
@@ -980,14 +1168,14 @@ export default function SalesmanProfilePage() {
                   </div>
                 )}
 
-                {profile.specializations?.length > 0 && (
+                {!pro && profile.specializations?.length > 0 && (
                   <div className="ap-tags">
                     {profile.specializations.map((spec, i) => <span key={i} className="ap-tag">{spec}</span>)}
                   </div>
                 )}
 
                 {/* The agent's own terms, only the parts they set (agentTrust.js). */}
-                {terms.length > 0 && (
+                {!pro && terms.length > 0 && (
                   <div className="ap-terms">
                     <p className="ap-eb">My terms</p>
                     {terms.map((t) => (
@@ -1076,49 +1264,7 @@ export default function SalesmanProfilePage() {
                   No cars for sale right now.
                 </div>
               )}
-
-              {/* Recently sold — car + month only (get_agent_recent_sales). No price. */}
-              {trust.recentSales.length > 0 && (
-                <>
-                  <div className="ap-sec"><h2>Recently sold</h2></div>
-                  <div className="ap-card ap-sold">
-                    {trust.recentSales.map((c, i) => (
-                      <div key={i}>
-                        <span>{[c.year, c.brand, c.model, c.variant].filter(Boolean).join(' ')}</span>
-                        <span>Sold {soldMonthLabel(c.sold_month)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* Location: the agent's own address, else (linked) the dealership's. */}
-              {mapLocationStr && (
-                <>
-                  <div className="ap-sec"><h2>{ownLocationStr ? 'Find me' : `Visit ${dealer?.dealership || 'the dealership'}`}</h2></div>
-                  <div className="ap-card ap-map">
-                    <iframe
-                      title={ownLocationStr ? 'My location' : 'Dealership location'}
-                      src={`https://www.google.com/maps?q=${encodeURIComponent(mapLocationStr)}&output=embed`}
-                      loading="lazy"
-                    />
-                    <a className="ap-ml" href={`https://www.google.com/maps/search/${encodeURIComponent(mapLocationStr)}`} target="_blank" rel="noopener noreferrer">
-                      <b><MapPin size={14} style={{ verticalAlign: -2, marginRight: 6 }} />{mapLocationStr}</b>
-                      <span>Directions</span>
-                    </a>
-                  </div>
-                </>
-              )}
-
-              {/* Seller reviews (same feature as CarDetailPage, seller-scoped). Its
-                  tally feeds the stats row via onSummary. */}
-              <ReviewsSection
-                dealerId={profile.id}
-                sellerName={profile.full_name || firstName || 'this seller'}
-                isXdrive
-                th={LIGHT_REVIEW_TH}
-                onSummary={setReviewSummary}
-              />
+              {pro ? <>{aboutSec}{whySec}{trackSec}{mapSec}</> : <>{soldSec}{mapSec}{reviewsSec}</>}
             </div>
           </div>
 

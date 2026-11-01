@@ -364,7 +364,11 @@
       "noListingsTitle": "Senaraikan stok anda untuk dapat hasil",
       "noListingsBody": "Halaman mini anda sudah aktif dan sedia dikongsi — cuma perlukan kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
       "noListingsCta": "Tambah listing",
-      "startingOutNote": "Lead, tempahan, chat dan angka anda akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda."
+      "startingOutNote": "Lead, tempahan, chat dan angka anda akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda.",
+      "yourPage": "Halaman anda",
+      "tapsShort": "Ketukan WhatsApp",
+      "closedMonth": "{{n}} ditutup bulan ini",
+      "carMeta": "{{views}} tontonan · {{taps}} ketukan WhatsApp"
     },
     "goal": {
       "setTarget": "Tetapkan sasaran komisen untuk {{month}}:",
@@ -1078,7 +1082,57 @@
       "replayTour": "Ulang panduan",
       "dangerZone": "Zon Bahaya",
       "dangerDesc": "Padam akaun akan sembunyikan page awam dan listing anda serta-merta. Tiada apa yang dibuang selama 30 hari — log masuk semula dalam tempoh tu akan pulihkan semuanya. Selepas tu, ia kekal.",
-      "deleteMyAccount": "Padam akaun saya"
+      "deleteMyAccount": "Padam akaun saya",
+      "coverAdjust": {
+        "title": "Pilih bahagian yang orang nampak",
+        "hint": "Seret foto ke atas atau ke bawah. Inilah jalur yang link anda tunjuk di WhatsApp dan Facebook, dan di page anda.",
+        "fits": "Foto ini sudah muat dengan banner, tiada apa untuk dialihkan.",
+        "share": "Pratonton link (WhatsApp, Facebook)",
+        "page": "Page anda di telefon",
+        "drag": "Seret untuk alih",
+        "top": "Atas",
+        "middle": "Tengah",
+        "bottom": "Bawah",
+        "apply": "Guna",
+        "cancel": "Batal",
+        "saving": "Menyimpan...",
+        "adjust": "Laras kedudukan"
+      },
+      "pageColor": {
+        "title": "Warna page",
+        "hint": "Banner anda (sebelum ada gambar cover), butang utama dan aksen. Hanya page Premium ada warna sendiri.",
+        "saved": "Warna page disimpan",
+        "custom": "Pilih sendiri",
+        "useCustom": "Guna warna ini",
+        "saving": "Menyimpan...",
+        "cancel": "Batal",
+        "names": {
+          "drevo": "Drevo",
+          "sunset": "Senja",
+          "bronze": "Gangsa",
+          "forest": "Hutan",
+          "lagoon": "Lagun",
+          "ocean": "Lautan",
+          "orchid": "Orkid",
+          "midnight": "Tengah malam"
+        }
+      },
+      "about": {
+        "title": "Tentang saya (di bawah kereta anda)",
+        "years": "Tahun menjual kereta",
+        "areas": "Kawasan liputan",
+        "areasPh": "cth. Lembah Klang, Seremban",
+        "languages": "Bahasa yang anda tutur",
+        "promise": "Janji saya kepada pembeli",
+        "promisePh": "cth. Setiap kereta diperiksa sebelum anda lihat",
+        "hint": "Ditunjuk di bawah Kenapa beli dengan saya. Tiada nombor telefon: pembeli hubungi anda melalui butang WhatsApp.",
+        "pending": "Ini dibuka selepas kemas kini malam ini.",
+        "err": {
+          "years": "Tahun menjual: nombor bulat dari 0 hingga 60.",
+          "areas": "Kawasan liputan tidak boleh ada nombor telefon.",
+          "promise": "Janji anda tidak boleh ada nombor telefon."
+        }
+      }
     },
     "sold": {
       "subtitle": "Setiap buyer selepas deal: handover, pembaharuan dan servis selepas jualan.",

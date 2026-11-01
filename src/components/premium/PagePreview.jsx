@@ -1,5 +1,7 @@
 import React from "react";
 import { cdnImg } from "../../utils/img";
+import { coverObjectPosition } from "../../utils/coverFocus";
+import { chosenPageColor, PAGE_COLOR_DEFAULT, gradientTheme } from "../../utils/pageAccent";
 
 // Lite vs Premium, drawn as the seller's OWN page side by side (owner,
 // 2026-10-22: "both feel the same"). Every Premium tool works on leads, and a
@@ -42,7 +44,9 @@ function CarTile({ car }) {
 function MiniPage({ profile, cars, full }) {
   const name = profile?.full_name || "Your name";
   const initials = name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const accent = profile?.brand_color || "#dc2626";
+  // Premium wears the seller's gradient (pageAccent.js); the DB default gold is
+  // "never chose" = Drevo. The real page paints its banner in it until a cover is up.
+  const banner = gradientTheme(chosenPageColor(profile) || PAGE_COLOR_DEFAULT).css;
   const socials = ["instagram", "tiktok", "facebook"].filter((k) => profile?.[k]);
   const shown = cars.length ? cars.slice(0, 2) : [null, null];
 
@@ -51,8 +55,8 @@ function MiniPage({ profile, cars, full }) {
       {/* Banner: Premium only. Lite pages have none at all. */}
       {full ? (
         profile?.cover_url
-          ? <img src={cdnImg(profile.cover_url, 400)} alt="" style={{ width: "100%", height: 44, objectFit: "cover", display: "block" }} />
-          : <div style={{ height: 44, background: `${accent}22`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, color: MUTED }}>Your banner</div>
+          ? <img src={cdnImg(profile.cover_url, 400)} alt="" style={{ width: "100%", height: 44, objectFit: "cover", objectPosition: coverObjectPosition(profile.cover_url), display: "block" }} />
+          : <div style={{ height: 44, background: banner, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8.5, color: "rgb(255 255 255 / .85)" }}>Your banner</div>
       ) : (
         <div style={{ height: 14 }} />
       )}
