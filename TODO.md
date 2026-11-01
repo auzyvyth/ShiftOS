@@ -2854,6 +2854,24 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   buyer; buyer identity still reaches a seller only by the buyer's own reply (PDPA s.8).
   Watch notes need a small table (make, model, max price, area) and a cap per seller.
   Future project, not scheduled.
+  **Scope of step 1, the stock match (2026-11-01):**
+  - The demand problem: 1 Find Me post EVER (2026-09-25), 0 in 30 days, 12 Premium sellers.
+    The only door to `/find-me` is the header menu (`MarketplaceHeader.jsx:81`). A ping on zero
+    posts does nothing, so step 0 = a "Can't find it? Post what you want" card on an empty
+    `/showroom` search and an empty hub, prefilled from the search (brand, model, budget).
+  - DB, ONE migration (after midnight): AFTER INSERT trigger on `find_me_posts` ->
+    `find_me_match_notify()`. Matches live cars (`public_car_listings` rules: available, not a
+    model card) on brand + `model` (lower/trim, the normalize trigger already cleans
+    car_listings) + year range + `selling_price <= max_budget`. Sellers: standalone with
+    Premium (`plan_expires_at > now()`) + dealer-linked. Inserts one `salesman_notifications`
+    row per seller (`type='find_me_match'`, `ref_id` = post, URL `/find-me/<id>`) = the push.
+    Text: "Buyer in <state> wants <brand model>, up to RM x. You have N match." No buyer name.
+  - Guards: pings per post capped at 10 sellers (most matches first), 10 pings per seller a day;
+    the reply cap (`find_me_reply`, 5 sellers per post) stays the real limit, so the push says
+    "first 5 sellers to answer". Lite gets no ping; the board still shows them the post.
+  - UI: the push opens `/find-me/<id>`; the reply sheet preselects the matched car
+    (`chat_sendable_cars`). `findMeError` needs nothing new. Notification type label in the bell.
+  - Size: one migration, ~3 small front-end edits. Watch notes = step 2, its own table.
 - **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
   (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
   9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and
