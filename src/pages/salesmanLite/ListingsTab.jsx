@@ -337,7 +337,7 @@ export default function ListingsTab({
                           {!isSold && (
                             <>
                               <button onClick={() => { onBrief(car); setActionMenuCarId(null); }} style={menuItem}><FileText size={13} /> Brief</button>
-                              {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
+                              {/* Loan poster: free on Lite for 4 cars a month (claim_loan_poster). */}
                               <button onClick={() => { onPoster(car); setActionMenuCarId(null); }} style={menuItem}><Calculator size={13} /> Loan poster</button>
                               {/* Moving poster (IDEA-29) is Premium: shown locked, the tap goes to the one upgrade screen. */}
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
