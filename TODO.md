@@ -2844,10 +2844,8 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   WhatsApp will not play, so it must be made as MP4 (WebCodecs + an MP4 muxer, on the phone,
   no server cost); keep it 6-8 s, portrait 1080x1920; reuse the Live presenter's motion
   rules (slow, large moves, no confetti) and the same numbers from `loanPoster.js`. Open
-  question answered: a video, with simple editable templates. PROTOTYPE built 2026-11-01 at
-  `/poster-lab` (`src/pages/PosterLabPage.jsx`, `src/components/poster/motionPoster.js`): 3
-  templates, real listing photos, plays in the browser. Next: owner picks templates, then
-  MP4 export + a Premium entry point in the car's menu.
+  question answered: a video, with simple editable templates. Owner wants a PREVIEW in
+  chat first, not app code (2026-11-01): the /poster-lab prototype was pulled back out.
 - **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
   the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
   a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",

@@ -91,7 +91,6 @@ const GuidesPage         = lazy(() => import("./pages/GuidesPage"));
 const WaitlistPage       = lazy(() => import("./pages/WaitlistPage"));
 const TermsPage          = lazy(() => import("./pages/TermsPage"));
 const PrivacyPage        = lazy(() => import("./pages/PrivacyPage"));
-const PosterLabPage      = lazy(() => import("./pages/PosterLabPage"));
 const DealPage           = lazy(() => import("./pages/DealPage"));
 const StyleGuidePage     = lazy(() => import("./pages/StyleGuidePage"));
 const ArticlesIndexPage  = lazy(() => import("./pages/ArticlesIndexPage"));
@@ -299,7 +298,6 @@ function App() {
           <Route path="/sensus-ai" element={<SensusAiPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/poster-lab" element={<PosterLabPage />} />
           <Route path="/deal/:token" element={<DealPage />} />
 
           {/* Dealer slug catch-all */}
