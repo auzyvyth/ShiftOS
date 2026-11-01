@@ -1,7 +1,7 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Bell, Calculator, Car, ChevronRight, Clock, ExternalLink,
+  ArrowRight, Bell, Calculator, Car, ChevronRight, Clock, ExternalLink,
   Link as LinkIcon, Lock, MessageCircle, Package, Store,
 } from "lucide-react";
 import { premiumDark as P } from "../../theme/tokens";
@@ -199,14 +199,16 @@ export default function DashboardTab({
 
   // ── Chat + Services (kept off the nav, one tap from here) ─────────────────
   const shortcut = (tourId, onClick, Icon, label, dot) => (
-    <button key={tourId} type="button" data-tour-id={tourId} className="ld-press" onClick={onClick}
-      style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: "none", color: P.text, cursor: "pointer", fontFamily: "inherit" }}>
-      <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 10, background: P.raised, flexShrink: 0 }}>
-        <Icon size={15} color={P.textSec} />
-        {dot ? <span style={{ position: "absolute", top: -2, right: -2, width: 9, height: 9, borderRadius: "50%", background: P.accent, border: `2px solid ${P.card}` }} /> : null}
+    /* A raised key (`.ld-key`, style block below): one gradient + four shadows,
+       pressed = gradient flips, shadow goes inside, key drops 2px. */
+    <button key={tourId} type="button" data-tour-id={tourId} className="ld-key" onClick={onClick}
+      style={{ minWidth: 0, minHeight: 56, padding: "0 18px", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: "none", borderRadius: 24, color: P.text, cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box" }}>
+      <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+        <Icon size={17} color={P.text} />
+        {dot ? <span style={{ position: "absolute", top: -3, right: -4, width: 9, height: 9, borderRadius: "50%", background: P.accent, border: "2px solid #1d2027" }} /> : null}
       </span>
-      <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      <ChevronRight size={15} color={P.textMuted} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+      <ArrowRight size={16} color={P.textSec} style={{ flexShrink: 0 }} />
     </button>
   );
   const shortcuts = (
@@ -272,6 +274,12 @@ export default function DashboardTab({
         .ld-press { transition: transform 120ms ease-out, filter 120ms ease-out; -webkit-tap-highlight-color: transparent; }
         .ld-press:active { transform: scale(0.97); filter: brightness(1.15); }
         @media (prefers-reduced-motion: reduce) { .ld-press, .ld-press:active { transition: none; transform: none; } }
+        .ld-key { -webkit-tap-highlight-color: transparent; transition: translate 90ms ease-out, box-shadow 90ms ease-out;
+          background: linear-gradient(#262a32, #191c22);
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -2px 0 rgb(0 0 0 / .35), 0 2px 3px rgb(0 0 0 / .5), 0 10px 26px rgb(0 0 0 / .45); }
+        .ld-key:active { background: linear-gradient(#191c22, #262a32); box-shadow: inset 0 3px 6px rgb(0 0 0 / .45); translate: 0 2px; }
+        .ld-key:focus-visible { outline: 2px solid ${P.textSec}; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { .ld-key { transition: none; } .ld-key:active { translate: none; } }
         .ld-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .ld-grid { display: flex; flex-direction: column; gap: 12px; }
         .ld-col { display: contents; }
