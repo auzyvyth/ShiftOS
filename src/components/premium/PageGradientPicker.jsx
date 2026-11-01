@@ -28,7 +28,7 @@ export default function PageGradientPicker({ value, saving, onSave }) {
       <div aria-hidden="true" style={{ borderRadius: PD.radius.row, overflow: "hidden", background: theme.css, height: 92, position: "relative", marginTop: 4 }}>
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 40%, rgb(0 0 0 / .18))" }} />
         <span style={{ position: "absolute", left: 14, bottom: 12, height: 34, padding: "0 16px", borderRadius: 18, display: "inline-flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#fff",
-          background: `linear-gradient(${theme.accent}, ${theme.dark})`, boxShadow: "inset 0 2px 0 rgb(255 255 255 / .40), inset 0 -3px 0 rgb(9 10 12 / .28), 0 2px 3px rgb(9 10 12 / .40), 0 8px 18px rgb(9 10 12 / .30)" }}>
+          background: `linear-gradient(${theme.accent}, ${theme.btnDark})`, boxShadow: "inset 0 2px 0 rgb(255 255 255 / .40), inset 0 -3px 0 rgb(9 10 12 / .28), 0 2px 3px rgb(9 10 12 / .40), 0 8px 18px rgb(9 10 12 / .30)" }}>
           WhatsApp
         </span>
         <span style={{ position: "absolute", right: 12, top: 10, fontSize: 12, fontWeight: 600, color: "rgb(255 255 255 / .9)" }}>{name}</span>

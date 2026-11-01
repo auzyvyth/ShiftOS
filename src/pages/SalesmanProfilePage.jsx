@@ -952,14 +952,17 @@ export default function SalesmanProfilePage() {
            fade, the seller's colour on the main button, the accent line, the
            live dot and a ring round the photo. Lite (.ap alone) is untouched. */
         .ap--pro .ap-cover { height: 210px; border: none; }
+        /* The whole page takes a touch of the seller's colour (owner, 2026-11-01:
+           "slightly, a little bitty bit"). Cards stay white. */
+        .ap--pro { background: color-mix(in srgb, var(--ap-a) 4%, #F7F6F2); }
         /* No cover yet: the banner is the seller's colour (the wave bands go soft
            white on it), so a Premium page reads as one before any upload. */
         .ap--pro .ap-cover { background: linear-gradient(120deg, var(--ap-a) 0%, var(--ap-a2) 100%); }
         .ap--pro .ap-cover > svg.ap-waves path { fill: #fff; fill-opacity: .10; }
         .ap--pro .ap-cover::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.32) 100%); }
         .ap--pro .ap-back, .ap--pro .ap-share, .ap--pro .ap-owner { z-index: 3; }
-        .ap--pro .ap-btn { background: linear-gradient(var(--ap-a), var(--ap-a2)); box-shadow: 0 6px 18px rgba(var(--ap-rgb), .28); }
-        .ap--pro .ap-btn:hover { background: linear-gradient(var(--ap-a2), var(--ap-a2)); }
+        .ap--pro .ap-btn { background: linear-gradient(var(--ap-a), var(--ap-b2)); box-shadow: 0 6px 18px rgba(var(--ap-rgb), .28); }
+        .ap--pro .ap-btn:hover { background: var(--ap-b2); }
         .ap--pro .ap-id .ap-eb i { background: var(--ap-a); width: 22px; }
         .ap--pro .ap-av { padding: 3px; background: linear-gradient(145deg, var(--ap-a), var(--ap-a2)); box-shadow: 0 8px 22px rgba(var(--ap-rgb), .30); }
         .ap--pro .ap-av img, .ap--pro .ap-av div { border: 3px solid #fff; }
@@ -968,11 +971,11 @@ export default function SalesmanProfilePage() {
         /* Raised keys (owner's reel: "4 shadows, 1 gradient"): a light top edge,
            a dark bottom lip, a tight contact shadow and a soft coloured drop.
            Pressed: the gradient flips, the shadow goes inside, the key sinks. */
-        .ap--pro .ap-btn { border-radius: 24px; background: linear-gradient(var(--ap-a), var(--ap-a2));
+        .ap--pro .ap-btn { border-radius: 24px; background: linear-gradient(var(--ap-a), var(--ap-b2));
           box-shadow: inset 0 2px 0 rgb(255 255 255 / .40), inset 0 -3px 0 rgb(9 10 12 / .28), 0 2px 3px rgb(9 10 12 / .40), 0 12px 30px rgba(var(--ap-rgb), .42);
           transition: translate 90ms ease-out, box-shadow 90ms ease-out; -webkit-tap-highlight-color: transparent; }
-        .ap--pro .ap-btn:hover { background: linear-gradient(var(--ap-a), var(--ap-a2)); filter: brightness(1.05); }
-        .ap--pro .ap-btn:active { background: linear-gradient(var(--ap-a2), var(--ap-a)); box-shadow: inset 0 3px 6px rgb(9 10 12 / .40); translate: 0 2px; filter: none; }
+        .ap--pro .ap-btn:hover { background: linear-gradient(var(--ap-a), var(--ap-b2)); filter: brightness(1.05); }
+        .ap--pro .ap-btn:active { background: linear-gradient(var(--ap-b2), var(--ap-a)); box-shadow: inset 0 3px 6px rgb(9 10 12 / .40); translate: 0 2px; filter: none; }
         .ap--pro .ap-back, .ap--pro .ap-share { background: linear-gradient(#ffffff, #eeede9);
           box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 rgb(9 10 12 / .10), 0 2px 3px rgb(9 10 12 / .25), 0 8px 20px rgb(9 10 12 / .18);
           transition: translate 90ms ease-out, box-shadow 90ms ease-out; }
@@ -993,7 +996,7 @@ export default function SalesmanProfilePage() {
         .ap-promise p { font-size: 18px; font-weight: 600; line-height: 1.45; color: #0f1115; }
         .ap-specs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; margin-bottom: 12px; }
         .ap-spec { display: flex; align-items: center; gap: 10px; padding: 14px 16px; font-size: 14px; font-weight: 600; color: #111827; }
-        .ap-spec svg { flex-shrink: 0; width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: linear-gradient(var(--ap-a), var(--ap-a2)); }
+        .ap-spec svg { flex-shrink: 0; width: 26px; height: 26px; padding: 5px; border-radius: 50%; color: #fff; background: var(--ap-a); }
         .ap-terms--pro { margin-top: 0; padding: 18px 20px; border-top: none; }
         @media (min-width: 1024px) {
           .ap-cover { height: 220px; }
@@ -1010,7 +1013,7 @@ export default function SalesmanProfilePage() {
       {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
           keeps the standard one (owner: "glow up Premium", Lite unchanged).
           The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
-      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-rgb': pro.rgb } : undefined}>
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-b2': pro.btnDark, '--ap-rgb': pro.rgb } : undefined}>
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>

@@ -85,14 +85,17 @@ export function gradientFor(hex) {
   return g ? { from: g.from, to: g.to } : { from: String(hex).toUpperCase(), to: partnerColor(hex) };
 }
 
-// Readable gradient for any pick: { accent, dark, rgb, css }.
+// Readable gradient for any pick: { accent, dark, btnDark, rgb, css }.
 // `accent` = first end, `dark` = second end (names kept from the one-colour
-// version, which the page's CSS variables still use).
+// version, which the page's CSS variables still use). The gradient is for the
+// BANNER and the photo ring only; buttons are ONE colour (owner, 2026-11-01:
+// "don't gradient the buttons, looks cheap"): `accent` to `btnDark`, the same
+// colour a shade deeper, which is what makes the raised key look raised.
 export function gradientTheme(hex) {
   const { from, to } = gradientFor(hexToRgb(hex) ? hex : PAGE_COLOR_DEFAULT);
   const a = accentTheme(from);
   const b = accentTheme(to);
-  return { accent: a.accent, dark: b.accent, rgb: a.rgb, css: `linear-gradient(120deg, ${a.accent}, ${b.accent})` };
+  return { accent: a.accent, dark: b.accent, btnDark: a.dark, rgb: a.rgb, css: `linear-gradient(120deg, ${a.accent}, ${b.accent})` };
 }
 
 // The theme for the page, or null for a basic (Lite) page, which keeps the
