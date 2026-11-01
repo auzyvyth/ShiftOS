@@ -952,9 +952,13 @@ export default function SalesmanProfilePage() {
            fade, the seller's colour on the main button, the accent line, the
            live dot and a ring round the photo. Lite (.ap alone) is untouched. */
         .ap--pro .ap-cover { height: 210px; border: none; }
-        /* The whole page takes a touch of the seller's colour (owner, 2026-11-01:
-           "slightly, a little bitty bit"). Cards stay white. */
-        .ap--pro { background: color-mix(in srgb, var(--ap-a) 4%, #F7F6F2); }
+        /* The WHOLE page takes the seller's colour, lightly (owner, 2026-11-01:
+           "slightly, a little bitty bit"; 4% on the background alone was too faint
+           to see). Background 9%, every white surface (cards, sort switch, the
+           phone's bottom bar, photo ring gap) 3%, so it reads as one tinted page. */
+        .ap--pro { --ap-bg: color-mix(in srgb, var(--ap-a) 9%, #F7F6F2); --ap-surf: color-mix(in srgb, var(--ap-a) 3%, #fff); background: var(--ap-bg); }
+        .ap--pro .ap-card, .ap--pro .ap-seg, .ap--pro .ap-ico, .ap--pro .ap-av { background-color: var(--ap-surf); }
+        .ap--pro .ap-sticky { background: var(--ap-surf); }
         /* No cover yet: the banner is the seller's colour (the wave bands go soft
            white on it), so a Premium page reads as one before any upload. */
         .ap--pro .ap-cover { background: linear-gradient(120deg, var(--ap-a) 0%, var(--ap-a2) 100%); }
