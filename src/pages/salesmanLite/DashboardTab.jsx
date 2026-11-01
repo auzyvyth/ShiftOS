@@ -198,22 +198,22 @@ export default function DashboardTab({
   );
 
   // ── Chat + Services (kept off the nav, one tap from here) ─────────────────
-  const shortcut = (tourId, onClick, Icon, label, dot) => (
+  const shortcut = (tourId, onClick, Icon, label, dot, red) => (
     /* A raised key (`.ld-key`, style block below): one gradient + four shadows,
        pressed = gradient flips, shadow goes inside, key drops 2px. */
-    <button key={tourId} type="button" data-tour-id={tourId} className="ld-key" onClick={onClick}
+    <button key={tourId} type="button" data-tour-id={tourId} className={red ? "ld-key ld-key-red" : "ld-key"} onClick={onClick}
       style={{ minWidth: 0, minHeight: 56, padding: "0 18px", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: "none", borderRadius: 24, color: P.text, cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box" }}>
       <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
         <Icon size={17} color={P.text} />
-        {dot ? <span style={{ position: "absolute", top: -3, right: -4, width: 9, height: 9, borderRadius: "50%", background: P.accent, border: "2px solid #1d2027" }} /> : null}
+        {dot ? <span style={{ position: "absolute", top: -3, right: -4, width: 9, height: 9, borderRadius: "50%", background: red ? "#fff" : P.accent, border: `2px solid ${red ? "#c81e1e" : "#1d2027"}` }} /> : null}
       </span>
       <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
-      <ArrowRight size={16} color={P.textSec} style={{ flexShrink: 0 }} />
+      <ArrowRight size={16} color={red ? "rgba(255,255,255,0.85)" : P.textSec} style={{ flexShrink: 0 }} />
     </button>
   );
   const shortcuts = (
     <div style={{ order: 5, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: isMobile ? 12 : 16 }}>
-      {shortcut("chat", onChat, MessageCircle, t("salesmanLite.tabs.chat"), !!chatUnread)}
+      {shortcut("chat", onChat, MessageCircle, t("salesmanLite.tabs.chat"), !!chatUnread, true)}
       {shortcut("services", onServices, Package, t("salesmanLite.tabs.services", { defaultValue: "Services" }), false)}
     </div>
   );
@@ -278,6 +278,11 @@ export default function DashboardTab({
           background: linear-gradient(#262a32, #191c22);
           box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -2px 0 rgb(0 0 0 / .35), 0 2px 3px rgb(0 0 0 / .5), 0 10px 26px rgb(0 0 0 / .45); }
         .ld-key:active { background: linear-gradient(#191c22, #262a32); box-shadow: inset 0 3px 6px rgb(0 0 0 / .45); translate: 0 2px; }
+        /* Chat is the red key: buyers wait there, and the owner could not find it in grey. */
+        .ld-key-red { color: #fff !important;
+          background: linear-gradient(#ef4444, #c81e1e);
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(80 0 0 / .35), 0 2px 3px rgb(0 0 0 / .5), 0 10px 28px rgb(220 38 38 / .45); }
+        .ld-key-red:active { background: linear-gradient(#c81e1e, #ef4444); box-shadow: inset 0 3px 6px rgb(60 0 0 / .45); }
         .ld-key:focus-visible { outline: 2px solid ${P.textSec}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { .ld-key { transition: none; } .ld-key:active { translate: none; } }
         .ld-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
