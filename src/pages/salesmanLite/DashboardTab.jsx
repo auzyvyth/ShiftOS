@@ -249,10 +249,10 @@ export default function DashboardTab({
 
   // ── Premium rows (kept: they are how a Lite seller finds the upgrade) ─────
   const upsell = (key, title, line) => (
-    <button key={key} type="button" className="ld-press" onClick={onPremium}
+    <button key={key} type="button" className="ld-press lk-prem" onClick={onPremium}
       style={{ ...card, padding: isMobile ? 16 : 18, display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", border: "none", color: P.text, cursor: "pointer", fontFamily: "inherit" }}>
       <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 10, background: P.raised, flexShrink: 0 }}>
-        <Lock size={14} color={P.textSec} />
+        <Lock size={14} color={P.accentText} />
       </span>
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 14, fontWeight: 600 }}>{title}</span>

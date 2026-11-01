@@ -3905,11 +3905,11 @@ export default function SalesmanLite() {
                     <button onClick={() => setLinkCarLeadId(pl.id)} style={panelBtn}>
                       <Car size={12} /> {pl.car_listing_id ? t("salesmanLite.drawer.changeCar") : t("salesmanLite.drawer.linkCar")}
                     </button>
-                    <button type="button" onClick={goPremium} style={{ ...panelBtn, color: PD.textMuted }}>
-                      <Lock size={12} /> {t("salesmanLite.premiumRow.leadTools")}
+                    <button type="button" className="lk-prem" onClick={goPremium} style={{ ...panelBtn, color: PD.text }}>
+                      <Lock size={12} color={PD.accentText} /> {t("salesmanLite.premiumRow.leadTools")}
                     </button>
-                    <button type="button" onClick={goPremium} style={{ ...panelBtn, color: PD.textMuted }}>
-                      <Lock size={12} /> {t("salesmanLite.premiumRow.loanCheck")}
+                    <button type="button" className="lk-prem" onClick={goPremium} style={{ ...panelBtn, color: PD.text }}>
+                      <Lock size={12} color={PD.accentText} /> {t("salesmanLite.premiumRow.loanCheck")}
                     </button>
                   </div>
 
@@ -4504,7 +4504,7 @@ export default function SalesmanLite() {
                 }}><RefreshCw size={13} /> {t("salesmanLite.inbox.move")}</button>
                 {/* Telegram booking reminders are Premium (2026-10-13); the
                     appointment-reminder cron also skips Lite sellers. */}
-                <button style={{ ...secBtn, color: PD.textMuted }} onClick={goPremium}><Lock size={13} /> {t("salesmanLite.inbox.setReminder")}</button>
+                <button className="lk-prem" style={{ ...secBtn, color: PD.text }} onClick={goPremium}><Lock size={13} color={PD.accentText} /> {t("salesmanLite.inbox.setReminder")}</button>
                 <button style={{ ...secBtn, color: PD.accentText }} onClick={() => { setCancelConfirmId(apt.id); setReschedulingAptId(null); setReminderPickerAptId(null); }}><X size={13} /> {t("salesmanLite.inbox.cancelAppt")}</button>
               </div>
             )}
@@ -5004,10 +5004,10 @@ export default function SalesmanLite() {
           {/* Banner, bio and social links are the Premium page (2026-10-13).
               get_salesman_by_slug returns them NULL for a Lite seller, so a field
               here would save something the page never shows. */}
-          <button type="button" onClick={goPremium}
+          <button type="button" className="lk-prem" onClick={goPremium}
             style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 12, width: "100%", border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textAlign: "left", boxSizing: "border-box" }}>
             <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 10, background: PD.raised, flexShrink: 0 }}>
-              <Lock size={14} color={PD.textSec} />
+              <Lock size={14} color={PD.accentText} />
             </span>
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: "block", fontSize: 14, fontWeight: 600 }}>{t("salesmanLite.premiumRow.pageTitle")}</span>
@@ -5726,8 +5726,8 @@ export default function SalesmanLite() {
     return (
       <div style={{ maxWidth: 420, margin: "0 auto", textAlign: "center", padding: isMobile ? "56px 20px" : "72px 24px" }}>
         <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 18px" }}>
-          <div style={{ width: 64, height: 64, borderRadius: 18, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon size={26} strokeWidth={1.5} style={{ color: "#475569" }} />
+          <div className="lk-prem" style={{ width: 64, height: 64, borderRadius: 18, background: PD.card, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Icon size={26} strokeWidth={1.5} style={{ color: PD.textSec }} />
           </div>
           <div style={{ position: "absolute", right: -6, bottom: -6, width: 26, height: 26, borderRadius: 9, background: "#dc2626", border: "3px solid #080a12", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Lock size={12} strokeWidth={2.5} style={{ color: "#fff" }} />
@@ -5736,8 +5736,9 @@ export default function SalesmanLite() {
         <p style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: "#f1f5f9" }}>{cfg.title}</p>
         <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>{cfg.sub}</p>
         <button
+          className="lk-red"
           onClick={goPremium}
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, padding: "11px 22px", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, height: 44, padding: "0 24px", borderRadius: 999, border: "none", color: "#fff", cursor: "pointer", fontFamily: "inherit" }}
         >
           <Sparkles size={15} /> {t("salesmanLite.premiumPanel.cta")}
         </button>
@@ -6624,31 +6625,8 @@ export default function SalesmanLite() {
         </div>
       </div>
 
-      {/* FAB — mobile leads tab */}
-      {isMobile && activeTab === "leads" && (
-        <button
-          onClick={() => setShowAddLead(true)}
-          style={{
-            position: "fixed",
-            bottom: 72,
-            right: 16,
-            zIndex: 40,
-            width: 44,
-            height: 44,
-            borderRadius: "50%",
-            background: "#dc2626",
-            border: "none",
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(220,38,38,0.3)",
-          }}
-        >
-          <Plus size={20} />
-        </button>
-      )}
+      {/* No floating "+" on Leads (2026-11-01): it duplicated the tab's own
+          "Add lead" button and sat over each card's ··· button on a phone. */}
 
       {renderAddLeadModal()}
       {renderWAModal()}

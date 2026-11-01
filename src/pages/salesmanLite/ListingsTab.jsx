@@ -340,7 +340,7 @@ export default function ListingsTab({
                               {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
                               <button onClick={() => { onPoster(car); setActionMenuCarId(null); }} style={menuItem}><Calculator size={13} /> Loan poster</button>
                               {/* Studio is Premium: shown locked, the tap goes to the one upgrade screen. */}
-                              <button onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.textSec }}>
+                              <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Film size={13} />
                                 <span style={{ flex: 1 }}>TikTok post</span>
                                 <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
