@@ -2857,7 +2857,9 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   card, photo edges stretched to fill, words fixed, hard cut every 2.5s; motion modelled on a
   paultan ad the owner sent, our own type and colours), 5 Calculator (deposit 0-30% slides, monthly
   rolls, then 9/7/5 years, take-home pay with the 35% rule always printed). All inside the TikTok
-  safe zone except Classic. Next: owner picks, then MP4 export (WebCodecs, not WebM) + Premium entry.
+  safe zone except Classic. Premium entry SHIPPED to staging 2026-11-01: car ··· menu > Moving poster
+  (`src/components/poster/MotionPosterSheet.jsx` + `motionPoster.js`), above TikTok post; Lite shows
+  it locked (upgrade screen). Next: MP4 export (WebCodecs, not WebM: iPhone WhatsApp).
 - **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
   the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
   a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",

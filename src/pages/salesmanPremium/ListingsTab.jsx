@@ -4,7 +4,7 @@ import { supabase } from "../../supabaseClient";
 import { toast } from "sonner";
 import {
  Calculator, Car, Check, ChevronDown, Download,
- Film, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
+ Film, Play, Share2, Megaphone, Pencil, Plus, Sparkles, Trash2,
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
 import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
@@ -93,7 +93,7 @@ export default function ListingsTab({
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  coachFor, onCoach, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
- generateAiCaptions, onVerifyId, openStudio, openLoanPoster,
+ generateAiCaptions, onVerifyId, openStudio, openLoanPoster, openMotionPoster,
 }) {
  const { t, i18n } = useTranslation();
  const dateLocale = i18n.language?.startsWith("ms") ? "ms-MY" : "en-MY";
@@ -499,6 +499,12 @@ export default function ListingsTab({
  {openLoanPoster && (
  <button data-tour-id="lst-poster" onClick={() => { openLoanPoster(car); setActionMenuCarId(null); }} style={menuItem}>
  <Calculator size={13} /> {t("salesmanPremium.lst.loanPoster")}
+ </button>
+ )}
+ {/* Moving poster (IDEA-29): five animated designs from this car's photos. */}
+ {openMotionPoster && (
+ <button onClick={() => { openMotionPoster(car); setActionMenuCarId(null); }} style={menuItem}>
+ <Play size={13} /> {t("salesmanPremium.lst.motionPoster")}
  </button>
  )}
  {/* Studio: TikTok poster from this car. Post-list only, and it
