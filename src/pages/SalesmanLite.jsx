@@ -26,6 +26,7 @@ import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import { carNextStep, pickSilentCar } from "../utils/carCoach";
 import DashboardTab from "./salesmanLite/DashboardTab";
 import ListingsTab from "./salesmanLite/ListingsTab";
+import "./salesmanLite/keys.css";
 import ShareTour from "../components/coach/ShareTour";
 import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite } from "../utils/privateCars";
 import CarDetailPopup from "../components/CarDetailPopup";
@@ -3572,8 +3573,8 @@ export default function SalesmanLite() {
               own line: "Viewing Ditempah" + "Pautkan Kereta" do not fit one row. */}
           <div style={{ display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", gap: 6, padding: "0 16px 16px" }}>
             {lead.stage !== "won" && lead.stage !== "closed_won" && (
-              <button onClick={() => advanceLeadStage(lead, nextStage)}
-                style={{ ...leadBtn, flex: isMobile ? "1 0 100%" : "1 0 auto", height: isMobile ? 42 : 36, fontSize: isMobile ? 13.5 : 12.5, background: PD.accent, color: PD.onAccent, textTransform: "capitalize", whiteSpace: "nowrap" }}>
+              <button className="lk-red" onClick={() => advanceLeadStage(lead, nextStage)}
+                style={{ ...leadBtn, flex: isMobile ? "1 0 100%" : "1 0 auto", height: isMobile ? 42 : 36, fontSize: isMobile ? 13.5 : 12.5, background: undefined, color: PD.onAccent, textTransform: "capitalize", whiteSpace: "nowrap" }}>
                 → {stageLabel(nextStage || "won")}
               </button>
             )}
@@ -3649,8 +3650,8 @@ export default function SalesmanLite() {
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
             {t("salesmanLite.leads.pipeline")} <span style={{ color: PD.textMuted, fontWeight: 500 }}>{leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length}</span>
           </p>
-          <button onClick={() => setShowAddLead(true)}
-            style={{ height: 40, padding: "0 16px", display: "flex", alignItems: "center", gap: 6, background: PD.accent, border: "none", borderRadius: PD.radius.pill, color: PD.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+          <button className="lk-red" onClick={() => setShowAddLead(true)}
+            style={{ height: 40, padding: "0 16px", display: "flex", alignItems: "center", gap: 6, border: "none", borderRadius: PD.radius.pill, color: PD.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
             <Plus size={14} /> {t("salesmanLite.header.addLead")}
           </button>
         </div>

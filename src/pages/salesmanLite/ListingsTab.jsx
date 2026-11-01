@@ -5,6 +5,7 @@ import {
   Film, Link as LinkIcon, Lock, Pencil, Plus, Trash2,
 } from "lucide-react";
 import { premiumDark as P } from "../../theme/tokens";
+import "./keys.css";
 import { ROOT_DOMAIN } from "../../config/site";
 import CarNextStep from "../../components/coach/CarNextStep";
 import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
@@ -82,7 +83,7 @@ export default function ListingsTab({
     background: active ? P.hover : "transparent", color: active ? P.text : P.textMuted,
   });
   const cardBtn = { flex: 1, minWidth: 0, height: 36, borderRadius: P.radius.row, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: P.raised, color: P.text };
-  const redBtn = { marginTop: 12, width: "100%", height: 38, fontSize: 13, fontWeight: 600, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" };
+  const redBtn = { marginTop: 12, width: "100%", height: 40, fontSize: 13, fontWeight: 600, borderRadius: P.radius.pill, border: "none", color: P.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" };
   const menuBox = { position: "absolute", right: 0, zIndex: 60, background: P.hover, border: `1px solid ${P.line}`, borderRadius: P.radius.row, overflow: "hidden", minWidth: 190, boxShadow: "0 12px 32px rgba(0,0,0,0.55)" };
   const menuItem = { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "11px 14px", background: "none", border: "none", cursor: "pointer", color: P.text, fontSize: 13, textAlign: "left", fontFamily: "inherit" };
   const menuRule = <div style={{ height: 1, background: P.line }} />;
@@ -97,8 +98,8 @@ export default function ListingsTab({
         <p style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
           {t("salesmanLite.listings.title")} <span style={{ color: P.textMuted, fontWeight: 500 }}>{myListings.length}</span>
         </p>
-        <button onClick={onToggleAdd}
-          style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: showAddForm ? P.raised : P.accent, border: "none", color: showAddForm ? P.text : P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <button onClick={onToggleAdd} className={showAddForm ? undefined : "lk-red"}
+          style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: showAddForm ? P.raised : undefined, border: "none", color: showAddForm ? P.text : P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           {!showAddForm && <Plus size={14} />} {showAddForm ? t("salesmanLite.listings.cancel") : t("salesmanLite.listings.addListing")}
         </button>
       </div>
@@ -144,7 +145,7 @@ export default function ListingsTab({
           </div>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>No listings yet</p>
           <p style={{ margin: 0, fontSize: 13, color: P.textSec, maxWidth: 260, lineHeight: 1.55 }}>Add your first car using the button above.</p>
-          <button onClick={onAddListing} style={{ ...redBtn, width: "auto", padding: "0 22px", height: 42, fontSize: 14 }}>+ Add Listing</button>
+          <button className="lk-red" onClick={onAddListing} style={{ ...redBtn, width: "auto", padding: "0 22px", height: 42, fontSize: 14 }}>+ Add Listing</button>
           <button onClick={onBackToDashboard} style={{ marginTop: 2, height: 36, padding: "0 16px", borderRadius: P.radius.pill, background: "none", border: "none", color: P.textMuted, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>
             ← Back to Dashboard
           </button>
@@ -194,7 +195,7 @@ export default function ListingsTab({
                       <p style={{ margin: 0, fontSize: 15, fontWeight: 600, lineHeight: 1.4 }}>
                         {car.rejection_reason || "No reason was given. Check the details and photos, then resubmit."}
                       </p>
-                      <button onClick={() => onEdit(car)} style={redBtn}><Pencil size={13} /> Edit & Resubmit</button>
+                      <button className="lk-red" onClick={() => onEdit(car)} style={redBtn}><Pencil size={13} /> Edit & Resubmit</button>
                     </div>
                   )}
                   {/* Locked after Premium lapsed: the photo is blacked out below. */}
@@ -202,7 +203,7 @@ export default function ListingsTab({
                     <div style={{ padding: "14px 16px", background: P.raised }}>
                       <p style={{ ...eyebrow(P.textSec), display: "flex", alignItems: "center", gap: 6 }}><Lock size={12} /> {t("premiumLapse.lockedTitle")}</p>
                       <p style={{ margin: 0, fontSize: 13, color: P.textSec, lineHeight: 1.45 }}>{t("premiumLapse.lockedBody", { cap: lockedCap })}</p>
-                      <button onClick={onPremium} style={redBtn}>{t("premiumLapse.lockedCta")}</button>
+                      <button className="lk-red" onClick={onPremium} style={redBtn}>{t("premiumLapse.lockedCta")}</button>
                     </div>
                   )}
                   <div onClick={open} style={{ position: "relative", cursor: "pointer" }}>

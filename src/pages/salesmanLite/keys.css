@@ -1,0 +1,55 @@
+/* Raised keys for Salesman Lite's BIG actions only (owner, 2026-11-01, from a
+   reel: "4 shadows, 1 gradient"). One gradient + four shadows: a light line on
+   the top edge, a dark lip on the bottom edge, a tight contact shadow, a soft
+   drop. Pressed: the gradient flips, the shadow goes inside, the key sinks 2px.
+   Small controls (menu items, Save / Yes, chips, badges) stay flat.
+   A button using a class must NOT set background / box-shadow inline, or the
+   inline value wins and the key goes flat. */
+.lk, .lk-red {
+  -webkit-tap-highlight-color: transparent;
+  transition: translate 90ms ease-out, box-shadow 90ms ease-out;
+}
+.lk {
+  background: linear-gradient(#262a32, #191c22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -2px 0 rgb(0 0 0 / .35),
+    0 2px 3px rgb(0 0 0 / .5), 0 10px 26px rgb(0 0 0 / .45);
+}
+.lk:active {
+  background: linear-gradient(#191c22, #262a32);
+  box-shadow: inset 0 3px 6px rgb(0 0 0 / .45);
+  translate: 0 2px;
+}
+.lk-red {
+  color: #fff;
+  background: linear-gradient(#ef4444, #c81e1e);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(80 0 0 / .35),
+    0 2px 3px rgb(0 0 0 / .5), 0 8px 20px rgb(220 38 38 / .32);
+}
+.lk-red:active {
+  background: linear-gradient(#c81e1e, #ef4444);
+  box-shadow: inset 0 3px 6px rgb(60 0 0 / .45);
+  translate: 0 2px;
+}
+/* The headline key (Dashboard Chat) glows a little more. */
+.lk-red.lk-glow { box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(80 0 0 / .35),
+  0 2px 3px rgb(0 0 0 / .5), 0 10px 28px rgb(220 38 38 / .45); }
+.lk-red:disabled, .lk:disabled { opacity: .55; translate: none; }
+.lk:focus-visible, .lk-red:focus-visible { outline: 2px solid #a3a9b5; outline-offset: 2px; }
+/* ShareMenu takes no className: its trigger is styled through a wrapper. */
+.lk-wrap-red > button {
+  color: #fff !important;
+  background: linear-gradient(#ef4444, #c81e1e) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(80 0 0 / .35),
+    0 2px 3px rgb(0 0 0 / .5), 0 8px 20px rgb(220 38 38 / .32) !important;
+  transition: translate 90ms ease-out, box-shadow 90ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.lk-wrap-red > button:active {
+  background: linear-gradient(#c81e1e, #ef4444) !important;
+  box-shadow: inset 0 3px 6px rgb(60 0 0 / .45) !important;
+  translate: 0 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lk, .lk-red, .lk-wrap-red > button { transition: none; }
+  .lk:active, .lk-red:active, .lk-wrap-red > button:active { translate: none; }
+}

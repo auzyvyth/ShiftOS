@@ -5,6 +5,7 @@ import {
   Link as LinkIcon, Lock, MessageCircle, Package, Store,
 } from "lucide-react";
 import { premiumDark as P } from "../../theme/tokens";
+import "./keys.css";
 import { ROOT_DOMAIN, SITE_URL } from "../../config/site";
 import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
@@ -146,14 +147,16 @@ export default function DashboardTab({
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ROOT_DOMAIN}/s/{profile.slug}</span>
           <span style={{ flexShrink: 0, fontSize: 12, color: P.textMuted }}>{t("salesmanLite.dash.copy")}</span>
         </button>
+        <span className="lk-wrap-red" style={{ display: "inline-flex", flexShrink: 0 }}>
         <ShareMenu
           baseUrl={pageUrl}
           refSlug={profile.slug}
           waCaption={(url) => `${t("salesmanLite.dash.shareMyListingsCaption")}:\n${url}`}
           dark
           label={t("salesmanLite.dash.share")}
-          style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, fontSize: 14 }}
+          style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 14 }}
         />
+        </span>
       </div>
       {statsReady && (
         <p style={{ margin: 0, fontSize: 13, color: P.textSec }}>
@@ -199,9 +202,9 @@ export default function DashboardTab({
 
   // ── Chat + Services (kept off the nav, one tap from here) ─────────────────
   const shortcut = (tourId, onClick, Icon, label, dot, red) => (
-    /* A raised key (`.ld-key`, style block below): one gradient + four shadows,
-       pressed = gradient flips, shadow goes inside, key drops 2px. */
-    <button key={tourId} type="button" data-tour-id={tourId} className={red ? "ld-key ld-key-red" : "ld-key"} onClick={onClick}
+    /* A raised key (`.lk` / `.lk-red`, ./keys.css): one gradient + four
+       shadows, pressed = gradient flips, shadow goes inside, key drops 2px. */
+    <button key={tourId} type="button" data-tour-id={tourId} className={red ? "lk-red lk-glow" : "lk"} onClick={onClick}
       style={{ minWidth: 0, minHeight: 56, padding: "0 18px", display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: "none", borderRadius: 24, color: P.text, cursor: "pointer", fontFamily: "inherit", boxSizing: "border-box" }}>
       <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
         <Icon size={17} color={P.text} />
@@ -274,17 +277,6 @@ export default function DashboardTab({
         .ld-press { transition: transform 120ms ease-out, filter 120ms ease-out; -webkit-tap-highlight-color: transparent; }
         .ld-press:active { transform: scale(0.97); filter: brightness(1.15); }
         @media (prefers-reduced-motion: reduce) { .ld-press, .ld-press:active { transition: none; transform: none; } }
-        .ld-key { -webkit-tap-highlight-color: transparent; transition: translate 90ms ease-out, box-shadow 90ms ease-out;
-          background: linear-gradient(#262a32, #191c22);
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), inset 0 -2px 0 rgb(0 0 0 / .35), 0 2px 3px rgb(0 0 0 / .5), 0 10px 26px rgb(0 0 0 / .45); }
-        .ld-key:active { background: linear-gradient(#191c22, #262a32); box-shadow: inset 0 3px 6px rgb(0 0 0 / .45); translate: 0 2px; }
-        /* Chat is the red key: buyers wait there, and the owner could not find it in grey. */
-        .ld-key-red { color: #fff !important;
-          background: linear-gradient(#ef4444, #c81e1e);
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / .35), inset 0 -2px 0 rgb(80 0 0 / .35), 0 2px 3px rgb(0 0 0 / .5), 0 10px 28px rgb(220 38 38 / .45); }
-        .ld-key-red:active { background: linear-gradient(#c81e1e, #ef4444); box-shadow: inset 0 3px 6px rgb(60 0 0 / .45); }
-        .ld-key:focus-visible { outline: 2px solid ${P.textSec}; outline-offset: 2px; }
-        @media (prefers-reduced-motion: reduce) { .ld-key { transition: none; } .ld-key:active { translate: none; } }
         .ld-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
         .ld-grid { display: flex; flex-direction: column; gap: 12px; }
         .ld-col { display: contents; }
