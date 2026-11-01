@@ -35,6 +35,7 @@ import {
   panel as C,
   panelType as T,
   panelRadius as R,
+  premiumDark as PD,
   withAlpha,
 } from "../theme/tokens";
 import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REASON, localDateKey } from "../lib/leadsHelpers";
@@ -3429,6 +3430,12 @@ export default function SalesmanLite() {
   // (() => { ... })().map() chain closes correctly.
 
   const renderLeads = () => {
+    // Leads tab, redesigned 2026-11-01 in `premiumDark` (PD), the same look as
+    // Premium's Leads: tone not borders, red only as a fill (the next-stage
+    // button), mint the only green. Every control the old tab had is kept.
+    // Dropped as repeats: the lead-source colour bar (the Performance tab's
+    // lead-source card counts the same thing) and the card's "Stage: X · n/7"
+    // line (the picked stage pill names it; the progress bar shows where).
     const searchedLeads = leadSearch.trim()
       ? leads.filter((l) => {
           const q = leadSearch.toLowerCase();
@@ -3439,26 +3446,6 @@ export default function SalesmanLite() {
           );
         })
       : leads;
-
-    // Lead source breakdown — bucket by whatever lead_source values actually
-    // appear (not a fixed whitelist), so sources outside an old hardcoded list
-    // (e.g. real 'whatsapp'/'walk_in'/'referral'/'drevo_enquiry' rows) aren't
-    // silently dropped from the total. Mirrors the dynamic bucketing already
-    // used for the Prestasi lead-source card below.
-    const SRC_LABELS = { whatsapp: t("salesmanLite.leads.srcWhatsapp"), enquiry: t("salesmanLite.leads.srcEnquiry"), drevo_enquiry: t("salesmanLite.leads.srcEnquiry"), walk_in: t("salesmanLite.leads.srcWalkIn"), referral: t("salesmanLite.leads.srcReferral"), manual: t("salesmanLite.leads.srcManual") };
-    const SRC_COLORS = { whatsapp: C.successText, enquiry: C.dangerText, drevo_enquiry: C.dangerText, walk_in: "#a78bfa", referral: C.warnText, manual: C.textMuted };
-    const FALLBACK_COLORS = ["#60a5fa", "#f472b6", C.stale, "#34d399"];
-    const srcMap = {};
-    leads.forEach(l => {
-      const s = l.lead_source || "manual";
-      srcMap[s] = (srcMap[s] || 0) + 1;
-    });
-    const srcTotal = leads.length;
-    const srcCfg = Object.keys(srcMap).map((key, i) => ({
-      key,
-      label: SRC_LABELS[key] || key,
-      color: SRC_COLORS[key] || FALLBACK_COLORS[i % FALLBACK_COLORS.length],
-    }));
 
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
@@ -3471,11 +3458,17 @@ export default function SalesmanLite() {
       (l) => l.stage === "lost" || l.stage === "closed_lost",
     );
 
+    // Shared shapes (premiumDark: a tone, no border).
+    const leadBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12.5, fontWeight: 600, height: 36, padding: "0 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textDecoration: "none", boxSizing: "border-box" };
+    const tag = { display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 600, borderRadius: PD.radius.pill, padding: "2px 8px", background: PD.raised, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" };
+    const label = { margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: PD.textMuted, textTransform: "uppercase", letterSpacing: "0.08em" };
+    const panelBtn = { fontSize: 12.5, height: 36, padding: "0 14px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" };
+    const field = { width: "100%", background: PD.raised, border: "none", borderRadius: PD.radius.row, color: PD.text, fontSize: 13, padding: "10px 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box", colorScheme: "dark" };
+    const heatColor = (h) => (h === "hot" ? PD.accentText : h === "warm" ? PD.text : PD.textMuted);
+
     // Unconfirmed bookings (pending appointments) have no pipeline lead yet by
-    // design — they live in the Bookings tab until confirmed. Rather than mixing
-    // a non-lead card into the Booked stage, we surface a single "confirmation
-    // pending" banner under the search bar that jumps straight to the Bookings
-    // tab (see below). pendingBookingsCount (component scope) drives its badge.
+    // design — they live in the Bookings tab until confirmed. A single banner
+    // under the search bar jumps there (pendingBookingsCount drives it).
 
     const renderLeadCard = (lead) => {
       const car = lead.car_listings;
@@ -3490,51 +3483,35 @@ export default function SalesmanLite() {
       ).find((s) => LEAD_STAGES.indexOf(s) > stageIdx);
       const heat = getHeatScore(lead);
       const leadThread = threadByLead.get(lead.id) || null;
-      const isConfirmingDelete = deleteConfirmId === lead.id;
-      const isPromptingLost = lostPromptId === lead.id;
       const followUpOverdue = lead.follow_up_at && new Date(lead.follow_up_at).getTime() <= Date.now();
       const initials = (lead.buyer_name || "?").split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-      const heatStyle = heat.label === "hot"
-        ? { bg: withAlpha(C.dangerText, 0.12), color: C.dangerText }
-        : heat.label === "warm"
-        ? { bg: withAlpha(C.warn, 0.12), color: C.warnText }
-        : { bg: C.line, color: C.textMuted };
+      const quiet = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
 
       return (
         <div
           key={lead.id}
           className={glowLeadIds.has(lead.id) ? "slite-lead-glow" : undefined}
-          style={{
-            position: "relative",
-            background: C.surfaceRaised,
-            border: `1px solid ${C.borderStrong}`,
-            borderRadius: R.md,
-            overflow: "hidden",
-          }}
+          style={{ position: "relative", background: PD.card, borderRadius: PD.radius.card, overflow: "hidden", minWidth: 0 }}
         >
-          {/* ── HEADER ── */}
-          <div style={{ padding: "12px 14px 0" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-              {/* Avatar */}
-              <div style={{ width: 34, height: 34, borderRadius: "50%", background: withAlpha(C.infoText, 0.15), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.infoTextHi }}>
+          <div style={{ padding: "16px 16px 0" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 10 }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 600, color: PD.textSec }}>
                 {initials}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                  <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: PD.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {lead.buyer_name || "—"}
                   </p>
-                  {/* Top-right corner badges — heat + add-on flag share this
-                      slot via normal flow (not position:absolute) so a lead
-                      that's both hot AND has an add-on doesn't overlap. */}
+                  {/* Heat + add-on share this slot in normal flow, so both never overlap. */}
                   <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                     {leadIdsWithAddons.has(lead.id) && (
-                      <span title="This deal has a paid add-on attached" style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: T.size.xs, fontWeight: T.weight.bold, borderRadius: R.pill, padding: "2px 7px", background: withAlpha(C.infoText, 0.15), border: `1px solid ${withAlpha(C.infoText, 0.35)}`, color: C.infoTextHi, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <span title="This deal has a paid add-on attached" style={{ ...tag, color: PD.textSec }}>
                         <Package size={9} /> Add-on
                       </span>
                     )}
                     {!heat.terminal && (
-                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ fontSize: T.size.xs, borderRadius: R.pill, padding: "2px 8px", background: heatStyle.bg, color: heatStyle.color, whiteSpace: "nowrap", flexShrink: 0, fontWeight: T.weight.bold, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      <span title="Lead urgency — based on pipeline stage and how recently this lead moved" style={{ ...tag, color: heatColor(heat.label) }}>
                         {t("salesmanLite.heat." + heat.label, { defaultValue: heat.label })}
                       </span>
                     )}
@@ -3542,23 +3519,22 @@ export default function SalesmanLite() {
                 </div>
                 {(carName || carPrice) && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3, gap: 8 }}>
-                    {carName && <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
-                    {carPrice && <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.text, flexShrink: 0 }}>{carPrice}</p>}
+                    {carName && <p style={{ margin: 0, fontSize: 12.5, color: PD.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{carName}</p>}
+                    {carPrice && <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{carPrice}</p>}
                   </div>
                 )}
                 {lead.updated_at && (
-                  <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000 ? C.stale : C.textSec }}>
+                  <p style={{ margin: "3px 0 0", fontSize: 12, color: quiet ? PD.accentText : PD.textMuted }}>
                     {lastTouch(lead).label}: {timeAgo(lastTouch(lead).at)}
                   </p>
                 )}
                 {lead.last_call_outcome && (() => {
-                  // Outcomes are information, not alarms — neutral chips with the icon
-                  // carrying the distinction. Green only for the positive one.
-                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: C.successText }, no_answer: { icon: PhoneOff, label: "No Answer", color: C.textSec }, callback_requested: { icon: RefreshCw, label: "Callback", color: C.textSec }, voicemail: { icon: Voicemail, label: "Voicemail", color: C.textSec } };
+                  // Outcomes are information, not alarms: mint only for the positive one.
+                  const OUTCOME = { answered: { icon: CheckCircle, label: "Answered", color: PD.up }, no_answer: { icon: PhoneOff, label: "No Answer", color: PD.textSec }, callback_requested: { icon: RefreshCw, label: "Callback", color: PD.textSec }, voicemail: { icon: Voicemail, label: "Voicemail", color: PD.textSec } };
                   const o = OUTCOME[lead.last_call_outcome];
                   if (!o) return null;
                   return (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 3, fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "2px 7px", borderRadius: R.pill, background: `${o.color}15`, border: `1px solid ${o.color}40`, color: o.color }}>
+                    <span style={{ ...tag, textTransform: "none", letterSpacing: 0, marginTop: 6, color: o.color }}>
                       <o.icon size={10} /> {o.label}
                     </span>
                   );
@@ -3566,63 +3542,49 @@ export default function SalesmanLite() {
               </div>
             </div>
 
-            {/* Progress bar — 7 segments; filled = brand red so deal progress is
-                the card's one colored data element (gray-then-white read as disabled) */}
-            <div style={{ marginBottom: followUpOverdue ? 8 : 12 }}>
-              <div style={{ display: "flex", gap: 3, marginBottom: 5 }}>
-                {progressStages.map((s, i) => (
-                  <div key={s} style={{ flex: 1, height: 3, borderRadius: R.pill, background: i < currentProgressIdx ? withAlpha(C.accent, 0.55) : i === currentProgressIdx ? C.accent : C.border }} />
-                ))}
-              </div>
-              <p style={{ margin: 0, fontSize: T.size.sm, color: C.textSec }}>
-                {t("salesmanLite.leads.stage")}: <span style={{ color: C.text, fontWeight: T.weight.bold, textTransform: "capitalize" }}>{stageLabel(normalizedStage || "new")}</span>
-                {currentProgressIdx >= 0 && <span style={{ color: C.textSec }}> · {currentProgressIdx + 1}/{progressStages.length}</span>}
-              </p>
+            {/* Progress: the bar alone, the stage pill above already names the stage. */}
+            <div title={`${t("salesmanLite.leads.stage")}: ${stageLabel(normalizedStage || "new")}${currentProgressIdx >= 0 ? ` · ${currentProgressIdx + 1}/${progressStages.length}` : ""}`}
+              style={{ display: "flex", gap: 3, marginBottom: 12 }}>
+              {progressStages.map((s, i) => (
+                <div key={s} style={{ flex: 1, height: 3, borderRadius: 99, background: i < currentProgressIdx ? PD.textMuted : i === currentProgressIdx ? PD.text : PD.raised }} />
+              ))}
             </div>
 
-            {/* Follow-up warning */}
             {followUpOverdue && (
-              <div style={{ background: withAlpha(C.stale, 0.08), border: `1px solid ${withAlpha(C.stale, 0.22)}`, borderRadius: R.md, color: C.stale, fontSize: T.size.sm, padding: "6px 10px", marginBottom: 12 }}>
+              <div style={{ background: PD.raised, borderRadius: PD.radius.row, color: PD.accentText, fontSize: 12, padding: "8px 12px", marginBottom: 12 }}>
                 {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
             )}
           </div>
 
-          {/* ── ACTIONS — exactly 3 buttons ── */}
-          <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>
+          {/* ACTIONS — exactly 3 buttons. On a phone the next-stage button gets its
+              own line: "Viewing Ditempah" + "Pautkan Kereta" do not fit one row. */}
+          <div style={{ display: "flex", flexWrap: isMobile ? "wrap" : "nowrap", gap: 6, padding: "0 16px 16px" }}>
             {lead.stage !== "won" && lead.stage !== "closed_won" && (
-              <button
-                onClick={() => advanceLeadStage(lead, nextStage)}
-                style={{ flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", textAlign: "center", textTransform: "capitalize" }}
-              >
+              <button onClick={() => advanceLeadStage(lead, nextStage)}
+                style={{ ...leadBtn, flex: isMobile ? "1 0 100%" : "1 0 auto", height: isMobile ? 42 : 36, fontSize: isMobile ? 13.5 : 12.5, background: PD.accent, color: PD.onAccent, textTransform: "capitalize", whiteSpace: "nowrap" }}>
                 → {stageLabel(nextStage || "won")}
               </button>
             )}
             {lead.phone && (
-              <a
-                href={`tel:${(lead.phone || "").replace(/\D/g, "")}`}
-                title="Call"
-                aria-label="Call lead"
-                style={{ flexShrink: 0, fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.md, background: C.line, border: `1px solid ${C.borderStrong}`, color: C.textSec, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <Phone size={13} />
+              <a href={`tel:${(lead.phone || "").replace(/\D/g, "")}`} title="Call" aria-label="Call lead"
+                style={{ ...leadBtn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec }}>
+                <Phone size={14} />
               </a>
             )}
-            {/* A buyer who chatted in the app is reachable HERE, and a guest buyer
-                is reachable nowhere else — they never gave a phone. The in-app
-                chat takes the WhatsApp slot rather than sitting beside it: this
-                row is capped at three buttons, and WhatsApp is one tap away in
-                the detail panel. */}
+            {/* A buyer who chatted in the app is reachable HERE (a guest never gave
+                a phone). Chat takes the WhatsApp slot: this row is capped at three,
+                and WhatsApp is one tap away in the detail panel. */}
             {leadThread ? (
               <button
                 onClick={() => setChatSheet({ threadId: leadThread.id, buyerName: lead.buyer_name || "Buyer", carLabel: carName })}
                 title={t("salesmanLite.leads.openChat", { defaultValue: "Open the in-app chat with this buyer" })}
-                style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.borderStrong}`, color: C.text, cursor: "pointer", fontFamily: "inherit" }}
+                style={{ ...leadBtn, flex: 1, minWidth: 0 }}
               >
                 <MessageSquare size={12} />
                 {t("salesmanLite.leads.chat", { defaultValue: "Chat" })}
                 {leadThread.seller_unread > 0 && (
-                  <span style={{ minWidth: 15, height: 15, borderRadius: 99, background: C.accent, color: "#fff", fontSize: T.size.xs, fontWeight: T.weight.bold, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                  <span style={{ minWidth: 16, height: 16, borderRadius: 99, background: PD.accent, color: PD.onAccent, fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
                     {leadThread.seller_unread}
                   </span>
                 )}
@@ -3632,8 +3594,8 @@ export default function SalesmanLite() {
                 onClick={() => {
                   const waCarName = car ? `${car.brand} ${car.model}` : "kereta tu";
                   const isStale = lead.updated_at && Date.now() - new Date(lead.updated_at).getTime() > 48 * 3600 * 1000;
-                  // New leads get a full first-contact message with all the car
-                  // details they enquired on; later stages keep the short nudges.
+                  // New leads get a full first-contact message with the car details;
+                  // later stages keep the short nudges.
                   const isNew = lead.stage === "new";
                   const msg = isNew
                     ? buildNewLeadWa(lead, car)
@@ -3643,24 +3605,17 @@ export default function SalesmanLite() {
                   setWaModalMessage(msg);
                   setWaModalLead(lead);
                 }}
-                style={{ flex: 1, fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "6px 12px", borderRadius: R.md, background: withAlpha(C.success, 0.10), border: `1px solid ${withAlpha(C.success, 0.25)}`, color: C.successText, cursor: "pointer", textAlign: "center" }}
+                style={{ ...leadBtn, flex: 1, minWidth: 0 }}
               >
-                WhatsApp
+                <MessageCircle size={12} /> WhatsApp
               </button>
             ) : !lead.car_listing_id ? (
-              <button
-                onClick={() => setLinkCarLeadId(lead.id)}
-                style={{ flex: 1, fontSize: T.size.sm, padding: "6px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}
-              >
+              <button onClick={() => setLinkCarLeadId(lead.id)} style={{ ...leadBtn, flex: 1, minWidth: 0, color: PD.textSec }}>
                 <Car size={12} /> {t("salesmanLite.leads.linkCar")}
               </button>
             ) : null}
-            <button
-              onClick={() => setDrawerLeadId(lead.id)}
-              title="Open lead details"
-              aria-label="Open lead details"
-              style={{ flexShrink: 0, fontSize: T.size.base, padding: "6px 10px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", letterSpacing: "0.05em", lineHeight: 1 }}
-            >
+            <button onClick={() => setDrawerLeadId(lead.id)} title="Open lead details" aria-label="Open lead details"
+              style={{ ...leadBtn, flexShrink: 0, width: 40, padding: 0, color: PD.textSec, fontSize: 14, letterSpacing: "0.05em" }}>
               ···
             </button>
           </div>
@@ -3669,347 +3624,136 @@ export default function SalesmanLite() {
     };
 
     return (
-      <div>
+      <div style={{ color: PD.text }}>
         <style>{`
           @keyframes slite-lead-glow {
-            0%   { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0.55)}; border-color: ${withAlpha(C.accent, 0.7)}; }
-            70%  { box-shadow: 0 0 0 12px ${withAlpha(C.accent, 0)}; border-color: ${withAlpha(C.accent, 0.7)}; }
-            100% { box-shadow: 0 0 0 0 ${withAlpha(C.accent, 0)}; border-color: ${C.border}; }
+            0%   { box-shadow: 0 0 0 0 ${withAlpha(PD.accent, 0.55)}; }
+            70%  { box-shadow: 0 0 0 12px ${withAlpha(PD.accent, 0)}; }
+            100% { box-shadow: 0 0 0 0 ${withAlpha(PD.accent, 0)}; }
           }
           .slite-lead-glow { animation: slite-lead-glow 1s ease-out; }
+          @media (prefers-reduced-motion: reduce) { .slite-lead-glow { animation: none; outline: 2px solid ${PD.accent}; } }
         `}</style>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 16,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: T.size.lg,
-              fontWeight: T.weight.semibold,
-              color: C.text,
-            }}
-          >
-            {t("salesmanLite.leads.pipeline")} ({leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length})
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14 }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 700, letterSpacing: "-0.01em" }}>
+            {t("salesmanLite.leads.pipeline")} <span style={{ color: PD.textMuted, fontWeight: 500 }}>{leads.filter((l) => l.stage !== "lost" && l.stage !== "closed_lost" && l.stage !== "closed_won").length}</span>
           </p>
-          <button
-            onClick={() => setShowAddLead(true)}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: C.accent,
-              border: "none",
-              borderRadius: R.md,
-              color: C.onAccent,
-              fontSize: T.size.sm,
-              fontWeight: T.weight.semibold,
-              padding: "7px 12px",
-              cursor: "pointer",
-            }}
-          >
-            <Plus size={13} /> {t("salesmanLite.header.addLead")}
+          <button onClick={() => setShowAddLead(true)}
+            style={{ height: 40, padding: "0 16px", display: "flex", alignItems: "center", gap: 6, background: PD.accent, border: "none", borderRadius: PD.radius.pill, color: PD.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", flexShrink: 0 }}>
+            <Plus size={14} /> {t("salesmanLite.header.addLead")}
           </button>
         </div>
 
-        {/* Lead source breakdown */}
-        {srcTotal > 0 && srcCfg.length > 1 && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ display: "flex", borderRadius: R.sm, overflow: "hidden", height: 6, marginBottom: 8 }}>
-              {srcCfg.map(({ key, color }) => (
-                <div key={key} style={{ flex: srcMap[key], background: color }} />
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {srcCfg.map(({ key, label, color }) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
-                  <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{label} <strong style={{ color: C.text }}>{srcMap[key]}</strong></span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Search bar */}
+        {/* Search */}
         <div style={{ position: "relative", marginBottom: 12 }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: C.textDim, pointerEvents: "none" }} />
+          <Search size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: PD.textMuted, pointerEvents: "none" }} />
           <input
             value={leadSearch}
             onChange={(e) => setLeadSearch(e.target.value)}
             placeholder={t("salesmanLite.leads.searchPlaceholder")}
-            style={{ width: "100%", background: C.fill, border: `1px solid ${C.border}`, borderRadius: R.md, color: C.text, fontSize: T.size.base, padding: "8px 10px 8px 30px", outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+            style={{ width: "100%", height: 42, background: PD.card, border: "none", borderRadius: PD.radius.pill, color: PD.text, fontSize: 14, padding: "0 38px 0 38px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark" }}
           />
           {leadSearch && (
-            <button onClick={() => setLeadSearch("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2 }}>
-              <X size={13} />
+            <button onClick={() => setLeadSearch("")} aria-label="Clear search" style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 4, display: "flex" }}>
+              <X size={14} />
             </button>
           )}
         </div>
 
-        {/* Confirmation-pending banner — pending bookings have no pipeline lead
-            yet; instead of a non-lead card inside the Booked stage, one tappable
-            banner surfaces the count and jumps straight to the Bookings tab. */}
+        {/* Pending bookings have no pipeline lead yet: one row jumps to Bookings. */}
         {pendingBookingsCount > 0 && (
           <button
             onClick={() => { switchTab("enquiries"); setInboxSubTab("bookings"); }}
-            style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", marginBottom: 12, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.warn, 0.10), border: `1px solid ${withAlpha(C.warn, 0.3)}`, color: C.warnText, cursor: "pointer", fontSize: T.size.sm, fontWeight: T.weight.semibold, fontFamily: "inherit", textAlign: "left" }}
+            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", marginBottom: 12, height: 44, padding: "0 16px", borderRadius: PD.radius.pill, background: PD.card, border: "none", color: PD.text, cursor: "pointer", fontSize: 13, fontWeight: 600, fontFamily: "inherit", textAlign: "left", boxSizing: "border-box" }}
           >
-            <Clock size={14} style={{ flexShrink: 0 }} />
-            <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: PD.accent, flexShrink: 0 }} />
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {t("salesmanLite.booked.pendingBanner", { count: pendingBookingsCount, defaultValue: `${pendingBookingsCount} booking${pendingBookingsCount > 1 ? "s" : ""} pending confirmation` })}
             </span>
-            <ChevronRight size={15} style={{ flexShrink: 0 }} />
+            <ChevronRight size={15} color={PD.textMuted} style={{ flexShrink: 0 }} />
           </button>
         )}
 
-        <>
-            {/* Pill filter row (same on every screen size — no horizontal-scroll
-                kanban) — wraps onto a second row instead of scrolling sideways,
-                so every stage is visible without a swipe. Each pill's count
-                badge turns red with a "!" when that stage has a lead needing
-                follow-up, so you don't have to click into every stage to find
-                out. */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "2px 0 10px", marginBottom: 12 }}>
-              {activeStages.map((stage) => {
-                const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
-                const count = stageLeadsForPill.length;
-                const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
-                const needsFollowUp = staleInStage.length > 0;
-                const isActive = mobileLeadStage === stage;
-                return (
-                  <button
-                    key={stage}
-                    onClick={() => {
-                      setMobileLeadStage(stage);
-                      triggerGlow(staleInStage.map((l) => l.id));
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 5,
-                      padding: "5px 12px",
-                      borderRadius: R.pill,
-                      fontSize: T.size.sm,
-                      fontWeight: isActive ? 600 : 400,
-                      cursor: "pointer",
-                      background: isActive ? withAlpha(C.accent, 0.12) : C.fill,
-                      border: isActive ? `1px solid ${withAlpha(C.accent, 0.3)}` : `1px solid ${C.border}`,
-                      color: isActive ? C.dangerText : C.textSec,
-                      textTransform: "capitalize",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {stageLabel(stage)}
-                    <span style={{
-                      fontSize: T.size.xs,
-                      fontWeight: T.weight.bold,
-                      color: needsFollowUp ? C.dangerText : isActive ? C.dangerText : C.textMuted,
-                      background: needsFollowUp ? withAlpha(C.danger, 0.18) : isActive ? withAlpha(C.accent, 0.12) : C.fillStrong,
-                      border: needsFollowUp ? `1px solid ${withAlpha(C.danger, 0.4)}` : "none",
-                      borderRadius: R.pill,
-                      padding: "0px 6px",
-                      lineHeight: 1.6,
-                    }}>
-                      {count}{needsFollowUp ? "!" : ""}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+        {/* Stage pills: wrap onto a second row (no sideways scroll). A count goes
+            red with "!" when that stage holds a lead needing follow-up, and
+            opening the stage pulses those leads. */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+          {activeStages.map((stage) => {
+            const stageLeadsForPill = searchedLeads.filter((l) => l.stage === stage);
+            const count = stageLeadsForPill.length;
+            const staleInStage = stageLeadsForPill.filter((l) => staleIdSet.has(l.id));
+            const needsFollowUp = staleInStage.length > 0;
+            const isActive = mobileLeadStage === stage;
+            return (
+              <button
+                key={stage}
+                onClick={() => { setMobileLeadStage(stage); triggerGlow(staleInStage.map((l) => l.id)); }}
+                style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 6, height: 34, padding: "0 13px", borderRadius: PD.radius.pill, fontSize: 13, fontWeight: isActive ? 600 : 500, cursor: "pointer", fontFamily: "inherit", background: isActive ? PD.text : PD.raised, border: "none", color: isActive ? PD.card : PD.textSec, textTransform: "capitalize", whiteSpace: "nowrap" }}
+              >
+                {stageLabel(stage)}
+                <span style={{ fontSize: 12, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: needsFollowUp ? (isActive ? PD.accent : PD.accentText) : isActive ? PD.card : PD.textMuted, opacity: isActive && !needsFollowUp ? 0.7 : 1 }}>
+                  {count}{needsFollowUp ? "!" : ""}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
-            {/* Vertical card list for the selected stage */}
-            {(() => {
-              const stageLeads = searchedLeads
-                .filter((l) => l.stage === mobileLeadStage)
-                .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
-              if (stageLeads.length === 0) {
-                return (
-                  <div style={{ height: 60, borderRadius: R.md, border: `1px dashed ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: T.size.sm, color: C.textDim }}>Empty</span>
-                  </div>
-                );
-              }
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {stageLeads.map((lead) => renderLeadCard(lead))}
-                </div>
-              );
-            })()}
-        </>
+        {/* Cards for the selected stage: one column on a phone, two on desktop.
+            The page scrolls, never an inner scroller. */}
+        {(() => {
+          const stageLeads = searchedLeads
+            .filter((l) => l.stage === mobileLeadStage)
+            .sort((a, b) => (heatMap.get(b.id)?.score ?? 0) - (heatMap.get(a.id)?.score ?? 0));
+          if (stageLeads.length === 0) {
+            return (
+              <div style={{ height: 96, borderRadius: PD.radius.card, background: PD.card, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 13, color: PD.textMuted }}>Empty</span>
+              </div>
+            );
+          }
+          return (
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 10, alignItems: "start" }}>
+              {stageLeads.map((lead) => renderLeadCard(lead))}
+            </div>
+          );
+        })()}
 
         {lostLeads.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <button
-              onClick={() => setLostOpen((o) => !o)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                padding: "6px 0",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: T.size.xs,
-                  fontWeight: T.weight.bold,
-                  color: C.textDim,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                }}
-              >
-                Lost ({lostLeads.length})
-              </span>
-              <span style={{ fontSize: T.size.sm, color: C.textDim }}>
-                {lostOpen ? "▲" : "▼"}
-              </span>
+            <button onClick={() => setLostOpen((o) => !o)}
+              style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", cursor: "pointer", padding: "6px 0", fontFamily: "inherit" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: PD.textSec }}>Lost ({lostLeads.length})</span>
+              <ChevronRight size={14} color={PD.textMuted} style={{ transform: lostOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
             </button>
             {lostOpen && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                  marginTop: 8,
-                }}
-              >
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 8, marginTop: 8 }}>
                 {lostLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    style={{
-                      background: C.surfaceRaised,
-                      border: `1px solid ${C.borderStrong}`,
-                      borderRadius: R.md,
-                      padding: "10px 12px",
-                      opacity: 0.7,
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 6,
-                      }}
-                    >
-                      <p
-                        style={{
-                          margin: 0,
-                          fontSize: T.size.sm,
-                          fontWeight: T.weight.semibold,
-                          color: C.textSec,
-                          flex: 1,
-                          minWidth: 0,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
+                  <div key={lead.id} style={{ background: PD.card, borderRadius: PD.radius.row, padding: "12px 14px", minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: PD.textSec, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {lead.buyer_name || "—"}
                       </p>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          flexShrink: 0,
-                        }}
-                      >
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                         {lead.loss_reason && (
-                          <span
-                            style={{
-                              fontSize: T.size.xs,
-                              padding: "1px 7px",
-                              borderRadius: R.pill,
-                              background: withAlpha(C.textSec, 0.08),
-                              border: `1px solid ${withAlpha(C.textSec, 0.2)}`,
-                              color: C.textSec,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {lead.loss_reason}
-                          </span>
+                          <span style={{ ...tag, textTransform: "none", letterSpacing: 0, color: PD.textSec }}>{lead.loss_reason}</span>
                         )}
-                        <button
-                          onClick={() => setDeleteConfirmId(lead.id)}
-                          title="Delete lead"
-                          style={{
-                            background: "transparent",
-                            border: "none",
-                            color: C.textDim,
-                            cursor: "pointer",
-                            padding: 2,
-                            display: "flex",
-                            alignItems: "center",
-                          }}
-                        >
-                          <Trash2 size={12} />
+                        <button onClick={() => setDeleteConfirmId(lead.id)} title="Delete lead" aria-label="Delete lead"
+                          style={{ background: "transparent", border: "none", color: PD.textMuted, cursor: "pointer", padding: 6, display: "flex", alignItems: "center" }}>
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
-                    <p
-                      style={{
-                        margin: "2px 0 0",
-                        fontSize: T.size.xs,
-                        color: C.textDim,
-                      }}
-                    >
-                      {timeAgo(lead.created_at)}
-                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: PD.textMuted }}>{timeAgo(lead.created_at)}</p>
                     {deleteConfirmId === lead.id && (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 6,
-                          marginTop: 6,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: T.size.sm,
-                            color: C.dangerText,
-                            fontWeight: T.weight.semibold,
-                          }}
-                        >
-                          {t("salesmanLite.leads.deleteQ")}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteLead(lead.id)}
-                          style={{
-                            fontSize: T.size.xs,
-                            padding: "6px 11px",
-                            borderRadius: R.sm,
-                            background: withAlpha(C.danger, 0.12),
-                            border: `1px solid ${withAlpha(C.danger, 0.3)}`,
-                            color: C.dangerText,
-                            cursor: "pointer",
-                            fontWeight: T.weight.semibold,
-                          }}
-                        >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12.5, color: PD.accentText, fontWeight: 600 }}>{t("salesmanLite.leads.deleteQ")}</span>
+                        <button onClick={() => handleDeleteLead(lead.id)}
+                          style={{ fontSize: 12, height: 32, padding: "0 14px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit" }}>
                           {t("salesmanLite.leads.yes")}
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirmId(null)}
-                          style={{
-                            fontSize: T.size.xs,
-                            padding: "6px 11px",
-                            borderRadius: R.sm,
-                            background: C.line,
-                            border: `1px solid ${C.border}`,
-                            color: C.textMuted,
-                            cursor: "pointer",
-                          }}
-                        >
+                        <button onClick={() => setDeleteConfirmId(null)}
+                          style={{ fontSize: 12, height: 32, padding: "0 14px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", fontFamily: "inherit" }}>
                           {t("salesmanLite.leads.no")}
                         </button>
                       </div>
@@ -4021,7 +3765,7 @@ export default function SalesmanLite() {
           </div>
         )}
 
-        {/* ── LEAD DETAIL SIDEBAR ── */}
+        {/* ── LEAD DETAIL PANEL ── */}
         {drawerLeadId && (() => {
           const pl = leads.find(l => l.id === drawerLeadId);
           if (!pl) return null;
@@ -4029,149 +3773,137 @@ export default function SalesmanLite() {
           const plCarName = plCar ? [plCar.year, plCar.brand, plCar.model].filter(Boolean).join(" ") : null;
           const plCarPrice = plCar?.selling_price ? `RM ${Number(plCar.selling_price).toLocaleString("en-MY")}` : null;
           const plHeat = getHeatScore(pl);
-          const plHeatStyle = plHeat.label === "hot" ? { bg: withAlpha(C.dangerText, 0.12), color: C.dangerText } : plHeat.label === "warm" ? { bg: withAlpha(C.warn, 0.12), color: C.warnText } : { bg: C.line, color: C.textMuted };
           const plInitials = (pl.buyer_name || "?").split(" ").map(w => w[0]).slice(0,2).join("").toUpperCase();
           const plThread = threadByLead.get(pl.id) || null;
           const plIsPromptingLost = lostPromptId === pl.id;
           const plIsConfirmingDelete = deleteConfirmId === pl.id;
           const close = () => { setDrawerLeadId(null); setEditingNoteId(null); setExpandedActivityLeadId(null); setLostPromptId(null); setDeleteConfirmId(null); };
+          const row = { display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", background: PD.raised, border: "none", width: "100%", textAlign: "left", fontFamily: "inherit", boxSizing: "border-box" };
           return (
             <>
-              {/* backdrop */}
               <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 40, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }} />
-              {/* panel */}
-              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: C.surface, borderLeft: `1px solid ${C.border}`, display: "flex", flexDirection: "column", fontFamily: "system-ui, sans-serif" }}>
+              <div style={{ position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 50, width: 400, maxWidth: "100vw", background: PD.card, color: PD.text, display: "flex", flexDirection: "column" }}>
 
                 {/* header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "16px 20px", borderBottom: `1px solid ${PD.line}`, flexShrink: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: withAlpha(C.infoText, 0.15), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: T.size.base, fontWeight: T.weight.bold, color: C.infoTextHi }}>{plInitials}</div>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 13, fontWeight: 700, color: PD.text }}>{plInitials}</div>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
-                      <p style={{ margin: "1px 0 0", fontSize: T.size.sm, color: C.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanLite.drawer.noCarLinkedShort")}</p>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.buyer_name || "—"}</p>
+                      <p style={{ margin: "1px 0 0", fontSize: 12, color: PD.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{plCarName || pl.phone || t("salesmanLite.drawer.noCarLinkedShort")}</p>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {!plHeat.terminal && (
-                      <span style={{ fontSize: T.size.xs, fontWeight: T.weight.bold, borderRadius: R.pill, padding: "2px 8px", background: plHeatStyle.bg, color: plHeatStyle.color }}>{plHeat.label}</span>
+                      <span style={{ ...tag, color: heatColor(plHeat.label) }}>{plHeat.label}</span>
                     )}
-                    <span style={{ fontSize: T.size.xs, fontWeight: T.weight.semibold, borderRadius: R.sm, padding: "2px 8px", background: C.line, color: C.textSec, textTransform: "capitalize" }}>{stageLabel(pl.stage)}</span>
-                    <button onClick={close} style={{ background: C.line, border: "none", cursor: "pointer", color: C.textSec, borderRadius: R.md, padding: 6, display: "flex" }}>
+                    <span style={{ ...tag, color: PD.textSec, textTransform: "capitalize", letterSpacing: 0 }}>{stageLabel(pl.stage)}</span>
+                    <button onClick={close} aria-label="Close" style={{ background: PD.raised, border: "none", cursor: "pointer", color: PD.textSec, borderRadius: 99, padding: 8, display: "flex" }}>
                       <X size={16} />
                     </button>
                   </div>
                 </div>
 
-                {/* Car enquired-on block — image, name, price, and the specs a
-                    salesman needs to answer fast (age, mileage, VIN, plate). */}
+                {/* The car: image, name, price, and the specs needed to answer fast. */}
                 {plCar ? (
-                  <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.fillStrong}`, background: C.fillSubtle, display: "flex", gap: 12 }}>
+                  <div style={{ padding: "14px 20px", borderBottom: `1px solid ${PD.line}`, display: "flex", gap: 12 }}>
                     {(() => {
                       const img = Array.isArray(plCar.images) ? plCar.images.find(Boolean) : null;
                       return img ? (
-                        <img
-                          src={cdnImg(img, 200)}
-                          alt={plCarName || "Car"}
+                        <img src={cdnImg(img, 200)} alt={plCarName || "Car"}
                           onClick={() => plCar.slug && window.open(`/cars/${plCar.slug}`, "_blank")}
-                          style={{ width: 88, height: 66, borderRadius: R.md, objectFit: "cover", flexShrink: 0, border: `1px solid ${C.border}`, cursor: plCar.slug ? "pointer" : "default" }}
-                        />
+                          style={{ width: 88, height: 66, borderRadius: PD.radius.row, objectFit: "cover", flexShrink: 0, cursor: plCar.slug ? "pointer" : "default" }} />
                       ) : (
-                        <div style={{ width: 88, height: 66, borderRadius: R.md, flexShrink: 0, background: C.fill, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                          <Car size={22} style={{ color: C.textDim }} />
+                        <div style={{ width: 88, height: 66, borderRadius: PD.radius.row, flexShrink: 0, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <Car size={22} color={PD.textMuted} />
                         </div>
                       );
                     })()}
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[plCar.year, plCar.brand, plCar.model, plCar.variant].filter(Boolean).join(" ") || plCarName}
                       </p>
-                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: T.size.lg, fontWeight: T.weight.bold, color: C.text }}>{plCarPrice}</p>}
-                      <p style={{ margin: "5px 0 0", fontSize: T.size.sm, color: C.textSec }}>
+                      {plCarPrice && <p style={{ margin: "3px 0 0", fontSize: 16, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{plCarPrice}</p>}
+                      <p style={{ margin: "5px 0 0", fontSize: 12, color: PD.textSec }}>
                         {[carAgeLabel(plCar.year), plCar.mileage ? `${Number(plCar.mileage).toLocaleString("en-MY")} km` : null, plCar.transmission].filter(Boolean).join(" · ")}
                       </p>
                       {(plCar.vin_number || plCar.plate_number) && (
-                        <p style={{ margin: "3px 0 0", fontSize: T.size.xs, color: C.textMuted, fontFamily: "monospace" }}>
+                        <p style={{ margin: "3px 0 0", fontSize: 11, color: PD.textMuted, fontFamily: "monospace" }}>
                           {[plCar.plate_number && `${t("salesmanLite.drawer.plateLabel")} ${plCar.plate_number}`, plCar.vin_number && `${t("salesmanLite.drawer.vinLabel")} ${plCar.vin_number}`].filter(Boolean).join("  ·  ")}
                         </p>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div style={{ padding: "10px 20px", borderBottom: `1px solid ${C.fillStrong}`, background: C.fillSubtle, display: "flex", alignItems: "center", gap: 8 }}>
-                    <Car size={14} style={{ color: C.textDim }} />
-                    <span style={{ fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.drawer.noCarLinkedRow")}</span>
+                  <div style={{ padding: "12px 20px", borderBottom: `1px solid ${PD.line}`, display: "flex", alignItems: "center", gap: 8 }}>
+                    <Car size={14} color={PD.textMuted} />
+                    <span style={{ fontSize: 12.5, color: PD.textMuted }}>{t("salesmanLite.drawer.noCarLinkedRow")}</span>
                   </div>
                 )}
 
                 {/* scrollable body */}
-                <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14, WebkitOverflowScrolling: "touch" }}>
+                <div style={{ flex: 1, overflowY: "auto", padding: "18px 20px", display: "flex", flexDirection: "column", gap: 18, WebkitOverflowScrolling: "touch" }}>
 
-                  {/* CONTACT — this panel used to show the phone only as a grey
-                      subtitle under the name, with no way to add or fix one. A
-                      chat lead arrives with no number at all, so the empty row
-                      is the one that matters. */}
+                  {/* CONTACT: a chat lead arrives with no number, so the empty row matters most. */}
                   <div>
-                    <p style={{ margin: "0 0 6px", fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.contact", { defaultValue: "Contact" })}</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 1, borderRadius: R.md, overflow: "hidden", border: `1px solid ${C.border}` }}>
+                    <p style={label}>{t("salesmanLite.drawer.contact", { defaultValue: "Contact" })}</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, borderRadius: PD.radius.row, overflow: "hidden" }}>
                       {plThread && (
-                        <button
-                          onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || "Buyer", carLabel: plCarName })}
-                          style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: C.fillSubtle, border: "none", width: "100%", textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
-                        >
-                          <MessageSquare size={12} color={C.textMuted} style={{ flexShrink: 0 }} />
-                          <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.text }}>{t("salesmanLite.drawer.inAppChat", { defaultValue: "In-app chat" })}</span>
+                        <button onClick={() => setChatSheet({ threadId: plThread.id, buyerName: pl.buyer_name || "Buyer", carLabel: plCarName })} style={{ ...row, cursor: "pointer" }}>
+                          <MessageSquare size={13} color={PD.textSec} style={{ flexShrink: 0 }} />
+                          <span style={{ flex: 1, minWidth: 0, fontSize: 13, color: PD.text }}>{t("salesmanLite.drawer.inAppChat", { defaultValue: "In-app chat" })}</span>
                           {plThread.seller_unread > 0 && (
-                            <span style={{ flexShrink: 0, minWidth: 17, height: 17, borderRadius: 99, background: C.accent, color: "#fff", fontSize: T.size.xs, fontWeight: T.weight.bold, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
+                            <span style={{ flexShrink: 0, minWidth: 18, height: 18, borderRadius: 99, background: PD.accent, color: PD.onAccent, fontSize: 10.5, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>
                               {plThread.seller_unread}
                             </span>
                           )}
-                          <ChevronRight size={13} color={C.textDim} style={{ flexShrink: 0 }} />
+                          <ChevronRight size={14} color={PD.textMuted} style={{ flexShrink: 0 }} />
                         </button>
                       )}
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 11px", background: C.fillSubtle }}>
-                        <Phone size={12} color={C.textMuted} style={{ flexShrink: 0 }} />
+                      <div style={row}>
+                        <Phone size={13} color={PD.textSec} style={{ flexShrink: 0 }} />
                         {editPhoneLeadId === pl.id ? (
                           <>
                             <PhoneInput
- autoFocus
- value={editPhoneVal}
- onChange={setEditPhoneVal}
- onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
- aria-label={t("salesmanLite.drawer.phoneLabel", { defaultValue: "Buyer phone number" })}
- style={{ flex: 1, minWidth: 0, background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.sm, color: C.text, fontSize: T.size.sm, padding: "5px 9px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
- prefixStyle={{ padding: "0 3px 0 0" }}
- inputStyle={{ padding: 0 }}
- />
+                              autoFocus
+                              value={editPhoneVal}
+                              onChange={setEditPhoneVal}
+                              onKeyDown={(e) => { if (e.key === "Enter") saveLeadPhone(pl.id); if (e.key === "Escape") setEditPhoneLeadId(null); }}
+                              aria-label={t("salesmanLite.drawer.phoneLabel", { defaultValue: "Buyer phone number" })}
+                              style={{ flex: 1, minWidth: 0, background: PD.hover, border: "none", borderRadius: PD.radius.pill, color: PD.text, fontSize: 13, padding: "6px 10px", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }}
+                              prefixStyle={{ padding: "0 3px 0 0" }}
+                              inputStyle={{ padding: 0 }}
+                            />
                             <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
-                              style={{ flexShrink: 0, fontSize: T.size.sm, padding: "5px 11px", borderRadius: R.sm, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, fontFamily: "inherit", opacity: phoneSavingId === pl.id ? 0.5 : 1 }}>
-                              {phoneSavingId === pl.id ? "\u2026" : t("salesmanLite.drawer.save")}
+                              style={{ flexShrink: 0, fontSize: 12, height: 30, padding: "0 12px", borderRadius: PD.radius.pill, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id ? 0.5 : 1 }}>
+                              {phoneSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}
                             </button>
                             <button onClick={() => setEditPhoneLeadId(null)} aria-label={t("salesmanLite.drawer.cancel")}
-                              style={{ flexShrink: 0, background: "none", border: "none", color: C.textMuted, cursor: "pointer", padding: 2, display: "flex" }}>
-                              <X size={13} />
+                              style={{ flexShrink: 0, background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 4, display: "flex" }}>
+                              <X size={14} />
                             </button>
                           </>
                         ) : pl.phone ? (
                           <>
-                            <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, color: C.text, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pl.phone}</a>
+                            <a href={`tel:${pl.phone}`} style={{ flex: 1, minWidth: 0, fontSize: 13, color: PD.text, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{pl.phone}</a>
                             <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(pl.phone || ""); }} aria-label={t("salesmanLite.drawer.editPhone", { defaultValue: "Edit phone number" })}
-                              style={{ flexShrink: 0, background: "none", border: "none", color: C.textDim, cursor: "pointer", padding: 2, display: "flex" }}>
-                              <Pencil size={11} />
+                              style={{ flexShrink: 0, background: "none", border: "none", color: PD.textMuted, cursor: "pointer", padding: 4, display: "flex" }}>
+                              <Pencil size={12} />
                             </button>
                             {!isValidMyPhone(pl.phone) && (
-                              <span style={{ flexShrink: 0, fontSize: T.size.sm, color: C.dangerText }}>{t("salesmanLite.drawer.phoneLooksWrong", { defaultValue: "Check this number" })}</span>
+                              <span style={{ flexShrink: 0, fontSize: 12, color: PD.accentText }}>{t("salesmanLite.drawer.phoneLooksWrong", { defaultValue: "Check this number" })}</span>
                             )}
                             {isValidMyPhone(pl.phone) && (
                               <a href={`https://wa.me/${(() => { const dg = String(pl.phone).replace(/\D/g, ""); return dg.startsWith("6") ? dg : "6" + dg; })()}`} target="_blank" rel="noopener noreferrer"
-                                style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: T.size.sm, padding: "3px 8px", borderRadius: R.sm, background: withAlpha(C.success, 0.1), border: `1px solid ${withAlpha(C.success, 0.25)}`, color: C.successText, textDecoration: "none" }}>
-                                <MessageCircle size={10} /> WhatsApp
+                                style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, fontSize: 12, fontWeight: 600, height: 28, padding: "0 10px", borderRadius: PD.radius.pill, background: PD.hover, color: PD.up, textDecoration: "none" }}>
+                                <MessageCircle size={11} /> WhatsApp
                               </a>
                             )}
                           </>
                         ) : (
                           <button onClick={() => { setEditPhoneLeadId(pl.id); setEditPhoneVal(""); }}
-                            style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: C.textMuted, fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
-                            <Plus size={11} />
+                            style={{ flex: 1, minWidth: 0, textAlign: "left", background: "none", border: "none", padding: 0, color: PD.textSec, fontSize: 13, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}>
+                            <Plus size={12} />
                             {plThread
                               ? t("salesmanLite.drawer.addPhoneWhenShared", { defaultValue: "Add their number when they share it" })
                               : t("salesmanLite.drawer.addPhone", { defaultValue: "Add phone number" })}
@@ -4183,73 +3915,68 @@ export default function SalesmanLite() {
 
                   {/* Notes */}
                   <div>
-                    <p style={{ margin: "0 0 6px", fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.notes")}</p>
+                    <p style={label}>{t("salesmanLite.drawer.notes")}</p>
                     {editingNoteId === pl.id ? (
                       <div>
-                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: C.line, border: `1px solid ${withAlpha(C.accent, 0.3)}`, borderRadius: R.md, color: C.text, fontSize: T.size.base, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
-                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: withAlpha(C.accent, 0.12), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}</button>
-                          <button onClick={() => setEditingNoteId(null)} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer" }}>{t("salesmanLite.drawer.cancel")}</button>
+                        <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ ...field, resize: "none" }} />
+                        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                          <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ ...panelBtn, background: PD.accent, color: PD.onAccent, fontWeight: 600, opacity: notesSavingId === pl.id ? 0.5 : 1 }}>{notesSavingId === pl.id ? "…" : t("salesmanLite.drawer.save")}</button>
+                          <button onClick={() => setEditingNoteId(null)} style={panelBtn}>{t("salesmanLite.drawer.cancel")}</button>
                         </div>
                       </div>
                     ) : pl.notes ? (
-                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: T.size.base, color: C.textSec, fontStyle: "italic", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                        <Pencil size={12} /> "{pl.notes}"
+                      <p onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(pl.notes || ""); }} style={{ margin: 0, fontSize: 13.5, color: PD.textSec, lineHeight: 1.5, cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, background: PD.raised, borderRadius: PD.radius.row, padding: "10px 12px" }}>
+                        <Pencil size={12} style={{ flexShrink: 0, marginTop: 3 }} /> <span>"{pl.notes}"</span>
                       </p>
                     ) : (
-                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ fontSize: T.size.base, padding: "8px 12px", borderRadius: R.md, background: C.fillSubtle, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: 7, fontFamily: "inherit", width: "100%" }}>
+                      <button onClick={() => { setEditingNoteId(pl.id); setEditNoteVal(""); }} style={{ ...panelBtn, width: "100%", height: 40 }}>
                         <Pencil size={12} /> {t("salesmanLite.drawer.addNote")}
                       </button>
                     )}
                   </div>
 
-                  {/* Tool row 1: reminders + call log are Premium (2026-10-13). The
-                      flat-rate loan calculator that sat here is gone: the HP Act
-                      2026 ended flat rates, and it sent the buyer an instalment
-                      ~9% too low. Premium's loan desk uses financing.js. */}
-                  <button type="button" onClick={goPremium} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", alignSelf: "flex-start" }}>
-                    <Lock size={12} /> {t("salesmanLite.premiumRow.leadTools")}
-                  </button>
-                  {/* Loan check (IDEA-23) is Premium (owner, 2026-10-25): shown locked
-                      here, where a buyer's loan question comes up, and it opens the one
-                      upgrade screen. */}
-                  <button type="button" onClick={goPremium} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", alignSelf: "flex-start" }}>
-                    <Lock size={12} /> {t("salesmanLite.premiumRow.loanCheck")}
-                  </button>
-
-                  {/* Tool row 2 */}
+                  {/* Tools. Reminders + call log and the loan check are Premium
+                      (shown locked, they open the one upgrade screen). The old
+                      flat-rate loan calculator is gone (HP Act 2026). */}
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={() => { if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit", background: expandedActivityLeadId === pl.id ? withAlpha(C.infoText, 0.12) : C.fill, border: `1px solid ${expandedActivityLeadId === pl.id ? withAlpha(C.infoText, 0.3) : C.border}`, color: expandedActivityLeadId === pl.id ? C.infoTextHi : C.textSec }}>
+                    <button onClick={() => { if (expandedActivityLeadId === pl.id) setExpandedActivityLeadId(null); else fetchLeadActivities(pl.id); }}
+                      style={{ ...panelBtn, background: expandedActivityLeadId === pl.id ? PD.hover : PD.raised, color: expandedActivityLeadId === pl.id ? PD.text : PD.textSec }}>
                       <History size={12} /> {t("salesmanLite.drawer.history")}
                     </button>
                     {pl.stage === "deposit_taken" && (
-                      <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontFamily: "inherit" }}>
+                      <button onClick={() => { setDepositModal(pl); setDepositAmount(""); setDepositCopied(false); }} style={panelBtn}>
                         {t("salesmanLite.drawer.receipt")}
                       </button>
                     )}
-                    <button onClick={() => setLinkCarLeadId(pl.id)} style={{ fontSize: T.size.sm, padding: "7px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                    <button onClick={() => setLinkCarLeadId(pl.id)} style={panelBtn}>
                       <Car size={12} /> {pl.car_listing_id ? t("salesmanLite.drawer.changeCar") : t("salesmanLite.drawer.linkCar")}
+                    </button>
+                    <button type="button" onClick={goPremium} style={{ ...panelBtn, color: PD.textMuted }}>
+                      <Lock size={12} /> {t("salesmanLite.premiumRow.leadTools")}
+                    </button>
+                    <button type="button" onClick={goPremium} style={{ ...panelBtn, color: PD.textMuted }}>
+                      <Lock size={12} /> {t("salesmanLite.premiumRow.loanCheck")}
                     </button>
                   </div>
 
                   {/* Activity timeline */}
                   {expandedActivityLeadId === pl.id && (
-                    <div style={{ background: C.fillSubtle, border: `1px solid ${C.fillStrong}`, borderRadius: R.md, padding: "12px 14px" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: T.size.xs, fontWeight: T.weight.bold, color: C.textDim, textTransform: "uppercase", letterSpacing: "0.08em" }}>{t("salesmanLite.drawer.activityHistory")}</p>
+                    <div style={{ background: PD.raised, borderRadius: PD.radius.row, padding: "12px 14px" }}>
+                      <p style={label}>{t("salesmanLite.drawer.activityHistory")}</p>
                       {activitiesLoadingId === pl.id ? (
-                        <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
+                        <p style={{ fontSize: 12.5, color: PD.textMuted, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
                       ) : (leadActivities[pl.id] || []).length === 0 ? (
-                        <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.noActivity")}</p>
+                        <p style={{ fontSize: 12.5, color: PD.textMuted, margin: 0 }}>{t("salesmanLite.drawer.noActivity")}</p>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {(leadActivities[pl.id] || []).map((act, i) => {
                             const ActIcon = act.activity_type === "whatsapp_sent" ? MessageSquare : act.activity_type === "call_logged" ? Phone : act.activity_type === "stage_changed" ? RefreshCw : Pencil;
                             return (
                               <div key={act.id || i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                                <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: C.textMuted }} />
+                                <ActIcon size={13} style={{ flexShrink: 0, marginTop: 2, color: PD.textMuted }} />
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <p style={{ margin: 0, fontSize: T.size.base, color: C.textSec }}>{act.activity_type === "stage_changed" ? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
-                                  <p style={{ margin: 0, fontSize: T.size.sm, color: C.textDim }}>{timeAgo(act.created_at)}</p>
+                                  <p style={{ margin: 0, fontSize: 13, color: PD.textSec }}>{act.activity_type === "stage_changed" ? `${act.from_stage ? stageLabel(act.from_stage) : "?"} → ${act.to_stage ? stageLabel(act.to_stage) : "?"}` : act.note || act.activity_type}</p>
+                                  <p style={{ margin: 0, fontSize: 11.5, color: PD.textMuted }}>{timeAgo(act.created_at)}</p>
                                 </div>
                               </div>
                             );
@@ -4259,44 +3986,43 @@ export default function SalesmanLite() {
                     </div>
                   )}
 
-                  {/* Add-ons — paid upsells from the salesman's own catalogue,
-                      attached to this specific deal (deal_products). */}
+                  {/* Add-ons: paid upsells from the seller's own catalogue, on this deal (deal_products). */}
                   <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <p style={{ margin: 0, fontSize: T.size.xs, color: C.textMuted, textTransform: "uppercase", letterSpacing: "0.1em" }}>{t("salesmanLite.drawer.addons.title")}</p>
+                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8 }}>
+                      <p style={{ ...label, margin: 0 }}>{t("salesmanLite.drawer.addons.title")}</p>
                       {dealAddons.length > 0 && (
-                        <span style={{ fontSize: T.size.sm, fontWeight: T.weight.bold, color: C.dangerText }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: PD.text, fontVariantNumeric: "tabular-nums" }}>
                           RM {dealAddons.reduce((s, a) => s + Number(a.sold_price), 0).toLocaleString("en-MY")}
                         </span>
                       )}
                     </div>
                     {addonsLoading ? (
-                      <p style={{ fontSize: T.size.sm, color: C.textDim, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
+                      <p style={{ fontSize: 12.5, color: PD.textMuted, margin: 0 }}>{t("salesmanLite.drawer.loading")}</p>
                     ) : (
                       <>
                         {dealAddons.map((a) => (
-                          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", marginBottom: 4, background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.md }}>
-                            <span style={{ fontSize: T.size.base, color: C.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
-                            <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText, flexShrink: 0 }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
-                            <button onClick={() => handleRemoveAddon(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: C.textDim, display: "flex", padding: 2, flexShrink: 0 }}>
+                          <div key={a.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "10px 12px", marginBottom: 4, background: PD.raised, borderRadius: PD.radius.row }}>
+                            <span style={{ fontSize: 13, color: PD.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.dealer_products?.name || "—"}</span>
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: PD.text, flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>RM {Number(a.sold_price).toLocaleString("en-MY")}</span>
+                            <button onClick={() => handleRemoveAddon(a.id)} aria-label="Remove add-on" style={{ background: "none", border: "none", cursor: "pointer", color: PD.textMuted, display: "flex", padding: 4, flexShrink: 0 }}>
                               <X size={13} />
                             </button>
                           </div>
                         ))}
                         {!showAttachAddon ? (
-                          <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, width: "100%", fontSize: T.size.sm, fontWeight: T.weight.semibold, padding: "8px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.08), border: `1px solid ${withAlpha(C.accent, 0.22)}`, color: C.dangerText, cursor: "pointer", fontFamily: "inherit" }}>
+                          <button onClick={() => { setShowAttachAddon(true); setAddonForm({ product_id: "", sold_price: "" }); }} style={{ ...panelBtn, width: "100%", height: 40, justifyContent: "center", color: PD.text, fontWeight: 600 }}>
                             <Plus size={12} /> {t("salesmanLite.drawer.addons.attachCta")}
                           </button>
                         ) : (
-                          <div style={{ background: C.fillSubtle, border: `1px solid ${C.border}`, borderRadius: R.md, padding: 12 }}>
+                          <div style={{ background: PD.raised, borderRadius: PD.radius.row, padding: 12 }}>
                             {addonCatalogue.length === 0 ? (
-                              <p style={{ fontSize: T.size.sm, color: C.textMuted, margin: "0 0 8px" }}>{t("salesmanLite.drawer.addons.empty")}</p>
+                              <p style={{ fontSize: 12.5, color: PD.textSec, margin: "0 0 8px" }}>{t("salesmanLite.drawer.addons.empty")}</p>
                             ) : (
                               <>
                                 <select
                                   value={addonForm.product_id}
                                   onChange={(e) => { const sel = addonCatalogue.find((p) => p.id === e.target.value); setAddonForm((f) => ({ ...f, product_id: e.target.value, sold_price: sel ? String(sel.selling_price) : f.sold_price })); }}
-                                  style={{ width: "100%", background: C.line, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, padding: "8px 10px", color: C.text, fontSize: T.size.sm, fontFamily: "inherit", marginBottom: 6, boxSizing: "border-box" }}
+                                  style={{ ...field, background: PD.hover, marginBottom: 6 }}
                                 >
                                   <option value="">{t("salesmanLite.drawer.addons.selectProduct")}</option>
                                   {addonCatalogue.map((p) => (
@@ -4309,14 +4035,14 @@ export default function SalesmanLite() {
                                   value={addonForm.sold_price}
                                   onChange={(e) => setAddonForm((f) => ({ ...f, sold_price: e.target.value }))}
                                   placeholder={t("salesmanLite.drawer.addons.pricePlaceholder")}
-                                  style={{ width: "100%", background: C.line, border: `1px solid ${C.borderStrong}`, borderRadius: R.md, padding: "8px 10px", color: C.text, fontSize: T.size.sm, fontFamily: "inherit", marginBottom: 8, boxSizing: "border-box" }}
+                                  style={{ ...field, background: PD.hover, marginBottom: 8 }}
                                 />
                               </>
                             )}
                             <div style={{ display: "flex", gap: 6 }}>
-                              <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, fontSize: T.size.sm, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.cancel")}</button>
+                              <button onClick={() => setShowAttachAddon(false)} style={{ ...panelBtn, flex: 1, justifyContent: "center", background: PD.hover }}>{t("salesmanLite.drawer.cancel")}</button>
                               {addonCatalogue.length > 0 && (
-                                <button onClick={handleAttachAddon} disabled={attachingAddon || !addonForm.product_id || !addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: R.md, background: C.accent, border: "none", color: C.onAccent, fontSize: T.size.sm, fontWeight: T.weight.semibold, cursor: "pointer", opacity: (!addonForm.product_id || !addonForm.sold_price || attachingAddon) ? 0.5 : 1, fontFamily: "inherit" }}>
+                                <button onClick={handleAttachAddon} disabled={attachingAddon || !addonForm.product_id || !addonForm.sold_price} style={{ ...panelBtn, flex: 1, justifyContent: "center", background: PD.accent, color: PD.onAccent, fontWeight: 600, opacity: (!addonForm.product_id || !addonForm.sold_price || attachingAddon) ? 0.5 : 1 }}>
                                   {attachingAddon ? t("salesmanLite.drawer.addons.adding") : t("salesmanLite.drawer.addons.submit")}
                                 </button>
                               )}
@@ -4327,34 +4053,33 @@ export default function SalesmanLite() {
                     )}
                   </div>
 
-                  {/* Divider */}
-                  <div style={{ borderTop: `1px solid ${C.fillStrong}` }} />
+                  <div style={{ borderTop: `1px solid ${PD.line}` }} />
 
-                  {/* Lost / Delete zone */}
+                  {/* Lost / Delete */}
                   {plIsPromptingLost ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                      <span style={{ fontSize: T.size.sm, color: C.textSec, fontWeight: T.weight.semibold, marginRight: 2 }}>{t("salesmanLite.drawer.whyLost")}</span>
+                      <span style={{ fontSize: 13, color: PD.textSec, fontWeight: 600, marginRight: 2 }}>{t("salesmanLite.drawer.whyLost")}</span>
                       {LOST_REASONS.map(r => (
-                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ fontSize: T.size.sm, padding: "6px 10px", borderRadius: R.pill, background: withAlpha(C.textSec, 0.08), border: `1px solid ${withAlpha(C.textSec, 0.2)}`, color: C.textSec, cursor: "pointer", opacity: lostSavingId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>
+                        <button key={r} onClick={() => handleLostReason(pl.id, r)} disabled={lostSavingId === pl.id} style={{ ...panelBtn, height: 32, opacity: lostSavingId === pl.id ? 0.5 : 1 }}>
                           {lostSavingId === pl.id ? "…" : t("salesmanLite.drawer.lostReasons." + r.toLowerCase())}
                         </button>
                       ))}
-                      <button onClick={() => setLostPromptId(null)} style={{ fontSize: T.size.sm, padding: "6px 10px", background: "transparent", border: "none", color: C.textDim, cursor: "pointer" }}>✕</button>
+                      <button onClick={() => setLostPromptId(null)} aria-label="Cancel" style={{ ...panelBtn, height: 32, background: "transparent", color: PD.textMuted }}>✕</button>
                     </div>
                   ) : plIsConfirmingDelete ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: T.size.base, color: C.dangerText, fontWeight: T.weight.semibold }}>{t("salesmanLite.drawer.deleteLeadQ")}</span>
-                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: withAlpha(C.danger, 0.12), border: `1px solid ${withAlpha(C.danger, 0.3)}`, color: C.dangerText, cursor: "pointer", fontWeight: T.weight.semibold, opacity: deletingLeadId === pl.id ? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id ? "…" : t("salesmanLite.drawer.yesDelete")}</button>
-                      <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: T.size.sm, padding: "7px 14px", borderRadius: R.md, background: C.line, border: `1px solid ${C.border}`, color: C.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanLite.drawer.no")}</button>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 13.5, color: PD.accentText, fontWeight: 600 }}>{t("salesmanLite.drawer.deleteLeadQ")}</span>
+                      <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ ...panelBtn, background: PD.accent, color: PD.onAccent, fontWeight: 600, opacity: deletingLeadId === pl.id ? 0.5 : 1 }}>{deletingLeadId === pl.id ? "…" : t("salesmanLite.drawer.yesDelete")}</button>
+                      <button onClick={() => setDeleteConfirmId(null)} style={panelBtn}>{t("salesmanLite.drawer.no")}</button>
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
                       {pl.stage !== "won" && pl.stage !== "closed_won" && (
-                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ fontSize: T.size.base, padding: "8px 14px", borderRadius: R.md, background: withAlpha(C.danger, 0.06), border: `1px solid ${withAlpha(C.danger, 0.3)}`, color: C.dangerText, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                        <button onClick={() => { setDeleteConfirmId(null); setLostPromptId(pl.id); }} style={{ ...panelBtn, color: PD.accentText }}>
                           {t("salesmanLite.drawer.markLost")}
                         </button>
                       )}
-                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ fontSize: T.size.base, padding: "8px 14px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textDim, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontFamily: "inherit" }}>
+                      <button onClick={() => { setLostPromptId(null); setDeleteConfirmId(pl.id); }} style={{ ...panelBtn, color: PD.textMuted }}>
                         <Trash2 size={13} /> {t("salesmanLite.drawer.delete")}
                       </button>
                     </div>
