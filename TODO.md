@@ -2836,6 +2836,16 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
+  (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
+  9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and
+  TikTok, where a moving post gets watched and a still gets scrolled past. Premium only (Lite
+  keeps the still poster, 4 a month). Gotchas: a browser records WebM, which iPhone
+  WhatsApp will not play, so it must be made as MP4 (WebCodecs + an MP4 muxer, on the phone,
+  no server cost); keep it 6-8 s, portrait 1080x1920; reuse the Live presenter's motion
+  rules (slow, large moves, no confetti) and the same numbers from `loanPoster.js`. Open
+  question for the owner: is "live" a VIDEO file, or a poster LINK whose price updates
+  itself when the car's price changes? Not scheduled.
 - **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
   the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
   a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",
