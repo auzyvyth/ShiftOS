@@ -1987,10 +1987,10 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
   impossible number = no poster, never a guess.
 - No "full loan" line and no insurance folded into the loan (owner can revisit): a
   no-deposit figure is how prices get inflated on paper.
-- Quota is server side: `claim_loan_poster(listing)` (migrations `20261016b`, `20261018b`). Lite = 10 CARS a
+- Quota is server side: `claim_loan_poster(listing)` (migrations `20261016b`, `20261018b`, `20261102a`). Lite = 4 CARS a
   month (Malaysia time); the same car again that month is free. Premium + dealer-linked =
   unlimited via `salesman_has_full_page`. It refuses a car the seller cannot sell. The
-  preview is free and watermarked; only the clean file claims. Limit 10 lives in BOTH the
+  preview is free and watermarked; only the clean file claims. Limit 4 lives in BOTH the
   SQL and `LITE_POSTERS_PER_MONTH`.
 - The seller's own number on their own poster is fine (they send it); this is NOT a public
   page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
@@ -2388,7 +2388,7 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   download (`poster-download`); the bar shows "Tap the ringed button" instead of Next. Closing the
   menu or sheet early goes back to step 1; `LoanPosterSheet onDownloaded` ends it. It lifts itself
   above the sheet (`zBase` 10000; the sheet is 9999). The Listings intro lost its "···" step to it.
-  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (10 free posters/month).
+  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (4 free posters/month).
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

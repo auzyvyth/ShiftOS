@@ -1226,7 +1226,7 @@ export default function SalesmanLite() {
 
   // listing action overflow menu
   const [actionMenuCarId, setActionMenuCarId] = useState(null);
-  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (10 free cars a month)
+  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target (4 free cars a month)
 
   // "Delete" ARCHIVES the car (status='archived'), never a hard DELETE: that
   // unlinked the car from every lead and chat and passed the 8s limit on a
