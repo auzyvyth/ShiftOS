@@ -47,7 +47,7 @@ export default function DashboardTab({
   const card = { background: P.card, borderRadius: P.radius.card, padding: isMobile ? 18 : 22, minWidth: 0 };
   const h2 = { margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: "-0.01em", color: P.text };
   const sub = { margin: "2px 0 0", fontSize: 12, color: P.textSec, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
-  const rowBtn = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: P.radius.row, background: P.raised, border: "none", color: P.text, cursor: "pointer", fontFamily: "inherit", textDecoration: "none" };
+  const rowBtn = { display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "12px 14px", borderRadius: P.radius.row, background: P.raised, border: "none", color: P.text, cursor: "pointer", fontFamily: "inherit", textDecoration: "none", boxSizing: "border-box" };
   const pageUrl = profile?.slug ? `${SITE_URL}/s/${profile.slug}` : null;
   const carLine = (row) => (row.car_listings ? `${row.car_listings.brand} ${row.car_listings.model}` : t("salesmanLite.dash.noCar"));
   const timeOf = (a) => (a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "numeric", minute: "2-digit" }) : "—");
