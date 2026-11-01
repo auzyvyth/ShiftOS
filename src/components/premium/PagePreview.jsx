@@ -1,6 +1,7 @@
 import React from "react";
 import { cdnImg } from "../../utils/img";
 import { coverObjectPosition } from "../../utils/coverFocus";
+import { chosenPageColor, PAGE_COLOR_DEFAULT } from "../../utils/pageAccent";
 
 // Lite vs Premium, drawn as the seller's OWN page side by side (owner,
 // 2026-10-22: "both feel the same"). Every Premium tool works on leads, and a
@@ -43,7 +44,9 @@ function CarTile({ car }) {
 function MiniPage({ profile, cars, full }) {
   const name = profile?.full_name || "Your name";
   const initials = name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const accent = profile?.brand_color || "#dc2626";
+  // Premium wears the seller's chosen colour (pageAccent.js); the DB default gold
+  // is "never chose", and Lite keeps Drevo red.
+  const accent = (full && chosenPageColor(profile)) || PAGE_COLOR_DEFAULT;
   const socials = ["instagram", "tiktok", "facebook"].filter((k) => profile?.[k]);
   const shown = cars.length ? cars.slice(0, 2) : [null, null];
 

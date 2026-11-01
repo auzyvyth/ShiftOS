@@ -10,10 +10,10 @@ import { COVER_FOCUS_DEFAULT } from "../../utils/coverFocus";
 // Opens BEFORE a new cover uploads (Cancel = nothing saved) and from "Adjust
 // position" on an existing one. The big frame is the exact shape of the banner
 // in the link preview (api/agent-card.js: 1200 x 340); the small one is the page
-// on a phone (.ap-cover, ~343 x 150). Both use object-position 50% <y>%, the
+// on a phone (.ap--pro .ap-cover, ~343 x 210). Both use object-position 50% <y>%, the
 // same rule the share picture is cut with, so what you see is what WhatsApp gets.
 const SHARE_RATIO = 1200 / 340;
-const PHONE_RATIO = 343 / 150;
+const PHONE_RATIO = 343 / 210; // a Premium page's banner on a phone (.ap--pro .ap-cover)
 
 export default function CoverAdjuster({ src, initialY = COVER_FOCUS_DEFAULT, busy = false, onApply, onCancel }) {
   const { t } = useTranslation();

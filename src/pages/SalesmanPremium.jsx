@@ -33,6 +33,8 @@ import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
 import CoverAdjuster from "../components/premium/CoverAdjuster";
+import { PAGE_COLOR_PRESETS, PAGE_COLOR_DEFAULT, chosenPageColor } from "../utils/pageAccent";
+import { accentTheme } from "../utils/liveAccent";
 import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import { buildListingFacts } from "../utils/listingCopy";
@@ -687,6 +689,7 @@ export default function SalesmanPremium() {
  // BANNER-FOCUS: the cover waiting in the adjuster. { file?, src, y } — a new
  // file is uploaded only on Apply; without a file, Apply re-frames the saved one.
  const [coverAdjust, setCoverAdjust] = useState(null);
+ const [pageColorSaving, setPageColorSaving] = useState(false);
  const coverInputRef = useRef(null);
  const [editingReminder, setEditingReminder] = useState(null);
  const [reminderMsg, setReminderMsg] = useState("");
@@ -5281,6 +5284,22 @@ export default function SalesmanPremium() {
  toast.success(t("salesmanPremium.settings.coverUpdated"));
  };
 
+ // PAGE-PRO: the page colour, saved on tap (profiles.brand_color).
+ const savePageColor = async (hex) => {
+ if (pageColorSaving) return;
+ const prev = profile?.brand_color;
+ setPageColorSaving(true);
+ setProfile((p) => ({ ...p, brand_color: hex }));
+ const { error } = await supabase.from("profiles").update({ brand_color: hex }).eq("id", userId);
+ setPageColorSaving(false);
+ if (error) {
+ setProfile((p) => ({ ...p, brand_color: prev }));
+ toast.error(t("salesmanPremium.settings.photoNotSaved"));
+ return;
+ }
+ toast.success(t("salesmanPremium.settings.pageColor.saved", { defaultValue: "Page colour saved" }));
+ };
+
  const handleSave = async () => {
  const phone = toPlus60(settingsForm.whatsapp_number);
  if (phone && !isValidMyPhone(phone, { mobileOnly: true })) { toast.error(MY_PHONE_ERROR); return; }
@@ -5488,6 +5507,22 @@ export default function SalesmanPremium() {
  <p style={{ ...hint, margin: "6px 0 0" }}>{t("salesmanPremium.settings.photoHint")}</p>
  </div>
  </div>
+ </div>
+ {/* PAGE-PRO: the page's colour (WhatsApp button, accent line, photo ring).
+     Saved on tap; the DB default gold counts as "not chosen" (pageAccent.js). */}
+ <div style={card}>
+ <label style={lbl}>{t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })}</label>
+ <div role="radiogroup" aria-label={t("salesmanPremium.settings.pageColor.title", { defaultValue: "Page colour" })} style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+ {PAGE_COLOR_PRESETS.map((c) => {
+ const on = (chosenPageColor(profile) || PAGE_COLOR_DEFAULT).toLowerCase() === c.toLowerCase();
+ return (
+ <button key={c} type="button" role="radio" aria-checked={on} aria-label={c} disabled={pageColorSaving}
+ onClick={() => savePageColor(c)}
+ style={{ width: 36, height: 36, borderRadius: "50%", border: "none", cursor: pageColorSaving ? "wait" : "pointer", background: accentTheme(c).accent, boxShadow: on ? `0 0 0 3px ${PD.card}, 0 0 0 5px ${PD.text}` : "none", padding: 0 }} />
+ );
+ })}
+ </div>
+ <p style={hint}>{t("salesmanPremium.settings.pageColor.hint", { defaultValue: "Your page's main button and accents. Only Premium pages have one." })}</p>
  </div>
  <div style={{ ...card, display: "flex", flexDirection: "column", gap: 16 }}>
  <div>

@@ -24,6 +24,7 @@ import { hasStoredSession } from '../utils/panelCache';
 import ErrorScreen from '../components/ErrorScreen';
 import LeadAlertsStep from '../components/onboarding/LeadAlertsStep';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { pageAccent } from '../utils/pageAccent';
 
 // Seller-only, so buyers never download it.
 const LivePresenter = lazy(() => import('../components/live/LivePresenter'));
@@ -693,6 +694,7 @@ export default function SalesmanProfilePage() {
     hasReviews && { key: 'rating', n: reviewSummary.avg.toFixed(1), suffix: '/5', l: `${reviewSummary.count} review${reviewSummary.count === 1 ? '' : 's'}` },
   ].filter(Boolean);
 
+  const pro = pageAccent(profile);
   return (
     <>
       <Helmet>
@@ -827,8 +829,26 @@ export default function SalesmanProfilePage() {
         .ap-who { flex: 1; min-width: 0; font-size: 12px; color: #6b7280; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .ap-who b { display: block; color: #111827; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
         .ap-sticky .ap-btn { flex: 0 0 auto; padding: 0 20px; height: 44px; font-size: 14px; }
+        /* PAGE-PRO: Premium pages only (.ap--pro). A taller banner with a soft
+           fade, the seller's colour on the main button, the accent line, the
+           live dot and a ring round the photo. Lite (.ap alone) is untouched. */
+        .ap--pro .ap-cover { height: 210px; border: none; }
+        /* No cover yet: the banner is the seller's colour (the wave bands go soft
+           white on it), so a Premium page reads as one before any upload. */
+        .ap--pro .ap-cover { background: linear-gradient(120deg, var(--ap-a) 0%, var(--ap-a2) 100%); }
+        .ap--pro .ap-cover > svg.ap-waves path { fill: #fff; fill-opacity: .10; }
+        .ap--pro .ap-cover::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,.32) 100%); }
+        .ap--pro .ap-back, .ap--pro .ap-share, .ap--pro .ap-owner { z-index: 3; }
+        .ap--pro .ap-btn { background: linear-gradient(var(--ap-a), var(--ap-a2)); box-shadow: 0 6px 18px rgba(var(--ap-rgb), .28); }
+        .ap--pro .ap-btn:hover { background: linear-gradient(var(--ap-a2), var(--ap-a2)); }
+        .ap--pro .ap-id .ap-eb i { background: var(--ap-a); width: 22px; }
+        .ap--pro .ap-av { padding: 3px; background: linear-gradient(145deg, var(--ap-a), var(--ap-a2)); box-shadow: 0 8px 22px rgba(var(--ap-rgb), .30); }
+        .ap--pro .ap-av img, .ap--pro .ap-av div { border: 3px solid #fff; }
+        .ap--pro .ap-live-h i { background: var(--ap-a); }
+        .ap--pro .ap-id { box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 12px 32px rgba(15,23,42,.08); }
         @media (min-width: 1024px) {
           .ap-cover { height: 220px; }
+          .ap--pro .ap-cover { height: 300px; }
           .ap-cols { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 48px; align-items: start; }
           .ap-left { position: sticky; top: 20px; }
           .ap-id { padding: 24px; }
@@ -838,7 +858,10 @@ export default function SalesmanProfilePage() {
         }
       `}</style>
 
-      <div className="ap">
+      {/* PAGE-PRO (2026-11-01): a Premium page gets its own look, a Lite page
+          keeps the standard one (owner: "glow up Premium", Lite unchanged).
+          The seller's colour comes from pageAccent (src/utils/pageAccent.js). */}
+      <div className={pro ? 'ap ap--pro' : 'ap'} style={pro ? { '--ap-a': pro.accent, '--ap-a2': pro.dark, '--ap-rgb': pro.rgb } : undefined}>
         {/* Owner-only setup nudge — fixed strip, closeable per step (setupDismissKey). */}
         {isOwner && setupHref && !setupDismissed && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 60, background: '#0f1115', boxShadow: '0 8px 24px rgba(15,23,42,0.2)', transform: setupSlideIn ? 'translateY(0)' : 'translateY(-100%)', transition: 'transform 0.24s ease' }}>

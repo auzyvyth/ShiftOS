@@ -1513,6 +1513,13 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   dealer-linked salesmen always count as full), plus `page_basic`. Nothing is deleted:
   upgrading brings it all back. Telegram reminders: `trg_zz_lite_no_booking_reminder`
   nulls `remind_at` for Lite sellers. Migrations `20261014a_lite_cap_five.sql` + `20261014b_lite_cap_ten.sql`.
+- **A Premium page LOOKS Premium even with nothing filled in (PAGE-PRO, owner 2026-11-01:
+  "glow up Premium", Lite unchanged).** `.ap--pro` on `/s/:slug` when `!page_basic`: taller
+  banner (210px phone / 300px desktop) with a soft fade, the banner painted in the seller's
+  colour until a cover is uploaded, a ring round the photo, the colour on the WhatsApp buttons.
+  Colour = `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
+  in Premium Settings (`savePageColor`, `profiles.brand_color`). `brand_color` has a DB DEFAULT
+  of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 

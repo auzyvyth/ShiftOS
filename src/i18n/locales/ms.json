@@ -1097,6 +1097,11 @@
         "cancel": "Batal",
         "saving": "Menyimpan...",
         "adjust": "Laras kedudukan"
+      },
+      "pageColor": {
+        "title": "Warna page",
+        "hint": "Butang utama dan aksen page anda. Hanya page Premium ada warna sendiri.",
+        "saved": "Warna page disimpan"
       }
     },
     "sold": {

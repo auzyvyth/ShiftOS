@@ -1108,6 +1108,11 @@
         "cancel": "Cancel",
         "saving": "Saving...",
         "adjust": "Adjust position"
+      },
+      "pageColor": {
+        "title": "Page colour",
+        "hint": "Your page's main button and accents. Only Premium pages have one.",
+        "saved": "Page colour saved"
       }
     },
     "sold": {
