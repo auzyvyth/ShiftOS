@@ -2842,6 +2842,16 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-30: Two-sided invite reward, Dropbox style (owner, 2026-11-01)** — both the inviter
+  and the invited seller get something when the invite works, not just the inviter. Today
+  (REFER-1) only the inviter earns, and only after the friend pays Premium TWICE: 1 invite
+  claimed, 0 rewards, 1 payment ever, so nobody can reach it. Proposed: reward fires when the
+  invited seller's FIRST CAR IS APPROVED (a real seller, not a fake signup). Both get +7 days
+  Premium (invitee's trial becomes 14 days) AND +2 permanent Lite car slots (cap +10, so a
+  Lite seller can grow to 20 by inviting). Keep the paid-twice 30-day bonus on top. Never
+  cash. Blocks: Act 500 check (no fee to join + non-cash reward looks safe, but read the
+  Schedule's 10 indicators first); per-seller slot bonus needs a column read by
+  `enforce_listing_cap` + `sweep_premium_lapses`; fake-account farming (same phone/device).
 - **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
   (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
   9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and
