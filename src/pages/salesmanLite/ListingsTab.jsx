@@ -2,7 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {
   Calculator, Car, Check, ChevronDown, ClipboardPen, Download, FileText,
-  Film, Link as LinkIcon, Lock, Pencil, Plus, Trash2,
+  Film, Link as LinkIcon, Lock, Pencil, Play, Plus, Trash2,
 } from "lucide-react";
 import { premiumDark as P } from "../../theme/tokens";
 import "./keys.css";
@@ -19,7 +19,7 @@ import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 // page link + Copy, status tabs, sort, the empty state's two buttons, per car
 // Edit & Resubmit, the locked car's Premium button, open on photo / title,
 // the status menu, the next-step button, Link / Caption / Edit / View, and ···
-// (Brief, Loan poster, TikTok post locked, Download photos, Delete).
+// (Brief, Loan poster, Moving poster + TikTok post locked, Download photos, Delete).
 // What went (each fact once): the per-card "Live on XDrive · N views" strip
 // (the Available tab says live, the views line says the count), the "hot /
 // stale" counts (the next-step line replaced those tags), and "My margin: —"
@@ -337,8 +337,16 @@ export default function ListingsTab({
                           {!isSold && (
                             <>
                               <button onClick={() => { onBrief(car); setActionMenuCarId(null); }} style={menuItem}><FileText size={13} /> Brief</button>
-                              {/* Loan poster: free on Lite for 10 cars a month (claim_loan_poster). */}
+                              {/* Loan poster: free on Lite for 4 cars a month (claim_loan_poster). */}
                               <button onClick={() => { onPoster(car); setActionMenuCarId(null); }} style={menuItem}><Calculator size={13} /> Loan poster</button>
+                              {/* Moving poster (IDEA-29) is Premium: shown locked, the tap goes to the one upgrade screen. */}
+                              <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
+                                <Play size={13} />
+                                <span style={{ flex: 1 }}>Moving poster</span>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 11, fontWeight: 600, color: P.textMuted, background: P.raised, borderRadius: P.radius.pill, padding: "2px 7px" }}>
+                                  <Lock size={9} strokeWidth={2.5} /> Premium
+                                </span>
+                              </button>
                               {/* Studio is Premium: shown locked, the tap goes to the one upgrade screen. */}
                               <button className="lk-prem-in" onClick={() => { setActionMenuCarId(null); onPremium(); }} style={{ ...menuItem, color: P.text }}>
                                 <Film size={13} />

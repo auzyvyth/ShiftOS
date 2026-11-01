@@ -17,7 +17,7 @@ import {
   initialLiveRate, saveLiveRate, LIVE_RATE_LOCAL_KEY,
 } from './liveCopy';
 import { NCD_TIERS, motorPremium, insuranceRegion, ncdLabel } from '../../utils/motorInsurance';
-import { ACCENT_PRESETS, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
+import { ACCENT_PRESETS, DEFAULT_ACCENT, accentTheme, initialLiveAccent, saveLiveAccent } from '../../utils/liveAccent';
 import { useNewCarInfo, useNewCarInfos, useNewCarVariant, pickNewCarVariant } from '../newcar/NewCarListingInfo';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
@@ -186,7 +186,15 @@ const fmtPhone = (raw) => {
   return `${d.slice(0, 3)}-${d.slice(3)}`;
 };
 
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang }) {
+// `basic` = a Lite seller's presenter (LIVE-BASIC, owner 2026-11-01: "make lite
+// calculator basic"). The only Premium-only part of Lite their two real users
+// touched was Live, and it was all free, so a lapsed trial lost nothing. Basic
+// keeps one car: price, deposit chips, the monthly and its tenures, the working
+// (price, deposit, loan, rate) and the bank notes. Budget, Viewer, Docs,
+// rebates, insurance + NCD, totals, salary guide, offer, variant extras, the car
+// list, colour and comment line are Premium. The upsell is in Settings and the
+// report, never on the stage (viewers see the stage).
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false }) {
   // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
   // Not for the embedded demo on the marketing page, which is not a real live.
   useEffect(() => {
@@ -371,7 +379,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const [lang, setLang] = useState(() => (initialLang === 'ms' || initialLang === 'en' ? initialLang : initialLiveLang(i18n.language)));
   // Accent colour: the seller's pick, kept readable for white text (liveAccent.js).
   const [accentPick, setAccentPick] = useState(initialLiveAccent);
-  const theme = accentTheme(accentPick);
+  const theme = accentTheme(basic ? DEFAULT_ACCENT : accentPick);
   const pickAccent = (hex) => { setAccentPick(hex); if (!embedded) saveLiveAccent(hex); };
   // The seller's own comment line, remembered per device (liveCopy.js ctaLine).
   const [ctaCustom, setCtaCustom] = useState(() => (embedded ? '' : initialLiveCta()));
@@ -492,7 +500,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   const variantChips = shortVariantNames(variants.map((v) => v.variant));
   // What this variant adds over the next cheaper one, for the seller to read
   // out ("AV dapat 360 camera"). A strip on the photo: no extra height.
-  const extras = variants.length > 1 && variant ? variantExtras(variants, variant) : null;
+  const extras = !basic && variants.length > 1 && variant ? variantExtras(variants, variant) : null;
   const extrasOver = extras?.over ? variantChips[variants.findIndex((v) => v.variant === extras.over)] || extras.over : null;
   const images = Array.isArray(car?.images) ? car.images.filter(Boolean) : [];
   const nImages = images.length;
@@ -519,7 +527,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     return () => clearTimeout(tm);
   }, [listings, embedded]);
   // price = asking, net = what the loan is worked from (asking - rebate).
-  const { price, rebate, net } = netPrice(shown, rebates);
+  const { price, rebate, net } = netPrice(shown, basic ? {} : rebates);
   // This car's rate group, its rate and how it was quoted.
   const rateGroup = isLocalNew(shown) ? 'local' : 'std';
   const { rate, basis } = rateOf(shown);
@@ -537,7 +545,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   };
   const insK = insKey(car, variant?.model_id);
   const insIsTyped = (insTyped[insK] ?? '') !== '';
-  const ins = insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
+  const ins = basic ? null : insFor(car, price, variant?.specs?.engine_cc ?? car?.engine_cc, variant?.model_id);
   const insAmt = ins || 0;
 
   const go = useCallback((d) => {
@@ -614,7 +622,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
       }
       if (confirmEnd) { if (e.key === 'Escape') setConfirmEnd(false); return; }
       // Type a number, then Enter: the car viewers asked for by its #N.
-      if (!adjustOpen && !budgetSetOpen && /^[0-9]$/.test(e.key)) { setTypedNo((v) => (v + e.key).replace(/^0+/, '').slice(-3)); return; }
+      if (!basic && !adjustOpen && !budgetSetOpen && /^[0-9]$/.test(e.key)) { setTypedNo((v) => (v + e.key).replace(/^0+/, '').slice(-3)); return; }
       if (typedNo && e.key === 'Enter') { e.preventDefault(); goTo(Number(typedNo) - 1); setTypedNo(''); return; }
       if (typedNo && (e.key === 'Escape' || e.key === 'Backspace')) { setTypedNo(e.key === 'Escape' ? '' : typedNo.slice(0, -1)); return; }
       if (e.key === 'Escape' && pickOpen) { setPickOpen(false); return; }
@@ -625,7 +633,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, goTo, typedNo, pickOpen, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen]);
+  }, [go, goTo, typedNo, pickOpen, onClose, report, mode, embedded, photoFull, stepPhoto, confirmEnd, adjustOpen, budgetSetOpen, basic]);
   // A typed number nobody confirmed clears itself.
   useEffect(() => {
     if (!typedNo) return undefined;
@@ -916,7 +924,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   // Jump to a car. Only with 3+ cars (with 2, Next already is the list).
   // Desktop with room in the margin: the list sits there, outside the stage.
   // Anything else: a list button in the bottom nav opens it as a sheet.
-  const canPick = !embedded && !report && listings.length >= 3;
+  const canPick = !basic && !embedded && !report && listings.length >= 3;
   const pickRail = canPick && !!deskZoom && gutter >= 200;
   const pickQn = pickQ.trim().replace(/^#\s*/, '').toLowerCase();
   const pickRows = listings.map((c, i) => ({ c, i })).filter(({ c, i }) => !pickQn
@@ -1491,13 +1499,16 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-tile { padding: 16px; }
         .lp-tile b { display: block; font-size: 32px; font-weight: 800; color: #0f1115; font-variant-numeric: tabular-nums; line-height: 1.1; }
         .lp-tile span { display: block; font-size: 13px; color: #4b5563; margin-top: 4px; }
+        .lp-copy-a { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; align-self: flex-start; }
+        .lp-adjtitle { flex: 1; font-size: 15px; font-weight: 700; color: #111827; }
+        .lp-basicnote { margin-top: 10px; }
         .lp-copy { margin-top: 12px; height: 40px; padding: 0 16px; border: none; border-radius: 10px; background: #0f1115; color: #fff; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
       `}</style>
 
       <div className="lp-stage" style={deskZoom ? { width: DESK_W, height: STAGE_H, zoom: deskZoom } : undefined}>
       {/* Top bar: mode + controls. Contact only shows when the seller turns it on. */}
       <div className="lp-top">
-        {report ? <span className="lp-count">{t.liveEnded}</span> : (
+        {report ? <span className="lp-count">{t.liveEnded}</span> : basic ? <span className="lp-count">{t.cars}</span> : (
           <div className="lp-seg" role="group" aria-label="Show">
             <button type="button" aria-pressed={mode === 'cars'} onClick={() => setMode('cars')}>{t.cars}</button>
             <button type="button" aria-pressed={mode === 'budget'} onClick={() => setMode('budget')}>{t.budget}</button>
@@ -1536,7 +1547,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       </div>
 
-      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} /> : (<>
+      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} basic={basic} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
@@ -1557,7 +1568,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </div>
             </div>
             {/* The comment line sits at the top: the bottom of the stream is under TikTok's comments. */}
-            <p className="lp-cta">{ctaLine(ctaCustom, idx + 1, t.cta(idx + 1))}{bioOn && <span className="lp-bio">{t.bioLine}</span>}</p>
+            <p className="lp-cta">{ctaLine(basic ? '' : ctaCustom, idx + 1, t.cta(idx + 1))}{(basic || bioOn) && <span className="lp-bio">{t.bioLine}</span>}</p>
             {/* Contact sits at the TOP, under the comment line (2026-10-24): at
                 the foot of the card it fell below the fold on a model card and
                 sat under TikTok's comments on every other car. Not a button
@@ -1666,7 +1677,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   <tr><td>{t.price}</td><td>{price > 0 ? <Money n={price} /> : t.onRequest}</td></tr>
                   {/* Insurance is typed in place too, and the figure stays on this
                       device until changed (per variant on a model card). */}
-                  {price > 0 && (
+                  {!basic && price > 0 && (
                     insEdit ? (
                       <tr>
                         <td>{t.insuranceBeforeNcd}</td>
@@ -1689,7 +1700,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   )}
                   {/* New cars always show the Rebate line (brands run promos every
                       month); tapping it turns the number into a box, typed in place. */}
-                  {price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
+                  {!basic && price > 0 && (rebate > 0 || shown.condition === 'new' || rebateEdit) && (
                     rebateEdit ? (
                       <tr className="lp-r-reb">
                         <td>{t.rebate}</td>
@@ -1737,7 +1748,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 alike, and hiding it left sellers unable to answer "I have 55% NCD".
                 Its own grid area: under the working on desktop, so the photo keeps
                 the whole row (under the photo it shrank the photo, 2026-10-24). */}
-            {price > 0 && (
+            {!basic && price > 0 && (
               <div className="lp-seg lp-ncd" role="group" aria-label={t.ncd}>
                 <span>{t.ncd}</span>
                 {NCD_TIERS.map((n) => (
@@ -1758,13 +1769,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               )}
               {/* Total counter (owner, 2026-10-22): what the buyer pays in all,
                   deposit + every instalment, and the interest inside it. */}
-              {totals && (
+              {!basic && totals && (
                 <div className="lp-totals">
                   <div><span>{t.totalPay}</span><b><Money n={picked.down + totals.totalRepayment} /></b><small>{t.totalPayHow(pickYears * 12)}</small></div>
                   <div><span>{t.interest}</span><b><Money n={totals.totalInterest} /></b><small>{t.interestHow(fmtRate(rateFor(pickYears)))}</small></div>
                 </div>
               )}
-              {salary && (
+              {!basic && salary && (
                 <p className="lp-salary">
                   {t.salary(pickYears)}<b>{t.about(`RM ${fmt(salary)}`)}</b>{t.salaryRule(Math.round(SALARY_SHARE * 100))}
                 </p>
@@ -1775,7 +1786,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                   {highValue ? t.highValue : t.subjectBank}
                 </p>
               )}
-              {offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
+              {!basic && offer.trim() && <p className="lp-offer"><b>{t.offer}</b>{offer.trim()}</p>}
             </div>
           </div>
         </div>
@@ -2003,6 +2014,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
             {/* Three tabs: Financing (rates, monthly budget, insurance), Rebates
                 (every car), Look (colour, comment line, offer). */}
             <div className="lp-adjhead">
+              {basic ? <b className="lp-adjtitle">{t.adjFin}</b> : (
               <div className="lp-seg lp-adjtabs" role="group" aria-label={t.adjust}>
                 <button type="button" aria-pressed={adjustTab === 'fin'} onClick={() => setAdjustTab('fin')}>{t.adjFin}</button>
                 <button type="button" aria-pressed={adjustTab === 'rebates'} onClick={() => setAdjustTab('rebates')}>
@@ -2010,17 +2022,18 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
                 </button>
                 <button type="button" aria-pressed={adjustTab === 'look'} onClick={() => setAdjustTab('look')}>{t.adjLook}</button>
               </div>
+              )}
               <button type="button" className="lp-adjclose" onClick={() => setAdjustOpen(false)} aria-label={t.closeAdjust}>
                 <X size={20} />
               </button>
             </div>
 
-            {adjustTab === 'fin' && (<>
+            {(basic || adjustTab === 'fin') && (<>
               {/* One row per rate group the seller actually has on this live. */}
               {rateGroups.map((g) => rateRow(g, 'lp-rate'))}
               {/* Monthly budget sits under the rates (owner, 2026-10-22): type what the
                   viewer can pay, the deposit it needs fills the first chip. */}
-              {mode === 'cars' && (
+              {!basic && mode === 'cars' && (
                 <label className="lp-wide">
                   {t.targetMonthly}
                   <input className="lp-in" type="number" inputMode="numeric" min="0" value={target}
@@ -2031,9 +2044,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               {mode === 'cars' && car && (<>
                 <p className="lp-hint">{t.carRateNote(`#${idx + 1}`, `${fmtRate(rate)}% ${basis === 'flat' ? t.flat : 'EIR'}`)}</p>
               </>)}
+              {basic && <p className="lp-hint lp-basicnote">{t.basicNote}</p>}
             </>)}
 
-            {adjustTab === 'rebates' && (
+            {!basic && adjustTab === 'rebates' && (
               <div className="lp-wide lp-rebs">
                 <p className="lp-rebs-h"><b>{t.rebatesTitle}{rebateCount > 0 ? ` · ${rebateCount}` : ''}</b>{embedded ? t.rebatesHintDemo : t.rebatesHint(endLabel)}</p>
                 {listings.map((c, i) => {
@@ -2064,7 +2078,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
               </div>
             )}
 
-            {adjustTab === 'look' && (<>
+            {!basic && adjustTab === 'look' && (<>
               <div className="lp-colours" role="group" aria-label={t.colour}>
                 <span>{t.colour}</span>
                 {ACCENT_PRESETS.map((c) => (
@@ -2257,7 +2271,7 @@ function BudgetReveal({ reveal, on, amount, viewer, queue, onViewer, onViewerDon
 
 // After the live. Counts only: this can still be on the stream, so no buyer
 // name, phone or message ever renders here.
-function LiveReport({ report, onDone, t, slug }) {
+function LiveReport({ report, onDone, t, slug, basic }) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     navigator.clipboard?.writeText(`${SITE_URL}/s/${slug}`).then(() => setCopied(true), () => {});
@@ -2296,6 +2310,13 @@ function LiveReport({ report, onDone, t, slug }) {
       <p className="lp-note">
         {t.reportNote}
       </p>
+      {/* Lite: the report is off camera, so this is where Premium is offered. */}
+      {basic && (
+        <div className="lp-card lp-tile">
+          <span>{t.basicReport}</span>
+          <a className="lp-copy lp-copy-a" href="/salesman-lite/settings?section=premium">{t.basicReportCta}</a>
+        </div>
+      )}
       <button className="lp-navbtn lp-next" onClick={onDone} style={{ flex: 'none' }}>{t.done}</button>
     </div>
   );

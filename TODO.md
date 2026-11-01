@@ -78,6 +78,12 @@ for another year.
   ever so far. Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
   car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
   tell real from not, the owner signs in as console-made sellers to add their cars.
+- [ ] **LIVE-BASIC: Lite's Live presenter cut to basic (owner, 2026-11-01). BUILT, NOT on staging/live.**
+  Both real trials use ONLY the Live calculator, and Live was fully free, so ending the trial
+  cost them nothing. Lite now gets one car + deposit + monthly + tenures; Budget/Viewer, Docs,
+  rebates, insurance+NCD, totals, salary guide, colour, car list are Premium (rules: CLAUDE.md
+  "Lite vs Premium split"). Owner: tell the 2 trial sellers BEFORE their trial ends, and tell
+  existing Lite sellers on WhatsApp, or the first they hear of it is mid-live.
 - [ ] **PUSH-ONBOARD: notifications are the LAST signup step, required to finish (owner,
   2026-10-31). Part 1 BUILT 2026-10-31, on staging, NOT live:** `LeadAlertsStep`
   (`src/components/onboarding/`) is the last screen of BOTH the signup wizard
@@ -2836,6 +2842,24 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
+  (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
+  9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and
+  TikTok, where a moving post gets watched and a still gets scrolled past. Premium only (Lite
+  keeps the still poster, 4 a month). Gotchas: a browser records WebM, which iPhone
+  WhatsApp will not play, so it must be made as MP4 (WebCodecs + an MP4 muxer, on the phone,
+  no server cost); keep it 6-8 s, portrait 1080x1920; reuse the Live presenter's motion
+  rules (slow, large moves, no confetti) and the same numbers from `loanPoster.js`. Open
+  question answered: a video, with simple editable templates. Owner wants a PREVIEW in
+  chat first, not app code (2026-11-01): the /poster-lab prototype was pulled back out.
+  Five designs agreed for preview (artifact "Moving loan poster - preview"): 1 Classic, 2 Beats
+  for TALL photos (full-bleed), 3 Beats for WIDE photos (photo whole in a band), 4 Stretch (light
+  card, photo edges stretched to fill, words fixed, hard cut every 2.5s; motion modelled on a
+  paultan ad the owner sent, our own type and colours), 5 Calculator (deposit 0-30% slides, monthly
+  rolls, then 9/7/5 years, take-home pay with the 35% rule always printed). All inside the TikTok
+  safe zone except Classic. Premium entry SHIPPED to staging 2026-11-01: car ··· menu > Moving poster
+  (`src/components/poster/MotionPosterSheet.jsx` + `motionPoster.js`), above TikTok post; Lite shows
+  it locked (upgrade screen). Next: MP4 export (WebCodecs, not WebM: iPhone WhatsApp).
 - **IDEA-28: Seller "status", shown as the glowing ring round their photo (owner, 2026-11-01)** —
   the coloured ring a Premium page now draws round the seller's photo (PAGE-PRO) could carry
   a short-lived status, like a WhatsApp / Instagram story: "New stock today", "Live at 9pm",

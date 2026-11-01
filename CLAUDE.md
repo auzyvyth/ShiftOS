@@ -1498,12 +1498,18 @@ alerts, a lead list with stages, per-car views + WhatsApp taps. Never gate a buy
 to reach a Lite seller. Premium = working the lead: reminders + call log, "WhatsApp all"
 quiet leads, Performance, commission + monthly goal, Telegram booking reminders, add-ons
 catalogue, and the full page (banner, bio, social links, job title, specialisations).
-- **Live presentation is on Lite too (owner, 2026-10-18): "Live gets them in, the lead tools
-  make them pay."** The mini page shows the button to every owner (`SalesmanProfilePage.jsx`,
-  no plan check); the DB side (`set_live_listing`) never had one. `/for-salesmen` sells it as
-  free: its main buttons sign up to Lite (`liveCta`), Premium is the secondary button and
-  the plan card. The feature line lives on the Lite card in `src/utils/plans.js`, not in
-  `SALESMAN_PREMIUM_FEATURE_LINES`. Do not re-gate Live without rewriting that copy.
+- **Live presentation: BASIC on Lite, FULL on Premium (LIVE-BASIC, owner 2026-11-01: "make lite
+  calculator basic").** The only real trial users used Live and nothing else, and all of Live
+  was free, so a lapsed trial lost nothing. `LivePresenter basic` (passed by
+  `SalesmanProfilePage.jsx` as `profile.page_basic`, so trials and dealer-linked reps get it all)
+  keeps one car: price, deposit chips, monthly + tenures, working (price, deposit, loan, rate),
+  bank notes, contact, language. Everything else is Premium: Budget + Viewer, Docs, rebates,
+  insurance + NCD, totals, salary guide, offer, variant extras, car list / typed #N, colour,
+  comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
+  it). Every seller still sees the button; `set_live_listing` has no plan check. Copy:
+  `/for-salesmen` + plan cards say "basic" on Lite and list "Full Live presentation" first in
+  `SALESMAN_PREMIUM_FEATURE_LINES` (group `live`, kept out of the grouped cards). A Live
+  feature added later is Premium unless the owner says otherwise; mark it `!basic`.
 - New-car cards work the same on Lite: one `CarForm` (Used / Recon / New), no plan check in
   any `new_car_*` function, and cards skip the listing cap (`enforce_listing_cap`).
 - In `SalesmanLite.jsx` a Premium tool is replaced by `PremiumRow` / `renderPremiumPanel`,
@@ -1689,7 +1695,7 @@ TikTok visits are mostly bio links, not shares). The seller's own taps are never
 
 ## Live presentation (LIVE-1) — the mini page as a live-stream tool
 `src/components/live/LivePresenter.jsx`, opened by the owner-only "Live presentation"
-button on `SalesmanProfilePage.jsx` (every seller plan, Lite included, since 2026-10-18). One car per screen, "#N", price, and a monthly
+button on `SalesmanProfilePage.jsx` (every seller plan since 2026-10-18; Lite gets the BASIC presenter, see LIVE-BASIC). One car per screen, "#N", price, and a monthly
 table (deposit rows x 5/7/9 years) from `financing.js` — the calculation poster,
 generated. The default cell equals `calcMonthly`, so it matches the card.
 - **Contact (name + phone) is OFF by default, shown only on the seller's tap, per live**
@@ -1987,10 +1993,10 @@ and mini-page link. Built in answer to SA Studio X (IDEA-18).
   impossible number = no poster, never a guess.
 - No "full loan" line and no insurance folded into the loan (owner can revisit): a
   no-deposit figure is how prices get inflated on paper.
-- Quota is server side: `claim_loan_poster(listing)` (migrations `20261016b`, `20261018b`). Lite = 10 CARS a
+- Quota is server side: `claim_loan_poster(listing)` (migrations `20261016b`, `20261018b`, `20261102a`). Lite = 4 CARS a
   month (Malaysia time); the same car again that month is free. Premium + dealer-linked =
   unlimited via `salesman_has_full_page`. It refuses a car the seller cannot sell. The
-  preview is free and watermarked; only the clean file claims. Limit 10 lives in BOTH the
+  preview is free and watermarked; only the clean file claims. Limit 4 lives in BOTH the
   SQL and `LITE_POSTERS_PER_MONTH`.
 - The seller's own number on their own poster is fine (they send it); this is NOT a public
   page, so CDP-3 does not apply. Never put this poster on a buyer-facing page.
@@ -2327,6 +2333,16 @@ enquiries. Both were granted to `anon`.
    (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
    every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
+## Red buttons are raised keys, Lite AND Premium (owner, 2026-11-01)
+Every red (accent-filled) button in the seller panels uses `.lk-red` from
+`src/pages/salesmanLite/keys.css` (one gradient + four shadows, sinks 2px on press);
+`SalesmanPremium.jsx` imports the same file. Only RED buttons: neutral/dark buttons, badges,
+pills and bars stay flat in Premium. A red key must NOT set `background`/`boxShadow` inline
+(the inline value wins and the key goes flat); when it spreads a base style that has a
+background (`leadBtn`, `enqBtn`, `bkBtn`), set `background: undefined`. `ShareMenu` takes no
+className: wrap it in `<span className="lk-wrap-red">`. The silent-car coach card
+(`SilentCarCard`) has an X that hides it until tomorrow (Malaysia date, `xd_silent_card_closed`).
+
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).
@@ -2388,7 +2404,7 @@ on a phone) and rings each link where it sits (`data-tour-id`).
   download (`poster-download`); the bar shows "Tap the ringed button" instead of Next. Closing the
   menu or sheet early goes back to step 1; `LoanPosterSheet onDownloaded` ends it. It lifts itself
   above the sheet (`zBase` 10000; the sheet is 9999). The Listings intro lost its "···" step to it.
-  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (10 free posters/month).
+  Seen = `starter_tasks.intro_poster`. Premium only; Lite has no intro engine (4 free posters/month).
 - Motion: ring and bubble FADE in per step (keyed) and then track the target with no
   position transition (a transition made the ring trail behind a scroll). Reduced motion off.
 

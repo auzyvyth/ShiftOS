@@ -35,11 +35,13 @@ import { PLAN_CONFIG } from './planConfig.js';
 // working the lead is Premium (owner, 2026-10-13), which is why follow-up
 // reminders, call logging, bulk WhatsApp, Telegram booking reminders, the
 // services catalogue and page customisation are listed here and not on Lite.
-// Live presentation moved to Lite (owner, 2026-10-18): it is on the Lite
-// card below, never here.
+// Live presentation: a BASIC version is on Lite (owner, 2026-10-18, cut down
+// 2026-11-01, LIVE-BASIC); the full one (Budget, Viewer, Docs, rebates,
+// insurance) is the first Premium line.
 // No AI line (owner, 2026-10-28: "we don't have that yet"). Do not list an AI
 // feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
+  { group: 'live', en: 'Full Live presentation: Budget + Viewer, Docs, rebates, insurance', ms: 'Live presentation penuh: Bajet + Penonton, Dokumen, rebat, insurans' },
   { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
@@ -60,7 +62,8 @@ export const SALESMAN_PREMIUM_FEATURES_MS = SALESMAN_PREMIUM_FEATURE_LINES.map((
 // Two leads read the old flat list as "a calculator" and missed the dashboard
 // (owner, 2026-10-28), so the cards name the three parts.
 export function salesmanPremiumFeaturesByGroup(lang = 'en') {
-  const by = { calc: [], dash: [], leads: [], more: [] };
+  // 'live' is listed by hand at the top of the cards' Live calculator group, so it is kept out here.
+  const by = { live: [], calc: [], dash: [], leads: [], more: [] };
   for (const l of SALESMAN_PREMIUM_FEATURE_LINES) by[l.group].push(lang === 'ms' ? l.ms : l.en);
   return by;
 }
@@ -74,7 +77,7 @@ const PRESENTATION = {
       'Your own page at xdrive.my/s/yourname',
       'Cars listed on the XDrive marketplace',
       'Buyers reach you by WhatsApp, chat + booking',
-      'Live presentation for TikTok / FB lives',
+      'Basic Live presentation for TikTok / FB lives',
       'Alerts on new leads',
       'Simple lead list with stages',
       'Views + WhatsApp taps for each car',

@@ -38,6 +38,8 @@ import PageGradientPicker from "../components/premium/PageGradientPicker";
 import { ABOUT_LANGUAGES, ABOUT_LIMITS, aboutPayload, aboutForm as toAboutForm } from "../utils/agentAbout";
 import { COVER_FOCUS_DEFAULT, coverFocusY, coverObjectPosition, withCoverFocus } from "../utils/coverFocus";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
+// Raised red keys, shared with Lite (owner, 2026-11-01: every red button in Premium).
+import "./salesmanLite/keys.css";
 import { buildListingFacts } from "../utils/listingCopy";
 import { copyListingCaption } from "../utils/copyListingCaption";
 import { SITE_URL } from "../config/site";
@@ -146,6 +148,7 @@ const ChatSheet = React.lazy(() => import("../components/chat/ChatSheet"));
 // ShiftOS Studio (TikTok poster editor), opened from a car card's ··· menu.
 const TikTokStudioV3 = React.lazy(() => import("../components/TikTokStudioV3"));
 const LoanPosterSheet = React.lazy(() => import("../components/poster/LoanPosterSheet"));
+const MotionPosterSheet = React.lazy(() => import("../components/poster/MotionPosterSheet"));
 import { useChatThreads } from "../hooks/useChat";
 import UpgradeBanner from "../components/ai/UpgradeBanner";
 import AiLoadingState from "../components/ai/AiLoadingState";
@@ -396,6 +399,7 @@ export default function SalesmanPremium() {
  const [studioCar, setStudioCar] = useState(null); // ShiftOS Studio target listing
  const [shareTourCar, setShareTourCar] = useState(null); // COACH-1 share tour target
  const [posterCar, setPosterCar] = useState(null); // Loan poster sheet target
+ const [motionCar, setMotionCar] = useState(null); // Moving poster sheet target (IDEA-29)
  // Due follow-up reminders feed the "This week" list on the dashboard. They
  // used to load only inside OutreachHub, so a reminder you had set was
  // invisible unless you happened to open that tab.
@@ -3360,9 +3364,9 @@ export default function SalesmanPremium() {
  {/* ACTIONS — exactly 3 buttons */}
  <div style={{ display: "flex", gap: 6, padding: "0 16px 16px" }}>
  {lead.stage!== "won" && lead.stage!== "closed_won" && (
- <button
+ <button className="lk-red"
  onClick={() => advanceLeadStage(lead, nextStage)}
- style={{ ...leadBtn, flex: 1, background: PD.accent, color: PD.onAccent, fontWeight: 600 }}
+ style={{ ...leadBtn, flex: 1, background: undefined, color: PD.onAccent, fontWeight: 600 }}
  >
  → {stageLabel(nextStage || "won")}
  </button>
@@ -3446,14 +3450,13 @@ export default function SalesmanPremium() {
  }}
  >{t("salesmanPremium.leads.pipelineTitle")} ({leads.filter((l) => l.stage!== "lost" && l.stage!== "closed_lost" && l.stage!== "closed_won").length})
  </p>
- <button
+ <button className="lk-red"
  data-tour-id="leads-add"
  onClick={() => setShowAddLead(true)}
  style={{
  display: "flex",
  alignItems: "center",
  gap: 6,
- background: PD.accent,
  border: "none",
  borderRadius: PD.radius.pill,
  color: PD.onAccent,
@@ -3832,13 +3835,12 @@ export default function SalesmanPremium() {
  }}
  >{t("salesmanPremium.common.deleteQ")}
  </span>
- <button
+ <button className="lk-red"
  onClick={() => handleDeleteLead(lead.id)}
  style={{
  fontSize: 10,
  padding: "6px 11px",
  borderRadius: PD.radius.pill,
- background: PD.accent,
  border: "none",
  color: PD.onAccent,
  cursor: "pointer",
@@ -4023,10 +4025,10 @@ export default function SalesmanPremium() {
  <button onClick={() => saveFollowUp(fl.id, null)} disabled={followUpSaving} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 13, fontWeight: 600, cursor: followUpSaving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: followUpSaving ? 0.5 : 1 }}>{t("salesmanPremium.common.clear")}</button>
  )}
  <button onClick={closeFollowUp} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
- <button
+ <button className="lk-red"
  onClick={() => followUpDate && saveFollowUp(fl.id, followUpDate)}
  disabled={!followUpDate || followUpSaving}
- style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}
+ style={{ flex: 2, padding: "11px 0", borderRadius: 10, border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: (!followUpDate || followUpSaving) ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: (!followUpDate || followUpSaving) ? 0.5 : 1 }}
  >
  {followUpSaving ? t("salesmanPremium.common.saving") : t("salesmanPremium.followUpModal.set")}
  </button>
@@ -4189,8 +4191,8 @@ export default function SalesmanPremium() {
  prefixStyle={{ padding: "0 3px 0 0" }}
  inputStyle={{ padding: 0 }}
  />
- <button onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
- style={{ flexShrink: 0, fontSize: 11, padding: "6px 12px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
+ <button className="lk-red" onClick={() => saveLeadPhone(pl.id)} disabled={phoneSavingId === pl.id}
+ style={{ flexShrink: 0, fontSize: 11, padding: "6px 12px", borderRadius: 99, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, fontFamily: "inherit", opacity: phoneSavingId === pl.id? 0.5 : 1 }}>
  {phoneSavingId === pl.id? "\u2026" : t("salesmanPremium.common.save")}
  </button>
  <button onClick={() => setEditPhoneLeadId(null)}
@@ -4272,7 +4274,7 @@ export default function SalesmanPremium() {
  <div>
  <textarea autoFocus value={editNoteVal} onChange={e => setEditNoteVal(e.target.value)} rows={3} style={{ width: "100%", background: PD.raised, border: "none", borderRadius: 12, color: PD.text, fontSize: 13, padding: "8px 11px", resize: "none", outline: "none", fontFamily: "inherit", boxSizing: "border-box" }} />
  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
- <button onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : t("salesmanPremium.common.save")}</button>
+ <button className="lk-red" onClick={() => saveLeadNote(pl.id)} disabled={notesSavingId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: notesSavingId === pl.id? 0.5 : 1 }}>{notesSavingId === pl.id? "…" : t("salesmanPremium.common.save")}</button>
  <button onClick={() => setEditingNoteId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  </div>
@@ -4448,7 +4450,7 @@ export default function SalesmanPremium() {
  <div style={{ display: "flex", gap: 6 }}>
  <button onClick={() => setShowAttachAddon(false)} style={{ flex: 1, padding: "7px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  {addonCatalogue.length > 0 && (
- <button onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 99, background: PD.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
+ <button className="lk-red" onClick={handleAttachAddon} disabled={attachingAddon ||!addonForm.product_id ||!addonForm.sold_price} style={{ flex: 1, padding: "7px", borderRadius: 99, border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", opacity: (!addonForm.product_id ||!addonForm.sold_price || attachingAddon)? 0.5 : 1, fontFamily: "inherit" }}>
  {attachingAddon? t("salesmanPremium.drawer.attaching") : t("salesmanPremium.drawer.attach")}
  </button>
  )}
@@ -4476,7 +4478,7 @@ export default function SalesmanPremium() {
  ) : plIsConfirmingDelete? (
  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
  <span style={{ fontSize: 13, color: PD.accentText, fontWeight: 600 }}>{t("salesmanPremium.drawer.deleteThisLead")}</span>
- <button onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, background: PD.accent, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : t("salesmanPremium.common.yesDelete")}</button>
+ <button className="lk-red" onClick={() => handleDeleteLead(pl.id)} disabled={deletingLeadId === pl.id} style={{ fontSize: 12, padding: "8px 16px", borderRadius: 99, border: "none", color: PD.onAccent, cursor: "pointer", fontWeight: 600, opacity: deletingLeadId === pl.id? 0.5 : 1, fontFamily: "inherit" }}>{deletingLeadId === pl.id? "…" : t("salesmanPremium.common.yesDelete")}</button>
  <button onClick={() => setDeleteConfirmId(null)} style={{ fontSize: 12, padding: "7px 14px", borderRadius: 99, background: PD.raised, border: "none", color: PD.textMuted, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.no")}</button>
  </div>
  ) : (
@@ -4541,7 +4543,7 @@ export default function SalesmanPremium() {
  <MessageSquare size={28} color={PD.textMuted} style={{ marginBottom: 8 }} />
  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text }}>{t("salesmanPremium.inbox.noLeadHistory")}</p>
  <p style={{ margin: "6px 0 14px", fontSize: 12, color: PD.textSec }}>{t("salesmanPremium.inbox.noLeadHistorySub")}</p>
- <button onClick={() => switchTab("listings")} style={{ ...enqBtn, background: PD.accent, color: PD.onAccent }}>
+ <button className="lk-red" onClick={() => switchTab("listings")} style={{ ...enqBtn, background: undefined, color: PD.onAccent }}>
  {t("salesmanPremium.inbox.goToListings")}
  </button>
  </div>
@@ -4598,7 +4600,7 @@ export default function SalesmanPremium() {
  {/* New enquiry: reply is the one red button, templates sit beside it */}
  {isNew && enq.buyer_phone && (
  <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
- <button
+ <button className="lk-red"
  onClick={async () => {
  const phone = enq.buyer_phone.replace(/\D/g, "");
  const enqCar = enq.car_listings;
@@ -4611,7 +4613,7 @@ export default function SalesmanPremium() {
  await autoCreateLeadFromEnq(enq);
  window.location.href = `https://wa.me/${phone.startsWith("6")? phone : "6" + phone}?text=${msg}`;
  }}
- style={{ ...enqBtn, background: PD.accent, color: PD.onAccent, display: "inline-flex", alignItems: "center", gap: 6 }}
+ style={{ ...enqBtn, background: undefined, color: PD.onAccent, display: "inline-flex", alignItems: "center", gap: 6 }}
  >
  <MessageCircle size={13} /> {t("salesmanPremium.inbox.waReply")}
  </button>
@@ -4673,7 +4675,7 @@ export default function SalesmanPremium() {
  no_show: { bg: PD.raised, border: "transparent", tx: PD.textSec },
  };
  const bkBtn = { display: "flex", alignItems: "center", justifyContent: "center", gap: 5, fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.text, cursor: "pointer", fontFamily: "inherit", textDecoration: "none" };
- const bkPrimary = { ...bkBtn, flex: 1, background: PD.accent, color: PD.onAccent, fontWeight: 700 };
+ const bkPrimary = { ...bkBtn, background: undefined, flex: 1, color: PD.onAccent, fontWeight: 700 };
  const bkInput = { width: "100%", background: PD.raised, border: "none", borderRadius: 10, color: PD.text, fontSize: 13, padding: "9px 11px", outline: "none", boxSizing: "border-box", fontFamily: "inherit", colorScheme: "dark", marginBottom: 8 };
  // A card per booking, side by side on desktop (one full-width card made a
  // thousand-pixel Confirm button), one column on a phone.
@@ -4814,13 +4816,13 @@ export default function SalesmanPremium() {
  {/* Action row — primary CTA + call + ··· details */}
  <div style={{ display: "flex", gap: 6, padding: "0 14px 14px" }}>
  {canConfirm && apt.buyer_phone && (
- <button onClick={() => openConfirmBookingModal(apt)} title={t("salesmanPremium.bookings.confirmTitle")}
+ <button className="lk-red" onClick={() => openConfirmBookingModal(apt)} title={t("salesmanPremium.bookings.confirmTitle")}
  style={bkPrimary}>
  <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
  )}
  {canConfirm &&!apt.buyer_phone && (
- <button onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title={t("salesmanPremium.bookings.markConfirmedTitle")}
+ <button className="lk-red" onClick={async () => { await updateApptStatus(apt.id, "confirmed"); await autoUpsertLeadFromAppt(apt); await scheduleAptReminder(apt); }} title={t("salesmanPremium.bookings.markConfirmedTitle")}
  style={bkPrimary}>
  <Check size={13} /> {t("salesmanPremium.bookings.confirmBooking")}
  </button>
@@ -4969,7 +4971,7 @@ export default function SalesmanPremium() {
  style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.common.cancel")}
  </button>
- <button onClick={async () => {
+ <button className="lk-red" onClick={async () => {
  if (!rescheduleDate) return;
  const newDate = new Date(rescheduleDate);
  const remindAt = new Date(newDate.getTime() - 60 * 60 * 1000).toISOString();
@@ -5024,10 +5026,10 @@ export default function SalesmanPremium() {
  style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.common.cancel")}
  </button>
- <button onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
+ <button className={selectedRemindAt ? "lk-red" : undefined} onClick={() => selectedRemindAt && saveReminder(apt, selectedRemindAt)}
  disabled={!selectedRemindAt || reminderSaving}
  style={{ ...bkPrimary, flex: 2,
- background: selectedRemindAt? PD.accent : PD.hover,
+ background: selectedRemindAt ? undefined : PD.hover,
  color: selectedRemindAt? PD.onAccent : PD.textMuted,
  cursor: selectedRemindAt? "pointer" : "not-allowed",
  opacity: reminderSaving? 0.6 : 1 }}>
@@ -5046,7 +5048,7 @@ export default function SalesmanPremium() {
  style={{ ...bkBtn, flex: 1, background: PD.hover, color: PD.textSec }}>
  {t("salesmanPremium.bookings.keepIt")}
  </button>
- <button onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
+ <button className="lk-red" onClick={async () => { await updateApptStatus(apt.id, "cancelled"); setCancelConfirmId(null); setBookingDetailId(null); }}
  style={{ ...bkPrimary, flex: 2 }}>
  {t("salesmanPremium.bookings.yesCancel")}
  </button>
@@ -5091,7 +5093,7 @@ export default function SalesmanPremium() {
  <Calendar size={28} color={PD.textMuted} style={{ marginBottom: 8 }} />
  <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: PD.text }}>{t("salesmanPremium.bookings.none")}</p>
  <p style={{ margin: "6px 0 14px", fontSize: 12, color: PD.textSec }}>{t("salesmanPremium.bookings.noneSub")}</p>
- <button onClick={() => switchTab("listings")} style={{ ...bkPrimary, display: "inline-flex", flex: "none", padding: "8px 16px" }}>
+ <button className="lk-red" onClick={() => switchTab("listings")} style={{ ...bkPrimary, display: "inline-flex", flex: "none", padding: "8px 16px" }}>
  {t("salesmanPremium.bookings.shareListing")}
  </button>
  </div>
@@ -5457,13 +5459,12 @@ export default function SalesmanPremium() {
  // persists both — switching section never drops what was typed.
  const saveBtn = (
  <div>
- <button
+ <button className="lk-red"
  onClick={handleSave}
  disabled={settingsSaving}
  style={{
  padding: "11px 18px",
  borderRadius: 10,
- background: PD.accent,
  border: "none",
  color: PD.onAccent,
  fontSize: 13,
@@ -7319,6 +7320,7 @@ export default function SalesmanPremium() {
       openBroadcast={openBroadcast} generateAiCaptions={generateAiCaptions}
       openStudio={setStudioCar}
       openLoanPoster={setPosterCar}
+      openMotionPoster={setMotionCar}
       onVerifyId={() => openSettings("profile")}
       onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
      />
@@ -7509,10 +7511,10 @@ export default function SalesmanPremium() {
  >
  {t("salesmanPremium.common.cancel")}
  </button>
- <button
+ <button className="lk-red"
  onClick={handleDeleteAccount}
  disabled={deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE"}
- style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 10, background: PD.accent, border: "none", color: PD.onAccent, cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
+ style={{ flex: 1, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 10, border: "none", color: PD.onAccent, cursor: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? "not-allowed" : "pointer", opacity: (deleting || deleteConfirmText.trim().toUpperCase() !== "DELETE") ? 0.5 : 1, fontFamily: "inherit" }}
  >
  {deleting ? t("salesmanPremium.deleteAcct.deleting") : t("salesmanPremium.deleteAcct.confirm")}
  </button>
@@ -8143,6 +8145,11 @@ export default function SalesmanPremium() {
  {studioCar && (
  <Suspense fallback={null}>
  <TikTokStudioV3 listing={studioCar} onClose={() => setStudioCar(null)} backdrops />
+ </Suspense>
+ )}
+ {motionCar && (
+ <Suspense fallback={null}>
+ <MotionPosterSheet car={motionCar} seller={profile} onClose={() => setMotionCar(null)} />
  </Suspense>
  )}
  {posterCar && (

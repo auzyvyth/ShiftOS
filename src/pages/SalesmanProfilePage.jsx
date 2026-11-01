@@ -1304,7 +1304,10 @@ export default function SalesmanProfilePage() {
         <Suspense fallback={null}>
           <LivePresenter listings={listings} slug={slug} sellerId={profile?.id}
             sellerName={profile?.full_name} sellerPhone={isOwner ? viewerPhone : null} onClose={() => setPresenting(false)}
-            officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)} />
+            officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)}
+            // Lite page = Lite seller = the basic presenter (LIVE-BASIC). page_basic
+            // comes from salesman_has_full_page, so trials and dealer-linked reps get it all.
+            basic={!!profile?.page_basic} />
         </Suspense>
       )}
     </>
