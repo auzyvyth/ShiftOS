@@ -3433,9 +3433,9 @@ export default function SalesmanLite() {
     // Leads tab, redesigned 2026-11-01 in `premiumDark` (PD), the same look as
     // Premium's Leads: tone not borders, red only as a fill (the next-stage
     // button), mint the only green. Every control the old tab had is kept.
-    // Dropped as repeats: the lead-source colour bar (the Performance tab's
-    // lead-source card counts the same thing) and the card's "Stage: X · n/7"
-    // line (the picked stage pill names it; the progress bar shows where).
+    // The lead-source bar is now one neutral line of counts (it was purple /
+    // amber / blue). Dropped as a repeat: the card's "Stage: X · n/7" line (the
+    // picked stage pill names it; the progress bar shows where).
     const searchedLeads = leadSearch.trim()
       ? leads.filter((l) => {
           const q = leadSearch.toLowerCase();
@@ -3446,6 +3446,17 @@ export default function SalesmanLite() {
           );
         })
       : leads;
+
+    // Where leads came from: bucket by whatever lead_source values appear (not a
+    // fixed whitelist), so no real source is dropped from the total. Lite has no
+    // other place that says this (Performance is a locked Premium panel).
+    const SRC_LABELS = { whatsapp: t("salesmanLite.leads.srcWhatsapp"), enquiry: t("salesmanLite.leads.srcEnquiry"), drevo_enquiry: t("salesmanLite.leads.srcEnquiry"), walk_in: t("salesmanLite.leads.srcWalkIn"), referral: t("salesmanLite.leads.srcReferral"), manual: t("salesmanLite.leads.srcManual") };
+    const srcMap = {};
+    leads.forEach((l) => {
+      const label = SRC_LABELS[l.lead_source || "manual"] || l.lead_source;
+      srcMap[label] = (srcMap[label] || 0) + 1;
+    });
+    const srcRows = Object.entries(srcMap).sort((a, b) => b[1] - a[1]);
 
     // pre-compute heat scores once — avoids O(n log n) recomputation inside sort comparators
     const heatMap = new Map(searchedLeads.map((l) => [l.id, getHeatScore(l)]));
@@ -3643,6 +3654,17 @@ export default function SalesmanLite() {
             <Plus size={14} /> {t("salesmanLite.header.addLead")}
           </button>
         </div>
+
+        {/* Where leads came from: one line, only when there is more than one source. */}
+        {srcRows.length > 1 && (
+          <p style={{ margin: "-4px 0 12px", fontSize: 12.5, color: PD.textMuted, lineHeight: 1.6 }}>
+            {srcRows.map(([label, n], i) => (
+              <span key={label} style={{ whiteSpace: "nowrap" }}>
+                {i > 0 && " · "}{label} <strong style={{ color: PD.text, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{n}</strong>
+              </span>
+            ))}
+          </p>
+        )}
 
         {/* Search */}
         <div style={{ position: "relative", marginBottom: 12 }}>
