@@ -6,15 +6,17 @@
 // Plain data + pure functions, no imports: api/og.js, api/sitemap.js and
 // api/robots.js run on the edge and import this file too.
 //
-// Switch day: ROOT_DOMAIN = "drevo.my", and keep "xdrive.my" in OWN_DOMAINS for
-// as long as the old domain redirects, so referrers and old links still count
-// as our own.
+// Both domains are served side by side while drevo.my is tested (2026-11-01):
+// ROOT_DOMAIN is the canonical one (links, canonical tags, sitemap), and
+// OWN_DOMAINS lists every domain that counts as "our own site". Switch day:
+// ROOT_DOMAIN = "drevo.my"; both stay in OWN_DOMAINS for as long as xdrive.my
+// redirects, so referrers, old links and <sub>.xdrive.my still count as ours.
 
 export const ROOT_DOMAIN = "xdrive.my";
 export const SITE_URL = `https://${ROOT_DOMAIN}`;
 
 // Every domain we serve (or redirect) from. ROOT_DOMAIN first.
-export const OWN_DOMAINS = [ROOT_DOMAIN];
+export const OWN_DOMAINS = [...new Set([ROOT_DOMAIN, "drevo.my", "xdrive.my"])];
 
 function clean(hostname) {
   return String(hostname || "").toLowerCase();

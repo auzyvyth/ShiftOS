@@ -19,6 +19,8 @@
 const EXACT = new Set([
   "https://xdrive.my",
   "https://www.xdrive.my",
+  "https://drevo.my",
+  "https://www.drevo.my",
   "capacitor://localhost",
   "https://localhost",
   "http://localhost:3000",
@@ -27,6 +29,7 @@ const EXACT = new Set([
 
 const PATTERNS = [
   /^https:\/\/[a-z0-9-]+\.xdrive\.my$/,
+  /^https:\/\/[a-z0-9-]+\.drevo\.my$/,
   /^https:\/\/shift-[a-z0-9-]+-shift-os\.vercel\.app$/,
 ];
 

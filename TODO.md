@@ -115,6 +115,24 @@ for another year.
   sellers, painful at 70: one more reason to do it now. Also Google sign-in origins
   (`ID_TOKEN_ORIGINS` + Google Cloud), Supabase auth redirect URLs, edge CORS,
   `<sub>.xdrive.my` storefronts. After midnight, nobody live.
+  **Step 1 (both domains side by side) started 2026-11-01.** Done: drevo.my nameservers
+  -> Vercel (owner, Hostinger); `drevo.my`, `www.drevo.my`, `*.drevo.my` on the Vercel
+  project; code accepts both (`OWN_DOMAINS` in `src/config/site.js`, both CORS files,
+  storefront detection in api/og.js + api/sitemap.js; sitemap + robots always print the
+  canonical domain). Canonical stays xdrive.my until switch night.
+  Owner, before testing on drevo.my: Supabase Auth > URL Configuration, add
+  `https://drevo.my/**`, `https://www.drevo.my/**`, `https://*.drevo.my/**` to Redirect
+  URLs (Site URL unchanged); Cloudflare Turnstile widget, add `drevo.my` (sign-in is
+  blocked there without it, `src/hooks/useAuthCaptcha.js`); Google Cloud OAuth client,
+  add `https://drevo.my` to JavaScript origins (then Claude sets VITE_GOOGLE_JS_ORIGINS);
+  Resend, add + verify drevo.my (DNS records go in Vercel, not Hostinger).
+  Claude, still open: redeploy browser-called edge functions with the new
+  `_shared/cors.ts` (diff each against deployed first); until then AI / chat-assist /
+  Telegram calls fail on drevo.my only.
+  Step 2 (switch night): ROOT_DOMAIN = "drevo.my", rename XDrive -> Drevo text, senders
+  -> @drevo.my, 301 every xdrive.my host to the same path on drevo.my, Supabase Site URL
+  + email templates, Search Console Change of Address. Optional: carry sellers' login
+  across once (authHandoff pattern), needs the owner's OK.
 - [ ] **Ads (RM200): to SELLERS, not buyers.** 78 cars cannot hold a buyer campaign, and a
   seller is the one who pays. Meta (FB + IG), Click-to-WhatsApp to the owner (a human
   answers, 5 sign-ups beat 200 clicks), BM video of the Live presenter (free on Lite, the

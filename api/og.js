@@ -21,7 +21,7 @@ import { FIND_ME_COPY } from "../src/config/findMeCopy.js";
 import { CALC_META } from "../src/config/calculatorCopy.js";
 import { agentName, agentLocation, agentPageTitle, agentPageDescription, agentShareImage } from "../src/utils/agentSeo.js";
 import { PRICE_ZONES, rm as newRm, brandFromSlug, modelRows, newModelCopy, newModelPath } from "../src/utils/newCars.js";
-import { SITE_URL, ROOT_DOMAIN } from "../src/config/site.js";
+import { SITE_URL, ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 
 export const config = { runtime: "edge" };
 
@@ -48,11 +48,9 @@ function esc(s) {
     .replace(/>/g, "&gt;");
 }
 
+// Any of our domains (OWN_DOMAINS), so <sub>.drevo.my and <sub>.xdrive.my both work.
 function getSubdomain(host) {
-  const h = (host || "").split(":")[0];
-  if (h === ROOT_DOMAIN || h === `www.${ROOT_DOMAIN}`) return null;
-  if (h.endsWith(`.${ROOT_DOMAIN}`)) return h.slice(0, h.length - ROOT_DOMAIN.length - 1);
-  return null;
+  return storefrontSubdomain((host || "").split(":")[0]);
 }
 
 const sbHeaders = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
