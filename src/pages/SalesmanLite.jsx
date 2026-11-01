@@ -25,10 +25,9 @@ import { usePersistentState } from "../hooks/usePersistentState";
 import { useSellerFeedback } from "../hooks/useSellerFeedback";
 import { carNextStep, pickSilentCar } from "../utils/carCoach";
 import CarNextStep from "../components/coach/CarNextStep";
-import SilentCarCard from "../components/coach/SilentCarCard";
+import DashboardTab from "./salesmanLite/DashboardTab";
 import ShareTour from "../components/coach/ShareTour";
 import { PRIVATE_CAR_LIMIT, isPrivateLimitError, statusAfterWrite, privateCount } from "../utils/privateCars";
-import StatSkeleton from "../components/ui/StatSkeleton";
 import CarDetailPopup from "../components/CarDetailPopup";
 import { hydrateLeadInto } from "../utils/leadHydrate";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -42,7 +41,6 @@ import { compareFollowUp, isLeadStale, lastTouch, followUpStatus, FOLLOW_UP_REAS
 import FollowUpRow from "../components/crm/FollowUpRow";
 import ServicesAddonsTab from "../components/salesman/ServicesAddonsTab";
 import SalesmanLiteHelp from "../components/SalesmanLiteHelp";
-import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import ReportBugButton from "../components/ReportBugButton";
 import PushToggle from "../components/PushToggle";
@@ -57,7 +55,7 @@ import SellerInbox from "../components/chat/SellerInbox";
 import ChatSheet from "../components/chat/ChatSheet";
 import PushPromptStrip, { PANEL_THEME } from "../components/chat/PushPromptStrip";
 import NotificationPanel from "../components/notifications/NotificationPanel";
-import StarterTasks, { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/StarterTasks";
+import { starterTasksAllDone, hasBioLinkVisit } from "../components/onboarding/StarterTasks";
 import { markStarterTask } from "../utils/starterTasks";
 import { useChatThreads } from "../hooks/useChat";
 import { hasUnreadRejection } from "../utils/listingReview";
@@ -78,8 +76,6 @@ import {
   Users,
   MessageSquare,
   MessageCircle,
-  Link as LinkIcon,
-  ExternalLink,
   Trash2,
   Send,
   Pencil,
@@ -120,7 +116,6 @@ import {
   Package,
   ThumbsUp,
   ThumbsDown,
-  Store,
   Download,
   Star,
 } from "lucide-react";
@@ -182,18 +177,6 @@ function priceStyle(sellingPrice) {
 // render* function in this file uses the same card/pill/text shapes instead
 // of each redefining its own.
 const CARD = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: R.lg, overflow: "hidden" };
-const CARD_HEADER = {
-  padding: "13px 18px", borderBottom: `1px solid ${C.line}`,
-  fontSize: T.size.sm, letterSpacing: T.track.label, textTransform: "uppercase", color: C.textMuted, fontWeight: T.weight.semibold,
-  display: "flex", alignItems: "center", justifyContent: "space-between",
-};
-// Row divider inside a card — one value, was five (0.04→0.08) doing the same job.
-const ROW_LINE = (show) => (show ? `1px solid ${C.line}` : "none");
-// Eyebrow: the small uppercase label above a value. Semibold, never bold —
-// bold is reserved for the number it labels.
-const EYEBROW = { fontSize: T.size.xs, fontWeight: T.weight.semibold, color: C.textMuted, textTransform: "uppercase", letterSpacing: T.track.label };
-// The one big number in a card.
-const STAT = { fontWeight: T.weight.bold, color: C.text, letterSpacing: T.track.tight, lineHeight: 1 };
 // Soft tinted control (WA button, badge, pill) in a given state hue.
 const SOFT = (hue) => ({ background: withAlpha(hue, 0.1), border: `1px solid ${withAlpha(hue, 0.2)}`, color: hue });
 
@@ -3270,7 +3253,6 @@ export default function SalesmanLite() {
     const statsReady = trafficReady && (listingsLoaded || !!seed.profile);
     // Lead counts and the greeting line ("pipeline is clear") wait for leads.
     const leadsReady = !leadsLoading && (listingsLoaded || !!seed.profile);
-    const cvrColor = (cvr) => cvr >= 10 ? C.success : cvr >= 5 ? C.warn : C.danger;
     const perfCarName = (car) => [car.year, car.brand, car.model].filter(Boolean).join(" ");
     const isNewUser = myListings.length === 0 && leads.length === 0;
 
@@ -3293,7 +3275,6 @@ export default function SalesmanLite() {
       .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date))
       .slice(0, 10);
     const agendaFollowUps = leads.filter((l) => fuKey(l.follow_up_at) === todayKey && !["won", "lost", "closed_won", "closed_lost"].includes(l.stage));
-    const hasAgenda = agendaAppts.length > 0 || missedAppts.length > 0 || agendaFollowUps.length > 0;
     // Jump from an agenda row to its pipeline lead with the same red glow. Appointments
     // aren't joined to leads, so match by phone; fall back to the Bookings tab when
     // there's no lead yet (e.g. an unconfirmed booking).
@@ -3308,10 +3289,6 @@ export default function SalesmanLite() {
     // the 2026-10-13 trim (Premium has them); only the live-car list stays.
     const available = myListings.filter(c => c.status === "available");
 
-    const greetingWord = (() => {
-      const h = new Date().getHours();
-      return h < 12 ? t("salesmanLite.greeting.morning") : h < 17 ? t("salesmanLite.greeting.afternoon") : t("salesmanLite.greeting.evening");
-    })();
     const personalizedLine = isNewUser
       ? t("salesmanLite.dash.newUser")
       : isReturning
@@ -3326,407 +3303,62 @@ export default function SalesmanLite() {
       ? t("salesmanLite.dash.motion", { count: activeLeads.length })
       : t("salesmanLite.dash.clear");
 
+    // The stale pill used to live in the hero: jump to whichever stage actually
+    // has an overdue lead (mobile shows one stage at a time), then glow them so
+    // the eye lands on exactly which cards need attention.
+    const onStaleClick = () => {
+      const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
+      const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
+      if (firstStaleStage) setMobileLeadStage(firstStaleStage);
+      switchTab("leads");
+      triggerGlow(staleLeads.map((l) => l.id));
+    };
+
+    // Drawing lives in src/pages/salesmanLite/DashboardTab.jsx (premiumDark,
+    // 2026-11-01). Everything it shows is computed above; nothing here changed.
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-        {/* FIRST thing on the dashboard, under the account banners. It used to
-            sit below the Monthly Goal and the highlighted-listing card, which
-            is several screens down on a phone — a setup checklist nobody
-            scrolls to is not a setup checklist. */}
-        {/* ── Starter tasks ──
-            Replaces a "Get Started" checklist that could never be completed:
-            it was gated on `isNewUser && !onboarding_tour_done`, where isNewUser
-            meant no listings AND no leads — so doing step 1 unmounted the card,
-            and the tour (which runs on first landing) set the flag that hid it
-            anyway. Shared with Premium now; see StarterTasks for the details. */}
-        {listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed && (
-          <StarterTasks
-            profile={profile}
-            listingCount={myListings.length}
-            bioLinkSeen={hasBioLinkVisit(minipageStats.byChannel)}
-            t={t}
-            palette={{ surface: C.surface, border: C.border, line: C.line, text: C.text, textMuted: C.textMuted, textDim: C.textDim, accent: C.accent, onAccent: C.onAccent, success: C.success }}
-            onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
-            onVisitMinipage={openMyMinipage}
-            noBio
-            onDismiss={dismissStarterTasks}
-          />
-        )}
-
-        {/* COACH-1: the car nobody has seen for 2+ days, and "Show me how".
-            Waits for the traffic numbers: before they load every car reads as
-            unseen, and that alarm would be false. */}
-        {trafficReady && (
-          <SilentCarCard
-            pick={silentPick} lang={i18n.language}
-            colors={{ card: C.surface, radius: R.lg, text: C.text, sub: C.textSec, accent: C.accent, onAccent: "#ffffff" }}
-            onShowMe={startShareTour}
-          />
-        )}
-
-        {/* ── Hero: greeting + live portfolio value ── */}
-        <div style={{ ...CARD, position: "relative", overflow: "hidden", padding: isMobile ? "20px 18px" : "26px 28px", background: `linear-gradient(135deg, ${C.surface} 0%, ${C.surfaceRaised} 100%)` }}>
-          <div style={{ position: "absolute", top: -50, right: -50, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${withAlpha(C.accent, 0.14)} 0%, transparent 70%)`, pointerEvents: "none" }} />
-          <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <p style={{ margin: 0, fontSize: T.size.xl, fontWeight: T.weight.bold, color: C.text, letterSpacing: "-0.3px" }}>
-                {greetingWord}, {profile?.full_name?.split(" ")[0] || "there"}.
-              </p>
-              <p style={{ margin: "5px 0 0", fontSize: T.size.base, color: C.textSec, maxWidth: 440 }}>
-                {leadsReady ? personalizedLine : <StatSkeleton width="70%" height={16} />}
-              </p>
-            </div>
-            {staleLeads.length > 0 && (
-              <button
-                onClick={() => {
-                  // Jump straight to whichever stage actually has an overdue
-                  // lead (mobile shows one stage at a time), then glow them
-                  // so the eye lands on exactly which cards need attention.
-                  const activeStageOrder = LEAD_STAGES.filter((s) => !["lost", "closed_lost", "closed_won"].includes(s));
-                  const firstStaleStage = activeStageOrder.find((s) => staleLeads.some((l) => l.stage === s));
-                  if (firstStaleStage) setMobileLeadStage(firstStaleStage);
-                  switchTab("leads");
-                  triggerGlow(staleLeads.map((l) => l.id));
-                }}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 11px", borderRadius: R.pill, background: withAlpha(C.danger, 0.08), border: `1px solid ${withAlpha(C.danger, 0.18)}`, flexShrink: 0, cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <Bell size={11} color={C.danger} strokeWidth={2.5} />
-                <span style={{ fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.dangerText }}>{staleLeads.length} {t("salesmanLite.kpi.overdue")}</span>
-              </button>
-            )}
-          </div>
-          {/* Live snapshot merged into the hero — compact 30-day stats + the
-              shareable mini-page link. Portfolio value removed (not actionable).
-              Always rendered: this block used to be gated on having a live
-              listing, so a brand-new agent — the one person who most needs the
-              nudge — saw no mini-page link and no prompt at all. With zero
-              listings the stats row (all zeroes, meaningless) is replaced by the
-              ask; the mini-page link stays either way, because it is their
-              storefront and they should know it exists from day one. */}
-          <div style={{ position: "relative", marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
-            {available.length === 0 ? (
-              /* No CTA here on purpose: the starter-tasks card below owns the
-                 "add a listing" ask and tracks it. Two red buttons asking for
-                 the same thing on one screen is the duplication this replaced. */
-              <div style={{ minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text }}>
-                  {t("salesmanLite.dash.noListingsTitle")}
-                </p>
-                <p style={{ margin: "3px 0 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.5 }}>
-                  {t("salesmanLite.dash.noListingsBody")}
-                </p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 18 : 28, flexWrap: "wrap" }}>
-                {[
-                  { label: t("salesmanLite.dash.buyerViews"), value: totalViews || 0, color: C.text },
-                  { label: t("salesmanLite.dash.pageVisits"), value: minipageStats.visits || 0, color: C.infoText },
-                  { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0, color: C.successText },
-                  { label: t("salesmanLite.kpi.liveListings"), value: available.length, color: C.text },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    {statsReady
-                      ? <span style={{ ...STAT, fontSize: isMobile ? T.size.stat : T.size.statLg, color }}>{value}</span>
-                      : <StatSkeleton width={isMobile ? 34 : 48} height={isMobile ? 24 : 30} />}
-                    <span style={EYEBROW}>{label}</span>
-                  </div>
-                ))}
-                <span style={{ ...EYEBROW, display: "inline-flex", alignItems: "center", gap: 5, marginLeft: "auto", fontWeight: T.weight.normal }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.success }} />
-                  {t("salesmanLite.dash.days30")}
-                </span>
-              </div>
-            )}
-            {profile?.slug && (
-                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
-                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, cursor: "pointer", fontWeight: T.weight.medium, fontFamily: "inherit" }}
-                  >
-                    <LinkIcon size={11} />
-                    <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</span>
-                    <span style={{ fontSize: T.size.xs, color: C.textMuted, flexShrink: 0 }}>{t("salesmanLite.dash.copy")}</span>
-                  </button>
-                  <a
-                    href={`/s/${profile.slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    // Same click, same meaning as the starter task's "Open my
-                    // page" — record it here too, or a seller who used this link
-                    // is still nagged to do the thing they just did.
-                    onClick={(e) => { e.preventDefault(); openMyMinipage(); }}
-                    title={t("salesmanLite.dash.openMinipageTitle")}
-                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.info, 0.07), border: `1px solid ${withAlpha(C.info, 0.2)}`, color: C.infoText, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
-                  >
-                    <ExternalLink size={11} />
-                    <span style={{ flex: 1 }}>{t("salesmanLite.dash.openMinipage")}</span>
-                    <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
-                  </a>
-                  {/* Marketplace = the public XDrive homepage (all dealers'
-                      listings), distinct from the agent's own mini-page above.
-                      Kept neutral (not blue) so it doesn't compete with the
-                      mini-page link for attention — this is a secondary jump-off. */}
-                  <a
-                    href="/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title={t("salesmanLite.dash.openMarketplaceTitle")}
-                    style={{ display: "flex", alignItems: "center", gap: 6, flex: "1 1 180px", minWidth: 0, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: C.fill, border: `1px solid ${C.border}`, color: C.textSec, textDecoration: "none", fontWeight: T.weight.medium, fontFamily: "inherit" }}
-                  >
-                    <Store size={11} />
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.dash.openMarketplace")}</span>
-                    <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
-                  </a>
-                  {/* Per-platform share: each option tags the link with ?src=<channel>
-                      so a click's origin is attributed reliably (not just guessed
-                      from the in-app browser). Always points at the real xdrive.my
-                      domain and carries ?ref so downstream car-page leads credit
-                      this agent. */}
-                  <ShareMenu
-                    baseUrl={`https://xdrive.my/s/${profile.slug}`}
-                    refSlug={profile.slug}
-                    waCaption={(url) => `${t("salesmanLite.dash.shareMyListingsCaption")}:\n${url}`}
-                    dark
-                    label={t("salesmanLite.dash.share")}
-                    style={{ flex: "1 1 120px", justifyContent: "center", padding: "9px 12px", fontSize: T.size.sm }}
-                  />
-                </div>
-              )}
-              {/* Loan calculator under the mini-page link: a new seller could not
-                  find one. On Lite the calculator is the Live presentation (free,
-                  owner 2026-10-19: get them on, charge later), so this opens the
-                  mini page with Live already open (?live=1, SalesmanProfilePage). */}
-              {profile?.slug && <a
-                href={`/s/${profile.slug}?live=1`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: T.size.sm, padding: "9px 12px", borderRadius: R.md, background: withAlpha(C.accent, 0.08), border: `1.5px solid ${C.accent}`, color: C.text, textDecoration: "none", fontWeight: T.weight.semibold, fontFamily: "inherit" }}
-              >
-                <Calculator size={11} color={C.accent} />
-                <span style={{ flex: 1 }}>{t("salesmanLite.dash.loanCalculator")}</span>
-                <ChevronRight size={11} style={{ flexShrink: 0, opacity: 0.5 }} />
-              </a>}
-              {/* Where the mini-page footprints came from (Instagram / Facebook /
-                  TikTok / WhatsApp / …), so the agent knows which channel works. */}
-              {minipageStats.byChannel.length > 0 && (
-                <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
-                  <ChannelBreakdown
-                    rows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
-                    metric="views"
-                    title={t("salesmanLite.dash.minipageTrafficBy")}
-                    viewsLabel="visits"
-                    enquiriesLabel="clicks"
-                    compact
-                  />
-                </div>
-              )}
-          </div>
-        </div>
-
-        {!startingOut ? (
-        <>
-        {/* Chat & Add-ons moved out of the footer/sidebar nav — they don't need a
-            permanent nav slot, so they live here instead, one tap below the
-            mini-page stats. Still reachable, just not competing for nav space. */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-          <button
-            data-tour-id="chat"
-            onClick={() => switchTab("chat")}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0 }}
-          >
-            <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.info, 0.1), color: C.infoText, flexShrink: 0 }}>
-              <MessageCircle size={15} />
-              {chatUnread ? <span style={{ position: "absolute", top: -2, right: -2, width: 8, height: 8, borderRadius: "50%", background: C.danger, border: `1.5px solid ${C.surface}` }} /> : null}
-            </span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.tabs.chat")}</span>
-            <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.4, color: C.textMuted }} />
-          </button>
-          <button
-            data-tour-id="services"
-            onClick={() => switchTab("services")}
-            style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: R.lg, background: C.surface, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: "inherit", textAlign: "left", minWidth: 0 }}
-          >
-            <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: R.md, background: withAlpha(C.success, 0.1), color: C.successText, flexShrink: 0 }}>
-              <Package size={15} />
-            </span>
-            <span style={{ flex: 1, minWidth: 0, fontSize: T.size.sm, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("salesmanLite.tabs.services", { defaultValue: "Services" })}</span>
-            <ChevronRight size={13} style={{ flexShrink: 0, opacity: 0.4, color: C.textMuted }} />
-          </button>
-        </div>
-
-        {/* Dashboard body — 2-up grid on desktop, single column on mobile.
-            Per-card CSS `order` puts the KPI strip + My Performance first without
-            moving them in source; the KPI strip spans both columns. */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))", gap: 16, alignItems: "start" }}>
-
-        {/* ── Follow-up Needed ── Premium since 2026-10-13: Lite still sees
-            the count (KPI strip, hero pill); the call list itself, the reminders
-            and "WhatsApp all" are what Premium sells. */}
-        {staleLeads.length > 0 && (
-          <PremiumRow
-            onClick={goPremium}
-            cta={t("salesmanLite.premiumRow.cta")}
-            title={t("salesmanLite.premiumRow.followUpTitle", { count: staleLeads.length })}
-            sub={t("salesmanLite.premiumRow.followUpSub")}
-          />
-        )}
-
-        {/* ── Today's Agenda ── */}
-        {hasAgenda && (
-          <div style={CARD}>
-            <div style={CARD_HEADER}>
-              <span>{t("salesmanLite.dash.todaysAgenda")}</span>
-              <span>{new Date().toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" })}</span>
-            </div>
-            <div style={{ padding: "6px 0" }}>
-              {/* Missed — past appointments still open. Most urgent, shown first,
-                  with the actual date so a last-week slot never reads as "today". */}
-              {missedAppts.map((a) => (
-                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.danger, 0.12), color: C.danger, flexShrink: 0 }}>
-                    <History size={13} strokeWidth={2.5} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: T.size.sm, color: C.dangerText }}>{t("salesmanLite.dash.missedAppt", { defaultValue: "Missed appointment" })}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
-                  </div>
-                  <span style={{ fontSize: T.size.sm, color: C.dangerText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleDateString("en-MY", { day: "numeric", month: "short" }) : "—"}</span>
-                </div>
-              ))}
-              {/* Today's appointments */}
-              {agendaAppts.map((a) => (
-                <div key={a.id} onClick={() => goToLeadForAppt(a)} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.info, 0.12), color: C.info, flexShrink: 0 }}>
-                    <Calendar size={13} strokeWidth={2.5} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.dash.testDrive")}{a.car_listings ? ` · ${a.car_listings.brand} ${a.car_listings.model}` : ""}</p>
-                  </div>
-                  <span style={{ fontSize: T.size.sm, color: C.infoText, fontWeight: T.weight.semibold, flexShrink: 0 }}>{a.appointment_date ? new Date(a.appointment_date).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit" }) : "—"}</span>
-                </div>
-              ))}
-              {/* Today's scheduled follow-ups */}
-              {agendaFollowUps.map((l) => (
-                <div key={l.id} onClick={() => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "11px 18px", cursor: "pointer" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 26, height: 26, borderRadius: R.sm, background: withAlpha(C.warn, 0.12), color: C.warn, flexShrink: 0 }}>
-                    <Clock size={13} strokeWidth={2.5} />
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.buyer_name || "—"}</p>
-                    <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{t("salesmanLite.dash.scheduledFollowUp")} · {l.car_listings ? `${l.car_listings.brand} ${l.car_listings.model}` : t("salesmanLite.dash.noCar")}</p>
-                  </div>
-                  <span style={{ fontSize: T.size.sm, color: C.warnText, fontWeight: T.weight.semibold, flexShrink: 0 }}>Today</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── My Performance (context, not action) — sits right below the KPI strip ── */}
-        <div style={{ ...CARD, order: -1 }}>
-          <div style={CARD_HEADER}>
-            <span>{t("salesmanLite.dash.myPerformance")}</span>
-            <span>{t("salesmanLite.dash.days30")}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", borderBottom: `1px solid ${C.line}` }}>
-            {[
-              { label: t("salesmanLite.dash.views"), value: totalViews || 0 },
-              { label: t("salesmanLite.dash.waTaps"), value: totalWATaps || 0 },
-              { label: t("salesmanLite.dash.cvr"), value: overallCVR !== null ? `${overallCVR}%` : "—" },
-            ].map(({ label, value }, i, arr) => (
-              <div key={label} style={{ padding: "16px 18px", borderRight: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
-                <p style={{ ...EYEBROW, margin: "0 0 4px" }}>{label}</p>
-                <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{statsReady ? value : <StatSkeleton width={40} height={24} />}</p>
-              </div>
-            ))}
-          </div>
-          {statsReady && listingStats.length > 0 && (
-            <div>
-              {[...listingStats].sort((a, b) => (b.cvr ?? -1) - (a.cvr ?? -1)).map(({ car, views, waTaps, cvr }, idx, arr) => {
-                const isHot = views > 20 && cvr >= 10;
-                const isWarm = !isHot && views > 5 && cvr >= 5;
-                const img = car.images?.[0];
-                return (
-                  <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 18px", borderBottom: ROW_LINE(idx < arr.length - 1) }}>
-                    {img ? (
-                      <img src={img} alt="" style={{ width: 40, height: 40, borderRadius: R.md, objectFit: "cover", flexShrink: 0 }} />
-                    ) : (
-                      <div style={{ width: 40, height: 40, borderRadius: R.md, background: C.fill, border: `1px solid ${C.line}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <Car size={16} color={C.textDim} />
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: T.size.base, fontWeight: T.weight.semibold, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{perfCarName(car)}</p>
-                      <p style={{ margin: 0, fontSize: T.size.sm, color: C.textMuted }}>{views} view{views !== 1 ? "s" : ""} · {waTaps} WA tap{waTaps !== 1 ? "s" : ""}</p>
-                    </div>
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <p style={{ margin: "0 0 3px", fontSize: T.size.base, fontWeight: T.weight.bold, color: cvr !== null ? cvrColor(cvr) : C.textDim }}>
-                        {cvr !== null ? `${cvr.toFixed(1)}%` : "—"}
-                      </p>
-                      {/* "TOP VIEWS"/"RISING" (ad performance), not "HOT"/"WARM" — those words
-                          already mean buyer urgency on lead cards (red/amber there); reusing
-                          them here in green/yellow for a different metric reads as contradictory. */}
-                      {isHot && <span title="High views and click-through — one of your best-performing ads" style={{ ...SOFT(C.successText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>TOP VIEWS</span>}
-                      {isWarm && <span title="Views and click-through picking up" style={{ ...SOFT(C.warnText), fontSize: T.size.xs, fontWeight: T.weight.semibold, padding: "1px 5px", borderRadius: R.sm, whiteSpace: "nowrap" }}>RISING</span>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {listingStats.length === 0 && (
-            <p style={{ margin: 0, padding: "16px 18px", fontSize: T.size.base, color: C.textMuted }}>No listing data yet — publish a car to start tracking.</p>
-          )}
-        </div>
-
-        {/* ── KPI strip — separated stat tiles (spans full grid width, top) ── */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: 10, order: -2, gridColumn: "1 / -1" }}>
-          {[
-            { label: t("salesmanLite.kpi.pipeline"), value: activeLeads.length, accent: C.info, Icon: Users },
-            { label: t("salesmanLite.kpi.liveListings"), value: myListings.filter(c => c.status === "available").length, accent: C.success, Icon: Car },
-            { label: t("salesmanLite.kpi.followUps"), value: staleLeads.length, accent: staleLeads.length > 0 ? C.danger : C.textDim, Icon: Bell },
-            { label: t("salesmanLite.kpi.todayAppts"), value: todayAppts, accent: C.info, Icon: Calendar },
-            { label: t("salesmanLite.kpi.closed"), value: closedThisMonth.length, accent: C.success, Icon: CheckCircle },
-          ].map(({ label, value, accent, Icon }) => (
-            <div key={label} style={{ ...CARD, padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: R.sm, background: withAlpha(accent, 0.1), color: accent }}>
-                <Icon size={13} strokeWidth={2.5} />
-              </span>
-              <p style={{ ...STAT, margin: 0, fontSize: T.size.stat }}>{leadsReady ? value : <StatSkeleton width={36} height={24} />}</p>
-              <p style={{ ...EYEBROW, margin: 0 }}>{label}</p>
-            </div>
-          ))}
-        </div>
-
-        {/* ── Goal ── commission + monthly goal are Premium (2026-10-13).
-            "Commission tracking" was sold as Premium while Lite had it. */}
-        <PremiumRow
-          onClick={goPremium}
-          cta={t("salesmanLite.premiumRow.cta")}
-          title={t("salesmanLite.premiumRow.commissionTitle")}
-          sub={t("salesmanLite.premiumRow.commissionSub")}
-        />
-
-        {/* Earnings Target card removed — merged into the single Monthly Goal (commission) above */}
-
-        {/* "This Month" commission-earned card removed — it duplicated the
-           commission-earned figure already shown in the Monthly Goal panel
-           above. Revenue/avg-per-deal live in the Performance tab. */}
-
-        </div>
-        </>
-        ) : (
-          // Starting out (SIMPLE-1): one quiet line instead of a call list,
-          // agenda, figures and a goal row that are all empty until the first
-          // buyer arrives. Says where they went so nothing feels missing.
-          <p style={{ margin: "4px 2px 0", fontSize: T.size.sm, color: C.textMuted, lineHeight: 1.55 }}>
-            {t("salesmanLite.dash.startingOutNote")}
-          </p>
-        )}
-
-
-      </div>
+      <DashboardTab
+        isMobile={isMobile}
+        profile={profile}
+        leadsReady={leadsReady}
+        statsReady={statsReady}
+        startingOut={startingOut}
+        headline={personalizedLine}
+        noLiveCars={available.length === 0}
+        staleCount={staleLeads.length}
+        onStaleClick={onStaleClick}
+        numbers={{
+          pipeline: activeLeads.length,
+          live: available.length,
+          closedMonth: closedThisMonth.length,
+          views: totalViews || 0,
+          taps: totalWATaps || 0,
+          cvr: overallCVR,
+          visits: minipageStats.visits || 0,
+        }}
+        missedAppts={missedAppts}
+        agendaAppts={agendaAppts}
+        agendaFollowUps={agendaFollowUps}
+        onApptClick={goToLeadForAppt}
+        onFollowUpClick={(l) => { setActiveTab("leads"); setMobileLeadStage(l.stage); triggerGlow([l.id]); }}
+        listingStats={listingStats}
+        carName={perfCarName}
+        channelRows={minipageStats.byChannel.map((r) => ({ channel: r.channel, views: Number(r.visits) || 0, enquiries: Number(r.card_clicks) || 0 }))}
+        onCopyLink={() => { navigator.clipboard.writeText(`${SITE_URL}/s/${profile.slug}`); toast.success(t("salesmanLite.toast.storeLinkCopied")); }}
+        onOpenMinipage={openMyMinipage}
+        chatUnread={chatUnread}
+        onChat={() => switchTab("chat")}
+        onServices={() => switchTab("services")}
+        onPremium={goPremium}
+        showStarter={listingsLoaded && !starterHidden && !profile?.starter_tasks?.dismissed}
+        listingCount={myListings.length}
+        bioLinkSeen={hasBioLinkVisit(minipageStats.byChannel)}
+        onAddListing={() => { switchTab("listings"); setTimeout(openAddListing, 100); }}
+        onDismissStarter={dismissStarterTasks}
+        showSilent={trafficReady}
+        silentPick={silentPick}
+        onShowMe={startShareTour}
+      />
     );
   };
 

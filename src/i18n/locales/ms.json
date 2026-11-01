@@ -364,7 +364,11 @@
       "noListingsTitle": "Senaraikan stok anda untuk dapat hasil",
       "noListingsBody": "Halaman mini anda sudah aktif dan sedia dikongsi — cuma perlukan kereta. Tambah listing pertama supaya pembeli boleh mula jumpa anda.",
       "noListingsCta": "Tambah listing",
-      "startingOutNote": "Lead, tempahan, chat dan angka anda akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda."
+      "startingOutNote": "Lead, tempahan, chat dan angka anda akan muncul di sini sebaik sahaja pembeli pertama menghubungi anda.",
+      "yourPage": "Halaman anda",
+      "tapsShort": "Ketukan WhatsApp",
+      "closedMonth": "{{n}} ditutup bulan ini",
+      "carMeta": "{{views}} tontonan · {{taps}} ketukan WhatsApp"
     },
     "goal": {
       "setTarget": "Tetapkan sasaran komisen untuk {{month}}:",
