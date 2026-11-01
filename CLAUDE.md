@@ -1520,6 +1520,16 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   Colour = `pageAccent(profile)` (`src/utils/pageAccent.js`, `npm run test:pageaccent`), picked
   in Premium Settings (`savePageColor`, `profiles.brand_color`). `brand_color` has a DB DEFAULT
   of gold `#c9a84c` on every row, so gold = "never chose" = Drevo red. Never theme a Lite page.
+  **A Premium page is a mini personal page (PAGE-PRO 2, owner 2026-11-01).** Order: name card
+  with a 2-line bio + "More about me", then the CARS (owner kept cars before the story), then
+  About me (full bio + facts), Why buy from me (promise, specialisations as blocks, terms),
+  Track record (recently sold + reviews), Find me. A Lite page keeps its old order. The four
+  answers (`years_selling`, `languages`, `areas_covered`, `my_promise`, migration
+  `20261101a_agent_about.sql`) are read via `get_agent_about(slug)` (Premium pages only), never
+  added to `get_salesman_by_slug`; rules + words in `src/utils/agentAbout.js`
+  (`npm run test:agentabout`). Premium Settings loads/saves them in their OWN query, so a missing
+  column can never fail the main profile load or save. No phone numbers in them (CDP-3).
+  The page's main buttons are the owner's raised keys (gradient + four shadows, `.ap--pro .ap-btn`).
 - The Lite loan calculator was REMOVED (flat-rate maths, see HP-EIR). Do not bring a
   calculator back into Lite without `src/utils/financing.js`.
 

@@ -1102,6 +1102,22 @@
         "title": "Warna page",
         "hint": "Butang utama dan aksen page anda. Hanya page Premium ada warna sendiri.",
         "saved": "Warna page disimpan"
+      },
+      "about": {
+        "title": "Tentang saya (di bawah kereta anda)",
+        "years": "Tahun menjual kereta",
+        "areas": "Kawasan liputan",
+        "areasPh": "cth. Lembah Klang, Seremban",
+        "languages": "Bahasa yang anda tutur",
+        "promise": "Janji saya kepada pembeli",
+        "promisePh": "cth. Setiap kereta diperiksa sebelum anda lihat",
+        "hint": "Ditunjuk di bawah Kenapa beli dengan saya. Tiada nombor telefon: pembeli hubungi anda melalui butang WhatsApp.",
+        "pending": "Ini dibuka selepas kemas kini malam ini.",
+        "err": {
+          "years": "Tahun menjual: nombor bulat dari 0 hingga 60.",
+          "areas": "Kawasan liputan tidak boleh ada nombor telefon.",
+          "promise": "Janji anda tidak boleh ada nombor telefon."
+        }
       }
     },
     "sold": {

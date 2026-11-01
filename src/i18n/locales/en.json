@@ -1113,6 +1113,22 @@
         "title": "Page colour",
         "hint": "Your page's main button and accents. Only Premium pages have one.",
         "saved": "Page colour saved"
+      },
+      "about": {
+        "title": "About me (shown below your cars)",
+        "years": "Years selling cars",
+        "areas": "Areas you cover",
+        "areasPh": "e.g. Klang Valley, Seremban",
+        "languages": "Languages you speak",
+        "promise": "My promise to buyers",
+        "promisePh": "e.g. Every car inspected before you see it",
+        "hint": "Shown under Why buy from me. No phone numbers: buyers reach you with the WhatsApp button.",
+        "pending": "These open after tonight's update.",
+        "err": {
+          "years": "Years selling: a whole number from 0 to 60.",
+          "areas": "Areas you cover can't include a phone number.",
+          "promise": "Your promise can't include a phone number."
+        }
       }
     },
     "sold": {
