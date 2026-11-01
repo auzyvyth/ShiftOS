@@ -724,6 +724,16 @@ export default function SalesmanLite() {
   // attached once the panel knows who they are. claim_referral decides if it
   // counts; nothing here can set referred_by directly (src/utils/invite.js).
   useEffect(() => { if (profile?.id) claimStoredInvite(); }, [profile?.id]);
+  // Extra car slots earned by invites (REFER-2), so "your Lite plan holds N
+  // cars" matches what the DB actually allows. Failure = 0, the plain cap.
+  const [bonusSlots, setBonusSlots] = useState(0);
+  useEffect(() => {
+    if (!profile?.id) return undefined;
+    let alive = true;
+    supabase.rpc("referral_bonus_slots", { p_id: profile.id })
+      .then(({ data, error }) => { if (alive && !error && Number.isFinite(data)) setBonusSlots(data); });
+    return () => { alive = false; };
+  }, [profile?.id]);
   const [userId, setUserId] = useState(seed.uid);
   // A cached profile is enough to render the panel; the fresh one lands moments
   // later and every access gate below (pending / deleted / wrong role) re-runs
@@ -3350,7 +3360,7 @@ export default function SalesmanLite() {
         onBrief={(car) => { setQuickBriefCar(car); setBriefCopied(false); }}
         onPoster={setPosterCar}
         onPremium={goPremium}
-        lockedCap={PLAN_CONFIG.salesman_lite?.listingCap ?? 10}
+        lockedCap={(PLAN_CONFIG.salesman_lite?.listingCap ?? 10) + bonusSlots}
         downloadListingImages={downloadListingImages}
         handleDeleteListing={handleDeleteListing}
       />
@@ -5170,7 +5180,7 @@ export default function SalesmanLite() {
               </>
             )}
             {snav === "premium" && <PremiumUpgradeCard profile={profile} cars={myListings} onRefer={() => setSettingsNav("refer")} />}
-            {snav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
+            {snav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" tier="lite" />}
             {snav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
             {snav === "account" && (
               <>

@@ -13,6 +13,7 @@
 // The browser can never set profiles.referred_by itself
 // (trg_guard_profile_referral); claim_referral() decides everything.
 import { supabase } from '../supabaseClient';
+import { SITE_URL } from '../config/site';
 
 const KEY = 'xd_invite';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -27,6 +28,7 @@ export function captureInvite() {
   } catch { /* storage blocked: the invite is simply not remembered */ }
 }
 
+// Also read by /plans to say who invited the visitor.
 export function readInvite() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -60,7 +62,7 @@ export async function claimStoredInvite() {
 
 // What claim_referral's answer means, in words a seller can act on.
 export const CLAIM_MESSAGES = {
-  ok: 'Done. You joined through their invite.',
+  ok: 'Done. You joined through their invite. Your reward lands when your first car goes live.',
   self: "That's your own link name.",
   unknown_code: "No seller uses that link name. Check the spelling.",
   already_set: 'Your invite is already set.',
@@ -92,5 +94,5 @@ export async function claimInviteCode(input) {
 }
 
 export function inviteUrl(slug) {
-  return slug ? `https://xdrive.my/plans?invite=${encodeURIComponent(slug)}` : null;
+  return slug ? `${SITE_URL}/plans?invite=${encodeURIComponent(slug)}` : null;
 }

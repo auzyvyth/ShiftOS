@@ -180,6 +180,17 @@ Google's own line that AI Overviews need no special optimisation.
 - Order: SEO-0 + SEO-1 now (they survive the switch) -> SEO-6 -> SEO-2 -> SEO-3 ->
   SEO-4 -> BRAND-1 switch -> SEO-5. SEO-7 waits for inventory.
 
+## REFER-2: two-sided invite reward (was IDEA-30) — built 2026-11-02, NOT applied / NOT on staging
+Both sides get 7 days Premium + 2 car slots (max +10) when the invited seller's first car is
+approved. Migration `20261102b_referral_two_sided.sql` is written, not applied (the dry-run
+prompt got no answer). Rules in CLAUDE.md "Two-sided invite reward".
+- [ ] Apply the migration in a release slot (after midnight, nobody live), then the verify
+  queries at its foot. The frontend tolerates the old RPC until then (card shows no list).
+- [ ] Owner: read Act 500's Schedule (KPDN PDF, blocked from this sandbox) or ask a lawyer.
+  Search-level reading: free to join, no purchase, non-cash, not a payout from recruiting.
+- [ ] Console Review: show "invited by X" on a new seller's first car, so a farm of fake
+  sellers is visible at the one step that pays out.
+
 ## REVIEW-1: listing review rules — part 1 built 2026-10-31, NOT on staging yet
 Owner asked for automatic approve/reject. Scoped 2026-10-31; owner picked ONLY the
 photo rule for now ("leave it at that").
@@ -188,9 +199,10 @@ photo rule for now ("leave it at that").
   no DB trigger yet.
 - [x] Console Back steps through tabs (`/platform/:tab`), and console pop-ups
   (account record, suspend, delete, prospects, ID photo) close on Back.
-- [ ] BUG: Premium's quick add (`CarFormFast.jsx`, insert `status: "available"`)
-  skips the review queue and the geran question entirely. Any rule only runs on
-  cars that reach the queue, so this comes first.
+- [x] BUG: Premium's quick add (`CarFormFast.jsx`) inserted `status: "available"` and
+  skipped review. Fixed 2026-11-02 with REFER-2: a salesman's quick add is now
+  `pending_approval`. Still open: the DB does not enforce review (a seller can write
+  `available` straight through the API); only a DB trigger closes that.
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
@@ -2842,16 +2854,6 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
-- **IDEA-30: Two-sided invite reward, Dropbox style (owner, 2026-11-01)** — both the inviter
-  and the invited seller get something when the invite works, not just the inviter. Today
-  (REFER-1) only the inviter earns, and only after the friend pays Premium TWICE: 1 invite
-  claimed, 0 rewards, 1 payment ever, so nobody can reach it. Proposed: reward fires when the
-  invited seller's FIRST CAR IS APPROVED (a real seller, not a fake signup). Both get +7 days
-  Premium (invitee's trial becomes 14 days) AND +2 permanent Lite car slots (cap +10, so a
-  Lite seller can grow to 20 by inviting). Keep the paid-twice 30-day bonus on top. Never
-  cash. Blocks: Act 500 check (no fee to join + non-cash reward looks safe, but read the
-  Schedule's 10 indicators first); per-seller slot bonus needs a column read by
-  `enforce_listing_cap` + `sweep_premium_lapses`; fake-account farming (same phone/device).
 - **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
   (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
   9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and

@@ -1427,7 +1427,7 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   forward and sets `payment_status` NULL — 'received' never expired, so a paid
   seller used to stay Premium forever. Never flip `payment_status='received'` for
   a salesman again.
-- Invite link = `xdrive.my/plans?invite=<slug>` (`src/utils/invite.js`), NOT
+- Invite link = `<SITE_URL>/plans?invite=<slug>` (`src/utils/invite.js`), NOT
   `?ref=` (that is buyer attribution). Captured in `main.jsx` before routing
   (`/signup` redirects drop the query). `profiles.referred_by` is writable only via
   `claim_referral(code)` (`trg_guard_profile_referral`); the panels call it on load.
@@ -1444,6 +1444,25 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
   back and, below 2 paid, the inviter's 30 days too. A referrer suspended when the
   reward fell due gets it on a PLATFORM restore (`trg_referral_on_restore`); a self-
   restore cannot move `plan_expires_at` (escalation guard), so it waits.
+
+### Two-sided invite reward (REFER-2, owner 2026-11-01, "like Dropbox")
+Migration `20261102b_referral_two_sided.sql`. When an invited seller's FIRST CAR IS
+APPROVED, BOTH sides get 7 days of Premium (a Lite seller gets Premium for 7 days, then
+Lite again) + 2 extra car slots kept for good (max +10). Inviter side capped 12 a year;
+the invited seller always gets theirs. REFER-1's 30 days after two payments stays on top.
+- **Only a superadmin's approval counts** (`trg_referral_on_car_approved`, pending_approval
+  -> live via `approve_listing`). Sellers can write their own car's status, so a seller-side
+  flip must never trigger it. Same phone on both accounts = `ineligible` (both rows).
+- **Slots are ONE function, `referral_bonus_slots(id)`**, read by `enforce_listing_cap`,
+  `enforce_listing_cap_on_publish`, `salesman_under_listing_limit` and `_apply_premium_lapse`.
+  A new cap check adds it too, or a rewarded seller gets locked at 10. Never a profiles column.
+- Rows: `referral_bonuses` (one per invited seller per side). Premium days go through
+  `_referral_add_premium`, which sets `app.referral_bonus` so the escalation guard lets the
+  change through inside the seller's own transaction (`claim_referral` grants at once if the
+  car was approved before the invite was typed). Reward days do not use up the seller's own
+  free trial (`start_premium_trial`).
+- Words + numbers: `src/utils/referralTerms.js` (card, `/plans?invite=` banner, CarForm's
+  cap box). Change a number there AND in the SQL.
 
 ## Lite -> Premium upgrade + the free trial (2026-10-04, migration 20261004b)
 - **The trial is 7 DAYS, not a month (owner, 2026-10-25, migration 20261025c).** One

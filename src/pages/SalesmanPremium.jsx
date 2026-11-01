@@ -268,7 +268,7 @@ const SETTINGS_GROUPS = [
  ]},
  { group: "Account", items: [
  { key: "password", icon: Lock, label: "Password", desc: "Change your password" },
- { key: "refer", icon: Gift, label: "Refer a Seller", desc: "Earn free Premium months" },
+ { key: "refer", icon: Gift, label: "Refer a Seller", desc: "You both get Premium days + car slots" },
  { key: "dealership", icon: Store, label: "Join a Dealership", desc: "Link up with a dealer" },
  // Premium had no language control anywhere, so a seller who picked Malay in
  // Lite found no way to change it back (or set it at all) on this panel.
@@ -5784,7 +5784,7 @@ export default function SalesmanPremium() {
  </div>
  )}
  {nav === "password" && <ChangePasswordCard theme="premium" />}
- {nav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" />}
+ {nav === "refer" && <ReferralCard slug={profile?.slug} theme="premium" tier="premium" />}
  {nav === "newcars" && <MyNewModels theme="premium" profile={profile} onProfileChange={(patch) => setProfile((p) => ({ ...p, ...patch }))} onCardsAdded={(cars) => setMyListings((p) => [...cars, ...p])} />}
  {nav === "dealership" && (
  <>

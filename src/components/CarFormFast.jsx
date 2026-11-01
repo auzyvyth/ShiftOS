@@ -98,7 +98,10 @@ function UsedCarFormFast({ onCreate, recon = false }) {
         .insert([{
           dealer_id: dealerId,
           assigned_to: profile.id,
-          status: "available",
+          // Same rule as CarForm: every salesman's new car goes through review
+          // (REVIEW-1). Inserting "available" skipped the queue, and with it the
+          // invite reward, which fires on approval (REFER-2).
+          status: profile.role === "salesman" ? "pending_approval" : "available",
           images: urls,
           brand: f.brand,
           model: f.model,

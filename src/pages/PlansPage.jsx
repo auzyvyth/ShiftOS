@@ -5,8 +5,10 @@ import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import PlanCard from '../components/onboarding/PlanCard';
 import { SALESMAN_PLANS, DEALER_PLANS } from '../utils/plans';
-import { supabase } from '../supabaseClient';
+import { supabase, publicClient } from '../supabaseClient';
 import { ensureBuyerProfile } from '../lib/buyerAuth';
+import { readInvite } from '../utils/invite';
+import { REWARD_DAYS, REWARD_SLOTS } from '../utils/referralTerms';
 
 /*
  * The one place a seller picks what they are signing up for.
@@ -35,6 +37,18 @@ export default function PlansPage() {
   const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
   const [busy, setBusy] = useState(false);
+  // REFER-2: a seller who came through ?invite= is told up front what they get.
+  // main.jsx stored the code before routing; the name is a public read.
+  const [invite] = useState(() => readInvite());
+  const [inviterName, setInviterName] = useState(null);
+  useEffect(() => {
+    if (!invite) return undefined;
+    let alive = true;
+    publicClient.rpc('get_salesman_by_slug', { p_slug: invite }).maybeSingle()
+      .then(({ data }) => { if (alive && data?.full_name) setInviterName(data.full_name); })
+      .catch(() => { /* the banner still shows, without a name */ });
+    return () => { alive = false; };
+  }, [invite]);
 
   useEffect(() => {
     let alive = true;
@@ -110,6 +124,20 @@ export default function PlansPage() {
             Pick how you sell. You can change plan later without losing your
             listings — switching only restarts that product&apos;s setup.
           </p>
+          {invite && (
+            <div role="note" style={{
+              marginTop: 20, padding: '14px 16px', borderRadius: 12,
+              background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.25)',
+            }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#ffffff' }}>
+                {inviterName ? `${inviterName} invited you` : 'A seller invited you'}
+              </p>
+              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6 }}>
+                Sign up as a seller, Lite or Premium. When your first car goes live, you both get {REWARD_DAYS} days
+                of Premium and {REWARD_SLOTS} extra car slots that stay for good.
+              </p>
+            </div>
+          )}
         </header>
 
         {section(

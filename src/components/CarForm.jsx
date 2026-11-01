@@ -1,3 +1,4 @@
+import { REWARD_SLOTS } from '../utils/referralTerms';
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
@@ -4206,6 +4207,12 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5 }}>
             Your current plan allows a limited number of active listings. Remove a listing or upgrade your plan to add more.
           </p>
+          {/* REFER-2: the moment a seller runs out of slots is when an invite is worth most. */}
+          {profile?.role === 'salesman' && !profile?.dealer_id && (
+            <p style={{ color: '#6b7280', fontSize: 12, lineHeight: 1.5, marginTop: 6 }}>
+              Or invite another seller (Settings, Refer a seller): when their first car goes live, you both get {REWARD_SLOTS} extra car slots for good.
+            </p>
+          )}
           {/* A host that has an in-app upgrade (Salesman Lite -> its Premium
               section) passes onUpgrade; everyone else keeps the email link. */}
           {onUpgrade ? (
