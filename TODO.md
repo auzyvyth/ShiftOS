@@ -2836,6 +2836,24 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-30: Products & services near the buyer (owner, 2026-11-01)** — a Products tab that
+  first asks the buyer's location, then shows car products and services near them (tint, PPF,
+  servicing, workshops, accessories). We sign up the nearby auto shops and service providers into
+  the app so they receive orders through us. Why: a second revenue line and a reason for buyers
+  to come back after the car is bought. Blocked by: a vendor side (signup, listing, order inbox),
+  an order flow (who pays, who is liable), and a location ask that is PDPA-clean (ask, explain
+  why, never store more than the area). Relates to `dealer_products` / ServicesPage (dealer
+  add-ons today). Future project, not scheduled.
+- **IDEA-31: Find Me pings Premium sellers who have the car (owner, 2026-11-01)** — when a buyer
+  posts on Find Me (FINDME-1), Premium sellers get a push if the request matches a car they have
+  live, OR matches a watch note they saved ("ping me when a Proton Saga under RM5k request
+  comes"). Lets a seller answer a hot lead first with a car they already hold. Premium-only
+  (a reason to pay). Notes: the match must run server side on post (a DB trigger writing a
+  `salesman_notifications` row = the push); keep the existing guards (`find_me_reply`: approved
+  sellers, 5 sellers per post, 10 new post chats a day) so a ping never means a flood on the
+  buyer; buyer identity still reaches a seller only by the buyer's own reply (PDPA s.8).
+  Watch notes need a small table (make, model, max price, area) and a cap per seller.
+  Future project, not scheduled.
 - **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
   (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
   9/7/5 monthly figures count up, the seller's name slides in. Made for WhatsApp Status and
