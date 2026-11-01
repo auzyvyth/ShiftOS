@@ -167,10 +167,10 @@ export default function ListingsTab({
  {t("salesmanPremium.lst.title", { n: myListings.length })}
  </p>
  <div style={{ display: "flex", gap: 8 }}>
- <button
+ <button className="lk-red"
  data-tour-id="lst-fast"
  onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
- style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
+ style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
  >
  {t("salesmanPremium.lst.fast")}
  </button>
@@ -318,7 +318,7 @@ export default function ListingsTab({
  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: P.text, lineHeight: 1.4 }}>
  {car.rejection_reason || t("salesmanPremium.lst.noReason")}
  </p>
- <button onClick={() => setEditListing(car)} style={{ marginTop: 12, width: "100%", height: 38, fontSize: 13, fontWeight: 600, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
+ <button className="lk-red" onClick={() => setEditListing(car)} style={{ marginTop: 12, width: "100%", height: 38, fontSize: 13, fontWeight: 600, borderRadius: P.radius.pill, border: "none", color: P.onAccent, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontFamily: "inherit" }}>
  <Pencil size={13} /> {t("salesmanPremium.lst.editResubmit")}
  </button>
  </div>
@@ -519,7 +519,7 @@ export default function ListingsTab({
  )}
  {confirmDeleteId === car.id ? (
  <div style={{ padding: "8px 10px", display: "flex", gap: 6 }}>
- <button onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: 600, fontFamily: "inherit" }}>{deletingId === car.id ? t("salesmanPremium.common.deleting") : t("salesmanPremium.common.delete")}</button>
+ <button className="lk-red" onClick={() => handleDeleteListing(car.id)} disabled={deletingId === car.id} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, border: "none", color: P.onAccent, cursor: deletingId === car.id ? "wait" : "pointer", opacity: deletingId === car.id ? 0.6 : 1, fontWeight: 600, fontFamily: "inherit" }}>{deletingId === car.id ? t("salesmanPremium.common.deleting") : t("salesmanPremium.common.delete")}</button>
  <button onClick={() => setConfirmDeleteId(null)} style={{ flex: 1, height: 32, fontSize: 12.5, borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.textSec, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
  ) : (

@@ -2327,6 +2327,16 @@ enquiries. Both were granted to `anon`.
    (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
    every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
+## Red buttons are raised keys, Lite AND Premium (owner, 2026-11-01)
+Every red (accent-filled) button in the seller panels uses `.lk-red` from
+`src/pages/salesmanLite/keys.css` (one gradient + four shadows, sinks 2px on press);
+`SalesmanPremium.jsx` imports the same file. Only RED buttons: neutral/dark buttons, badges,
+pills and bars stay flat in Premium. A red key must NOT set `background`/`boxShadow` inline
+(the inline value wins and the key goes flat); when it spreads a base style that has a
+background (`leadBtn`, `enqBtn`, `bkBtn`), set `background: undefined`. `ShareMenu` takes no
+className: wrap it in `<span className="lk-wrap-red">`. The silent-car coach card
+(`SilentCarCard`) has an X that hides it until tomorrow (Malaysia date, `xd_silent_card_closed`).
+
 ## Product tour (Salesman Premium) — anchors and placement
 A welcome card + one step per sidebar link the menu is SHOWING (`TOUR_STEPS` built from
 `navTabs`, SalesmanPremium.jsx).

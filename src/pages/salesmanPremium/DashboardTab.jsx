@@ -194,14 +194,16 @@ export default function DashboardTab({
  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ROOT_DOMAIN}/s/{profile.slug}</span>
  <ChevronRight size={14} style={{ flexShrink: 0, opacity: 0.6 }} />
  </a>
+ <span className="lk-wrap-red" style={{ display: "inline-flex", flexShrink: 0, borderRadius: P.radius.pill }}>
  <ShareMenu
  baseUrl={pageUrl}
  refSlug={profile.slug}
  waCaption={(url) => `Check out my car listings on XDrive:\n${url}`}
  dark
  label={t("salesmanPremium.dash.share")}
- style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, background: P.accent, border: "none", color: P.onAccent, fontSize: 14 }}
+ style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 14 }}
  />
+ </span>
  </div>
  {/* Visits that came from a link someone passed on (Share button, copied
  link, WhatsApp, Telegram): shareVisits, detectChannel.js. All time, the
@@ -290,8 +292,8 @@ export default function DashboardTab({
  <input type="number" min="0" step="500" value={goalDraft} onChange={(e) => setGoalDraft(Number(e.target.value))} autoFocus
  aria-label={t("salesmanPremium.dash.setTarget", { month: now.toLocaleDateString(dateLocale, { month: "long" }) })}
  style={{ width: 84, minWidth: 0, height: 36, padding: "0 10px", borderRadius: 10, border: "none", background: P.raised, color: P.text, fontSize: 14, fontWeight: 600, fontFamily: "inherit" }} />
- <button type="button" onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }}
- style={{ height: 36, padding: "0 12px", borderRadius: P.radius.pill, border: "none", background: P.accent, color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.save")}</button>
+ <button className="lk-red" type="button" onClick={() => { saveGoal({ target: goalDraft }); setGoalEditing(false); }}
+ style={{ height: 36, padding: "0 12px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.save")}</button>
  <button type="button" onClick={() => setGoalEditing(false)}
  style={{ height: 36, padding: "0 10px", borderRadius: P.radius.pill, border: "none", background: "transparent", color: P.textSec, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{t("salesmanPremium.common.cancel")}</button>
  </div>
