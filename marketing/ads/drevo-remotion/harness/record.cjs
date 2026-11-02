@@ -1,4 +1,4 @@
-// Records the REAL LivePresenter (harness/index.html, served by `vite --config harness/vite.config.js`)
+// Records the REAL LivePresenter (harness/index.html, served by `vite --config harness/vite.config.mjs`)
 // while a script taps it, in real time, through Chrome's screencast.
 //   node harness/record.cjs <take> <lang> <outDir>
 // Writes <outDir>/<take>-<lang>.mp4 (30 fps, constant) and <outDir>/<take>-<lang>.clicks.json
@@ -11,36 +11,31 @@ const { execFileSync } = require('child_process');
 const [, , take = 'calc', lang = 'ms', outDir = 'public/takes'] = process.argv;
 const W = 1124, H = 1000, DSF = 2, FPS = 30;
 const T = lang === 'en'
-  ? { cars: 'Cars', budget: 'Budget', none: 'None', pay: 'Take-home', yrs: (y) => `${y} YEARS`, monthly: 'Monthly budget' }
+  ? { cars: 'Cars', budget: 'Budget', none: 'None', pay: 'Take-home pay', yrs: (y) => `${y} years`, monthly: 'Monthly budget' }
   : { cars: 'Kereta', budget: 'Bajet', none: 'Tiada', pay: 'Gaji bersih', yrs: (y) => `${y} TAHUN`, monthly: 'Bajet bulanan' };
 
 // Each take: setup (not recorded) + timed steps (recorded). Times in seconds from record start.
 const TAKES = {
   calc: {
-    dur: 9.5,
-    async setup(p) {
-      await p.getByRole('button', { name: '1.5TD Flagship', exact: true }).click();
-      await p.locator('tr.lp-r-reb').click();
-      await p.keyboard.type('7000'); await p.keyboard.press('Enter');
-      await p.getByRole('button', { name: T.none, exact: true }).click();
-    },
+    dur: 9.0,
+    async setup(p) { await p.getByRole('button', { name: T.none, exact: true }).click(); },
     steps: [
-      [1.0, (p) => p.getByRole('button', { name: '20%', exact: true })],
+      [1.0, (p) => p.locator('button.lp-chip', { hasText: /^20%$/ })],
       [2.0, (p) => p.locator('button.lp-ten', { hasText: T.yrs(9) })],
-      [4.0, (p) => p.getByRole('button', { name: '1.5TD Premium', exact: true })],
-      [5.2, (p) => p.locator('button.lp-ten', { hasText: T.yrs(7) })],
-      [6.4, (p) => p.getByRole('button', { name: '55%', exact: true })],
-      [7.6, (p) => p.getByRole('button', { name: '10%', exact: true })],
+      [3.3, (p) => p.getByRole('button', { name: '55%', exact: true })],
+      [4.6, (p) => p.locator('button.lp-next')],
+      [6.0, (p) => p.locator('button.lp-chip', { hasText: /^30%$/ })],
+      [7.2, (p) => p.locator('button.lp-ten', { hasText: T.yrs(7) })],
     ],
   },
   budget: {
     dur: 9.0,
     async setup(p) { await p.getByRole('button', { name: T.budget, exact: true }).click(); },
     steps: [
-      [0.8, (p) => p.locator('input').first(), '1100'],
-      [4.2, (p) => p.getByRole('button', { name: T.pay, exact: true })],
-      [4.9, (p) => p.locator('input').nth(0), '5000', true],
-      [6.4, (p) => p.locator('input').nth(1), '800'],
+      [0.8, (p) => p.locator('input').first(), '3500'],
+      [4.0, (p) => p.getByRole('button', { name: T.pay, exact: true })],
+      [4.7, (p) => p.locator('input').nth(0), '10000', true],
+      [6.3, (p) => p.locator('input').nth(1), '1200'],
     ],
   },
 };
