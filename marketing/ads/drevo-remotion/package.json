@@ -1,0 +1,16 @@
+{
+  "name": "drevo-remotion-ad",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio",
+    "render:ms": "remotion render DrevoAd-ms out/drevo-premium-ms.mp4",
+    "render:en": "remotion render DrevoAd-en out/drevo-premium-en.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.540",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.540"
+  }
+}
