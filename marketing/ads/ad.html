@@ -1,0 +1,220 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Drevo seller ad</title>
+<style>
+@font-face{font-family:Bebas;src:url(bebas-neue-latin-400-normal.woff)}
+@font-face{font-family:Outfit;font-weight:500;src:url(outfit-latin-500-normal.woff)}
+@font-face{font-family:Outfit;font-weight:700;src:url(outfit-latin-700-normal.woff)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1080px;height:1920px;overflow:hidden;background:#080C14}
+body{font-family:Outfit,system-ui;color:#fff;position:relative}
+#glow{position:absolute;inset:0;background:radial-gradient(900px 700px at 50% 30%,rgba(220,38,38,.16),transparent 70%)}
+.abs{position:absolute}
+.live{left:60px;top:90px;display:flex;align-items:center;gap:14px;font:700 34px Outfit;letter-spacing:2px}
+.live b{background:#dc2626;padding:8px 18px;border-radius:10px}
+.live span{color:rgba(255,255,255,.6);font-weight:500}
+.head{left:60px;right:60px;top:200px;font:400 128px/1.0 Bebas;letter-spacing:1px}
+.head em{font-style:normal;color:#ef4444}
+.word{display:inline-block;margin-right:26px}
+.cmts{left:60px;bottom:620px;width:780px;display:flex;flex-direction:column;gap:22px}
+.cmt{display:flex;gap:20px;align-items:center;background:rgba(255,255,255,.08);border-radius:28px;padding:20px 30px}
+.av{width:68px;height:68px;border-radius:50%;flex:none}
+.cmt p{font:500 38px Outfit}
+.cmt p b{display:block;font-size:28px;color:rgba(255,255,255,.55);font-weight:500}
+/* phone */
+#phone{left:150px;top:520px;width:780px;height:1180px;border-radius:70px;background:#0f1218;border:14px solid #1d222b;padding:44px 40px;overflow:hidden}
+.pc-top{display:flex;align-items:center;gap:18px}
+.no{background:#dc2626;font:400 64px/1 Bebas;padding:10px 20px 4px;border-radius:14px}
+.ttl{font:700 40px/1.15 Outfit}
+.ttl small{display:block;font:500 30px Outfit;color:rgba(255,255,255,.55)}
+.carbox{margin-top:30px;height:290px;border-radius:30px;background:linear-gradient(180deg,#1a1f29,#12161d);display:flex;align-items:center;justify-content:center}
+.mlabel{margin-top:34px;font:500 30px Outfit;color:rgba(255,255,255,.55)}
+.big{font:400 200px/0.95 Bebas;color:#fff;margin-top:6px}
+.big small{font:500 44px Outfit;color:rgba(255,255,255,.6);margin-left:10px}
+.row{display:flex;gap:16px;margin-top:26px}
+.chip{flex:1;text-align:center;padding:22px 0;border-radius:20px;background:#1a1f29;font:700 34px Outfit;color:rgba(255,255,255,.75)}
+.chip.on{background:#dc2626;color:#fff}
+.lbl2{margin-top:28px;font:500 28px Outfit;color:rgba(255,255,255,.5)}
+#tap{width:120px;height:120px;border-radius:50%;border:6px solid rgba(255,255,255,.9);background:rgba(255,255,255,.18);pointer-events:none}
+.fine{left:60px;right:60px;top:1740px;text-align:center;font:500 30px Outfit;color:rgba(255,255,255,.5)}
+/* features */
+.feats{left:60px;right:60px;top:700px;display:flex;flex-direction:column;gap:34px}
+.feat{display:flex;gap:32px;align-items:center;background:#111520;border-radius:36px;padding:44px 44px}
+.ic{width:100px;height:100px;border-radius:28px;background:rgba(220,38,38,.14);display:flex;align-items:center;justify-content:center;flex:none}
+.feat p{font:700 50px/1.15 Outfit}
+.feat p small{display:block;font:500 32px Outfit;color:rgba(255,255,255,.55);margin-top:8px}
+/* end */
+.brand{left:0;right:0;top:620px;text-align:center;font:400 300px/1 Bebas;letter-spacing:12px}
+.brand i{font-style:normal;color:#dc2626}
+.tag{left:80px;right:80px;top:960px;text-align:center;font:500 52px/1.3 Outfit;color:rgba(255,255,255,.8)}
+.cta{left:140px;right:140px;top:1240px;text-align:center;background:linear-gradient(180deg,#ef4444,#dc2626);border-radius:40px;padding:44px 0;font:700 56px Outfit;box-shadow:0 20px 60px rgba(220,38,38,.4)}
+.url{left:0;right:0;top:1440px;text-align:center;font:400 96px Bebas;letter-spacing:4px;color:#fff}
+</style></head>
+<body>
+<div id="glow"></div>
+<div class="abs live" id="live"><b>LIVE</b><span id="viewers"></span></div>
+<div class="abs head" id="head"></div>
+
+<div class="abs cmts" id="cmts"></div>
+
+<div class="abs" id="phone">
+  <div class="pc-top"><div class="no">#3</div><div class="ttl">2021 Honda City 1.5 V<small>RM 72,800</small></div></div>
+  <div class="carbox">
+    <svg width="560" height="210" viewBox="0 0 560 210" fill="none">
+      <path d="M30 150 C30 125 45 115 75 110 L150 100 C185 70 225 48 285 46 C345 44 385 62 425 98 L490 108 C520 113 532 128 532 150 L532 160 L30 160 Z" fill="#2b313d"/>
+      <path d="M170 100 C200 74 236 60 285 58 C330 57 365 72 395 98 Z" fill="#3a4252"/>
+      <line x1="285" y1="58" x2="282" y2="100" stroke="#1a1f29" stroke-width="6"/>
+      <circle cx="140" cy="160" r="36" fill="#0b0e13"/><circle cx="140" cy="160" r="16" fill="#556"/>
+      <circle cx="430" cy="160" r="36" fill="#0b0e13"/><circle cx="430" cy="160" r="16" fill="#556"/>
+      <rect x="500" y="122" width="26" height="10" rx="4" fill="#ef4444"/>
+      <rect x="34" y="124" width="24" height="10" rx="4" fill="#f5f5f5" opacity=".8"/>
+    </svg>
+  </div>
+  <div class="mlabel" id="mlabel"></div>
+  <div class="big"><span id="mval"></span><small id="munit"></small></div>
+  <div class="row" id="ten"></div>
+  <div class="lbl2" id="deplbl"></div>
+  <div class="row" id="dep"></div>
+</div>
+<div class="abs" id="tap"></div>
+<div class="abs fine" id="fine"></div>
+
+<div class="abs feats" id="feats"></div>
+
+<div class="abs brand" id="brand">DREV<i>O</i></div>
+<div class="abs tag" id="tag"></div>
+<div class="abs cta" id="cta"></div>
+<div class="abs url" id="url">DREVO.MY</div>
+
+<script>
+const COPY = {
+  ms: {
+    viewers:'1.2k menonton',
+    hook:['Viewer','tanya:','<em>"Bulanan</em>','<em>berapa</em>','<em>bos?"</em>'],
+    cmts:[['aiman_87','bulanan berapa bos?'],['sitizz','deposit 10% berapa?'],['kl_rider','kalau 9 tahun?']],
+    answer:['Jawab','dalam','<em>1</em>','<em>saat.</em>'],
+    mlabel:'Bulanan', unit:'/bln', deplbl:'Deposit', yrs:'thn', none:'Tiada',
+    fine:'Anggaran pada 6.5% EIR. Bank yang tentukan.',
+    free:['Percuma','untuk','<em>jurujual</em>','<em>kereta.</em>'],
+    feats:[['Kalkulator Live asas','Jawab soalan viewer on the spot'],['Page kereta anda sendiri','Satu link untuk semua stok'],['Pembeli terus ke WhatsApp anda','Tiada orang tengah']],
+    tag:'Alat jualan untuk jurujual kereta di Malaysia', cta:'Daftar percuma'
+  },
+  en: {
+    viewers:'1.2k watching',
+    hook:['Viewers','keep','asking:','<em>"How</em>','<em>much</em>','<em>monthly?"</em>'],
+    cmts:[['aiman_87','how much monthly bro?'],['sitizz','10% deposit how much?'],['kl_rider','what about 9 years?']],
+    answer:['Answer','in','<em>one</em>','<em>second.</em>'],
+    mlabel:'Monthly', unit:'/mo', deplbl:'Deposit', yrs:'yrs', none:'None',
+    fine:'Estimate at 6.5% EIR. The bank decides.',
+    free:['Free','for','<em>car</em>','<em>salesmen.</em>'],
+    feats:[['Basic Live calculator','Answer viewers on the spot'],['Your own car page','One link for all your stock'],['Buyers WhatsApp you directly','No middleman']],
+    tag:'Sales tools for car salesmen in Malaysia', cta:'Sign up free'
+  }
+};
+// real figures from src/utils/financing.js monthlyPayment, RM72,800 @ 6.5% EIR
+const M = {0:{5:1424,7:1081,9:892}, 10:{5:1282,7:973,9:803}, 20:{5:1140,7:865,9:714}};
+const ICONS = [
+ '<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h3M13 14h3M8 18h3M13 18h3"/></svg>',
+ '<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>',
+ '<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.5A9 9 0 1 1 21 12z"/></svg>'];
+const AV = ['#f59e0b','#6366f1','#10b981'];
+
+const $ = id => document.getElementById(id);
+const clamp = (x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const eo = x => 1-Math.pow(1-clamp(x),3);          // ease-out cubic
+const spring = x => { x=clamp(x); return 1 - Math.exp(-7*x)*Math.cos(9*x); };
+const prog = (t,a,d)=>clamp((t-a)/d);
+const fmt = n => 'RM ' + Math.round(n).toLocaleString('en-US');
+
+let L, built=false;
+function words(arr,t,start,step){
+  return arr.map((w,i)=>{const p=eo(prog(t,start+i*step,0.35));
+    return `<span class="word" style="opacity:${p};transform:translateY(${(1-p)*40}px)">${w}</span>`}).join('');
+}
+function build(lang){
+  L = COPY[lang]; built=true;
+  $('viewers').textContent=L.viewers;
+  $('mlabel').textContent=L.mlabel; $('munit').textContent=L.unit; $('deplbl').textContent=L.deplbl;
+  $('fine').textContent=L.fine; $('tag').textContent=L.tag; $('cta').textContent=L.cta + ' →';
+  $('cmts').innerHTML=L.cmts.map((c,i)=>`<div class="cmt"><div class="av" style="background:${AV[i]}"></div><p><b>@${c[0]}</b>${c[1]}</p></div>`).join('');
+  $('feats').innerHTML=L.feats.map((f,i)=>`<div class="feat"><div class="ic">${ICONS[i]}</div><p>${f[0]}<small>${f[1]}</small></p></div>`).join('');
+}
+function vis(el,o,ty=0,s=1){el.style.opacity=o;el.style.transform=`translateY(${ty}px) scale(${s})`;el.style.display=o<=0.001?'none':'';}
+
+// timeline (s): hook 0-2.8 | answer 2.8-8.4 | free 8.4-11.8 | end 11.8-15
+const TAPS=[{t:4.4,id:'d10'},{t:5.7,id:'d20'},{t:7.0,id:'t9'}];
+function render(t){
+  // headline
+  let html, hs;
+  if (t<2.8){ html=words(L.hook,t,0.15,0.18); hs=1-eo(prog(t,2.55,0.25)); }
+  else if (t<8.4){ html=words(L.answer,t,2.85,0.14); hs=1-eo(prog(t,8.15,0.25)); }
+  else if (t<11.8){ html=words(L.free,t,8.5,0.14); hs=1-eo(prog(t,11.55,0.25)); }
+  else { html=''; hs=0; }
+  $('head').innerHTML=html; $('head').style.opacity=hs;
+
+  // live pill + comments (hook)
+  const liveO = t<8.4 ? 1-eo(prog(t,8.15,0.25)) : 0;
+  vis($('live'),liveO);
+  const cO = 1-eo(prog(t,2.6,0.3));
+  vis($('cmts'),cO, -eo(prog(t,2.6,0.3))*60);
+  [...$('cmts').children].forEach((c,i)=>{const p=spring(prog(t,0.5+i*0.55,0.6));
+    c.style.opacity=clamp(p); c.style.transform=`translateX(${(1-p)*-120}px) scale(${0.9+0.1*clamp(p)})`;});
+
+  // phone scene
+  const pIn=spring(prog(t,2.9,0.8)), pOut=eo(prog(t,8.15,0.3));
+  const pO = t<2.9?0: clamp(pIn)*(1-pOut);
+  vis($('phone'),pO,(1-clamp(pIn))*500 - pOut*120, 0.96+0.04*clamp(pIn));
+  vis($('fine'),t<3.6?0:eo(prog(t,3.6,0.4))*(1-pOut));
+
+  // state from taps
+  let dep=0, yrs=7, from=null, at=0;
+  const st=[{dep:0,yrs:7,t:0},{dep:10,yrs:7,t:TAPS[0].t},{dep:20,yrs:7,t:TAPS[1].t},{dep:20,yrs:9,t:TAPS[2].t}];
+  let cur=st[0], prev=st[0];
+  for(let i=1;i<st.length;i++) if(t>=st[i].t){prev=st[i-1];cur=st[i];}
+  const rp=eo(prog(t,cur.t,0.55));
+  const val = M[prev.dep][prev.yrs] + (M[cur.dep][cur.yrs]-M[prev.dep][prev.yrs])*(cur===prev?1:rp);
+  $('mval').textContent=fmt(val);
+  $('ten').innerHTML=[5,7,9].map(y=>`<div class="chip${y===cur.yrs?' on':''}" id="t${y}">${y} ${L.yrs}</div>`).join('');
+  $('dep').innerHTML=[[0,L.none],[10,'10%'],[20,'20%'],[30,'30%']].map(([d,l])=>`<div class="chip${d===cur.dep?' on':''}" id="d${d}">${l}</div>`).join('');
+  // pop the chip just tapped
+  const hit = TAPS.find(x=>t>=x.t && t<x.t+0.3);
+  if(hit){const e=$(hit.id); if(e){const k=Math.sin(prog(t,hit.t,0.3)*Math.PI); e.style.transform=`scale(${1-0.08*k})`;}}
+
+  // finger tap indicator
+  const tap=$('tap'); let shown=false;
+  for(const x of TAPS){
+    const d=t-x.t;
+    if(d>-0.5 && d<0.45 && pO>0.5){
+      const e=$(x.id); if(!e) break;
+      const r=e.getBoundingClientRect();
+      const s = d<0 ? 1.0 : 1+eo(d/0.45)*0.6;
+      const o = d<0 ? eo((d+0.5)/0.3) : 1-eo(d/0.45);
+      tap.style.left=(r.left+r.width/2-60)+'px'; tap.style.top=(r.top+r.height/2-60)+'px';
+      tap.style.opacity=o; tap.style.transform=`scale(${d<0?1.15-0.15*eo((d+0.5)/0.5):s})`; tap.style.display=''; shown=true; break;
+    }
+  }
+  if(!shown) tap.style.display='none';
+
+  // features
+  const fOut=eo(prog(t,11.55,0.3));
+  vis($('feats'), t<8.5?0:1-fOut);
+  [...$('feats').children].forEach((f,i)=>{const p=spring(prog(t,8.8+i*0.35,0.7));
+    f.style.opacity=clamp(p); f.style.transform=`translateX(${(1-p)*200}px)`;});
+
+  // end card
+  const b=spring(prog(t,11.9,0.9));
+  vis($('brand'), t<11.9?0:clamp(b), 0, 0.85+0.15*b);
+  vis($('tag'), eo(prog(t,12.4,0.5)), (1-eo(prog(t,12.4,0.5)))*40);
+  const c=spring(prog(t,12.8,0.8));
+  const pulse = t>13.8 ? 1+0.025*Math.sin((t-13.8)*Math.PI*2) : 1;
+  vis($('cta'), t<12.8?0:clamp(c), (1-clamp(c))*60, (0.9+0.1*c)*pulse);
+  vis($('url'), eo(prog(t,13.2,0.5)), (1-eo(prog(t,13.2,0.5)))*30);
+
+  // glow drift
+  $('glow').style.transform=`translateY(${Math.sin(t*0.6)*40}px)`;
+}
+window.setup = build; window.render = render;
+const q=new URLSearchParams(location.search);
+build(q.get('lang')||'ms');
+if(!q.has('static')){const t0=performance.now();(function loop(){render(((performance.now()-t0)/1000)%15.5);requestAnimationFrame(loop)})();}
+</script>
+</body></html>
