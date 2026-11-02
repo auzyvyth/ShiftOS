@@ -15,7 +15,7 @@ const save = (file, dataUrl) => fs.writeFileSync(file, Buffer.from(dataUrl.split
   await p.waitForFunction(() => window.TOOLS_READY === true);
   for (const lang of ['ms', 'en']) {
     save(path.join(OUT, `loan-poster-${lang}.jpg`), await p.evaluate((l) => window.loanPoster(l), lang));
-    const len = await p.evaluate((l) => window.motionSetup(l, 'calc'), lang);
+    const len = await p.evaluate(([l, tp]) => window.motionSetup(l, tp), [lang, process.env.TPL || 'stretch']);
     const dir = path.join(OUT, `.motion-${lang}`); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir);
     const n = Math.round(len * 30);
     for (let i = 0; i < n; i++) save(path.join(dir, String(i).padStart(5, '0') + '.jpg'), await p.evaluate((t) => window.motionFrame(t), i / 30));

@@ -34,7 +34,8 @@ window.motionSetup = async (lang = 'ms', tpl = 'calc') => {
   frame = {
     lang, headline: c.kicker, offer: '', seller: seller.full_name,
     title: `${car.year} ${posterTitle(car)}`.trim(),
-    name: [car.year, titleCase(car.brand), titleCase(car.model)].join(' '), variant: titleCase(car.variant), tag: '',
+    // Model codes kept as listed: the sheet's titleCase turns GR86 into 'Gr86' (app bug, reported).
+    name: [car.year, titleCase(car.brand), car.model].join(' '), variant: car.variant, tag: c.cond?.recon || '',
     year: car.year, make: posterTitle({ brand: car.brand }), model: posterTitle({ model: car.model, variant: car.variant }),
     price: numbers.price, deposit: numbers.deposit, working: `${c.deposit} RM ${numbers.deposit.toLocaleString('en-MY')} · ${numbers.rate}% EIR`,
     rows: numbers.rows, sweep, ownIdx: 4, features: [`${car.mileage.toLocaleString('en-MY')} km`, car.transmission, c.cond?.recon].filter(Boolean),

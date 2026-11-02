@@ -1,11 +1,14 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, Audio, staticFile, useCurrentFrame } from 'remotion';
-import { TL, FPS, sec } from './lib';
+import { TL, FPS, OV, OVERLAP, sec } from './lib';
 import { Ambient } from './ui';
 import { HookCalc, Budget } from './scenes/Presenter';
 import { Leads, Stats, Studio, Posters, Page, Devices, Cta, OfferPill } from './scenes/Features';
 
-const S = ({ k, children }) => <Sequence from={sec(TL[k][0])} durationInFrames={sec(TL[k][1] - TL[k][0])} name={k}>{children}</Sequence>;
+const S = ({ k, children }) => {
+  const ov = OVERLAP.includes(k) ? OV : 0;
+  return <Sequence from={sec(TL[k][0] - ov)} durationInFrames={sec(TL[k][1] - TL[k][0] + ov)} name={k}>{children}</Sequence>;
+};
 
 export const Ad = ({ lang = 'ms', audio = true }) => {
   const f = useCurrentFrame();

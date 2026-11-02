@@ -18,6 +18,10 @@ export const TL = {
   cta: [42.7, 47.5],
 };
 export const DUR = 47.5;
+// These scenes start OV seconds before their slot, so they enter while the previous one leaves
+// (no empty beat between scenes). Their own clocks run OV ahead of TL; make-audio.cjs knows.
+export const OV = 0.3;
+export const OVERLAP = ['leads', 'stats', 'studio', 'posters', 'page', 'devices'];
 
 export const COPY = {
   ms: {

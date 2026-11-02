@@ -1,10 +1,11 @@
 import React from 'react';
 import { useCurrentFrame, Img, OffthreadVideo, Freeze, staticFile, interpolate } from 'remotion';
-import { COPY, TL, CARS, FPS, sec, lerp, pop, clamp, ease, easeIO } from '../lib';
+import { COPY, TL, CARS, FPS, OV, sec, lerp, pop, clamp, ease, easeIO } from '../lib';
 import { Headline, Fine, Chip, glass, Device, FONT, RED, RED2, MINT, INK } from '../ui';
 
+import { OVERLAP } from '../lib';
 const HUES = ['#60a5fa', '#fbbf24', '#c084fc', '#34d399', '#fb923c', '#4ade80', '#6ee7b7'];
-const len = (k) => TL[k][1] - TL[k][0];
+const len = (k) => TL[k][1] - TL[k][0] + (OVERLAP.includes(k) ? OV : 0);
 const Icon = ({ d, c = INK, s = 30 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 const exitOf = (f, k) => lerp(f, sec(len(k) - 0.35), sec(len(k)), 0, 1);
 
@@ -99,42 +100,47 @@ export const Studio = ({ lang }) => {
   const scan = interpolate(t, [1.0, 2.2], [0, 1], { ...clamp, easing: easeIO });
   const lift = interpolate(t, [2.2, 2.8], [0, 1], { ...clamp, easing: ease });
   const tpl = (at) => pop(f, at);
-  const W0 = 700, H0 = 1000;
+  // the window (a 9:16-ish Studio canvas) and the car's box inside it: photo and cut-out share
+  // the SAME box, so the scan reveals the cut-out exactly where the photo was
+  const W0 = 680, H0 = 900, CX = 60, CY = 230, CW = 560, CH = 420;
   return (
     <>
       <Headline lines={C.studio} eyebrow={C.eb.studio} at={0.1} out={len('studio') - 0.4} top={170} />
-      <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 470, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none',
+      <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 450, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: ex > 0.05 ? `blur(${ex * 10}px)` : 'none',
         transform: `translateY(${(1 - inP) * 140}px) scale(${0.94 + 0.06 * Math.min(1, inP)})`, boxShadow: '0 80px 160px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 120px rgba(220,38,38,.25)' }}>
-        {/* backdrop that appears behind the cut-out: red studio sweep + floor */}
+        {/* backdrop: red studio sweep + floor, lit once the car lands */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(120% 70% at 50% 35%, #3a0d0d 0%, #160606 55%, #070303 100%)' }} />
-        <div style={{ position: 'absolute', left: 0, right: 0, top: 560, bottom: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.6))' }} />
-        <div style={{ position: 'absolute', left: 150, top: -60, width: 400, height: 800, background: 'linear-gradient(180deg, rgba(255,255,255,.18), transparent)', clipPath: 'polygon(42% 0, 58% 0, 100% 100%, 0 100%)', opacity: lift }} />
-        {/* the original photo, wiped away top to bottom by the scan */}
-        <Img src={staticFile('photos/gr86-2025.jpg')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', clipPath: `inset(${scan * 100}% 0 0 0)` }} />
-        {/* the cut-out (real model output), with a contact shadow once it lands */}
-        <div style={{ position: 'absolute', left: 60, right: 60, top: 590, height: 50, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(0,0,0,.85), transparent)', opacity: lift, filter: 'blur(4px)' }} />
-        <Img src={staticFile('real/gr86-cutout.png')} style={{ position: 'absolute', left: -110, top: 300 - lift * 40, width: 920, height: 690, objectFit: 'contain', clipPath: `inset(0 0 ${(1 - scan) * 100}% 0)`, filter: `drop-shadow(0 30px 30px rgba(0,0,0,.6))` }} />
-        {scan > 0 && scan < 1 && <div style={{ position: 'absolute', left: 0, right: 0, top: `${scan * 100}%`, height: 6, background: '#fff', boxShadow: `0 0 30px 10px ${RED2}` }} />}
-        {/* template words: the real monthly from the presenter take (10% deposit, 7 years, 6.5% EIR) */}
-        <div style={{ position: 'absolute', left: 44, top: 60, opacity: Math.min(1, tpl(3.2) * 1.4), transform: `translateY(${(1 - tpl(3.2)) * -40}px)` }}>
+        <div style={{ position: 'absolute', left: 0, right: 0, top: CY + CH - 40, bottom: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.6))' }} />
+        <div style={{ position: 'absolute', left: 140, top: -40, width: 400, height: CY + CH, background: 'linear-gradient(180deg, rgba(255,255,255,.16), transparent)', clipPath: 'polygon(42% 0, 58% 0, 100% 100%, 0 100%)', opacity: lift }} />
+        {/* the seller's photo, wiped top to bottom */}
+        <Img src={staticFile('photos/gr86-2025.jpg')} style={{ position: 'absolute', left: CX, top: CY, width: CW, height: CH, objectFit: 'cover', borderRadius: 18, clipPath: `inset(${scan * 100}% 0 0 0 round 18px)` }} />
+        {/* the cut-out (real model output) + contact shadow */}
+        <div style={{ position: 'absolute', left: CX + 30, width: CW - 60, top: CY + CH - 46, height: 40, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(0,0,0,.85), transparent)', opacity: lift }} />
+        <Img src={staticFile('real/gr86-cutout.png')} style={{ position: 'absolute', left: CX, top: CY - lift * 24, width: CW, height: CH, objectFit: 'contain', clipPath: `inset(0 0 ${(1 - scan) * 100}% 0)`, filter: 'drop-shadow(0 24px 24px rgba(0,0,0,.6))' }} />
+        {scan > 0 && scan < 1 && <div style={{ position: 'absolute', left: CX, width: CW, top: CY + scan * CH - 3, height: 6, background: '#fff', boxShadow: `0 0 30px 10px ${RED2}` }} />}
+        {/* template words */}
+        <div style={{ position: 'absolute', left: 44, top: 50, opacity: Math.min(1, tpl(3.2) * 1.4), transform: `translateY(${(1 - tpl(3.2)) * -40}px)` }}>
           <div style={{ display: 'inline-block', background: RED, color: '#fff', font: `700 24px ${FONT}`, padding: '8px 16px', borderRadius: 10 }}>TOYOTA GR86</div>
-          <div style={{ font: `700 58px/1 ${FONT}`, color: INK, marginTop: 14, letterSpacing: -2 }}>2.4L RZ · 2025</div>
+          <div style={{ font: `700 54px/1 ${FONT}`, color: INK, marginTop: 14, letterSpacing: -2 }}>2.4L RZ · 2025</div>
         </div>
-        <div style={{ position: 'absolute', left: 40, right: 40, top: 760, ...glass({ borderRadius: 30 }), padding: '26px 30px', opacity: Math.min(1, tpl(3.45) * 1.4), transform: `translateY(${(1 - tpl(3.45)) * 120}px)` }}>
-          <div style={{ font: `500 26px ${FONT}`, color: 'rgba(255,255,255,.7)' }}>{lang === 'en' ? 'From' : 'Dari'}</div>
-          <div style={{ font: `700 104px/1 ${FONT}`, color: RED2, letterSpacing: -4, textShadow: '0 0 40px rgba(239,68,68,.5)' }}>RM 2,417<span style={{ font: `700 34px ${FONT}`, color: 'rgba(255,255,255,.7)', letterSpacing: 0 }}>{lang === 'en' ? ' /month' : ' /bulan'}</span></div>
-          <div style={{ font: `700 26px ${FONT}`, color: INK, marginTop: 8 }}>{lang === 'en' ? '10% deposit · 7 years' : 'Deposit 10% · 7 tahun'}</div>
+        {/* the monthly is the presenter's own figure: 10% deposit, 7 years, 6.5% EIR */}
+        <div style={{ position: 'absolute', left: 36, right: 36, top: 690, ...glass({ borderRadius: 28 }), padding: '22px 28px', opacity: Math.min(1, tpl(3.45) * 1.4), transform: `translateY(${(1 - tpl(3.45)) * 100}px)` }}>
+          <div style={{ font: `500 24px ${FONT}`, color: 'rgba(255,255,255,.7)' }}>{lang === 'en' ? 'From' : 'Dari'}</div>
+          <div style={{ font: `700 92px/1 ${FONT}`, color: RED2, letterSpacing: -3, textShadow: '0 0 40px rgba(239,68,68,.5)', whiteSpace: 'nowrap' }}>RM 2,417<span style={{ font: `700 30px ${FONT}`, color: 'rgba(255,255,255,.7)', letterSpacing: 0 }}>{lang === 'en' ? ' /month' : ' /bulan'}</span></div>
+          <div style={{ font: `700 24px ${FONT}`, color: INK, marginTop: 8 }}>{lang === 'en' ? '10% deposit · 7 years' : 'Deposit 10% · 7 tahun'}</div>
         </div>
       </div>
-      {/* the two Studio buttons that did it */}
-      {[[0.7, 1.0, C.removeBg, 'M4 20L20 4M8 4h12v12'], [2.3, 2.6, C.backdrop, 'M3 3h18v18H3zM3 15l5-5 4 4 3-3 6 6']].map(([a, press, label, d], i) => {
-        const p = pop(f, a); const down = t >= press && t < press + 0.18;
-        return (
-          <div key={i} style={{ position: 'absolute', top: 1500, left: i ? 560 : 160, opacity: Math.min(1, p * 1.4) * (1 - ex), transform: `translateY(${(1 - p) * 50}px) scale(${down ? 0.92 : 1})` }}>
-            <Chip style={t >= press ? { background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none', boxShadow: '0 0 40px rgba(220,38,38,.6)' } : {}}><Icon d={d} s={26} />{label}</Chip>
-          </div>
-        );
-      })}
+      {/* the two Studio buttons that did it, on their own row under the window */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 1386, display: 'flex', justifyContent: 'center', gap: 24, opacity: 1 - ex }}>
+        {[[0.7, 1.0, C.removeBg, 'M4 20L20 4M8 4h12v12'], [2.3, 2.6, C.backdrop, 'M3 3h18v18H3zM3 15l5-5 4 4 3-3 6 6']].map(([a, press, label, d], i) => {
+          const p = pop(f, a); const down = t >= press && t < press + 0.18;
+          return (
+            <div key={i} style={{ opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 50}px) scale(${down ? 0.92 : 1})` }}>
+              <Chip style={t >= press ? { background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none', boxShadow: '0 0 40px rgba(220,38,38,.6)' } : {}}><Icon d={d} s={26} />{label}</Chip>
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 };
@@ -155,7 +161,7 @@ export const Posters = ({ lang }) => {
         <div style={{ position: 'absolute', left: 600, top: 500, width: 430, transform: `translateX(${(1 - b) * 520}px) rotate(${4 + (1 - Math.min(1, b)) * 8}deg)` }}>
           <div style={{ width: 430, height: 764, borderRadius: 54, padding: 14, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 90px rgba(220,38,38,.25)' }}>
             <div style={{ width: 402, height: 736, borderRadius: 42, overflow: 'hidden', background: '#000' }}>
-              <OffthreadVideo src={staticFile(`real/motion-${lang}.mp4`)} startFrom={sec(2.0)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <OffthreadVideo src={staticFile(`real/motion-${lang}.mp4`)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           </div>
           <div style={{ marginTop: 26 }}><Chip style={{ background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none' }}>▶ {C.mp4}</Chip></div>
@@ -281,7 +287,7 @@ export const Cta = ({ lang }) => {
 // ---------- persistent offer pill ----------
 export const OfferPill = ({ lang, t }) => {
   const on = interpolate(t, [4.9, 5.3, TL.devices[1] - 0.3, TL.devices[1]], [0, 1, 1, 0], clamp);
-  const hidePage = t > TL.page[0] && t < TL.page[1] - 0.2 ? 0 : 1;
+  const hidePage = (t > TL.page[0] - OV && t < TL.page[1] - 0.2) || (t > TL.studio[0] - OV && t < TL.studio[1] - 0.1) ? 0 : 1;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 1440, display: 'flex', justifyContent: 'center', opacity: on * hidePage, transform: `translateY(${(1 - on) * 40}px)` }}>
       <Chip style={{ height: 64, font: `700 27px ${FONT}` }}><span style={{ width: 12, height: 12, borderRadius: 6, background: RED2, boxShadow: `0 0 14px ${RED2}` }} />{COPY[lang].pill}</Chip>

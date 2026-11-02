@@ -56,13 +56,14 @@ export const Headline = ({ lines, eyebrow, at = 0, out = 99, top = 150, size = 1
         <div key={li} style={{ font: `700 ${size}px/1.02 ${FONT}`, letterSpacing: -4, color: INK }}>
           {parseLine(line).map(({ w, r }, i) => {
             const idx = k++;
-            const start = at + (instant && !r ? -1 : (instant ? 0.25 : 0) + idx * 0.065);
+            const start = at + (instant ? -1 : idx * 0.065);
+            const pulse = instant && r ? 1 + 0.07 * Math.sin(Math.min(1, Math.max(0, (t - 0.3 - idx * 0.05) / 0.35)) * Math.PI) : 1;
             const p = pop(f, start);
             const o = Math.min(1, p * 1.4);
             const blur = (1 - Math.min(1, p)) * 16 + exit * 18;
             return (
               <span key={i} style={{ display: 'inline-block', marginRight: size * 0.24, opacity: o * (1 - exit), filter: (blur) > 0.05 ? `blur(${blur}px)` : 'none',
-                transform: `translateY(${(1 - p) * 70 - exit * (50 + idx * 6)}px) scale(${0.9 + 0.1 * Math.min(1.05, p)})`,
+                transform: `translateY(${(1 - p) * 70 - exit * (50 + idx * 6)}px) scale(${(0.9 + 0.1 * Math.min(1.05, p)) * pulse})`,
                 color: r ? RED2 : INK, textShadow: r ? '0 0 50px rgba(239,68,68,.55), 0 0 12px rgba(239,68,68,.35)' : '0 10px 40px rgba(0,0,0,.6)' }}>{w}</span>
             );
           })}

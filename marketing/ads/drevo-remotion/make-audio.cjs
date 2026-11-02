@@ -10,6 +10,9 @@ for (const [k, [a, b]] of Object.entries(TL)) {
   const m = lib.match(new RegExp(`\\b${k}: \\[([\\d.]+), ([\\d.]+)\\]`));
   if (!m || +m[1] !== a || +m[2] !== b) throw new Error(`timeline drift: ${k}`);
 }
+const OV = 0.3, OVERLAP = ['leads', 'stats', 'studio', 'posters', 'page', 'devices'];
+// overlapped scenes run OV ahead: shift their slot start so cues follow the picture
+for (const k of OVERLAP) TL[k] = [TL[k][0] - OV, TL[k][1]];
 const words = { ms: { hook: 5, calc: 4, budget: 5, leads: 4, stats: 4, studio: 4, posters: 4, page: 3, devices: 3 }, en: { hook: 5, calc: 5, budget: 5, leads: 4, stats: 4, studio: 5, posters: 4, page: 3, devices: 3 } };
 const startOf = { calc: 4.75, budget: TL.budget[0] + 0.15, leads: TL.leads[0] + 0.1, stats: TL.stats[0] + 0.1, studio: TL.studio[0] + 0.1, posters: TL.posters[0] + 0.1, page: TL.page[0] + 0.1, devices: TL.devices[0] + 0.05 };
 fs.mkdirSync('public/audio', { recursive: true });
