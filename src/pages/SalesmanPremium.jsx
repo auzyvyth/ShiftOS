@@ -1573,7 +1573,9 @@ export default function SalesmanPremium() {
  }
 
  // AI lead scoring — fire-and-forget
- if (rows.length > 0) {
+ // Only while AI is switched on (aiFeatureFlag.js): it called ai-proxy on every
+ // load even with every AI feature off.
+ if (AI_FEATURES_ENABLED && rows.length > 0) {
  setScoreLoading(true);
  try {
  // The reply has to fit ai-proxy's server-pinned max_tokens for this
