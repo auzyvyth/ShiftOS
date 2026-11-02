@@ -2038,7 +2038,7 @@ export default function SalesmanPremium() {
  activity_type: "called",
  note: `${callOutcome}${callNote? ` — ${callNote}` : ""}`,
  created_by: userId,
- dealer_id: lead?.dealer_id?? null,
+ dealer_id: lead?.dealer_id ?? getDealerIdFromProfile(profile),
  });
  if (error) { console.error("logCall:", error); toast.error(t("salesmanPremium.errors.logCall")); setCallSaving(false); return; }
  // Stamp last_contacted_at, not just updated_at. Logging a call IS contact,
@@ -2401,7 +2401,7 @@ export default function SalesmanPremium() {
  .from("appointments")
  .insert({
  salesman_id: userId,
- dealer_id: lead.dealer_id?? null,
+ dealer_id: lead.dealer_id ?? getDealerIdFromProfile(profile),
  lead_id: lead.id,
  car_listing_id: lead.car_listing_id?? null,
  buyer_name: lead.buyer_name?? null,

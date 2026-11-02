@@ -2381,7 +2381,7 @@ export default function SalesmanLite() {
       activity_type: "called",
       note: `${callOutcome}${callNote ? ` — ${callNote}` : ""}`,
       created_by: userId,
-      dealer_id: lead?.dealer_id ?? null,
+      dealer_id: lead?.dealer_id ?? getDealerIdFromProfile(profile),
     });
     if (error) { console.error("logCall:", error); toast.error(t("salesmanLite.toast.callLogFailed")); setCallSaving(false); return; }
     const { error: leadUpdErr } = await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
@@ -2885,7 +2885,7 @@ export default function SalesmanLite() {
       .from("appointments")
       .insert({
         salesman_id: userId,
-        dealer_id: lead.dealer_id ?? null,
+        dealer_id: lead.dealer_id ?? getDealerIdFromProfile(profile),
         lead_id: lead.id,
         car_listing_id: lead.car_listing_id ?? null,
         buyer_name: lead.buyer_name ?? null,
