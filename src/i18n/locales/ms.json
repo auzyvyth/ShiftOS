@@ -2701,5 +2701,19 @@
       "negotiating": "Rundingan",
       "deposit_taken": "Deposit diterima"
     }
+  },
+  "carPicker": {
+    "search": "Cari kereta anda",
+    "noMatch": "Tiada kereta yang sepadan.",
+    "noCars": "Anda belum ada kereta disenaraikan.",
+    "noPrice": "Tiada harga",
+    "sold": "Terjual",
+    "linked": "Dipautkan",
+    "linkTitle": "Pautkan kereta",
+    "linkSub": "Kepada {{name}}",
+    "offerTitle": "Tawar kereta lain",
+    "offerSub": "Pilih kereta untuk {{name}}. Lepas itu mesej WhatsApp sedia untuk dihantar.",
+    "linkedToast": "{{car}} dipautkan kepada {{name}}",
+    "linkFailed": "Tidak dapat pautkan kereta. Cuba lagi."
   }
 }

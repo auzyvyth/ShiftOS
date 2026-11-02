@@ -2684,5 +2684,19 @@
       "negotiating": "Negotiating",
       "deposit_taken": "Deposit taken"
     }
+  },
+  "carPicker": {
+    "search": "Search your cars",
+    "noMatch": "No car matches that.",
+    "noCars": "You have no cars listed yet.",
+    "noPrice": "No price",
+    "sold": "Sold",
+    "linked": "Linked",
+    "linkTitle": "Link a car",
+    "linkSub": "To {{name}}",
+    "offerTitle": "Offer another car",
+    "offerSub": "Pick the car for {{name}}. Next you get a WhatsApp message ready to send.",
+    "linkedToast": "{{car}} linked to {{name}}",
+    "linkFailed": "Could not link the car. Try again."
   }
 }

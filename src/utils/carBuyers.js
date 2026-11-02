@@ -35,3 +35,26 @@ export function openLeadsOnCar(leads, carId, exceptId = null) {
   if (!carId) return [];
   return (leads || []).filter((l) => l.car_listing_id === carId && l.id !== exceptId && isOpenLead(l));
 }
+
+// The WhatsApp message for "Offer another car" (SOLD-1). The only numbers in it
+// are the new car's own asking price and link, read from the listing: nothing
+// invented (no instalment, discount or approval). A person presses send.
+export function offerAnotherCarMessage({ buyer, seller, soldCar, newCar, price, link, lang = 'en' }) {
+  const who = (buyer || '').trim().split(/\s+/)[0] || (lang === 'ms' ? 'tuan/puan' : 'there');
+  const me = (seller || '').trim().split(/\s+/)[0];
+  const rm = Number(price) > 0 ? `RM ${Number(price).toLocaleString('en-MY')}` : null;
+  if (lang === 'ms') {
+    return [
+      `Hi ${who}${me ? `, ${me} di sini` : ''}.`,
+      soldCar ? `Maaf, ${soldCar} yang anda tanya tu dah terjual.` : 'Maaf, kereta yang anda tanya tu dah terjual.',
+      `Saya ada ${newCar}${rm ? ` pada ${rm}` : ''} yang mungkin sesuai dengan anda${link ? `: ${link}` : '.'}`,
+      'Nak saya hantar gambar lagi atau set masa untuk tengok?',
+    ].join(' ');
+  }
+  return [
+    `Hi ${who}${me ? `, ${me} here` : ''}.`,
+    soldCar ? `Sorry, the ${soldCar} you asked about has been sold.` : 'Sorry, the car you asked about has been sold.',
+    `I have a ${newCar}${rm ? ` at ${rm}` : ''} that could suit you${link ? `: ${link}` : '.'}`,
+    'Want me to send more photos or set a time to view it?',
+  ].join(' ');
+}
