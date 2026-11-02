@@ -49,6 +49,8 @@ import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
+import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
+import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON } from "../utils/carBuyers";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { PremiumEndedBanner } from "../components/premium/PremiumStatusBanner";
@@ -807,6 +809,8 @@ export default function SalesmanLite() {
 
   // listings
   const [myListings, setMyListings] = useState(seed.listings);
+  // id -> car, so a lead can tell its car was just sold (SOLD-1) without a refetch.
+  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
   // Questions, reviews and likes on this seller's cars (FEEDBACK-1). One copy
   // for the nav badge and the Feedback tab. Free on Lite: it is a buyer
   // reaching the seller, and Lite never gates that.
@@ -839,6 +843,8 @@ export default function SalesmanLite() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [testDriveConfirm, setTestDriveConfirm] = useState(null); // { lead, nextStage }
   const [wonPrompt, setWonPrompt] = useState(null); // { lead }
+  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
+  const [soldPickCar, setSoldPickCar] = useState(null);
   const [wonSaving, setWonSaving] = useState(false);
   const [shareWinPrompt, setShareWinPrompt] = useState(null); // { kind: 'deal'|'goal', carLabel? } — drives WinShareCard
   const [deletingLeadId, setDeletingLeadId] = useState(null);
@@ -1183,8 +1189,11 @@ export default function SalesmanLite() {
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
 
-  const updateListingStatus = async (car, newStatus) => {
+  const updateListingStatus = async (car, newStatus, { direct = false } = {}) => {
     setStatusMenuCarId(null);
+    // SOLD-1: a status-only "sold" left the sale with no customer record. Ask who
+    // bought it; only "Sold elsewhere" comes back with direct.
+    if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
     const prevStatus = car.status;
     const prevSoldAt = car.sold_at ?? null;
     // Optimistically stamp sold_at so commission goal/count pick the deal up immediately
@@ -3497,6 +3506,10 @@ export default function SalesmanLite() {
               <div style={{ background: PD.raised, borderRadius: PD.radius.row, color: PD.accentText, fontSize: 12, padding: "8px 12px", marginBottom: 12 }}>
                 {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
+            )}
+            {/* SOLD-1: this buyer's car went to someone else. Keep the lead, offer another. */}
+            {carSoldToOther(lead, carsById) && (
+              <CarSoldLine onOffer={() => setLinkCarLeadId(lead.id)} onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)} />
             )}
           </div>
 
@@ -6722,6 +6735,17 @@ export default function SalesmanLite() {
         );
       })()}
       {/* ── Won Sale confirmation ── */}
+      {soldPickCar && (
+        <WhoBoughtSheet
+          car={soldPickCar}
+          leads={openLeadsOnCar(leads, soldPickCar.id)}
+          onClose={() => setSoldPickCar(null)}
+          onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+          onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
+          onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
+        />
+      )}
+
       {wonPrompt && (() => {
         const { lead: wonLead } = wonPrompt;
         const car = wonLead.car_listings;
@@ -6741,6 +6765,10 @@ export default function SalesmanLite() {
                 <WonVariantPick listingId={wonLead.car_listing_id} value={wonPrompt.variantId}
                   onChange={(id) => setWonPrompt((p) => (p ? { ...p, variantId: id } : p))} />
               )}
+              {(() => {
+                const others = openLeadsOnCar(leads, wonLead.car_listing_id, wonLead.id).length;
+                return others > 0 ? <p style={{ margin: "0 0 14px", fontSize: 12, color: "#cbd5e1", lineHeight: 1.6 }}>{t("soldPick.others", { count: others })}</p> : null;
+              })()}
               {car ? (
                 <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#4ade80", fontWeight: 600 }}>

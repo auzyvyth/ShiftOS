@@ -332,6 +332,21 @@ Why this matters per surface (all fetch by `salesman_id`):
 Routing: `dealer_id ? /salesman : plan==='salesman_full' ? /salesman-premium : /salesman-lite`.
 If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the panel query.
 
+## A sold car's other buyers, and "Sold" from the status menu (SOLD-1, 2026-11-02)
+- **"Sold" in a car's status menu asks "Who bought it?"** (`src/components/sold/WhoBoughtSheet.jsx`,
+  Lite + Premium `updateListingStatus`). Picking a lead opens the normal win confirm (the won trigger
+  makes the customer + handover); "Add the buyer" opens Add Lead with the car filled in; only "Sold
+  elsewhere" writes status alone (`{ direct: true }`). A status-only sold had no customer, handover or
+  renewals (6 cars). Never add another status write to `sold` that skips this.
+- **Other open leads on a sold car keep their stage** (owner, no "missed" stage): they get
+  `CarSoldLine` (offer another car = the link-car picker, or Mark lost with `CAR_SOLD_REASON` =
+  'CarSold'), a `car_sold` row in This week until contacted after `sold_at`, and the win confirm says
+  how many there are. Rules: `src/utils/carBuyers.js` (`npm run test:carbuyers`). Performance never
+  makes 'CarSold' the coaching headline.
+- **Every lead-derived write in Lite/Premium uses `lead.dealer_id ?? getDealerIdFromProfile(profile)`,
+  and new leads use `getDealerIdFromProfile(profile)`** (2026-11-02). Manual leads were saved with
+  `dealer_id` NULL, so `useHandover` (filters on dealer_id) never showed their win.
+
 ## Post-sale handover (Module A)
 - Won deal (lead.stage = won/closed_won) → DB trigger `auto_create_customer_on_won` fires immediately: flips the linked car to `status='sold'` (sold_at + assigned_to), creates the customers row (name/phone/IC/email/car/plate/price) AND pre-seeds 8-step post_sale_tasks checklist (B7 auto-NA if not financed). Idempotent — safe to re-trigger.
 - Salesman Premium: Handover and Customers are ONE nav tab, `sold` (`/salesman-premium/sold`),
