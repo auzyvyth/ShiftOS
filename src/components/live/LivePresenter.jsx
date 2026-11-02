@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Contact, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 import {
   monthlyPayment, loanTotals, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
@@ -670,13 +671,33 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
   useEffect(() => {
     if (report && !embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
   }, [report, embedded]);
+  const liveWarned = useRef(false);
   useEffect(() => {
     if (!carId) return undefined;
-    const push = () => { supabase.rpc('set_live_listing', { p_listing_id: carId }).then(() => {}, () => {}); };
-    const t = setTimeout(push, 600);
+    // A refused heartbeat used to be swallowed: if the seller's login had
+    // expired mid-live, the call ran as a guest, was refused (18 times on
+    // 2026-11-01) and the page never showed "Live now", with no sign of it.
+    // Refresh the login and retry once; if it still fails, say so ONCE per live
+    // (a toast, briefly on camera, worded for the seller only).
+    const send = () => supabase.rpc('set_live_listing', { p_listing_id: carId });
+    const push = async () => {
+      try {
+        let { error } = await send();
+        if (error) {
+          await supabase.auth.refreshSession().catch(() => {});
+          ({ error } = await send());
+        }
+        if (error && !liveWarned.current) {
+          liveWarned.current = true;
+          toast.error(t.liveSyncFailed, { duration: 6000 });
+        }
+        if (!error) liveWarned.current = false;
+      } catch { /* network blip: the next heartbeat retries */ }
+    };
+    const first = setTimeout(push, 600);
     const hb = setInterval(push, HEARTBEAT_MS);
-    return () => { clearTimeout(t); clearInterval(hb); };
-  }, [carId]);
+    return () => { clearTimeout(first); clearInterval(hb); };
+  }, [carId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => {
     if (!embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
   }, [embedded]);

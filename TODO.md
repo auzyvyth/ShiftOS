@@ -127,9 +127,14 @@ for another year.
   blocked there without it, `src/hooks/useAuthCaptcha.js`); Google Cloud OAuth client,
   add `https://drevo.my` to JavaScript origins (then Claude sets VITE_GOOGLE_JS_ORIGINS);
   Resend, add + verify drevo.my (DNS records go in Vercel, not Hostinger).
-  Claude, still open: redeploy browser-called edge functions with the new
-  `_shared/cors.ts` (diff each against deployed first); until then AI / chat-assist /
-  Telegram calls fail on drevo.my only.
+  SHIPPED to prod 2026-11-02 (#571). Edge functions redeployed with drevo.my in
+  `_shared/cors.ts`: `chat-assist` v4, `ai-proxy` v24 (deployed code kept as-is, verified
+  from SQL: drevo.my and xdrive.my both echoed). Still on the old list (xdrive.my only):
+  send-telegram, send-push, invites, send-document, import-drive-images,
+  send-signup-reminder (deployed matches repo by timeline, safe to redeploy), plus
+  `delete-account` and `create-salesman`, whose REPO is AHEAD of deployed (undeployed
+  changes from #412/#472 and #552): review those diffs before redeploying either.
+  All must be done before switch night.
   Step 2 (switch night): ROOT_DOMAIN = "drevo.my", rename XDrive -> Drevo text, senders
   -> @drevo.my, 301 every xdrive.my host to the same path on drevo.my, Supabase Site URL
   + email templates, Search Console Change of Address. Optional: carry sellers' login
@@ -207,9 +212,11 @@ photo rule for now ("leave it at that").
   no DB trigger yet.
 - [x] Console Back steps through tabs (`/platform/:tab`), and console pop-ups
   (account record, suspend, delete, prospects, ID photo) close on Back.
-- [ ] BUG: Premium's quick add (`CarFormFast.jsx`, insert `status: "available"`)
-  skips the review queue and the geran question entirely. Any rule only runs on
-  cars that reach the queue, so this comes first.
+- [x] Premium's quick add removed from Lite/Premium (owner, 2026-11-02: not safe for solo
+  sellers; it saved straight to `available`, skipping review). Every seller car goes
+  through CarForm (always review). `CarFormFast.jsx` stays only on the dealer dashboard.
+  Optional: a DB rule forcing a salesman's new car into review whatever form saved it
+  (must skip new-car model cards, which `new_car_add_cards` inserts as available).
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.

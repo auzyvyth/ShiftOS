@@ -49,6 +49,9 @@ import PushToggle from "../components/PushToggle";
 import VerifyIdentity from "../components/kyc/VerifyIdentity";
 import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
+import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
+import CarPickerSheet from "../components/leads/CarPickerSheet";
+import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON, offerAnotherCarMessage } from "../utils/carBuyers";
 import AccountApprovedBanner from "../components/AccountApprovedBanner";
 import SuspendedBanner from "../components/SuspendedBanner";
 import { PremiumEndedBanner } from "../components/premium/PremiumStatusBanner";
@@ -265,7 +268,7 @@ const getHeatScore = (lead) => {
   return          {         score, terminal, icon: Snowflake,  label: "cold", color: "#93c5fd" };
 };
 
-const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost", "CarSold"];
 
 // Human car age from registration year, for the lead drawer's car block.
 const carAgeLabel = (year) => {
@@ -807,6 +810,8 @@ export default function SalesmanLite() {
 
   // listings
   const [myListings, setMyListings] = useState(seed.listings);
+  // id -> car, so a lead can tell its car was just sold (SOLD-1) without a refetch.
+  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
   // Questions, reviews and likes on this seller's cars (FEEDBACK-1). One copy
   // for the nav badge and the Feedback tab. Free on Lite: it is a buyer
   // reaching the seller, and Lite never gates that.
@@ -839,6 +844,8 @@ export default function SalesmanLite() {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [testDriveConfirm, setTestDriveConfirm] = useState(null); // { lead, nextStage }
   const [wonPrompt, setWonPrompt] = useState(null); // { lead }
+  // SOLD-1: "Sold" from a car's status menu asks who bought it first.
+  const [soldPickCar, setSoldPickCar] = useState(null);
   const [wonSaving, setWonSaving] = useState(false);
   const [shareWinPrompt, setShareWinPrompt] = useState(null); // { kind: 'deal'|'goal', carLabel? } — drives WinShareCard
   const [deletingLeadId, setDeletingLeadId] = useState(null);
@@ -921,6 +928,9 @@ export default function SalesmanLite() {
   const [editNoteVal, setEditNoteVal] = useState("");
   const [notesSavingId, setNotesSavingId] = useState(null);
   const [waModalLead, setWaModalLead] = useState(null);
+  // "link" = attach a car; "offer" = SOLD-1 offer another car, then a WhatsApp draft.
+  const [linkCarMode, setLinkCarMode] = useState("link");
+  const linkSaving = useRef(new Set()); // leads with a car link save in flight
   const [waModalMsg, setWaModalMessage] = useState("");
   // Lead search
   const [leadSearch, setLeadSearch] = useState("");
@@ -1183,8 +1193,11 @@ export default function SalesmanLite() {
   // listing status change
   const [statusMenuCarId, setStatusMenuCarId] = useState(null);
 
-  const updateListingStatus = async (car, newStatus) => {
+  const updateListingStatus = async (car, newStatus, { direct = false } = {}) => {
     setStatusMenuCarId(null);
+    // SOLD-1: a status-only "sold" left the sale with no customer record. Ask who
+    // bought it; only "Sold elsewhere" comes back with direct.
+    if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
     const prevStatus = car.status;
     const prevSoldAt = car.sold_at ?? null;
     // Optimistically stamp sold_at so commission goal/count pick the deal up immediately
@@ -1356,7 +1369,7 @@ export default function SalesmanLite() {
   useModalHistory(telegramSetupModal, () => setTelegramSetupModal(false));
   useModalHistory(!!quickBriefCar, () => setQuickBriefCar(null));
   useModalHistory(!!depositModal, () => setDepositModal(null));
-  useModalHistory(!!linkCarLeadId, () => setLinkCarLeadId(null));
+  // The link-car picker (CarPickerSheet) registers its own Back entry.
   useModalHistory(notifOpen, () => setNotifOpen(false));
   const [depositAmount, setDepositAmount] = useState("");
   const [depositCopied, setDepositCopied] = useState(false);
@@ -2239,7 +2252,7 @@ export default function SalesmanLite() {
   const updateLeadStage = async (leadId, stage) => {
     setStageSavingId(leadId);
     const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
-    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
+    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile);
     const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
@@ -2381,7 +2394,7 @@ export default function SalesmanLite() {
       activity_type: "called",
       note: `${callOutcome}${callNote ? ` — ${callNote}` : ""}`,
       created_by: userId,
-      dealer_id: lead?.dealer_id ?? null,
+      dealer_id: lead?.dealer_id ?? getDealerIdFromProfile(profile),
     });
     if (error) { console.error("logCall:", error); toast.error(t("salesmanLite.toast.callLogFailed")); setCallSaving(false); return; }
     const { error: leadUpdErr } = await supabase.from("leads").update({ updated_at: new Date().toISOString(), last_call_outcome: callOutcome }).eq("id", logCallLeadId);
@@ -2418,32 +2431,49 @@ export default function SalesmanLite() {
     setDeleteConfirmId(null);
   };
 
+  // Optimistic (SOLD-1, 2026-11-02): the card and the toast change at once,
+  // then ONE save runs. Waiting first let a seller tap 9 times on a slow DB.
   const handleLinkCar = async (leadId, carId) => {
+    if (linkSaving.current.has(leadId)) return;
+    const before = leads.find((l) => l.id === leadId);
+    const car = myListings.find((c) => c.id === carId);
+    setLeads((p) => p.map((l) => (l.id === leadId
+      ? { ...l, car_listing_id: carId, car_listings: car ? { brand: car.brand, model: car.model, year: car.year, variant: car.variant, selling_price: car.selling_price, images: car.images, slug: car.slug } : l.car_listings }
+      : l)));
+    toast.success(t("carPicker.linkedToast", { car: car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "", name: before?.buyer_name || "Buyer" }));
+    linkSaving.current.add(leadId);
     const { error: linkErr } = await supabase
       .from("leads")
       .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
       .eq("id", leadId);
+    linkSaving.current.delete(leadId);
     if (linkErr) {
       console.error("handleLinkCar:", linkErr);
-      toast.error(t("salesmanLite.toast.carLinkFailed"));
-      return;
+      if (before) setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, car_listing_id: before.car_listing_id, car_listings: before.car_listings } : l)));
+      toast.error(t("carPicker.linkFailed"));
     }
-    const car = myListings.find((c) => c.id === carId);
-    setLeads((p) => p.map((l) =>
-      l.id === leadId
-        ? { ...l, car_listing_id: carId, car_listings: car
-            ? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price }
-            : l.car_listings }
-        : l
-    ));
-    setLinkCarLeadId(null);
-    toast.success(t("salesmanLite.toast.carLinked"));
+  };
+
+  // SOLD-1 "Offer another car": a WhatsApp draft naming the sold car and the new
+  // one (its real price + link), in the existing send window. A person sends it.
+  const openOfferMessage = (lead, car) => {
+    const sold = lead.car_listings;
+    setWaModalMessage(offerAnotherCarMessage({
+      buyer: lead.buyer_name,
+      seller: profile?.full_name,
+      soldCar: sold ? [sold.year, sold.brand, sold.model].filter(Boolean).join(" ") : null,
+      newCar: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" "),
+      price: car.selling_price,
+      link: car.slug ? `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(profile?.slug || "")}` : null,
+      lang: i18n.language?.startsWith("ms") ? "ms" : "en",
+    }));
+    setWaModalLead({ ...lead, car_listing_id: car.id });
   };
 
   const handleLostReason = async (leadId, reason) => {
     const lead = leads.find((l) => l.id === leadId);
     const oldStage = lead?.stage ?? null;
-    const dealerId = lead?.dealer_id ?? null;
+    const dealerId = lead?.dealer_id ?? getDealerIdFromProfile(profile);
     const now = new Date().toISOString();
     setLostSavingId(leadId);
     const { error: lostErr } = await supabase
@@ -2495,7 +2525,7 @@ export default function SalesmanLite() {
     if (!wonPrompt) return;
     const { lead } = wonPrompt;
     const leadId = lead.id;
-    const dealerId = lead.dealer_id ?? null;
+    const dealerId = lead.dealer_id ?? getDealerIdFromProfile(profile);
     const now = new Date().toISOString();
     setWonSaving(true);
 
@@ -2781,7 +2811,7 @@ export default function SalesmanLite() {
       }
     } else {
       const { data: newLead, error: insErr } = await supabase.from("leads").insert({
-        salesman_id: userId, dealer_id: null,
+        salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
         buyer_name: apt.buyer_name || "Unknown", phone,
         car_listing_id: apt.car_listing_id || null,
         stage: "viewing_booked", lead_source: "manual", is_deleted: false,
@@ -2885,7 +2915,7 @@ export default function SalesmanLite() {
       .from("appointments")
       .insert({
         salesman_id: userId,
-        dealer_id: lead.dealer_id ?? null,
+        dealer_id: lead.dealer_id ?? getDealerIdFromProfile(profile),
         lead_id: lead.id,
         car_listing_id: lead.car_listing_id ?? null,
         buyer_name: lead.buyer_name ?? null,
@@ -2913,7 +2943,7 @@ export default function SalesmanLite() {
       .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
     if (!existingRows || !existingRows.length) {
       const { data: newLead } = await supabase.from("leads").insert({
-        salesman_id: userId, dealer_id: null,
+        salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
         buyer_name: enq.buyer_name || "Unknown", phone,
         notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
         stage: "new", lead_source: "enquiry", is_deleted: false,
@@ -3497,6 +3527,10 @@ export default function SalesmanLite() {
               <div style={{ background: PD.raised, borderRadius: PD.radius.row, color: PD.accentText, fontSize: 12, padding: "8px 12px", marginBottom: 12 }}>
                 {t("salesmanLite.leads.followUp")}: {timeAgo(lead.follow_up_at)}
               </div>
+            )}
+            {/* SOLD-1: this buyer's car went to someone else. Keep the lead, offer another. */}
+            {carSoldToOther(lead, carsById) && (
+              <CarSoldLine onOffer={() => { setLinkCarMode("offer"); setLinkCarLeadId(lead.id); }} onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)} />
             )}
           </div>
 
@@ -5584,16 +5618,16 @@ export default function SalesmanLite() {
             onClick={async () => {
               const now = new Date().toISOString();
               const { error: waTouchErr } = await supabase
-                .from("leads").update({ updated_at: now }).eq("id", waModalLead.id);
+                .from("leads").update({ updated_at: now, last_contacted_at: now }).eq("id", waModalLead.id);
               if (waTouchErr) { console.error("waModal leads update:", waTouchErr); toast.error(t("salesmanLite.toast.messageLogFailed")); return; }
               const { error: waActErr } = await supabase.from("lead_activities").insert({
                 lead_id: waModalLead.id, activity_type: "whatsapp_sent",
                 note: "WA message sent", created_by: userId,
-                dealer_id: waModalLead.dealer_id ?? null,
+                dealer_id: waModalLead.dealer_id ?? getDealerIdFromProfile(profile),
               });
               if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));
-              setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now } : l));
+              setLeads((p) => p.map((l) => l.id === waModalLead.id ? { ...l, updated_at: now, last_contacted_at: now } : l));
               setWaModalLead(null);
               toast(t("salesmanLite.toast.waSent"), {
                 description: t("salesmanLite.toast.waSentDesc"),
@@ -6722,6 +6756,17 @@ export default function SalesmanLite() {
         );
       })()}
       {/* ── Won Sale confirmation ── */}
+      {soldPickCar && (
+        <WhoBoughtSheet
+          car={soldPickCar}
+          leads={openLeadsOnCar(leads, soldPickCar.id)}
+          onClose={() => setSoldPickCar(null)}
+          onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+          onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
+          onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
+        />
+      )}
+
       {wonPrompt && (() => {
         const { lead: wonLead } = wonPrompt;
         const car = wonLead.car_listings;
@@ -6741,6 +6786,10 @@ export default function SalesmanLite() {
                 <WonVariantPick listingId={wonLead.car_listing_id} value={wonPrompt.variantId}
                   onChange={(id) => setWonPrompt((p) => (p ? { ...p, variantId: id } : p))} />
               )}
+              {(() => {
+                const others = openLeadsOnCar(leads, wonLead.car_listing_id, wonLead.id).length;
+                return others > 0 ? <p style={{ margin: "0 0 14px", fontSize: 12, color: "#cbd5e1", lineHeight: 1.6 }}>{t("soldPick.others", { count: others })}</p> : null;
+              })()}
               {car ? (
                 <div style={{ background: "rgba(34,197,94,0.05)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "12px 14px", marginBottom: 20 }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#4ade80", fontWeight: 600 }}>
@@ -7011,49 +7060,27 @@ export default function SalesmanLite() {
           </div>
         );
       })()}
-      {/* ── Link Car Modal ── */}
+      {/* ── Link Car / Offer another car (SOLD-1): one shared sheet ── */}
       {linkCarLeadId && (() => {
-        const lead = leads.find((l) => l.id === linkCarLeadId);
-        const available = myListings.filter((c) => c.status !== "sold");
+        const target = leads.find((l) => l.id === linkCarLeadId);
+        const name = target?.buyer_name || "Buyer";
+        const offer = linkCarMode === "offer";
         return (
-          <div onClick={() => setLinkCarLeadId(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 999, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 480, padding: 20, paddingBottom: 36 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <p style={{ margin: 0, fontWeight: 700, color: "#f1f5f9", fontSize: 14 }}>{t("salesmanLite.linkCar.title")}</p>
-                <button onClick={() => setLinkCarLeadId(null)} style={{ background: "none", border: "none", color: "#6b7280", cursor: "pointer" }}><X size={18} /></button>
-              </div>
-              {lead?.buyer_name && (
-                <p style={{ margin: "0 0 14px", fontSize: 11, color: "#4b5563" }}>{lead.buyer_name}</p>
-              )}
-              {available.length === 0 ? (
-                <p style={{ fontSize: 12, color: "#4b5563", textAlign: "center", padding: "24px 0" }}>{t("salesmanLite.linkCar.noListings")}</p>
-              ) : (
-                <div style={{ maxHeight: 360, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {available.map((car) => {
-                    const img = car.images?.[0];
-                    const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
-                    const isLinked = lead?.car_listing_id === car.id;
-                    return (
-                      <div key={car.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: `1px solid ${isLinked ? "rgba(34,197,94,0.2)" : "rgba(255,255,255,0.07)"}`, borderRadius: 10 }}>
-                        {img
-                          ? <img src={img} alt="" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, flexShrink: 0 }} />
-                          : <div style={{ width: 48, height: 48, borderRadius: 6, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Car size={20} color="#374151" /></div>
-                        }
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</p>
-                          {car.selling_price && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#60a5fa" }}>RM {Number(car.selling_price).toLocaleString("en-MY")}</p>}
-                        </div>
-                        {isLinked
-                          ? <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 600, flexShrink: 0 }}>{t("salesmanLite.linkCar.linked")}</span>
-                          : <button onClick={() => handleLinkCar(linkCarLeadId, car.id)} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.12)", border: "1px solid rgba(220,38,38,0.22)", color: "#f87171", cursor: "pointer", flexShrink: 0, fontWeight: 600 }}>{t("salesmanLite.linkCar.link")}</button>
-                        }
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
+          <CarPickerSheet
+            title={t(offer ? "carPicker.offerTitle" : "carPicker.linkTitle")}
+            subtitle={t(offer ? "carPicker.offerSub" : "carPicker.linkSub", { name })}
+            cars={myListings}
+            linkedId={offer ? null : target?.car_listing_id}
+            excludeSold
+            onClose={() => { setLinkCarLeadId(null); setLinkCarMode("link"); }}
+            onPick={(car) => {
+              const leadId = linkCarLeadId;
+              setLinkCarLeadId(null);
+              setLinkCarMode("link");
+              handleLinkCar(leadId, car.id);
+              if (offer && target) openOfferMessage(target, car);
+            }}
+          />
         );
       })()}
       {/* One in-app conversation, over whatever tab you are on. Mounted at page

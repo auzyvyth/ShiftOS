@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -29,6 +29,9 @@ import SuspendedBanner from "../components/SuspendedBanner";
 import { PremiumDueBanner } from "../components/premium/PremiumStatusBanner";
 import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
+import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
+import CarPickerSheet from "../components/leads/CarPickerSheet";
+import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON, offerAnotherCarMessage } from "../utils/carBuyers";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
@@ -174,7 +177,7 @@ const WARM_TABS = [
 // car in full, so the join has to carry the display fields up front (overlay
 // rule 4) — and there are five call sites, which is exactly how many places a
 // missing field would have had to be added by hand.
-const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status)";
+const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
@@ -478,9 +481,10 @@ export default function SalesmanPremium() {
 
  // listings
  const [myListings, setMyListings] = useState(seed.listings);
+ // id -> car, so a lead can tell its car was just sold (SOLD-1) without a refetch.
+ const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
- const [showFastForm, setShowFastForm] = useState(false);
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);
@@ -624,7 +628,9 @@ export default function SalesmanPremium() {
  const [deleteConfirmText, setDeleteConfirmText] = useState("");
  const [deleting, setDeleting] = useState(false);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
- const [linkCarQuery, setLinkCarQuery] = useState("");
+ // "link" = attach a car; "offer" = SOLD-1 offer another car, then a WhatsApp draft.
+ const [linkCarMode, setLinkCarMode] = useState("link");
+ const linkSaving = useRef(new Set()); // leads with a car link save in flight
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
  const [activeLeadStage, setActiveLeadStage] = useState("new");
@@ -729,6 +735,8 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
+ // SOLD-1: "Sold" from a car's status menu asks who bought it first.
+ const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
  const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
  // Re-render tick so "is this booking still in the future" stays honest on a
@@ -870,7 +878,7 @@ export default function SalesmanPremium() {
  useModalHistory(!!sellerBookingLead, () => { setSellerBookingLead(null); setSellerBookingDate(""); });
  useModalHistory(mobileNavOpen, () => setMobileNavOpen(false));
  useModalHistory(!!drawerLeadId, () => setDrawerLeadId(null));
- useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarQuery(""); });
+ // The link-car picker (CarPickerSheet) registers its own Back entry.
  useModalHistory(logoutConfirmOpen, () => setLogoutConfirmOpen(false));
  useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
  useModalHistory(deleteConfirmOpen, () => setDeleteConfirmOpen(false));
@@ -1573,7 +1581,9 @@ export default function SalesmanPremium() {
  }
 
  // AI lead scoring — fire-and-forget
- if (rows.length > 0) {
+ // Only while AI is switched on (aiFeatureFlag.js): it called ai-proxy on every
+ // load even with every AI feature off.
+ if (AI_FEATURES_ENABLED && rows.length > 0) {
  setScoreLoading(true);
  try {
  // The reply has to fit ai-proxy's server-pinned max_tokens for this
@@ -1856,7 +1866,7 @@ export default function SalesmanPremium() {
  // Carry the lead's OWN dealer_id onto the activity row. This used to be
  // hardcoded null, which detached every Premium stage change from its
  // dealership scope (activity feeds and any dealer-side read missed them).
- const dealerId = leads.find((l) => l.id === leadId)?.dealer_id?? null;
+ const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile);
  const { error: stageErr } = await supabase
  .from("leads")
  .update({ stage, updated_at: new Date().toISOString() })
@@ -2038,7 +2048,7 @@ export default function SalesmanPremium() {
  activity_type: "called",
  note: `${callOutcome}${callNote? ` — ${callNote}` : ""}`,
  created_by: userId,
- dealer_id: lead?.dealer_id?? null,
+ dealer_id: lead?.dealer_id ?? getDealerIdFromProfile(profile),
  });
  if (error) { console.error("logCall:", error); toast.error(t("salesmanPremium.errors.logCall")); setCallSaving(false); return; }
  // Stamp last_contacted_at, not just updated_at. Logging a call IS contact,
@@ -2079,29 +2089,52 @@ export default function SalesmanPremium() {
  setDeleteConfirmId(null);
  };
 
+ // Optimistic (SOLD-1, 2026-11-02): the card shows the new car and the toast
+ // names it at once, then ONE save runs. It used to wait for the save before
+ // anything changed; on a slow DB the seller tapped 9 times, and that pile of
+ // writes on one lead made the next win time out.
  const handleLinkCar = async (leadId, carId) => {
+ if (linkSaving.current.has(leadId)) return;
+ const before = leads.find((l) => l.id === leadId);
+ const car = myListings.find((c) => c.id === carId);
+ const embed = car
+ ? { id: car.id, slug: car.slug, brand: car.brand, model: car.model, year: car.year,
+ variant: car.variant, selling_price: car.selling_price, images: car.images,
+ mileage: car.mileage, transmission: car.transmission, colour: car.colour, status: car.status, sold_at: car.sold_at }
+ : null;
+ setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, car_listing_id: carId, car_listings: embed || l.car_listings } : l)));
+ toast.success(t("carPicker.linkedToast", {
+ car: car ? [car.year, car.brand, car.model].filter(Boolean).join(" ") : "",
+ name: before?.buyer_name || t("salesmanPremium.common.thisLead"),
+ }));
+ linkSaving.current.add(leadId);
  const { error: linkErr } = await supabase
  .from("leads")
  .update({ car_listing_id: carId, updated_at: new Date().toISOString() })
  .eq("id", leadId);
+ linkSaving.current.delete(leadId);
  if (linkErr) {
  console.error("handleLinkCar:", linkErr);
- toast.error(t("salesmanPremium.errors.linkCar"));
- return;
+ if (before) setLeads((p) => p.map((l) => (l.id === leadId ? { ...l, car_listing_id: before.car_listing_id, car_listings: before.car_listings } : l)));
+ toast.error(t("carPicker.linkFailed"));
  }
- const car = myListings.find((c) => c.id === carId);
- setLeads((p) => p.map((l) =>
- l.id === leadId
-? { ...l, car_listing_id: carId, car_listings: car
-? { id: car.id, slug: car.slug, brand: car.brand, model: car.model, year: car.year,
- variant: car.variant, selling_price: car.selling_price, images: car.images,
- mileage: car.mileage, transmission: car.transmission, colour: car.colour, status: car.status }
- : l.car_listings }
- : l
- ));
- setLinkCarLeadId(null);
- setLinkCarQuery("");
- toast.success(t("salesmanPremium.leads.carLinked"));
+ };
+
+ // SOLD-1 "Offer another car": a WhatsApp draft naming the sold car and the new
+ // one (its real price + link), in the existing send window. A person sends it.
+ const openOfferMessage = (lead, car) => {
+ const sold = lead.car_listings;
+ const msg = offerAnotherCarMessage({
+ buyer: lead.buyer_name,
+ seller: profile?.full_name,
+ soldCar: sold ? [sold.year, sold.brand, sold.model].filter(Boolean).join(" ") : null,
+ newCar: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" "),
+ price: car.selling_price,
+ link: car.slug ? `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(profile?.slug || "")}` : null,
+ lang: i18n.language?.startsWith("ms") ? "ms" : "en",
+ });
+ setWaModalMessage(msg);
+ setWaModalLead({ ...lead, car_listing_id: car.id });
  };
 
  const handleLostReason = async (leadId, reason) => {
@@ -2126,7 +2159,7 @@ export default function SalesmanPremium() {
  to_stage: "lost",
  note: `Lost reason: ${reason}`,
  created_by: userId,
- dealer_id: leads.find((l) => l.id === leadId)?.dealer_id?? null,
+ dealer_id: leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile),
  });
  if (lostActErr) console.error("handleLostReason activity:", lostActErr);
  setLeads((p) =>
@@ -2314,7 +2347,7 @@ export default function SalesmanPremium() {
  }
  } else {
  const { data: newLead, error: insErr } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
  buyer_name: apt.buyer_name || "Unknown", phone,
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
@@ -2401,7 +2434,7 @@ export default function SalesmanPremium() {
  .from("appointments")
  .insert({
  salesman_id: userId,
- dealer_id: lead.dealer_id?? null,
+ dealer_id: lead.dealer_id ?? getDealerIdFromProfile(profile),
  lead_id: lead.id,
  car_listing_id: lead.car_listing_id?? null,
  buyer_name: lead.buyer_name?? null,
@@ -2429,7 +2462,7 @@ export default function SalesmanPremium() {
  .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
  if (!existingRows ||!existingRows.length) {
  const { data: newLead } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
  buyer_name: enq.buyer_name || "Unknown", phone,
  notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
  stage: "new", lead_source: "enquiry", is_deleted: false,
@@ -2465,14 +2498,21 @@ export default function SalesmanPremium() {
  if (!wonPrompt) return;
  const { lead } = wonPrompt;
  const leadId = lead.id;
- const dealerId = lead.dealer_id?? null;
+ const dealerId = lead.dealer_id ?? getDealerIdFromProfile(profile);
  const now = new Date().toISOString();
  setWonSaving(true);
 
- const { error: leadErr } = await supabase
+ const writeWon = () => supabase
  .from("leads")
  .update({ stage: "won", updated_at: now, ...(wonPrompt.variantId ? { new_car_model_id: wonPrompt.variantId } : {}) })
  .eq("id", leadId);
+ let { error: leadErr } = await writeWon();
+ // A busy DB cancels the statement (57014) and the seller saw "failed" after
+ // ~17s, then the same tap worked (2026-11-02). Setting won twice is harmless
+ // (the won trigger is idempotent), so retry once before giving up.
+ if (leadErr && (leadErr.code === "57014" || /timeout/i.test(leadErr.message || ""))) {
+ ({ error: leadErr } = await writeWon());
+ }
  if (leadErr) {
  console.error("handleMarkWon lead:", leadErr);
  toast.error(t("salesmanPremium.errors.markWon"));
@@ -2553,7 +2593,7 @@ export default function SalesmanPremium() {
  const { data, error: addErr } = await supabase
  .from("leads")
  .insert({
- dealer_id: profile?.dealer_id?? null,
+ dealer_id: getDealerIdFromProfile(profile),
  salesman_id: userId,
  assigned_to: userId,
  buyer_name: addLeadForm.buyer_name,
@@ -2674,8 +2714,11 @@ export default function SalesmanPremium() {
  else if (action === "tour") startShareTour(car);
  };
 
- const updateListingStatus = async (car, newStatus) => {
+ const updateListingStatus = async (car, newStatus, { direct = false } = {}) => {
  setStatusMenuCarId(null);
+ // SOLD-1: a status-only "sold" left the sale with no customer, handover or
+ // renewals. Ask who bought it; only "Sold elsewhere" comes back with direct.
+ if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
  const prevStatus = car.status;
  const prevSoldAt = car.sold_at ?? null;
  // Optimistically stamp sold_at so commission/goal figures pick the deal up
@@ -3317,6 +3360,11 @@ export default function SalesmanPremium() {
  </div>
  )}
 
+ {/* SOLD-1: this buyer's car went to someone else. Keep the lead, offer another. */}
+ {carSoldToOther(lead, carsById) && (
+ <CarSoldLine onOffer={() => { setLinkCarMode("offer"); setLinkCarLeadId(lead.id); }} onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)} />
+ )}
+
  {/* Won -> what happens next. Tapping opens this buyer's handover checklist. */}
  {isWonLead && (() => {
  const done = handoverStatus?.done;
@@ -3875,85 +3923,28 @@ export default function SalesmanPremium() {
      stuck without a car (which in turn left the loan desk with nothing to
      finance). Portalled per overlay rule 1: it opens from inside the lead
      drawer, which is itself a fixed panel. */}
- {linkCarLeadId && createPortal(
- (() => {
+ {linkCarLeadId && (() => {
  const target = leads.find((l) => l.id === linkCarLeadId);
- const closeLink = () => { setLinkCarLeadId(null); setLinkCarQuery(""); };
- const q = linkCarQuery.trim().toLowerCase();
- // Available first: a sold car is almost never the answer, but it stays
- // reachable because a mislinked lead has to be fixable.
- const options = [...myListings]
- .filter((c) => !q || [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ").toLowerCase().includes(q))
- .sort((a, b) => (a.status === "sold" ? 1 : 0) - (b.status === "sold" ? 1 : 0));
+ const name = target?.buyer_name || t("salesmanPremium.common.thisLead");
+ const offer = linkCarMode === "offer";
  return (
- <div onClick={closeLink} style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)", backdropFilter: "blur(3px)", display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}>
- <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, maxHeight: isMobile ? "88vh" : "78vh", display: "flex", flexDirection: "column", background: "#0d1117", border: "1px solid rgba(255,255,255,0.1)", borderRadius: isMobile ? "16px 16px 0 0" : 14, fontFamily: "system-ui, sans-serif", overflow: "hidden" }}>
- <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.linkCar.title")}</p>
- <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {t("salesmanPremium.linkCar.to", { name: target?.buyer_name || t("salesmanPremium.common.thisLead") })}
- </p>
- </div>
- <button onClick={closeLink} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", color: "#9ca3af", borderRadius: 8, padding: 6, display: "flex", flexShrink: 0 }}>
- <X size={16} />
- </button>
- </div>
-
- <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
- <Search size={13} color="#4b5563" style={{ flexShrink: 0 }} />
- <input autoFocus value={linkCarQuery} onChange={(e) => setLinkCarQuery(e.target.value)} placeholder={t("salesmanPremium.linkCar.searchPh")}
- style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#e5e7eb", fontSize: 13, fontFamily: "inherit" }} />
- </div>
-
- <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
- {options.length === 0 ? (
- <p style={{ margin: 0, padding: "28px 16px", fontSize: 12.5, color: "#4b5563", textAlign: "center" }}>
- {myListings.length === 0 ? t("salesmanPremium.linkCar.noCars") : t("salesmanPremium.linkCar.noMatch")}
- </p>
- ) : options.map((c) => {
- const img = Array.isArray(c.images) ? c.images.find(Boolean) : null;
- const isLinked = target?.car_listing_id === c.id;
- return (
- <button key={c.id} onClick={() => handleLinkCar(linkCarLeadId, c.id)} disabled={isLinked} style={{
- display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
- padding: "10px 14px", background: isLinked ? "rgba(96,165,250,0.08)" : "transparent",
- border: "none", borderBottom: "1px solid rgba(255,255,255,0.05)",
- cursor: isLinked ? "default" : "pointer", fontFamily: "inherit",
- }}>
- {img ? (
- <img src={img} alt="" style={{ width: 54, height: 40, objectFit: "cover", borderRadius: 6, flexShrink: 0, background: "rgba(255,255,255,0.04)" }} />
- ) : (
- <div style={{ width: 54, height: 40, borderRadius: 6, flexShrink: 0, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center" }}>
- <Car size={14} color="#374151" />
- </div>
- )}
- <div style={{ flex: 1, minWidth: 0 }}>
- <p style={{ margin: 0, fontSize: 13, color: "#e5e7eb", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
- {[c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ")}
- </p>
- <p style={{ margin: "1px 0 0", fontSize: 11.5, color: "#6b7280" }}>
- {c.selling_price ? `RM ${Number(c.selling_price).toLocaleString("en-MY")}` : t("salesmanPremium.common.noPrice")}
- {c.mileage ? ` · ${Number(c.mileage).toLocaleString("en-MY")} km` : ""}
- </p>
- </div>
- {isLinked ? (
- <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "rgba(96,165,250,0.15)", color: "#93c5fd" }}>
- <Check size={10} /> {t("salesmanPremium.linkCar.linked")}
- </span>
- ) : c.status === "sold" ? (
- <span style={{ flexShrink: 0, fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 99, background: "rgba(255,255,255,0.05)", color: "#6b7280" }}>{t("salesmanPremium.common.sold")}</span>
- ) : null}
- </button>
+ <CarPickerSheet
+ title={t(offer ? "carPicker.offerTitle" : "carPicker.linkTitle")}
+ subtitle={t(offer ? "carPicker.offerSub" : "carPicker.linkSub", { name })}
+ cars={myListings}
+ linkedId={offer ? null : target?.car_listing_id}
+ excludeSold={offer}
+ onClose={() => { setLinkCarLeadId(null); setLinkCarMode("link"); }}
+ onPick={(car) => {
+ const leadId = linkCarLeadId;
+ setLinkCarLeadId(null);
+ setLinkCarMode("link");
+ handleLinkCar(leadId, car.id);
+ if (offer && target) openOfferMessage(target, car);
+ }}
+ />
  );
- })}
- </div>
- </div>
- </div>
- );
- })(),
- document.body,
- )}
+ })()}
 
  {/* SET A FOLLOW-UP REMINDER — third time this exact shape has bitten this
      file. "Set reminder" set followUpModalLead and NOTHING rendered for it, so
@@ -6179,21 +6170,23 @@ export default function SalesmanPremium() {
  );
  }
  const now = new Date().toISOString();
+ // Sending a WhatsApp IS contact: stamp last_contacted_at, or the
+ // same buyer is back on "This week" tomorrow.
  await supabase
  .from("leads")
- .update({ updated_at: now })
+ .update({ updated_at: now, last_contacted_at: now })
  .eq("id", waModalLead.id);
  await supabase.from("lead_activities").insert({
  lead_id: waModalLead.id,
  activity_type: "whatsapp_sent",
  note: "WA message sent",
  created_by: userId,
- dealer_id: waModalLead.dealer_id?? null,
+ dealer_id: waModalLead.dealer_id ?? getDealerIdFromProfile(profile),
  });
  setStaleLeads((p) => p.filter((l) => l.id!== waModalLead.id));
  setLeads((p) =>
  p.map((l) =>
- l.id === waModalLead.id? { ...l, updated_at: now } : l,
+ l.id === waModalLead.id? { ...l, updated_at: now, last_contacted_at: now } : l,
  ),
  );
  setWaModalLead(null);
@@ -6370,7 +6363,6 @@ export default function SalesmanPremium() {
  });
  const TAB_INTROS = {
  listings: [
- introStep("listings", "fast", "lst-fast", Zap),
  introStep("listings", "full", "lst-full", Car),
  // No "···" step here any more: the first-poster intro below rings it
  // with a real action once the seller has a car.
@@ -7307,11 +7299,11 @@ export default function SalesmanPremium() {
     <Suspense fallback={<TabLoadingFallback />}>
      <ListingsTab
       myListings={myListings} carStatsMap={carStatsMap} filterStatus={filterStatus} sortBy={sortBy}
-      listingCopied={listingCopied} showAddForm={showAddForm} showFastForm={showFastForm}
+      listingCopied={listingCopied} showAddForm={showAddForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
       profile={profile} isMobile={isMobile}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
-      setShowAddForm={setShowAddForm} setShowFastForm={setShowFastForm}
+      setShowAddForm={setShowAddForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
       setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
@@ -7322,7 +7314,7 @@ export default function SalesmanPremium() {
       openLoanPoster={setPosterCar}
       openMotionPoster={setMotionCar}
       onVerifyId={() => openSettings("profile")}
-      onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
+      onOpenNewCars={() => { setShowAddForm(false); openSettings("newcars"); }}
      />
     </Suspense>
    )}
@@ -7659,20 +7651,31 @@ export default function SalesmanPremium() {
 
  {/* ── Mark won ── a win flips the car to sold and moves money, so it is a
  deliberate confirm rather than the undo-timer used for other stages. */}
+ {soldPickCar && (
+ <WhoBoughtSheet
+ car={soldPickCar}
+ leads={openLeadsOnCar(leads, soldPickCar.id)}
+ onClose={() => setSoldPickCar(null)}
+ onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+ onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
+ onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
+ />
+ )}
+
  {wonPrompt && (
  <div
  onClick={() => { if (!wonSaving) setWonPrompt(null); }}
- style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.78)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+ style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
  >
- <div onClick={(e) => e.stopPropagation()} style={{ background: "#111827", borderRadius: 14, width: "100%", maxWidth: 420, padding: 24 }}>
+ <div onClick={(e) => e.stopPropagation()} style={{ background: PD.card, borderRadius: PD.radius.card, width: "100%", maxWidth: 420, padding: 22 }}>
  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
- <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(34,197,94,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
- <CheckCircle2 size={18} style={{ color: "#4ade80" }} />
+ <div style={{ width: 36, height: 36, borderRadius: 99, background: PD.raised, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+ <CheckCircle2 size={18} style={{ color: PD.up }} />
  </div>
- <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#f1f5f9" }}>{t("salesmanPremium.wonPrompt.title")}</p>
+ <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: PD.text }}>{t("salesmanPremium.wonPrompt.title")}</p>
  </div>
- <p style={{ margin: "0 0 6px", fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 }}>
- <strong style={{ color: "#f1f5f9" }}>{wonPrompt.lead.buyer_name || t("salesmanPremium.wonPrompt.thisBuyer")}</strong>
+ <p style={{ margin: "0 0 6px", fontSize: 14, color: PD.textSec, lineHeight: 1.6 }}>
+ <strong style={{ color: PD.text }}>{wonPrompt.lead.buyer_name || t("salesmanPremium.wonPrompt.thisBuyer")}</strong>
  {wonPrompt.lead.car_listings
  ? <> — {[wonPrompt.lead.car_listings.year, wonPrompt.lead.car_listings.brand, wonPrompt.lead.car_listings.model].filter(Boolean).join(" ")}</>
  : null}
@@ -7681,23 +7684,28 @@ export default function SalesmanPremium() {
  <WonVariantPick listingId={wonPrompt.lead.car_listing_id} value={wonPrompt.variantId}
  onChange={(id) => setWonPrompt((p) => (p ? { ...p, variantId: id } : p))} />
  )}
- <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af", lineHeight: 1.6 }}>
+ <p style={{ margin: "0 0 18px", fontSize: 13, color: PD.textSec, lineHeight: 1.6 }}>
  {wonPrompt.lead.car_listing_id
  ? t("salesmanPremium.wonPrompt.withCar")
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
+ {(() => {
+ const others = openLeadsOnCar(leads, wonPrompt.lead.car_listing_id, wonPrompt.lead.id).length;
+ return others > 0 ? <p style={{ margin: "-6px 0 18px", fontSize: 13, color: PD.text, background: PD.raised, borderRadius: PD.radius.row, padding: "10px 12px", lineHeight: 1.5 }}>{t("soldPick.others", { count: others })}</p> : null;
+ })()}
  <div style={{ display: "flex", gap: 8 }}>
  <button
  onClick={() => setWonPrompt(null)}
  disabled={wonSaving}
- style={{ flex: 1, fontSize: 13, fontWeight: 600, padding: "11px", borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", cursor: "pointer", fontFamily: "inherit" }}
+ style={{ flex: 1, fontSize: 14, fontWeight: 600, padding: "12px", borderRadius: PD.radius.pill, background: PD.raised, border: "none", color: PD.textSec, cursor: "pointer", fontFamily: "inherit" }}
  >
  {t("salesmanPremium.wonPrompt.notYet")}
  </button>
  <button
  onClick={handleMarkWon}
  disabled={wonSaving}
- style={{ flex: 2, fontSize: 13, fontWeight: 700, padding: "11px", borderRadius: 8, background: "#22c55e", border: "none", color: "#04210f", cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
+ className="lk-red"
+ style={{ flex: 2, fontSize: 14, fontWeight: 700, padding: "12px", borderRadius: PD.radius.pill, border: "none", color: PD.onAccent, cursor: wonSaving? "not-allowed" : "pointer", opacity: wonSaving? 0.6 : 1, fontFamily: "inherit" }}
  >
  {wonSaving? t("salesmanPremium.common.saving") : t("salesmanPremium.wonPrompt.yes")}
  </button>

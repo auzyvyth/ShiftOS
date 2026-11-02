@@ -269,7 +269,7 @@ export const getHeatScore = (lead) => {
  return { score, icon: Snowflake, label: "cold", color: "#93c5fd" };
 };
 
-export const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+export const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost", "CarSold"];
 
 // Two tabs now host a pair of sibling views (Inbox: bookings / lead history,
 // Listings: cars / add-ons). One switcher, so they cannot drift apart.

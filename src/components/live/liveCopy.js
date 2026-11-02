@@ -4,6 +4,7 @@
 // Numbers and maths never change with the language, only the words.
 
 const en = {
+  liveSyncFailed: 'Your page is not showing you as Live. Sign in again after this live.',
   cars: 'Cars',
   budget: 'Budget',
   docs: 'Docs',
@@ -198,6 +199,7 @@ const en = {
 };
 
 const ms = {
+  liveSyncFailed: 'Halaman anda tidak menunjukkan anda sedang Live. Log masuk semula selepas live ini.',
   cars: 'Kereta',
   budget: 'Bajet',
   docs: 'Dokumen',
