@@ -21,7 +21,7 @@ export const Leads = ({ lang }) => {
   return (
     <>
       <Headline lines={C.leads} eyebrow={C.eb.leads} at={0.1} out={len('leads') - 0.4} top={170} />
-      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: `blur(${ex * 10}px)` }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         {/* stage rail: 7 lights, the reached ones glow */}
         <div style={{ position: 'absolute', left: 90, right: 90, top: 640, height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }}>
           <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6, width: `${(st + Math.min(1, p) - 1 + 1) / 7 * 100}%`, background: `linear-gradient(90deg, ${RED}, ${HUES[st]})`, boxShadow: `0 0 30px ${HUES[st]}` }} />
@@ -33,7 +33,7 @@ export const Leads = ({ lang }) => {
         <div style={{ position: 'absolute', left: 0, right: 0, top: 720, display: 'flex', justifyContent: 'center' }}>
           <div style={{ ...glass({ borderRadius: 999 }), height: 84, padding: '0 40px', display: 'flex', alignItems: 'center', gap: 18, font: `700 40px ${FONT}`, color: INK, transform: `scale(${0.85 + 0.15 * Math.min(1.1, p)})`, boxShadow: `0 0 70px ${HUES[st]}55, 0 40px 80px rgba(0,0,0,.6)` }}>
             <span style={{ width: 22, height: 22, borderRadius: 11, background: HUES[st], boxShadow: `0 0 20px ${HUES[st]}` }} />
-            <span style={{ filter: `blur(${(1 - Math.min(1, p)) * 8}px)` }}>{C.stages[st]}</span>
+            <span style={{ filter: ((1 - Math.min(1, p)) * 8) > 0.05 ? `blur(${(1 - Math.min(1, p)) * 8}px)` : 'none' }}>{C.stages[st]}</span>
           </div>
         </div>
         {/* the buyer */}
@@ -81,7 +81,7 @@ export const Stats = ({ lang }) => {
   return (
     <>
       <Headline lines={C.stats} eyebrow={C.eb.stats} at={0.1} out={len('stats') - 0.4} top={170} />
-      <div style={{ position: 'absolute', left: 80, right: 80, top: 660, display: 'flex', gap: 30, opacity: 1 - ex, filter: `blur(${ex * 10}px)` }}>
+      <div style={{ position: 'absolute', left: 80, right: 80, top: 660, display: 'flex', gap: 30, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         {tile(0.3, 131, C.views, INK, 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z')}
         {tile(0.45, 13, C.taps, MINT, 'M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.5A9 9 0 1 1 21 12z')}
       </div>
@@ -103,7 +103,7 @@ export const Studio = ({ lang }) => {
   return (
     <>
       <Headline lines={C.studio} eyebrow={C.eb.studio} at={0.1} out={len('studio') - 0.4} top={170} />
-      <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 470, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: `blur(${ex * 10}px)`,
+      <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 470, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none',
         transform: `translateY(${(1 - inP) * 140}px) scale(${0.94 + 0.06 * Math.min(1, inP)})`, boxShadow: '0 80px 160px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 120px rgba(220,38,38,.25)' }}>
         {/* backdrop that appears behind the cut-out: red studio sweep + floor */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(120% 70% at 50% 35%, #3a0d0d 0%, #160606 55%, #070303 100%)' }} />
@@ -147,7 +147,7 @@ export const Posters = ({ lang }) => {
   return (
     <>
       <Headline lines={C.posters} eyebrow={C.eb.posters} at={0.1} out={len('posters') - 0.4} top={170} />
-      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: `blur(${ex * 10}px)` }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         <div style={{ position: 'absolute', left: 50, top: 560, width: 520, transform: `translateX(${(1 - a) * -500}px) rotate(${-5 + (1 - Math.min(1, a)) * -8}deg)` }}>
           <Img src={staticFile(`real/loan-poster-${lang}.jpg`)} style={{ width: 520, borderRadius: 26, boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 90px rgba(220,38,38,.2)' }} />
           <div style={{ marginTop: 26 }}><Chip>{C.jpeg}</Chip></div>
@@ -220,7 +220,7 @@ export const Page = ({ lang }) => {
   return (
     <>
       <Headline lines={C.page} eyebrow={C.eb.page} at={0.1} out={len('page') - 0.4} top={170} />
-      <div style={{ position: 'absolute', left: 260, top: 470, transformOrigin: '280px 46px', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: `blur(${ex * 10}px)`,
+      <div style={{ position: 'absolute', left: 260, top: 470, transformOrigin: '280px 46px', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none',
         transform: `translateY(${(1 - inP) * 200}px) scale(${z})` }}>
         <PagePhone t={t} lang={lang} scroll={scroll} typed={typed} />
       </div>
@@ -236,7 +236,7 @@ export const Devices = ({ lang }) => {
   return (
     <>
       <Headline lines={C.devices} eyebrow={C.eb.devices} at={0.05} out={len('devices') - 0.35} top={170} />
-      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: `blur(${ex * 12}px)`, transform: `translateY(${-ex * 80}px)` }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 12) > 0.05 ? `blur(${ex * 12}px)` : 'none', transform: `translateY(${-ex * 80}px)` }}>
         <div style={{ position: 'absolute', left: 30, top: 640, transform: `translateX(${(1 - a) * -500}px)` }}>
           <div style={{ width: 700, height: 470, borderRadius: '26px 26px 8px 8px', padding: 16, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 100px rgba(220,38,38,.25)' }}>
             <div style={{ width: 668, height: 438, borderRadius: 10, overflow: 'hidden', background: '#f4f4f5', display: 'flex', justifyContent: 'center' }}>
@@ -256,7 +256,7 @@ export const Devices = ({ lang }) => {
 // ---------- CTA ----------
 export const Cta = ({ lang }) => {
   const f = useCurrentFrame(); const t = f / FPS; const C = COPY[lang];
-  const item = (at, style, children) => { const p = pop(f, at); return <div style={{ position: 'absolute', left: 60, right: 60, textAlign: 'center', opacity: Math.min(1, p * 1.4), filter: `blur(${(1 - Math.min(1, p)) * 14}px)`, transform: `translateY(${(1 - p) * 70}px)`, ...style }}>{children}</div>; };
+  const item = (at, style, children) => { const p = pop(f, at); return <div style={{ position: 'absolute', left: 60, right: 60, textAlign: 'center', opacity: Math.min(1, p * 1.4), filter: ((1 - Math.min(1, p)) * 14) > 0.05 ? `blur(${(1 - Math.min(1, p)) * 14}px)` : 'none', transform: `translateY(${(1 - p) * 70}px)`, ...style }}>{children}</div>; };
   const pulse = t > 2.2 ? 1 + 0.03 * Math.sin((t - 2.2) * Math.PI * 2) : 1;
   const flash = interpolate(t, [0, 0.35], [0.55, 0], clamp);
   return (

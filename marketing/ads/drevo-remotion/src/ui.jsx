@@ -33,7 +33,7 @@ export const Ambient = ({ hue = RED, intensity = 1 }) => {
       {/* floor: a darker band with a soft horizon line, gives the objects somewhere to stand */}
       <AbsoluteFill style={{ background: 'linear-gradient(180deg, transparent 0%, transparent 62%, rgba(255,255,255,0.025) 62.2%, rgba(0,0,0,0.5) 100%)' }} />
       <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,0.75) 100%)' }} />
-      <AbsoluteFill style={{ opacity: 0.07, mixBlendMode: 'overlay', backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='${f % 8}'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>")` }} />
+      {/* film grain is added at mux time (ffmpeg noise): a blend layer here doubled the render time */}
     </AbsoluteFill>
   );
 };
@@ -61,7 +61,7 @@ export const Headline = ({ lines, eyebrow, at = 0, out = 99, top = 150, size = 1
             const o = Math.min(1, p * 1.4);
             const blur = (1 - Math.min(1, p)) * 16 + exit * 18;
             return (
-              <span key={i} style={{ display: 'inline-block', marginRight: size * 0.24, opacity: o * (1 - exit), filter: `blur(${blur}px)`,
+              <span key={i} style={{ display: 'inline-block', marginRight: size * 0.24, opacity: o * (1 - exit), filter: (blur) > 0.05 ? `blur(${blur}px)` : 'none',
                 transform: `translateY(${(1 - p) * 70 - exit * (50 + idx * 6)}px) scale(${0.9 + 0.1 * Math.min(1.05, p)})`,
                 color: r ? RED2 : INK, textShadow: r ? '0 0 50px rgba(239,68,68,.55), 0 0 12px rgba(239,68,68,.35)' : '0 10px 40px rgba(0,0,0,.6)' }}>{w}</span>
             );
@@ -77,7 +77,6 @@ export const glass = (extra = {}) => ({
   background: 'linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.02))',
   border: '1px solid rgba(255,255,255,0.10)',
   boxShadow: '0 50px 120px rgba(0,0,0,0.65), 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.14), 0 0 90px rgba(220,38,38,0.10)',
-  backdropFilter: 'blur(18px)',
   borderRadius: 36,
   ...extra,
 });

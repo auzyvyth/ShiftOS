@@ -90,7 +90,7 @@ export const HookCalc = ({ lang }) => {
           <div style={{ width: 800, height: 458, borderRadius: 14, overflow: 'hidden' }}><Excel t={t} lang={lang} /></div>
         </div>
       )}
-      <div style={{ position: 'absolute', inset: 0, opacity: 1 - out, filter: `blur(${out * 10}px)` }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: 1 - out, filter: (out * 10) > 0.05 ? `blur(${out * 10}px)` : 'none' }}>
         <Device x={x} y={y} w={w} ratio={RATIO} glow={0.6 + 0.6 * g}>
           <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 26%', transform: `scale(${z})` }}>
             <Take src={`takes/calc-${lang}.mp4`} takeT={t} />
@@ -129,7 +129,7 @@ export const Budget = ({ lang }) => {
   return (
     <>
       <Headline lines={C.budget} eyebrow={C.eb.budget} at={0.15} out={len - 0.4} top={170} />
-      <div style={{ position: 'absolute', inset: 0, opacity: inn * (1 - out), filter: `blur(${(1 - inn) * 12 + out * 10}px)`, transform: `scale(${1.04 - 0.04 * inn})` }}>
+      <div style={{ position: 'absolute', inset: 0, opacity: inn * (1 - out), filter: ((1 - inn) * 12 + out * 10) > 0.05 ? `blur(${(1 - inn) * 12 + out * 10}px)` : 'none', transform: `scale(${1.04 - 0.04 * inn})` }}>
         <Device x={x} y={y} w={w} ratio={RATIO} glow={1.2}>
           <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 8%', transform: `scale(${k})` }}>
             <Take src={`takes/budget-${lang}.mp4`} takeT={takeT} />
