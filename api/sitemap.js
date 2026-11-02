@@ -5,7 +5,7 @@ import { HUB_BASE, HUB_LIVE, HUB_ROW_COLS, buildHubs } from "../src/utils/modelH
 import { newModelPath } from "../src/utils/newCars.js";
 export const config = { runtime: "edge" };
 
-import { ROOT_DOMAIN } from "../src/config/site.js";
+import { ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 // Read the public_car_listings VIEW (granted to anon) with the anon key — the
 // same source the marketplace uses. The base car_listings table is NOT granted
@@ -17,13 +17,9 @@ const SUPABASE_KEY =
   process.env.VITE_SUPABASE_ANON_KEY ||
   process.env.SUPABASE_SERVICE_KEY;
 
+// Any of our domains (OWN_DOMAINS), so <sub>.drevo.my and <sub>.xdrive.my both work.
 function getSubdomain(host) {
-  const h = host.split(":")[0];
-  if (h === ROOT_DOMAIN || h === `www.${ROOT_DOMAIN}`) return null;
-  if (h.endsWith(`.${ROOT_DOMAIN}`)) {
-    return h.slice(0, h.length - ROOT_DOMAIN.length - 1);
-  }
-  return null;
+  return storefrontSubdomain((host || "").split(":")[0]);
 }
 
 function xmlEscape(s) {
@@ -138,7 +134,10 @@ export default async function handler(req) {
   const isMain = url.searchParams.get("main") === "1";
   const host = req.headers.get("host") ?? ROOT_DOMAIN;
   const subdomain = getSubdomain(host);
-  const baseUrl = `https://${host}`;
+  // Always the CANONICAL domain, whichever of our domains was asked: while
+  // drevo.my and xdrive.my both serve, a sitemap on one listing the other's
+  // URLs is what keeps Google from indexing the same page twice.
+  const baseUrl = subdomain ? `https://${subdomain}.${ROOT_DOMAIN}` : `https://${ROOT_DOMAIN}`;
 
   // Root host → serve a sitemap INDEX that points Google at the root content
   // sitemap (/sitemap-main.xml) PLUS every tenant subdomain's own sitemap. The

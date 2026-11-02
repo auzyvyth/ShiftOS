@@ -1,6 +1,6 @@
 // Vercel Serverless Function — dynamic robots.txt per tenant subdomain
 
-import { ROOT_DOMAIN } from "../src/config/site.js";
+import { ROOT_DOMAIN, storefrontSubdomain } from "../src/config/site.js";
 
 const INTERNAL_PATHS = [
   "/dashboard",
@@ -19,8 +19,10 @@ const INTERNAL_PATHS = [
 ];
 
 export default function handler(req, res) {
-  const host = req.headers.host ?? ROOT_DOMAIN;
-  const baseUrl = `https://${host}`;
+  const host = (req.headers.host ?? ROOT_DOMAIN).split(":")[0];
+  // The canonical domain, whichever of ours was asked (see api/sitemap.js).
+  const sub = storefrontSubdomain(host);
+  const baseUrl = sub ? `https://${sub}.${ROOT_DOMAIN}` : `https://${ROOT_DOMAIN}`;
 
   const disallowLines = INTERNAL_PATHS.map((p) => `Disallow: ${p}`).join("\n");
 

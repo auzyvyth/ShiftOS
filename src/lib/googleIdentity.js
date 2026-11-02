@@ -24,7 +24,7 @@ export function isEmbeddedBrowser() {
 // way on 2026-10-16. Keep this list EQUAL to the Google Cloud Console list
 // (comma-separated VITE_GOOGLE_JS_ORIGINS overrides it); every other origin
 // uses the redirect sign-in, which Google does not origin-check.
-const ID_TOKEN_ORIGINS = (import.meta.env.VITE_GOOGLE_JS_ORIGINS || 'https://xdrive.my')
+const ID_TOKEN_ORIGINS = (import.meta.env.VITE_GOOGLE_JS_ORIGINS || 'https://xdrive.my,https://drevo.my')
   .split(',').map((s) => s.trim()).filter(Boolean);
 
 export function isAuthorizedGoogleOrigin() {
