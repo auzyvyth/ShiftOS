@@ -215,8 +215,9 @@ photo rule for now ("leave it at that").
 - [x] Premium's quick add removed from Lite/Premium (owner, 2026-11-02: not safe for solo
   sellers; it saved straight to `available`, skipping review). Every seller car goes
   through CarForm (always review). `CarFormFast.jsx` stays only on the dealer dashboard.
-  Optional: a DB rule forcing a salesman's new car into review whatever form saved it
-  (must skip new-car model cards, which `new_car_add_cards` inserts as available).
+  DB lock LIVE 2026-11-03 (`20261102c`, `trg_zzz_seller_car_review`; owner ran it in the SQL
+  Editor): a salesman's car going live becomes `pending_approval` on insert and on
+  pending/rejected/private -> live. Probed both paths as airymotors (rolled back).
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
