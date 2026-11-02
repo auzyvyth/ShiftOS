@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 // Both forms load when they open, not with the Listings tab.
 import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
-const CarFormFast = React.lazy(() => import("../../components/CarFormFast"));
 const CarForm = React.lazy(() => import("../../components/CarForm"));
 import VerifyBadgePrompt from "../../components/kyc/VerifyBadgePrompt";
 import CarNextStep from "../../components/coach/CarNextStep";
@@ -87,9 +86,9 @@ const downloadListingImages = async (car) => {
 // into ···; Caption + Edit stay on the card.
 export default function ListingsTab({
  onOpenNewCars,
- myListings, carStatsMap, filterStatus, sortBy, listingCopied, showAddForm, showFastForm,
+ myListings, carStatsMap, filterStatus, sortBy, listingCopied, showAddForm,
  statusMenuCarId, actionMenuCarId, confirmDeleteId, profile, isMobile,
- setMyListings, setFilterStatus, setSortBy, setShowAddForm, setShowFastForm,
+ setMyListings, setFilterStatus, setSortBy, setShowAddForm,
  setStatusMenuCarId, setActionMenuCarId, setConfirmDeleteId, setEditListing,
  setSelectedCar, setCarDetailImgIdx, setCarDetailTab,
  coachFor, onCoach, updateListingStatus, handleDeleteListing, deletingId, handleListingCopy, handleListingShare, openBroadcast,
@@ -161,48 +160,22 @@ export default function ListingsTab({
      the screen a rep never opens. */}
  <VerifyBadgePrompt profile={profile} onStart={onVerifyId} theme="premium" />
 
- {/* Header: Quick add is the one red button; the full form sits beside it. */}
+ {/* Header: one red "Add car" button. The quick add (CarFormFast) was removed
+     2026-11-02 (owner): it saved a solo seller's car straight to "available",
+     skipping review. Every seller car goes through CarForm, which always sends
+     it to review (CarForm needsApproval). */}
  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
  <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: P.text, letterSpacing: "-0.01em" }}>
  {t("salesmanPremium.lst.title", { n: myListings.length })}
  </p>
- <div style={{ display: "flex", gap: 8 }}>
  <button className="lk-red"
- data-tour-id="lst-fast"
- onClick={() => { setShowFastForm(true); setShowAddForm(false); }}
- style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}
- >
- {t("salesmanPremium.lst.fast")}
- </button>
- <button
  data-tour-id="lst-full"
- onClick={() => { setShowAddForm(true); setShowFastForm(false); }}
- style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, background: P.raised, border: "none", color: P.text, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}
+ onClick={() => setShowAddForm(true)}
+ style={{ height: 40, padding: "0 16px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6 }}
  >
- <Plus size={14} /> {t("salesmanPremium.lst.fullForm")}
+ <Plus size={14} /> {t("salesmanPremium.lst.addCar")}
  </button>
  </div>
- </div>
-
- <ListingFormModal
- open={showFastForm}
- onClose={() => setShowFastForm(false)}
- title={t("salesmanPremium.lst.fastTitle")}
- subtitle={t("salesmanPremium.lst.fastSub")}
- isMobile={isMobile}
- >
- <React.Suspense fallback={<p style={{ padding: 24, textAlign: "center", opacity: 0.6 }}>{t("salesmanPremium.common.loading")}</p>}>
- <CarFormFast
- sellerProfile={profile}
- onOpenNewCars={onOpenNewCars}
- onCreate={(car) => {
- setMyListings((p) => [car, ...p]);
- setShowFastForm(false);
- toast.success(t("salesmanPremium.lst.listedFast"));
- }}
- />
- </React.Suspense>
- </ListingFormModal>
 
  <ListingFormModal
  open={showAddForm}

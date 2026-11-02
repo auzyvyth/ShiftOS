@@ -1970,7 +1970,8 @@
       "tiktokPost": "Post TikTok",
       "motionPoster": "Poster bergerak",
       "loanPoster": "Poster kiraan loan",
-      "downloadPhotos": "Muat turun gambar"
+      "downloadPhotos": "Muat turun gambar",
+      "addCar": "Tambah kereta"
     },
     "perf": {
       "src": {
@@ -2113,7 +2114,7 @@
           "body": "Gambar, harga dan maklumat asas, dan kereta terus live dalam lebih kurang 30 saat. Isi yang lain kemudian."
         },
         "full": {
-          "title": "Borang penuh",
+          "title": "Tambah kereta",
           "body": "Di sini anda tambah listing dengan maklumat lengkap: baru, terpakai atau recon, spesifikasi, keadaan dan apa yang disertakan. Lebih lengkap, lebih yakin pembeli."
         },
         "more": {

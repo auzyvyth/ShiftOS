@@ -485,7 +485,6 @@ export default function SalesmanPremium() {
  const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
- const [showFastForm, setShowFastForm] = useState(false);
 
  // leads
  const [leads, setLeads] = useState(seed.leads || []);
@@ -6364,7 +6363,6 @@ export default function SalesmanPremium() {
  });
  const TAB_INTROS = {
  listings: [
- introStep("listings", "fast", "lst-fast", Zap),
  introStep("listings", "full", "lst-full", Car),
  // No "···" step here any more: the first-poster intro below rings it
  // with a real action once the seller has a car.
@@ -7301,11 +7299,11 @@ export default function SalesmanPremium() {
     <Suspense fallback={<TabLoadingFallback />}>
      <ListingsTab
       myListings={myListings} carStatsMap={carStatsMap} filterStatus={filterStatus} sortBy={sortBy}
-      listingCopied={listingCopied} showAddForm={showAddForm} showFastForm={showFastForm}
+      listingCopied={listingCopied} showAddForm={showAddForm}
       statusMenuCarId={statusMenuCarId} actionMenuCarId={actionMenuCarId} confirmDeleteId={confirmDeleteId}
       profile={profile} isMobile={isMobile}
       setMyListings={setMyListings} setFilterStatus={setFilterStatus} setSortBy={setSortBy}
-      setShowAddForm={setShowAddForm} setShowFastForm={setShowFastForm}
+      setShowAddForm={setShowAddForm}
       setStatusMenuCarId={setStatusMenuCarId} setActionMenuCarId={setActionMenuCarId}
       setConfirmDeleteId={setConfirmDeleteId} setEditListing={setEditListing}
       setSelectedCar={setSelectedCar} setCarDetailImgIdx={setCarDetailImgIdx} setCarDetailTab={setCarDetailTab}
@@ -7316,7 +7314,7 @@ export default function SalesmanPremium() {
       openLoanPoster={setPosterCar}
       openMotionPoster={setMotionCar}
       onVerifyId={() => openSettings("profile")}
-      onOpenNewCars={() => { setShowAddForm(false); setShowFastForm(false); openSettings("newcars"); }}
+      onOpenNewCars={() => { setShowAddForm(false); openSettings("newcars"); }}
      />
     </Suspense>
    )}

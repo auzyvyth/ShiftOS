@@ -212,9 +212,11 @@ photo rule for now ("leave it at that").
   no DB trigger yet.
 - [x] Console Back steps through tabs (`/platform/:tab`), and console pop-ups
   (account record, suspend, delete, prospects, ID photo) close on Back.
-- [ ] BUG: Premium's quick add (`CarFormFast.jsx`, insert `status: "available"`)
-  skips the review queue and the geran question entirely. Any rule only runs on
-  cars that reach the queue, so this comes first.
+- [x] Premium's quick add removed from Lite/Premium (owner, 2026-11-02: not safe for solo
+  sellers; it saved straight to `available`, skipping review). Every seller car goes
+  through CarForm (always review). `CarFormFast.jsx` stays only on the dealer dashboard.
+  Optional: a DB rule forcing a salesman's new car into review whatever form saved it
+  (must skip new-car model cards, which `new_car_add_cards` inserts as available).
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
