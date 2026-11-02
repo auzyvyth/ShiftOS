@@ -1,0 +1,13 @@
+Drevo Premium ad - credits
+
+Fonts: Outfit (OFL 1.1, OFL-Outfit.txt), Bebas Neue (OFL 1.1, OFL-BebasNeue.txt; not used on screen).
+Music and sound effects: original, synthesized in score.py (numpy). No samples, no third-party audio.
+Pictures: every screen and car is drawn in code (index.html, film.js). No photos, no screenshots, no brand logos.
+Method: frame-by-frame "render(t)" approach and screencast grammar learned from lemo-opuscar
+(github.com/lemomo-ai/lemo-opuscar, MIT). No code or assets copied from it.
+
+Data shown:
+- Loan figures: src/utils/financing.js monthlyPayment, src/utils/motorInsurance.js, 4.8% EIR (LOCAL_NEW_EIR).
+- Proton prices: new_car_models (Peninsular), read 2026-11-02.
+- Listing views / WhatsApp taps and the mini page: premiummotors, read 2026-11-02.
+- Lead names (Hafiz, Aiman, ...) are made up; marked "Ilustrasi · data contoh" on screen.
