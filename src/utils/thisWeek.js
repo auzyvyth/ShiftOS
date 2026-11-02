@@ -15,6 +15,8 @@
 
 // Stages that are still live. A won or lost lead is finished and must never
 // appear on a call list.
+import { carSoldToOther } from "./carBuyers.js";
+
 export const OPEN_STAGES = ["contacted", "viewing_booked", "test_drive", "negotiating", "deposit_taken"];
 const DEAD_STAGES = ["won", "closed_won", "lost", "closed_lost"];
 
@@ -63,6 +65,21 @@ export function buildThisWeek({ leads = [], customers = [], nudges = [], package
     const who = firstName(l.buyer_name) || "there";
     const age = daysAgo(l.created_at);
     const touched = daysAgo(l.last_contacted_at);
+
+    // SOLD-1: the car they wanted went to another buyer. Until the seller has
+    // spoken to them since the sale, they are a warm buyer to offer another car.
+    if (carSoldToOther(l)) {
+      const soldAt = l.car_listings?.sold_at;
+      if (!l.last_contacted_at || (soldAt && new Date(l.last_contacted_at) < new Date(soldAt))) {
+        items.push({
+          id: `lead-carsold-${l.id}`, kind: "car_sold", rank: 1, age: daysAgo(soldAt) || 0,
+          leadId: l.id, name: l.buyer_name || "Unknown buyer", phone: l.phone,
+          why: W("carSold", {}, "Car sold to another buyer"), sub: car,
+          message: `Hi ${who}, ${signoff(me)}.${car ? ` Sorry, the ${car} has just been sold.` : " Sorry, that car has just been sold."} If you are still looking, I have other cars that could suit you. Want me to send you a few?`,
+        });
+        continue;
+      }
+    }
 
     // Never replied — they asked, nobody answered. The most expensive row here.
     if (l.stage === "new" && !l.last_contacted_at && age !== null && age >= NEVER_REPLIED_DAYS) {
@@ -197,6 +214,7 @@ export const KIND_LABEL = {
   never_replied: "Never replied",
   reminder: "Your reminders",
   going_quiet: "Going quiet",
+  car_sold: "Car sold, offer another",
   renewal: "Renewals due",
   service_due: "Aftercare visit due",
   trade_up: "Trade-up ready",

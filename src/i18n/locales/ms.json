@@ -814,7 +814,8 @@
         "price": "Harga",
         "timing": "Masa",
         "competitor": "Pesaing",
-        "ghost": "Hilang diam"
+        "ghost": "Hilang diam",
+        "carsold": "Kereta dijual kepada orang lain"
       },
       "addons": {
         "title": "Add-on",
@@ -1504,7 +1505,8 @@
       "Price": "Harga",
       "Timing": "Masa",
       "Competitor": "Pesaing",
-      "Ghost": "Senyap terus"
+      "Ghost": "Senyap terus",
+      "CarSold": "Kereta dijual kepada orang lain"
     },
     "linkCar": {
       "title": "Link kereta",
@@ -2582,7 +2584,8 @@
         "pkgLeft_other": "{{name}} · tinggal {{count}} lawatan, tamat {{when}}",
         "owned": "dimiliki {{n}} thn",
         "carAge": "kereta {{year}} · {{n}} thn",
-        "tradeUp": "Sedia trade-up · {{reasons}}"
+        "tradeUp": "Sedia trade-up · {{reasons}}",
+        "carSold": "Kereta dijual kepada pembeli lain"
       }
     },
     "followUpRow": {
@@ -2676,5 +2679,27 @@
     "hint": "Hanya anda. Tidak di marketplace (maks {{n}})",
     "limit": "Anda sudah ada {{n}} kereta peribadi. Siarkan atau padam satu dulu.",
     "sentForReview": "Dihantar untuk semakan. Akan disiarkan selepas diluluskan."
+  },
+  "soldPick": {
+    "title": "Siapa yang beli?",
+    "sub": "{{car}}. Pilih pembeli supaya jualan ini ada rekod pelanggan dan langkah serahan.",
+    "noLeads": "Belum ada pembeli untuk kereta ini dalam pipeline anda.",
+    "unnamed": "Pembeli tanpa nama",
+    "addBuyer": "Tambah pembeli",
+    "elsewhere": "Dijual di tempat lain, tiada pembeli untuk direkod",
+    "cancel": "Tutup",
+    "others_one": "1 pembeli lain berminat dengan kereta ini. Mereka kekal dalam pipeline anda, ditanda supaya anda boleh tawarkan kereta lain.",
+    "others_other": "{{count}} pembeli lain berminat dengan kereta ini. Mereka kekal dalam pipeline anda, ditanda supaya anda boleh tawarkan kereta lain.",
+    "carSoldLine": "Kereta sudah dijual kepada pembeli lain. Tawarkan kereta lain.",
+    "offerAnother": "Tawar kereta lain",
+    "markLost": "Tanda hilang",
+    "stage": {
+      "new": "Baru",
+      "contacted": "Dihubungi",
+      "viewing_booked": "Tinjauan ditempah",
+      "test_drive": "Pandu uji",
+      "negotiating": "Rundingan",
+      "deposit_taken": "Deposit diterima"
+    }
   }
 }

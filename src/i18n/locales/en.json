@@ -824,7 +824,8 @@
         "price": "Price",
         "timing": "Timing",
         "competitor": "Competitor",
-        "ghost": "Ghost"
+        "ghost": "Ghost",
+        "carsold": "Car sold to someone else"
       },
       "addons": {
         "title": "Add-ons",
@@ -1515,7 +1516,8 @@
       "Price": "Price",
       "Timing": "Timing",
       "Competitor": "Competitor",
-      "Ghost": "Ghost"
+      "Ghost": "Ghost",
+      "CarSold": "Car sold to someone else"
     },
     "linkCar": {
       "title": "Link a car",
@@ -2565,7 +2567,8 @@
         "pkgLeft_other": "{{name}} · {{count}} visits left, expires {{when}}",
         "owned": "owned {{n}}y",
         "carAge": "{{year}} car · {{n}} yrs",
-        "tradeUp": "Trade-up ready · {{reasons}}"
+        "tradeUp": "Trade-up ready · {{reasons}}",
+        "carSold": "Car sold to another buyer"
       }
     },
     "followUpRow": {
@@ -2659,5 +2662,27 @@
     "hint": "Only you. Not on the marketplace (max {{n}})",
     "limit": "You already have {{n}} private cars. Publish or delete one first.",
     "sentForReview": "Sent for review. It goes live once approved."
+  },
+  "soldPick": {
+    "title": "Who bought it?",
+    "sub": "{{car}}. Pick the buyer so the sale gets its customer record and handover steps.",
+    "noLeads": "No buyers on this car in your pipeline yet.",
+    "unnamed": "Unnamed buyer",
+    "addBuyer": "Add the buyer",
+    "elsewhere": "Sold elsewhere, no buyer to record",
+    "cancel": "Close",
+    "others_one": "1 other buyer was looking at this car. They stay in your pipeline, marked so you can offer them another car.",
+    "others_other": "{{count}} other buyers were looking at this car. They stay in your pipeline, marked so you can offer them another car.",
+    "carSoldLine": "Car sold to another buyer. Offer them another car.",
+    "offerAnother": "Offer another car",
+    "markLost": "Mark lost",
+    "stage": {
+      "new": "New",
+      "contacted": "Contacted",
+      "viewing_booked": "Viewing booked",
+      "test_drive": "Test drive",
+      "negotiating": "Negotiating",
+      "deposit_taken": "Deposit taken"
+    }
   }
 }

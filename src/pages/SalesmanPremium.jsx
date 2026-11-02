@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, Suspense } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useModalHistory } from '../hooks/useModalHistory';
 import { createPortal } from "react-dom";
 import { AreaChart, Area, ResponsiveContainer, Tooltip as RTooltip, XAxis } from "recharts";
@@ -29,6 +29,8 @@ import SuspendedBanner from "../components/SuspendedBanner";
 import { PremiumDueBanner } from "../components/premium/PremiumStatusBanner";
 import SellerIdCard from "../components/kyc/SellerIdCard";
 import WonVariantPick from "../components/newcar/WonVariantPick";
+import WhoBoughtSheet, { CarSoldLine } from "../components/sold/WhoBoughtSheet";
+import { carSoldToOther, openLeadsOnCar, CAR_SOLD_REASON } from "../utils/carBuyers";
 import AgentSearchPreview from "../components/AgentSearchPreview";
 import { readHandoffTokens, clearHandoffTokens } from "../lib/authHandoff";
 import { compressImageFile } from "../utils/compressImage";
@@ -174,7 +176,7 @@ const WARM_TABS = [
 // car in full, so the join has to carry the display fields up front (overlay
 // rule 4) — and there are five call sites, which is exactly how many places a
 // missing field would have had to be added by hand.
-const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status)";
+const LEAD_SELECT = "*, car_listings(id, slug, brand, model, year, variant, selling_price, images, mileage, transmission, colour, status, sold_at)";
 import ChannelBreakdown from "../components/ChannelBreakdown";
 import ShareMenu from "../components/ShareMenu";
 import { panel as C, panelType as T, panelRadius as R, panelStageHue, withAlpha, premiumDark as PD } from "../theme/tokens";
@@ -478,6 +480,8 @@ export default function SalesmanPremium() {
 
  // listings
  const [myListings, setMyListings] = useState(seed.listings);
+ // id -> car, so a lead can tell its car was just sold (SOLD-1) without a refetch.
+ const carsById = useMemo(() => Object.fromEntries((myListings || []).map((c) => [c.id, c])), [myListings]);
  const [listingCopied, setListingCopied] = useState({});
  const [showAddForm, setShowAddForm] = useState(false);
  const [showFastForm, setShowFastForm] = useState(false);
@@ -729,6 +733,8 @@ export default function SalesmanPremium() {
  // Won flow — a confirm step instead of the silent undo-timer, so the sale
  // price/car flip is deliberate. See handleMarkWon.
  const [wonPrompt, setWonPrompt] = useState(null);
+ // SOLD-1: "Sold" from a car's status menu asks who bought it first.
+ const [soldPickCar, setSoldPickCar] = useState(null);
  const [wonSaving, setWonSaving] = useState(false);
  const [commissionData, setCommissionData] = useState({ total: 0, revenue: 0, count: 0 });
  // Re-render tick so "is this booking still in the future" stays honest on a
@@ -2676,8 +2682,11 @@ export default function SalesmanPremium() {
  else if (action === "tour") startShareTour(car);
  };
 
- const updateListingStatus = async (car, newStatus) => {
+ const updateListingStatus = async (car, newStatus, { direct = false } = {}) => {
  setStatusMenuCarId(null);
+ // SOLD-1: a status-only "sold" left the sale with no customer, handover or
+ // renewals. Ask who bought it; only "Sold elsewhere" comes back with direct.
+ if (newStatus === "sold" && !direct && car.status !== "sold") { setSoldPickCar(car); return; }
  const prevStatus = car.status;
  const prevSoldAt = car.sold_at ?? null;
  // Optimistically stamp sold_at so commission/goal figures pick the deal up
@@ -3317,6 +3326,11 @@ export default function SalesmanPremium() {
  ? t("salesmanPremium.followUp.reminderDueAgo", { ago: timeAgo(lead.follow_up_at) })
  : t("salesmanPremium.followUp.waiting", { reason: t(`salesmanPremium.followUp.${followUp.reason}`, { defaultValue: followUp.label }), n: Math.max(1, Math.round(followUp.sinceHours / 24)) })}
  </div>
+ )}
+
+ {/* SOLD-1: this buyer's car went to someone else. Keep the lead, offer another. */}
+ {carSoldToOther(lead, carsById) && (
+ <CarSoldLine onOffer={() => setLinkCarLeadId(lead.id)} onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)} />
  )}
 
  {/* Won -> what happens next. Tapping opens this buyer's handover checklist. */}
@@ -7661,6 +7675,17 @@ export default function SalesmanPremium() {
 
  {/* ── Mark won ── a win flips the car to sold and moves money, so it is a
  deliberate confirm rather than the undo-timer used for other stages. */}
+ {soldPickCar && (
+ <WhoBoughtSheet
+ car={soldPickCar}
+ leads={openLeadsOnCar(leads, soldPickCar.id)}
+ onClose={() => setSoldPickCar(null)}
+ onPickLead={(l) => { setSoldPickCar(null); setWonPrompt({ lead: l }); }}
+ onAddBuyer={() => { const id = soldPickCar.id; setSoldPickCar(null); setAddLeadForm((f) => ({ ...f, car_listing_id: id })); setShowAddLead(true); }}
+ onSoldElsewhere={() => { const c = soldPickCar; setSoldPickCar(null); updateListingStatus(c, "sold", { direct: true }); }}
+ />
+ )}
+
  {wonPrompt && (
  <div
  onClick={() => { if (!wonSaving) setWonPrompt(null); }}
@@ -7688,6 +7713,10 @@ export default function SalesmanPremium() {
  ? t("salesmanPremium.wonPrompt.withCar")
  : t("salesmanPremium.wonPrompt.noCar")}
  </p>
+ {(() => {
+ const others = openLeadsOnCar(leads, wonPrompt.lead.car_listing_id, wonPrompt.lead.id).length;
+ return others > 0 ? <p style={{ margin: "-10px 0 18px", fontSize: 12, color: "#cbd5e1", lineHeight: 1.6 }}>{t("soldPick.others", { count: others })}</p> : null;
+ })()}
  <div style={{ display: "flex", gap: 8 }}>
  <button
  onClick={() => setWonPrompt(null)}

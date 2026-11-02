@@ -159,7 +159,9 @@ export function buildLossReasons(leads) {
     }))
     .sort((a, b) => b.count - a.count);
   const recorded = lost.filter((l) => (l.loss_reason || "").trim()).length;
-  const top = rows.find((r) => r.recorded) || null;
+  // "Car sold to someone else" (SOLD-1) is not something the rep did wrong, so
+  // it is listed but never the coaching headline.
+  const top = rows.find((r) => r.recorded && r.reason !== "CarSold") || null;
   return { rows, lostTotal: lost.length, recorded, top };
 }
 

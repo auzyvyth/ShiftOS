@@ -265,7 +265,7 @@ const getHeatScore = (lead) => {
   return          {         score, terminal, icon: Snowflake,  label: "cold", color: "#93c5fd" };
 };
 
-const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost"];
+const LOST_REASONS = ["Price", "Timing", "Competitor", "Ghost", "CarSold"];
 
 // Human car age from registration year, for the lead drawer's car block.
 const carAgeLabel = (year) => {
