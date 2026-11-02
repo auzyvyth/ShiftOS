@@ -2239,7 +2239,7 @@ export default function SalesmanLite() {
   const updateLeadStage = async (leadId, stage) => {
     setStageSavingId(leadId);
     const oldStage = leads.find((l) => l.id === leadId)?.stage ?? null;
-    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? null;
+    const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile);
     const { error: stageErr } = await supabase
       .from("leads")
       .update({ stage, updated_at: new Date().toISOString() })
@@ -2443,7 +2443,7 @@ export default function SalesmanLite() {
   const handleLostReason = async (leadId, reason) => {
     const lead = leads.find((l) => l.id === leadId);
     const oldStage = lead?.stage ?? null;
-    const dealerId = lead?.dealer_id ?? null;
+    const dealerId = lead?.dealer_id ?? getDealerIdFromProfile(profile);
     const now = new Date().toISOString();
     setLostSavingId(leadId);
     const { error: lostErr } = await supabase
@@ -2495,7 +2495,7 @@ export default function SalesmanLite() {
     if (!wonPrompt) return;
     const { lead } = wonPrompt;
     const leadId = lead.id;
-    const dealerId = lead.dealer_id ?? null;
+    const dealerId = lead.dealer_id ?? getDealerIdFromProfile(profile);
     const now = new Date().toISOString();
     setWonSaving(true);
 
@@ -5589,7 +5589,7 @@ export default function SalesmanLite() {
               const { error: waActErr } = await supabase.from("lead_activities").insert({
                 lead_id: waModalLead.id, activity_type: "whatsapp_sent",
                 note: "WA message sent", created_by: userId,
-                dealer_id: waModalLead.dealer_id ?? null,
+                dealer_id: waModalLead.dealer_id ?? getDealerIdFromProfile(profile),
               });
               if (waActErr) console.error("waModal activity insert:", waActErr);
               setStaleLeads((p) => p.filter((l) => l.id !== waModalLead.id));

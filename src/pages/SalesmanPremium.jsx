@@ -1856,7 +1856,7 @@ export default function SalesmanPremium() {
  // Carry the lead's OWN dealer_id onto the activity row. This used to be
  // hardcoded null, which detached every Premium stage change from its
  // dealership scope (activity feeds and any dealer-side read missed them).
- const dealerId = leads.find((l) => l.id === leadId)?.dealer_id?? null;
+ const dealerId = leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile);
  const { error: stageErr } = await supabase
  .from("leads")
  .update({ stage, updated_at: new Date().toISOString() })
@@ -2126,7 +2126,7 @@ export default function SalesmanPremium() {
  to_stage: "lost",
  note: `Lost reason: ${reason}`,
  created_by: userId,
- dealer_id: leads.find((l) => l.id === leadId)?.dealer_id?? null,
+ dealer_id: leads.find((l) => l.id === leadId)?.dealer_id ?? getDealerIdFromProfile(profile),
  });
  if (lostActErr) console.error("handleLostReason activity:", lostActErr);
  setLeads((p) =>
@@ -2465,7 +2465,7 @@ export default function SalesmanPremium() {
  if (!wonPrompt) return;
  const { lead } = wonPrompt;
  const leadId = lead.id;
- const dealerId = lead.dealer_id?? null;
+ const dealerId = lead.dealer_id ?? getDealerIdFromProfile(profile);
  const now = new Date().toISOString();
  setWonSaving(true);
 
@@ -6188,7 +6188,7 @@ export default function SalesmanPremium() {
  activity_type: "whatsapp_sent",
  note: "WA message sent",
  created_by: userId,
- dealer_id: waModalLead.dealer_id?? null,
+ dealer_id: waModalLead.dealer_id ?? getDealerIdFromProfile(profile),
  });
  setStaleLeads((p) => p.filter((l) => l.id!== waModalLead.id));
  setLeads((p) =>
