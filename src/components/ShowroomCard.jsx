@@ -11,7 +11,7 @@ import ViewProgressBar from './ViewProgressBar';
 import { trackEvent, getOrCreateSessionId } from '../utils/analytics';
 import { getRef } from '../utils/refTracking';
 import { useSavedCars } from '../hooks/useSavedCars';
-import { calcMonthly } from '../utils/financing';
+import { calcMonthly, DEFAULT_LOAN_RATIO, DEFAULT_TENURE_YEARS, DEFAULT_EIR } from '../utils/financing';
 import { isSubdomain } from '../hooks/useTenant';
 
 // Inject the image-loading shimmer animation once. Animates `transform`
@@ -65,7 +65,7 @@ const ContactGate = lazy(() => import('./ContactGate'));
 
 const toThumb = (url) => cdnImg(url, 480, 72);
 
-export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false }) {
+export default function ShowroomCard({ car, ctaContext, inCompare = false, compareFull = false, onCompare, priority = false, dark = false, priceMode = 'price' }) {
   const navigate = useNavigate();
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -205,6 +205,10 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
   const ctxResolved = ctaContext?.type !== 'loading' ? ctaContext : null;
   const whatsappUrl = buildWaUrl(ctxResolved || { type: 'listing', profile: null, ref: null }, XDRIVE_WA, waText);
   const monthly    = calcMonthly(price);
+  // 'monthly' = the browse grid's Monthly switch (src/utils/priceMode.js): the
+  // instalment becomes the big number on the photo and the price moves to the
+  // small line. A car with no price has no monthly, so it stays on price.
+  const showMonthly = priceMode === 'monthly' && !!monthly;
 
   const specParts = [
     mileage ? Number(mileage).toLocaleString('en-MY') + ' km' : null,
@@ -296,10 +300,21 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
         {/* Price — solid black bar at the bottom of the image column, price
             centred within the bar (Carlist-style), not floating over the car. */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, minHeight: 42, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '7px 12px', background: '#000000', pointerEvents: 'none' }}>
-          {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
-          <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
-            {price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
-          </div>
+          {showMonthly ? (
+            <>
+              <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.6)', lineHeight: 1, marginBottom: '2px' }}>{car.is_model_card ? 'From, est.' : 'Est. monthly'}</div>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                RM {monthly.toLocaleString('en-MY')}<span style={{ fontSize: '11px', fontWeight: '700' }}>/mo</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {hasDiscount && <div style={{ fontSize: '9px', color: 'rgba(255,255,255,0.55)', textDecoration: 'line-through', lineHeight: 1, marginBottom: '2px' }}>RM {origPrice.toLocaleString('en-MY')}</div>}
+              <div style={{ fontSize: '15px', fontWeight: '800', color: isHot ? '#fca5a5' : '#ffffff', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                {price ? fromPrefix + 'RM ' + price.toLocaleString('en-MY') : 'P.O.R'}
+              </div>
+            </>
+          )}
         </div>
         <ViewProgressBar carId={car.id} />
 
@@ -426,12 +441,19 @@ export default function ShowroomCard({ car, ctaContext, inCompare = false, compa
             <ArrowLeftRight size={10} />{inCompare ? 'Added' : 'Compare'}
           </button>
           {(car.auction_grade || car.interior_grade) && (
-            <GradeBadge auctionGrade={car.auction_grade || null} interiorGrade={car.interior_grade || null} size="sm" />
+            <GradeBadge auctionGrade={car.auction_grade || null} interiorGrade={car.interior_grade || null} size="sm" labelled light={!dark} />
           )}
         </div>
 
-        {/* Row 5: monthly estimate */}
-        {monthly && (
+        {/* Row 5: the other number. Price mode -> the monthly estimate; Monthly
+            mode -> the price, plus the loan the estimate assumes, so the big
+            number on the photo is never read as an offer. */}
+        {showMonthly ? (
+          <p style={{ fontSize: '10px', color: c.spec, margin: '0 0 6px', lineHeight: 1.3 }}>
+            <span style={{ fontWeight: '600' }}>{fromPrefix}RM {price.toLocaleString('en-MY')}</span>
+            {' '}· {Math.round((1 - DEFAULT_LOAN_RATIO) * 100)}% down, {DEFAULT_TENURE_YEARS} yrs, {DEFAULT_EIR}%
+          </p>
+        ) : monthly && (
           <p style={{ fontSize: '10px', color: c.spec, margin: '0 0 6px', lineHeight: 1 }}>
             {car.is_model_card ? 'from' : 'est.'} <span style={{ color: c.spec, fontWeight: '600' }}>RM {monthly.toLocaleString('en-MY')}/mo</span>
           </p>
