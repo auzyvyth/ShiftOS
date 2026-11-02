@@ -10,6 +10,7 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 import { useCTAContext } from '../hooks/useCTAContext';
 import { supabase, publicClient } from '../supabaseClient';
 import { MY_STATES } from '../utils/locations';
+import { usePriceMode } from '../utils/priceMode';
 import { trackEvent } from '../utils/analytics';
 import { chassisSearch } from '../utils/chassisCodes';
 import { useMarketplaceTracking } from '../hooks/useMarketplaceTracking';
@@ -390,6 +391,9 @@ export default function CarListingPage() {
         text:'#111827', textMuted:'#6b7280', chipBg:'#fff',
         chipBorder:'#e5e7eb', chipText:'#374151', overlay:'rgba(247,246,242,0.55)',
         ink:'#0f1115', inkText:'#ffffff', tagBg:'#ECEAE4', tagBorder:'#E0DDD5' };
+
+  // Monthly | Price switch for the cards (device-remembered, src/utils/priceMode.js).
+  const [priceMode, setPriceMode] = usePriceMode();
 
   /* ── Parse URL params ── */
   const brand       = san.brand(searchParams.get('brand')||'');
@@ -911,6 +915,14 @@ export default function CarListingPage() {
                 </button>
               )}
             </div>
+            <div role="group" aria-label="Show cards by" style={{ display:'inline-flex', padding:'2px', borderRadius:'8px', background:T.chipBg, border:`1px solid ${T.chipBorder}`, fontFamily:"'Outfit',sans-serif" }}>
+              {[['monthly','Monthly'],['price','Price']].map(([v,label])=>(
+                <button key={v} type="button" aria-pressed={priceMode===v} onClick={()=>setPriceMode(v)}
+                  style={{ padding:'5px 12px', borderRadius:'6px', border:'none', background:priceMode===v?T.ink:'transparent', color:priceMode===v?T.inkText:T.chipText, fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'background-color 120ms var(--xd-ease-out), color 120ms var(--xd-ease-out)', fontFamily:'inherit' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── Layout: grid LEFT + sidebar RIGHT ── */}
@@ -951,7 +963,7 @@ export default function CarListingPage() {
                             const compareFull = compareIds.length >= 4 && !inCompare;
                             return (
                               <ShowroomCard
-                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark}
+                                key={car.id} car={car} ctaContext={ctaCtx} dark={dark} priceMode={priceMode}
                                 inCompare={inCompare} compareFull={compareFull}
                                 onCompare={()=>{ inCompare ? removeFromCompare(car.id) : addToCompare(car.id); }}
                                 priority={i===0}

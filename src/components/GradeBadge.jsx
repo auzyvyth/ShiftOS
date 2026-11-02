@@ -14,6 +14,13 @@ const GRADE_CFG = {
   '1':   { bg: 'rgba(220,38,38,0.18)',   border: 'rgba(220,38,38,0.4)',   text: '#f87171', tip: 'Poor condition' },
 };
 
+// Text colours for a LIGHT card: the pastel ones above are for dark surfaces
+// and were near-unreadable on the white marketplace card.
+const LIGHT_TEXT = {
+  '#4ade80': '#15803d', '#60a5fa': '#1d4ed8', '#facc15': '#a16207',
+  '#fb923c': '#c2410c', '#f87171': '#b91c1c', '#e5e7eb': '#374151',
+};
+
 const FALLBACK = { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)', text: '#e5e7eb', tip: '' };
 
 /**
@@ -23,13 +30,18 @@ const FALLBACK = { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)
  *   auctionGrade  string  e.g. "4.5"
  *   interiorGrade string  e.g. "A"
  *   size          "sm" (default) | "lg"
+ *   labelled      bool    prefix "Grade" — without it a bare "4.5" on a
+ *                         search card reads as a star rating
+ *   light         bool    on a light surface (darker text, dark divider)
  */
-export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' }) {
+export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm', labelled = false, light = false }) {
   const [tipOpen, setTipOpen] = useState(false);
   if (!auctionGrade && !interiorGrade) return null;
 
   const cfg   = auctionGrade ? (GRADE_CFG[auctionGrade] || FALLBACK) : FALLBACK;
   const isLg  = size === 'lg';
+  const gradeText = light ? (LIGHT_TEXT[cfg.text] || cfg.text) : cfg.text;
+  const font = 'var(--xd-font-body)';
 
   return (
     <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -58,26 +70,29 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
           cursor: cfg.tip ? 'pointer' : 'default',
         }}
       >
+        {labelled && (
+          <span style={{ color: gradeText, fontSize: isLg ? '12px' : '10px', fontWeight: '600', opacity: 0.85, fontFamily: font }}>Grade</span>
+        )}
         {auctionGrade && (
           <span style={{
-            color: cfg.text,
+            color: gradeText,
             fontSize: isLg ? '15px' : '11px',
             fontWeight: '800',
             letterSpacing: '0.02em',
-            fontFamily: "system-ui,sans-serif",
+            fontFamily: font,
           }}>
             {auctionGrade}
           </span>
         )}
         {auctionGrade && interiorGrade && (
-          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: isLg ? '13px' : '9px' }}>│</span>
+          <span style={{ color: light ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)', fontSize: isLg ? '13px' : '9px' }}>│</span>
         )}
         {interiorGrade && (
           <span style={{
-            color: '#d1d5db',
+            color: light ? '#374151' : '#d1d5db',
             fontSize: isLg ? '13px' : '10px',
             fontWeight: '700',
-            fontFamily: "system-ui,sans-serif",
+            fontFamily: font,
           }}>
             {interiorGrade}
           </span>
@@ -88,7 +103,7 @@ export default function GradeBadge({ auctionGrade, interiorGrade, size = 'sm' })
           position: 'absolute', bottom: '100%', left: 0, marginBottom: 6,
           background: '#111827', color: '#f3f4f6', fontSize: 11, fontWeight: 600,
           padding: '5px 9px', borderRadius: 6, whiteSpace: 'nowrap', zIndex: 20,
-          boxShadow: '0 4px 14px rgba(0,0,0,0.3)', fontFamily: "system-ui,sans-serif",
+          boxShadow: '0 4px 14px rgba(0,0,0,0.3)', fontFamily: font,
         }}>
           Grade {auctionGrade || interiorGrade}: {cfg.tip}
         </div>
