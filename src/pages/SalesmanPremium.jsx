@@ -2314,7 +2314,7 @@ export default function SalesmanPremium() {
  }
  } else {
  const { data: newLead, error: insErr } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
  buyer_name: apt.buyer_name || "Unknown", phone,
  car_listing_id: apt.car_listing_id || null,
  stage: "viewing_booked", lead_source: "manual", is_deleted: false,
@@ -2429,7 +2429,7 @@ export default function SalesmanPremium() {
  .from("leads").select("id").eq("salesman_id", userId).eq("phone", phone).limit(1);
  if (!existingRows ||!existingRows.length) {
  const { data: newLead } = await supabase.from("leads").insert({
- salesman_id: userId, dealer_id: profile?.dealer_id?? null,
+ salesman_id: userId, dealer_id: getDealerIdFromProfile(profile),
  buyer_name: enq.buyer_name || "Unknown", phone,
  notes: enq.buyer_message || null, car_listing_id: enq.listing_id || null,
  stage: "new", lead_source: "enquiry", is_deleted: false,
@@ -2553,7 +2553,7 @@ export default function SalesmanPremium() {
  const { data, error: addErr } = await supabase
  .from("leads")
  .insert({
- dealer_id: profile?.dealer_id?? null,
+ dealer_id: getDealerIdFromProfile(profile),
  salesman_id: userId,
  assigned_to: userId,
  buyer_name: addLeadForm.buyer_name,
