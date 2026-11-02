@@ -120,7 +120,8 @@ for another year.
   project; code accepts both (`OWN_DOMAINS` in `src/config/site.js`, both CORS files,
   storefront detection in api/og.js + api/sitemap.js; sitemap + robots always print the
   canonical domain). Canonical stays xdrive.my until switch night.
-  Owner, before testing on drevo.my: Supabase Auth > URL Configuration, add
+  DONE 2026-11-02: Vercel DNS zone on, Resend records added (DKIM, rsend, send, DMARC), owner did Supabase redirect URLs, Turnstile, Google origins, Resend. `https://drevo.my` added to `ID_TOKEN_ORIGINS` default.
+  Owner, before testing on drevo.my (done, kept for reference): Supabase Auth > URL Configuration, add
   `https://drevo.my/**`, `https://www.drevo.my/**`, `https://*.drevo.my/**` to Redirect
   URLs (Site URL unchanged); Cloudflare Turnstile widget, add `drevo.my` (sign-in is
   blocked there without it, `src/hooks/useAuthCaptcha.js`); Google Cloud OAuth client,
