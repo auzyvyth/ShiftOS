@@ -961,26 +961,68 @@ function useCarSchema(listing, dealer) {
 }
 
 /* Compact horizontal strip of small vertical cards (image + name + price).
-   Used for "More From This Seller" — minimal info, clean, Carlist-style. */
+   Used for "More From This Seller". On a phone 2 cards and a slice of the
+   third show, so it reads as scrollable (owner, 2026-11-03); on desktop the
+   round arrows beside the heading scroll it, and only when it overflows. */
 function SellerStrip({ cars, title, th }) {
   const navigate = useNavigate();
+  const rowRef = useRef(null);
+  const [edge, setEdge] = useState({ can: false, start: true, end: false });
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const measure = () => setEdge({
+      can: el.scrollWidth > el.clientWidth + 2,
+      start: el.scrollLeft <= 2,
+      end: el.scrollLeft + el.clientWidth >= el.scrollWidth - 2,
+    });
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
+    return () => { el.removeEventListener("scroll", measure); window.removeEventListener("resize", measure); };
+  }, [cars?.length]);
   if (!cars || cars.length === 0) return null;
   const go = (c) => {
     if (!(c.slug || c.id)) return;
     navigate((isSubdomain() ? "/cars/" : "/showroom/") + (c.slug || c.id));
   };
+  const scrollBy = (dir) => {
+    const el = rowRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.85, behavior: "smooth" });
+  };
+  const arrow = (dir, disabled) => (
+    <button type="button" onClick={() => scrollBy(dir)} disabled={disabled}
+      aria-label={dir < 0 ? "Scroll back" : "Scroll for more cars"}
+      className="cdp-ss-arrow"
+      style={{ width: 40, height: 40, borderRadius: "50%", border: `1px solid ${th.inputBorder}`, background: th.card, color: th.text, display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.35 : 1, padding: 0 }}>
+      {dir < 0 ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+    </button>
+  );
   return (
     <div>
-      <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: "0 0 16px", borderLeft: "3px solid #dc2626", paddingLeft: "12px" }}>
-        {title}
-      </h2>
-      <div style={{ display: "flex", gap: 12, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 4, scrollSnapType: "x mandatory" }}>
+      <style>{`
+        .cdp-ss-card { width: 200px; }
+        @media (max-width: 900px) { .cdp-ss-card { width: calc((100% - 24px) / 2.3); } .cdp-ss-arrows { display: none !important; } }
+        @media (hover:hover) and (pointer:fine) { .cdp-ss-arrow:not(:disabled):hover { border-color: ${th.text}; } }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 16px" }}>
+        <h2 style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: "2.2rem", letterSpacing: "0.06em", color: th.text, margin: 0, borderLeft: "3px solid #dc2626", paddingLeft: "12px" }}>
+          {title}
+        </h2>
+        {edge.can && (
+          <div className="cdp-ss-arrows" style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            {arrow(-1, edge.start)}
+            {arrow(1, edge.end)}
+          </div>
+        )}
+      </div>
+      <div ref={rowRef} style={{ display: "flex", gap: 12, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 4, scrollSnapType: "x mandatory" }}>
         {cars.map((c) => {
           const img   = cdnImg(Array.isArray(c.images) ? c.images[0] : null, 400, 70);
           const name  = [c.year, c.brand, c.model, c.variant].filter(Boolean).join(" ");
           const price = c.selling_price ? "RM " + Number(c.selling_price).toLocaleString("en-MY") : "P.O.R";
           return (
-            <button key={c.id} onClick={() => go(c)} style={{ flexShrink: 0, width: 152, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
+            <button key={c.id} className="cdp-ss-card" onClick={() => go(c)} style={{ flexShrink: 0, scrollSnapAlign: "start", textAlign: "left", background: th.card, border: `1px solid ${th.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer", padding: 0, fontFamily: "var(--xd-font-body)" }}>
               <div style={{ position: "relative", aspectRatio: "4 / 3", background: th.card2 }}>
                 {img && <img src={img} alt={name} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
                 {c.is_recon && (
@@ -2935,6 +2977,7 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
+                    {isAgent && salesmanProfile?.job_title && <p style={{ fontSize:12, color: th.textSec, margin:'0 0 1px' }}>{salesmanProfile.job_title}</p>}
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
                     <p style={{ fontSize:11, color: th.textSec }}>
                       <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
@@ -2962,39 +3005,6 @@ export default function CarDetailPage() {
               )}
             </div>
           </div>
-        {salesmanProfile && (() => {
-          const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
-          return (
-            <div style={{ marginTop:12 }}>
-              <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-                  {salesmanProfile.avatar_url
-                    ? <img src={salesmanProfile.avatar_url} alt={salesmanProfile.full_name} style={{ width:52, height:52, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                    : <div style={{ width:52, height:52, borderRadius:'50%', background:'#1d4ed8', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, fontWeight:700, color:'#fff' }}>
-                        {(salesmanProfile.full_name || 'S')[0].toUpperCase()}
-                      </div>
-                  }
-                  <div>
-                    <p style={{ fontSize:15, fontWeight:700, color: th.text, margin:0 }}>{salesmanProfile.full_name || 'Agent'}</p>
-                    {salesmanProfile.job_title && <p style={{ fontSize:12, color: th.textSec, margin:'3px 0 0' }}>{salesmanProfile.job_title}</p>}
-                    <p style={{ fontSize:11, color: th.textMuted, margin:'2px 0 0', letterSpacing:'0.05em' }}>Independent Agent · XDrive</p>
-                  </div>
-                </div>
-                {/* The green "Chat with <rep>" button that used to sit here opened the
-                    same enquiry modal as the WhatsApp button in the CTA card above it.
-                    Its routing moved onto that button; a second saturated green CTA for
-                    one job is exactly what the anti-slop rule forbids. The dealer-page
-                    link that followed it pointed at the same URL as "Visit Dealer's
-                    Page" in the CTA card, so it went too. */}
-                {salesmanProfile.slug && (
-                  <Link to={`/s/${salesmanProfile.slug}`} style={{ display:'block', textAlign:'center', fontSize:12, color: th.textSec, fontWeight:600, textDecoration:'none' }}>
-                    {firstName}&apos;s other listings &rarr;
-                  </Link>
-                )}
-              </div>
-            </div>
-          );
-        })()}
           <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" onCall={handleCall} />
 
           {/* Report lives down here, not beside the price — rare action. */}
@@ -3742,6 +3752,7 @@ export default function CarDetailPage() {
                   }
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 13.5, color: th.text, fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</p>
+                    {isAgent && salesmanProfile?.job_title && <p style={{ fontSize: 12, color: th.textSec, margin: '0 0 1px' }}>{salesmanProfile.job_title}</p>}
                     <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-d" th={th} />
                     <p style={{ fontSize: 12, color: th.textSec, margin: 0 }}>
                       <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-d" />
