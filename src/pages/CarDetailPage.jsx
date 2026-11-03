@@ -239,19 +239,37 @@ const newCarTiles = (car, newInfo) => {
 // extra tile rather than leave a half-empty row.
 const evenForNew = (car) => (t, i, all) => !(car.condition === "new" && all.length % 2 && i === all.length - 1);
 
-/* Spec Highlights — surfaces the dealer's own feature tags as scannable chips
-   right under the price. Data-backed (real car.features), capped so it stays a
-   highlight, not the full list (the Features tab below holds everything). */
-const SpecHighlights = ({ car, th }) => {
-  const tags = parseTags(car.features).slice(0, 8);
-  if (tags.length === 0) return null;
+/* The six-fact strip under the title (both layouts). Wraps on desktop, a
+   3-column grid on a phone. */
+const FactStrip = ({ items, th }) => {
+  if (!items.length) return null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {tags.map((tag, i) => (
-        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '9px 12px', border: `1px solid ${th.border}`, borderRadius: 8, fontSize: 12, color: th.text, background: th.card2, fontWeight: 500, lineHeight: 1.25, minWidth: 0 }}>
-          <Check size={13} strokeWidth={3} style={{ color: '#dc2626', flexShrink: 0 }} /> {tag}
-        </span>
+    <div className="cdp-d-strip" style={{ borderColor: th.border }}>
+      {items.map((s) => (
+        <div key={s.label} style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: th.text, margin: 0, fontVariantNumeric: "tabular-nums", overflowWrap: "anywhere" }}>{s.value}</p>
+          <p style={{ fontSize: 12.5, color: th.textMuted, margin: "3px 0 0" }}>{s.label}</p>
+        </div>
       ))}
+    </div>
+  );
+};
+
+/* The one "Car details" list (both layouts). Two columns on a wide screen,
+   one on a phone (.cdp-d-details). */
+const CarDetailsList = ({ rows, th }) => {
+  if (!rows.length) return null;
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <h2 className="cdp-d-h2" style={{ color: th.text }}>Car details</h2>
+      <div className="cdp-d-details">
+        {rows.map(([k, v]) => (
+          <div key={k} className="cdp-d-drow" style={{ borderColor: th.borderSec }}>
+            <span style={{ color: th.textMuted }}>{k}</span>
+            <span style={{ color: th.text, fontWeight: 500 }}>{v}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -837,8 +855,8 @@ function Skeleton({ preview = null }) {
       {/* ── MOBILE (≤900px) ── */}
       {/* M1 — full-width image */}
       {pvImg
-        ? <img className="sk-mobile" src={pvImg} srcSet={pvSet} sizes={HERO_SIZES} alt="" fetchPriority="high" style={{ display:'block', width:'100%', height:'clamp(240px,64vw,420px)', objectFit:'cover', background:'#080f18' }} />
-        : <div className="sk-mobile sk-b" style={{ height:'clamp(200px,50vw,360px)', borderRadius:0 }} />}
+        ? <img className="sk-mobile" src={pvImg} srcSet={pvSet} sizes={HERO_SIZES} alt="" fetchPriority="high" style={{ display:'block', width:'100%', height:'clamp(260px,75vw,480px)', objectFit:'cover', background:'#080f18' }} />
+        : <div className="sk-mobile sk-b" style={{ height:'clamp(260px,75vw,480px)', borderRadius:0 }} />}
 
       {/* M2 — identity block */}
       <div className="sk-mobile" style={{ padding:'20px 20px 0' }}>
@@ -2037,15 +2055,64 @@ export default function CarDetailPage() {
   const enquiryClick = repEnquiryTarget ? () => handleWhatsApp(repEnquiryTarget) : handleWhatsApp;
   const enquiryLabel = repFirstName ? `WhatsApp ${repFirstName}` : 'WhatsApp';
   const listedDays = daysAgo(car.created_at);
-  // The facts a buyer checks right after the price, said once on one line
-  // under it (the year is already in the title). Were below the fold on desktop.
   const CONDITION_LABEL = { recon: 'Recon', used: 'Used', new: 'New' };
-  const keyFacts = [
-    car.mileage ? `${fmt(car.mileage)} km` : null,
-    CONDITION_LABEL[car.condition] || (car.is_recon ? 'Recon' : null),
-    car.transmission || null,
-    car.state || car.city || null,
-  ].filter(Boolean);
+  // CAR DETAILS — every fact the seller filled in CarForm, in ONE list that
+  // the desktop AND mobile layouts both render (owner, 2026-11-03: body type
+  // and others were spread over a tile grid, a "Specs" tab and a "Performance"
+  // box, or not shown at all). A row only shows when it has a value; a new
+  // car adds the brand's per-variant spec sheet.
+  const nc = car.condition === "new" ? newCarShown?.specs : null;
+  const dateMY = (d) => (d ? new Date(d).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : null);
+  const chassisLabel = { clean: "Clean", repaired: "Repaired", written_off: "Written off" };
+  const detailRows = [
+    ["Brand", car.brand],
+    ["Model", car.model],
+    ["Variant", car.variant],
+    ["Year", car.year],
+    ["Condition", CONDITION_LABEL[car.condition] || (car.is_recon ? "Recon" : null)],
+    ["Body type", car.body_type],
+    ["Mileage", car.mileage ? `${fmt(car.mileage)} km` : null],
+    ["Engine", engineTile(car, newCarShown) !== "—" ? engineTile(car, newCarShown) : null],
+    ["Cylinders", car.cylinders ? `${car.cylinders}-cyl` : null],
+    ["Power", car.horsepower ? `${Number(car.horsepower).toLocaleString()} hp` : null],
+    ["Gearbox", car.transmission],
+    ["Fuel", car.fuel_type],
+    ["Fuel economy", car.fuel_consumption ? `${car.fuel_consumption} km/L` : nc?.fuel_kml ? `${nc.fuel_kml} km/L` : null],
+    ["Range", nc?.range_km ? `${nc.range_km} km` : nc?.ev_range_km ? `${nc.ev_range_km} km (EV)` : null],
+    ["Colour", car.colour],
+    ["Doors", car.doors],
+    ["Seats", car.seats || nc?.seats],
+    ["Airbags", nc?.airbags],
+    ["0-100 km/h", car.acceleration ? `${car.acceleration}s` : null],
+    ["Top speed", car.top_speed ? `${car.top_speed} km/h` : null],
+    ["Boot space", car.boot_size ? `${car.boot_size} L` : null],
+    ["CO2", car.co2_emissions ? `${car.co2_emissions} g/km` : null],
+    ["Safety rating", car.safety_rating ? `${car.safety_rating} stars` : null],
+    ["Insurance group", car.insurance_group ? String(car.insurance_group) : null],
+    ["Registered", dateMY(car.registration_date)],
+    ["Local registration", isRecon ? dateMY(car.local_reg_date) : null],
+    ["Previous owners", car.previous_owners != null && car.previous_owners !== "" ? String(car.previous_owners) : null],
+    ["Chassis no.", maskVin(car.vin_number)],
+    ["Chassis status", car.condition !== "new" ? chassisLabel[car.chassis_status] : null],
+    ["Imported from", isRecon ? car.import_country : null],
+    ["Auction house", isRecon ? car.auction_house : null],
+    ["Auction grade", isRecon ? car.auction_grade : null],
+    ["Interior grade", isRecon ? car.interior_grade : null],
+    ["Road tax until", dateMY(car.road_tax_expiry)],
+    ["Warranty", car.warranty_months > 0 ? `${car.warranty_months} months` : null],
+    ["Financing", fmtFinancing(car)],
+    ["Deposit to reserve", car.deposit_amount > 0 ? `RM ${fmt(car.deposit_amount)}` : null],
+    ["Location", [car.city, car.state].filter(Boolean).join(", ") || null],
+  ].filter(([, v]) => v !== null && v !== undefined && v !== "" && v !== "—");
+  // The six facts a buyer checks first, big, on one strip (both layouts).
+  const factStrip = [
+    { label: "Year", value: car.year ? String(car.year) : null },
+    { label: "Mileage", value: car.mileage ? `${fmt(car.mileage)} km` : car.condition === "new" ? "New" : null },
+    { label: "Engine", value: engineTile(car, newCarShown) !== "—" ? engineTile(car, newCarShown) : null },
+    { label: "Gearbox", value: car.transmission || null },
+    { label: "Body type", value: car.body_type || null },
+    { label: "Fuel", value: car.fuel_type || null },
+  ].filter((s) => s.value);
   // The commitment gate (real slot + both consent boxes) is enforced by
   // validateBooking on submit, NOT by disabling the button — a disabled button
   // cannot tell the buyer which box it is waiting on.
@@ -2206,9 +2273,11 @@ export default function CarDetailPage() {
         .cdp-header-title {
           font-size: 13px; font-weight: 500; color: white;
           opacity: var(--cdp-progress, 0); pointer-events: none;
-          max-width: 40%; text-align: center;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          max-width: 52%; text-align: center; min-width: 0;
+          display: flex; flex-direction: column; line-height: 1.25;
         }
+        .cdp-ht-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+        .cdp-ht-price { font-size: 12px; color: rgba(255,255,255,0.7); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 
         /* ── mobile nav arrows (shared with mosaic-mobile) ── */
@@ -2266,6 +2335,7 @@ export default function CarDetailPage() {
         .cdp-d-drow { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid; font-size: 14px; }
         .cdp-d-drow > span:last-child { text-align: right; overflow-wrap: anywhere; }
         @media (max-width: 1100px) { .cdp-d-details { grid-template-columns: 1fr; } }
+        @media (max-width: 900px) { .cdp-d-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; margin: 16px 0 20px; } .cdp-d-h2 { font-size: 1.45rem; } }
         .cdp-body-left { flex: 1.55; min-width: 0; }
         .cdp-sidebar {
           width: 360px; flex-shrink: 0;
@@ -2306,13 +2376,11 @@ export default function CarDetailPage() {
         @media (hover:hover) and (pointer:fine) { .cdp-wa-btn:hover { transform: scale(1.015); box-shadow: 0 6px 24px rgba(34,197,94,0.3) !important; } }
 
         /* ── header actions ── */
-        /* Three bare icons fit every breakpoint, so there is no separate
-           mobile action set to keep in sync — only Compare drops out on
-           small screens (a desktop-shaped feature). */
+        /* Save / Compare / Share, the same three on every breakpoint. Compare
+           shows on phones too since its button left the mobile title row. */
         .cdp-header-actions { display: flex; align-items: center; gap: 2px; margin-right: -7px; }
         @media (max-width: 900px) {
           .cdp-header { padding: 0 16px; }
-          .cdp-hdr-compare { display: none; }
         }
 
         /* ── lightbox ── */
@@ -2367,6 +2435,7 @@ export default function CarDetailPage() {
         .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok) { color: #64748b !important; }
         @media (hover:hover) and (pointer:fine) { .cdp-header-scrolled .cdp-hdr-icon:not(.cdp-hdr-on):not(.cdp-hdr-ok):hover { color: #0F172A !important; } }
         .cdp-header-title { color: #0F172A !important; }
+        .cdp-ht-price { color: #475569 !important; }
         .cdp-img-shimmer { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 400px 100% !important; }
         .sk { background: linear-gradient(90deg,#e7eaef 25%,#f1f3f6 50%,#e7eaef 75%) !important; background-size: 600px 100% !important; }
         .cdp-gallery { background: #e2e6ec !important; }
@@ -2405,8 +2474,10 @@ export default function CarDetailPage() {
           <button className="cdp-hdr-icon cdp-back-btn" onClick={handleBack} aria-label="Back">
             <ArrowLeft size={22} />
           </button>
+          {/* Name + price once scrolled, so the price stays on screen. */}
           <span className="cdp-header-title">
-            {carTitle}
+            <span className="cdp-ht-name">{carTitle}</span>
+            <span className="cdp-ht-price">{fmtPrice(shownPrice)}</span>
           </span>
           <div className="cdp-header-actions">
             <HeartButton
@@ -2438,9 +2509,9 @@ export default function CarDetailPage() {
             edge — `contain` left dark letterbox bars beside any photo whose
             aspect ratio didn't match the frame. The full uncropped photo is
             one tap away in the lightbox. */}
-        <div ref={heroMobileRef} className="cdp-mobile-only" style={{ position:'relative', height:'clamp(240px,64vw,420px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
+        <div ref={heroMobileRef} className="cdp-mobile-only" style={{ position:'relative', height:'clamp(260px,75vw,480px)', overflow:'hidden', background:'#080f18', cursor:'zoom-in' }}
           onTouchStart={galleryTouchStart} onTouchEnd={galleryTouchEnd}
-          onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setLbOpen(true); }}>
+          onClick={() => { if (gallerySwiped.current) { gallerySwiped.current = false; return; } setGridAt(activeIdx); }}>
           {!imgLoaded && <div className="cdp-img-shimmer" />}
           <img key={slideKey} className={`cdp-main-img cdp-slide-${slideDir}`}
             src={disp(images[activeIdx], 1280)}
@@ -2457,110 +2528,42 @@ export default function CarDetailPage() {
             }}
           />
           <div style={{ position:'absolute', bottom:0, left:0, right:0, height:'45%', background:'linear-gradient(to top, rgba(6,8,15,0.8), transparent)', pointerEvents:'none', zIndex:3 }} />
-          <div style={{ position:'absolute', bottom:14, right:14, zIndex:5, background:'rgba(6,8,15,0.78)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:4, padding:'3px 8px', fontSize:11, color:'rgba(255,255,255,0.8)', fontFamily:"var(--xd-font-body)", fontWeight:500 }}>
-            {activeIdx + 1} / {imgCount}
-          </div>
-          {imgCount > 1 && (() => {
-            const DOT_SLOT = 12;
-            const rawOffset = -(activeIdx - 2) * DOT_SLOT;
-            const minOffset = imgCount > 5 ? -(imgCount - 5) * DOT_SLOT : 0;
-            const trackShift = Math.min(0, Math.max(minOffset, rawOffset));
-            return (
-              <div className="cdp-dots" style={{ zIndex:4 }}>
-                <div style={{ display:'flex', gap:6, transform:`translateX(${trackShift}px)`, transition:'transform 300ms var(--xd-ease-in-out)' }}>
-                  {images.map((_, i) => {
-                    const dist = Math.abs(i - activeIdx);
-                    return (
-                      <button key={i} className={`cdp-dot${i === activeIdx ? ' active' : ''}`}
-                        onClick={() => go(i, i > activeIdx ? 'next' : 'prev')} aria-label={`Image ${i + 1}`}
-                        style={{ opacity: dist===0?1:dist===1?0.65:dist===2?0.35:0, transform: dist===0?'scaleX(2.8)':dist===1?'scale(0.9)':dist===2?'scale(0.7)':'scale(0)', pointerEvents: dist>2?'none':'auto' }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+          {/* Tapping the photo (or this) opens every photo on one page. Swipe
+              still steps through them here. */}
+          <button type="button" onClick={(e) => { e.stopPropagation(); setGridAt(activeIdx); }}
+            style={{ position:'absolute', bottom:14, right:14, zIndex:5, display:'inline-flex', alignItems:'center', gap:6, height:34, padding:'0 13px', borderRadius:999, border:0, background:'rgba(6,8,15,0.72)', color:'#fff', fontSize:12.5, fontWeight:600, fontFamily:"var(--xd-font-body)", fontVariantNumeric:'tabular-nums', cursor:'pointer' }}>
+            <Images size={14} /> {activeIdx + 1}/{imgCount} Photos
+          </button>
         </div>
 
-        {/* Thumbnail strip (mobile) */}
-        {imgCount > 1 && (
-          <div className="cdp-mobile-only" style={{ display: 'flex', gap: 7, padding: '10px 20px 0', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {images.map((src, i) => (
-              <button
-                key={i}
-                onClick={() => go(i, i > activeIdx ? 'next' : 'prev')}
-                aria-label={`View photo ${i + 1}`}
-                style={{ flex: '0 0 auto', width: 64, height: 46, padding: 0, borderRadius: 7, overflow: 'hidden', cursor: 'pointer', background: 'none', border: `2px solid ${i === activeIdx ? '#dc2626' : 'transparent'}`, opacity: i === activeIdx ? 1 : 0.55 }}
-              >
-                <img src={disp(src, 160)} alt={`${carTitle} thumbnail ${i + 1}`} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={onImgErr(src)} />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* M2 — Identity block */}
-        <div className="cdp-mobile-only" style={{ padding:'14px 20px 0' }}>
-          {/* Title strip — sits directly under the image, compact like the
-              marketplace cards: brand (strong) + model/variant/engine/year
-              (secondary) on a small line that wraps to a 2nd line if long, with
-              the financing calculator shortcut kept on the right. All colours are
-              from `th` so the strip stays legible on the light xdrive theme AND
-              the dark dealer-subdomain theme (was a hardcoded grey masthead that
-              went invisible on dark storefronts). */}
-          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:14 }}>
-            <h1 style={{
-              flex:1,
-              minWidth:0,
-              fontFamily:"'Bebas Neue',sans-serif",
-              fontSize:'clamp(1.7rem,7.5vw,2.4rem)',
-              lineHeight:1.05,
-              letterSpacing:'0.01em',
-              color: th.text,
-              margin:0,
-              display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden',
-            }}>
-              {car.brand} {nameplate}
-            </h1>
-            <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-              <button
-                onClick={() => { if (!car?.id) return; isInCompare(car.id) ? removeFromCompare(car.id) : addToCompare(car.id); }}
-                aria-label={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
-                title={car?.id && isInCompare(car.id) ? 'Remove from compare' : 'Add to compare'}
-                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background: car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.12)' : th.card2, border: `1px solid ${car?.id && isInCompare(car.id) ? 'rgba(220,38,38,0.4)' : th.border}`, color: car?.id && isInCompare(car.id) ? '#dc2626' : th.textSec, cursor:'pointer' }}
-              >
-                <ArrowLeftRight size={18} />
-              </button>
-              <button
-                onClick={() => setCalcOpen(true)}
-                aria-label="Open financing calculator"
-                title="Financing calculator"
-                style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:38, height:38, borderRadius:10, background: th.card2, border:`1px solid ${th.border}`, color: th.textSec, cursor:'pointer' }}
-              >
-                <Calculator size={18} />
-              </button>
-            </div>
-          </div>
+        {/* M2 — Identity block: title, price, where, then the six facts.
+            The seller comes later ("For sale by"): buyers come for the car. */}
+        <div className="cdp-mobile-only" style={{ padding:'16px 20px 0' }}>
+          <h1 style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'clamp(1.7rem,7.5vw,2.4rem)', lineHeight:1.05, letterSpacing:'0.01em', color: th.text, margin:0 }}>
+            {car.brand} {nameplate}
+          </h1>
           {sellerHeadline && (
-            <p style={{ fontSize:14, lineHeight:1.4, color: th.textSec, fontFamily:"var(--xd-font-body)", margin:'-6px 0 12px' }}>
-              {sellerHeadline}
-            </p>
+            <p style={{ fontSize:14, lineHeight:1.4, color: th.textSec, margin:'6px 0 0' }}>{sellerHeadline}</p>
           )}
-          {/* Mini details (body · transmission · fuel) — sits directly under the
-              title, per layout */}
-          <p style={{ fontSize:13, color: th.textSec, fontWeight:500, margin:'0 0 12px' }}>
-            {keyFacts.join('  ·  ')}
+          <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.4rem', color: th.text, lineHeight:1, margin:'10px 0 0', fontVariantNumeric:'tabular-nums' }}>
+            {fmtPrice(shownPrice)}
           </p>
-          {/* Price section — directly under the title / mini details */}
-          <div style={{ display:'flex', alignItems:'baseline', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-            <p style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:'2.6rem', color: th.text, lineHeight:1, margin:0 }}>
-              {fmtPrice(shownPrice)}
-            </p>
+          {isHot && (
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:6 }}>
+              <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
+              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#b91c1c' : '#f87171', fontSize:'11px', padding:'2px 7px', borderRadius:'4px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
+            </div>
+          )}
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:8, flexWrap:'wrap' }}>
             {calcMonthly(shownPrice) ? (
               <span style={{ fontSize:13, color: th.textSec }}>
                 ~<span style={{ color: th.text, fontWeight:600 }}>RM {fmt(calcMonthly(shownPrice))}</span>/mo
               </span>
             ) : null}
+            <button onClick={() => setCalcOpen(true)} aria-label="Open financing calculator"
+              style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(220,38,38,0.10)', border:'1px solid rgba(220,38,38,0.35)', borderRadius:8, color: isXdrive ? '#dc2626' : '#f87171', fontSize:12.5, fontWeight:700, padding:'5px 10px', cursor:'pointer', fontFamily:"var(--xd-font-body)", whiteSpace:'nowrap' }}>
+              <Calculator size={14} /> Calculate
+            </button>
             {!isOwnListing && (
               <AffordabilityCheck
                 carPrice={shownPrice}
@@ -2572,28 +2575,18 @@ export default function CarDetailPage() {
             )}
           </div>
           <VariantChips variants={newCarVariants} current={newCarVariant} onPick={chooseNewCarVariant} th={th} />
-          <MarketPriceTag car={car} isXdrive={isXdrive} th={th} />
-          {isHot && (
-            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12 }}>
-              <span style={{ fontSize:13, color: th.textMuted, textDecoration:'line-through' }}>{fmtPrice(car.original_price)}</span>
-              <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.2)', color: isXdrive ? '#dc2626' : '#f87171', fontSize:'11px', padding:'2px 7px', borderRadius:'4px', fontWeight:600, letterSpacing:'0.04em' }}>SAVE {fmtPrice(saving)}</span>
-            </div>
+          <div style={{ marginTop:8 }}><MarketPriceTag car={car} isXdrive={isXdrive} th={th} /></div>
+          {[car.city, car.state].filter(Boolean).length > 0 && (
+            <p style={{ fontSize:13, color: th.textSec, margin:'10px 0 0', display:'flex', alignItems:'center', gap:5 }}>
+              <MapPin size={13} /> {[car.city, car.state].filter(Boolean).join(", ")}
+              {listedDays !== null && <span style={{ color: th.textMuted }}>· Listed {listedDays === 0 ? "today" : `${listedDays}d ago`}</span>}
+            </p>
           )}
-          {/* Seller storefront link — kept high up, right under the price, so
-              buyers actually see whose showroom this is */}
-          {dealer?.subdomain && !isSubdomain() && (
-            <a
-              href={getStorefrontUrl(dealer.subdomain)}
-              target="_blank" rel="noopener noreferrer"
-              style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:13, color: th.textSec, textDecoration:'none', margin:'12px 0 0', letterSpacing:'0.02em', fontWeight:600, borderBottom:`1px solid ${th.inputBorder}`, paddingBottom:1, width:'fit-content' }}
-            >
-              Sold by {dealer.site_name || dealer.dealership} <ExternalLink size={12} />
-            </a>
-          )}
+          <FactStrip items={factStrip} th={th} />
           {/* Status badges — the plain "Recon" chip is dropped here; the icon'd
               Recon chip in ReconTrust below is the single source for that. */}
           {(isReserved || isHot || hasDocuments) && (
-            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, margin:'12px 0 0' }}>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6, minWidth:0, margin:'0 0 4px' }}>
               {isReserved && <span style={{ background:'rgba(220,38,38,0.08)', border:'1px solid rgba(220,38,38,0.22)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Reserved</span>}
               {isHot   && <span style={{ background:'rgba(220,38,38,0.1)', border:'1px solid rgba(220,38,38,0.28)', color:'#dc2626', fontSize:'10px', padding:'4px 10px', borderRadius:'5px', letterSpacing:'0.12em', textTransform:'uppercase', fontWeight:700 }}>Hot Deal</span>}
               {hasDocuments && (docsVerified
@@ -2602,115 +2595,42 @@ export default function CarDetailPage() {
               )}
             </div>
           )}
-          {/* Quick stats grid — moved ABOVE the badges */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden', marginTop:16 }}>
-            {[
-              { label:'Mileage',      value: car.mileage ? fmt(car.mileage)+' km' : car.condition === 'new' ? '0 km' : '—' },
-              { label:'Engine',       value: engineTile(car, newCarShown) },
-              { label:'Transmission', value: car.transmission || '—' },
-              { label:'Fuel',         value: car.fuel_type || '—' },
-              { label:'Colour',       value: car.colour || '—' },
-              { label:'Owners',       value: car.previous_owners != null ? car.previous_owners+' owner'+(car.previous_owners!==1?'s':'') : '—' },
-              { label:'Road Tax',     value: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY',{month:'short',year:'numeric'}) : '—' },
-              { label:'Financing',    value: fmtFinancing(car) },
-              ...newCarTiles(car, newCarShown),
-              ...(car.cylinders ? [{ label:'Cylinders', value:`${car.cylinders}-cyl` }] : []),
-              ...(car.fuel_consumption ? [{ label:'Fuel Economy', value:`${car.fuel_consumption} km/L` }] : []),
-            ].filter(({ value }) => value && value !== '—').filter(evenForNew(car)).map(({ label, value }) => (
-              <div key={label} style={{ padding:'14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
-                <p style={{ fontSize:11, textTransform:'uppercase', letterSpacing:'0.1em', color: th.textSec, fontWeight:700, marginBottom:5 }}>{label}</p>
-                <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
-              </div>
-            ))}
-          </div>
           {/* Trust + feature badges — moved BELOW the stats grid, tidied into an
-              even 2-column grid (see ReconTrust / SpecHighlights) */}
+              even 2-column grid */}
           <div style={{ marginTop:16 }}>
             <WarrantyBanner car={car} isXdrive={isXdrive} />
             <ReconTrust car={car} isXdrive={isXdrive} />
-            <SpecHighlights car={car} th={th} />
           </div>
           <div style={{ height:1, margin:'20px 0', background: th.border }} />
         </div>
 
-        {/* M4 — price terms + seller card. Book / Contact are NOT repeated
-            here: the sticky bottom bar is always on screen on phones, so the
-            card was a second copy of both buttons, below the fold. */}
-        <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:24 }}>
-          <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
-            <div>
-              <PriceIncludes car={car} seller={seller} th={th} />
-              <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
-            </div>
-            {/* Tertiary actions — quiet text links, not more buttons */}
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
-              <button onClick={() => setCalcOpen(true)}
-                style={{ background:'none', border:'none', padding:'0 0 2px', display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5, fontWeight:600, color: th.textSec, cursor:'pointer', fontFamily:"var(--xd-font-body)", borderBottom:`1px solid ${th.inputBorder}` }}>
-                <Calculator size={13} /> Financing calculator
-              </button>
-              {sellerPageUrl && !isSubdomain() && (
-                <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
-                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, textDecoration:'none', fontFamily:"var(--xd-font-body)", borderBottom:`1px solid ${th.border}`, paddingBottom:2 }}>
-                  <ExternalLink size={13} /> {sellerPageLabel}
-                </a>
-              )}
-            </div>
-            <div style={{ height:1, background: th.border, margin:'14px 0' }} />
-            {/* Dealer row */}
-            {(() => {
-              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
-              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
-              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
-              return (
-                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  {avatarSrc
-                    ? <img src={avatarSrc} alt={displayName} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
-                    : <div style={{ width:32, height:32, borderRadius:'50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', border:'1px solid rgba(255,255,255,0.08)' }}>
-                        {displayName[0]?.toUpperCase()}
-                      </div>
-                  }
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
-                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
-                    <p style={{ fontSize:11, color: th.textSec }}>
-                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
-                    </p>
-                  </div>
-                  <div style={{ textAlign:'right' }}>
-                    {listedDays !== null && <p style={{ fontSize:11, color: th.textMuted }}>{listedDays}d ago</p>}
-                    {viewCount > 0 && <p style={{ fontSize:11, color: th.textMuted, display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
-
         {/* M5 — Description + tabs + sections */}
         <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
-          <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.2em', color: th.textMuted, fontWeight:700, marginBottom:12 }}>About this car</p>
+          <h2 className="cdp-d-h2" style={{ color: th.text }}>About this car</h2>
           <p style={{ fontSize:14, color: th.textSec, lineHeight:1.85, marginBottom:28, whiteSpace:'pre-wrap' }}>
             {stripMd(car.specs) || `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
           </p>
-          {/* Tabs */}
+          <CarDetailsList rows={detailRows} th={th} />
+          {/* Tabs — Specs moved into "Car details" above */}
           {(() => {
             const tabs = [
               ...(Array.isArray(car.included_services) && car.included_services.length > 0 ? [{ key:'included', label:'What You Get' }] : []),
-              { key:'specs', label:'Specs' },
               ...(parseTags(car.features).length > 0 ? [{ key:'features', label:'Features' }] : []),
               ...(parseTags(car.options).length  > 0 ? [{ key:'options',  label:'Options'  }] : []),
             ];
+            const curTab = tabs.some((t) => t.key === detailTab) ? detailTab : tabs[0]?.key;
+            if (!tabs.length && !showConditionMap) return null;
             return (
               <>
                 <div style={{ display:'flex', gap:0, marginBottom:24, borderBottom:`1px solid ${th.border}` }}>
                   {tabs.map(t => (
                     <button key={t.key} onClick={() => setDetailTab(t.key)}
-                      style={{ background: detailTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${detailTab===t.key ? '#dc2626' : 'transparent'}`, color: detailTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: detailTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"var(--xd-font-body)", transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)', letterSpacing:'0.05em' }}>
+                      style={{ background: curTab===t.key ? 'rgba(220,38,38,0.04)' : 'none', border:'none', borderBottom:`2px solid ${curTab===t.key ? '#dc2626' : 'transparent'}`, color: curTab===t.key ? th.text : th.textMuted, padding:'10px 24px 12px', marginBottom:-1, fontSize:'13px', fontWeight: curTab===t.key ? 600 : 400, cursor:'pointer', fontFamily:"var(--xd-font-body)", transition:'background-color 200ms var(--xd-ease-out), border-color 200ms var(--xd-ease-out), color 200ms var(--xd-ease-out), box-shadow 200ms var(--xd-ease-out), transform 200ms var(--xd-ease-out), opacity 200ms var(--xd-ease-out)', letterSpacing:'0.05em' }}>
                       {t.label}
                     </button>
                   ))}
                 </div>
-                {detailTab === 'included' && (
+                {curTab === 'included' && (
                   <div>
                     <p style={{ fontSize:12, color: th.textSec, marginBottom:14, lineHeight:1.6 }}>
                       Included free with this car — no extra cost to you.
@@ -2735,51 +2655,26 @@ export default function CarDetailPage() {
                         margin, so the services are listed without a price. */}
                   </div>
                 )}
-                {detailTab === 'specs' && (
-                  <div>
-                    {[
-                      { key:'Registration Date', val: car.registration_date || car.local_reg_date || '—' },
-                      { key:'Chassis No.',       val: maskVin(car.vin_number) || '—' },
-                      { key:'Condition',         val: car.condition || '—' },
-                      { key:'Chassis Status',    val: <span style={{ display:'flex', alignItems:'center', gap:5 }}><span style={{ width:6, height:6, borderRadius:'50%', flexShrink:0, background: car.chassis_status==='clean'?'#22c55e':car.chassis_status==='repaired'?'#eab308':car.chassis_status==='written_off'?'#dc2626':th.textMuted }} />{car.chassis_status||'—'}</span> },
-                      { key:'Location',          val: [car.city, car.state].filter(Boolean).join(', ') || '—' },
-                      { key:'Previous Owners',   val: car.previous_owners ?? '—' },
-                      { key:'Road Tax Expiry',   val: car.road_tax_expiry ? new Date(car.road_tax_expiry).toLocaleDateString('en-MY') : '—' },
-                      { key:'Financing',         val: fmtFinancing(car) },
-                      { key:'Warranty',          val: car.warranty_months > 0 ? car.warranty_months+' months' : car.condition === 'new' ? '—' : 'None' },
-                      { key:'Deposit to Reserve',val: car.deposit_amount > 0 ? 'RM '+fmt(car.deposit_amount) : '—' },
-                      ...(isRecon ? [
-                        { key:'Import Country', val: car.import_country || '—' },
-                        { key:'Auction House',  val: car.auction_house  || '—' },
-                      ] : []),
-                    ].filter(({ key, val }) => val !== '—' && !(car.condition === 'new' && key === 'Chassis Status')).map(({ key, val }) => (
-                      <div key={key} className="cdp-row">
-                        <span style={{ fontSize:'13px', color: th.textSec }}>{key}</span>
-                        <span style={{ fontSize:'13px', color: th.text, textAlign:'right' }}>{val}</span>
-                      </div>
-                    ))}
-                    {showConditionMap && (
-                      <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
-                        <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Report</p>
-                        <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
-                          <DamageMap value={damageMarks} readOnly theme={isXdrive ? "light" : "dark"} />
-                          <p style={{ fontSize:12, color: th.textSec, marginTop:14, lineHeight:1.6 }}>{conditionSummary}</p>
-                          {conditionDeclaredOn && (
-                            <p style={{ fontSize:11, color: th.textMuted, marginTop:4 }}>Declared by the dealer on {conditionDeclaredOn}</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                {showConditionMap && (
+                  <div style={{ marginTop:24, paddingTop:20, borderTop:`1px solid ${th.border}` }}>
+                    <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.16em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Condition Report</p>
+                    <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:12, padding:'16px 20px' }}>
+                      <DamageMap value={damageMarks} readOnly theme={isXdrive ? "light" : "dark"} />
+                      <p style={{ fontSize:12, color: th.textSec, marginTop:14, lineHeight:1.6 }}>{conditionSummary}</p>
+                      {conditionDeclaredOn && (
+                        <p style={{ fontSize:11, color: th.textMuted, marginTop:4 }}>Declared by the dealer on {conditionDeclaredOn}</p>
+                      )}
+                    </div>
                   </div>
                 )}
-                {detailTab === 'features' && (
+                {curTab === 'features' && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
                     {parseTags(car.features).map((tag, i) => (
                       <span key={i} style={{ padding:'5px 12px', border:`1px solid ${th.border}`, borderRadius:'6px', fontSize:'12px', color: th.textSec, background: th.card2 }}>{tag}</span>
                     ))}
                   </div>
                 )}
-                {detailTab === 'options' && (
+                {curTab === 'options' && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:7 }}>
                     {parseTags(car.options).map((tag, i) => (
                       <span key={i} style={{ padding:'5px 12px', border:`1px solid ${th.border}`, borderRadius:'6px', fontSize:'12px', color: th.textSec, background: th.card2 }}>{tag}</span>
@@ -2931,28 +2826,6 @@ export default function CarDetailPage() {
           </div>
           )}
 
-          {/* Performance */}
-          {(car.horsepower || car.acceleration || car.top_speed || car.boot_size || car.doors || car.seats) && (
-            <div style={{ marginTop:32, paddingTop:28, borderTop:`1px solid ${th.border}` }}>
-              <p style={{ fontSize:10, textTransform:'uppercase', letterSpacing:'0.18em', color: th.textMuted, fontWeight:700, marginBottom:14 }}>Performance &amp; Details</p>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:2, border:`1px solid ${th.border}`, borderRadius:12, overflow:'hidden' }}>
-                {[
-                  { label:'Power', value: car.horsepower ? `${car.horsepower} bhp` : null },
-                  { label:'Doors', value: car.doors ? `${car.doors} doors` : null },
-                  { label:'Seats', value: car.seats ? `${car.seats} seats` : null },
-                  { label:'0–100 km/h', value: car.acceleration ? `${car.acceleration}s` : null },
-                  { label:'Top Speed', value: car.top_speed ? `${car.top_speed} km/h` : null },
-                  { label:'Boot Space', value: car.boot_size ? `${car.boot_size}L` : null },
-                ].filter(s => s.value).map(({ label, value }) => (
-                  <div key={label} style={{ padding:'12px 14px', background: th.card, borderRight:`1px solid ${th.borderSec}`, borderBottom:`1px solid ${th.borderSec}` }}>
-                    <p style={{ fontSize:9, textTransform:'uppercase', letterSpacing:'0.14em', color: th.textMuted, fontWeight:700, marginBottom:4 }}>{label}</p>
-                    <p style={{ fontSize:13, color: th.text, fontWeight:500, margin:0 }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Running Costs */}
           {(() => {
             const cc = car.engine_cc || 0;
@@ -3039,25 +2912,60 @@ export default function CarDetailPage() {
             </div>
           )}
 
-          {/* About this dealer (mobile) */}
-          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" onCall={handleCall} />
-
           {/* Reviews + Q&A, one section (mobile) */}
           <SellerFeedback dealerId={car.dealer_id} listingId={car.id} sellerName={dealerName} th={th} anchorId="reviews-m" onSummary={handleReviewSummary} />
 
-          {/* Report lives down here, not beside the price — rare action. */}
-          <div style={{ marginTop:24 }}>
-            <ReportListingButton listingId={car?.id} th={th} variant="link" />
+          {/* FOR SALE BY — the seller, said once, after the car (owner,
+              2026-11-03). Book / Contact are not repeated: the bottom bar is
+              always on screen. */}
+          <h2 className="cdp-d-h2" style={{ color: th.text, marginTop:40 }}>For sale by</h2>
+          <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
+            {/* Dealer row */}
+            {(() => {
+              const isAgent = car.seller_role === 'salesman' || !!salesmanProfile;
+              const displayName = isAgent ? (salesmanProfile?.full_name || 'Agent') : (dealer ? dealerName : 'Seller');
+              const avatarSrc = isAgent ? salesmanProfile?.avatar_url : (dealer?.avatar_url || dealer?.site_logo_url);
+              return (
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  {avatarSrc
+                    ? <img src={avatarSrc} alt={displayName} style={{ width:32, height:32, borderRadius:'50%', objectFit:'cover', flexShrink:0 }} />
+                    : <div style={{ width:32, height:32, borderRadius:'50%', background: isAgent ? '#1d4ed8' : '#111e2e', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#fff', border:'1px solid rgba(255,255,255,0.08)' }}>
+                        {displayName[0]?.toUpperCase()}
+                      </div>
+                  }
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ fontSize:13, color: th.text, fontWeight:600, marginBottom:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{displayName}</p>
+                    <SellerRating summary={reviewSummary} floor={REVIEW_FLOOR} anchorId="reviews-m" th={th} />
+                    <p style={{ fontSize:11, color: th.textSec }}>
+                      <SellerTypeLine isAgent={isAgent} sellerType={car.seller_type} salesmanProfile={salesmanProfile} dealer={dealer} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" />
+                    </p>
+                  </div>
+                  <div style={{ textAlign:'right' }}>
+                    {listedDays !== null && <p style={{ fontSize:11, color: th.textMuted }}>{listedDays}d ago</p>}
+                    {viewCount > 0 && <p style={{ fontSize:11, color: th.textMuted, display:'flex', alignItems:'center', gap:3 }}><Eye size={10} /> {viewCount}</p>}
+                  </div>
+                </div>
+              );
+            })()}
+            <div style={{ height:1, background: th.border, margin:'14px 0' }} />
+            <div>
+              <PriceIncludes car={car} seller={seller} th={th} />
+              <DepositTerms amount={car.deposit_amount} seller={seller} th={th} isXdrive={isXdrive} />
+            </div>
+            {/* Tertiary actions — quiet text links, not more buttons */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:18, marginTop:14, flexWrap:'wrap' }}>
+              {sellerPageUrl && !isSubdomain() && (
+                <a href={sellerPageUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color: th.textSec, textDecoration:'none', fontFamily:"var(--xd-font-body)", borderBottom:`1px solid ${th.border}`, paddingBottom:2 }}>
+                  <ExternalLink size={13} /> {sellerPageLabel}
+                </a>
+              )}
+            </div>
           </div>
-
-        </div>
-
-
-        {/* M7 — Salesman card */}
         {salesmanProfile && (() => {
           const firstName = (salesmanProfile.full_name || 'Agent').split(' ')[0];
           return (
-            <div className="cdp-mobile-only" style={{ padding:'0 20px', marginBottom:32 }}>
+            <div style={{ marginTop:12 }}>
               <div style={{ background: th.card, border:`1px solid ${th.border}`, borderRadius:14, padding:'20px' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
                   {salesmanProfile.avatar_url
@@ -3087,6 +2995,15 @@ export default function CarDetailPage() {
             </div>
           );
         })()}
+          <DealerIdentity dealer={dealer} dealerName={dealerName} th={th} isXdrive={isXdrive} anchorId="dealer-identity-m" onCall={handleCall} />
+
+          {/* Report lives down here, not beside the price — rare action. */}
+          <div style={{ marginTop:24 }}>
+            <ReportListingButton listingId={car?.id} th={th} variant="link" />
+          </div>
+
+        </div>
+
 
         {/* More from this seller (mobile) — above the "More {brand}" section */}
         {sellerCars.length > 0 && (
@@ -3230,27 +3147,7 @@ export default function CarDetailPage() {
 
             {/* The six facts a buyer checks first, big, on one strip. The full
                 list is "Car details" below. */}
-            {(() => {
-              const strip = [
-                { label: "Year", value: car.year ? String(car.year) : null },
-                { label: "Mileage", value: car.mileage ? `${fmt(car.mileage)} km` : car.condition === "new" ? "New" : null },
-                { label: "Engine", value: engineTile(car, newCarShown) !== "—" ? engineTile(car, newCarShown) : null },
-                { label: "Gearbox", value: car.transmission || null },
-                { label: "Body type", value: car.body_type || null },
-                { label: "Fuel", value: car.fuel_type || null },
-              ].filter((s) => s.value);
-              if (!strip.length) return null;
-              return (
-                <div className="cdp-d-strip" style={{ borderColor: th.border }}>
-                  {strip.map((s) => (
-                    <div key={s.label}>
-                      <p style={{ fontSize: 16, fontWeight: 600, color: th.text, margin: 0, fontVariantNumeric: "tabular-nums" }}>{s.value}</p>
-                      <p style={{ fontSize: 12.5, color: th.textMuted, margin: "3px 0 0" }}>{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-              );
-            })()}
+            <FactStrip items={factStrip} th={th} />
             {/* Plain "Recon" chip dropped — the icon'd Recon chip in ReconTrust
                 below is the single source, so it isn't shown twice in one view.
                 Warranty rides in this same row now, next to Docs on File —
@@ -3372,70 +3269,7 @@ export default function CarDetailPage() {
                 `${car.year} ${car.brand} ${car.model}, ${fmt(car.mileage)} km, ${car.transmission}, ${car.fuel_type}, ${car.colour}.`}
             </p>
 
-            {/* CAR DETAILS — every fact the seller filled in CarForm, in ONE
-                two-column list (owner, 2026-11-03: body type and others were
-                spread over an 8-tile grid, a "Specs" tab and a "Performance"
-                box, or not shown at all). A row only shows when it has a
-                value. New cars add the brand's per-variant spec sheet. */}
-            {(() => {
-              const nc = car.condition === "new" ? newCarShown?.specs : null;
-              const dateMY = (d) => (d ? new Date(d).toLocaleDateString("en-MY", { day: "numeric", month: "short", year: "numeric" }) : null);
-              const chassisLabel = { clean: "Clean", repaired: "Repaired", written_off: "Written off" };
-              const rows = [
-                ["Brand", car.brand],
-                ["Model", car.model],
-                ["Variant", car.variant],
-                ["Year", car.year],
-                ["Condition", CONDITION_LABEL[car.condition] || (car.is_recon ? "Recon" : null)],
-                ["Body type", car.body_type],
-                ["Mileage", car.mileage ? `${fmt(car.mileage)} km` : null],
-                ["Engine", engineTile(car, newCarShown) !== "—" ? engineTile(car, newCarShown) : null],
-                ["Cylinders", car.cylinders ? `${car.cylinders}-cyl` : null],
-                ["Power", car.horsepower ? `${Number(car.horsepower).toLocaleString()} hp` : null],
-                ["Gearbox", car.transmission],
-                ["Fuel", car.fuel_type],
-                ["Fuel economy", car.fuel_consumption ? `${car.fuel_consumption} km/L` : nc?.fuel_kml ? `${nc.fuel_kml} km/L` : null],
-                ["Range", nc?.range_km ? `${nc.range_km} km` : nc?.ev_range_km ? `${nc.ev_range_km} km (EV)` : null],
-                ["Colour", car.colour],
-                ["Doors", car.doors],
-                ["Seats", car.seats || nc?.seats],
-                ["Airbags", nc?.airbags],
-                ["0-100 km/h", car.acceleration ? `${car.acceleration}s` : null],
-                ["Top speed", car.top_speed ? `${car.top_speed} km/h` : null],
-                ["Boot space", car.boot_size ? `${car.boot_size} L` : null],
-                ["CO2", car.co2_emissions ? `${car.co2_emissions} g/km` : null],
-                ["Safety rating", car.safety_rating ? `${car.safety_rating} stars` : null],
-                ["Insurance group", car.insurance_group ? String(car.insurance_group) : null],
-                ["Registered", dateMY(car.registration_date)],
-                ["Local registration", isRecon ? dateMY(car.local_reg_date) : null],
-                ["Previous owners", car.previous_owners != null && car.previous_owners !== "" ? String(car.previous_owners) : null],
-                ["Chassis no.", maskVin(car.vin_number)],
-                ["Chassis status", car.condition !== "new" ? chassisLabel[car.chassis_status] : null],
-                ["Imported from", isRecon ? car.import_country : null],
-                ["Auction house", isRecon ? car.auction_house : null],
-                ["Auction grade", isRecon ? car.auction_grade : null],
-                ["Interior grade", isRecon ? car.interior_grade : null],
-                ["Road tax until", dateMY(car.road_tax_expiry)],
-                ["Warranty", car.warranty_months > 0 ? `${car.warranty_months} months` : null],
-                ["Financing", fmtFinancing(car)],
-                ["Deposit to reserve", car.deposit_amount > 0 ? `RM ${fmt(car.deposit_amount)}` : null],
-                ["Location", [car.city, car.state].filter(Boolean).join(", ") || null],
-              ].filter(([, v]) => v !== null && v !== undefined && v !== "" && v !== "—");
-              if (!rows.length) return null;
-              return (
-                <div style={{ marginBottom: 40 }}>
-                  <h2 className="cdp-d-h2" style={{ color: th.text }}>Car details</h2>
-                  <div className="cdp-d-details">
-                    {rows.map(([k, v]) => (
-                      <div key={k} className="cdp-d-drow" style={{ borderColor: th.borderSec }}>
-                        <span style={{ color: th.textMuted }}>{k}</span>
-                        <span style={{ color: th.text, fontWeight: 500 }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
+            <CarDetailsList rows={detailRows} th={th} />
 
             {/* Tabbed specs / features / options */}
             {(() => {
