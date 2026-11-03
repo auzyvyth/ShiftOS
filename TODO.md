@@ -70,12 +70,19 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## OPS-PURGE: nightly account purge deletes nothing (found 2026-11-03)
+- [ ] `purge-deleted-accounts-daily` (cron 02:30 UTC) reports "succeeded" every night, yet
+  accounts soft-deleted on 2026-10-05..08 were still there on 2026-11-03 (past the 30 days).
+  pg_cron only means "the HTTP call went out". Check the function's response in
+  `net._http_response` / edge logs (401 again, or a deleteUser FK failure). The owner had the
+  15 deleted accounts removed by hand that day (all but `iskandar`, kept on purpose).
+
 ## LAUNCH-1212: money before the 12 Dec ads (owner's birthday) — planned 2026-10-31
 Owner: Supabase Pro in ~2 days; at least RM200 on ads around 12 Dec; xdrive.my renewed
 for another year.
 - [ ] **Convert the 2 real Premium trials FIRST** (owner, 2026-10-31: of the 5 non-owner
-  trials only 2 are real; the others never signed in after the setup email). One payment
-  ever so far. Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
+  trials only 2 are real; the others never signed in after the setup email). ZERO real
+  payments (2026-11-03: the one logged RM35 was the owner's own `airymotors` test, row deleted). Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
   car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
   tell real from not, the owner signs in as console-made sellers to add their cars.
 - [ ] **LIVE-BASIC: Lite's Live presenter cut to basic (owner, 2026-11-01). BUILT, NOT on staging/live.**
@@ -2867,6 +2874,13 @@ Background (from the idea):
 
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
+
+- **IDEA-30: Dealers first, their own site with no Drevo link (owner, 2026-11-03)** — sign
+  dealerships before salesmen, and give each a website (the `<sub>` storefront) where their own
+  marketing lands, with no link back to the marketplace on it. Why: sellers want buyers, and a
+  dealer already spends on ads; the site is what they would pay for. Blocked by: the slow
+  database (Supabase Pro first), and the dealer dashboard has no live users (CLAUDE.md DB
+  migrations rule), so this is a sales test before it is a build.
 
 - **IDEA-29: Moving loan poster for Premium (owner, 2026-11-01)** — the Kiraan Loan poster
   (POSTER-1) as a short video instead of a still: the photo drifts, the price lands, the
