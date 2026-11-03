@@ -2887,6 +2887,17 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-31: Old-Siri style voice commands, no LLM (owner, 2026-11-03)** — a fixed set of
+  commands learned from example phrases (intent + slots, like pre-LLM Siri), not a chatbot.
+  Best fit: the Live presenter, where the seller's hands are busy and they are already
+  talking: "nombor tujuh" / "show seven" opens #7, "deposit sepuluh peratus", "tujuh tahun",
+  "contact on". Maybe later a seller command bar ("add a car", "who do I call today").
+  Why: free (no AI bill), fast, works offline, cannot invent a price (it only presses buttons
+  that already exist). Constraints: browser speech-to-text sends audio to Google on Chrome and
+  is weak on iPhone; mixed BM/English hurts accuracy; a seller talks non-stop on a live, so it
+  needs push-to-talk or a wake word or it fires by accident. Test first: ~30 example phrases
+  per command from 3 real sellers, measure how often it picks the right one.
+
 - **IDEA-30: Dealers first, their own site with no Drevo link (owner, 2026-11-03)** — sign
   dealerships before salesmen, and give each a website (the `<sub>` storefront) where their own
   marketing lands, with no link back to the marketplace on it. Why: sellers want buyers, and a
