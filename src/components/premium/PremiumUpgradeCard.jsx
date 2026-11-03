@@ -57,6 +57,11 @@ export default function PremiumUpgradeCard({ profile, cars, onRefer }) {
   return (
     <div style={card}>
       <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>XDrive Premium, RM{PRICE} a month</p>
+      {PLAN_CONFIG.salesman_full?.listPrice ? (
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#fca5a5", lineHeight: 1.5 }}>
+          Founding price for the first {PLAN_CONFIG.salesman_full.foundingSpots} sellers, yours for as long as you stay. After that, RM{PLAN_CONFIG.salesman_full.listPrice}.
+        </p>
+      ) : null}
       <p style={{ margin: "6px 0 0", fontSize: 12.5, color: "#9ca3af", lineHeight: 1.6 }}>
         Everything you have now comes with you: cars, leads, buyers, chats and bookings. Nothing is moved or re-entered.
       </p>

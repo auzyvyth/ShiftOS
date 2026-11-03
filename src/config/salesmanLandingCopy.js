@@ -46,6 +46,8 @@ const LITE_CAP = PLAN_CONFIG.salesman_lite.listingCap;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full.listingCap;
 const LITE_POSTERS = LITE_POSTERS_PER_MONTH;
 const PREMIUM_PRICE = PLAN_CONFIG.salesman_full.price;
+const LIST_PRICE = PLAN_CONFIG.salesman_full.listPrice;
+const FOUNDING_SPOTS = PLAN_CONFIG.salesman_full.foundingSpots;
 const TRIAL_DAYS = PLAN_CONFIG.salesman_full.trialDays;
 // "About RM1.20 a day": the price over a 30-day month, rounded to 10 sen.
 const PER_DAY = (Math.round((PREMIUM_PRICE / 30) * 10) / 10).toFixed(2);
@@ -320,6 +322,7 @@ const EN = {
     planCards: {
       premium: {
         badge: `${TRIAL_DAYS} days free`,
+        founding: `Founding price for the first ${FOUNDING_SPOTS} sellers, yours for as long as you stay. After that, Premium is RM${LIST_PRICE} a month.`,
         billing: "Paid month by month · DuitNow QR",
         groups: [
           { h: "Live calculator", items: ["Full Live presentation: Budget, Viewer, Docs, rebates, insurance", "Unlimited loan posters", ...P_EN.calc] },
@@ -660,6 +663,7 @@ const MS = {
     planCards: {
       premium: {
         badge: `${TRIAL_DAYS} hari percuma`,
+        founding: `Harga pengasas untuk ${FOUNDING_SPOTS} seller pertama, kekal selagi anda melanggan. Lepas tu, Premium RM${LIST_PRICE} sebulan.`,
         billing: "Bayar bulan ke bulan · DuitNow QR",
         groups: [
           { h: "Kalkulator Live", items: ["Live presentation penuh: Bajet, Penonton, Dokumen, rebat, insurans", "Poster loan tanpa had", ...P_MS.calc] },

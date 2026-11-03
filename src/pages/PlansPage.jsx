@@ -72,7 +72,7 @@ export default function PlansPage() {
       </p>
       <div className={`plans-grid plans-grid-${cols}`}>
         {plans.map((p) => (
-          <PlanCard key={p.tier} plan={p} current={false} onSelect={(route) => navigate(route)} />
+          <PlanCard key={p.tier} plan={p} current={false} featured={p.tier === 'premium'} muted={p.tier !== 'premium'} onSelect={(route) => navigate(route)} />
         ))}
       </div>
     </section>
@@ -82,7 +82,7 @@ export default function PlansPage() {
     <div style={{ minHeight: '100vh', background: '#08090f', fontFamily: "'Outfit', sans-serif" }}>
       <Helmet>
         <title>Plans &amp; Pricing | XDrive</title>
-        <meta name="description" content="Sell cars on XDrive. Free for individual salesmen, RM35/month for Premium, dealer plans from RM299/month with a 14-day free trial." />
+        <meta name="description" content="Sell cars on XDrive. Free for individual salesmen, Premium from RM35/month (founding price), dealer plans from RM299/month with a 14-day free trial." />
         <link rel="canonical" href="https://xdrive.my/plans" />
       </Helmet>
 
