@@ -175,10 +175,10 @@ export default function PostSaleChecklist({ lead, compact = false, dark = false,
                     type="date"
                     value={t.result_date || plusMonths(t.completed_at, 12)}
                     onChange={(e) => writeExpiry(t.id, { result_date: e.target.value || null })}
-                    title="Prefilled 12 months ahead. Correct it if the real policy differs — the customer's renewal reminder runs off this date."
+                    title="Prefilled 12 months ahead. Correct it if the real policy differs. Your renewal reminder runs off this date."
                     style={{ fontSize: 11.5, padding: '5px 7px', borderRadius: 6, background: th.inputBg, border: `1px solid ${th.inputBorder}`, color: th.text }}
                   />
-                  <span style={{ fontSize: 10, color: th.muted }}>reminds the customer automatically</span>
+                  <span style={{ fontSize: 10, color: th.muted }}>we remind you before it ends</span>
                 </div>
               )}
 
