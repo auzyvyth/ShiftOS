@@ -175,13 +175,13 @@ function BuyerCard({ c, hs, pkgs, open, setOpen, linked, repName, onOpenHandover
 
   const remindText = (r) => t(r.key === "overdue" ? "salesmanPremium.sold.waRenewExpired" : "salesmanPremium.sold.waRenewDue", {
     who: firstName(c.name) || t("salesmanPremium.sold.there", { defaultValue: "there" }),
-    me: me || "XDrive", what: kindLabel(r.kind).toLowerCase(), car: car || t("salesmanPremium.sold.yourCar", { defaultValue: "your car" }), date: date(r.date, true),
+    me: me || t("salesmanPremium.sold.advisor", { defaultValue: "your car advisor" }), what: kindLabel(r.kind).toLowerCase(), car: car || t("salesmanPremium.sold.yourCar", { defaultValue: "your car" }), date: date(r.date, true),
     defaultValue: r.key === "overdue"
       ? "Hi {{who}}, {{me}} here. The {{what}} on the {{car}} expired on {{date}}. Want me to help you sort the renewal?"
       : "Hi {{who}}, {{me}} here. The {{what}} on the {{car}} is due on {{date}}. Want me to help you sort the renewal?",
   });
   const tradeText = t("salesmanPremium.sold.waTrade", {
-    who: firstName(c.name) || t("salesmanPremium.sold.there", { defaultValue: "there" }), me: me || "XDrive", car: car || t("salesmanPremium.sold.yourCar", { defaultValue: "your car" }),
+    who: firstName(c.name) || t("salesmanPremium.sold.there", { defaultValue: "there" }), me: me || t("salesmanPremium.sold.advisor", { defaultValue: "your car advisor" }), car: car || t("salesmanPremium.sold.yourCar", { defaultValue: "your car" }),
     defaultValue: "Hi {{who}}, {{me}} here. You have had the {{car}} a while now. If you are thinking about changing, I can take a look at it and tell you your options. No obligation.",
   });
 

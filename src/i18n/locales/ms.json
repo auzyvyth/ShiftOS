@@ -1163,6 +1163,7 @@
       "visitDue": "Lawatan sampai masa",
       "addOne": "Tambah satu",
       "there": "tuan/puan",
+      "advisor": "penasihat kereta anda",
       "yourCar": "kereta anda",
       "waRenewExpired": "Hi {{who}}, {{me}} di sini. Nak maklumkan {{what}} untuk {{car}} dah tamat pada {{date}}. Nak saya tolong uruskan pembaharuan?",
       "waRenewDue": "Hi {{who}}, {{me}} di sini. Nak maklumkan {{what}} untuk {{car}} akan tamat pada {{date}}. Nak saya tolong uruskan pembaharuan?",
