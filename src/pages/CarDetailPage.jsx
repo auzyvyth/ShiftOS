@@ -43,6 +43,7 @@ import {
   Images,
 } from "lucide-react";
 import HeartButton from "../components/HeartButton";
+import PhotoGallerySheet from "../components/car/PhotoGallerySheet";
 import ReportListingButton from "../components/ReportListingButton";
 import { useCompare } from "../hooks/useCompare";
 import { getCategoryCfg } from "../utils/serviceCategories";
@@ -1234,6 +1235,8 @@ export default function CarDetailPage() {
 
   /* lightbox */
   const [lbOpen, setLbOpen] = useState(false);
+  // Desktop: the all-photos page (null = closed, else the photo to start at).
+  const [gridAt, setGridAt] = useState(null);
   const [lbZoom, setLbZoom] = useState(1);
   const [lbPan, setLbPan] = useState({ x: 0, y: 0 });
   const lbDrag = useRef({ active: false, ox: 0, oy: 0 });
@@ -3120,7 +3123,7 @@ export default function CarDetailPage() {
                 key={i}
                 type="button"
                 className={`cdp-g-cell${i === 0 ? " cdp-g-main" : ""}`}
-                onClick={() => { if (i !== activeIdx) go(i, i > activeIdx ? "next" : "prev"); setLbOpen(true); }}
+                onClick={() => setGridAt(i)}
                 aria-label={i === 0 ? `Open photos of ${carTitle}` : `Open photo ${i + 1}`}
               >
                 <img
@@ -3160,7 +3163,7 @@ export default function CarDetailPage() {
               );
             })()}
             {imgCount > 1 && (
-              <button type="button" className="cdp-g-count" onClick={() => setLbOpen(true)}>
+              <button type="button" className="cdp-g-count" onClick={() => setGridAt(0)}>
                 <Images size={15} /> {imgCount} photos
               </button>
             )}
@@ -4009,6 +4012,26 @@ export default function CarDetailPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── all photos (desktop) — the lightbox opens on top of it ── */}
+        {gridAt !== null && (
+          <PhotoGallerySheet
+            images={images}
+            title={carTitle}
+            price={fmtPrice(shownPrice)}
+            startIdx={gridAt}
+            photoSrc={disp}
+            onImgError={onImgErr}
+            onOpenPhoto={(i) => { if (i !== activeIdx) go(i, i > activeIdx ? "next" : "prev"); setLbOpen(true); }}
+            onClose={() => setGridAt(null)}
+            lightboxOpen={lbOpen}
+            save={<HeartButton listingId={car?.id} size={17} idleColor={isXdrive ? "#0F172A" : "#fff"} style={{ padding: 0 }} />}
+            onShare={handleShare}
+            shareCopied={shareCopied}
+            onBook={isOwnListing ? null : () => { setGridAt(null); handleBookingClick(); }}
+            light={isXdrive}
+          />
         )}
 
         {/* ── lightbox ── */}
