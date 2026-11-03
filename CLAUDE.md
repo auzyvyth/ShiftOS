@@ -874,9 +874,12 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
 - invites — creates auth user + profile for manager/admin/accountant/fi_officer roles
 - create-salesman — creates salesman accounts + `resend_setup` action
 - send-document — emails issued dealer_documents to the buyer via Resend
-- expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road
-  tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also
-  notifies salesman_notifications. 24h dedup.
+- expiry-reminders — daily cron (00:00 UTC = 8am KL). Renewals: once in each window (30..8
+  days, then 7..0 days before the insurance / road tax expiry; a skipped run no longer loses
+  it), to the SELLER as `salesman_notifications` type `expiry_reminder` (ref_id = customer, the
+  Premium bell opens that buyer) when they have the Sold tab (Premium or dealer-linked; Lite
+  gets nothing), plus `dealer_notifications` for a real dealer only. Overdue handover steps:
+  one roll-up per person per day.
 - appointment-reminder — cron every 15 min (`*/15 * * * *`, jobid 7; was 5 min until IO-5). Two independent jobs:
   (1) Telegram "1 hour before" reminder for CONFIRMED bookings, opt-in via `remind_at`
   (set by "Schedule Telegram Reminder" in the Bookings tab), dedup via `remind_sent`.

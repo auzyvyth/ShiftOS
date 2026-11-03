@@ -2225,6 +2225,10 @@ export default function SalesmanPremium() {
  switchTab("listings");
  setFilterStatus("rejected");
  break;
+ // ref_id is the customer: open the Sold tab's Customers pill on that buyer.
+ case "expiry_reminder":
+ navigate(`/salesman-premium/customers?c=${n.ref_id}`);
+ break;
  default:
  break;
  }
