@@ -70,13 +70,16 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
-## PRICE-1: founding price + Premium featured (built 2026-11-03, NOT on staging/live)
+## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,
   yours for as long as you stay. After that, RM49" (EN + BM).
 - [ ] When the 10th seller pays: set `price` 49 for new sellers AND keep founders on 35. Needs a
   founder flag (or `subscription_payments` amount) before then, plus `plan_config` in the DB.
-- [ ] Owner calls still open: yearly RM390 (2 months free)? "Done for you" RM99 tier, delivered
-  by hand (page + cars + first posters set up for them): SA Studio's edge is exactly that.
+- [ ] Yearly RM390 + Done for you RM99 are on the cards (owner "yes to all", 2026-11-03). A Done
+  for you buyer = owner sets up page + first 10 cars + their posters BY HAND, then logs RM99 in
+  the console. If it sells, decide whether it stays monthly or becomes a one-off setup fee.
+- [ ] SA Studio teardown: sastudiox.my is blocked in this cloud session's network list; allow it
+  or send screenshots.
 
 ## OPS-PURGE: nightly account purge deletes nothing (found 2026-11-03)
 - [ ] `purge-deleted-accounts-daily` (cron 02:30 UTC) reports "succeeded" every night, yet

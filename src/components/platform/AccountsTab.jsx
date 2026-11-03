@@ -466,9 +466,14 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
   // For a standalone seller it moves Premium forward a month instead of
   // flipping payment_status to 'received', which never expired. The second
   // paid row of an invited seller is what earns their inviter a free month.
-  const markPaid = (a) =>
+  // `opt` = { amount, months, note } for the yearly and Done for you payments
+  // (record_subscription_payment takes 1..12 months and an amount). No opt = the
+  // monthly payment at plan_config's price, as before.
+  const markPaid = (a, opt = null) =>
     run(a.id, "Logging payment", async () => {
-      const r = await supabase.rpc("record_subscription_payment", { p_user: a.id });
+      const r = await supabase.rpc("record_subscription_payment", opt
+        ? { p_user: a.id, p_amount: opt.amount, p_months: opt.months, p_note: opt.note }
+        : { p_user: a.id });
       // PGRST202 = the function does not exist yet (migration 20261004a not
       // applied). Fall back to the old flag so payments can still be confirmed.
       if (r.error?.code === "PGRST202") {
@@ -483,7 +488,7 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
       if (data) onPatch(a.id, data);
       await loadBilling(a.id);
       return r;
-    }, "Payment logged. Premium moved forward one month.");
+    }, opt?.months > 1 ? `Payment logged. Premium moved forward ${opt.months} months.` : "Payment logged. Premium moved forward one month.");
 
   // Undo a payment logged by mistake or refunded (void_subscription_payment,
   // migration 20261005a). Takes the months back off, and if the seller drops
@@ -846,8 +851,18 @@ export default function AccountsTab({ accounts, stats, loading, error, setError,
               ))}
               {(accountKind(open) === "solo" || (accountKind(open) === "dealer" && open.payment_status !== "received")) && (
                 <button disabled={busy === open.id} onClick={() => markPaid(open)} style={btn("good", busy === open.id)}>
-                  {busyText("Logging payment", accountKind(open) === "solo" ? "Log RM35 payment (+1 month)" : "Mark payment received", "Logging...")}
+                  {busyText("Logging payment", accountKind(open) === "solo" ? `Log RM${PLAN_CONFIG.salesman_full.price} payment (+1 month)` : "Mark payment received", "Logging...")}
                 </button>
+              )}
+              {accountKind(open) === "solo" && (
+                <>
+                  <button disabled={busy === open.id} onClick={() => markPaid(open, { amount: PLAN_CONFIG.salesman_full.yearlyPrice, months: 12, note: "yearly" })} style={btn(undefined, busy === open.id)}>
+                    {busyText("Logging payment", `Log RM${PLAN_CONFIG.salesman_full.yearlyPrice} yearly (+12 months)`, "Logging...")}
+                  </button>
+                  <button disabled={busy === open.id} onClick={() => markPaid(open, { amount: PLAN_CONFIG.salesman_full.doneForYouPrice, months: 1, note: "done_for_you" })} style={btn(undefined, busy === open.id)}>
+                    {busyText("Logging payment", `Log RM${PLAN_CONFIG.salesman_full.doneForYouPrice} Done for you (+1 month)`, "Logging...")}
+                  </button>
+                </>
               )}
             </div>
             {result?.id === open.id && /payment|trial/i.test(result.text) && <ResultNote result={result} />}

@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import PlanCard from '../components/onboarding/PlanCard';
-import { SALESMAN_PLANS, DEALER_PLANS } from '../utils/plans';
+import { SALESMAN_PLANS, DEALER_PLANS, DONE_FOR_YOU_CARD } from '../utils/plans';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile } from '../lib/buyerAuth';
 
@@ -115,7 +115,7 @@ export default function PlansPage() {
         {section(
           'For individual salesmen and agents',
           'You sell cars yourself, under your own name. Your listings go live on the marketplace and enquiries come straight to you.',
-          SALESMAN_PLANS, 2,
+          [...SALESMAN_PLANS, DONE_FOR_YOU_CARD], 3,
         )}
 
         {section(

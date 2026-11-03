@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Download } from "lucide-react";
-import { PLAN_CONFIG } from "../../utils/planConfig";
+import { PLAN_CONFIG, OPS_WHATSAPP } from "../../utils/planConfig";
 
 // How to pay for Premium: DuitNow QR + "I've paid" WhatsApp. Payment is still
 // confirmed by hand; the owner logs it in the console (record_subscription_payment)
@@ -8,7 +8,7 @@ import { PLAN_CONFIG } from "../../utils/planConfig";
 // Premium "paid until" banner so there is one pay screen, not two.
 // Dark seller-panel surface.
 
-export const OPS_WHATSAPP = "601111521742";
+export { OPS_WHATSAPP };
 export const PREMIUM_PRICE = PLAN_CONFIG.salesman_full?.price ?? 35;
 
 const QR_URL = "/payment-qr.png";

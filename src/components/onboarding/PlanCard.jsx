@@ -31,6 +31,7 @@ export default function PlanCard({ plan, current, onSelect, featured = false, mu
         <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 30, letterSpacing: 1, color: '#fff', lineHeight: 1 }}>{plan.price}</span>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{plan.priceSub}</span>
       </div>
+      {featured && plan.yearly && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, margin: '0 0 10px' }}>{plan.yearly}</p>}
       {featured && plan.founding && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, margin: '6px 0 10px' }}>{plan.founding}</p>}
       {plan.trial && <p style={{ fontSize: 10, color: 'rgba(74,222,128,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{plan.trial}</p>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: `${plan.trial ? 0 : 10}px 0 12px` }}>
@@ -47,7 +48,11 @@ export default function PlanCard({ plan, current, onSelect, featured = false, mu
         ))}
       </div>
       <button
-        onClick={() => !current && !plan.soon && onSelect(plan.route)}
+        onClick={() => {
+          if (current || plan.soon) return;
+          if (plan.href) { window.open(plan.href, '_blank', 'noopener,noreferrer'); return; }
+          onSelect(plan.route);
+        }}
         disabled={current || plan.soon}
         style={{
           height: 42, borderRadius: 8, border: (current || plan.soon) ? '1px solid rgba(255,255,255,0.12)' : 'none',
@@ -57,7 +62,7 @@ export default function PlanCard({ plan, current, onSelect, featured = false, mu
           cursor: (current || plan.soon) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
-        {plan.soon ? 'Coming soon' : current ? 'Current plan' : 'Select plan'}
+        {plan.soon ? 'Coming soon' : current ? 'Current plan' : (plan.cta || 'Select plan')}
       </button>
     </div>
   );
