@@ -9,7 +9,14 @@ export const PLAN_CONFIG = {
   },
   salesman_full: {
     label: 'Salesman Premium',
+    // What a seller is CHARGED today: the founding price (owner, 2026-11-03).
     price: 35,
+    // The price after the founding spots are gone. Shown as the FUTURE price
+    // ("then RM49"), never as a struck-through "was" price: nobody has paid it,
+    // and a fake reference price is a misleading price indication (Trade
+    // Descriptions Act 2011 s.14). Founders keep `price` while they stay subscribed.
+    listPrice: 49,
+    foundingSpots: 10,
     // Free trial length for a new Premium seller (owner, 2026-10-25: was 30).
     // Same number as the DB trigger apply_premium_free_month().
     trialDays: 7,

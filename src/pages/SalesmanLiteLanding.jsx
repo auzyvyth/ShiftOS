@@ -343,6 +343,7 @@ export default function SalesmanLiteLanding() {
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.premiumName}</span>
                   <span className="sll-plan-price">RM{PLAN_CONFIG.salesman_full.price}<span>{t.plans.premiumPer}</span></span>
+                  <span className="sll-plan-founding">{pc.premium.founding}</span>
                   <span className="sll-plan-bill">{pc.premium.billing}</span>
                 </div>
                 <PlanGroups groups={pc.premium.groups} />
@@ -354,7 +355,7 @@ export default function SalesmanLiteLanding() {
                   {s.offer.cta} <ArrowRight size={17} />
                 </Link>
               </div>
-              <div className="sll-plan">
+              <div className="sll-plan sll-plan-lite">
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.liteName}</span>
                   <span className="sll-plan-price">RM0<span>{t.plans.litePer}</span></span>
@@ -575,6 +576,16 @@ const CSS = `
   .sll-plan-price span { font-size: 17px; font-weight: 700; color: #9ca3af; letter-spacing: 0; }
   .sll-plan-bill { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 700; color: #1f2733; background: #f3f4f6; border-radius: 999px; padding: 6px 12px; }
   .sll-plan-pro .sll-plan-bill { color: #fff; background: rgba(255,255,255,0.1); }
+  .sll-plan-founding { display: block; margin-top: 12px; font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.78); max-width: 420px; }
+  /* Lite is the plain card on purpose (owner, 2026-11-03): the eye goes to Premium. */
+  .sll-plan-lite { background: transparent; border-color: #e5e7eb; box-shadow: none; }
+  .sll-plan-lite .sll-plan-price { font-size: 40px; color: #6b7280; }
+  .sll-plan-lite .sll-plan-list li { color: #6b7280; font-size: 13.5px; }
+  .sll-plan-lite .sll-plan-gh { color: #6b7280; }
+  .sll-plan-lite .sll-plan-gic { background: #e5e7eb; color: #6b7280; }
+  .sll-plan-lite .sll-plan-gic span { background: #9ca3af; }
+  .sll-plan-lite .sll-btn-dark { background: transparent; color: #374151; border: 1px solid #d1d5db; box-shadow: none; }
+  .sll-plan-lite .sll-btn-dark:hover { background: #f3f4f6; }
   .sll-plan-groups { flex: 1; margin-bottom: 18px; }
   .sll-plan-group { padding: 14px 0 6px; border-top: 1px solid #f0efee; }
   .sll-plan-pro .sll-plan-group { border-top-color: rgba(255,255,255,0.1); }

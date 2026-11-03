@@ -129,6 +129,9 @@ function buildCard(planKey) {
     label: cfg.label,
     price: cfg.price > 0 ? `RM ${cfg.price.toLocaleString('en-MY')}` : 'FREE',
     priceSub: cfg.price > 0 ? '/month' : 'forever',
+    founding: cfg.listPrice && cfg.foundingSpots
+      ? `Founding price for the first ${cfg.foundingSpots} sellers, yours for as long as you stay. After that, RM ${cfg.listPrice}/month.`
+      : null,
     caps,
   };
 }
