@@ -219,6 +219,12 @@ Project ID: lemdkdizdlcirhbzqlos
 - Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
 
+## Marketing videos (ads) — read STYLE.md + LESSONS.md first
+Any ad or promo video follows `marketing/ads/drevo-remotion/STYLE.md` (owner-approved: 60% white /
+30% red / 10% black, hard-cut red chapter card at every topic change, real app recordings only,
+Remotion) and `LESSONS.md` beside it (what went wrong the first time, and the approval steps:
+script -> stills -> first 5 s -> full render). That folder is the working template; reuse it.
+
 ## System map — `docs/ARCHITECTURE.md`
 The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
 notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
