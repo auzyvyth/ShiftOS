@@ -11,6 +11,7 @@ import {
 import MarketplaceHeader from "../components/MarketplaceHeader";
 import MarketplaceFooter from "../components/MarketplaceFooter";
 import PlanTour from "../components/salesmanLanding/PlanTour";
+import { OPS_WHATSAPP } from "../utils/planConfig";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
 import PosterDemo from "../components/salesmanLanding/PosterDemo";
 import { ROOT_DOMAIN } from "../config/site";
@@ -343,6 +344,8 @@ export default function SalesmanLiteLanding() {
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.premiumName}</span>
                   <span className="sll-plan-price">RM{PLAN_CONFIG.salesman_full.price}<span>{t.plans.premiumPer}</span></span>
+                  <span className="sll-plan-founding">{pc.premium.founding}</span>
+                  <span className="sll-plan-yearly">{pc.premium.yearly}</span>
                   <span className="sll-plan-bill">{pc.premium.billing}</span>
                 </div>
                 <PlanGroups groups={pc.premium.groups} />
@@ -354,7 +357,7 @@ export default function SalesmanLiteLanding() {
                   {s.offer.cta} <ArrowRight size={17} />
                 </Link>
               </div>
-              <div className="sll-plan">
+              <div className="sll-plan sll-plan-lite">
                 <div className="sll-plan-head">
                   <span className="sll-plan-name">{t.plans.liteName}</span>
                   <span className="sll-plan-price">RM0<span>{t.plans.litePer}</span></span>
@@ -363,6 +366,16 @@ export default function SalesmanLiteLanding() {
                 <PlanGroups groups={pc.lite.groups} />
                 <Link to={LITE_SIGNUP} className="sll-btn sll-btn-dark sll-btn-block">{t.liteCta}</Link>
               </div>
+            </div>
+
+            {/* Done for you: real, delivered by hand, bought on WhatsApp. Plain on purpose. */}
+            <div className="sll-dfy">
+              <div className="sll-dfy-head">
+                <span className="sll-plan-name">{pc.dfy.name}</span>
+                <span className="sll-dfy-price">{pc.dfy.price}<span>{pc.dfy.per}</span></span>
+              </div>
+              <p className="sll-dfy-line">{pc.dfy.line}</p>
+              <a className="sll-btn sll-btn-dark sll-dfy-btn" href={`https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(pc.dfy.wa)}`} target="_blank" rel="noopener noreferrer">{pc.dfy.cta}</a>
             </div>
 
             <div className="sll-pay">
@@ -575,6 +588,25 @@ const CSS = `
   .sll-plan-price span { font-size: 17px; font-weight: 700; color: #9ca3af; letter-spacing: 0; }
   .sll-plan-bill { display: inline-block; margin-top: 12px; font-size: 13px; font-weight: 700; color: #1f2733; background: #f3f4f6; border-radius: 999px; padding: 6px 12px; }
   .sll-plan-pro .sll-plan-bill { color: #fff; background: rgba(255,255,255,0.1); }
+  .sll-plan-founding { display: block; margin-top: 12px; font-size: 13.5px; line-height: 1.5; color: rgba(255,255,255,0.78); max-width: 420px; }
+  /* Lite is the plain card on purpose (owner, 2026-11-03): the eye goes to Premium. */
+  .sll-plan-lite { background: transparent; border-color: #e5e7eb; box-shadow: none; }
+  .sll-plan-lite .sll-plan-price { font-size: 40px; color: #6b7280; }
+  .sll-plan-lite .sll-plan-list li { color: #6b7280; font-size: 13.5px; }
+  .sll-plan-lite .sll-plan-gh { color: #6b7280; }
+  .sll-plan-lite .sll-plan-gic { background: #e5e7eb; color: #6b7280; }
+  .sll-plan-lite .sll-plan-gic span { background: #9ca3af; }
+  .sll-plan-lite .sll-btn-dark { background: transparent; color: #374151; border: 1px solid #d1d5db; box-shadow: none; }
+  .sll-plan-lite .sll-btn-dark:hover { background: #f3f4f6; }
+  .sll-plan-yearly { display: block; margin-top: 8px; font-size: 13.5px; font-weight: 700; color: #fff; }
+  .sll-dfy { margin-top: 18px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 18px; border: 1px solid #e5e7eb; border-radius: 18px; padding: 18px 22px; }
+  .sll-dfy-head { display: flex; flex-direction: column; }
+  .sll-dfy-head .sll-plan-name { margin-bottom: 2px; }
+  .sll-dfy-price { font-size: 26px; font-weight: 900; color: #6b7280; letter-spacing: -0.02em; }
+  .sll-dfy-price span { font-size: 13px; font-weight: 700; color: #9ca3af; }
+  .sll-dfy-line { margin: 0; font-size: 14px; line-height: 1.5; color: #6b7280; }
+  .sll-dfy .sll-dfy-btn { justify-content: center; text-align: center; background: transparent; color: #374151; border: 1px solid #d1d5db; box-shadow: none; white-space: nowrap; }
+  @media (max-width: 760px) { .sll-dfy { grid-template-columns: 1fr; gap: 10px; } }
   .sll-plan-groups { flex: 1; margin-bottom: 18px; }
   .sll-plan-group { padding: 14px 0 6px; border-top: 1px solid #f0efee; }
   .sll-plan-pro .sll-plan-group { border-top-color: rgba(255,255,255,0.1); }

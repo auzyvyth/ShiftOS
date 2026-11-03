@@ -1484,6 +1484,22 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 - `enforce_listing_cap` gives an unpaid `salesman_full` row the LITE cap: `plan` is
   self-writable between lite/full, so the cap must follow entitlement, not `plan`.
 
+## Founding price (owner, 2026-11-03): RM35 now, RM49 after the first 10 payers
+`PLAN_CONFIG.salesman_full`: `price` (35) is what is CHARGED; `listPrice` (49) + `foundingSpots`
+(10) are only shown, as the FUTURE price ("then RM49"). Never a struck-through "was RM49": nobody
+has paid it, and a fake reference price is a misleading price indication (TDA 2011 s.14). Founders
+keep 35 while they stay. Premium is the featured card, every other plan card is plain on purpose
+(`PlanCard featured/muted` on /plans, `.sll-plan-lite` on /for-salesmen). No "AI coming" paid card:
+selling a feature that does not exist is a CPA 1999 s.10 risk.
+Two more real offers sit beside it (owner, 2026-11-03): **yearly RM390** (`yearlyPrice`, 12 months)
+and **Done for you RM99/month** (`doneForYouPrice`: Premium + the owner sets up the page, the first
+`doneForYouCars` cars and their posters BY HAND). Neither is a DB plan: both are Premium payments,
+logged with the console's extra buttons (`markPaid(a, {amount, months, note})`, AccountsTab.jsx,
+note `yearly` / `done_for_you`), and both are bought on WhatsApp (`OPS_WHATSAPP`, planConfig.js, the
+one copy). /plans shows Lite | Premium | Done for you with Premium in the middle; /for-salesmen
+shows Done for you as a plain row under the two cards. Never list a Done-for-you task the owner
+cannot actually deliver this week.
+
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)
 Premium ends by itself when `plan_expires_at` passes (no flag to flip). Around that:
 - **Cars over the Lite cap are LOCKED, not left live** (owner). `sweep_premium_lapses()`

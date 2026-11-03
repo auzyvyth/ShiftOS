@@ -5,17 +5,23 @@ import { Check } from 'lucide-react';
 // /plans page. It was inlined in the modal; the page needs the exact same card,
 // and two copies of a pricing card is how a price ends up different in two
 // places. Dark-surface styling only — every surface that shows plans is dark.
-export default function PlanCard({ plan, current, onSelect }) {
+// `featured` = THE card we want picked (Salesman Premium, owner 2026-11-03): a
+// stronger border, a soft glow and the founding line. `muted` = every other card
+// on that page, plain on purpose so the eye goes to the featured one. Both are
+// per page; the modal passes neither and looks as before.
+export default function PlanCard({ plan, current, onSelect, featured = false, muted = false }) {
+  const quiet = muted && !current;
   return (
     <div style={{
       position: 'relative', display: 'flex', flexDirection: 'column',
-      background: current ? 'rgba(220,38,38,0.06)' : 'rgba(255,255,255,0.02)',
-      border: `1px solid ${current ? 'rgba(220,38,38,0.4)' : plan.popular ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`,
-      borderRadius: 14, padding: '20px 18px',
-      opacity: plan.soon ? 0.62 : 1,
+      background: current ? 'rgba(220,38,38,0.06)' : featured ? 'rgba(220,38,38,0.07)' : quiet ? 'transparent' : 'rgba(255,255,255,0.02)',
+      border: `1px solid ${current ? 'rgba(220,38,38,0.4)' : featured ? 'rgba(220,38,38,0.6)' : plan.popular && !quiet ? 'rgba(220,38,38,0.25)' : 'rgba(255,255,255,0.08)'}`,
+      boxShadow: featured ? '0 24px 60px rgba(220,38,38,0.18)' : 'none',
+      borderRadius: 14, padding: featured ? '24px 22px' : '20px 18px',
+      opacity: plan.soon ? 0.62 : quiet ? 0.7 : 1,
     }}>
-      {plan.popular && !current && (
-        <span style={{ position: 'absolute', top: -9, left: 18, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Most popular</span>
+      {(featured || (plan.popular && !quiet)) && !current && (
+        <span style={{ position: 'absolute', top: -9, left: 18, background: '#dc2626', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>{featured ? 'Founding price' : 'Most popular'}</span>
       )}
       {plan.soon && (
         <span style={{ position: 'absolute', top: -9, left: 18, background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.7)', fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '3px 8px', borderRadius: 4 }}>Coming soon</span>
@@ -25,6 +31,8 @@ export default function PlanCard({ plan, current, onSelect }) {
         <span style={{ fontFamily: "'Bebas Neue',cursive", fontSize: 30, letterSpacing: 1, color: '#fff', lineHeight: 1 }}>{plan.price}</span>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)' }}>{plan.priceSub}</span>
       </div>
+      {featured && plan.yearly && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: 600, margin: '0 0 10px' }}>{plan.yearly}</p>}
+      {featured && plan.founding && <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', lineHeight: 1.5, margin: '6px 0 10px' }}>{plan.founding}</p>}
       {plan.trial && <p style={{ fontSize: 10, color: 'rgba(74,222,128,0.7)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>{plan.trial}</p>}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: `${plan.trial ? 0 : 10}px 0 12px` }}>
         {plan.caps.map((c) => (
@@ -40,16 +48,21 @@ export default function PlanCard({ plan, current, onSelect }) {
         ))}
       </div>
       <button
-        onClick={() => !current && !plan.soon && onSelect(plan.route)}
+        onClick={() => {
+          if (current || plan.soon) return;
+          if (plan.href) { window.open(plan.href, '_blank', 'noopener,noreferrer'); return; }
+          onSelect(plan.route);
+        }}
         disabled={current || plan.soon}
         style={{
           height: 42, borderRadius: 8, border: (current || plan.soon) ? '1px solid rgba(255,255,255,0.12)' : 'none',
-          background: (current || plan.soon) ? 'transparent' : '#dc2626', color: (current || plan.soon) ? 'rgba(255,255,255,0.4)' : '#fff',
+          ...(quiet && !plan.soon ? { border: '1px solid rgba(255,255,255,0.16)' } : {}),
+          background: (current || plan.soon || quiet) ? 'transparent' : '#dc2626', color: (current || plan.soon) ? 'rgba(255,255,255,0.4)' : quiet ? 'rgba(255,255,255,0.75)' : '#fff',
           fontFamily: "system-ui,sans-serif", fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
           cursor: (current || plan.soon) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
-        {plan.soon ? 'Coming soon' : current ? 'Current plan' : 'Select plan'}
+        {plan.soon ? 'Coming soon' : current ? 'Current plan' : (plan.cta || 'Select plan')}
       </button>
     </div>
   );

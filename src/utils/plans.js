@@ -1,4 +1,4 @@
-import { PLAN_CONFIG } from './planConfig.js';
+import { PLAN_CONFIG, OPS_WHATSAPP } from './planConfig.js';
 
 /*
  * The seller plan catalogue, in ONE place.
@@ -129,9 +129,33 @@ function buildCard(planKey) {
     label: cfg.label,
     price: cfg.price > 0 ? `RM ${cfg.price.toLocaleString('en-MY')}` : 'FREE',
     priceSub: cfg.price > 0 ? '/month' : 'forever',
+    yearly: cfg.yearlyPrice ? `Or RM ${cfg.yearlyPrice} a year, paid once (about 2 months free).` : null,
+    founding: cfg.listPrice && cfg.foundingSpots
+      ? `Founding price for the first ${cfg.foundingSpots} sellers, yours for as long as you stay. After that, RM ${cfg.listPrice}/month.`
+      : null,
     caps,
   };
 }
+
+// "Done for you": a real offer the owner delivers by hand, shown beside Premium so
+// Premium reads as the sensible pick. It is bought on WhatsApp, not through signup.
+const PF = PLAN_CONFIG.salesman_full;
+export const DONE_FOR_YOU_CARD = {
+  tier: 'done_for_you',
+  label: 'Done for you',
+  price: `RM ${PF.doneForYouPrice}`,
+  priceSub: '/month',
+  caps: [`Up to ${PF.listingCap} listings`, '1 user'],
+  features: [
+    'Everything in Salesman Premium',
+    'We set up your page for you',
+    `We upload your first ${PF.doneForYouCars} cars from your photos`,
+    'We make the loan posters for those cars',
+    'WhatsApp help when you get stuck',
+  ],
+  cta: 'WhatsApp us',
+  href: `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(`Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`)}`,
+};
 
 export const SALESMAN_PLANS = ['salesman_lite', 'salesman_full'].map(buildCard);
 export const DEALER_PLANS = ['dealer_starter', 'dealer_growth', 'dealer_pro'].map(buildCard);
