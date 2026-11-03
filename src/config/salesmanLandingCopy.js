@@ -48,6 +48,9 @@ const LITE_POSTERS = LITE_POSTERS_PER_MONTH;
 const PREMIUM_PRICE = PLAN_CONFIG.salesman_full.price;
 const LIST_PRICE = PLAN_CONFIG.salesman_full.listPrice;
 const FOUNDING_SPOTS = PLAN_CONFIG.salesman_full.foundingSpots;
+const YEARLY_PRICE = PLAN_CONFIG.salesman_full.yearlyPrice;
+const DFY_PRICE = PLAN_CONFIG.salesman_full.doneForYouPrice;
+const DFY_CARS = PLAN_CONFIG.salesman_full.doneForYouCars;
 const TRIAL_DAYS = PLAN_CONFIG.salesman_full.trialDays;
 // "About RM1.20 a day": the price over a 30-day month, rounded to 10 sen.
 const PER_DAY = (Math.round((PREMIUM_PRICE / 30) * 10) / 10).toFixed(2);
@@ -288,7 +291,7 @@ const EN = {
       chips: ["Your own page", "On the marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Pricing",
-    plansTitle: "One price. Paid month by month.",
+    plansTitle: "Pay monthly, or once a year.",
     // Hero (owner, 2026-10-28): laid out like a product-box ad. Two leads
     // asked "is it monthly?" and took the product for a calculator, so the
     // hero names the three parts with a real screen of each, the price, and
@@ -323,6 +326,7 @@ const EN = {
       premium: {
         badge: `${TRIAL_DAYS} days free`,
         founding: `Founding price for the first ${FOUNDING_SPOTS} sellers, yours for as long as you stay. After that, Premium is RM${LIST_PRICE} a month.`,
+        yearly: `Or RM${YEARLY_PRICE} a year, paid once (about 2 months free).`,
         billing: "Paid month by month · DuitNow QR",
         groups: [
           { h: "Live calculator", items: ["Full Live presentation: Budget, Viewer, Docs, rebates, insurance", "Unlimited loan posters", ...P_EN.calc] },
@@ -339,6 +343,14 @@ const EN = {
           { h: "Dashboard", items: ["Alerts on new leads", "Views + WhatsApp taps for each car"] },
           { h: "Leads", items: [`Up to ${LITE_CAP} cars on your page and the marketplace`, "Buyers reach you by WhatsApp, chat and booking", "A simple lead list with stages"] },
         ],
+      },
+      dfy: {
+        name: "Done for you",
+        price: `RM${DFY_PRICE}`,
+        per: "/month",
+        line: `Everything in Premium, and we set it up for you: your page, your first ${DFY_CARS} cars uploaded from your photos, and their loan posters.`,
+        cta: "WhatsApp us",
+        wa: `Hi, I want Drevo Done for you (RM${DFY_PRICE}/month).`,
       },
       payKicker: "How paying works",
       paySteps: [
@@ -636,7 +648,7 @@ const MS = {
       chips: ["Page anda sendiri", "Masuk marketplace", "WhatsApp, chat, booking"],
     },
     plansKicker: "Harga",
-    plansTitle: "Satu harga. Bayar bulan ke bulan.",
+    plansTitle: "Bayar bulanan, atau sekali setahun.",
     offer: {
       tag: "App siap guna",
       h1a: "3 dalam 1",
@@ -664,6 +676,7 @@ const MS = {
       premium: {
         badge: `${TRIAL_DAYS} hari percuma`,
         founding: `Harga pengasas untuk ${FOUNDING_SPOTS} seller pertama, kekal selagi anda melanggan. Lepas tu, Premium RM${LIST_PRICE} sebulan.`,
+        yearly: `Atau RM${YEARLY_PRICE} setahun, bayar sekali (lebih kurang 2 bulan percuma).`,
         billing: "Bayar bulan ke bulan · DuitNow QR",
         groups: [
           { h: "Kalkulator Live", items: ["Live presentation penuh: Bajet, Penonton, Dokumen, rebat, insurans", "Poster loan tanpa had", ...P_MS.calc] },
@@ -680,6 +693,14 @@ const MS = {
           { h: "Dashboard", items: ["Alert untuk lead baru", "Views + tap WhatsApp untuk setiap kereta"] },
           { h: "Leads", items: [`Sampai ${LITE_CAP} kereta di page anda dan marketplace`, "Pembeli hubungi anda melalui WhatsApp, chat dan booking", "Senarai lead ringkas dengan stage"] },
         ],
+      },
+      dfy: {
+        name: "Kami setkan untuk anda",
+        price: `RM${DFY_PRICE}`,
+        per: "/bulan",
+        line: `Semua dalam Premium, dan kami setkan untuk anda: page anda, ${DFY_CARS} kereta pertama dimuat naik dari gambar anda, dan poster loan kereta itu.`,
+        cta: "WhatsApp kami",
+        wa: `Hi, saya nak Drevo Kami setkan untuk anda (RM${DFY_PRICE}/bulan).`,
       },
       payKicker: "Cara bayaran",
       paySteps: [
