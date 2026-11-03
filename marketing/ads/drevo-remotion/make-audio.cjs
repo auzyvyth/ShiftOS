@@ -10,8 +10,8 @@ for (const [k, len, card] of T.scenes) { if (card) { CARDS[k] = [at, at + T.card
 const DUR = +at.toFixed(3);
 // a scene's clock starts `pre` early (under its card): cue its events from where its clock starts
 const CLK = {}; for (const [k, , , pre = 0] of T.scenes) CLK[k] = TL[k][0] - pre;
-const words = { ms: { hook: 5, calc: 4, budget: 5, leads: 4, stats: 4, studio: 4, posters: 4, page: 3, devices: 3 }, en: { hook: 5, calc: 5, budget: 5, leads: 4, stats: 4, studio: 5, posters: 4, page: 3, devices: 3 } };
-const startOf = { calc: 4.75, budget: CLK.budget + 0.15, leads: CLK.leads + 0.1, stats: CLK.stats + 0.1, studio: CLK.studio + 0.1, posters: CLK.posters + 0.1, page: CLK.page + 0.1, devices: CLK.devices + 0.05 };
+const words = { ms: { hook: 5, calc: 4, budget: 5, leads: 4, stats: 6, coach: 5, studio: 4, posters: 4, page: 3, devices: 3 }, en: { hook: 5, calc: 5, budget: 5, leads: 4, stats: 7, coach: 7, studio: 5, posters: 4, page: 3, devices: 3 } };
+const startOf = { calc: 4.75, budget: CLK.budget + 0.15, leads: CLK.leads + 0.1, stats: CLK.stats + 0.1, coach: CLK.coach + 0.1, studio: CLK.studio + 0.1, posters: CLK.posters + 0.1, page: CLK.page + 0.1, devices: CLK.devices + 0.05 };
 fs.mkdirSync('public/audio', { recursive: true });
 for (const lang of ['ms', 'en']) {
   const ev = [];
@@ -31,7 +31,8 @@ for (const lang of ['ms', 'en']) {
   for (const [k, [a, b]] of Object.entries(CARDS)) { e(a - 0.04, 'strike', { card: 1 }); e(a, 'impact', { g: 0.55, card: 1 }); e(a + 0.05, 'pop', { g: 1, card: 1 }); e(b, 'swish', { card: 1 }); }
   [0.5, 1.0, 1.5, 3.6, 4.0, 4.4, 4.8].forEach((h, i) => e(CLK.leads + h, 'hop', { n: i }));
   e(CLK.leads + 1.9, 'chime'); e(CLK.leads + 2.4, 'chime'); e(CLK.leads + 4.85, 'win');
-  e(CLK.stats + 0.3, 'pop', { g: 0.8 }); e(CLK.stats + 0.45, 'pop', { g: 0.8 }); e(CLK.stats + 0.5, 'tick'); e(CLK.stats + 1.1, 'tick');
+  e(CLK.stats + 0.3, 'pop', { g: 0.8 }); e(CLK.stats + 0.42, 'pop', { g: 0.8 }); e(CLK.stats + 0.54, 'pop', { g: 0.8 }); e(CLK.stats + 0.5, 'tick'); e(CLK.stats + 1.1, 'tick');
+  [0.15, 0.45, 0.75].forEach((a) => e(CLK.coach + a, 'pop', { g: 0.8 })); e(CLK.coach + 2.3, 'click'); e(CLK.coach + 2.32, 'tick');
   e(CLK.studio + 0.7, 'pop', { g: 0.6 }); e(CLK.studio + 1.0, 'click'); e(CLK.studio + 1.0, 'scan');
   e(CLK.studio + 2.3, 'pop', { g: 0.6 }); e(CLK.studio + 2.6, 'click'); e(CLK.studio + 2.65, 'swish'); e(CLK.studio + 3.2, 'sparkle'); e(CLK.studio + 3.45, 'pop', { g: 0.8 });
   e(CLK.posters + 0.1, 'swish'); e(CLK.posters + 0.5, 'swish');

@@ -4,7 +4,7 @@ import { TL, CARDS, PRE, FPS, sec } from './lib';
 import { Ambient } from './ui';
 import { HookCalc, Budget } from './scenes/Presenter';
 import { Card } from './scenes/Card';
-import { Leads, Stats, Studio, Posters, Page, Devices, Cta, OfferPill } from './scenes/Features';
+import { Leads, Stats, Coach, Studio, Posters, Page, Devices, Cta, OfferPill } from './scenes/Features';
 
 const S = ({ k, children }) => (
   <Sequence from={sec(TL[k][0] - PRE[k])} durationInFrames={sec(TL[k][1]) - sec(TL[k][0] - PRE[k])} name={k}>{children}</Sequence>
@@ -19,6 +19,7 @@ export const Ad = ({ lang = 'ms', audio = true }) => {
       <S k="budget"><Budget lang={lang} /></S>
       <S k="leads"><Leads lang={lang} /></S>
       <S k="stats"><Stats lang={lang} /></S>
+      <S k="coach"><Coach lang={lang} /></S>
       <S k="studio"><Studio lang={lang} /></S>
       <S k="posters"><Posters lang={lang} /></S>
       <S k="page"><Page lang={lang} /></S>

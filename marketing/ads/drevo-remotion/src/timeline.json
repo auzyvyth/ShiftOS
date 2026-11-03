@@ -2,14 +2,15 @@
   "_": "One timeline for picture AND sound (lib.js + make-audio.cjs both read this). Seconds. A scene with card=true gets a full-colour chapter card for `card` seconds before it, hard cut in and out. `pre` = how long the scene's own clock runs UNDER the card, so it is already built when the card cuts out (no empty beat).",
   "card": 0.75,
   "scenes": [
-    ["calc", 9.25, false, 0],
+    ["calc", 9.0, false, 0],
     ["budget", 5.25, true, 0.4],
-    ["leads", 5.5, true, 0.4],
-    ["stats", 3.25, true, 0.35],
-    ["studio", 5.0, true, 0.4],
-    ["posters", 4.25, true, 0.4],
-    ["page", 5.25, true, 0.2],
-    ["devices", 2.0, true, 0.35],
-    ["cta", 4.75, false, 0]
+    ["leads", 5.0, true, 0.4],
+    ["stats", 3.0, true, 0.6],
+    ["coach", 3.5, true, 0.4],
+    ["studio", 4.5, true, 0.4],
+    ["posters", 3.5, true, 0.4],
+    ["page", 4.5, true, 0.2],
+    ["devices", 1.75, true, 0.35],
+    ["cta", 3.75, false, 0]
   ]
 }
