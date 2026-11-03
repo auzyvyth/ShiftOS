@@ -797,8 +797,8 @@ function Skeleton({ preview = null }) {
           then the title + price row beside the seller card. */}
       <div className="sk-desktop" style={{ maxWidth:1280, margin:'0 auto', padding:'24px 32px 40px' }}>
         {pvImg
-          ? <img src={pvImg} srcSet={pvSet} sizes="(max-width: 900px) 100vw, 60vw" alt="" fetchPriority="high" style={{ display:'block', width:'100%', height:'clamp(380px, 40vw, 560px)', objectFit:'cover', borderRadius:16, background:mosaicGap }} />
-          : <div className="sk-b" style={{ height:'clamp(380px, 40vw, 560px)', borderRadius:16, background:mosaicGap }} />}
+          ? <img src={pvImg} srcSet={pvSet} sizes="(max-width: 900px) 100vw, 60vw" alt="" fetchPriority="high" style={{ display:'block', width:'100%', height:'clamp(380px, 40vw, 560px)', objectFit:'cover', borderRadius:0, background:mosaicGap }} />
+          : <div className="sk-b" style={{ height:'clamp(380px, 40vw, 560px)', borderRadius:0, background:mosaicGap }} />}
         <div style={{ display:'flex', gap:48, alignItems:'flex-start', paddingTop:32 }}>
           <div style={{ flex:1.55, minWidth:0 }}>
             <div style={{ display:'flex', justifyContent:'space-between', gap:24, marginBottom:20 }}>
@@ -2233,7 +2233,7 @@ export default function CarDetailPage() {
         }
         .cdp-d-after { margin-top: 24px; }
         .cdp-gallery {
-          position: relative; display: grid; gap: 4px; border-radius: 16px; overflow: hidden;
+          position: relative; display: grid; gap: 4px; overflow: hidden;
           height: clamp(380px, 40vw, 560px); background: #000;
           grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr;
         }
