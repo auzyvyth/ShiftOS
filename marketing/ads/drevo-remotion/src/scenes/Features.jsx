@@ -323,8 +323,8 @@ export const Devices = ({ lang }) => {
 };
 
 // ---------- CTA ----------
-export const Cta = ({ lang }) => {
-  const f = useCurrentFrame(); const t = f / FPS; const C = COPY[lang];
+export const Cta = ({ lang, copy }) => {
+  const f = useCurrentFrame(); const t = f / FPS; const C = { ...COPY[lang], ...copy };
   const item = (at, style, children) => { const p = pop(f, at); return <div style={{ position: 'absolute', left: 60, right: 60, textAlign: 'center', opacity: Math.min(1, p * 1.4), filter: ((1 - Math.min(1, p)) * 14) > 0.05 ? `blur(${(1 - Math.min(1, p)) * 14}px)` : 'none', transform: `translateY(${(1 - p) * 70}px)`, ...style }}>{children}</div>; };
   const pulse = t > 2.2 ? 1 + 0.03 * Math.sin((t - 2.2) * Math.PI * 2) : 1;
   const flash = interpolate(t, [0, 0.35], [0.55, 0], clamp);

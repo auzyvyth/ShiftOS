@@ -13,15 +13,14 @@ Step 1 of the process in `LESSONS.md`: words only. Stills come after the owner a
 | A phone notification goes out at 30 days and again at 7 days, at 8am | `supabase/functions/expiry-reminders/index.ts:101-125` |
 | A "Trade-up ready" flag shows once the buyer has owned the car 3 years, or the car is 5+ years old | `SoldCustomers.jsx:150, 264-275` |
 
-## Fix before the ad runs (the ad promises these)
-1. **The notification never shows up in the seller's own list.** It is saved to the dealer table
-   (`expiry-reminders/index.ts:121`). The phone still gets it, but Lite and Premium only read
-   `salesman_notifications`. Tapping it opens the dashboard, not that buyer.
-   Fix: write to `salesman_notifications` for solo sellers and link to `/salesman-premium/sold?c=<id>`.
-2. **It only sends on exactly day 30 and day 7** (`index.ts:113`). If the daily job skips a day,
-   nothing is sent. Fix: send when the expiry is 7 days away or less and nothing has gone out yet.
-3. **If the seller has no name set, the drafted message signs off "XDrive"** (`SoldCustomers.jsx:178, 184`).
-   This gets renamed on switch day.
+## Fix before the ad runs: DONE 2026-11-03 (staging; the edge function waits for "ship tonight")
+1. Renewal reminders now go to the seller's own bell (`salesman_notifications`, type `expiry_reminder`),
+   and tapping one opens that buyer (`SalesmanPremium.jsx` `openNotif`).
+2. They send once in each window (30..8 days, then 7..0 days), so a skipped daily run no longer loses one.
+3. The drafted message no longer signs off "XDrive": with no name set it says "your car advisor".
+4. Also fixed: the handover's date line said "reminds the customer automatically". Nothing messages the
+   buyer, so it now says "we remind you before it ends".
+Still open: the handover checklist and the push text are English-only, even for a BM seller.
 
 ## Real usage today (read-only, 2026-11-03)
 - 23 customers on the whole platform. 10 have an insurance date and 7 have a road tax date.
@@ -55,3 +54,9 @@ One topic, not a chapter in the big ad: retention is ~10%, so this ad has to lan
 | 19-22 s | CTA as in the main ad | "Cuba Premium 7 hari percuma" + drevo.my |
 
 Fine print on the first scene: "Contoh data. Tiada sticker cukai jalan sejak 2023." / "Sample data. No road tax sticker since 2023."
+
+## Stills (2026-11-03)
+`final/renewals-stills-ms.jpg` / `-en.jpg`. Scenes: `src/renewals/Renewals.jsx` (compositions `Renewals-ms/en`).
+App screens: `node harness/sold.cjs` with the harness running -> `public/real/sold-*.png` + `src/renewals/rects.json`.
+Colour: 43 / 34 / 18 (black is high because Premium's real screens are dark; drawn parts follow the rule).
+CTA says the founding price: RM35 is only for the first 10 Premium sellers, RM49 after (planConfig, #574).

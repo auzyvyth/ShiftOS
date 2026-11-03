@@ -10,7 +10,7 @@ function query(result) {
     maybeSingle: () => ok(Array.isArray(result) ? result[0] ?? null : result),
     single: () => ok(Array.isArray(result) ? result[0] ?? null : result),
   };
-  for (const m of ['select', 'eq', 'neq', 'gte', 'lte', 'gt', 'lt', 'in', 'is', 'order', 'limit', 'range', 'match', 'not', 'or', 'filter', 'contains', 'ilike']) q[m] = () => q;
+  for (const m of ['insert', 'update', 'upsert', 'delete', 'select', 'eq', 'neq', 'gte', 'lte', 'gt', 'lt', 'in', 'is', 'order', 'limit', 'range', 'match', 'not', 'or', 'filter', 'contains', 'ilike']) q[m] = () => q;
   return q;
 }
 function rpc(name, args = {}) {
@@ -21,7 +21,7 @@ function rpc(name, args = {}) {
 }
 const channel = () => { const c = { on: () => c, subscribe: () => c, unsubscribe: () => {}, track: () => {}, send: () => {} }; return c; };
 const client = {
-  rpc, from: () => query([]), channel, removeChannel: () => {},
+  rpc, from: (t) => query(globalThis.__STUB_TABLES?.[t] ?? []), channel, removeChannel: () => {},
   auth: {
     getSession: () => ok({ session: null }), getUser: () => ok({ user: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }), refreshSession: () => ok({ session: null }),
