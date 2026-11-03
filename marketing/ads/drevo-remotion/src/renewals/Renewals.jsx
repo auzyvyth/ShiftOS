@@ -1,7 +1,7 @@
 // The renewals ad (briefs/renewals.md). Same theme, card and CTA as the main ad.
 // App screens are the REAL Sold-tab components on sample buyers (harness/sold.jsx -> public/real/sold-*.png).
 import React from 'react';
-import { AbsoluteFill, Sequence, Img, staticFile, useCurrentFrame, interpolate } from 'remotion';
+import { AbsoluteFill, Sequence, Img, Audio, staticFile, useCurrentFrame, interpolate } from 'remotion';
 import { FPS, sec, pop, clamp, ease } from '../lib';
 import { Ambient, Headline, Fine, glass, FONT, RED, INK, MUTED } from '../ui';
 import { Card } from '../scenes/Card';
@@ -10,17 +10,11 @@ import RECTS from './rects.json';
 import EN from '../../../../../src/i18n/locales/en.json';
 import MS from '../../../../../src/i18n/locales/ms.json';
 
-// [name, start, length]; a chapter card covers the first CARD seconds of a scene marked true.
-const CARD = 0.75;
-export const R_TL = [
-  ['hook', 0, 4.0, false],
-  ['forget', 4.0, 3.0, false],
-  ['dates', 7.0, 4.0, true],
-  ['remind', 11.0, 4.5, true],
-  ['next', 15.5, 3.5, true],
-  ['cta', 19.0, 3.75, false],
-];
-export const R_DUR = 22.75;
+// [name, start, length, card]: ONE timing file, read by this file and make-audio-renewals.cjs.
+import TIMING from './timeline.json';
+const CARD = TIMING.card;
+export const R_TL = TIMING.scenes;
+export const R_DUR = TIMING.dur;
 
 const COPY = {
   ms: {
@@ -222,7 +216,7 @@ const Next = ({ lang }) => {
 
 const SCENES = { hook: Hook, forget: Forget, dates: Dates, remind: Remind, next: Next };
 
-export const RenewalsAd = ({ lang = 'ms' }) => {
+export const RenewalsAd = ({ lang = 'ms', audio = true }) => {
   const C = COPY[lang];
   return (
     <AbsoluteFill style={{ background: '#fff' }}>
@@ -240,6 +234,7 @@ export const RenewalsAd = ({ lang = 'ms' }) => {
           <Card k={k} lang={lang} now={C.cards[k][0]} topic={C.cards[k][1]} num={C.cards[k][2]} />
         </Sequence>
       ))}
+      {audio && <Audio src={staticFile(`audio/renewals-${lang}.wav`)} />}
     </AbsoluteFill>
   );
 };
