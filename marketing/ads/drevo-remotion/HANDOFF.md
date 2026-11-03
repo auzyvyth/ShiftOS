@@ -31,7 +31,11 @@ the approval steps), `README.md` (how to rebuild and render). Repo-wide rules: `
    2026-11-03 08:40/08:49 UTC, 49.8 s, -13.6 LUFS, no black frames, every scene checked in both
    languages) and were sent to the owner. The dark preview clip was deleted. To render again after a
    change: `node make-audio.cjs`, then `npx remotion render src/index.js DrevoAd-<lang> out/raw-<lang>.mp4`
-   (~10 min each, background), then the ffmpeg finish in `README.md` (noise 2, loudnorm -14, crf 21).
+   (~10 min each, background), then the finish:
+   ```
+   ffmpeg -i out/raw-ms.mp4 -vf "noise=alls=2:allf=t" -af "loudnorm=I=-14:TP=-1.5:LRA=11" \
+     -c:v libx264 -crf 21 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart final/drevo-premium-ms.mp4
+   ```
 2. **Waiting on the owner's feedback** on the white theme once they see the full render.
 3. Gitignored, so a fresh container must regenerate them (README steps): `public/takes/` (screen
    recordings of the real LivePresenter via `harness/record.cjs` + the Vite harness on port 5199),
