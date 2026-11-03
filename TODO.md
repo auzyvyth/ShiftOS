@@ -2897,6 +2897,16 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   is weak on iPhone; mixed BM/English hurts accuracy; a seller talks non-stop on a live, so it
   needs push-to-talk or a wake word or it fires by accident. Test first: ~30 example phrases
   per command from 3 real sellers, measure how often it picks the right one.
+  **Text first, in Premium (owner, same day):** an "Ask" box where the seller types "how am I
+  doing", "what should I fix", "which car is dead", "who do I call". Matched to ~10 intents
+  learned from example phrases (BM + English + typos). Each answer is a short sentence built
+  from maths that ALREADY exists (`salesPerformance.js buildSalesPerformance` / `buildInsights`,
+  `carCoach.js carNextStep` / `pickSilentCar`, `thisWeek.js buildThisWeek`) plus a button to the
+  screen that shows it. Skips the speech problems entirely. Rules: it never computes a new
+  number (one fact, one source); an unmatched question says "I can answer these:" + chips,
+  never a guess; no question text leaves the phone. Risk: it repeats Performance + This week
+  in a different place, so it must be a shortcut INTO them, not a third report. Test: log
+  (on device) which questions sellers type for 2 weeks before adding intents.
 
 - **IDEA-30: Dealers first, their own site with no Drevo link (owner, 2026-11-03)** — sign
   dealerships before salesmen, and give each a website (the `<sub>` storefront) where their own
