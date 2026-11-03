@@ -1,11 +1,11 @@
 import React from 'react';
 import { useCurrentFrame, Img, OffthreadVideo, Freeze, staticFile, interpolate } from 'remotion';
-import { COPY, TL, CARS, FPS, OV, sec, lerp, pop, clamp, ease, easeIO } from '../lib';
+import { COPY, TL, LEN, CARS, FPS, sec, lerp, pop, clamp, ease, easeIO } from '../lib';
 import { Headline, Fine, Chip, glass, Device, FONT, RED, RED2, MINT, INK } from '../ui';
 
-import { OVERLAP } from '../lib';
 const HUES = ['#60a5fa', '#fbbf24', '#c084fc', '#34d399', '#fb923c', '#4ade80', '#6ee7b7'];
-const len = (k) => TL[k][1] - TL[k][0] + (OVERLAP.includes(k) ? OV : 0);
+// exits start AT the hard cut, so they never show (the next chapter card cuts in instead)
+const len = (k) => LEN(k) + 0.4;
 const Icon = ({ d, c = INK, s = 30 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
 const exitOf = (f, k) => lerp(f, sec(len(k) - 0.35), sec(len(k)), 0, 1);
 
@@ -21,7 +21,7 @@ export const Leads = ({ lang }) => {
   const toast = (at, until) => interpolate(t, [at, at + 0.25, until, until + 0.25], [0, 1, 1, 0], clamp);
   return (
     <>
-      <Headline lines={C.leads} eyebrow={C.eb.leads} at={0.1} out={len('leads') - 0.4} top={170} />
+      <Headline lines={C.leads} at={0.1} out={len('leads') - 0.4} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         {/* stage rail: 7 lights, the reached ones glow */}
         <div style={{ position: 'absolute', left: 90, right: 90, top: 640, height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }}>
@@ -81,7 +81,7 @@ export const Stats = ({ lang }) => {
   };
   return (
     <>
-      <Headline lines={C.stats} eyebrow={C.eb.stats} at={0.1} out={len('stats') - 0.4} top={170} />
+      <Headline lines={C.stats} at={0.1} out={len('stats') - 0.4} top={216} />
       <div style={{ position: 'absolute', left: 80, right: 80, top: 660, display: 'flex', gap: 30, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         {tile(0.3, 131, C.views, INK, 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z')}
         {tile(0.45, 13, C.taps, MINT, 'M21 12a9 9 0 0 1-13.5 7.8L3 21l1.2-4.5A9 9 0 1 1 21 12z')}
@@ -105,7 +105,7 @@ export const Studio = ({ lang }) => {
   const W0 = 680, H0 = 900, CX = 60, CY = 230, CW = 560, CH = 420;
   return (
     <>
-      <Headline lines={C.studio} eyebrow={C.eb.studio} at={0.1} out={len('studio') - 0.4} top={170} />
+      <Headline lines={C.studio} at={0.1} out={len('studio') - 0.4} top={216} />
       <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 450, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: ex > 0.05 ? `blur(${ex * 10}px)` : 'none',
         transform: `translateY(${(1 - inP) * 140}px) scale(${0.94 + 0.06 * Math.min(1, inP)})`, boxShadow: '0 80px 160px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 120px rgba(220,38,38,.25)' }}>
         {/* backdrop: red studio sweep + floor, lit once the car lands */}
@@ -152,7 +152,7 @@ export const Posters = ({ lang }) => {
   const a = pop(f, 0.1), b = pop(f, 0.5);
   return (
     <>
-      <Headline lines={C.posters} eyebrow={C.eb.posters} at={0.1} out={len('posters') - 0.4} top={170} />
+      <Headline lines={C.posters} at={0.1} out={len('posters') - 0.4} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         <div style={{ position: 'absolute', left: 50, top: 560, width: 520, transform: `translateX(${(1 - a) * -500}px) rotate(${-5 + (1 - Math.min(1, a)) * -8}deg)` }}>
           <Img src={staticFile(`real/loan-poster-${lang}.jpg`)} style={{ width: 520, borderRadius: 26, boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 90px rgba(220,38,38,.2)' }} />
@@ -225,7 +225,7 @@ export const Page = ({ lang }) => {
   const ex = exitOf(f, 'page');
   return (
     <>
-      <Headline lines={C.page} eyebrow={C.eb.page} at={0.1} out={len('page') - 0.4} top={170} />
+      <Headline lines={C.page} at={0.1} out={len('page') - 0.4} top={216} />
       <div style={{ position: 'absolute', left: 260, top: 470, transformOrigin: '280px 46px', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none',
         transform: `translateY(${(1 - inP) * 200}px) scale(${z})` }}>
         <PagePhone t={t} lang={lang} scroll={scroll} typed={typed} />
@@ -241,7 +241,7 @@ export const Devices = ({ lang }) => {
   const ex = exitOf(f, 'devices');
   return (
     <>
-      <Headline lines={C.devices} eyebrow={C.eb.devices} at={0.05} out={len('devices') - 0.35} top={170} />
+      <Headline lines={C.devices} at={0.05} out={len('devices') - 0.35} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 12) > 0.05 ? `blur(${ex * 12}px)` : 'none', transform: `translateY(${-ex * 80}px)` }}>
         <div style={{ position: 'absolute', left: 30, top: 640, transform: `translateX(${(1 - a) * -500}px)` }}>
           <div style={{ width: 700, height: 470, borderRadius: '26px 26px 8px 8px', padding: 16, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 100px rgba(220,38,38,.25)' }}>
@@ -286,8 +286,8 @@ export const Cta = ({ lang }) => {
 
 // ---------- persistent offer pill ----------
 export const OfferPill = ({ lang, t }) => {
-  const on = interpolate(t, [4.9, 5.3, TL.devices[1] - 0.3, TL.devices[1]], [0, 1, 1, 0], clamp);
-  const hidePage = (t > TL.page[0] - OV && t < TL.page[1] - 0.2) || (t > TL.studio[0] - OV && t < TL.studio[1] - 0.1) ? 0 : 1;
+  const on = interpolate(t, [4.9, 5.3, TL.devices[1] - 0.01, TL.devices[1]], [0, 1, 1, 0], clamp);
+  const hidePage = (t >= TL.page[0] && t < TL.page[1]) || (t >= TL.studio[0] && t < TL.studio[1]) ? 0 : 1;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 1440, display: 'flex', justifyContent: 'center', opacity: on * hidePage, transform: `translateY(${(1 - on) * 40}px)` }}>
       <Chip style={{ height: 64, font: `700 27px ${FONT}` }}><span style={{ width: 12, height: 12, borderRadius: 6, background: RED2, boxShadow: `0 0 14px ${RED2}` }} />{COPY[lang].pill}</Chip>

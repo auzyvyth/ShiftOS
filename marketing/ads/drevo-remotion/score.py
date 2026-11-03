@@ -131,6 +131,7 @@ ROOTS = [33, 29, 36, 31]
 SILENCE = tuple(DATA.get("silence", (42.55, 43.0)))
 END = DATA["dur"] - 0.5
 CTA = DATA.get("cta", 43.0)
+BREATH = tuple(DATA.get("breath", (20.0, 22.5)))
 
 def in_sil(x):
     return SILENCE[0] <= x < SILENCE[1]
@@ -143,7 +144,7 @@ for b in beats:
     sec = b
     full = sec >= 4.0
     # kick every beat; quiet bars 20-23 (listings breath) halve it
-    if not (20.0 <= sec < 22.5 and int(sec * 2) % 2):
+    if not (BREATH[0] <= sec < BREATH[1] and int(sec * 2) % 2):
         add(music, kick(1.0 if full else 0.8), b, 0.9)
     # clap on 2 and 4 once the drop lands
     if full and int(round(b / BEAT)) % 2 == 1:
@@ -290,6 +291,11 @@ for b in beats:
     i = int(b * SR); n = int(0.22 * SR)
     seg = 1 - 0.45 * np.exp(-np.arange(n) / SR * 18)
     pump[i:i + n] = np.minimum(pump[i:i + n], seg[: max(0, min(n, N - i))])
+# chapter cards: the music dips under the hit and comes straight back
+for a, b in [tuple(x) for x in DATA.get("ducks", [])]:
+    i0, i1 = int(a * SR), min(N, int(b * SR)); r = int(0.12 * SR)
+    pump[i0:i1] = np.minimum(pump[i0:i1], 0.45)
+    pump[i1:i1 + r] = np.minimum(pump[i1:i1 + r], np.linspace(0.45, 1, len(pump[i1:i1 + r])))
 mix = music * pump[:, None] * 0.8 + fx * 1.0 + wet * 0.6
 # silence before the CTA: let only the fx tails ring
 s0, s1 = int(SILENCE[0] * SR), int(SILENCE[1] * SR)

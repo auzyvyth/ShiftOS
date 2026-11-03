@@ -3,7 +3,7 @@
 // shown whole: nothing about it is redrawn.
 import React from 'react';
 import { useCurrentFrame, OffthreadVideo, Freeze, staticFile, interpolate } from 'remotion';
-import { COPY, TL, FPS, sec, lerp, easeIO, clamp } from '../lib';
+import { COPY, LEN, FPS, sec, lerp, easeIO, clamp } from '../lib';
 import { Device, Cursor, Headline, Fine, Chip, FONT, RED2, INK } from '../ui';
 import calcMs from '../calc-ms.clicks.json';
 import calcEn from '../calc-en.clicks.json';
@@ -122,13 +122,13 @@ export const Budget = ({ lang }) => {
   const takeT = 0.3 + t * 1.3;
   const w = 980, x = (1080 - 1008) / 2, y = 520, h = w / RATIO;
   const inn = interpolate(t, [0, 0.4], [0, 1], { ...clamp, easing: easeIO });
-  const len = TL.budget[1] - TL.budget[0];
+  const len = LEN('budget') + 0.4;   // exit sits past the hard cut
   const out = interpolate(t, [len - 0.35, len], [0, 1], clamp);
   // push into the inputs while they're typed, pull out for the sorted lists
   const k = interpolate(t, [0.4, 0.9, 2.2, 2.6, 2.9, 3.4, 4.2, 4.7], [1, 1.22, 1.22, 1, 1, 1.22, 1.22, 1], { ...clamp, easing: easeIO });
   return (
     <>
-      <Headline lines={C.budget} eyebrow={C.eb.budget} at={0.15} out={len - 0.4} top={170} />
+      <Headline lines={C.budget} at={0.15} out={len - 0.4} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: inn * (1 - out), filter: ((1 - inn) * 12 + out * 10) > 0.05 ? `blur(${(1 - inn) * 12 + out * 10}px)` : 'none', transform: `scale(${1.04 - 0.04 * inn})` }}>
         <Device x={x} y={y} w={w} ratio={RATIO} glow={1.2}>
           <div style={{ position: 'absolute', inset: 0, transformOrigin: '50% 8%', transform: `scale(${k})` }}>

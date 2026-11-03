@@ -4,24 +4,24 @@ export const FPS = 30;
 export const W = 1080;
 export const H = 1920;
 
-// One timeline (seconds) for picture AND sound: score.py reads the same numbers (timeline.json).
-export const TL = {
-  hook: [0, 4.6],
-  calc: [4.6, 9.8],
-  budget: [9.8, 15.4],
-  leads: [15.4, 21.0],
-  stats: [21.0, 24.4],
-  studio: [24.4, 30.4],
-  posters: [30.4, 35.0],
-  page: [35.0, 40.6],
-  devices: [40.6, 42.7],
-  cta: [42.7, 47.5],
-};
-export const DUR = 47.5;
-// These scenes start OV seconds before their slot, so they enter while the previous one leaves
-// (no empty beat between scenes). Their own clocks run OV ahead of TL; make-audio.cjs knows.
-export const OV = 0.3;
-export const OVERLAP = ['leads', 'stats', 'studio', 'posters', 'page', 'devices'];
+import T from './timeline.json';
+// One timeline (seconds) for picture AND sound, built from src/timeline.json (make-audio.cjs builds the
+// same). TL[k] = when scene k plays; CARDS[k] = its chapter card, the CARD seconds just before it.
+// Cuts are hard: a scene's own exit animation sits past its end and never shows.
+export const CARD = T.card;
+export const TL = {};
+export const CARDS = {};
+export const PRE = {};   // seconds a scene's clock runs under its card (it starts already built)
+let at = 0;
+for (const [k, len, card, pre = 0] of T.scenes) {
+  PRE[k] = pre;
+  if (card) { CARDS[k] = [at, at + CARD]; at += CARD; }
+  TL[k] = [at, at + len]; at += len;
+}
+export const DUR = +at.toFixed(3);
+// a scene's own clock length: its slot plus the part played under the card
+export const LEN = (k) => TL[k][1] - TL[k][0] + PRE[k];
+export const CHAPTER = { budget: '02', leads: '03', stats: '04', studio: '05', posters: '06', page: '07', devices: '08' };
 
 export const COPY = {
   ms: {
@@ -35,6 +35,7 @@ export const COPY = {
     page: ['Page anda', '*sendiri.*'],
     devices: ['Telefon &', '*laptop.*'],
     eb: { hook: 'Untuk SA kereta', calc: '01 · Kalkulator Live', budget: '02 · Bajet & DSR', leads: '03 · Lead', stats: '04 · Listing', studio: '05 · TikTok Studio', posters: '06 · Poster', page: '07 · Mini page', devices: 'Di mana-mana' },
+    card: { now: 'Sekarang:', budget: 'Bajet\u00a0&\u00a0DSR', leads: 'Urus lead', stats: 'Statistik listing', studio: 'TikTok Studio', posters: 'Poster loan', page: 'Page anda', devices: 'Guna di mana-mana' },
     excel: 'Excel', drevo: 'Drevo', done: 'siap',
     stages: ['Baru', 'Dihubungi', 'Viewing ditempah', 'Test drive', 'Berunding', 'Deposit diterima', 'Menang'],
     remind: 'Ingatkan saya', tomorrow: 'Esok, 10:00 pagi', callLogged: 'Panggilan direkod', reminderSet: 'Reminder diset',
@@ -57,6 +58,7 @@ export const COPY = {
     page: ['Your', '*own page.*'],
     devices: ['Phone &', '*laptop.*'],
     eb: { hook: 'For car SAs', calc: '01 · Live calculator', budget: '02 · Budget & DSR', leads: '03 · Leads', stats: '04 · Listings', studio: '05 · TikTok Studio', posters: '06 · Posters', page: '07 · Mini page', devices: 'Anywhere' },
+    card: { now: 'Now:', budget: 'Budget\u00a0&\u00a0DSR', leads: 'Lead tracking', stats: 'Listing stats', studio: 'TikTok Studio', posters: 'Loan posters', page: 'Your own page', devices: 'Use it anywhere' },
     excel: 'Excel', drevo: 'Drevo', done: 'done',
     stages: ['New', 'Contacted', 'Viewing booked', 'Test drive', 'Negotiating', 'Deposit taken', 'Won'],
     remind: 'Remind me', tomorrow: 'Tomorrow, 10:00 am', callLogged: 'Call logged', reminderSet: 'Reminder set',
