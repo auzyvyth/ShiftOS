@@ -1,4 +1,5 @@
 import { PLAN_CONFIG, OPS_WHATSAPP } from './planConfig.js';
+import { LITE_POSTERS_PER_MONTH } from './loanPoster.js';
 
 /*
  * The seller plan catalogue, in ONE place.
@@ -56,18 +57,6 @@ const SALESMAN_PREMIUM_FEATURE_LINES = [
 ];
 export const SALESMAN_PREMIUM_FEATURES = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.en);
 export const SALESMAN_PREMIUM_FEATURES_MS = SALESMAN_PREMIUM_FEATURE_LINES.map((l) => l.ms);
-// The same lines sorted into the three parts the /for-salesmen hero names
-// (live calculator / dashboard / leads), plus `more` for the rest, so the
-// plan cards repeat the hero's "3 in 1" instead of a fourth way of slicing it.
-// Two leads read the old flat list as "a calculator" and missed the dashboard
-// (owner, 2026-10-28), so the cards name the three parts.
-export function salesmanPremiumFeaturesByGroup(lang = 'en') {
-  // 'live' is listed by hand at the top of the cards' Live calculator group, so it is kept out here.
-  const by = { live: [], calc: [], dash: [], leads: [], more: [] };
-  for (const l of SALESMAN_PREMIUM_FEATURE_LINES) by[l.group].push(lang === 'ms' ? l.ms : l.en);
-  return by;
-}
-
 const PRESENTATION = {
   salesman_lite: {
     tier: 'lite', route: '/salesman-onboarding/lite',
@@ -129,33 +118,53 @@ function buildCard(planKey) {
     label: cfg.label,
     price: cfg.price > 0 ? `RM ${cfg.price.toLocaleString('en-MY')}` : 'FREE',
     priceSub: cfg.price > 0 ? '/month' : 'forever',
-    yearly: cfg.yearlyPrice ? `Or RM ${cfg.yearlyPrice} a year, paid once (about 2 months free).` : null,
-    founding: cfg.listPrice && cfg.foundingSpots
-      ? `Founding price for the first ${cfg.foundingSpots} sellers, yours for as long as you stay. After that, RM ${cfg.listPrice}/month.`
-      : null,
     caps,
   };
 }
 
-// "Done for you": a real offer the owner delivers by hand, shown beside Premium so
-// Premium reads as the sensible pick. It is bought on WhatsApp, not through signup.
 const PF = PLAN_CONFIG.salesman_full;
-export const DONE_FOR_YOU_CARD = {
-  tier: 'done_for_you',
-  label: 'Done for you',
-  price: `RM ${PF.doneForYouPrice}`,
-  priceSub: '/month',
-  caps: [`Up to ${PF.listingCap} listings`, '1 user'],
-  features: [
-    'Everything in Salesman Premium',
-    'We set up your page for you',
-    `We upload your first ${PF.doneForYouCars} cars from your photos`,
-    'We make the loan posters for those cars',
-    'WhatsApp help when you get stuck',
-  ],
-  cta: 'WhatsApp us',
-  href: `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(`Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`)}`,
-};
 
 export const SALESMAN_PLANS = ['salesman_lite', 'salesman_full'].map(buildCard);
 export const DEALER_PLANS = ['dealer_starter', 'dealer_growth', 'dealer_pro'].map(buildCard);
+
+// The three seller pricing cards (owner, 2026-11-03: "too cheap looking and too big").
+// ONE copy of their words, EN + BM, read by /plans and /for-salesmen through
+// PricingCards. Five short lines a card: the full feature list lives in the
+// sections above the cards, not in them. Prices and caps come from PLAN_CONFIG.
+const LITE = PLAN_CONFIG.salesman_lite;
+const CARD_WORDS = {
+  en: {
+    per: '/month', free: 'Free', foundingBadge: 'Founding price',
+    lite: { name: 'Salesman Lite', desc: 'Get found and get the lead. Free, no card.', cta: 'Start free',
+      features: ['Basic Live presentation', `Up to ${LITE.listingCap} cars on your page`, 'Buyers reach you by WhatsApp, chat, booking', 'Alerts and a simple lead list', `${LITE_POSTERS_PER_MONTH} loan posters a month`] },
+    premium: { name: 'Salesman Premium', desc: 'Work every lead until the deal closes.', cta: `Start ${PF.trialDays} days free`,
+      notes: [`Or RM${PF.yearlyPrice} a year, paid once (about 2 months free).`, `Founding price for the first ${PF.foundingSpots} sellers, yours while you stay. Then RM${PF.listPrice}.`],
+      features: ['Everything in Lite', 'Full Live presentation: Budget, Viewer, Docs', '"This week" call list + drafted follow-ups', 'Loan desk + unlimited loan posters', `Up to ${PF.listingCap} cars`] },
+    dfy: { name: 'Done for you', desc: 'Premium, set up for you by our team.', cta: 'WhatsApp us',
+      wa: `Hi, I want Drevo Done for you (RM${PF.doneForYouPrice}/month).`,
+      features: ['Everything in Premium', 'Your page set up for you', `Your first ${PF.doneForYouCars} cars uploaded from your photos`, 'Loan posters made for those cars', 'WhatsApp help when you get stuck'] },
+  },
+  ms: {
+    per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas',
+    lite: { name: 'Salesman Lite', desc: 'Senang dijumpai, dapat lead. Percuma, tak perlu kad.', cta: 'Mula percuma',
+      features: ['Live presentation asas', `Sampai ${LITE.listingCap} kereta di page anda`, 'Pembeli hubungi melalui WhatsApp, chat, booking', 'Alert dan senarai lead ringkas', `${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
+    premium: { name: 'Salesman Premium', desc: 'Follow up setiap lead sampai deal tutup.', cta: `Mula ${PF.trialDays} hari percuma`,
+      notes: [`Atau RM${PF.yearlyPrice} setahun, bayar sekali (lebih kurang 2 bulan percuma).`, `Harga pengasas untuk ${PF.foundingSpots} seller pertama, kekal selagi melanggan. Lepas tu RM${PF.listPrice}.`],
+      features: ['Semua dalam Lite', 'Live presentation penuh: Bajet, Penonton, Dokumen', 'Senarai call "Minggu ini" + mesej follow up', 'Loan desk + poster loan tanpa had', `Sampai ${PF.listingCap} kereta`] },
+    dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disetkan oleh team kami.', cta: 'WhatsApp kami',
+      wa: `Hi, saya nak Drevo Kami setkan untuk anda (RM${PF.doneForYouPrice}/bulan).`,
+      features: ['Semua dalam Premium', 'Page anda disetkan untuk anda', `${PF.doneForYouCars} kereta pertama dimuat naik dari gambar anda`, 'Poster loan untuk kereta itu', 'Bantuan WhatsApp bila tersekat'] },
+  },
+};
+
+export const PRICING_FEATURES_LABEL = { en: 'Features', ms: 'Ciri-ciri' };
+
+export function salesmanPricingCards(lang = 'en') {
+  const w = CARD_WORDS[lang] || CARD_WORDS.en;
+  return [
+    { key: 'lite', ...w.lite, price: w.free, per: '', to: PRESENTATION.salesman_lite.route },
+    { key: 'premium', ...w.premium, price: `RM${PF.price}`, per: w.per, featured: true, badge: w.foundingBadge, to: PRESENTATION.salesman_full.route },
+    { key: 'dfy', ...w.dfy, price: `RM${PF.doneForYouPrice}`, per: w.per,
+      href: `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(w.dfy.wa)}` },
+  ];
+}
