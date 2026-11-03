@@ -1,9 +1,10 @@
 import React from 'react';
 import { useCurrentFrame, Img, OffthreadVideo, Freeze, staticFile, interpolate } from 'remotion';
 import { COPY, TL, LEN, CARS, FPS, sec, lerp, pop, clamp, ease, easeIO } from '../lib';
-import { Headline, Fine, Chip, glass, Device, FONT, RED, RED2, MINT, INK } from '../ui';
+import { Headline, Fine, Chip, glass, Device, FONT, RED, RED2, MINT, INK, MUTED } from '../ui';
 
-const HUES = ['#60a5fa', '#fbbf24', '#c084fc', '#34d399', '#fb923c', '#4ade80', '#6ee7b7'];
+// 60/30/10: every stage light is Drevo red (the app's per-stage hues stay in the app)
+const HUES = Array(7).fill(RED);
 // exits start AT the hard cut, so they never show (the next chapter card cuts in instead)
 const len = (k) => LEN(k) + 0.4;
 const Icon = ({ d, c = INK, s = 30 }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>;
@@ -24,28 +25,28 @@ export const Leads = ({ lang }) => {
       <Headline lines={C.leads} at={0.1} out={len('leads') - 0.4} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         {/* stage rail: 7 lights, the reached ones glow */}
-        <div style={{ position: 'absolute', left: 90, right: 90, top: 640, height: 12, borderRadius: 6, background: 'rgba(255,255,255,0.06)' }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6, width: `${(st + Math.min(1, p) - 1 + 1) / 7 * 100}%`, background: `linear-gradient(90deg, ${RED}, ${HUES[st]})`, boxShadow: `0 0 30px ${HUES[st]}` }} />
+        <div style={{ position: 'absolute', left: 90, right: 90, top: 640, height: 12, borderRadius: 6, background: 'rgba(11,12,15,0.08)' }}>
+          <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, borderRadius: 6, width: `${(st + Math.min(1, p) - 1 + 1) / 7 * 100}%`, background: RED }} />
           {HUES.map((h, i) => (
-            <div key={i} style={{ position: 'absolute', left: `calc(${(i + 0.5) / 7 * 100}% - 15px)`, top: -9, width: 30, height: 30, borderRadius: 15, background: i <= st ? h : '#1a1c21', boxShadow: i <= st ? `0 0 24px ${h}` : 'none', border: '3px solid #050608' }} />
+            <div key={i} style={{ position: 'absolute', left: `calc(${(i + 0.5) / 7 * 100}% - 15px)`, top: -9, width: 30, height: 30, borderRadius: 15, background: i <= st ? h : '#E5E7EB', boxShadow: i === st ? `0 0 0 8px rgba(220,38,38,.18)` : 'none', border: '4px solid #FFFFFF' }} />
           ))}
         </div>
         {/* the stage pill morphs to each new stage */}
         <div style={{ position: 'absolute', left: 0, right: 0, top: 720, display: 'flex', justifyContent: 'center' }}>
-          <div style={{ ...glass({ borderRadius: 999 }), height: 84, padding: '0 40px', display: 'flex', alignItems: 'center', gap: 18, font: `700 40px ${FONT}`, color: INK, transform: `scale(${0.85 + 0.15 * Math.min(1.1, p)})`, boxShadow: `0 0 70px ${HUES[st]}55, 0 40px 80px rgba(0,0,0,.6)` }}>
-            <span style={{ width: 22, height: 22, borderRadius: 11, background: HUES[st], boxShadow: `0 0 20px ${HUES[st]}` }} />
+          <div style={{ ...glass({ borderRadius: 999 }), height: 84, padding: '0 40px', display: 'flex', alignItems: 'center', gap: 18, font: `700 40px ${FONT}`, color: INK, transform: `scale(${0.85 + 0.15 * Math.min(1.1, p)})`, boxShadow: '0 30px 70px rgba(11,12,15,.14), 0 8px 20px rgba(11,12,15,.08)' }}>
+            <span style={{ width: 22, height: 22, borderRadius: 11, background: RED }} />
             <span style={{ filter: ((1 - Math.min(1, p)) * 8) > 0.05 ? `blur(${(1 - Math.min(1, p)) * 8}px)` : 'none' }}>{C.stages[st]}</span>
           </div>
         </div>
         {/* the buyer */}
-        <div style={{ position: 'absolute', left: 110, right: 110, top: 860, height: 300, ...glass(), padding: 40, display: 'flex', gap: 30, alignItems: 'center', opacity: Math.min(1, cardIn * 1.5), transform: `translateY(${(1 - cardIn) * 120}px) rotate(${Math.sin(t * 1.4) * 0.6}deg)`, boxShadow: won ? `0 0 0 4px ${MINT}88, 0 0 90px ${MINT}55, 0 50px 120px rgba(0,0,0,.65)` : glass().boxShadow }}>
-          <div style={{ width: 140, height: 140, borderRadius: 70, background: 'linear-gradient(135deg,#2a2e36,#16181d)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: `700 64px ${FONT}`, color: INK, flex: 'none', boxShadow: 'inset 0 1px 0 rgba(255,255,255,.15)' }}>H</div>
+        <div style={{ position: 'absolute', left: 110, right: 110, top: 860, height: 300, ...glass(), padding: 40, display: 'flex', gap: 30, alignItems: 'center', opacity: Math.min(1, cardIn * 1.5), transform: `translateY(${(1 - cardIn) * 120}px) rotate(${Math.sin(t * 1.4) * 0.6}deg)`, boxShadow: won ? `0 0 0 4px ${RED}, 0 40px 90px rgba(220,38,38,.25)` : glass().boxShadow }}>
+          <div style={{ width: 140, height: 140, borderRadius: 70, background: INK, display: 'flex', alignItems: 'center', justifyContent: 'center', font: `700 64px ${FONT}`, color: '#FFFFFF', flex: 'none' }}>H</div>
           <div style={{ flex: 1 }}>
             <div style={{ font: `700 54px ${FONT}`, color: INK }}>Hafiz</div>
-            <div style={{ font: `500 30px ${FONT}`, color: 'rgba(255,255,255,.6)', marginTop: 6 }}>2025 Toyota GR86 2.4L RZ</div>
+            <div style={{ font: `500 30px ${FONT}`, color: MUTED, marginTop: 6 }}>2025 Toyota GR86 2.4L RZ</div>
             <div style={{ font: `700 34px ${FONT}`, color: INK, marginTop: 12 }}>RM 175,000</div>
           </div>
-          {won && <div style={{ position: 'absolute', right: 34, top: 34, width: 70, height: 70, borderRadius: 35, background: MINT, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${pop(f, hop[6] + 0.1)})`, boxShadow: `0 0 40px ${MINT}` }}><Icon d="M5 12.5l4.5 4.5L19 7.5" c="#06120d" s={42} /></div>}
+          {won && <div style={{ position: 'absolute', right: 34, top: 34, width: 70, height: 70, borderRadius: 35, background: MINT, display: 'flex', alignItems: 'center', justifyContent: 'center', transform: `scale(${pop(f, hop[6] + 0.1)})`, }}><Icon d="M5 12.5l4.5 4.5L19 7.5" c="#FFFFFF" s={42} /></div>}
         </div>
         {/* what happened between: a call logged, a reminder set */}
         {[[1.9, 3.4, 'M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z', C.callLogged, ''],
@@ -53,8 +54,8 @@ export const Leads = ({ lang }) => {
           const o = toast(a, b);
           return (
             <div key={i} style={{ position: 'absolute', left: i ? 300 : 150, top: i ? 1290 : 1180, ...glass({ borderRadius: 28 }), padding: '20px 28px', display: 'flex', alignItems: 'center', gap: 18, opacity: o, transform: `translateY(${(1 - o) * 40}px) scale(${0.9 + 0.1 * o})` }}>
-              <div style={{ width: 58, height: 58, borderRadius: 18, background: i ? 'rgba(251,191,36,.15)' : 'rgba(110,231,183,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d={d} c={i ? '#fbbf24' : MINT} /></div>
-              <div><div style={{ font: `700 30px ${FONT}`, color: INK }}>{label}</div>{sub && <div style={{ font: `500 24px ${FONT}`, color: 'rgba(255,255,255,.6)' }}>{sub}</div>}</div>
+              <div style={{ width: 58, height: 58, borderRadius: 18, background: 'rgba(220,38,38,.10)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon d={d} c={RED} /></div>
+              <div><div style={{ font: `700 30px ${FONT}`, color: INK }}>{label}</div>{sub && <div style={{ font: `500 24px ${FONT}`, color: MUTED }}>{sub}</div>}</div>
             </div>
           );
         })}
@@ -74,8 +75,8 @@ export const Stats = ({ lang }) => {
     return (
       <div style={{ flex: 1, ...glass(), padding: '40px 36px', opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 100}px)` }}>
         <Icon d={d} c={color} s={44} />
-        <div style={{ font: `700 150px/1 ${FONT}`, letterSpacing: -6, color, marginTop: 14, textShadow: `0 0 50px ${color}55` }}>{Math.round(n * k)}</div>
-        <div style={{ font: `500 34px ${FONT}`, color: 'rgba(255,255,255,.65)', marginTop: 6 }}>{label}</div>
+        <div style={{ font: `700 150px/1 ${FONT}`, letterSpacing: -6, color, marginTop: 14, }}>{Math.round(n * k)}</div>
+        <div style={{ font: `500 34px ${FONT}`, color: MUTED, marginTop: 6 }}>{label}</div>
       </div>
     );
   };
@@ -107,7 +108,7 @@ export const Studio = ({ lang }) => {
     <>
       <Headline lines={C.studio} at={0.1} out={len('studio') - 0.4} top={216} />
       <div style={{ position: 'absolute', left: (1080 - W0) / 2, top: 450, width: W0, height: H0, borderRadius: 40, overflow: 'hidden', opacity: Math.min(1, inP * 1.4) * (1 - ex), filter: ex > 0.05 ? `blur(${ex * 10}px)` : 'none',
-        transform: `translateY(${(1 - inP) * 140}px) scale(${0.94 + 0.06 * Math.min(1, inP)})`, boxShadow: '0 80px 160px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 120px rgba(220,38,38,.25)' }}>
+        transform: `translateY(${(1 - inP) * 140}px) scale(${0.94 + 0.06 * Math.min(1, inP)})`, boxShadow: '0 60px 120px rgba(11,12,15,.28), 0 0 0 1px rgba(11,12,15,.06)' }}>
         {/* backdrop: red studio sweep + floor, lit once the car lands */}
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(120% 70% at 50% 35%, #3a0d0d 0%, #160606 55%, #070303 100%)' }} />
         <div style={{ position: 'absolute', left: 0, right: 0, top: CY + CH - 40, bottom: 0, background: 'linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.6))' }} />
@@ -116,17 +117,17 @@ export const Studio = ({ lang }) => {
         <Img src={staticFile('photos/gr86-2025.jpg')} style={{ position: 'absolute', left: CX, top: CY, width: CW, height: CH, objectFit: 'cover', borderRadius: 18, clipPath: `inset(${scan * 100}% 0 0 0 round 18px)` }} />
         {/* the cut-out (real model output) + contact shadow */}
         <div style={{ position: 'absolute', left: CX + 30, width: CW - 60, top: CY + CH - 46, height: 40, borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(0,0,0,.85), transparent)', opacity: lift }} />
-        <Img src={staticFile('real/gr86-cutout.png')} style={{ position: 'absolute', left: CX, top: CY - lift * 24, width: CW, height: CH, objectFit: 'contain', clipPath: `inset(0 0 ${(1 - scan) * 100}% 0)`, filter: 'drop-shadow(0 24px 24px rgba(0,0,0,.6))' }} />
+        <Img src={staticFile('real/gr86-cutout.png')} style={{ position: 'absolute', left: CX, top: CY - lift * 24, width: CW, height: CH, objectFit: 'contain', clipPath: `inset(0 0 ${(1 - scan) * 100}% 0)`, filter: 'drop-shadow(0 24px 24px rgba(11,12,15,0.21))' }} />
         {scan > 0 && scan < 1 && <div style={{ position: 'absolute', left: CX, width: CW, top: CY + scan * CH - 3, height: 6, background: '#fff', boxShadow: `0 0 30px 10px ${RED2}` }} />}
         {/* template words */}
         <div style={{ position: 'absolute', left: 44, top: 50, opacity: Math.min(1, tpl(3.2) * 1.4), transform: `translateY(${(1 - tpl(3.2)) * -40}px)` }}>
           <div style={{ display: 'inline-block', background: RED, color: '#fff', font: `700 24px ${FONT}`, padding: '8px 16px', borderRadius: 10 }}>TOYOTA GR86</div>
-          <div style={{ font: `700 54px/1 ${FONT}`, color: INK, marginTop: 14, letterSpacing: -2 }}>2.4L RZ · 2025</div>
+          <div style={{ font: `700 54px/1 ${FONT}`, color: '#FFFFFF', marginTop: 14, letterSpacing: -2 }}>2.4L RZ · 2025</div>
         </div>
         {/* the monthly is the presenter's own figure: 10% deposit, 7 years, 6.5% EIR */}
         <div style={{ position: 'absolute', left: 36, right: 36, top: 690, ...glass({ borderRadius: 28 }), padding: '22px 28px', opacity: Math.min(1, tpl(3.45) * 1.4), transform: `translateY(${(1 - tpl(3.45)) * 100}px)` }}>
-          <div style={{ font: `500 24px ${FONT}`, color: 'rgba(255,255,255,.7)' }}>{lang === 'en' ? 'From' : 'Dari'}</div>
-          <div style={{ font: `700 92px/1 ${FONT}`, color: RED2, letterSpacing: -3, textShadow: '0 0 40px rgba(239,68,68,.5)', whiteSpace: 'nowrap' }}>RM 2,417<span style={{ font: `700 30px ${FONT}`, color: 'rgba(255,255,255,.7)', letterSpacing: 0 }}>{lang === 'en' ? ' /month' : ' /bulan'}</span></div>
+          <div style={{ font: `500 24px ${FONT}`, color: MUTED }}>{lang === 'en' ? 'From' : 'Dari'}</div>
+          <div style={{ font: `700 92px/1 ${FONT}`, color: RED, letterSpacing: -3, whiteSpace: 'nowrap' }}>RM 2,417<span style={{ font: `700 30px ${FONT}`, color: MUTED, letterSpacing: 0 }}>{lang === 'en' ? ' /month' : ' /bulan'}</span></div>
           <div style={{ font: `700 24px ${FONT}`, color: INK, marginTop: 8 }}>{lang === 'en' ? '10% deposit · 7 years' : 'Deposit 10% · 7 tahun'}</div>
         </div>
       </div>
@@ -136,7 +137,7 @@ export const Studio = ({ lang }) => {
           const p = pop(f, a); const down = t >= press && t < press + 0.18;
           return (
             <div key={i} style={{ opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 50}px) scale(${down ? 0.92 : 1})` }}>
-              <Chip style={t >= press ? { background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none', boxShadow: '0 0 40px rgba(220,38,38,.6)' } : {}}><Icon d={d} s={26} />{label}</Chip>
+              <Chip style={t >= press ? { background: INK, color: '#FFFFFF', border: 'none' } : {}}><Icon d={d} s={26} c={t >= press ? '#FFFFFF' : INK} />{label}</Chip>
             </div>
           );
         })}
@@ -155,16 +156,16 @@ export const Posters = ({ lang }) => {
       <Headline lines={C.posters} at={0.1} out={len('posters') - 0.4} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 10) > 0.05 ? `blur(${ex * 10}px)` : 'none' }}>
         <div style={{ position: 'absolute', left: 50, top: 560, width: 520, transform: `translateX(${(1 - a) * -500}px) rotate(${-5 + (1 - Math.min(1, a)) * -8}deg)` }}>
-          <Img src={staticFile(`real/loan-poster-${lang}.jpg`)} style={{ width: 520, borderRadius: 26, boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 90px rgba(220,38,38,.2)' }} />
+          <Img src={staticFile(`real/loan-poster-${lang}.jpg`)} style={{ width: 520, borderRadius: 26, boxShadow: '0 70px 140px rgba(11,12,15,0.26), 0 0 0 1px rgba(11,12,15,.06), 0 0 90px rgba(220,38,38,.2)' }} />
           <div style={{ marginTop: 26 }}><Chip>{C.jpeg}</Chip></div>
         </div>
         <div style={{ position: 'absolute', left: 600, top: 500, width: 430, transform: `translateX(${(1 - b) * 520}px) rotate(${4 + (1 - Math.min(1, b)) * 8}deg)` }}>
-          <div style={{ width: 430, height: 764, borderRadius: 54, padding: 14, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 90px rgba(220,38,38,.25)' }}>
+          <div style={{ width: 430, height: 764, borderRadius: 54, padding: 14, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(11,12,15,0.26), 0 0 0 1px rgba(11,12,15,.06), 0 0 90px rgba(220,38,38,.25)' }}>
             <div style={{ width: 402, height: 736, borderRadius: 42, overflow: 'hidden', background: '#000' }}>
               <OffthreadVideo src={staticFile(`real/motion-${lang}.mp4`)} muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
           </div>
-          <div style={{ marginTop: 26 }}><Chip style={{ background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none' }}>▶ {C.mp4}</Chip></div>
+          <div style={{ marginTop: 26 }}><Chip style={{ background: INK, color: '#FFFFFF', border: 'none' }}>▶ {C.mp4}</Chip></div>
         </div>
       </div>
       <Fine text={C.fine.real} top={1560} />
@@ -178,7 +179,7 @@ export const PagePhone = ({ t, lang, scroll = 0, typed = URL.length }) => {
   const C = COPY[lang];
   const s = URL.slice(0, typed);
   return (
-    <div style={{ width: 560, height: 1060, borderRadius: 64, padding: 16, background: '#0b0c0f', boxShadow: '0 90px 160px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 120px rgba(37,99,235,.25)' }}>
+    <div style={{ width: 560, height: 1060, borderRadius: 64, padding: 16, background: '#0b0c0f', boxShadow: '0 90px 160px rgba(11,12,15,0.26), 0 0 0 1px rgba(11,12,15,.06), 0 0 120px rgba(37,99,235,.25)' }}>
       <div style={{ position: 'relative', width: 528, height: 1028, borderRadius: 50, overflow: 'hidden', background: '#EEF2FD', fontFamily: FONT }}>
         <div style={{ position: 'absolute', left: 16, right: 16, top: 16, height: 60, borderRadius: 30, background: '#E2E8F7', zIndex: 5, display: 'flex', alignItems: 'center', gap: 10, padding: '0 22px', font: `500 25px ${FONT}`, color: '#33363d', whiteSpace: 'nowrap', boxShadow: '0 6px 20px rgba(30,41,90,.12)' }}>
           <Icon d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4" c="#33363d" s={22} />
@@ -244,12 +245,12 @@ export const Devices = ({ lang }) => {
       <Headline lines={C.devices} at={0.05} out={len('devices') - 0.35} top={216} />
       <div style={{ position: 'absolute', inset: 0, opacity: 1 - ex, filter: (ex * 12) > 0.05 ? `blur(${ex * 12}px)` : 'none', transform: `translateY(${-ex * 80}px)` }}>
         <div style={{ position: 'absolute', left: 30, top: 640, transform: `translateX(${(1 - a) * -500}px)` }}>
-          <div style={{ width: 700, height: 470, borderRadius: '26px 26px 8px 8px', padding: 16, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(0,0,0,.75), 0 0 0 1px rgba(255,255,255,.1), 0 0 100px rgba(220,38,38,.25)' }}>
+          <div style={{ width: 700, height: 470, borderRadius: '26px 26px 8px 8px', padding: 16, background: '#0b0c0f', boxShadow: '0 70px 140px rgba(11,12,15,0.26), 0 0 0 1px rgba(11,12,15,.06), 0 0 100px rgba(220,38,38,.25)' }}>
             <div style={{ width: 668, height: 438, borderRadius: 10, overflow: 'hidden', background: '#f4f4f5', display: 'flex', justifyContent: 'center' }}>
               <Freeze frame={sec(8.6)}><OffthreadVideo src={staticFile(`takes/calc-${lang}.mp4`)} muted style={{ height: '100%' }} /></Freeze>
             </div>
           </div>
-          <div style={{ width: 780, height: 30, marginLeft: -40, borderRadius: '6px 6px 30px 30px', background: 'linear-gradient(180deg,#3f3f46,#18181b)', boxShadow: '0 30px 60px rgba(0,0,0,.6)' }} />
+          <div style={{ width: 780, height: 30, marginLeft: -40, borderRadius: '6px 6px 30px 30px', background: 'linear-gradient(180deg,#3f3f46,#18181b)', boxShadow: '0 30px 60px rgba(11,12,15,0.21)' }} />
         </div>
         <div style={{ position: 'absolute', left: 690, top: 700, transformOrigin: '0 0', transform: `translateX(${(1 - b) * 500}px) scale(0.6)` }}>
           <PagePhone t={9} lang={lang} />
@@ -268,18 +269,18 @@ export const Cta = ({ lang }) => {
   return (
     <>
       {item(0.05, { top: 520, font: `700 132px/1 ${FONT}`, letterSpacing: -6, color: INK }, C.cta1)}
-      {item(0.25, { top: 665, font: `700 116px/1 ${FONT}`, letterSpacing: -5, color: RED2, textShadow: '0 0 60px rgba(239,68,68,.6)' }, C.cta2)}
-      {item(0.8, { top: 840, font: `500 38px/1.35 ${FONT}`, color: 'rgba(255,255,255,.75)' }, C.cta3)}
+      {item(0.25, { top: 665, font: `700 116px/1 ${FONT}`, letterSpacing: -5, color: RED }, C.cta2)}
+      {item(0.8, { top: 840, font: `500 38px/1.35 ${FONT}`, color: MUTED }, C.cta3)}
       {item(1.1, { top: 980 }, (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 18, height: 140, padding: '0 70px', borderRadius: 44, background: 'linear-gradient(180deg,#ef4444,#dc2626)', color: '#fff', font: `700 64px ${FONT}`, transform: `scale(${pulse})`,
-          boxShadow: '0 4px 0 #991b1b, 0 0 90px rgba(220,38,38,.6), 0 40px 80px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.35)' }}>
+          boxShadow: '0 4px 0 #991b1b, 0 0 90px rgba(220,38,38,.6), 0 40px 80px rgba(11,12,15,0.21), inset 0 1px 0 rgba(255,255,255,.35)' }}>
           drevo.my <Icon d="M5 12h14M13 6l6 6-6 6" c="#fff" s={52} />
         </div>
       ))}
-      {item(1.5, { top: 1190, font: `700 38px ${FONT}`, color: INK }, (
+      {item(1.5, { top: 1300, font: `700 38px ${FONT}`, color: '#FFFFFF' }, (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 16 }}><span style={{ width: 58, height: 58, borderRadius: 29, background: '#fff', color: '#0b0c0f', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: `700 30px ${FONT}` }}>@</span>{C.tag}</span>
       ))}
-      <div style={{ position: 'absolute', inset: 0, background: '#fff', opacity: flash, pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', inset: 0, background: RED, opacity: flash, pointerEvents: 'none' }} />
     </>
   );
 };
@@ -290,7 +291,7 @@ export const OfferPill = ({ lang, t }) => {
   const hidePage = (t >= TL.page[0] && t < TL.page[1]) || (t >= TL.studio[0] && t < TL.studio[1]) ? 0 : 1;
   return (
     <div style={{ position: 'absolute', left: 0, right: 0, top: 1440, display: 'flex', justifyContent: 'center', opacity: on * hidePage, transform: `translateY(${(1 - on) * 40}px)` }}>
-      <Chip style={{ height: 64, font: `700 27px ${FONT}` }}><span style={{ width: 12, height: 12, borderRadius: 6, background: RED2, boxShadow: `0 0 14px ${RED2}` }} />{COPY[lang].pill}</Chip>
+      <Chip style={{ height: 64, font: `700 27px ${FONT}`, background: INK, color: '#FFFFFF', border: 'none', boxShadow: '0 18px 40px rgba(80,0,0,.35)' }}><span style={{ width: 12, height: 12, borderRadius: 6, background: RED2 }} />{COPY[lang].pill}</Chip>
     </div>
   );
 };

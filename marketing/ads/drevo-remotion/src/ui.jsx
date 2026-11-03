@@ -2,10 +2,15 @@ import React from 'react';
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, staticFile, continueRender, delayRender } from 'remotion';
 import { clamp, ease, lerp, parseLine, sec, pop, FPS } from './lib';
 
+// Drevo ad theme (owner, 2026-11-03): 60% white, 30% red, 10% black. See STYLE.md.
+export const WHITE = '#FFFFFF';
 export const RED = '#dc2626';
 export const RED2 = '#ef4444';
-export const MINT = '#6ee7b7';
-export const INK = '#f4f5f7';
+export const INK = '#0B0C0F';                     // black: text + device frames (the 10%)
+export const MUTED = 'rgba(11,12,15,0.55)';       // secondary text on white
+export const ON_RED = '#FFFFFF';                  // text sitting on the red floor or a red card
+export const FLOOR = 1260;                        // the red floor starts here (y, px of 1920)
+export const MINT = RED;                          // legacy name: the "won"/positive accent is red now
 
 // ---------- fonts (local files, loaded before the first frame) ----------
 const fontHandle = typeof window !== 'undefined' ? delayRender('fonts') : null;
@@ -18,22 +23,25 @@ if (typeof window !== 'undefined') {
 }
 export const FONT = 'Outfit, system-ui, sans-serif';
 
-// ---------- ambient world: near-black, slow red light pools, floor, grain ----------
-export const Ambient = ({ hue = RED, intensity = 1 }) => {
+// ---------- the world: white room, a red floor the devices stand on, soft moving light ----------
+export const Ambient = () => {
   const f = useCurrentFrame();
   const t = f / FPS;
-  const a = (x, y, r, o) => `radial-gradient(${r}px ${r * 0.8}px at ${x}px ${y}px, rgba(220,38,38,${o * intensity}), transparent 70%)`;
+  const pool = (x, y, r, c) => `radial-gradient(${r}px ${r * 0.7}px at ${x}px ${y}px, ${c}, transparent 70%)`;
   return (
-    <AbsoluteFill style={{ background: '#050608' }}>
+    <AbsoluteFill style={{ background: WHITE }}>
+      {/* room: white, a whisper of grey towards the horizon, a faint warm light drifting */}
       <AbsoluteFill style={{ background: [
-        a(540 + Math.sin(t * 0.35) * 260, 520 + Math.cos(t * 0.27) * 140, 900, 0.20),
-        a(160 + Math.cos(t * 0.22) * 120, 1500 + Math.sin(t * 0.31) * 90, 700, 0.14),
-        a(980 + Math.sin(t * 0.19) * 80, 1100 + Math.cos(t * 0.41) * 160, 600, 0.10),
+        pool(540 + Math.sin(t * 0.35) * 260, 520 + Math.cos(t * 0.27) * 120, 900, 'rgba(220,38,38,0.06)'),
+        `linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 45%, #F1F1F3 ${FLOOR / 19.2}%)`,
       ].join(',') }} />
-      {/* floor: a darker band with a soft horizon line, gives the objects somewhere to stand */}
-      <AbsoluteFill style={{ background: 'linear-gradient(180deg, transparent 0%, transparent 62%, rgba(255,255,255,0.025) 62.2%, rgba(0,0,0,0.5) 100%)' }} />
-      <AbsoluteFill style={{ background: 'radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,0.75) 100%)' }} />
-      {/* film grain is added at mux time (ffmpeg noise): a blend layer here doubled the render time */}
+      {/* floor: red, lit at the horizon, darker towards the viewer, a light pool sliding across */}
+      <div style={{ position: 'absolute', left: 0, right: 0, top: FLOOR, bottom: 0, background: [
+        pool(540 + Math.sin(t * 0.3) * 300, 120, 700, 'rgba(255,255,255,0.16)'),
+        'linear-gradient(180deg, #ef4444 0%, #dc2626 30%, #a51b1b 100%)',
+      ].join(',') }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: FLOOR - 1, height: 3, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent)' }} />
+      {/* film grain is added at mux time (ffmpeg noise) */}
     </AbsoluteFill>
   );
 };
@@ -48,8 +56,8 @@ export const Headline = ({ lines, eyebrow, at = 0, out = 99, top = 150, size = 1
   return (
     <div style={{ position: 'absolute', left: 60, right: 60, top, textAlign: 'center', fontFamily: FONT }}>
       {eyebrow && (
-        <div style={{ font: `700 28px ${FONT}`, letterSpacing: 5, color: RED2, textTransform: 'uppercase', opacity: ebIn * (1 - exit), transform: `translateY(${(1 - ebIn) * 20 - exit * 30}px)`, marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 6, background: RED2, boxShadow: `0 0 18px ${RED2}` }} />{eyebrow}
+        <div style={{ font: `700 28px ${FONT}`, letterSpacing: 5, color: RED, textTransform: 'uppercase', opacity: ebIn * (1 - exit), transform: `translateY(${(1 - ebIn) * 20 - exit * 30}px)`, marginBottom: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
+          <span style={{ width: 12, height: 12, borderRadius: 6, background: RED }} />{eyebrow}
         </div>
       )}
       {lines.map((line, li) => (
@@ -64,7 +72,7 @@ export const Headline = ({ lines, eyebrow, at = 0, out = 99, top = 150, size = 1
             return (
               <span key={i} style={{ display: 'inline-block', marginRight: size * 0.24, opacity: o * (1 - exit), filter: (blur) > 0.05 ? `blur(${blur}px)` : 'none',
                 transform: `translateY(${(1 - p) * 70 - exit * (50 + idx * 6)}px) scale(${(0.9 + 0.1 * Math.min(1.05, p)) * pulse})`,
-                color: r ? RED2 : INK, textShadow: r ? '0 0 50px rgba(239,68,68,.55), 0 0 12px rgba(239,68,68,.35)' : '0 10px 40px rgba(0,0,0,.6)' }}>{w}</span>
+                color: r ? RED : INK, textShadow: r ? '0 12px 34px rgba(220,38,38,.22)' : 'none' }}>{w}</span>
             );
           })}
         </div>
@@ -75,9 +83,9 @@ export const Headline = ({ lines, eyebrow, at = 0, out = 99, top = 150, size = 1
 
 // ---------- glass card: depth from tone + rim light + long soft shadow ----------
 export const glass = (extra = {}) => ({
-  background: 'linear-gradient(160deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 40%, rgba(255,255,255,0.02))',
-  border: '1px solid rgba(255,255,255,0.10)',
-  boxShadow: '0 50px 120px rgba(0,0,0,0.65), 0 12px 30px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.14), 0 0 90px rgba(220,38,38,0.10)',
+  background: 'linear-gradient(160deg, #FFFFFF, #F7F7F8)',
+  border: '1px solid rgba(11,12,15,0.06)',
+  boxShadow: '0 40px 90px rgba(11,12,15,0.14), 0 10px 24px rgba(11,12,15,0.08), inset 0 1px 0 #FFFFFF',
   borderRadius: 36,
   ...extra,
 });
@@ -87,7 +95,7 @@ export const Device = ({ x, y, w, ratio, children, glow = 1, style = {} }) => {
   const h = w / ratio;
   return (
     <div style={{ position: 'absolute', left: x, top: y, width: w + 28, height: h + 28, padding: 14, borderRadius: 34, background: 'linear-gradient(160deg,#1b1d22,#0b0c0f)',
-      boxShadow: `0 80px 140px rgba(0,0,0,0.7), 0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 ${120 * glow}px rgba(220,38,38,${0.22 * glow})`, ...style }}>
+      boxShadow: `0 60px 120px rgba(11,12,15,0.28), 0 18px 36px rgba(11,12,15,0.18), inset 0 1px 0 rgba(255,255,255,0.12), 0 0 ${90 * glow}px rgba(220,38,38,${0.12 * glow})`, ...style }}>
       <div style={{ position: 'relative', width: w, height: h, borderRadius: 22, overflow: 'hidden', background: '#000' }}>
         {children}
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(115deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 28%)', pointerEvents: 'none' }} />
@@ -116,7 +124,7 @@ export const Cursor = ({ clicks, takeT, w, h }) => {
   const ring = since < 0.5 ? since / 0.5 : 1;
   return (
     <>
-      {since < 0.5 && <div style={{ position: 'absolute', left: x * w - 50, top: y * h - 50, width: 100, height: 100, borderRadius: 50, border: `5px solid ${RED2}`, opacity: 1 - ring, transform: `scale(${0.3 + ring * 1.1})`, boxShadow: `0 0 30px ${RED2}` }} />}
+      {since < 0.5 && <div style={{ position: 'absolute', left: x * w - 50, top: y * h - 50, width: 100, height: 100, borderRadius: 50, border: `5px solid ${RED}`, opacity: 1 - ring, transform: `scale(${0.3 + ring * 1.1})` }} />}
       <svg width="44" height="44" viewBox="0 0 24 24" style={{ position: 'absolute', left: x * w - 6, top: y * h - 4, transform: `scale(${press})`, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.5))' }}>
         <path d="M4 2l15 11-7 1-3 7z" fill="#0B0C0F" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
       </svg>
@@ -124,8 +132,9 @@ export const Cursor = ({ clicks, takeT, w, h }) => {
   );
 };
 
+// fine print sits on the red floor
 export const Fine = ({ text, top = 1560 }) => (
-  <div style={{ position: 'absolute', left: 60, right: 60, top, textAlign: 'center', font: `500 22px ${FONT}`, color: 'rgba(255,255,255,0.42)' }}>{text}</div>
+  <div style={{ position: 'absolute', left: 60, right: 60, top, textAlign: 'center', font: `500 22px ${FONT}`, color: 'rgba(255,255,255,0.78)' }}>{text}</div>
 );
 
 export const Chip = ({ children, style }) => (

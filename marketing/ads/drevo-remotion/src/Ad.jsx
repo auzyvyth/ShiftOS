@@ -13,7 +13,7 @@ const S = ({ k, children }) => (
 export const Ad = ({ lang = 'ms', audio = true }) => {
   const f = useCurrentFrame();
   return (
-    <AbsoluteFill style={{ background: '#050608', overflow: 'hidden' }}>
+    <AbsoluteFill style={{ background: '#FFFFFF', overflow: 'hidden' }}>
       <Ambient />
       <Sequence from={0} durationInFrames={sec(TL.calc[1])} name="hook+calc"><HookCalc lang={lang} /></Sequence>
       <S k="budget"><Budget lang={lang} /></S>

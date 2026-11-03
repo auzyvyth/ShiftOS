@@ -4,7 +4,7 @@
 import React from 'react';
 import { useCurrentFrame, OffthreadVideo, Freeze, staticFile, interpolate } from 'remotion';
 import { COPY, LEN, FPS, sec, lerp, easeIO, clamp } from '../lib';
-import { Device, Cursor, Headline, Fine, Chip, FONT, RED2, INK } from '../ui';
+import { Device, Cursor, Headline, Fine, Chip, FONT, RED, RED2, INK } from '../ui';
 import calcMs from '../calc-ms.clicks.json';
 import calcEn from '../calc-en.clicks.json';
 import budMs from '../budget-ms.clicks.json';
@@ -85,7 +85,7 @@ export const HookCalc = ({ lang }) => {
       <Headline lines={C.calc} eyebrow={C.eb.calc} at={4.75} out={9.45} top={170} />
       {xOut < 1 && (
         <div style={{ position: 'absolute', left: 126, top: 352, width: 828, height: 486, padding: 14, borderRadius: 26, background: 'linear-gradient(160deg,#1b1d22,#0b0c0f)',
-          boxShadow: '0 60px 120px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08)', opacity: 1 - xOut,
+          boxShadow: '0 60px 120px rgba(11,12,15,0.28), 0 0 0 1px rgba(11,12,15,0.06)', opacity: 1 - xOut,
           transform: `translate(${-xOut * 320}px, ${xOut * 380}px) rotate(${-xOut * 18}deg) scale(${1 - 0.35 * xOut})`, filter: `blur(${xOut * 14}px) saturate(${1 - xOut * 0.8})` }}>
           <div style={{ width: 800, height: 458, borderRadius: 14, overflow: 'hidden' }}><Excel t={t} lang={lang} /></div>
         </div>
@@ -100,12 +100,12 @@ export const HookCalc = ({ lang }) => {
       </div>
       <div style={{ position: 'absolute', right: 150, top: 326, opacity: 1 - xOut, transform: `translateY(${-xOut * 20}px)` }}>
         <Chip style={{ height: 52, font: `700 22px ${FONT}` }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4"><circle cx="12" cy="13" r="8" /><path d="M12 13V9M9 2h6" /></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0B0C0F" strokeWidth="2.4"><circle cx="12" cy="13" r="8" /><path d="M12 13V9M9 2h6" /></svg>
           {C.excel} · 0:{String(secs).padStart(2, '0')}
         </Chip>
       </div>
       <div style={{ position: 'absolute', right: 150, top: 878, opacity: 1 - interpolate(t, [3.95, 4.3], [0, 1], clamp) }}>
-        <Chip style={{ height: 52, font: `700 22px ${FONT}`, background: 'linear-gradient(180deg,#ef4444,#dc2626)', border: 'none', boxShadow: '0 0 40px rgba(220,38,38,.6)' }}>
+        <Chip style={{ height: 52, font: `700 22px ${FONT}`, background: RED, color: '#FFFFFF', border: 'none', boxShadow: '0 16px 36px rgba(220,38,38,.3)' }}>
           {C.drevo}{t > 2.4 ? ` · 2 tap · ${C.done}` : ''}
         </Chip>
       </div>
