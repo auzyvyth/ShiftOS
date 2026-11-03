@@ -23,12 +23,19 @@ the approval steps), `README.md` (how to rebuild and render). Repo-wide rules: `
   floor (from y=1260) the devices stand on, black text and device frames, black offer pill.
   Drawn accents are red/black only; real app screens, posters and the mini page keep real colours.
   `tools/palette.py <dir of stills>` measures it: frames between cards = 53 / 30 / 7 (+10% photos).
+- **Stats says the value** (owner): "Views, clicks, saves. Know what to fix." with three real numbers
+  (premiummotors' 2023 Lexus RX 350 2.4L Turbo F-Sport: 89 views, 10 WhatsApp, 1 saved). The other RX
+  (131 views) has 0 saves, which is why the car changed. Saves are at most 1 on any premiummotors car.
+- **Sales coach scene, chapter 05** (`Coach` in `src/scenes/Features.jsx`): renders the app's own
+  `carNextStep` rules + `CarNextStep` component (imported from `src/`, react aliased in
+  `remotion.config.js`) on premiummotors' real numbers read 2026-11-03 (`COACH_CARS`). Re-read them
+  from the DB before re-using this scene later: the lines change as the cars get views.
 - **Written rules so the next session makes the same design**: `STYLE.md`, `LESSONS.md`, and the
   pointer in `/CLAUDE.md` (`96289b3`, `f8ced66`).
 
 ## 3. Open items for the next agent
-1. **Done: the final videos in `final/` are the white theme with chapter cards** (rendered
-   2026-11-03 08:40/08:49 UTC, 49.8 s, -13.6 LUFS, no black frames, every scene checked in both
+1. **Done: the final videos in `final/` are the white theme with chapter cards, the value-led stats
+   scene and the sales coach scene** (rendered 2026-11-03 15:48/15:57 UTC, 49.8 s, -13.6 LUFS, no black frames, every scene checked in both
    languages) and were sent to the owner. The dark preview clip was deleted. To render again after a
    change: `node make-audio.cjs`, then `npx remotion render src/index.js DrevoAd-<lang> out/raw-<lang>.mp4`
    (~10 min each, background), then the finish:
