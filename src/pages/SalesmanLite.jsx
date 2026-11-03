@@ -2667,6 +2667,11 @@ export default function SalesmanLite() {
         switchTab("listings");
         setFilterStatus("rejected");
         break;
+      // Renewals live on Premium's Sold tab. Sent only while the seller was on
+      // Premium; after a lapse the old row leads to the one upgrade screen.
+      case "expiry_reminder":
+        goPremium();
+        break;
       default:
         break;
     }

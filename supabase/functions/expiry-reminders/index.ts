@@ -87,10 +87,8 @@ serve(async (req) => {
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
-  const in7 = toDateString(addDays(today, 7));
   const in30 = toDateString(addDays(today, 30));
   const todayStr = toDateString(today);
-  const oneDayAgo = new Date(today.getTime() - 86400000).toISOString();
   const todayIso = today.toISOString();
 
   let reminders_sent = 0;
@@ -98,30 +96,91 @@ serve(async (req) => {
   let dealer_escalations = 0;
   const errors: string[] = [];
 
-  // ── 1. Road tax / insurance expiry reminders (dealer bell) ─────────────────
+  // ── 1. Road tax / insurance renewals: 30 days out, then 7 days out ─────────
+  // Fixed 2026-11-03:
+  // - It wrote only to dealer_notifications. A solo seller's phone still got
+  //   the push, but Lite/Premium read salesman_notifications, so it never showed
+  //   in their bell and tapping it led nowhere. Now the SELLER gets a
+  //   salesman_notifications row (ref_id = customer, the bell opens that buyer);
+  //   a real dealer still gets their own row.
+  // - It sent only when the expiry was EXACTLY 30 or 7 days away, so one missed
+  //   daily run lost the reminder. Now each window (30..8 days, 7..0 days) sends
+  //   once, on the first run inside it; the dedup looks back to the window start.
+  // - Renewals are a Premium tool (the Sold tab). Lite sellers get no row: a
+  //   push they cannot act on teaches them to block notifications.
   const { data: customers, error: custErr } = await supabase
     .from("customers")
-    .select("id, dealer_id, name, car_brand, car_model, car_plate, road_tax_expiry, insurance_expiry");
+    .select("id, dealer_id, lead_id, name, car_brand, car_model, car_plate, road_tax_expiry, insurance_expiry")
+    .or(`and(road_tax_expiry.gte.${todayStr},road_tax_expiry.lte.${in30}),and(insurance_expiry.gte.${todayStr},insurance_expiry.lte.${in30})`);
   if (custErr) errors.push(`customers: ${custErr.message}`);
+  const custRows = customers ?? [];
 
-  for (const c of customers ?? []) {
-    for (const { field, title, label } of [
-      { field: "road_tax_expiry" as const, title: "Road Tax Expiring", label: "road tax" },
-      { field: "insurance_expiry" as const, title: "Insurance Expiring", label: "insurance" },
+  // Who sold each car (the lead's rep) and what each account is.
+  const leadIds = [...new Set(custRows.map((c) => c.lead_id).filter(Boolean))];
+  const repByLead = new Map<string, string | null>();
+  if (leadIds.length) {
+    const { data: leads, error } = await supabase.from("leads").select("id, salesman_id").in("id", leadIds);
+    if (error) errors.push(`leads: ${error.message}`);
+    for (const l of leads ?? []) repByLead.set(l.id, l.salesman_id);
+  }
+  const accountIds = [...new Set([...custRows.map((c) => c.dealer_id), ...repByLead.values()].filter(Boolean))] as string[];
+  const accounts = new Map<string, Record<string, unknown>>();
+  if (accountIds.length) {
+    const { data: profs, error } = await supabase.from("profiles")
+      .select("id, role, dealer_id, plan, plan_expires_at, payment_status, is_active").in("id", accountIds);
+    if (error) errors.push(`profiles: ${error.message}`);
+    for (const p of profs ?? []) accounts.set(p.id, p);
+  }
+  // Same rule as push_home_path: dealer-linked reps, or a paid-up Premium seller.
+  const hasRenewals = (p?: Record<string, unknown>) => !!p && p.role === "salesman" && (
+    p.dealer_id != null ||
+    (p.is_active === true && p.plan === "salesman_full" &&
+      ((p.plan_expires_at && new Date(p.plan_expires_at as string) > new Date()) || p.payment_status === "received"))
+  );
+
+  for (const c of custRows) {
+    const owner = accounts.get(c.dealer_id);
+    const rep = (c.lead_id && repByLead.get(c.lead_id)) || (owner?.role === "salesman" ? c.dealer_id : null);
+    for (const { field, label } of [
+      { field: "road_tax_expiry" as const, label: "Road tax" },
+      { field: "insurance_expiry" as const, label: "Insurance" },
     ]) {
       const expiry: string | null = c[field];
       if (!expiry) continue;
       const expiryDate = expiry.slice(0, 10);
-      if (expiryDate !== in7 && expiryDate !== in30) continue;
-      const { data: ex } = await supabase.from("dealer_notifications").select("id")
-        .eq("dealer_id", c.dealer_id).eq("type", "expiry_reminder").eq("ref_id", c.id).eq("title", title)
-        .gte("created_at", oneDayAgo).limit(1);
-      if (ex && ex.length > 0) continue;
-      const body = `${c.name} · ${c.car_brand ?? ""} ${c.car_model ?? ""} ${c.car_plate ?? ""} — ${label} expires ${formatDate(expiryDate)}`.trim();
-      const { error } = await supabase.from("dealer_notifications")
-        .insert({ dealer_id: c.dealer_id, title, body, type: "expiry_reminder", ref_id: c.id, is_read: false });
-      if (error) errors.push(`expiry: ${error.message}`);
-      else reminders_sent++;
+      const days = Math.round((new Date(`${expiryDate}T00:00:00Z`).getTime() - today.getTime()) / 86400000);
+      if (days < 0 || days > 30) continue;
+      const windowStart = addDays(new Date(`${expiryDate}T00:00:00Z`), days <= 7 ? -7 : -30).toISOString();
+      const title = days === 0 ? `${label} expires today` : `${label} due in ${days} day${days === 1 ? "" : "s"}`;
+      const car = [c.car_brand, c.car_model, c.car_plate].filter(Boolean).join(" ");
+      const body = `${c.name ?? "Your buyer"}${car ? ` · ${car}` : ""} · expires ${formatDate(expiryDate)}. Send them a reminder.`;
+
+      if (rep && hasRenewals(accounts.get(rep))) {
+        const { data: ex, error: exErr } = await supabase.from("salesman_notifications").select("id")
+          .eq("salesman_id", rep).eq("type", "expiry_reminder").eq("ref_id", c.id)
+          .ilike("title", `${label}%`).gte("created_at", windowStart).limit(1);
+        if (exErr) errors.push(`expiry dedup: ${exErr.message}`);
+        else if (!ex?.length) {
+          const { error } = await supabase.from("salesman_notifications")
+            .insert({ salesman_id: rep, title, body, type: "expiry_reminder", ref_id: c.id, is_read: false });
+          if (error) errors.push(`expiry salesman: ${error.message}`);
+          else reminders_sent++;
+        }
+      }
+
+      // A real dealer's own bell (never a solo seller: they ARE the rep above).
+      if (owner && owner.role !== "salesman") {
+        const { data: ex, error: exErr } = await supabase.from("dealer_notifications").select("id")
+          .eq("dealer_id", c.dealer_id).eq("type", "expiry_reminder").eq("ref_id", c.id)
+          .ilike("title", `${label}%`).gte("created_at", windowStart).limit(1);
+        if (exErr) errors.push(`expiry dedup: ${exErr.message}`);
+        else if (!ex?.length) {
+          const { error } = await supabase.from("dealer_notifications")
+            .insert({ dealer_id: c.dealer_id, title, body, type: "expiry_reminder", ref_id: c.id, link_to: "customers", is_read: false });
+          if (error) errors.push(`expiry dealer: ${error.message}`);
+          else reminders_sent++;
+        }
+      }
     }
   }
 

@@ -1174,6 +1174,7 @@
       "visitDue": "Visit due",
       "addOne": "Add one",
       "there": "there",
+      "advisor": "your car advisor",
       "yourCar": "your car",
       "waRenewExpired": "Hi {{who}}, {{me}} here. The {{what}} on the {{car}} expired on {{date}}. Want me to help you sort the renewal?",
       "waRenewDue": "Hi {{who}}, {{me}} here. The {{what}} on the {{car}} is due on {{date}}. Want me to help you sort the renewal?",
