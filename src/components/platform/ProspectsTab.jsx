@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { platformClient as supabase } from "../../lib/platformClient";
 import PhoneInput from "../ui/PhoneInput";
 import { useModalHistory } from "../../hooks/useModalHistory";
+import { parseProspectPaste, MAX_PASTE } from "../../utils/prospectImport";
 
 // OPS-CRM-1: the owner's own prospecting list -- salesmen and dealers being
 // signed up, where each conversation stands, and who to follow up today.
@@ -36,7 +37,9 @@ const KINDS = [
 ];
 const SOURCES = [
   { id: "referral", label: "Referral" },
-  { id: "social", label: "Social media" },
+  { id: "facebook", label: "Facebook" },
+  { id: "tiktok", label: "TikTok" },
+  { id: "social", label: "Other social media" },
   { id: "marketplace", label: "Seen on a marketplace" },
   { id: "event", label: "Event" },
   { id: "walk_in", label: "Walk-in / met in person" },
@@ -52,6 +55,20 @@ const DEFAULT_OPENERS = {
   dealer: "Hi {name}, this is XDrive. We built a dashboard for used-car dealers: stock, your sales team, leads and the handover paperwork in one place. Could I show you in 10 minutes this week?\n\nIf you'd rather not hear from us, just reply STOP and we won't message again.",
 };
 const OPENER_KEY = "xd_prospect_opener_";
+
+// PROSPECT-IMPORT: people found in a Facebook group or a TikTok live are
+// messaged there, by hand, from the owner's own account. Malay, no price, no
+// promise, and the last line is the opt-out (PDPA s.43). Names no product: the
+// public name is mid-switch (BRAND-1), and the sender's profile says who it is.
+const SOCIAL_OPENER = "Salam {name}, saya nampak awak jual kereta {brand}. Saya ada buat kalkulator untuk live: harga, deposit dan bulanan setiap kereta keluar atas skrin, viewer boleh tanya bajet terus. Saya boleh setupkan untuk awak free, lebih kurang 10 minit. Nak saya tunjuk?\n\nKalau tak berminat, balas STOP dan saya tak mesej lagi.";
+function readSocialOpener() {
+  try { return localStorage.getItem(OPENER_KEY + "social") || SOCIAL_OPENER; } catch { return SOCIAL_OPENER; }
+}
+function saveSocialOpener(text) {
+  try { localStorage.setItem(OPENER_KEY + "social", text); } catch { /* per-viewer convenience only */ }
+}
+const profileHref = (u) => (u ? "https://" + u : null);
+const channelName = (p) => p.source === "tiktok" || /tiktok\.com/.test(p.profile_url || "") ? "TikTok" : /facebook|fb\./.test(p.profile_url || "") ? "Facebook" : "their profile";
 
 function readOpener(kind) {
   const k = kind === "dealer" ? "dealer" : "salesman";
@@ -118,7 +135,7 @@ function Label({ children }) {
   return <span style={{ display: "block", fontSize: 11, color: "#6b7280", marginBottom: 4 }}>{children}</span>;
 }
 
-const EMPTY = { name: "", phone: "", business: "", kind: "salesman", area: "", source: "referral", notes: "" };
+const EMPTY = { name: "", phone: "", profile_url: "", brand: "", business: "", kind: "salesman", area: "", source: "facebook", notes: "" };
 
 export default function ProspectsTab({ onOpenAccount }) {
   const [rows, setRows] = useState([]);
@@ -131,6 +148,7 @@ export default function ProspectsTab({ onOpenAccount }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
+  const [pasting, setPasting] = useState(false);
   // Overlay rule 5: Back closes the add sheet, never the console under it.
   useModalHistory(adding, () => setAdding(false), { isDirty: () => form !== EMPTY });
 
@@ -144,10 +162,10 @@ export default function ProspectsTab({ onOpenAccount }) {
 
   // Overlay rule 2.
   useEffect(() => {
-    if (!openId && !adding) return;
+    if (!openId && !adding && !pasting) return;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [openId, adding]);
+  }, [openId, adding, pasting]);
 
   const counts = useMemo(() => {
     const c = { all: rows.length, due: rows.filter(isDue).length };
@@ -161,7 +179,7 @@ export default function ProspectsTab({ onOpenAccount }) {
     return rows
       .filter(r => filter === "all" ? true : filter === "due" ? isDue(r) : r.stage === filter)
       .filter(r => kind === "all" || r.kind === kind)
-      .filter(r => !q || [r.name, r.business, r.area, r.notes].some(v => v?.toLowerCase().includes(q)) || (qDigits.length >= 3 && r.phone?.includes(qDigits)))
+      .filter(r => !q || [r.name, r.business, r.brand, r.area, r.notes, r.profile_url].some(v => v?.toLowerCase().includes(q)) || (qDigits.length >= 3 && r.phone?.includes(qDigits)))
       // Due and overdue first, then upcoming, then those with no date.
       .sort((a, b) => {
         const fa = a.next_follow_up_at && !CLOSED.has(a.stage) && !a.do_not_contact ? new Date(a.next_follow_up_at).getTime() : Infinity;
@@ -178,7 +196,7 @@ export default function ProspectsTab({ onOpenAccount }) {
   async function addProspect() {
     if (!form.name.trim()) return;
     setBusy(true);
-    const payload = { ...form, name: form.name.trim(), phone: form.phone.trim() || null };
+    const payload = { ...form, name: form.name.trim(), phone: form.phone.trim() || null, profile_url: form.profile_url.trim() || null };
     const { data, error: e } = await supabase.from("platform_prospects").insert(payload).select().single();
     setBusy(false);
     if (e) {
@@ -209,6 +227,7 @@ export default function ProspectsTab({ onOpenAccount }) {
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={load} style={btn()}>Refresh</button>
+          <button onClick={() => setPasting(true)} style={btn()}>Paste a list</button>
           <button onClick={() => { setForm(EMPTY); setAdding(true); }} style={btn("primary")}>Add prospect</button>
         </div>
       </div>
@@ -271,7 +290,7 @@ export default function ProspectsTab({ onOpenAccount }) {
                     <td style={{ padding: "10px 14px", minWidth: 170 }}>
                       <div style={{ fontWeight: 600, color: "#f0f0f0" }}>{p.name}</div>
                       <div style={{ fontSize: 11, color: "#6b7280" }}>
-                        {[KINDS.find(k => k.id === p.kind)?.label, p.business, p.area].filter(Boolean).join(" · ")}
+                        {[KINDS.find(k => k.id === p.kind)?.label, p.brand, p.business, p.area].filter(Boolean).join(" · ")}
                       </div>
                     </td>
                     <td style={{ padding: "10px 14px", whiteSpace: "nowrap" }}>
@@ -319,6 +338,12 @@ export default function ProspectsTab({ onOpenAccount }) {
         document.body
       )}
 
+      {pasting && createPortal(
+        <PasteImport rows={rows} onClose={() => setPasting(false)}
+          onImported={(added) => { setRows(rs => [...added, ...rs]); setPasting(false); setFilter("new"); }} />,
+        document.body
+      )}
+
       {open && createPortal(
         <ProspectRecord key={open.id} p={open} onClose={() => setOpenId(null)} onChange={replaceRow}
           onDeleted={() => { setRows(rs => rs.filter(r => r.id !== open.id)); setOpenId(null); }}
@@ -335,6 +360,8 @@ function ProspectFields({ value, onChange }) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
       <label><Label>Name *</Label><input className="adm-input" style={{ width: "100%" }} value={value.name} onChange={set("name")} /></label>
       <label><Label>WhatsApp number</Label><PhoneInput mobileOnly className="adm-input" style={{ width: "100%" }} value={value.phone || ""} onChange={(v) => onChange({ ...value, phone: v })} /></label>
+      <label><Label>Facebook / TikTok profile link</Label><input className="adm-input" style={{ width: "100%" }} placeholder="facebook.com/... or tiktok.com/@..." value={value.profile_url || ""} onChange={set("profile_url")} /></label>
+      <label><Label>Brand they sell</Label><input className="adm-input" style={{ width: "100%" }} placeholder="e.g. Proton, Perodua" value={value.brand || ""} onChange={set("brand")} /></label>
       <label><Label>Business / dealership</Label><input className="adm-input" style={{ width: "100%" }} value={value.business || ""} onChange={set("business")} /></label>
       <label><Label>Area</Label><input className="adm-input" style={{ width: "100%" }} placeholder="e.g. Shah Alam" value={value.area || ""} onChange={set("area")} /></label>
       <label><Label>Type</Label>
@@ -355,7 +382,7 @@ function ProspectFields({ value, onChange }) {
 }
 
 function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setError }) {
-  const [draft, setDraft] = useState({ name: p.name, phone: p.phone ? "0" + p.phone.slice(2) : "", business: p.business, kind: p.kind, area: p.area, source: p.source, notes: p.notes });
+  const [draft, setDraft] = useState({ name: p.name, phone: p.phone ? "0" + p.phone.slice(2) : "", profile_url: p.profile_url || "", brand: p.brand || "", business: p.business, kind: p.kind, area: p.area, source: p.source, notes: p.notes });
   const [activity, setActivity] = useState([]);
   const [note, setNote] = useState("");
   const [composer, setComposer] = useState(null);
@@ -427,7 +454,22 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
 
   const closed = CLOSED.has(p.stage);
   const canContact = p.phone && !p.do_not_contact;
-  const dirty = ["name", "business", "kind", "area", "source", "notes"].some(k => (draft[k] || "") !== (p[k] || ""))
+  const canDm = p.profile_url && !p.do_not_contact;
+  const [dm, setDm] = useState(null);
+  function openDm() {
+    setDm(readSocialOpener().replaceAll("{name}", firstName(p.name)).replaceAll(" {brand}", p.brand ? " " + p.brand : ""));
+  }
+  // Copies the message and opens their profile in one tap; the owner pastes it
+  // and presses send there. Logged as a contact only when they say they sent it.
+  async function copyAndOpen() {
+    window.open(profileHref(p.profile_url), "_blank", "noopener");
+    try { await navigator.clipboard.writeText(dm || ""); } catch { /* the text stays on screen to copy by hand */ }
+    const first = firstName(p.name);
+    let tpl = first ? (dm || "").split(first).join("{name}") : (dm || "");
+    if (p.brand) tpl = tpl.split(" " + p.brand).join(" {brand}");
+    saveSocialOpener(tpl);
+  }
+  const dirty = ["name", "profile_url", "brand", "business", "kind", "area", "source", "notes"].some(k => (draft[k] || "") !== (p[k] || ""))
     || (draft.phone || "").replace(/\D/g, "") !== (p.phone ? "0" + p.phone.slice(2) : "");
 
   return (
@@ -438,7 +480,7 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#f1f5f9", wordBreak: "break-word" }}>{p.name}</p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
-              {[p.phone ? "+" + p.phone : "No number", p.business].filter(Boolean).join(" · ")}
+              {[p.phone ? "+" + p.phone : "No number", p.brand, p.business].filter(Boolean).join(" · ")}
             </p>
           </div>
           <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
@@ -457,6 +499,25 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
         )}
 
         <SectionTitle>Reach out</SectionTitle>
+        {canDm && (dm !== null ? (
+          <div style={{ marginBottom: 12 }}>
+            <textarea className="adm-input" rows={7} style={{ width: "100%", resize: "vertical" }} value={dm} onChange={e => setDm(e.target.value)} />
+            <p style={{ fontSize: 11, color: "#6b7280", margin: "6px 0 10px", lineHeight: 1.5 }}>
+              Copies this and opens their {channelName(p)}. Paste it into a message to them and send it yourself. Your edits are remembered for next time.
+            </p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => setDm(null)} style={btn()}>Cancel</button>
+              <button disabled={!dm.trim()} onClick={copyAndOpen} style={btn("primary")}>Copy + open {channelName(p)}</button>
+              <button onClick={() => { logActivity("contacted", `${channelName(p)} message: ` + dm.slice(0, 160)); setDm(null); }} style={btn("good")}>I sent it</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+            <button onClick={openDm} style={btn(canContact ? "neutral" : "primary")}>Message on {channelName(p)}</button>
+            <a href={profileHref(p.profile_url)} target="_blank" rel="noopener noreferrer" style={{ ...btn(), textDecoration: "none" }}>Open profile</a>
+            {!canContact && <button onClick={() => logActivity("contacted", "Contacted another way")} style={btn()}>Log contact</button>}
+          </div>
+        ))}
         {composer !== null ? (
           <div>
             <textarea className="adm-input" rows={6} style={{ width: "100%", resize: "vertical" }} value={composer} onChange={e => setComposer(e.target.value)} />
@@ -473,7 +534,7 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
               <a href={`tel:+${p.phone}`} onClick={() => logActivity("contacted", "Phone call")} style={{ ...btn(), textDecoration: "none" }}>Call</a>
             )}
             {canContact && <button onClick={() => logActivity("contacted", "Contacted another way")} style={btn()}>Log contact</button>}
-            {!p.phone && <span style={{ fontSize: 12, color: "#6b7280" }}>Add a number below to message them.</span>}
+            {!p.phone && !p.profile_url && <span style={{ fontSize: 12, color: "#6b7280" }}>Add a number or a profile link below to message them.</span>}
           </div>
         )}
 
@@ -530,7 +591,7 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
         <ProspectFields value={draft} onChange={setDraft} />
         {dirty && (
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <button disabled={busy || !draft.name?.trim()} onClick={() => patch({ ...draft, name: draft.name.trim(), phone: (draft.phone || "").trim() || null })} style={btn("primary")}>Save details</button>
+            <button disabled={busy || !draft.name?.trim()} onClick={() => patch({ ...draft, name: draft.name.trim(), phone: (draft.phone || "").trim() || null, profile_url: (draft.profile_url || "").trim() || null })} style={btn("primary")}>Save details</button>
           </div>
         )}
         <p style={{ fontSize: 11, color: "#4b5563", margin: "10px 0 0" }}>
@@ -554,6 +615,84 @@ function ProspectRecord({ p, onClose, onChange, onDeleted, onOpenAccount, setErr
         <p style={{ fontSize: 11, color: "#4b5563", margin: "8px 0 0", lineHeight: 1.5 }}>
           Mark do not contact keeps the record so they are never re-added and messaged again. Delete only if they asked for their data to be erased.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// PROSPECT-IMPORT: paste rows copied from the owner's own sheet. The preview is
+// the same function the test covers (src/utils/prospectImport.js); the database
+// still cleans the link and the number and refuses a duplicate on save.
+function PasteImport({ rows, onClose, onImported }) {
+  const [text, setText] = useState("");
+  const [kind, setKind] = useState("salesman");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  useModalHistory(true, onClose, { isDirty: () => text.trim() !== "" });
+
+  const { rows: toAdd, skipped } = useMemo(() => parseProspectPaste(text, rows, { kind }), [text, rows, kind]);
+
+  async function save() {
+    if (!toAdd.length) return;
+    setBusy(true); setErr(null);
+    const { data, error } = await supabase.from("platform_prospects").insert(toAdd).select();
+    setBusy(false);
+    if (error) { setErr(error.code === "23505" ? "One of these is already on the list (added since you opened this). Refresh and paste again." : errText(error)); return; }
+    onImported(data || []);
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 900, background: "rgba(0,0,0,0.72)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "flex-end" }}>
+      <div onClick={e => e.stopPropagation()}
+        style={{ width: "min(560px, 100%)", height: "100%", overflowY: "auto", background: "#0b0f16", borderLeft: "1px solid rgba(255,255,255,0.08)", padding: "22px 22px 60px" }}>
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#f1f5f9", flex: 1 }}>Paste a list</p>
+          <button onClick={onClose} aria-label="Close" style={{ background: "none", border: "none", color: "#6b7280", fontSize: 20, cursor: "pointer", lineHeight: 1, padding: 0 }}>×</button>
+        </div>
+        <p style={{ fontSize: 12, color: "#9ca3af", margin: "0 0 12px", lineHeight: 1.55 }}>
+          One person per line, copied from your sheet: <b>Name, profile link, brand, area</b>. A WhatsApp number and a note are optional. Columns can be in any order; the link and the number are found by what they look like. Up to {MAX_PASTE} at a time.
+        </p>
+        <textarea className="adm-input" rows={9} style={{ width: "100%", resize: "vertical", fontFamily: "ui-monospace, monospace", fontSize: 12 }}
+          placeholder={"Ali Rahman\tfacebook.com/ali.proton\tProton\tShah Alam\nSiti\ttiktok.com/@siti_perodua\tPerodua\tKajang"}
+          value={text} onChange={e => setText(e.target.value)} />
+        <div style={{ display: "flex", gap: 10, alignItems: "center", margin: "10px 0 0", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#6b7280" }}>They are all</span>
+          <select className="adm-select" value={kind} onChange={e => setKind(e.target.value)}>
+            {KINDS.map(k => <option key={k.id} value={k.id}>{k.label}s</option>)}
+          </select>
+        </div>
+
+        {text.trim() && (
+          <>
+            <SectionTitle>{toAdd.length} to add{skipped.length ? ` · ${skipped.length} skipped` : ""}</SectionTitle>
+            {toAdd.slice(0, 8).map((r, i) => (
+              <div key={i} style={{ fontSize: 12, color: "#e5e7eb", padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", wordBreak: "break-word" }}>
+                {r.name} <span style={{ color: "#6b7280" }}>{[r.brand, r.area, r.profile_url || (r.phone && "+" + r.phone)].filter(Boolean).join(" · ")}</span>
+              </div>
+            ))}
+            {toAdd.length > 8 && <p style={{ fontSize: 12, color: "#6b7280", margin: "6px 0 0" }}>and {toAdd.length - 8} more</p>}
+            {skipped.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                {skipped.map(s => (
+                  <div key={s.line} style={{ fontSize: 12, color: s.reason.startsWith("Asked") ? "#f87171" : "#9ca3af", padding: "4px 0", wordBreak: "break-word" }}>
+                    Line {s.line}: {s.reason}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {err && <p style={{ fontSize: 12, color: "#f87171", margin: "12px 0 0" }}>{err}</p>}
+        <p style={{ fontSize: 11, color: "#6b7280", margin: "14px 0 0", lineHeight: 1.5 }}>
+          Only people you found yourself and plan to message one-to-one. No scraped or bought lists. Anyone marked do not contact is never added back.
+        </p>
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button onClick={onClose} style={btn()}>Cancel</button>
+          <button disabled={busy || !toAdd.length} onClick={save} style={{ ...btn("primary"), opacity: busy || !toAdd.length ? 0.5 : 1 }}>
+            {busy ? "Adding…" : `Add ${toAdd.length || ""}`.trim()}
+          </button>
+        </div>
       </div>
     </div>
   );
