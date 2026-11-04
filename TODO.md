@@ -96,7 +96,7 @@ for another year.
   payments (2026-11-03: the one logged RM35 was the owner's own `airymotors` test, row deleted). Owner WhatsApps both before their end date; IDEA-26 step 1 (what to do per
   car + Share button) is the build that gives them a reason. Note: `last_sign_in_at` cannot
   tell real from not, the owner signs in as console-made sellers to add their cars.
-- [ ] **LIVE-BASIC: Lite's Live presenter cut to basic (owner, 2026-11-01). BUILT, NOT on staging/live.**
+- [ ] **LIVE-BASIC: Lite's Live presenter cut to basic (owner, 2026-11-01). LIVE on prod (built #570, released #575, 2026-11-04). Only the owner's WhatsApp to sellers is left.**
   Both real trials use ONLY the Live calculator, and Live was fully free, so ending the trial
   cost them nothing. Lite now gets one car + deposit + monthly + tenures; Budget/Viewer, Docs,
   rebates, insurance+NCD, totals, salary guide, colour, car list are Premium (rules: CLAUDE.md
