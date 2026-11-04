@@ -33,6 +33,7 @@ import { ChevronRight } from "lucide-react";
 //   new_review          -> reviews.id
 //   like_first          -> car_listings.id
 //   like_digest         -> car_listings.id (the most recently saved car)
+//   expiry_reminder     -> customers.id (insurance / road tax due, expiry-reminders cron)
 // broadcast / platform_broadcast carry no ref_id and go nowhere — they are the
 // message, so they render as plain rows with no affordance.
 export const NOTIF_TARGETS = {
@@ -46,6 +47,7 @@ export const NOTIF_TARGETS = {
   new_review: "View review",
   like_first: "View likes",
   like_digest: "View likes",
+  expiry_reminder: "View buyer",
 };
 
 export const notifTargetLabel = (n) =>

@@ -874,9 +874,12 @@ were edited in the repo and never redeployed. Both directions exist RIGHT NOW.
 - invites — creates auth user + profile for manager/admin/accountant/fi_officer roles
 - create-salesman — creates salesman accounts + `resend_setup` action
 - send-document — emails issued dealer_documents to the buyer via Resend
-- expiry-reminders — daily cron (00:00 UTC = 8am KL); fires dealer_notifications for road
-  tax/insurance expiring in 30 or 7 days, and for overdue post_sale_tasks steps. Also
-  notifies salesman_notifications. 24h dedup.
+- expiry-reminders — daily cron (00:00 UTC = 8am KL). Renewals: once in each window (30..8
+  days, then 7..0 days before the insurance / road tax expiry; a skipped run no longer loses
+  it), to the SELLER as `salesman_notifications` type `expiry_reminder` (ref_id = customer, the
+  Premium bell opens that buyer) when they have the Sold tab (Premium or dealer-linked; Lite
+  gets nothing), plus `dealer_notifications` for a real dealer only. Overdue handover steps:
+  one roll-up per person per day.
 - appointment-reminder — cron every 15 min (`*/15 * * * *`, jobid 7; was 5 min until IO-5). Two independent jobs:
   (1) Telegram "1 hour before" reminder for CONFIRMED bookings, opt-in via `remind_at`
   (set by "Schedule Telegram Reminder" in the Bookings tab), dedup via `remind_sent`.
@@ -1488,16 +1491,19 @@ max 12 a year; never cash (Act 500 anti-pyramid: reward only from real sales).
 `PLAN_CONFIG.salesman_full`: `price` (35) is what is CHARGED; `listPrice` (49) + `foundingSpots`
 (10) are only shown, as the FUTURE price ("then RM49"). Never a struck-through "was RM49": nobody
 has paid it, and a fake reference price is a misleading price indication (TDA 2011 s.14). Founders
-keep 35 while they stay. Premium is the featured card, every other plan card is plain on purpose
-(`PlanCard featured/muted` on /plans, `.sll-plan-lite` on /for-salesmen). No "AI coming" paid card:
+keep 35 while they stay. Premium is the featured card, every other plan card is plain on purpose.
+**ONE card component for both pricing pages: `src/components/pricing/PricingCards.jsx`** (light,
+owner 2026-11-03: the old cards looked cheap and were too big), words in ONE place,
+`salesmanPricingCards(lang)` in `src/utils/plans.js` (EN + BM, max five lines a card; the full
+feature list lives in the page sections, not the cards). /plans is a LIGHT page now. The dark
+`PlanCard` is only the onboarding PlanPickerModal's. No "AI coming" paid card:
 selling a feature that does not exist is a CPA 1999 s.10 risk.
 Two more real offers sit beside it (owner, 2026-11-03): **yearly RM390** (`yearlyPrice`, 12 months)
 and **Done for you RM99/month** (`doneForYouPrice`: Premium + the owner sets up the page, the first
 `doneForYouCars` cars and their posters BY HAND). Neither is a DB plan: both are Premium payments,
 logged with the console's extra buttons (`markPaid(a, {amount, months, note})`, AccountsTab.jsx,
 note `yearly` / `done_for_you`), and both are bought on WhatsApp (`OPS_WHATSAPP`, planConfig.js, the
-one copy). /plans shows Lite | Premium | Done for you with Premium in the middle; /for-salesmen
-shows Done for you as a plain row under the two cards. Never list a Done-for-you task the owner
+one copy). Both pages show Lite | Premium | Done for you, Premium in the middle (first on a phone). Never list a Done-for-you task the owner
 cannot actually deliver this week.
 
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)

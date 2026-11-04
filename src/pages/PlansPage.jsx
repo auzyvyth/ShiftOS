@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
-import PlanCard from '../components/onboarding/PlanCard';
-import { SALESMAN_PLANS, DEALER_PLANS, DONE_FOR_YOU_CARD } from '../utils/plans';
+import PricingCards from '../components/pricing/PricingCards';
+import { DEALER_PLANS, salesmanPricingCards } from '../utils/plans';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile } from '../lib/buyerAuth';
 
@@ -61,89 +61,71 @@ export default function PlansPage() {
 
   const gutter = 'clamp(20px, 4vw, 48px)';
 
-  const section = (title, blurb, plans, cols) => (
-    <section style={{ marginBottom: 48 }}>
-      <p style={{
-        fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase',
-        color: 'rgba(255,255,255,0.35)', marginBottom: 6,
-      }}>{title}</p>
-      <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', marginBottom: 20, maxWidth: 620, lineHeight: 1.5 }}>
-        {blurb}
-      </p>
-      <div className={`plans-grid plans-grid-${cols}`}>
-        {plans.map((p) => (
-          <PlanCard key={p.tier} plan={p} current={false} featured={p.tier === 'premium'} muted={p.tier !== 'premium'} onSelect={(route) => navigate(route)} />
-        ))}
-      </div>
+  // Light page (owner, 2026-11-03): the same PricingCards as /for-salesmen.
+  // Dealer cards have no featured card: the seller plans are where the money is now.
+  const dealerCards = DEALER_PLANS.map((p) => ({
+    key: p.tier, name: p.label, price: p.price.replace(/^RM /, 'RM'), per: p.priceSub,
+    desc: p.trial, cta: 'Start free trial', to: p.route, features: [...p.caps.slice(0, 1), ...p.features],
+  }));
+
+  const section = (title, blurb, cards) => (
+    <section style={{ marginBottom: 56 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#9ca3af', margin: '0 0 6px', textAlign: 'center' }}>{title}</p>
+      <p style={{ fontSize: 15, color: '#6b7280', margin: '0 auto 24px', maxWidth: 560, lineHeight: 1.5, textAlign: 'center' }}>{blurb}</p>
+      <PricingCards cards={cards} />
     </section>
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: '#08090f', fontFamily: "'Outfit', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'var(--xd-font-body)' }}>
       <Helmet>
         <title>Plans &amp; Pricing | XDrive</title>
         <meta name="description" content="Sell cars on XDrive. Free for individual salesmen, Premium from RM35/month (founding price), dealer plans from RM299/month with a 14-day free trial." />
         <link rel="canonical" href="https://xdrive.my/plans" />
       </Helmet>
 
-      <style>{`
-        .plans-grid { display: grid; gap: 16px; }
-        .plans-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .plans-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-        @media (max-width: 900px) { .plans-grid-3 { grid-template-columns: 1fr; } }
-        @media (max-width: 760px) { .plans-grid-2 { grid-template-columns: 1fr; } }
-      `}</style>
-
       <MarketplaceHeader />
 
-      <main style={{ maxWidth: 1360, margin: '0 auto', padding: `48px ${gutter} 72px` }}>
-        <header style={{ marginBottom: 40, maxWidth: 720 }}>
-          <p style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase',
-            color: 'rgba(220,38,38,0.8)', marginBottom: 12,
-          }}>Plans</p>
-          <h1 style={{
-            fontFamily: "'Bebas Neue', sans-serif", fontSize: 'clamp(38px, 8vw, 72px)',
-            lineHeight: 0.95, letterSpacing: '0.02em', color: '#ffffff', margin: 0,
-          }}>Start selling on XDrive</h1>
-          <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.45)', marginTop: 16, lineHeight: 1.6 }}>
-            Pick how you sell. You can change plan later without losing your
-            listings — switching only restarts that product&apos;s setup.
+      <main style={{ maxWidth: 1120, margin: '0 auto', padding: `56px ${gutter} 72px` }}>
+        <header style={{ margin: '0 auto 44px', maxWidth: 720, textAlign: 'center' }}>
+          <h1 style={{ fontSize: 'clamp(32px, 6vw, 52px)', fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.05, color: '#0b0b0f', margin: 0 }}>
+            Pick how you sell
+          </h1>
+          <p style={{ fontSize: 16, color: '#6b7280', marginTop: 14, lineHeight: 1.6 }}>
+            Change plan later without losing your cars or your leads.
           </p>
         </header>
 
         {section(
           'For individual salesmen and agents',
-          'You sell cars yourself, under your own name. Your listings go live on the marketplace and enquiries come straight to you.',
-          [...SALESMAN_PLANS, DONE_FOR_YOU_CARD], 3,
+          'You sell cars yourself, under your own name. Your cars go live on the marketplace and buyers come straight to you.',
+          salesmanPricingCards('en'),
         )}
 
         {section(
           'For dealerships',
-          'You run a lot and a team. Adds the dealer dashboard, a shared lead pipeline, stock and profit tracking, and seats for your salesmen.',
-          DEALER_PLANS, 3,
+          'You run a lot and a team: the dealer dashboard, a shared lead pipeline, stock and profit, and seats for your salesmen.',
+          dealerCards,
         )}
 
         <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 24, marginTop: 8,
-          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+          borderTop: '1px solid #ececef', paddingTop: 24, marginTop: 8,
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 12,
         }}>
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
-            Not selling anything?
-          </p>
+          <p style={{ fontSize: 14, color: '#6b7280', margin: 0 }}>Not selling anything?</p>
           <button
             type="button"
             onClick={notSelling}
             disabled={busy}
             style={{
-              background: 'none', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 8,
-              padding: '10px 16px', color: '#ffffff', fontSize: 13, fontWeight: 600,
-              cursor: busy ? 'wait' : 'pointer', fontFamily: "'Outfit', sans-serif",
+              background: '#fff', border: '1px solid #e4e4e7', borderRadius: 10,
+              padding: '10px 16px', color: '#111827', fontSize: 13, fontWeight: 600,
+              cursor: busy ? 'wait' : 'pointer', fontFamily: 'inherit',
             }}
           >
             {busy ? 'One moment…' : "I'm just here to buy a car"}
           </button>
-          <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', margin: 0 }}>
+          <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>
             Browsing, saving and messaging sellers are free and need no plan.
           </p>
         </div>
