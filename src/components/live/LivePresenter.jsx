@@ -24,6 +24,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
 import { cdnImg, imgFallback } from '../../utils/img';
 import { SITE_URL } from '../../config/site';
+import { runInviteShare } from '../referral/InviteStrip';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -195,7 +196,7 @@ const fmtPhone = (raw) => {
 // rebates, insurance + NCD, totals, salary guide, offer, variant extras, the car
 // list, colour and comment line are Premium. The upsell is in Settings and the
 // report, never on the stage (viewers see the stage).
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false, canInvite = false }) {
   // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
   // Not for the embedded demo on the marketing page, which is not a real live.
   useEffect(() => {
@@ -1600,7 +1601,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       </div>
 
-      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} basic={basic} /> : (<>
+      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} basic={basic} lang={lang} canInvite={canInvite} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
@@ -2324,7 +2325,7 @@ function BudgetReveal({ reveal, on, amount, viewer, queue, onViewer, onViewerDon
 
 // After the live. Counts only: this can still be on the stream, so no buyer
 // name, phone or message ever renders here.
-function LiveReport({ report, onDone, t, slug, basic }) {
+function LiveReport({ report, onDone, t, slug, basic, lang, canInvite }) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     navigator.clipboard?.writeText(`${SITE_URL}/s/${slug}`).then(() => setCopied(true), () => {});
@@ -2360,6 +2361,17 @@ function LiveReport({ report, onDone, t, slug, basic }) {
           <button type="button" className="lp-copy" onClick={copyLink}>{copied ? t.bioCopied : t.bioCopy}</button>
         </div>
       ) : null)}
+      {/* IDEA-32: right after a live is when a seller tells a friend about it.
+          Full presenter only: on Lite this slot is the Premium offer below, and
+          one ask per screen. Standalone sellers only (claim_referral refuses
+          an invite from a dealer-linked rep). Same terms as ReferralCard. */}
+      {canInvite && !basic && slug && (
+        <div className="lp-card lp-tile">
+          <span>{t.inviteTitle}</span>
+          <span>{t.inviteBody}</span>
+          <button type="button" className="lp-copy" onClick={() => runInviteShare(slug, lang)} style={{ alignSelf: 'flex-start' }}>{t.inviteBtn}</button>
+        </div>
+      )}
       <p className="lp-note">
         {t.reportNote}
       </p>
