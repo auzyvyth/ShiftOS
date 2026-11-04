@@ -62,5 +62,15 @@
       false,
       0
     ]
+  ],
+  "promote": [
+    "hook",
+    "stakes",
+    "clue1",
+    "clue2",
+    "clue3",
+    "clue4",
+    "answer",
+    "cta"
   ]
 }

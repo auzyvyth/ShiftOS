@@ -17,14 +17,21 @@ import RECTS from './rects.json';
 import T from './timeline.json';
 
 const RATIO = 1124 / 1000;
-export const L_TL = {}; const L_CARDS = {}; const PRE = {};
-let at = 0;
-for (const [k, len, card, pre = 0] of T.scenes) {
-  PRE[k] = pre;
-  if (card) { L_CARDS[k] = [at, at + T.card]; at += T.card; }
-  L_TL[k] = [at, at + len]; at += len;
-}
-export const L_DUR = +at.toFixed(3);
+// The Promote cut (TikTok paid boost) drops clue5 (salary / "layak") and clue6 (bank documents):
+// finance-eligibility lines are what ad review flags, and it must stay under ~35 s.
+const build = (keys) => {
+  const tl = {}, cards = {}; let at = 0;
+  for (const [k, len, card] of T.scenes) {
+    if (keys && !keys.includes(k)) continue;
+    if (card) { cards[k] = [at, at + T.card]; at += T.card; }
+    tl[k] = [at, at + len]; at += len;
+  }
+  return { tl, cards, dur: +at.toFixed(3) };
+};
+const PRE = Object.fromEntries(T.scenes.map(([k, , , pre = 0]) => [k, pre]));
+const FULL = build(), PROMO = build(T.promote);
+export const L_TL = FULL.tl; const L_CARDS = FULL.cards;
+export const L_DUR = FULL.dur, LP_DUR = PROMO.dur;
 const LEN = (k) => L_TL[k][1] - L_TL[k][0] + PRE[k];
 
 const COPY = {
@@ -40,6 +47,7 @@ const COPY = {
     card: ['Jawapannya:', 'Drevo Live', '?'],
     answer: ['*Drevo Live.*', 'Satu skrin, semua jawapan.'],
     cta1: 'Nak skrin ni', cta2: 'untuk live anda?', ask: 'Komen SETUP', askSub: 'Saya setup percuma, 10 minit.',
+    pAsk: 'Setup percuma', pSub: 'drevo.my/for-salesmen',
     fine: 'Rakaman sebenar Drevo Live. Anggaran 6.5% EIR, bank yang tentukan.',
   },
   en: {
@@ -54,6 +62,7 @@ const COPY = {
     card: ['The answer:', 'Drevo Live', '?'],
     answer: ['*Drevo Live.*', 'One screen, every answer.'],
     cta1: 'Want this screen', cta2: 'for your live?', ask: 'Comment SETUP', askSub: 'I set it up free, 10 minutes.',
+    pAsk: 'Free setup', pSub: 'drevo.my/for-salesmen',
     fine: 'Real Drevo Live recording. Estimate at 6.5% EIR, the bank decides.',
   },
 };
@@ -176,7 +185,7 @@ const Answer = ({ lang }) => {
   );
 };
 
-const Cta = ({ lang }) => {
+const Cta = ({ lang, promote }) => {
   const f = useCurrentFrame(); const C = COPY[lang];
   const item = (at, style, children) => { const p = pop(f, at); return <div style={{ position: 'absolute', left: 60, right: 60, textAlign: 'center', opacity: Math.min(1, p * 1.4), transform: `translateY(${(1 - p) * 70}px)`, ...style }}>{children}</div>; };
   const flash = interpolate(f / FPS, [0, 0.35], [0.55, 0], clamp);
@@ -184,8 +193,8 @@ const Cta = ({ lang }) => {
     <>
       {item(0.05, { top: 340, font: `700 112px/1 ${FONT}`, letterSpacing: -5, color: INK }, C.cta1)}
       {item(0.2, { top: 470, font: `700 112px/1 ${FONT}`, letterSpacing: -5, color: RED }, C.cta2)}
-      {item(0.7, { top: 720 }, <span style={{ display: 'inline-flex', alignItems: 'center', height: 150, padding: '0 70px', borderRadius: 75, background: RED, color: '#fff', font: `700 82px ${FONT}`, letterSpacing: -2, boxShadow: '0 30px 70px rgba(220,38,38,.35)' }}>{C.ask}</span>)}
-      {item(1.0, { top: 920, font: `600 48px ${FONT}`, color: MUTED }, C.askSub)}
+      {item(0.7, { top: 720 }, <span style={{ display: 'inline-flex', alignItems: 'center', height: 150, padding: '0 70px', borderRadius: 75, background: RED, color: '#fff', font: `700 82px ${FONT}`, letterSpacing: -2, boxShadow: '0 30px 70px rgba(220,38,38,.35)' }}>{promote ? C.pAsk : C.ask}</span>)}
+      {item(1.0, { top: 920, font: `600 48px ${FONT}`, color: MUTED }, promote ? C.pSub : C.askSub)}
       {item(1.5, { top: 1200 }, <Chip style={{ height: 76, font: `700 34px ${FONT}`, background: INK, color: '#fff', border: 'none' }}>Drevo</Chip>)}
       <div style={{ position: 'absolute', inset: 0, background: RED, opacity: flash, pointerEvents: 'none' }} />
     </>
@@ -194,21 +203,21 @@ const Cta = ({ lang }) => {
 
 const SCENES = { hook: Hook, stakes: Stakes, clue1: clue(1), clue2: clue(2), clue3: clue(3), clue4: clue(4), clue5: clue(5), clue6: clue(6), answer: Answer, cta: Cta };
 
-export const LiveAd = ({ lang = 'ms', audio = true }) => {
-  const C = COPY[lang];
+export const LiveAd = ({ lang = 'ms', audio = true, promote = false }) => {
+  const C = COPY[lang]; const { tl, cards } = promote ? PROMO : FULL;
   return (
     <AbsoluteFill style={{ background: '#fff', overflow: 'hidden' }}>
       <Ambient />
-      {Object.entries(L_TL).map(([k, [a, b]]) => {
+      {Object.entries(tl).map(([k, [a, b]]) => {
         const S = SCENES[k];
-        return <Sequence key={k} from={sec(a - PRE[k])} durationInFrames={sec(b) - sec(a - PRE[k])} name={k}><S lang={lang} /></Sequence>;
+        return <Sequence key={k} from={sec(a - PRE[k])} durationInFrames={sec(b) - sec(a - PRE[k])} name={k}><S lang={lang} promote={promote} /></Sequence>;
       })}
-      {Object.entries(L_CARDS).map(([k, [a, b]]) => (
+      {Object.entries(cards).map(([k, [a, b]]) => (
         <Sequence key={`card-${k}`} from={sec(a)} durationInFrames={sec(b) - sec(a)} name={`card-${k}`}>
           <Card k={k} lang={lang} now={C.card[0]} topic={C.card[1]} num={C.card[2]} />
         </Sequence>
       ))}
-      {audio && <Audio src={staticFile(`audio/live-${lang}.wav`)} />}
+      {audio && <Audio src={staticFile(`audio/live-${promote ? 'p-' : ''}${lang}.wav`)} />}
     </AbsoluteFill>
   );
 };
