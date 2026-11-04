@@ -50,7 +50,10 @@ export default function InviteStrip({ profile, lang, colors }) {
     try { localStorage.setItem(CLOSED_KEY, String(Date.now())); } catch { /* private mode */ }
   };
   return (
-    <div data-invite-strip style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', background: colors.card, borderRadius: colors.radius ?? 16, padding: '14px 44px 14px 18px', margin: '0 0 16px' }}>
+    <div data-invite-strip className="xd-invite" style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', background: colors.card, borderRadius: colors.radius ?? 16, padding: '14px 44px 14px 18px', margin: '0 0 16px' }}>
+      {/* Owner rule (2026-11-04): on a wide screen a section never spans the
+          empty space; it takes half unless asked to fill it. */}
+      <style>{'@media (min-width: 900px) { .xd-invite { max-width: 50%; } }'}</style>
       <button type="button" onClick={close} aria-label={c.close} title={c.close}
         style={{ position: 'absolute', top: 4, right: 4, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 999, border: 'none', background: 'none', color: colors.sub, cursor: 'pointer' }}>
         <X size={16} />
