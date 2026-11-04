@@ -1215,19 +1215,20 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
         .lp-head > .lp-contact { flex: 1 1 100%; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 5px 12px; border: none; border-radius: 8px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
-        .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
-        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(14px, 3.8cqw, 18px); line-height: 1; letter-spacing: .04em; }
-        .lp-c-who b { min-width: 0; font-size: clamp(10px, 2.6cqw, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(18px, 5.2cqw, 24px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* Contact (owner, 2026-11-04: "so small"): the NUMBER is the hero, the
+           name sits beside it in display type, "Contact me" is the quiet label.
+           Side by side, never stacked, so it stays one row high. */
+        .lp-contact { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; padding: 7px 16px; border: none; border-radius: 12px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; box-shadow: 0 6px 18px rgba(var(--lp-rgb), .28); }
+        .lp-c-who { display: flex; flex-direction: column; min-width: 0; padding-right: 14px; border-right: 1px solid rgba(255,255,255,.35); }
+        .lp-c-who small { font-size: clamp(9px, 2.4cqw, 11px); font-weight: 800; line-height: 1.1; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+        .lp-c-who b { min-width: 0; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(17px, 4.8cqw, 22px); line-height: 1; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-c-who:last-child { padding-right: 0; border-right: none; }
+        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 38px); line-height: .95; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
-        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: auto; max-width: 64%; padding: 4px 14px; gap: 16px; }
-        /* Desktop: one slim line, "CONTACT ME  NAME ... PHONE" (owner, 2026-10-24:
-           the two-line banner pushed the sheet past the stage). */
-        .lp-desk .lp-c-who { flex-direction: row; align-items: baseline; gap: 8px; }
-        .lp-desk .lp-c-who small { font-size: 16px; }
-        .lp-desk .lp-c-who b { font-size: 11px; }
-        .lp-desk .lp-c-ph { font-size: 20px; }
+        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: auto; max-width: 64%; padding: 6px 20px; gap: 16px; }
+        .lp-desk .lp-c-who small { font-size: 10px; }
+        .lp-desk .lp-c-who b { font-size: 22px; }
+        .lp-desk .lp-c-ph { font-size: 36px; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
