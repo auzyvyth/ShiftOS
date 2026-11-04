@@ -1,5 +1,5 @@
 // Auto-detects which platform a visitor arrived from, so a single share link
-// (xdrive.my/cars/<slug>?ref=<salesman>) self-attributes without the sharer
+// (drevo.my/cars/<slug>?ref=<salesman>) self-attributes without the sharer
 // having to pick a channel button.
 //
 // Primary signal: the in-app browser User-Agent. When a link is tapped inside

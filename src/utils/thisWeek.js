@@ -47,7 +47,7 @@ export const waLink = (phone, message) => {
 
 const carName = (c) => [c?.year, c?.brand, c?.model].filter(Boolean).join(" ");
 const firstName = (full) => String(full || "").trim().split(" ")[0] || "";
-const signoff = (repName) => (repName ? `${repName} here from XDrive` : "reaching out from XDrive");
+const signoff = (repName) => (repName ? `${repName} here from Drevo` : "reaching out from Drevo");
 const round = (n) => Math.max(1, Math.round(n));
 
 // `tr(id, vars, english)` translates the seller-facing `why` line (the panel

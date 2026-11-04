@@ -204,7 +204,7 @@ function SellerJoinPrompt({ viewer, onClose }) {
   return (
     <Sheet title="Have this car?" onClose={onClose}>
       <p style={{ margin: '0 0 16px', fontSize: 15, color: '#4b5563', lineHeight: 1.6 }}>
-        Only approved dealers and agents on XDrive can answer posts.
+        Only approved dealers and agents on Drevo can answer posts.
         {viewer.isBuyer ? ' You are signed in as a buyer; seller accounts are separate.' : ''}
       </p>
       <div style={{ display: 'grid', gap: 10 }}>
@@ -320,7 +320,7 @@ export default function FindMePage() {
   useEffect(() => { loadMine(); }, [loadMine]);
 
   useEffect(() => {
-    document.title = id ? 'Wanted car | XDrive' : FIND_ME_COPY.title;
+    document.title = id ? 'Wanted car | Drevo' : FIND_ME_COPY.title;
   }, [id]);
 
   const startPost = useCallback(() => {

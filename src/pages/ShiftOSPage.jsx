@@ -46,7 +46,7 @@ const FAQS = [
   },
   {
     q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?",
-    a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront XDrive sendiri secara percuma.",
+    a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront Drevo sendiri secara percuma.",
   },
   {
     q: "Macam mana cara urus stok kereta dealer guna ShiftOS?",
@@ -88,7 +88,7 @@ const SOFTWARE_LD = {
   name: "ShiftOS",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
-  url: "https://xdrive.my/shiftos",
+  url: "https://drevo.my/shiftos",
   description:
     "ShiftOS is a used car dealer software Malaysia (used car DMS) — sistem urus stok kereta terpakai for inventory management, leads CRM, sales records, salesman commission tracking and profit analytics. Built for Malaysian used car dealers and salesmen.",
   inLanguage: ["ms-MY", "en-MY"],
@@ -106,14 +106,14 @@ const SOFTWARE_LD = {
     "Salesman commission tracking (rekod komisen salesman)",
     "Test drive booking (booking test drive kereta)",
     "F&I add-ons & revenue analytics",
-    "Dealer storefront on the XDrive marketplace",
+    "Dealer storefront on the Drevo marketplace",
   ],
   publisher: {
     "@type": "Organization",
-    "@id": "https://xdrive.my/#organization",
-    name: "XDrive",
-    url: "https://xdrive.my",
-    logo: "https://xdrive.my/xdrivelogo.png",
+    "@id": "https://drevo.my/#organization",
+    name: "Drevo",
+    url: "https://drevo.my",
+    logo: "https://drevo.my/xdrivelogo.png",
     sameAs: [
       "https://facebook.com/xdrive.my",
       "https://instagram.com/xdrive.my",
@@ -550,7 +550,7 @@ function Logo({ size = 34 }) {
             size prop so the nav (34) and the footer (28) stay proportional. */}
         <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59"
              style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
-        <span style={{ display: "block", fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by XDrive</span>
+        <span style={{ display: "block", fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by Drevo</span>
       </div>
     </Link>
   );
@@ -757,12 +757,12 @@ export default function ShiftOSPage() {
         <meta name="description" content={SEO_DESC} />
         <meta name="keywords" content={SEO_KEYWORDS} />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
-        <link rel="canonical" href="https://xdrive.my/shiftos" />
+        <link rel="canonical" href="https://drevo.my/shiftos" />
         <meta property="og:type" content="website" />
         <meta property="og:title" content="ShiftOS — Software Dealer Kereta Malaysia (Used Car DMS)" />
         <meta property="og:description" content={SEO_DESC} />
-        <meta property="og:url" content="https://xdrive.my/shiftos" />
-        <meta property="og:site_name" content="ShiftOS by XDrive" />
+        <meta property="og:url" content="https://drevo.my/shiftos" />
+        <meta property="og:site_name" content="ShiftOS by Drevo" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="ShiftOS — Used Car Dealer Software Malaysia" />
         <meta name="twitter:description" content={SEO_DESC} />
@@ -784,7 +784,7 @@ export default function ShiftOSPage() {
                   onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                   onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{label}</button>
               ))}
-              <a href="https://xdrive.my" target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
+              <a href="https://drevo.my" target="_blank" rel="noopener noreferrer" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}>{t("shiftos.nav.marketplace")}</a>
               <Link to="/login" style={{ color: "#6b7280", fontSize: 14, fontWeight: 500, textDecoration: "none", transition: "color .15s" }}
@@ -1064,12 +1064,12 @@ export default function ShiftOSPage() {
                 onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>{t("shiftos.footer.login")}</Link>
               <Link to="/" style={{ fontSize: 13, color: "#4b5563", textDecoration: "none" }}
                 onMouseEnter={(e) => (e.currentTarget.style.color = "#111827")}
-                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>xdrive.my</Link>
+                onMouseLeave={(e) => (e.currentTarget.style.color = "#4b5563")}>drevo.my</Link>
             </div>
           </div>
           <div className="sos-wrap" style={{ padding: 0, borderTop: "1px solid #f3f4f6", paddingTop: 22, display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <p style={{ fontSize: 12, color: "#9ca3af" }}>© {new Date().getFullYear()} {t("shiftos.footer.copyright")}</p>
-            <p style={{ fontSize: 12, color: "#9ca3af" }}>{t("shiftos.footer.poweredBy")} <span style={{ color: "#dc2626" }}>XDrive</span></p>
+            <p style={{ fontSize: 12, color: "#9ca3af" }}>{t("shiftos.footer.poweredBy")} <span style={{ color: "#dc2626" }}>Drevo</span></p>
           </div>
         </footer>
 

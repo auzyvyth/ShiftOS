@@ -18,7 +18,7 @@ export default function SavedCarsPage() {
   const count = savedIds.size;
 
   useEffect(() => {
-    document.title = 'Saved Cars | XDrive';
+    document.title = 'Saved Cars | Drevo';
   }, []);
 
   return (

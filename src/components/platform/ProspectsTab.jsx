@@ -48,8 +48,8 @@ const SOURCE_LABEL = Object.fromEntries(SOURCES.map(s => [s.id, s.label]));
 // No price, plan or promise in either opener: the owner edits it before
 // sending, and the last line is the opt-out the law expects us to honour.
 const DEFAULT_OPENERS = {
-  salesman: "Hi {name}, this is XDrive. We built a tool for car salesmen: your listings, buyer leads and follow-ups in one place on your phone. Can I send you a quick look?\n\nIf you'd rather not hear from us, just reply STOP and we won't message again.",
-  dealer: "Hi {name}, this is XDrive. We built a dashboard for used-car dealers: stock, your sales team, leads and the handover paperwork in one place. Could I show you in 10 minutes this week?\n\nIf you'd rather not hear from us, just reply STOP and we won't message again.",
+  salesman: "Hi {name}, this is Drevo. We built a tool for car salesmen: your listings, buyer leads and follow-ups in one place on your phone. Can I send you a quick look?\n\nIf you'd rather not hear from us, just reply STOP and we won't message again.",
+  dealer: "Hi {name}, this is Drevo. We built a dashboard for used-car dealers: stock, your sales team, leads and the handover paperwork in one place. Could I show you in 10 minutes this week?\n\nIf you'd rather not hear from us, just reply STOP and we won't message again.",
 };
 const OPENER_KEY = "xd_prospect_opener_";
 

@@ -781,7 +781,7 @@ export default function SalesmanPremium() {
  const [carStatsMap, setCarStatsMap, carStatsCached] = usePersistentState(userId ? `sp_carstats:${userId}` : null, {});
  // per-car share-channel breakdown (which platform each view/enquiry came from)
  const [channelMap, setChannelMap] = useState({});
- // mini-page (xdrive.my/s/slug) visits + card clicks, broken down by platform
+ // mini-page (drevo.my/s/slug) visits + card clicks, broken down by platform
  const [minipageStats, setMinipageStats, minipageCached] = usePersistentState(
  userId ? `sp_minipage:${userId}` : null, { visits: 0, cardClicks: 0, byChannel: [], daily: [] },
  );
@@ -1499,7 +1499,7 @@ export default function SalesmanPremium() {
  setChannelMap(chMap);
  });
 
- // Mini-page (xdrive.my/s/slug) visits + card clicks, broken down by the
+ // Mini-page (drevo.my/s/slug) visits + card clicks, broken down by the
  // platform each visitor arrived through.
  const mpStatsReq = supabase
  .rpc("get_salesman_minipage_stats", { p_slug: profileData.slug })
@@ -1832,7 +1832,7 @@ export default function SalesmanPremium() {
  await supabase.auth.signOut();
  // Signing out must not leave this rep's buyer list cached on the device.
  clearPanelDataCache();
- window.location.href = "https://xdrive.my/login";
+ window.location.href = "https://drevo.my/login";
  };
 
  // Danger Zone — self-service account deletion (MOBILE-7), same edge function
@@ -1852,7 +1852,7 @@ export default function SalesmanPremium() {
  }
  await supabase.auth.signOut({ scope: "global" });
  clearPanelDataCache();
- window.location.href = "https://xdrive.my/login";
+ window.location.href = "https://drevo.my/login";
  } catch (e) {
  console.error("delete-account:", e);
  toast.error(t("salesmanPremium.errors.deleteAccount"));
@@ -2921,7 +2921,7 @@ export default function SalesmanPremium() {
  const price = car.selling_price
 ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}`
  : null;
- const link = car.slug? `https://xdrive.my/showroom/${car.slug}` : null;
+ const link = car.slug? `https://drevo.my/showroom/${car.slug}` : null;
  const msg = [
  `Hi! Tengok ni — ${name} dah ada dalam lineup kita!`,
  price? `Harga: ${price}` : null,

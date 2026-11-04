@@ -1,4 +1,4 @@
-// Single source of truth for ShiftOS / XDrive legal copy.
+// Single source of truth for ShiftOS / Drevo legal copy.
 // Rendered by src/pages/TermsPage.jsx, src/pages/PrivacyPage.jsx (Privacy + DPA),
 // and src/components/onboarding/LegalContent.jsx — so a policy edit happens ONCE here
 // and never drifts between the public pages and the onboarding consent wall.
@@ -9,8 +9,8 @@
 
 export const LEGAL_META = {
   operator: "ShiftOS (operated by Airy, sole proprietor)",
-  brand: "ShiftOS / xdrive.my",
-  website: "https://xdrive.my",
+  brand: "ShiftOS / drevo.my",
+  website: "https://drevo.my",
   email: "legal@xdrive.my",
   effectiveDate: "20 May 2026",
   // Privacy Policy last changed (fuller provider list, buyer data, BM version).
@@ -20,7 +20,7 @@ export const LEGAL_META = {
 // Each section: { h: heading, p: [paragraph, ...] }
 export const TERMS = {
   intro:
-    "These Terms govern your access to and use of the ShiftOS platform, including the XDrive dealer dashboard and the xdrive.my marketplace. By creating an account or using the Platform, you agree to be bound by these Terms.",
+    "These Terms govern your access to and use of the ShiftOS platform, including the Drevo dealer dashboard and the drevo.my marketplace. By creating an account or using the Platform, you agree to be bound by these Terms.",
   sections: [
     { h: "1. DEFINITIONS", p: [
       '"ShiftOS" / "we" / "us" refers to the Platform operated by ShiftOS (operated by Airy, sole proprietor). "Dealer" refers to a subscribed business user. "Salesman" refers to a sub-user account linked to a Dealer. "User" refers to any person accessing the Platform. "Content" refers to vehicle listings, images, descriptions, and other data uploaded. "Customer Data" refers to buyer information, leads, enquiries and other data uploaded by Dealers.',
@@ -35,13 +35,13 @@ export const TERMS = {
       "You agree not to: upload fraudulent, stolen, or non-existent vehicle listings; misrepresent vehicle condition, mileage, ownership history, or specifications; collect or process customer data without appropriate consent; violate any applicable Malaysian law including the Road Transport Act 1987, Consumer Protection Act 1999, or PDPA 2010; attempt to circumvent, reverse engineer, or compromise the Platform's security; use the Platform to harass, defraud, or deceive any person; upload defamatory, obscene, or intellectual-property-infringing content. Violation may result in immediate account suspension without refund.",
     ] },
     { h: "5. YOUR CONTENT AND DATA", p: [
-      'You retain ownership of all Content and Customer Data you upload. By uploading Content, you grant ShiftOS a non-exclusive, royalty-free licence to store, display, and process that Content solely for providing the Platform services. You are the data controller for your customers\' personal data and are responsible for: obtaining valid consent from customers before uploading their personal data; ensuring compliance with PDPA 2010; responding to customer data access and correction requests. ShiftOS acts as a data processor on your behalf. Vehicle listings marked "available" will be publicly visible on xdrive.my.',
+      'You retain ownership of all Content and Customer Data you upload. By uploading Content, you grant ShiftOS a non-exclusive, royalty-free licence to store, display, and process that Content solely for providing the Platform services. You are the data controller for your customers\' personal data and are responsible for: obtaining valid consent from customers before uploading their personal data; ensuring compliance with PDPA 2010; responding to customer data access and correction requests. ShiftOS acts as a data processor on your behalf. Vehicle listings marked "available" will be publicly visible on drevo.my.',
     ] },
     { h: "6. PLATFORM AVAILABILITY", p: [
       "We aim to maintain 99% uptime, excluding scheduled maintenance. We will provide advance notice of planned maintenance where possible. We are not liable for downtime caused by third-party infrastructure providers, force majeure events, or circumstances beyond our reasonable control.",
     ] },
     { h: "7. INTELLECTUAL PROPERTY", p: [
-      "ShiftOS, XDrive, xdrive.my and associated branding are the intellectual property of the Platform operator. You may not use our trademarks, logos or branding without prior written consent. The Platform software, design, and underlying technology remain our exclusive property.",
+      "ShiftOS, Drevo, drevo.my and associated branding are the intellectual property of the Platform operator. You may not use our trademarks, logos or branding without prior written consent. The Platform software, design, and underlying technology remain our exclusive property.",
     ] },
     { h: "8. LIMITATION OF LIABILITY", p: [
       "ShiftOS is a software tool. We are not a party to any vehicle sale transaction between a dealer and a buyer. We are not liable for any loss arising from vehicle transactions facilitated by the Platform. Our total aggregate liability for any claim shall not exceed the total subscription fees paid by you in the three months preceding the claim. We exclude liability for indirect, consequential, special or punitive damages of any kind.",
@@ -59,7 +59,7 @@ export const TERMS = {
       "We may update these Terms from time to time with at least 14 days notice of material changes via in-app notification or email. Continued use after the effective date constitutes acceptance.",
     ] },
     { h: "13. CONTACT", p: [
-      "For questions regarding these Terms: Email: legal@xdrive.my · Website: https://xdrive.my",
+      "For questions regarding these Terms: Email: legal@xdrive.my · Website: https://drevo.my",
     ] },
   ],
 };
@@ -71,25 +71,25 @@ export const TERMS = {
 // the Bahasa Malaysia version PDPA s.7(3) asks for: change both together.
 export const PRIVACY = {
   intro:
-    "This Privacy Policy explains how ShiftOS collects, uses, stores and protects personal data on the ShiftOS platform and the xdrive.my marketplace, under the Personal Data Protection Act 2010 (PDPA) of Malaysia. A Bahasa Malaysia version is on the same page.",
+    "This Privacy Policy explains how ShiftOS collects, uses, stores and protects personal data on the ShiftOS platform and the drevo.my marketplace, under the Personal Data Protection Act 2010 (PDPA) of Malaysia. A Bahasa Malaysia version is on the same page.",
   sections: [
     { h: "1. WHO WE ARE", p: [
-      "ShiftOS (operated by Airy, sole proprietor) runs the ShiftOS seller platform and the xdrive.my car marketplace in Malaysia. For any privacy question, or to use your rights below, email legal@xdrive.my.",
+      "ShiftOS (operated by Airy, sole proprietor) runs the ShiftOS seller platform and the drevo.my car marketplace in Malaysia. For any privacy question, or to use your rights below, email legal@xdrive.my.",
     ] },
     { h: "2. DATA WE COLLECT", p: [
       "Dealer and salesman accounts: full name, email address, phone number, IC (MyKad) number and IC photos for identity checks, dealership name, business registration number where you have one, business address, profile photo, subdomain, payment records, and platform usage data.",
-      "Buyers: when you enquire, book a viewing or contact a seller, we collect your name, phone number and state to pass your request to that seller. If you chat with a seller on xdrive.my, we keep your messages and pass them to that seller. If you add an email address in a chat, we use it only to tell you a seller replied. If you post a Find me request, sellers see the car you want and your state; your name reaches a seller only when you reply to them. If you create an account, we also keep your saved cars and price alerts.",
+      "Buyers: when you enquire, book a viewing or contact a seller, we collect your name, phone number and state to pass your request to that seller. If you chat with a seller on drevo.my, we keep your messages and pass them to that seller. If you add an email address in a chat, we use it only to tell you a seller replied. If you post a Find me request, sellers see the car you want and your state; your name reaches a seller only when you reply to them. If you create an account, we also keep your saved cars and price alerts.",
       "Data a seller adds: where a dealer or salesman adds further customer data (lead, appointment or loan details, including IC numbers), we process it on their behalf. They are the data controller and are responsible for getting appropriate consent.",
       "Automatic data: pages viewed and buttons tapped (see section 10), browser and device type, IP address (used for rate limiting and security, not kept with your profile), and error reports.",
     ] },
     { h: "3. HOW WE USE YOUR DATA", p: [
-      "To run and improve the platform; to log you in and protect your account; to check that sellers are real people; to send buyer enquiries, bookings and messages to the right seller; to show vehicle listings on xdrive.my; to send notifications by app, push, email or Telegram; to produce reports and performance figures for sellers; to stop fraud and abuse; to meet legal obligations; and to send service, billing and security messages. We do not sell your data or use it for advertising.",
+      "To run and improve the platform; to log you in and protect your account; to check that sellers are real people; to send buyer enquiries, bookings and messages to the right seller; to show vehicle listings on drevo.my; to send notifications by app, push, email or Telegram; to produce reports and performance figures for sellers; to stop fraud and abuse; to meet legal obligations; and to send service, billing and security messages. We do not sell your data or use it for advertising.",
     ] },
     { h: "4. LEGAL BASIS FOR PROCESSING (PDPA 2010)", p: [
       "Contract: to provide the service you signed up for. Legitimate interests: to improve the platform and prevent fraud. Consent: for enquiries, bookings, chats and optional features such as email alerts, push notifications and Telegram. Legal obligation: where Malaysian law requires it.",
     ] },
     { h: "5. WHO WE SHARE DATA WITH", p: [
-      "We do not sell, rent or trade personal data. We share it with: the seller you contact; and the service providers we use to run XDrive: Supabase (database, login and file storage, USA); Vercel (hosting and cookie-free visit statistics, USA); Sentry (error reports, and on seller dashboards screen recordings with all text and inputs hidden, USA); Resend (email, USA); Anthropic (AI drafting tools for sellers, which only see chat text with phone, IC and email numbers removed, USA); Cloudflare (bot checks on forms); Upstash (rate limiting); wsrv.nl (photo resizing); Google Fonts; Google and Apple (push notifications, only if you turn them on); Telegram (seller alerts, only if turned on). We also share data with Malaysian authorities where the law or a court requires it.",
+      "We do not sell, rent or trade personal data. We share it with: the seller you contact; and the service providers we use to run Drevo: Supabase (database, login and file storage, USA); Vercel (hosting and cookie-free visit statistics, USA); Sentry (error reports, and on seller dashboards screen recordings with all text and inputs hidden, USA); Resend (email, USA); Anthropic (AI drafting tools for sellers, which only see chat text with phone, IC and email numbers removed, USA); Cloudflare (bot checks on forms); Upstash (rate limiting); wsrv.nl (photo resizing); Google Fonts; Google and Apple (push notifications, only if you turn them on); Telegram (seller alerts, only if turned on). We also share data with Malaysian authorities where the law or a court requires it.",
       "Some of these providers store data outside Malaysia. We choose providers that protect personal data to a standard comparable to the PDPA.",
     ] },
     { h: "6. HOW LONG WE KEEP DATA", p: [
@@ -108,13 +108,13 @@ export const PRIVACY = {
       "We do not use advertising cookies. We store a few things on your device: your login session, your cookie choice, your language, cars you saved, and, if you ask us to, your name and phone for your next enquiry. Seller dashboards keep a copy of their data on the device so they open quickly; it is cleared when you log out. Our own page-view and button counts run only if you allow \"Analytics\" in Cookie settings (link in the site footer). Vercel's visit counter does not use cookies or identify you.",
     ] },
     { h: "11. CHILDREN", p: [
-      "XDrive is for adults. Buyer accounts require you to confirm you are 18 or older, and seller accounts require an IC. We do not knowingly collect data from anyone under 18; if you think we have, email legal@xdrive.my and we will delete it.",
+      "Drevo is for adults. Buyer accounts require you to confirm you are 18 or older, and seller accounts require an IC. We do not knowingly collect data from anyone under 18; if you think we have, email legal@xdrive.my and we will delete it.",
     ] },
     { h: "12. CHANGES TO THIS POLICY", p: [
       "We will tell registered sellers about material changes by in-app notice or email at least 14 days before they take effect. The date at the top shows the latest version.",
     ] },
     { h: "13. CONTACT", p: [
-      "Questions, requests or complaints: legal@xdrive.my · https://xdrive.my",
+      "Questions, requests or complaints: legal@xdrive.my · https://drevo.my",
     ] },
   ],
 };
@@ -122,25 +122,25 @@ export const PRIVACY = {
 // Bahasa Malaysia version (PDPA s.7(3)). Same sections, same order as PRIVACY.
 export const PRIVACY_MS = {
   intro:
-    "Polisi Privasi ini menerangkan cara ShiftOS mengumpul, menggunakan, menyimpan dan melindungi data peribadi di platform ShiftOS dan pasaran xdrive.my, di bawah Akta Perlindungan Data Peribadi 2010 (PDPA) Malaysia. Versi Bahasa Inggeris ada di halaman yang sama.",
+    "Polisi Privasi ini menerangkan cara ShiftOS mengumpul, menggunakan, menyimpan dan melindungi data peribadi di platform ShiftOS dan pasaran drevo.my, di bawah Akta Perlindungan Data Peribadi 2010 (PDPA) Malaysia. Versi Bahasa Inggeris ada di halaman yang sama.",
   sections: [
     { h: "1. SIAPA KAMI", p: [
-      "ShiftOS (dikendalikan oleh Airy, pemilik tunggal) mengendalikan platform penjual ShiftOS dan pasaran kereta xdrive.my di Malaysia. Untuk sebarang soalan privasi, atau untuk menggunakan hak anda di bawah, e-mel legal@xdrive.my.",
+      "ShiftOS (dikendalikan oleh Airy, pemilik tunggal) mengendalikan platform penjual ShiftOS dan pasaran kereta drevo.my di Malaysia. Untuk sebarang soalan privasi, atau untuk menggunakan hak anda di bawah, e-mel legal@xdrive.my.",
     ] },
     { h: "2. DATA YANG KAMI KUMPUL", p: [
       "Akaun pengedar dan jurujual: nama penuh, alamat e-mel, nombor telefon, nombor IC (MyKad) dan gambar IC untuk semakan identiti, nama syarikat, nombor pendaftaran perniagaan jika ada, alamat perniagaan, gambar profil, subdomain, rekod bayaran, dan data penggunaan platform.",
-      "Pembeli: apabila anda membuat pertanyaan, menempah tinjauan atau menghubungi penjual, kami mengumpul nama, nombor telefon dan negeri anda untuk menghantar permintaan anda kepada penjual itu. Jika anda berbual dengan penjual di xdrive.my, kami menyimpan mesej anda dan menghantarnya kepada penjual itu. Jika anda menambah alamat e-mel dalam perbualan, kami menggunakannya hanya untuk memberitahu anda bahawa penjual telah membalas. Jika anda membuat permintaan Find me, penjual nampak kereta yang anda cari dan negeri anda; nama anda sampai kepada penjual hanya apabila anda membalas mereka. Jika anda membuka akaun, kami juga menyimpan kereta yang anda simpan dan amaran harga anda.",
+      "Pembeli: apabila anda membuat pertanyaan, menempah tinjauan atau menghubungi penjual, kami mengumpul nama, nombor telefon dan negeri anda untuk menghantar permintaan anda kepada penjual itu. Jika anda berbual dengan penjual di drevo.my, kami menyimpan mesej anda dan menghantarnya kepada penjual itu. Jika anda menambah alamat e-mel dalam perbualan, kami menggunakannya hanya untuk memberitahu anda bahawa penjual telah membalas. Jika anda membuat permintaan Find me, penjual nampak kereta yang anda cari dan negeri anda; nama anda sampai kepada penjual hanya apabila anda membalas mereka. Jika anda membuka akaun, kami juga menyimpan kereta yang anda simpan dan amaran harga anda.",
       "Data yang ditambah oleh penjual: jika pengedar atau jurujual menambah data pelanggan lain (butiran prospek, temujanji atau pinjaman, termasuk nombor IC), kami memprosesnya bagi pihak mereka. Mereka ialah pengawal data dan bertanggungjawab mendapatkan persetujuan yang sewajarnya.",
       "Data automatik: halaman yang dilihat dan butang yang ditekan (lihat seksyen 10), jenis pelayar dan peranti, alamat IP (digunakan untuk had kadar dan keselamatan, tidak disimpan bersama profil anda), dan laporan ralat.",
     ] },
     { h: "3. CARA KAMI MENGGUNAKAN DATA ANDA", p: [
-      "Untuk menjalankan dan menambah baik platform; untuk log masuk dan melindungi akaun anda; untuk memastikan penjual ialah orang sebenar; untuk menghantar pertanyaan, tempahan dan mesej pembeli kepada penjual yang betul; untuk memaparkan iklan kereta di xdrive.my; untuk menghantar notifikasi melalui aplikasi, push, e-mel atau Telegram; untuk menghasilkan laporan dan prestasi untuk penjual; untuk menghalang penipuan dan penyalahgunaan; untuk mematuhi undang-undang; dan untuk menghantar mesej perkhidmatan, bil dan keselamatan. Kami tidak menjual data anda dan tidak menggunakannya untuk pengiklanan.",
+      "Untuk menjalankan dan menambah baik platform; untuk log masuk dan melindungi akaun anda; untuk memastikan penjual ialah orang sebenar; untuk menghantar pertanyaan, tempahan dan mesej pembeli kepada penjual yang betul; untuk memaparkan iklan kereta di drevo.my; untuk menghantar notifikasi melalui aplikasi, push, e-mel atau Telegram; untuk menghasilkan laporan dan prestasi untuk penjual; untuk menghalang penipuan dan penyalahgunaan; untuk mematuhi undang-undang; dan untuk menghantar mesej perkhidmatan, bil dan keselamatan. Kami tidak menjual data anda dan tidak menggunakannya untuk pengiklanan.",
     ] },
     { h: "4. ASAS UNDANG-UNDANG (PDPA 2010)", p: [
       "Kontrak: untuk memberikan perkhidmatan yang anda langgan. Kepentingan sah: untuk menambah baik platform dan menghalang penipuan. Persetujuan: untuk pertanyaan, tempahan, perbualan dan ciri pilihan seperti amaran e-mel, notifikasi push dan Telegram. Kewajipan undang-undang: apabila dikehendaki oleh undang-undang Malaysia.",
     ] },
     { h: "5. DENGAN SIAPA KAMI BERKONGSI DATA", p: [
-      "Kami tidak menjual, menyewa atau memperdagangkan data peribadi. Kami berkongsinya dengan: penjual yang anda hubungi; dan pembekal perkhidmatan yang kami gunakan untuk menjalankan XDrive: Supabase (pangkalan data, log masuk dan storan fail, Amerika Syarikat); Vercel (hos laman dan statistik lawatan tanpa kuki, AS); Sentry (laporan ralat, dan di papan pemuka penjual rakaman skrin dengan semua teks dan input disembunyikan, AS); Resend (e-mel, AS); Anthropic (alat draf AI untuk penjual, yang hanya melihat teks perbualan dengan nombor telefon, IC dan e-mel dibuang, AS); Cloudflare (semakan bot pada borang); Upstash (had kadar); wsrv.nl (saiz semula gambar); Google Fonts; Google dan Apple (notifikasi push, hanya jika anda menghidupkannya); Telegram (amaran penjual, hanya jika dihidupkan). Kami juga berkongsi data dengan pihak berkuasa Malaysia jika dikehendaki oleh undang-undang atau mahkamah.",
+      "Kami tidak menjual, menyewa atau memperdagangkan data peribadi. Kami berkongsinya dengan: penjual yang anda hubungi; dan pembekal perkhidmatan yang kami gunakan untuk menjalankan Drevo: Supabase (pangkalan data, log masuk dan storan fail, Amerika Syarikat); Vercel (hos laman dan statistik lawatan tanpa kuki, AS); Sentry (laporan ralat, dan di papan pemuka penjual rakaman skrin dengan semua teks dan input disembunyikan, AS); Resend (e-mel, AS); Anthropic (alat draf AI untuk penjual, yang hanya melihat teks perbualan dengan nombor telefon, IC dan e-mel dibuang, AS); Cloudflare (semakan bot pada borang); Upstash (had kadar); wsrv.nl (saiz semula gambar); Google Fonts; Google dan Apple (notifikasi push, hanya jika anda menghidupkannya); Telegram (amaran penjual, hanya jika dihidupkan). Kami juga berkongsi data dengan pihak berkuasa Malaysia jika dikehendaki oleh undang-undang atau mahkamah.",
       "Sesetengah pembekal ini menyimpan data di luar Malaysia. Kami memilih pembekal yang melindungi data peribadi pada tahap yang setanding dengan PDPA.",
     ] },
     { h: "6. TEMPOH KAMI MENYIMPAN DATA", p: [
@@ -159,13 +159,13 @@ export const PRIVACY_MS = {
       "Kami tidak menggunakan kuki pengiklanan. Kami menyimpan beberapa perkara pada peranti anda: sesi log masuk, pilihan kuki anda, bahasa anda, kereta yang anda simpan, dan, jika anda minta, nama dan telefon anda untuk pertanyaan seterusnya. Papan pemuka penjual menyimpan salinan data mereka pada peranti supaya cepat dibuka; ia dipadam apabila anda log keluar. Kiraan paparan halaman dan butang kami sendiri hanya berjalan jika anda membenarkan \"Analytics\" dalam Cookie settings (pautan di bahagian bawah laman). Pengira lawatan Vercel tidak menggunakan kuki dan tidak mengenal pasti anda.",
     ] },
     { h: "11. KANAK-KANAK", p: [
-      "XDrive untuk orang dewasa. Akaun pembeli memerlukan anda mengesahkan umur 18 tahun ke atas, dan akaun penjual memerlukan IC. Kami tidak sengaja mengumpul data daripada sesiapa di bawah 18 tahun; jika anda fikir kami telah berbuat demikian, e-mel legal@xdrive.my dan kami akan memadamnya.",
+      "Drevo untuk orang dewasa. Akaun pembeli memerlukan anda mengesahkan umur 18 tahun ke atas, dan akaun penjual memerlukan IC. Kami tidak sengaja mengumpul data daripada sesiapa di bawah 18 tahun; jika anda fikir kami telah berbuat demikian, e-mel legal@xdrive.my dan kami akan memadamnya.",
     ] },
     { h: "12. PERUBAHAN POLISI INI", p: [
       "Kami akan memaklumkan penjual berdaftar tentang perubahan penting melalui notis dalam aplikasi atau e-mel sekurang-kurangnya 14 hari sebelum ia berkuat kuasa. Tarikh di bahagian atas menunjukkan versi terkini.",
     ] },
     { h: "13. HUBUNGI KAMI", p: [
-      "Soalan, permintaan atau aduan: legal@xdrive.my · https://xdrive.my",
+      "Soalan, permintaan atau aduan: legal@xdrive.my · https://drevo.my",
     ] },
   ],
 };

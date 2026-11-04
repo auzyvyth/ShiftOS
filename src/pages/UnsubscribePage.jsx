@@ -59,7 +59,7 @@ export default function UnsubscribePage() {
           </>
         )}
         <Link to="/" style={{ display:'inline-block', padding:'10px 18px', borderRadius:9, background:'#dc2626', color:'#fff', fontSize:13.5, fontWeight:700, textDecoration:'none' }}>
-          Back to XDrive
+          Back to Drevo
         </Link>
       </div>
     </div>

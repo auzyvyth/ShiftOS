@@ -23,7 +23,7 @@ export const DASHBOARD_DOMAIN = "shiftos.com";
 
 // The ?tenant= override is a dev/preview convenience only. Allowing it in
 // production would let anyone spoof a competitor's storefront under the
-// xdrive.my domain (phishing / brand-confusion vector), so it is gated to
+// drevo.my domain (phishing / brand-confusion vector), so it is gated to
 // localhost and Vercel preview hosts.
 function isDevHost(hostname) {
   return (

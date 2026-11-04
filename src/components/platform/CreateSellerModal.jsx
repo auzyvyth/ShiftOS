@@ -228,7 +228,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
             </div>
             <div><label style={label}>Page link</label>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 13, color: "#6b7280", flexShrink: 0 }}>xdrive.my/s/</span>
+                <span style={{ fontSize: 13, color: "#6b7280", flexShrink: 0 }}>drevo.my/s/</span>
                 <input value={form.slug} onChange={(e) => { setSlugEdited(true); set("slug", slugify(e.target.value)); }} style={{ ...input, minWidth: 0 }} autoComplete="off" />
               </div>
               <p style={{ margin: "5px 0 0", fontSize: 11, color: slugFree === false ? "#f87171" : "#6b7280" }}>
@@ -273,7 +273,7 @@ export default function CreateSellerModal({ onClose, onCreated }) {
                 <button type="button" onClick={() => navigator.clipboard?.writeText(created.temp_password)} style={ghost}>Copy</button>
               </div>
             </div>
-            <p style={step}>1. Open a private window and sign in at xdrive.my/login as <b style={{ color: "#f1f5f9" }}>{created.email}</b> with that password.</p>
+            <p style={step}>1. Open a private window and sign in at drevo.my/login as <b style={{ color: "#f1f5f9" }}>{created.email}</b> with that password.</p>
             <p style={step}>2. Add their cars. They go live straight away; the Verified badge comes after the seller's ID is checked. Skip any tour or checklist you see: they all come back for the seller once they set their password.</p>
             <p style={step}>3. Sign out and close the private window.</p>
             <p style={step}>4. Send the setup email. They set their own password and IC, and every other session is signed out.</p>

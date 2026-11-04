@@ -64,7 +64,7 @@ const NODES = {
   p_home: {
     id: "p_home",
     label: "HomePage",
-    desc: "XDrive public marketplace hero",
+    desc: "Drevo public marketplace hero",
     x: -900,
     y: -520,
     status: "wip",

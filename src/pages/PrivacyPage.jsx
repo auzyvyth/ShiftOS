@@ -97,7 +97,7 @@ export default function PrivacyPage() {
 
           <div style={S.footer}>
             <Link to="/terms" style={S.flink}>Terms of Service →</Link>
-            <Link to="/" style={S.flink}>xdrive.my</Link>
+            <Link to="/" style={S.flink}>drevo.my</Link>
             <span style={S.flink}>© 2026 ShiftOS. All rights reserved.</span>
           </div>
         </div>

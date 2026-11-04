@@ -33,7 +33,7 @@ export function replyTimeLabel(reply) {
   return null;
 }
 
-// "Documents checked by XDrive on 2 of 3 cars". Only cars a superadmin ticked
+// "Documents checked by Drevo on 2 of 3 cars". Only cars a superadmin ticked
 // in the review console count (car_listings.docs_verified — set only through
 // set_listing_docs_verified, and trg_protect_listing_docs_verified stops a
 // seller writing it). None checked = say nothing, rather than advertise a zero.
@@ -42,8 +42,8 @@ export function docsCheckedLine(listings) {
   const checked = (listings || []).filter((c) => c?.docs_verified === true).length;
   if (!total || !checked) return null;
   return checked === total
-    ? `Documents checked by XDrive on ${total === 1 ? 'this car' : `all ${total} cars`}`
-    : `Documents checked by XDrive on ${checked} of ${total} cars`;
+    ? `Documents checked by Drevo on ${total === 1 ? 'this car' : `all ${total} cars`}`
+    : `Documents checked by Drevo on ${checked} of ${total} cars`;
 }
 
 // The seller's own terms, only the parts they actually set. handles_roadtax_insurance

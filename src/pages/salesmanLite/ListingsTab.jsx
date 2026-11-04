@@ -20,7 +20,7 @@ import { PRIVATE_CAR_LIMIT, privateCount } from "../../utils/privateCars";
 // Edit & Resubmit, the locked car's Premium button, open on photo / title,
 // the status menu, the next-step button, Link / Caption / Edit / View, and ···
 // (Brief, Loan poster, Moving poster + TikTok post locked, Download photos, Delete).
-// What went (each fact once): the per-card "Live on XDrive · N views" strip
+// What went (each fact once): the per-card "Live on Drevo · N views" strip
 // (the Available tab says live, the views line says the count), the "hot /
 // stale" counts (the next-step line replaced those tags), and "My margin: —"
 // when there is nothing to show.

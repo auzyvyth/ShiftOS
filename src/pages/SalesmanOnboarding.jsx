@@ -138,7 +138,7 @@ const TIERS = {
     price: 'FREE',
     features: [
       'Up to 10 active listings',
-      'Auto-published to xdrive.my',
+      'Auto-published to drevo.my',
       'Direct WhatsApp enquiries',
       'Basic performance analytics',
       'No credit card required',
@@ -566,7 +566,7 @@ export default function SalesmanOnboarding() {
     setErr('');
     // If an IC was provided (here or at the identity step), enforce 18+ from it.
     if (form.icNumber && isAdultFromIC(form.icNumber) === false) {
-      setErr('You must be at least 18 years old to sell on XDrive.');
+      setErr('You must be at least 18 years old to sell on Drevo.');
       return;
     }
     setLoading(true);
@@ -662,7 +662,7 @@ export default function SalesmanOnboarding() {
             {resumeIsBuyer ? 'CONTINUE WITH THIS EMAIL?' : 'WELCOME BACK'}
           </div>
           <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 4, textAlign: 'center' }}>
-            {resumeIsBuyer ? 'Your XDrive account is signed in as' : 'You have an incomplete sign-up as'}
+            {resumeIsBuyer ? 'Your Drevo account is signed in as' : 'You have an incomplete sign-up as'}
           </p>
           <p style={{ color: '#E8EDF5', fontWeight: 600, fontSize: 14, marginBottom: 36, textAlign: 'center', wordBreak: 'break-all' }}>{userEmail}</p>
           <button className="eo-btn" style={{ marginTop: 0 }} onClick={() => { setShowResumeChoice(false); setStep(resumeIsBuyer ? 0 : (draftStep.current || 2)); }}>
@@ -795,7 +795,7 @@ export default function SalesmanOnboarding() {
                 </label>
                 <label className="eo-check">
                   <input type="checkbox" checked={agreePdpa} onChange={e => setAgreePdpa(e.target.checked)} />
-                  <span>I consent to XDrive collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
+                  <span>I consent to Drevo collecting and processing my personal data (including my IC) for account verification and marketplace listings, in accordance with the PDPA 2010.</span>
                 </label>
                 <button className="eo-btn" onClick={agreeLegal} disabled={!agreeTerms || !agreePdpa}>
                   I AGREE — CONTINUE
@@ -985,7 +985,7 @@ export default function SalesmanOnboarding() {
                     </span>
                   )}
                 </div>
-                <p className="eo-hint">xdrive.my/s/{form.slug || 'yourname'} &middot; Letters and numbers, 3–20 chars</p>
+                <p className="eo-hint">drevo.my/s/{form.slug || 'yourname'} &middot; Letters and numbers, 3–20 chars</p>
                 {/* Public: this is the page header, the Google title and the advisor
                     list. People typed their HOME here (owner, 2026-10-23), so it
                     asks for where buyers meet them. */}
@@ -1026,7 +1026,7 @@ export default function SalesmanOnboarding() {
                     ['NAME', form.fullName],
                     ['EMAIL', userEmail],
                     ['PHONE', toPlus60(form.phone)],
-                    ['PROFILE URL', 'xdrive.my/s/' + form.slug],
+                    ['PROFILE URL', 'drevo.my/s/' + form.slug],
                     ['STATE', form.state || '—'],
                   ].map(([k, v]) => (
                     <div key={k} className="eo-review-row">

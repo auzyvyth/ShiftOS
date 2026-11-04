@@ -212,7 +212,7 @@ function checkV3Row(row, path, errors, warnings) {
 
     // "high" is what the listing form will LOCK a seller to. It has to be
     // traceable and complete, or a locked wrong number goes on every listing
-    // of that trim as XDrive's own claim.
+    // of that trim as Drevo's own claim.
     if (v.confidence === 'high') {
       if (!v.source || !String(v.source).trim()) at(`${vp} is "high" with no source - name the page or brochure it came from, or drop to medium`);
       const needed = v.fuel_type === 'Electric'

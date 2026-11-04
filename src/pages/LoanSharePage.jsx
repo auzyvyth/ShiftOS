@@ -299,7 +299,7 @@ function Shell({ children }) {
     <div style={{ minHeight: "100vh", background: "#080C14", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ maxWidth: 560, margin: "0 auto", padding: "28px 18px 60px" }}>
         <p style={{ margin: "0 0 26px", fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, letterSpacing: "3px", color: "rgba(255,255,255,0.75)" }}>
-          XDRIVE
+          DREVO
         </p>
         {children}
       </div>

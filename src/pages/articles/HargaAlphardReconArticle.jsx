@@ -6,7 +6,7 @@ import MarketplaceHeader from '../../components/MarketplaceHeader';
 import MarketplaceFooter from '../../components/MarketplaceFooter';
 
 // Every price below is either an official launch price (sourced) or an asking
-// price on XDrive on the snapshot date. Nothing here promises a price, loan
+// price on Drevo on the snapshot date. Nothing here promises a price, loan
 // rate or approval. The live numbers are on the hub page, which this links to.
 const ARTICLE = {
   slug: 'harga-alphard-recon-malaysia',
@@ -23,7 +23,7 @@ const HUB = '/used-cars/toyota/alphard';
 const FAQS = [
   {
     q: 'Berapa harga Toyota Alphard recon di Malaysia?',
-    a: 'Pada 13 Oktober 2026, harga diminta untuk Alphard di XDrive ialah RM193,000 hingga RM212,000 untuk unit 2.5 SC tahun 2021 hingga 2023, dan RM274,000 hingga RM299,000 untuk unit 2.5 Z tahun 2024 dan 2025. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Alphard XDrive.',
+    a: 'Pada 13 Oktober 2026, harga diminta untuk Alphard di Drevo ialah RM193,000 hingga RM212,000 untuk unit 2.5 SC tahun 2021 hingga 2023, dan RM274,000 hingga RM299,000 untuk unit 2.5 Z tahun 2024 dan 2025. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Alphard Drevo.',
   },
   {
     q: 'Apa beza Alphard 2.5 SC dan 2.5 Z?',
@@ -38,8 +38,8 @@ const FAQS = [
     a: 'Alphard recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti panjang yang disebut dalam iklan datang dari dealer atau syarikat waranti pihak ketiga. Minta buku waranti, baca apa yang dilindungi, had tuntutan, dan syarat servis sebelum bayar.',
   },
   {
-    q: 'Adakah XDrive memeriksa Alphard yang dijual?',
-    a: 'Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.',
+    q: 'Adakah Drevo memeriksa Alphard yang dijual?',
+    a: 'Tidak. Drevo ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.',
   },
 ];
 
@@ -52,9 +52,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'ShiftOS by XDrive' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'ShiftOS by Drevo' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -87,15 +87,15 @@ export default function HargaAlphardReconArticle() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -134,7 +134,7 @@ export default function HargaAlphardReconArticle() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>ShiftOS by XDrive</span>
+              <span>ShiftOS by Drevo</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI.
@@ -145,10 +145,10 @@ export default function HargaAlphardReconArticle() {
 
             <section>
               <p style={P}>
-                <strong style={STRONG}>Jawapan ringkas:</strong> pada 13 Oktober 2026, Alphard recon di XDrive diminta antara <strong style={STRONG}>RM193,000 dan RM212,000</strong> untuk gred 2.5 SC (2021 hingga 2023), dan antara <strong style={STRONG}>RM274,000 dan RM299,000</strong> untuk gred 2.5 Z (2024 dan 2025). Jurang besar itu kebanyakannya bukan soal tahun, tetapi soal generasi: SC ialah model lama, Z ialah model baharu.
+                <strong style={STRONG}>Jawapan ringkas:</strong> pada 13 Oktober 2026, Alphard recon di Drevo diminta antara <strong style={STRONG}>RM193,000 dan RM212,000</strong> untuk gred 2.5 SC (2021 hingga 2023), dan antara <strong style={STRONG}>RM274,000 dan RM299,000</strong> untuk gred 2.5 Z (2024 dan 2025). Jurang besar itu kebanyakannya bukan soal tahun, tetapi soal generasi: SC ialah model lama, Z ialah model baharu.
               </p>
               <p style={P}>
-                Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <Link to={HUB} style={LINK}>semua Toyota Alphard dijual di XDrive</Link>.
+                Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <Link to={HUB} style={LINK}>semua Toyota Alphard dijual di Drevo</Link>.
               </p>
             </section>
 
@@ -172,7 +172,7 @@ export default function HargaAlphardReconArticle() {
                 </table>
               </div>
               <p style={{ ...P, fontSize: 13, marginTop: 10 }}>
-                Sumber: iklan aktif di XDrive pada 13 Oktober 2026, {SNAPSHOT.reduce((a, r) => a + r.n, 0)} kereta. Satu unit 2025 diiklankan sebagai terpakai (sudah didaftar di Malaysia), selebihnya recon.
+                Sumber: iklan aktif di Drevo pada 13 Oktober 2026, {SNAPSHOT.reduce((a, r) => a + r.n, 0)} kereta. Satu unit 2025 diiklankan sebagai terpakai (sudah didaftar di Malaysia), selebihnya recon.
               </p>
             </section>
 
@@ -274,7 +274,7 @@ export default function HargaAlphardReconArticle() {
             </section>
 
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
-              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Toyota Alphard Dijual Di XDrive</p>
+              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Toyota Alphard Dijual Di Drevo</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
                 Harga diminta ikut tahun, jarak dan lokasi, dikemas kini setiap kali penjual menukar iklan. Hubungi penjual terus.
               </p>

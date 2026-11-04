@@ -59,7 +59,7 @@ function Dashboard() {
       <div style={{ height: 34, flexShrink: 0, display: "flex", alignItems: "center", gap: 7, padding: "0 14px", background: "#f9fafb", borderBottom: `1px solid ${LINE}` }}>
         {["#fca5a5", "#fcd34d", "#86efac"].map((c) => <span key={c} style={{ width: 9, height: 9, borderRadius: "50%", background: c }} />)}
         <div style={{ margin: "0 auto", width: 260, height: 20, borderRadius: 6, background: "#fff", border: `1px solid ${LINE}`, fontSize: 10.5, color: MUTED, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-          <Search size={10} /> xdrive.my/dashboard
+          <Search size={10} /> drevo.my/dashboard
         </div>
       </div>
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>

@@ -212,7 +212,7 @@ export function useChatThreads({ salesmanId = null, dealerId = null }) {
 // anonymous buyer gets needsSignIn instead of a new thread. A guest who
 // already has a thread on this car keeps it, so nobody's conversation is
 // stranded by the switch. A dealer's own subdomain still signs guests in
-// anonymously, because sign-in lives on xdrive.my and its session cannot
+// anonymously, because sign-in lives on drevo.my and its session cannot
 // reach <sub>.xdrive.my (separate storage per origin).
 export function useBuyerThread(listingId, { autoStart = false, active = true } = {}) {
   // AUTH-6: signInAnonymously() goes through /auth/v1/signup, which the

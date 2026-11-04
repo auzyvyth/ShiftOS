@@ -62,7 +62,7 @@ export default function TermsPage() {
 
           <div style={S.footer}>
             <Link to="/privacy" style={S.flink}>Privacy Policy & DPA →</Link>
-            <Link to="/" style={S.flink}>xdrive.my</Link>
+            <Link to="/" style={S.flink}>drevo.my</Link>
             <span style={S.flink}>© 2026 ShiftOS. All rights reserved.</span>
           </div>
         </div>

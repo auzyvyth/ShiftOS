@@ -641,7 +641,7 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
                   <span style={{ fontSize: 14, fontWeight: 700, color: color.ink }}>Marketplace</span>
                   {form.publish && <Check className="w-4 h-4" style={{ marginLeft: "auto", color: color.accent, flexShrink: 0 }} />}
                 </div>
-                <p style={{ fontSize: 12, color: color.textMuted, lineHeight: 1.5 }}>Goes live on your storefront + xdrive.my for buyers, and is also kept in your stock. Photos required.</p>
+                <p style={{ fontSize: 12, color: color.textMuted, lineHeight: 1.5 }}>Goes live on your storefront + drevo.my for buyers, and is also kept in your stock. Photos required.</p>
               </button>
             </div>
           </div>

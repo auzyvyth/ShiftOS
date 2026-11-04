@@ -497,7 +497,7 @@ const HomePage = () => {
   const whyData = tenant?.storefront_why || HARDCODED_DEFAULT_WHY;
   const howData = tenant?.storefront_how || HARDCODED_DEFAULT_HOW;
   // On a dealer storefront, never fabricate reviews — show real ones or nothing.
-  // The main XDrive marketplace keeps its default set.
+  // The main Drevo marketplace keeps its default set.
   const testimonialsData =
     tenant?.storefront_testimonials || (isSubdomain() ? [] : HARDCODED_DEFAULT_TESTIMONIALS);
   const ctaData = tenant?.storefront_cta || HARDCODED_DEFAULT_CTA;
@@ -530,7 +530,7 @@ const HomePage = () => {
   const ctaPrimaryLabel = ctaData.primary_label;
   const ctaSecondaryLabel = ctaData.secondary_label;
 
-  // Main domain (xdrive.my) with no subdomain → show public marketplace,
+  // Main domain (drevo.my) with no subdomain → show public marketplace,
   // rendered directly here so the URL stays "/" (not a separate "/marketplace"
   // path — see the lazy import above for why).
   if (!isSubdomain() && tenant === null) {
@@ -785,7 +785,7 @@ const HomePage = () => {
         <title>
           {profile
             ? `${profile.site_name || profile.dealership} — Used Cars in Malaysia`
-            : "XDrive — Used & Recon Cars for Sale in Malaysia"}
+            : "Drevo — Used & Recon Cars for Sale in Malaysia"}
         </title>
         <meta
           name="robots"
@@ -796,7 +796,7 @@ const HomePage = () => {
           content={
             profile
               ? `Browse used cars from ${profile.site_name || profile.dealership}. Find your perfect car today.`
-              : "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on XDrive."
+              : "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on Drevo."
           }
         />
         <meta
@@ -804,27 +804,27 @@ const HomePage = () => {
           content={
             profile
               ? `${profile.site_name || profile.dealership} — Used Cars`
-              : "XDrive — Used & Recon Cars for Sale in Malaysia"
+              : "Drevo — Used & Recon Cars for Sale in Malaysia"
           }
         />
         <meta
           property="og:image"
-          content={profile?.site_logo_url || "https://xdrive.my/og-default.jpg"}
+          content={profile?.site_logo_url || "https://drevo.my/og-default.jpg"}
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="canonical" href="https://xdrive.my" />
+        <link rel="canonical" href="https://drevo.my" />
         {!profile && (
           <script type="application/ld+json">
             {JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              "@id": "https://xdrive.my/#organization",
-              name: "XDrive",
-              alternateName: "XDrive Malaysia",
-              url: "https://xdrive.my",
-              logo: "https://xdrive.my/xdrivelogo.png",
+              "@id": "https://drevo.my/#organization",
+              name: "Drevo",
+              alternateName: "Drevo Malaysia",
+              url: "https://drevo.my",
+              logo: "https://drevo.my/xdrivelogo.png",
               description:
-                "XDrive is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of ShiftOS, a used-car dealer management system (DMS).",
+                "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of ShiftOS, a used-car dealer management system (DMS).",
               areaServed: "MY",
               sameAs: [
                 "https://facebook.com/xdrive.my",
@@ -844,16 +844,16 @@ const HomePage = () => {
             {JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              "@id": "https://xdrive.my/#website",
-              name: "XDrive",
-              alternateName: "XDrive Malaysia",
-              url: "https://xdrive.my",
-              publisher: { "@id": "https://xdrive.my/#organization" },
+              "@id": "https://drevo.my/#website",
+              name: "Drevo",
+              alternateName: "Drevo Malaysia",
+              url: "https://drevo.my",
+              publisher: { "@id": "https://drevo.my/#organization" },
               potentialAction: {
                 "@type": "SearchAction",
                 target: {
                   "@type": "EntryPoint",
-                  urlTemplate: "https://xdrive.my/showroom?q={search_term_string}",
+                  urlTemplate: "https://drevo.my/showroom?q={search_term_string}",
                 },
                 "query-input": "required name=search_term_string",
               },

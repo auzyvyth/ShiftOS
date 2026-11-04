@@ -1571,7 +1571,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         {/* The site's name in the empty middle of the bar (owner, 2026-10-26). Plain text, never
             a link, URL or QR code (TikTok LIVE rules). Desktop stage only: on a phone the bar is already full.
             Rename with everything else on the Drevo switch day (BRAND-1). */}
-        <span className="lp-brand" aria-hidden="true">XDrive</span>
+        <span className="lp-brand" aria-hidden="true">Drevo</span>
         <div className="lp-tools">
           {/* Shows the language on screen now; tap to switch. */}
           <button className="lp-iconbtn lp-lang" onClick={toggleLang} aria-label={t.langLabel}>

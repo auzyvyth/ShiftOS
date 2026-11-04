@@ -63,8 +63,8 @@ const PRESENTATION = {
     // Lite = get found, get the lead (owner, 2026-10-13). The listing cap is
     // added by buildCard from PLAN_CONFIG, never typed here.
     features: [
-      'Your own page at xdrive.my/s/yourname',
-      'Cars listed on the XDrive marketplace',
+      'Your own page at drevo.my/s/yourname',
+      'Cars listed on the Drevo marketplace',
       'Buyers reach you by WhatsApp, chat + booking',
       'Basic Live presentation for TikTok / FB lives',
       'Alerts on new leads',

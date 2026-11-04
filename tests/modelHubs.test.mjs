@@ -87,7 +87,7 @@ eq(yearLine(ya.byYear[1]), '2024: RM 274,000 to RM 287,000 (2 cars, 3,000 to 5,5
 eq(yearLine(ya.byYear[0]), '2025: RM 295,000 (1 car, 1,819 km)', 'single-car year line');
 eq(ya.conditions, { recon: 3, used: 1 }, 'conditions from live cars only');
 const yc = hubCopy(findHub(yr, 'toyota').brand, ya);
-ok(yc.faqs.some((f) => f.a.startsWith('Asking prices on XDrive right now: 2025: RM 295,000')), 'by-year FAQ quotes real rows');
+ok(yc.faqs.some((f) => f.a.startsWith('Asking prices on Drevo right now: 2025: RM 295,000')), 'by-year FAQ quotes real rows');
 ok(yc.faqs.some((f) => f.a.startsWith('Of the 4 listed, 3 recon, 1 used')), 'condition FAQ counts');
 ok(!hubCopy(toyota, alphard).faqs.some((f) => /recon or used/.test(f.q)), 'no condition FAQ when no seller set one');
 ok(yc.title.startsWith('Used & Recon Toyota Alphard for Sale in Malaysia'), 'title says Recon when a live car is recon');

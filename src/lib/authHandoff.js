@@ -1,6 +1,6 @@
 // Cross-subdomain session handoff.
 //
-// Login happens on xdrive.my (or shiftos.com) but dashboards and salesman
+// Login happens on drevo.my (or shiftos.com) but dashboards and salesman
 // panels are served from <sub>.xdrive.my — a different origin, so the Supabase
 // session in localStorage does not carry across. We hand the session over by
 // passing the access/refresh tokens through the redirect URL.
@@ -34,7 +34,7 @@ export function clearHandoffTokens() {
 
 // ── Robust cross-subdomain session establishment ────────────────────────────
 //
-// Login happens on xdrive.my; dealer dashboards live on <sub>.xdrive.my — a
+// Login happens on drevo.my; dealer dashboards live on <sub>.xdrive.my — a
 // different origin whose localStorage does NOT carry the session. We pass the
 // tokens in the URL hash and call setSession on the subdomain. Two things make
 // that fragile, and this helper handles both so a dealer never lands on the

@@ -1,6 +1,6 @@
 // Deletes every MyKad photo a seller has in the private kyc-docs bucket.
 //
-// Owner's rule: ID photos are kept only until a person at XDrive has looked at
+// Owner's rule: ID photos are kept only until a person at Drevo has looked at
 // them. The DB decision functions delete the kyc_documents ROWS, but the image
 // bytes can only be removed through the Storage API, so every path that decides
 // a seller's ID must call this. It lists the seller's whole folder instead of

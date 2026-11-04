@@ -106,7 +106,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
   const { siteName, siteInitial, profile: tenantProfile } = useSiteProfile();
 
-  // Hard-stop on main domain — subdomain dealer footer must never render on xdrive.my
+  // Hard-stop on main domain — subdomain dealer footer must never render on drevo.my
   if (!isSubdomain()) return null;
 
   // This footer is subdomain-only, so the tenant IS the profile. It used to fall

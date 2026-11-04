@@ -27,7 +27,7 @@ installRealtimeIdle(supabase);
 installRealtimeIdle(publicClient);
 
 // Eager — only true above-the-fold entry points. The public marketplace
-// (xdrive.my "/") is the highest-traffic page, so it lives in the entry bundle
+// (drevo.my "/") is the highest-traffic page, so it lives in the entry bundle
 // and paints with no extra lazy-chunk hop.
 import MarketplacePage from "./pages/MarketplacePage";
 // Eager — tiny, and must render instantly (no blank Suspense flash) on bad URLs
@@ -141,7 +141,7 @@ function MarketplaceRedirect() {
 // right component immediately instead of the old path where HomePage mounted,
 // showed a loader while useTenant resolved, then handed off to a lazy
 // MarketplacePage — a serial waterfall on the busiest page. Main domain
-// (xdrive.my) → the eager, self-contained MarketplacePage. A real dealer
+// (drevo.my) → the eager, self-contained MarketplacePage. A real dealer
 // storefront (<sub>.xdrive.my) → the lazy HomePage.
 function RootRoute() {
   return isSubdomain() ? <HomePage /> : <MarketplacePage />;
@@ -177,7 +177,7 @@ function App() {
       <OfflineBanner />
       <Suspense fallback={null}>
         <SentryRoutes>
-          {/* Public — XDrive */}
+          {/* Public — Drevo */}
           <Route path="/" element={<RootRoute />} />
           <Route path="/marketplace" element={<MarketplaceRedirect />} />
           <Route path="/showroom" element={<CarListingPage />} />
@@ -192,7 +192,7 @@ function App() {
           <Route path="/calculator" element={<CalculatorPage />} />
           <Route path="/compare" element={<ComparePage />} />
           {/* Sub-nav frame only (MarketplaceSubNav) — no functionality yet */}
-          <Route path="/vehicle-services" element={<ComingSoonPage title="Vehicle Services" description="Servicing, inspections and maintenance booked straight from XDrive. We're building it — check back soon." />} />
+          <Route path="/vehicle-services" element={<ComingSoonPage title="Vehicle Services" description="Servicing, inspections and maintenance booked straight from Drevo. We're building it — check back soon." />} />
           <Route path="/automotive-products" element={<ComingSoonPage title="Automotive Products" description="Parts, accessories and add-ons from trusted sellers. We're building it — check back soon." />} />
           <Route path="/saved" element={<SavedCarsPage />} />
           <Route path="/find-me" element={<FindMePage />} />
@@ -257,7 +257,7 @@ function App() {
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
           <Route path="/salesman-setup" element={<SalesmanSetup />} />
 
-          {/* Protected — XDrive */}
+          {/* Protected — Drevo */}
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/dashboard/:tab" element={<DashboardPage />} />
           <Route path="/dashboard/import-stock" element={<ImportStockPage />} />

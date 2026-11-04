@@ -865,16 +865,16 @@ export default function AdminPage() {
   const reviewCount = pendingListings.length + pendingUsersCount;
 
   // ── One taxonomy: what am I doing (P1) ──────────────────────────────────────
-  // The rail used to mix two. "ShiftOS Ops" and "XDrive Ops" split by PRODUCT
+  // The rail used to mix two. "ShiftOS Ops" and "Drevo Ops" split by PRODUCT
   // while "Security" split by FUNCTION, so the top level answered no single
   // question -- neither "which product?" nor "what am I doing?", but both at
   // once -- and every navigation was a guess. The clearest symptom: marketplace
   // SETTINGS lived under ShiftOS Ops while marketplace ANALYTICS lived under
-  // XDrive Ops. Same subject, two consoles, split by a rule invisible from the
+  // Drevo Ops. Same subject, two consoles, split by a rule invisible from the
   // outside. They are one section now.
   //
   // Sections are ordered by how the day actually runs: you sit down to clear
-  // the queue, not to "do XDrive".
+  // the queue, not to "do Drevo".
   const NAV = [
     { id: "work", label: "Work", sub: "Your queue", badge: reviewCount, tabs: [
       { id: "home",   label: "Home" },
@@ -895,10 +895,10 @@ export default function AdminPage() {
       // matching signup links to its account -- see ProspectsTab.jsx.
       { id: "prospects", label: "Prospects" },
       // Sensus AI demo requests from /sensus-ai (SENSUS-1). A separate product the
-      // owner resells, so kept out of Prospects (XDrive signups).
+      // owner resells, so kept out of Prospects (Drevo signups).
       { id: "sensus", label: "Sensus demos" },
     ] },
-    { id: "marketplace", label: "Marketplace", sub: "XDrive settings · analytics", tabs: [
+    { id: "marketplace", label: "Marketplace", sub: "Drevo settings · analytics", tabs: [
       { id: "marketplace", label: "Settings" },
       { id: "funnel",      label: "Funnel" },
       { id: "engagement",  label: "Engagement" },
@@ -1855,7 +1855,7 @@ export default function AdminPage() {
               <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
                 <div>
                   <p style={{ fontSize: 18, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>Marketplace Settings</p>
-                  <p style={{ fontSize: 12, color: "#6b7280" }}>Controls what appears on xdrive.my — changes go live immediately after saving.</p>
+                  <p style={{ fontSize: 12, color: "#6b7280" }}>Controls what appears on drevo.my — changes go live immediately after saving.</p>
                 </div>
                 <button
                   onClick={saveMarketplaceSettings}
@@ -1951,7 +1951,7 @@ export default function AdminPage() {
                   </MktSection>
 
                   {/* Trust Bar */}
-                  <MktSection label="Trust Bar" hint="4 badges shown below the header on xdrive.my">
+                  <MktSection label="Trust Bar" hint="4 badges shown below the header on drevo.my">
                     {(mktSettings.trust_badges || []).map((badge, i) => (
                       <MktField key={i} label={`Badge ${i + 1}`}>
                         <input
@@ -1978,7 +1978,7 @@ export default function AdminPage() {
                         onChange={e => setMktSettings(s => ({ ...s, footer_copyright: e.target.value }))}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240 }}
-                        placeholder="© {year} XDrive. Operated by Airy, sole proprietor. All rights reserved."
+                        placeholder="© {year} Drevo. Operated by Airy, sole proprietor. All rights reserved."
                       />
                     </MktField>
                   </MktSection>
@@ -1993,7 +1993,7 @@ export default function AdminPage() {
                   </MktSection>
 
                   {/* Announcement Bar */}
-                  <MktSection label="Announcement Bar" hint="Dismissible red banner shown above the navigation on xdrive.my">
+                  <MktSection label="Announcement Bar" hint="Dismissible red banner shown above the navigation on drevo.my">
                     <MktToggle
                       label="Show announcement bar"
                       value={!!mktSettings.announcement_enabled}
@@ -2018,7 +2018,7 @@ export default function AdminPage() {
                         disabled={!mktSettings.announcement_enabled}
                         className="adm-input"
                         style={{ flex: 1, minWidth: 240, opacity: mktSettings.announcement_enabled ? 1 : 0.4 }}
-                        placeholder="https://xdrive.my/…"
+                        placeholder="https://drevo.my/…"
                       />
                     </MktField>
                   </MktSection>

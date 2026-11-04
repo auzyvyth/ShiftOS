@@ -1,6 +1,6 @@
 // Seller referral invites (REFER-1).
 //
-// An invite link is any xdrive.my URL with ?invite=<inviter's slug>. It is a
+// An invite link is any drevo.my URL with ?invite=<inviter's slug>. It is a
 // separate parameter from ?ref=, which already means "the salesman a BUYER
 // came from" (refTracking.js) - mixing the two would credit a rep with a
 // seller signup every time a buyer they sent later became a seller.
@@ -77,7 +77,7 @@ export async function claimInviteCode(input) {
     const u = new URL(code);
     code = u.searchParams.get('invite') || u.pathname.split('/').filter(Boolean).pop() || '';
   } catch {
-    // "xdrive.my/s/name" without https:// is not a URL to the parser.
+    // "drevo.my/s/name" without https:// is not a URL to the parser.
     const m = code.match(/invite=([A-Za-z0-9-]+)/);
     code = m ? m[1] : code.split('?')[0].split('/').filter(Boolean).pop() || '';
   }
@@ -92,5 +92,5 @@ export async function claimInviteCode(input) {
 }
 
 export function inviteUrl(slug) {
-  return slug ? `https://xdrive.my/plans?invite=${encodeURIComponent(slug)}` : null;
+  return slug ? `https://drevo.my/plans?invite=${encodeURIComponent(slug)}` : null;
 }

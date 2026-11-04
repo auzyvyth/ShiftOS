@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
-// XDrive Ops — marketplace buyer accounts (profiles.role = 'buyer').
+// Drevo Ops — marketplace buyer accounts (profiles.role = 'buyer').
 //
 // Everything here comes from two superadmin-guarded RPCs, never from direct table
 // reads, for two reasons:
@@ -209,7 +209,7 @@ export default function BuyersTab() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Buyers
-            <InfoHint title="What is this?" text="Everyone who signed up on the XDrive marketplace to shop for a car — not dealers or salesmen. Shows how they signed up (Google or email), whether the account is secure, what they saved or set alerts on, and whether their phone or email matches a real lead sitting in a dealer's pipeline." />
+            <InfoHint title="What is this?" text="Everyone who signed up on the Drevo marketplace to shop for a car — not dealers or salesmen. Shows how they signed up (Google or email), whether the account is secure, what they saved or set alerts on, and whether their phone or email matches a real lead sitting in a dealer's pipeline." />
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Marketplace shopper accounts — signup, security and activity</p>
         </div>

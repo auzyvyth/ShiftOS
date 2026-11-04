@@ -6,7 +6,7 @@ export function clearSiteProfileCache() {}
 export function useSiteProfile() {
   const { tenant } = useTenant();
 
-  const siteName = tenant?.site_name || tenant?.dealership || 'XDrive';
+  const siteName = tenant?.site_name || tenant?.dealership || 'Drevo';
   const siteInitial = siteName.charAt(0).toUpperCase();
   const siteLogoUrl = tenant?.site_logo_url || '';
   const isVerified = !!tenant?.is_verified;

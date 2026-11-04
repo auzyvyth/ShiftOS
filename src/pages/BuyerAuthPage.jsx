@@ -31,7 +31,7 @@ const BENEFITS = [
   { Icon: Heart,         title: "Save & compare cars",  desc: "Build a shortlist and pick up where you left off on any device." },
   { Icon: Bell,          title: "Price-drop alerts",    desc: "Get notified the moment a saved car drops in price." },
   { Icon: MessageCircle, title: "Faster enquiries",     desc: "Message dealers and book viewings without re-typing your details." },
-  { Icon: Tag,           title: "Sell when you're ready", desc: "List your own car on XDrive in a few taps." },
+  { Icon: Tag,           title: "Sell when you're ready", desc: "List your own car on Drevo in a few taps." },
 ];
 
 function GoogleIcon() {
@@ -80,7 +80,7 @@ export default function BuyerAuthPage() {
   const [lockSeconds, setLockSeconds] = useState(0);
 
   useEffect(() => {
-    document.title = "Sign in — XDrive";
+    document.title = "Sign in — Drevo";
     setMounted(true);
     // Already signed in? Route them on.
     supabase.auth.getSession().then(({ data }) => {
@@ -357,7 +357,7 @@ export default function BuyerAuthPage() {
 
         .ba-brand { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; text-decoration: none; }
         .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; }
-        /* The only XDrive wordmark is white-on-transparent. invert + hue-rotate
+        /* The only Drevo wordmark is white-on-transparent. invert + hue-rotate
            turns the white to ink and leaves the red bar red. */
         .ba-brand-img { height: 20px; width: auto; display: block; filter: invert(1) hue-rotate(180deg); }
 
@@ -452,11 +452,11 @@ export default function BuyerAuthPage() {
         <div className="ba-left">
           <Link to="/" className="ba-brand">
             <div className="ba-brand-mark">X</div>
-            <img src="/logo-xdrive.png" alt="XDrive" width="349" height="58" className="ba-brand-img" />
+            <img src="/logo-xdrive.png" alt="Drevo" width="349" height="58" className="ba-brand-img" />
           </Link>
 
           <div className="ba-hero">
-            <p className="ba-hero-eyebrow">Your XDrive Account</p>
+            <p className="ba-hero-eyebrow">Your Drevo Account</p>
             <h1 className="ba-hero-title">Shop smarter,<br /><span>buy with confidence</span></h1>
             <div className="ba-benefits">
               {BENEFITS.map(({ Icon, title, desc }) => (
@@ -472,7 +472,7 @@ export default function BuyerAuthPage() {
           </div>
 
           <div className="ba-left-footer">
-            &copy; {new Date().getFullYear()} XDrive &nbsp;&middot;&nbsp;
+            &copy; {new Date().getFullYear()} Drevo &nbsp;&middot;&nbsp;
             <a href="/terms" style={{ color: "inherit", textDecoration: "underline" }}>Terms</a>
             &nbsp;&middot;&nbsp;
             <a href="/privacy" style={{ color: "inherit", textDecoration: "underline" }}>Privacy</a>
@@ -490,7 +490,7 @@ export default function BuyerAuthPage() {
 
           <div className="ba-head">
             <h2 className="ba-head-title">{isSignup ? "CREATE ACCOUNT" : "WELCOME BACK"}</h2>
-            <p className="ba-head-sub">{isSignup ? "Join XDrive to save cars, set alerts & enquire faster" : "Sign in to your XDrive buyer account"}</p>
+            <p className="ba-head-sub">{isSignup ? "Join Drevo to save cars, set alerts & enquire faster" : "Sign in to your Drevo buyer account"}</p>
           </div>
 
           {/* Sits above both sign-up paths on purpose: Google and email each create the
@@ -614,7 +614,7 @@ export default function BuyerAuthPage() {
             {isSignup ? (
               <>Already have an account? <button className="ba-foot-link" onClick={() => switchMode("signin")}>Sign in</button></>
             ) : (
-              <>New to XDrive? <button className="ba-foot-link" onClick={() => switchMode("signup")}>Sign up</button></>
+              <>New to Drevo? <button className="ba-foot-link" onClick={() => switchMode("signup")}>Sign up</button></>
             )}
           </div>
 

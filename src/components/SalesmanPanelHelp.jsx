@@ -105,12 +105,12 @@ const CONTENT = {
     },
     enquiries: {
       title: 'Enquiries',
-      body: 'The Enquiries tab collects buyers who reached out through XDrive, plus appointment requests. The red badge on the tab shows new enquiries plus pending bookings.',
+      body: 'The Enquiries tab collects buyers who reached out through Drevo, plus appointment requests. The red badge on the tab shows new enquiries plus pending bookings.',
       items: [
-        { label: 'Enquiries', desc: 'When a buyer taps WhatsApp on one of your XDrive listings, it is captured here with their name, phone, the car, and their message. Status shows new or replied.' },
+        { label: 'Enquiries', desc: 'When a buyer taps WhatsApp on one of your Drevo listings, it is captured here with their name, phone, the car, and their message. Status shows new or replied.' },
         { label: 'Quick reply templates', desc: 'One-tap templates — "Interested? Let\'s chat", "Book a test drive", "Price negotiation", "Deposit to reserve" — copy the text and open WhatsApp to the buyer.' },
         { label: 'AI reply (Premium)', desc: 'Generate a tailored response to the buyer\'s specific question, then copy or send it via WhatsApp.' },
-        { label: 'Appointments / bookings', desc: 'Test drive and viewing requests from XDrive appear here. Confirm, Reschedule or Cancel from the card. A WA button sends a confirmation message, and a Reminder button pings you an hour before. Confirmed bookings also show on your Dashboard.' },
+        { label: 'Appointments / bookings', desc: 'Test drive and viewing requests from Drevo appear here. Confirm, Reschedule or Cancel from the card. A WA button sends a confirmation message, and a Reminder button pings you an hour before. Confirmed bookings also show on your Dashboard.' },
       ],
     },
     loans: {
@@ -259,12 +259,12 @@ const CONTENT = {
     },
     enquiries: {
       title: 'Pertanyaan',
-      body: 'Tab Pertanyaan mengumpul pembeli yang menghubungi melalui XDrive, ditambah permintaan temujanji. Lencana merah pada tab menunjukkan pertanyaan baharu ditambah tempahan yang menunggu.',
+      body: 'Tab Pertanyaan mengumpul pembeli yang menghubungi melalui Drevo, ditambah permintaan temujanji. Lencana merah pada tab menunjukkan pertanyaan baharu ditambah tempahan yang menunggu.',
       items: [
-        { label: 'Pertanyaan', desc: 'Apabila pembeli mengetik WhatsApp pada salah satu listing XDrive anda, ia ditangkap di sini dengan nama, nombor telefon, kereta, dan mesej mereka. Status menunjukkan baharu atau dijawab.' },
+        { label: 'Pertanyaan', desc: 'Apabila pembeli mengetik WhatsApp pada salah satu listing Drevo anda, ia ditangkap di sini dengan nama, nombor telefon, kereta, dan mesej mereka. Status menunjukkan baharu atau dijawab.' },
         { label: 'Templat balasan pantas', desc: 'Templat satu ketik — "Berminat? Jom berbual", "Tempah ujian pandu", "Rundingan harga", "Deposit untuk menempah" — salin teks dan buka WhatsApp kepada pembeli.' },
         { label: 'Balasan AI (Premium)', desc: 'Jana respons yang disesuaikan kepada soalan khusus pembeli, kemudian salin atau hantarnya melalui WhatsApp.' },
-        { label: 'Temujanji / tempahan', desc: 'Permintaan ujian pandu dan tontonan dari XDrive muncul di sini. Sahkan, Jadualkan Semula atau Batalkan dari kad. Butang WA menghantar mesej pengesahan, dan butang Peringatan membunyikan anda satu jam sebelum. Tempahan yang disahkan juga muncul di Papan Pemuka anda.' },
+        { label: 'Temujanji / tempahan', desc: 'Permintaan ujian pandu dan tontonan dari Drevo muncul di sini. Sahkan, Jadualkan Semula atau Batalkan dari kad. Butang WA menghantar mesej pengesahan, dan butang Peringatan membunyikan anda satu jam sebelum. Tempahan yang disahkan juga muncul di Papan Pemuka anda.' },
       ],
     },
     loans: {
