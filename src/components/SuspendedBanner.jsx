@@ -78,7 +78,7 @@ export default function SuspendedBanner() {
         >
           {reason
             ? "Your account has been suspended for the reason below. Sort it out and contact us to have it lifted."
-            : "Your account has been suspended. Please contact XDrive support to resolve this."}
+            : "Your account has been suspended. Please contact Drevo support to resolve this."}
         </p>
         {reason && (
           <p

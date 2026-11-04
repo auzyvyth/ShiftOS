@@ -258,7 +258,7 @@ export default function WaitlistPage() {
 
             <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 6, padding: "12px 16px", marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
               <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                xdrive.my/waitlist?ref={result.referral_code}
+                drevo.my/waitlist?ref={result.referral_code}
               </p>
               <button
                 onClick={copyLink}

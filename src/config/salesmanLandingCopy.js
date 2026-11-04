@@ -54,13 +54,13 @@ export const DEFAULT_LANG = "ms";
 // Per-device memory of the visitor's choice on THIS page only.
 export const LANG_KEY = "xd_for_salesmen_lang";
 
-export const CANON = "https://xdrive.my/for-salesmen";
+export const CANON = "https://drevo.my/for-salesmen";
 // Bump when the copy changes: it feeds dateModified (webpageLd) and the
 // "last reviewed" line, a freshness signal search and AI answers both read.
 export const REVIEWED_ISO = "2026-10-30";
-// XDrive's own example Salesman Premium page, linked so agents and crawlers can
+// Drevo's own example Salesman Premium page, linked so agents and crawlers can
 // see the product rather than a mock-up. Must stay an active account with cars.
-export const EXAMPLE_PAGE = { url: "https://xdrive.my/s/premiummotors", path: "/s/premiummotors", label: "xdrive.my/s/premiummotors" };
+export const EXAMPLE_PAGE = { url: "https://drevo.my/s/premiummotors", path: "/s/premiummotors", label: "drevo.my/s/premiummotors" };
 export const SEO_KEYWORDS = [
   "kalkulator loan kereta", "kira loan kereta", "kira loan kereta excel", "formula excel loan kereta",
   "kira ansuran kereta", "kalkulator ansuran bulanan kereta", "kira ansuran kereta live",
@@ -86,7 +86,7 @@ const EN = {
   // Search terms (2026-10-28): "car loan calculator", "Excel", "CRM / lead"
   // for car salesmen. No Malaysian page answered the Excel loan and prospect
   // tracker searches; those are the gap this page and its FAQ go after.
-  seoTitle: "Car Loan Calculator & Lead CRM for Car Salesmen | XDrive",
+  seoTitle: "Car Loan Calculator & Lead CRM for Car Salesmen | Drevo",
   seoDesc:
     "For Malaysian car salesmen: work out car loan instalments on your live, keep every lead in one CRM, follow up until the deal closes. Replaces Excel. Start free.",
 
@@ -97,12 +97,12 @@ const EN = {
   liveCta: "Go live free",
   premiumCta: "Try Premium free for 7 days",
   liteCta: "Start free on Lite",
-  band: { before: "Every car you list also goes on the ", strong: "xdrive.my", after: " marketplace" },
+  band: { before: "Every car you list also goes on the ", strong: "drevo.my", after: " marketplace" },
 
   demo: {
     label: "Live presentation, working demo with real cars",
     caption: "Real cars, starting with a new Proton Saga: tap a variant and every number follows. Change the deposit, or tap Budget or Docs (Premium). Estimates only, the bank decides.",
-    captionUsed: "Real cars from an XDrive seller. Change the deposit, or tap Budget or Docs (Premium). Estimates only, the bank decides.",
+    captionUsed: "Real cars from an Drevo seller. Change the deposit, or tap Budget or Docs (Premium). Estimates only, the bank decides.",
     sampleCaption: "Sample car. Change the deposit, or tap Budget or Docs (Premium). Estimates only, the bank decides.",
   },
 
@@ -224,8 +224,8 @@ const EN = {
     kicker: "Free on Lite",
     title: "Get found. Get the lead. Pay nothing.",
     items: [
-      { title: "A page that's yours", body: "A basic page at xdrive.my/s/yourname with every car you're selling. Send it once and buyers see your whole stock with your name on it." },
-      { title: `List up to ${LITE_CAP} cars, free`, body: "Photos, price and specs on the XDrive marketplace once we've checked them. No per-listing fee, no paying to be seen." },
+      { title: "A page that's yours", body: "A basic page at drevo.my/s/yourname with every car you're selling. Send it once and buyers see your whole stock with your name on it." },
+      { title: `List up to ${LITE_CAP} cars, free`, body: "Photos, price and specs on the Drevo marketplace once we've checked them. No per-listing fee, no paying to be seen." },
       { title: "Buyers reach you three ways", body: "WhatsApp, in-app chat, or a booking request to come and view the car. Every enquiry comes straight to you. No shared inbox, no lead resold to other agents." },
       { title: "Know the moment a buyer asks", body: "An alert on your phone for new leads, so the buyer who messages at 11pm doesn't wait until tomorrow." },
       { title: "Every buyer in one list", body: "Each enquiry becomes a lead with a stage: New, Contacted, Viewing, Test drive, Won. You see at a glance who is where." },
@@ -335,8 +335,8 @@ const EN = {
     premiumBullets: ["Everything in Lite", `Up to ${PREMIUM_CAP} active listings`, ...SALESMAN_PREMIUM_FEATURES],
     liteBullets: [
       `Up to ${LITE_CAP} active listings`,
-      "Your own page at xdrive.my/s/yourname",
-      "Your cars on the XDrive marketplace",
+      "Your own page at drevo.my/s/yourname",
+      "Your cars on the Drevo marketplace",
       "Buyers reach you by WhatsApp, chat and booking requests",
       "Basic Live presentation for TikTok / FB lives",
       "Alerts on new leads",
@@ -359,26 +359,26 @@ const EN = {
         a: "Yes. The monthly is =PMT(rate/12, years*12, -loan amount), with the rate as an EIR (interest on the reducing balance). Since the Hire-Purchase (Amendment) Act 2026 took effect on 1 June 2026, new hire-purchase agreements are on EIR, so a flat rate has to be converted first or the sheet shows a monthly that is too low. A sheet also has to be retyped for every car and every deposit. Live presentation does this for every car you list: flat rates are converted to EIR, and deposit and tenure change with one tap. Figures are estimates; the bank decides." },
       { q: "How do I keep track of prospects and leads?",
         a: "Most salesmen use an Excel sheet or a notebook: name, number, the car they want, where they came from, stage and the next follow-up date. A sheet never reminds you to follow up, and every lead from WhatsApp, chat or a booking has to be typed in by hand. Here every buyer who contacts you lands in your lead list by themselves, with a stage and an alert on your phone, free on Lite. Premium adds follow-up reminders, a call log and a \"This week\" list of who to call." },
-      { q: "Can XDrive work out monthly instalments for my TikTok Live?",
+      { q: "Can Drevo work out monthly instalments for my TikTok Live?",
         a: "Yes. Salesman Lite has it free in a basic form: one car per screen with a number (#1, #2, #3) for viewers to comment, the price, deposit, loan and rate, and the monthly instalment over 9, 7 and 5 years. Change the deposit or type the bank's flat rate and every figure updates. Premium adds budget mode, which lists which of your cars fit a viewer's salary or monthly budget, plus rebates, insurance with NCD and the Docs screen. Figures are estimates on the reducing balance (EIR) and subject to bank approval. Your contact details only appear when you tap to show them." },
       { q: "What happens after the 7 free days?",
         a: "Nothing is charged automatically, and we never ask for a card. Pay RM35 to keep Premium for another month. If you don't, your account goes back to free Salesman Lite: your page, cars and leads stay, and the Premium tools (follow-up reminders, call logging and the rest) switch off until you renew. Live presentation stays on in its basic form; Budget, Docs, rebates and insurance switch off." },
       { q: "Which cars appear in my live presentation?",
-        a: "The cars on your XDrive page. We check every car before it goes public, so a car you have just added joins your page and your presentation once it is approved." },
+        a: "The cars on your Drevo page. We check every car before it goes public, so a car you have just added joins your page and your presentation once it is approved." },
       { q: "Is Salesman Lite really free?",
-        a: `Yes. Salesman Lite costs RM0, with no credit card, no contract and no trial that quietly bills you later. You get up to ${LITE_CAP} active car listings, a basic page of your own at xdrive.my/s/yourname, your cars on the XDrive marketplace, buyer enquiries by WhatsApp, in-app chat and booking requests, an alert for new leads, a simple lead list with stages, and a basic Live presentation for your TikTok and Facebook lives. Follow-up reminders and call logging are on Premium.` },
+        a: `Yes. Salesman Lite costs RM0, with no credit card, no contract and no trial that quietly bills you later. You get up to ${LITE_CAP} active car listings, a basic page of your own at drevo.my/s/yourname, your cars on the Drevo marketplace, buyer enquiries by WhatsApp, in-app chat and booking requests, an alert for new leads, a simple lead list with stages, and a basic Live presentation for your TikTok and Facebook lives. Follow-up reminders and call logging are on Premium.` },
       { q: "What is Salesman Lite?",
-        a: `Salesman Lite is the free XDrive account for car salesmen and agents in Malaysia. You get a page of your own on xdrive.my, list up to ${LITE_CAP} cars, and buyers reach you by WhatsApp, in-app chat or a booking request, at no cost and with no credit card.` },
+        a: `Salesman Lite is the free Drevo account for car salesmen and agents in Malaysia. You get a page of your own on drevo.my, list up to ${LITE_CAP} cars, and buyers reach you by WhatsApp, in-app chat or a booking request, at no cost and with no credit card.` },
       { q: "Do I need to build a website?",
-        a: "No. You get a ready-made page at xdrive.my/s/yourname with all your cars on it. No hosting, no domain, no design work: add your cars and share the link." },
+        a: "No. You get a ready-made page at drevo.my/s/yourname with all your cars on it. No hosting, no domain, no design work: add your cars and share the link." },
       { q: "How do buyers contact me?",
         a: "Three ways: WhatsApp, in-app chat, or a booking request to view the car. For WhatsApp the buyer types their name, then a chat opens with you. Every enquiry lands in your lead list and you get an alert. Your number is not printed on the page, so it cannot be copied off it. No shared inbox and no lead sold to other agents: the enquiry is yours." },
       { q: "Can I still use Mudah and Carlist?",
-        a: "Yes. XDrive works alongside them. The difference is this page is yours, it lives on the XDrive marketplace, and it doesn't charge you per listing." },
+        a: "Yes. Drevo works alongside them. The difference is this page is yours, it lives on the Drevo marketplace, and it doesn't charge you per listing." },
       { q: `What happens when I have more than ${LITE_CAP} cars?`,
         a: `Salesman Premium (RM35/month, first 7 days free) raises your cap to ${PREMIUM_CAP} listings and adds a sorted "This week" call list with follow-up messages already drafted, follow-up reminders and call logging, WhatsApp to all your quiet leads in one go, a loan desk that checks affordability and compares banks, the post-sale handover checklist and customer list, commission tracking, Telegram booking reminders, a services and add-ons catalogue, a page you can customise with your bio and social links, and a Performance view that shows your close rate and where your deals are lost. Your Lite page and cars carry straight over: upgrade any time from your panel.` },
       { q: "Is there an example page I can see?",
-        a: "Yes. xdrive.my/s/premiummotors is XDrive's example Salesman Premium page: stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
+        a: "Yes. drevo.my/s/premiummotors is Drevo's example Salesman Premium page: stock, prices and a contact button on every car, exactly what a buyer sees when you share your link." },
       { q: "How long does setup take?",
         a: "A few minutes. Sign up with email or Google, add your phone and a link name, and you're in your panel. You're asked for your IC number when you add your first car, and each car goes public once we've checked it." },
       // Independent agents' tool searches (owner, 2026-10-30): each question is
@@ -414,7 +414,7 @@ const EN = {
     premiumPrice: "Salesman Premium: RM35/month, first 7 days free",
     litePrice: "Salesman Lite: RM0, free forever",
     faq: "FAQ",
-    browse: "Browse cars on XDrive",
+    browse: "Browse cars on Drevo",
     dealers: "ShiftOS for dealers",
   },
 };
@@ -426,7 +426,7 @@ const MS = {
   switchTo: "en",
   switchLabel: "Change to English",
 
-  seoTitle: "Kalkulator Loan Kereta & CRM Lead untuk Salesman | XDrive",
+  seoTitle: "Kalkulator Loan Kereta & CRM Lead untuk Salesman | Drevo",
   seoDesc:
     "Untuk salesman kereta: kira loan kereta dan ansuran bulanan masa live, rekod semua lead dalam satu CRM, follow up sampai deal. Ganti Excel. Mula percuma.",
 
@@ -437,12 +437,12 @@ const MS = {
   liveCta: "Mula live percuma",
   premiumCta: "Cuba Premium percuma 7 hari",
   liteCta: "Mula percuma dengan Lite",
-  band: { before: "Setiap kereta yang anda listing juga masuk marketplace ", strong: "xdrive.my", after: "" },
+  band: { before: "Setiap kereta yang anda listing juga masuk marketplace ", strong: "drevo.my", after: "" },
 
   demo: {
     label: "Live presentation, demo sebenar dengan kereta sebenar",
     caption: "Kereta sebenar, bermula dengan Proton Saga baru: tap varian dan semua nombor ikut. Tukar deposit, atau tap Bajet atau Dokumen (Premium). Anggaran sahaja, bank yang putuskan.",
-    captionUsed: "Kereta sebenar dari seller XDrive. Tukar deposit, atau tap Bajet atau Dokumen (Premium). Anggaran sahaja, bank yang putuskan.",
+    captionUsed: "Kereta sebenar dari seller Drevo. Tukar deposit, atau tap Bajet atau Dokumen (Premium). Anggaran sahaja, bank yang putuskan.",
     sampleCaption: "Contoh kereta. Tukar deposit, atau tap Bajet atau Dokumen (Premium). Anggaran sahaja, bank yang putuskan.",
   },
 
@@ -557,8 +557,8 @@ const MS = {
     kicker: "Percuma dengan Lite",
     title: "Senang dicari. Dapat lead. Tak perlu bayar.",
     items: [
-      { title: "Page anda sendiri", body: "Page asas di xdrive.my/s/namaanda dengan semua kereta yang anda jual. Hantar sekali, pembeli nampak semua stok anda dengan nama anda di atas." },
-      { title: `Listing sampai ${LITE_CAP} kereta, percuma`, body: "Gambar, harga dan spec masuk marketplace XDrive lepas kami semak. Tiada caj setiap listing, tak perlu bayar untuk dilihat." },
+      { title: "Page anda sendiri", body: "Page asas di drevo.my/s/namaanda dengan semua kereta yang anda jual. Hantar sekali, pembeli nampak semua stok anda dengan nama anda di atas." },
+      { title: `Listing sampai ${LITE_CAP} kereta, percuma`, body: "Gambar, harga dan spec masuk marketplace Drevo lepas kami semak. Tiada caj setiap listing, tak perlu bayar untuk dilihat." },
       { title: "Pembeli boleh hubungi anda tiga cara", body: "WhatsApp, chat dalam app, atau booking untuk datang tengok kereta. Setiap enquiry terus masuk kepada anda. Tiada inbox kongsi, lead tak dijual kepada ejen lain." },
       { title: "Terus tahu bila pembeli tanya", body: "Alert di telefon anda untuk lead baru, jadi pembeli yang mesej pukul 11 malam tak perlu tunggu sampai esok." },
       { title: "Semua pembeli dalam satu senarai", body: "Setiap enquiry jadi lead dengan stage: New, Contacted, Viewing, Test drive, Won. Sekali pandang, anda tahu siapa di tahap mana." },
@@ -656,8 +656,8 @@ const MS = {
     premiumBullets: ["Semua yang ada dalam Lite", `Sampai ${PREMIUM_CAP} listing aktif`, ...SALESMAN_PREMIUM_FEATURES_MS],
     liteBullets: [
       `Sampai ${LITE_CAP} listing aktif`,
-      "Page sendiri di xdrive.my/s/namaanda",
-      "Kereta anda di marketplace XDrive",
+      "Page sendiri di drevo.my/s/namaanda",
+      "Kereta anda di marketplace Drevo",
       "Pembeli hubungi anda melalui WhatsApp, chat dan booking",
       "Live presentation asas untuk live TikTok / FB",
       "Alert untuk lead baru",
@@ -685,21 +685,21 @@ const MS = {
       { q: "Apa jadi lepas 7 hari percuma habis?",
         a: "Tiada caj automatik, dan kami tak pernah minta kad. Bayar RM35 untuk teruskan Premium sebulan lagi. Kalau tak bayar, akaun anda kembali ke Salesman Lite yang percuma: page, kereta dan lead anda kekal, dan tool Premium (reminder follow up, log panggilan dan lain-lain) ditutup sampai anda renew. Live presentation kekal dalam versi asas; Bajet, Dokumen, rebat dan insurans ditutup." },
       { q: "Kereta mana yang keluar dalam live presentation saya?",
-        a: "Kereta yang ada di page XDrive anda. Kami semak setiap kereta sebelum ia keluar untuk umum, jadi kereta yang baru anda masukkan akan muncul di page dan presentation anda selepas diluluskan." },
+        a: "Kereta yang ada di page Drevo anda. Kami semak setiap kereta sebelum ia keluar untuk umum, jadi kereta yang baru anda masukkan akan muncul di page dan presentation anda selepas diluluskan." },
       { q: "Salesman Lite betul-betul percuma ke?",
-        a: `Ya. Salesman Lite RM0, tiada kad kredit, tiada kontrak dan tiada trial yang diam-diam caj anda kemudian. Anda dapat sampai ${LITE_CAP} listing kereta aktif, page asas anda sendiri di xdrive.my/s/namaanda, kereta anda di marketplace XDrive, enquiry pembeli melalui WhatsApp, chat dalam app dan booking, alert untuk lead baru, senarai lead ringkas dengan stage, dan Live presentation asas untuk live TikTok dan Facebook anda. Reminder follow up dan log panggilan ada dalam Premium.` },
+        a: `Ya. Salesman Lite RM0, tiada kad kredit, tiada kontrak dan tiada trial yang diam-diam caj anda kemudian. Anda dapat sampai ${LITE_CAP} listing kereta aktif, page asas anda sendiri di drevo.my/s/namaanda, kereta anda di marketplace Drevo, enquiry pembeli melalui WhatsApp, chat dalam app dan booking, alert untuk lead baru, senarai lead ringkas dengan stage, dan Live presentation asas untuk live TikTok dan Facebook anda. Reminder follow up dan log panggilan ada dalam Premium.` },
       { q: "Apa itu Salesman Lite?",
-        a: `Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di xdrive.my, listing sampai ${LITE_CAP} kereta, dan pembeli boleh hubungi anda melalui WhatsApp, chat dalam app atau booking, tanpa sebarang kos atau kad kredit.` },
+        a: `Salesman Lite ialah akaun percuma untuk salesman dan ejen kereta di Malaysia. Anda dapat page sendiri di drevo.my, listing sampai ${LITE_CAP} kereta, dan pembeli boleh hubungi anda melalui WhatsApp, chat dalam app atau booking, tanpa sebarang kos atau kad kredit.` },
       { q: "Perlu buat website sendiri ke?",
-        a: "Tak perlu. Anda dapat page siap di xdrive.my/s/namaanda dengan semua kereta anda. Tiada hosting, tiada domain, tiada kerja design: masukkan kereta dan share link." },
+        a: "Tak perlu. Anda dapat page siap di drevo.my/s/namaanda dengan semua kereta anda. Tiada hosting, tiada domain, tiada kerja design: masukkan kereta dan share link." },
       { q: "Macam mana pembeli hubungi saya?",
         a: "Tiga cara: WhatsApp, chat dalam app, atau booking untuk datang tengok kereta. Untuk WhatsApp, pembeli taip nama dulu, lepas tu chat dengan anda terus terbuka. Setiap enquiry masuk senarai lead anda dan anda dapat alert. Nombor anda tak dipaparkan di page, jadi orang tak boleh copy. Tiada inbox kongsi dan lead tak dijual kepada ejen lain: enquiry tu milik anda." },
       { q: "Masih boleh guna Mudah dan Carlist?",
-        a: "Boleh. XDrive boleh guna sekali dengan platform tu. Bezanya, page ni milik anda, ia ada di marketplace XDrive, dan tiada caj untuk setiap listing." },
+        a: "Boleh. Drevo boleh guna sekali dengan platform tu. Bezanya, page ni milik anda, ia ada di marketplace Drevo, dan tiada caj untuk setiap listing." },
       { q: `Kalau saya ada lebih dari ${LITE_CAP} kereta?`,
         a: `Salesman Premium (RM35 sebulan, 7 hari pertama percuma) naikkan had anda ke ${PREMIUM_CAP} listing dan tambah senarai call "Minggu ini" yang tersusun dengan mesej follow up siap ditulis, reminder follow up dan log panggilan, WhatsApp semua lead yang senyap sekali gus, loan desk yang semak kemampuan dan banding bank, senarai semak handover dan senarai customer, jejak komisen, reminder booking di Telegram, katalog servis dan add-on, page yang boleh diubah suai dengan bio dan link media sosial, serta Performance yang tunjuk close rate dan di mana deal anda terlepas. Page dan kereta Lite anda terus dibawa: upgrade bila-bila masa dari panel anda.` },
       { q: "Ada contoh page yang saya boleh tengok?",
-        a: "Ada. xdrive.my/s/premiummotors ialah contoh page Salesman Premium dari XDrive: stok, harga dan butang contact di setiap kereta, sama macam yang pembeli nampak bila anda share link anda." },
+        a: "Ada. drevo.my/s/premiummotors ialah contoh page Salesman Premium dari Drevo: stok, harga dan butang contact di setiap kereta, sama macam yang pembeli nampak bila anda share link anda." },
       { q: "Berapa lama nak setup?",
         a: "Beberapa minit sahaja. Daftar dengan email atau Google, masukkan nombor telefon dan nama link, dan anda terus masuk panel. Nombor IC diminta bila anda masukkan kereta pertama, dan setiap kereta keluar untuk umum selepas kami semak." },
       // Same seven questions as the English list, in the searcher's own BM.
@@ -732,7 +732,7 @@ const MS = {
     premiumPrice: "Salesman Premium: RM35 sebulan, 7 hari pertama percuma",
     litePrice: "Salesman Lite: RM0, percuma selamanya",
     faq: "Soalan lazim",
-    browse: "Tengok kereta di XDrive",
+    browse: "Tengok kereta di Drevo",
     dealers: "ShiftOS untuk dealer",
   },
 };
@@ -774,10 +774,10 @@ export function webpageLd(lang = DEFAULT_LANG) {
     description: c.seoDesc,
     inLanguage: c.inLanguage,
     dateModified: REVIEWED_ISO,
-    isPartOf: { "@type": "WebSite", name: "XDrive", url: "https://xdrive.my" },
-    about: { "@type": "SoftwareApplication", name: "XDrive for Salesmen", url: CANON },
+    isPartOf: { "@type": "WebSite", name: "Drevo", url: "https://drevo.my" },
+    about: { "@type": "SoftwareApplication", name: "Drevo for Salesmen", url: CANON },
     breadcrumb: { "@type": "BreadcrumbList", itemListElement: [
-      { "@type": "ListItem", position: 1, name: "XDrive", item: "https://xdrive.my" },
+      { "@type": "ListItem", position: 1, name: "Drevo", item: "https://drevo.my" },
       { "@type": "ListItem", position: 2, name: lang === "en" ? "For salesmen" : "Untuk salesman", item: CANON },
     ] },
   };
@@ -786,17 +786,17 @@ export function webpageLd(lang = DEFAULT_LANG) {
 export const SOFTWARE_LD = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "XDrive for Salesmen (Salesman Lite and Premium)",
-  alternateName: ["XDrive Live presentation", "XDrive Salesman Lite", "XDrive Salesman Premium"],
+  name: "Drevo for Salesmen (Salesman Lite and Premium)",
+  alternateName: ["Drevo Live presentation", "Drevo Salesman Lite", "Drevo Salesman Premium"],
   applicationCategory: "BusinessApplication",
   applicationSubCategory: "Car sales CRM",
   operatingSystem: "Web, Android, iOS (browser)",
   url: CANON,
   description: MS.seoDesc,
-  screenshot: "https://xdrive.my/for-salesmen/tour-dashboard-ms.webp",
+  screenshot: "https://drevo.my/for-salesmen/tour-dashboard-ms.webp",
   featureList: [
     "Live presentation: car instalment calculator for TikTok and Facebook lives",
-    "Own car listing page at xdrive.my/s/yourname",
+    "Own car listing page at drevo.my/s/yourname",
     `Up to ${LITE_CAP} listings free, ${PREMIUM_CAP} on Premium`,
     "Buyer enquiries by WhatsApp, in-app chat and booking requests",
     "Alerts on new leads and a simple lead list with stages",
@@ -806,13 +806,13 @@ export const SOFTWARE_LD = {
     ...SALESMAN_PREMIUM_FEATURES,
   ],
   offers: [
-    { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR", url: "https://xdrive.my/salesman-onboarding/lite" },
-    { "@type": "Offer", name: "Salesman Premium", price: "35", priceCurrency: "MYR", url: "https://xdrive.my/salesman-onboarding/premium",
+    { "@type": "Offer", name: "Salesman Lite", price: "0", priceCurrency: "MYR", url: "https://drevo.my/salesman-onboarding/lite" },
+    { "@type": "Offer", name: "Salesman Premium", price: "35", priceCurrency: "MYR", url: "https://drevo.my/salesman-onboarding/premium",
       description: "First 7 days free.",
       priceSpecification: { "@type": "UnitPriceSpecification", price: "35", priceCurrency: "MYR", unitCode: "MON", referenceQuantity: { "@type": "QuantitativeValue", value: 1, unitCode: "MON" } } },
   ],
   audience: { "@type": "BusinessAudience", audienceType: "Car salesmen and car agents in Malaysia" },
   areaServed: "MY",
   inLanguage: ["ms-MY", "en-MY"],
-  publisher: { "@type": "Organization", name: "XDrive", url: "https://xdrive.my" },
+  publisher: { "@type": "Organization", name: "Drevo", url: "https://drevo.my" },
 };

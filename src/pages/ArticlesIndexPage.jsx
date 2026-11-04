@@ -127,7 +127,7 @@ const ARTICLES = [
   },
 ];
 
-const PAGE_TITLE = 'Panduan Kereta Malaysia — XDrive';
+const PAGE_TITLE = 'Panduan Kereta Malaysia — Drevo';
 const PAGE_DESCRIPTION =
   'Koleksi panduan lengkap untuk pembeli dan penjual kereta di Malaysia. Pindah milik, Puspakom, kereta recon, kewangan, dan lebih banyak lagi — semuanya dalam Bahasa Malaysia.';
 
@@ -140,8 +140,8 @@ export default function ArticlesIndexPage() {
         <meta property="og:title" content={PAGE_TITLE} />
         <meta property="og:description" content={PAGE_DESCRIPTION} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://xdrive.my/articles" />
-        <link rel="canonical" href="https://xdrive.my/articles" />
+        <meta property="og:url" content="https://drevo.my/articles" />
+        <link rel="canonical" href="https://drevo.my/articles" />
       </Helmet>
 
       <div style={{ minHeight: '100vh', background: '#F7F6F2', fontFamily: "system-ui, sans-serif" }}>

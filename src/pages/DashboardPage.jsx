@@ -1813,7 +1813,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
                   placeholder="your-dealership"
                   className="flex-1 bg-transparent py-2 px-3 text-gray-900 text-sm outline-none"
                 />
-                <span className="px-3 text-gray-500 text-sm select-none border-l border-gray-200 py-2 bg-gray-50">.xdrive.my</span>
+                <span className="px-3 text-gray-500 text-sm select-none border-l border-gray-200 py-2 bg-gray-50">.drevo.my</span>
               </div>
               {subdomainStatus === 'checking' && <span className="text-xs text-gray-500 whitespace-nowrap">Checking...</span>}
               {subdomainStatus === 'taken' && <span className="text-xs text-blue-400 whitespace-nowrap">⚠ Already taken</span>}
@@ -1823,13 +1823,13 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
               <p className="text-xs text-gray-500 mt-1">
                 Your site:&nbsp;
                 <a href={buildStorefrontUrl(profile.subdomain)} target="_blank" rel="noopener noreferrer" style={{ color: '#DC2626', textDecoration: 'none', fontWeight: 500 }}>
-                  {profile.subdomain}.xdrive.my
+                  {profile.subdomain}.drevo.my
                 </a>
               </p>
             )}
             {subdomain !== profile?.subdomain && profile?.subdomain && (
               <p className="text-xs text-yellow-600 mt-1">
-                ⚠ Changing your subdomain will break existing links at <code className="font-mono">{profile.subdomain}.xdrive.my</code>
+                ⚠ Changing your subdomain will break existing links at <code className="font-mono">{profile.subdomain}.drevo.my</code>
               </p>
             )}
           </div>
@@ -4288,7 +4288,7 @@ function MarketplaceAnalyticsTab({ profile }) {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-semibold text-gray-900">Marketplace Analytics</h2>
-          <p className="text-xs text-gray-500 mt-0.5">XDrive public traffic — all visitors, all pages</p>
+          <p className="text-xs text-gray-500 mt-0.5">Drevo public traffic — all visitors, all pages</p>
         </div>
         <div className="flex gap-1.5">
           {[7, 30, 90].map(d => (
@@ -6368,7 +6368,7 @@ function ListingDetailDrawer({
                 {/* Share — per-platform tagged links */}
                 <ShareMenu
                   label="Share Listing"
-                  baseUrl={dealerSubdomain ? buildStorefrontUrl(dealerSubdomain, `/cars/${listing.slug}`) : `https://xdrive.my/cars/${listing.slug}`}
+                  baseUrl={dealerSubdomain ? buildStorefrontUrl(dealerSubdomain, `/cars/${listing.slug}`) : `https://drevo.my/cars/${listing.slug}`}
                   refSlug={dealerSlug || ''}
                   style={{ ...btnBase, justifyContent: 'flex-start', width: '100%', border: '1px solid rgba(124,58,237,0.3)', color: '#7c3aed' }}
                   waCaption={(link) => [
@@ -9644,14 +9644,14 @@ export default function DashboardPage() {
 
   const getStorefrontUrl = () => {
     const sub = dealerSubdomain || profile?.subdomain;
-    if (!sub) return 'https://xdrive.my';
+    if (!sub) return 'https://drevo.my';
     // env-aware: real subdomain in prod, ?tenant= override on vercel preview/localhost.
     // (Superadmin with a subdomain still previews their own storefront.)
     return buildStorefrontUrl(sub);
   };
 
   useEffect(() => {
-    const name = profile?.site_name || profile?.dealership || "XDrive";
+    const name = profile?.site_name || profile?.dealership || "Drevo";
     document.title = `${name} — Admin`;
   }, [profile]);
 
@@ -9807,7 +9807,7 @@ export default function DashboardPage() {
     // Establish session first (cross-domain handoff or existing session) BEFORE
     // subscribing to auth events. A stale localStorage session on the subdomain
     // can trigger SIGNED_OUT during its failed auto-refresh — if we're already
-    // subscribed when that fires, we'd redirect to xdrive.my/login before our
+    // subscribed when that fires, we'd redirect to drevo.my/login before our
     // new tokens even get a chance to run. establishSessionFromHandoff owns the
     // stale-session lock contention + guarded-retry logic (see authHandoff.js).
     let unsubscribe = () => {};
@@ -9827,7 +9827,7 @@ export default function DashboardPage() {
           if (s?.user?.id && s.user.id === loadedUidRef.current) return;
           loadSession(s);
         } else if (event === 'SIGNED_OUT') {
-          window.location.href = 'https://xdrive.my/login';
+          window.location.href = 'https://drevo.my/login';
         }
       });
       unsubscribe = () => subscription.unsubscribe();
@@ -9887,7 +9887,7 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.clear(); // prevent stale branding from a previous session bleeding through
-    window.location.href = 'https://xdrive.my/login';
+    window.location.href = 'https://drevo.my/login';
   };
   const handleNew = (l) => {
     // Dedup against the realtime INSERT event, which may have already prepended
@@ -10481,7 +10481,7 @@ export default function DashboardPage() {
   }, [allOnboardingDone]);
 
   const copyStorefrontOnboarding = () => {
-    const url = profile?.subdomain ? buildStorefrontUrl(profile.subdomain) : 'https://xdrive.my';
+    const url = profile?.subdomain ? buildStorefrontUrl(profile.subdomain) : 'https://drevo.my';
     navigator.clipboard.writeText(url).catch(() => {});
     setOnboardingCopied(true);
   };
@@ -10619,7 +10619,7 @@ export default function DashboardPage() {
                 invisible on it. Same artwork, wordmark recoloured to the
                 dashboard's own text colour, red bar untouched. */}
             <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: 'auto', display: 'block' }} />
-            <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>XDrive Dashboard</p>
+            <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>Drevo Dashboard</p>
           </div>
           {/* Bell */}
           <div ref={sidebarBellRef} style={{ position: 'relative', flexShrink: 0 }}>
@@ -10772,7 +10772,7 @@ export default function DashboardPage() {
                   {profile.dealership}
                 </p>
                 <p style={{ fontSize: 10, color: '#DC2626', marginTop: 1 }} className="truncate">
-                  {(dealerSubdomain || profile.subdomain) ? `${dealerSubdomain || profile.subdomain}.xdrive.my` : 'xdrive.my'}
+                  {(dealerSubdomain || profile.subdomain) ? `${dealerSubdomain || profile.subdomain}.drevo.my` : 'drevo.my'}
                 </p>
               </div>
               <ExternalLink className="w-3 h-3 flex-shrink-0" style={{ color: '#DC2626', opacity: 0.6 }} />
@@ -11598,7 +11598,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#111827' }}>Publish to Marketplace</p>
-                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Stock details + full listing with photos. Goes live on your storefront and xdrive.my.</p>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Stock details + full listing with photos. Goes live on your storefront and drevo.my.</p>
                           <p style={{ margin: '8px 0 0', fontSize: 11, fontWeight: 600, color: '#dc2626' }}>2 phases: Core info → Listing details</p>
                         </div>
                       </button>

@@ -110,7 +110,7 @@ export default function NewCarModelPage() {
   const latest = rows?.reduce((d, r) => (r.effective_from > d ? r.effective_from : d), "") || "";
 
   const waFor = (a) => (a.has_whatsapp
-    ? sellerWaUrl({ slug: a.slug, text: `Hi ${(a.full_name || "").split(" ")[0]}, I saw you on XDrive. I'm interested in the new ${brand} ${model}.` })
+    ? sellerWaUrl({ slug: a.slug, text: `Hi ${(a.full_name || "").split(" ")[0]}, I saw you on Drevo. I'm interested in the new ${brand} ${model}.` })
     : null);
 
   return (
@@ -180,8 +180,8 @@ export default function NewCarModelPage() {
                   <p className="ncm-note">Loading advisors...</p>
                 ) : sorted.length === 0 ? (
                   <div className="ncm-card ncm-empty">
-                    <p>{advError ? "Couldn't load advisors right now. Please refresh to try again." : `No advisor lists the ${brand} ${model} on XDrive yet.`}</p>
-                    {!advError && <p>Sell {brand}? <Link to="/for-salesmen">Put your page on XDrive</Link>.</p>}
+                    <p>{advError ? "Couldn't load advisors right now. Please refresh to try again." : `No advisor lists the ${brand} ${model} on Drevo yet.`}</p>
+                    {!advError && <p>Sell {brand}? <Link to="/for-salesmen">Put your page on Drevo</Link>.</p>}
                   </div>
                 ) : (
                   <div className="ncm-adv">

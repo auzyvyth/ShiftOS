@@ -24,12 +24,12 @@ const ChatThread = lazy(() => import('./ChatThread'));
 // plus this one neutral Contact button, and the long tail lives in the sheet.
 //
 // The trigger button AND the sheet follow the page's theme: the main
-// marketplace (xdrive.my) renders light, a dealer subdomain renders dark.
+// marketplace (drevo.my) renders light, a dealer subdomain renders dark.
 // CarDetailPage passes its own isXdrive flag in as `isLight`. Only the
 // backdrop behind the sheet stays a dark dimmer on both — it's dimming the
 // page, not part of the sheet's own surface.
 //
-// Chat needs an XDrive account on the marketplace (owner, 2026-10-14, the
+// Chat needs an Drevo account on the marketplace (owner, 2026-10-14, the
 // Mudah model): picking "Chat here" while signed out opens the in-page sign-in
 // sheet (components/auth/SignInSheet.jsx) on top of this one; once signed in,
 // the chat starts without the buyer ever leaving the car. The redirect
@@ -132,7 +132,7 @@ export default function BuyerChat({
   const closeAndRun = (fn) => () => { setOpen(false); if (fn) fn(); };
 
   // The sheet itself now follows the page's theme (isLight) instead of always
-  // being dark — on the light XDrive marketplace a navy overlay over a white
+  // being dark — on the light Drevo marketplace a navy overlay over a white
   // page read as off-brand, like a different product bolted on.
   const c = isLight
     ? { bg: '#ffffff', border: 'rgba(15,23,42,0.09)', text: '#111827', sub: '#6b7280',
@@ -199,7 +199,7 @@ export default function BuyerChat({
       )}
       <ContactRow
         icon={<MessageSquare size={17} style={{ color: c.text }} />}
-        title="Chat here in XDrive"
+        title="Chat here in Drevo"
         sub={guestChat ? 'No account or phone number needed' : 'Sign in with Google or email to chat'}
         onClick={chooseChat} />
       {showCall && onCall && (
@@ -255,7 +255,7 @@ export default function BuyerChat({
               Phone numbers are hidden until the other person taps to show them.
             </li>
             <li>
-              XDrive stores these messages and uses them to help the seller reply faster. Messages may be
+              Drevo stores these messages and uses them to help the seller reply faster. Messages may be
               reviewed if either side reports a problem.
             </li>
           </ul>

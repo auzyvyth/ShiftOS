@@ -1,4 +1,4 @@
-// Vercel Edge Function — crawler prerender for XDrive (bots are routed here by
+// Vercel Edge Function — crawler prerender for Drevo (bots are routed here by
 // vercel.json). It must return REAL, UNIQUE, content-rich HTML per route, or
 // Google flags pages as Soft 404 / Duplicate / "not indexed". Three kinds of
 // output: (1) car detail pages, (2) listing index pages (with live car links so
@@ -111,9 +111,17 @@ async function getDealerData(dealerId) {
 // Who is selling this car, for the page text and the schema. A salesman's car
 // credits the agent and links their /s/ page; everything else is the dealer.
 async function getSellerData(car) {
-  if (car.seller_role === "salesman" && car.salesman_slug) {
-    const s = await getSalesmanData(car.salesman_slug);
-    if (s) {
+  if (car.seller_role === "salesman") {
+    // salesman_slug is empty on most agent cars (17 of 18 live on 2026-11-04),
+    // so look the agent up by the listing's dealer_id the way the car page
+    // does (CarDetailPage get_salesman_by_id). Slug-only meant Google saw no
+    // seller and no link to the agent's /s/ page on almost every agent car.
+    const s = car.salesman_slug
+      ? await getSalesmanData(car.salesman_slug)
+      : car.dealer_id
+        ? (await sbRpc("get_salesman_by_id", { p_id: car.dealer_id }))[0] ?? null
+        : null;
+    if (s?.slug) {
       return {
         kind: "agent",
         dealership: s.full_name || s.site_name || s.dealership || s.slug,
@@ -137,7 +145,7 @@ async function getDealerBySubdomain(subdomain) {
 
 // The one address a car lives at, matching CarDetailPage's canonical: a
 // dealer with a storefront owns its cars at <sub>.xdrive.my/cars/<slug>,
-// everyone else at xdrive.my/showroom/<slug>. It used to be "whatever URL
+// everyone else at drevo.my/showroom/<slug>. It used to be "whatever URL
 // the crawler came in on", so /cars/<slug>, www. and every storefront each
 // claimed to be the real page.
 function carCanonical(car, seller) {
@@ -298,7 +306,7 @@ function buildNewModelHtml(brand, rows, advisors) {
     </table>
     <p>On the road without insurance, as published by ${esc(brand)}.</p>
     <h2>Advisors who sell the ${esc(brand)} ${esc(model)}</h2>
-    ${advLis ? `<ul>${advLis}</ul>` : `<p>No advisor lists this model on XDrive yet.</p>`}
+    ${advLis ? `<ul>${advLis}</ul>` : `<p>No advisor lists this model on Drevo yet.</p>`}
     <p><a href="${SITE_URL}/showroom">Browse used cars</a></p>
   </main>`;
   return htmlShell({ title: copy.title, description: copy.description, canonical, body });
@@ -307,7 +315,7 @@ function buildNewModelHtml(brand, rows, advisors) {
 // ── HTML shell ────────────────────────────────────────────────────────────────
 // ogUrl: the address a share stands for; differs from canonical only on a
 // new-car model card (canonical = the model page, og:url = the card itself).
-function htmlShell({ lang = "en", title, ogTitle = title, siteName = "xdrive.my", description, canonical, ogUrl = canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
+function htmlShell({ lang = "en", title, ogTitle = title, siteName = "drevo.my", description, canonical, ogUrl = canonical, image = `${SITE_URL}/og-default.jpg`, robots, jsonLd = [], body, ogType = "website", extraHead = "" }) {
   const ld = jsonLd
     .filter(Boolean)
     // "<" escaped as \u003c: JSON-LD carries seller-typed text, and a literal
@@ -415,7 +423,7 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
       seller: dealer
         ? {
             "@type": dealer.kind === "agent" ? "Person" : "AutoDealer",
-            name: dealer.dealership ?? "xdrive.my",
+            name: dealer.dealership ?? "drevo.my",
             url: dealer.url || dealerUrl,
             // NO telephone here. This block is served to crawlers (see the
             // user-agent rewrite in vercel.json), which includes googlebot,
@@ -426,7 +434,9 @@ function buildCarSchema(car, dealer, canonicalUrl, feats = [], code = null) {
             // on tap via /api/call-number.
             address: { "@type": "PostalAddress", addressLocality: dealer.city ?? car.city ?? undefined, addressRegion: dealer.state ?? car.state ?? undefined, addressCountry: "MY" },
           }
-        : { "@type": "AutoDealer", name: "xdrive.my", url: SITE_URL },
+        // Unknown seller: say nothing rather than name the marketplace as the
+        // seller (it never is).
+        : undefined,
     },
   }));
 }
@@ -443,16 +453,16 @@ export function carFacts(car, hubModel) {
   const label = [car.brand, hubModel?.model || car.model].filter(Boolean).join(" ");
   const out = [];
   if (car.created_at) {
-    out.push(`Listed on XDrive since ${new Date(car.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })}.`);
+    out.push(`Listed on Drevo since ${new Date(car.created_at).toLocaleDateString("en-MY", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kuala_Lumpur" })}.`);
   }
   out.push({ available: "Status: available.", reserved: "Status: reserved.", sold: "Status: sold." }[car.status] || null);
   if (hubModel && hubModel.count > 1 && hubModel.minPrice != null) {
     const years = hubModel.minYear && hubModel.maxYear && hubModel.minYear !== hubModel.maxYear ? `, ${hubModel.minYear} to ${hubModel.maxYear} models` : "";
-    out.push(`${hubModel.count} ${label} are listed on XDrive right now${HUB_LIVE.includes(car.status) ? ", including this one" : ""}, asking ${rm(hubModel.minPrice)} to ${rm(hubModel.maxPrice)}${years}.`);
+    out.push(`${hubModel.count} ${label} are listed on Drevo right now${HUB_LIVE.includes(car.status) ? ", including this one" : ""}, asking ${rm(hubModel.minPrice)} to ${rm(hubModel.maxPrice)}${years}.`);
   } else if (hubModel && hubModel.count === 1 && HUB_LIVE.includes(car.status)) {
-    out.push(`This is the only ${label} listed on XDrive right now.`);
+    out.push(`This is the only ${label} listed on Drevo right now.`);
   }
-  if (hubModel?.sold > 0) out.push(`${hubModel.sold} ${label} ${hubModel.sold === 1 ? "has" : "have"} sold on XDrive.`);
+  if (hubModel?.sold > 0) out.push(`${hubModel.sold} ${label} ${hubModel.sold === 1 ? "has" : "have"} sold on Drevo.`);
   return out.filter(Boolean);
 }
 
@@ -505,12 +515,14 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, h
     ${feats.length ? `<p>Options &amp; features: ${esc(feats.join(", "))}.</p>` : ""}
     ${(() => { const f = carFacts(car, hubModel); return f.length ? `<h2>At a glance</h2>\n    <ul>\n      ${f.map((l) => `<li>${esc(l)}</li>`).join("\n      ")}\n    </ul>` : ""; })()}
     ${dealer?.dealership ? `<p>Sold by ${dealer.url ? `<a href="${esc(dealer.url)}">${esc(dealer.dealership)}</a>` : esc(dealer.dealership)}${dealer.kind === "agent" ? " (car agent)" : ""}.</p>` : ""}
+    ${dealer?.kind === "agent" && dealer.url ? `<p><a href="${esc(dealer.url)}">More cars for sale from ${esc(dealer.dealership)}</a></p>` : ""}
     ${modelHub ? `<p><a href="${SITE_URL}${modelHub.path}">More used ${esc(car.brand)} ${esc(modelHub.name)} for sale</a></p>` : ""}
-    <p><a href="${baseUrl}${carBase}">Browse more used cars on xdrive.my</a></p>
+    <p><a href="${baseUrl}${carBase}">Browse more used cars on drevo.my</a></p>
   </main>`;
   return htmlShell({
-    title: `${name} — ${priceFormatted} | xdrive.my`,
-    description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on xdrive.my.`,
+    // "for sale in <state>": the words a buyer types ("2023 alphard 2.5 z for sale").
+    title: `${name} for sale in ${(car.state || "").trim() || "Malaysia"} — ${priceFormatted} | Drevo`,
+    description: `${name} for ${priceFormatted}. ${specs}.${feats.length ? ` Features: ${feats.slice(0, 6).join(", ")}.` : ""} Located in ${location}. Browse on drevo.my.`,
     canonical: canonicalTo || canonical, ogUrl: canonical, image,
     jsonLd: [
       buildCarSchema(car, dealer, canonical, feats, chassis),
@@ -522,7 +534,7 @@ function buildCarHtml(car, dealer, canonical, baseUrl, carBase, crumbs = null, h
 
 // ── Listing index pages ───────────────────────────────────────────────────────
 // Brand identity schema for the root homepage — mirrors HomePage.jsx Helmet.
-// This is what tells Google the domain IS the "XDrive" brand (brand-name ranking)
+// This is what tells Google the domain IS the "Drevo" brand (brand-name ranking)
 // and enables the sitelinks search box. The bot render omitted it before, so the
 // crawler only ever saw an ItemList and never the Organization/WebSite signal.
 const BRAND_LD = [
@@ -530,12 +542,12 @@ const BRAND_LD = [
     "@context": "https://schema.org",
     "@type": "Organization",
     "@id": `${SITE_URL}/#organization`,
-    name: "XDrive",
-    alternateName: "XDrive Malaysia",
+    name: "Drevo",
+    alternateName: "Drevo Malaysia",
     url: SITE_URL,
     logo: `${SITE_URL}/xdrivelogo.png`,
     description:
-      "XDrive is a Malaysian marketplace for used, recon and new cars from local dealers and agents.",
+      "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents.",
     areaServed: "MY",
     sameAs: [
       "https://facebook.com/xdrive.my",
@@ -547,8 +559,8 @@ const BRAND_LD = [
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${SITE_URL}/#website`,
-    name: "XDrive",
-    alternateName: "XDrive Malaysia",
+    name: "Drevo",
+    alternateName: "Drevo Malaysia",
     url: SITE_URL,
     publisher: { "@id": `${SITE_URL}/#organization` },
     potentialAction: {
@@ -609,7 +621,7 @@ function socialUrl(v, base) {
   else t = `${base}${t.replace(/^@/, "")}`;
   try {
     const u = new URL(t);
-    // An agent typing "xdrive.my" as their website is not a profile of THEM.
+    // An agent typing "drevo.my" as their website is not a profile of THEM.
     if (u.hostname === ROOT_DOMAIN || u.hostname.endsWith(`.${ROOT_DOMAIN}`)) return null;
     return u.href;
   } catch {
@@ -673,12 +685,12 @@ function buildSalesmanHtml(s, cars, canonical, baseUrl, soldCount = 0) {
     <p>${esc(jobTitle)}${s.dealership ? ` at ${esc(s.dealership)}` : ""}${location ? `, ${esc(location)}` : ""}</p>
     ${bio ? `<p>${esc(bio)}</p>` : ""}
     ${s.specializations?.length ? `<p>Specialises in: ${esc(s.specializations.join(", "))}.</p>` : ""}
-    ${soldCount ? `<p>${soldCount} car${soldCount === 1 ? "" : "s"} sold on XDrive.</p>` : ""}
+    ${soldCount ? `<p>${soldCount} car${soldCount === 1 ? "" : "s"} sold on Drevo.</p>` : ""}
     <h2>Cars for sale from ${esc(name)}</h2>
     <ul>
       ${items || "<li>New listings coming soon.</li>"}
     </ul>
-    <p><a href="${SITE_URL}/showroom">Browse all used cars on xdrive.my</a></p>
+    <p><a href="${SITE_URL}/showroom">Browse all used cars on drevo.my</a></p>
   </main>`;
   // The agent's stock as an ItemList, so the page reads as "this person's cars"
   // and each car URL is discoverable from structured data too.
@@ -706,7 +718,7 @@ const SHIFTOS_FAQS = [
   { q: "Apa itu ShiftOS?", a: "ShiftOS ialah sistem urus stok kereta terpakai (used car DMS Malaysia) yang direka khas untuk dealer kereta di Malaysia. Ia satu app urus stok kereta dan app untuk dealer kereta terpakai yang menggabungkan CRM lead, rekod jualan, komisen salesman dan analitik keuntungan." },
   { q: "Berapa harga ShiftOS?", a: "Harga ShiftOS bermula RM0 untuk Salesman Lite (percuma) dan RM35/bulan untuk Salesman Premium. Untuk dealer: Dealer Starter RM299/bulan, Dealer Growth RM599/bulan dan Dealer Pro RM1,199/bulan. Ia software dealer kereta murah berbanding kos rekod manual." },
   { q: "Adakah ShiftOS sesuai untuk dealer kecil?", a: "Ya. ShiftOS sesuai untuk dealer kereta terpakai kecil dan besar. Dealer kecil boleh mula dengan Dealer Starter RM299/bulan, manakala salesman individu boleh guna Salesman Lite percuma — app salesman kereta Malaysia untuk urus listing, lead dan komisen sendiri." },
-  { q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?", a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront XDrive sendiri." },
+  { q: "Boleh ke guna ShiftOS dengan Mudah dan Carlist?", a: "Boleh. ShiftOS melengkapkan Mudah dan Carlist, bukan menggantikannya. Anda urus stok, lead dan jualan dalam ShiftOS dan masih boleh iklan di Mudah atau Carlist. Setiap dealer juga dapat storefront Drevo sendiri." },
   { q: "What is the best app for Malaysian used car dealers?", a: "ShiftOS is a purpose-built used car dealer software Malaysia — combining car inventory management Malaysia, a car dealer CRM Malaysia, salesman commission tracking, F&I and revenue analytics, designed for local workflows." },
   { q: "Is there a DMS for used car dealers in Malaysia?", a: "Yes. ShiftOS is a used car DMS Malaysia (dealer management system) and car dealer management app Malaysia built for independent dealers, replacing spreadsheets with one system for stock, leads, sales and reporting." },
 ];
@@ -727,7 +739,7 @@ const SOFTWARE_LD = {
     { "@type": "Offer", name: "Dealer Growth", price: "599", priceCurrency: "MYR" },
     { "@type": "Offer", name: "Dealer Pro", price: "1199", priceCurrency: "MYR" },
   ],
-  publisher: { "@type": "Organization", name: "XDrive", url: SITE_URL },
+  publisher: { "@type": "Organization", name: "Drevo", url: SITE_URL },
 };
 
 // Articles: title, dates, FAQ, JSON-LD and the FULL body come from
@@ -751,7 +763,7 @@ ${a.html}
         : `<a href="${SITE_URL}/articles">Semua panduan</a> · <a href="${SITE_URL}/showroom">Lihat kereta dijual</a>`}</p>
     </article>
   </main>`;
-  return htmlShell({ lang: en ? "en" : "ms", title: `${a.title} · ${en ? "Drevo" : "XDrive"}`, description: a.description, canonical, jsonLd: [a.jsonLd], body, ogType: "article", extraHead });
+  return htmlShell({ lang: en ? "en" : "ms", title: `${a.title} · ${en ? "Drevo" : "Drevo"}`, description: a.description, canonical, jsonLd: [a.jsonLd], body, ogType: "article", extraHead });
 }
 
 // ── Shared-copy pages (guides, plans, features, legal) ───────────────────────
@@ -920,12 +932,12 @@ const STATIC_PAGES = {
   "/guides/faq": () => guidePage("faq", faqHtml(GUIDE_FAQS), [GUIDE_FAQ_LD]),
   "/guides/buying": () => guidePage("buying", GUIDE_TIPS.map((t) => `<h2>${esc(t.category)}</h2><ul>${liHtml(t.items)}</ul>`).join("\n    ")),
   "/plans": () => htmlShell({
-    title: "Plans & Pricing | XDrive",
-    description: "Sell cars on XDrive. Free for individual salesmen, RM35/month for Premium, dealer plans from RM299/month with a 14-day free trial.",
+    title: "Plans & Pricing | Drevo",
+    description: "Sell cars on Drevo. Free for individual salesmen, RM35/month for Premium, dealer plans from RM299/month with a 14-day free trial.",
     canonical: `${SITE_URL}/plans`,
     jsonLd: [SOFTWARE_LD],
     body: `  <main>
-    <h1>Start selling on XDrive</h1>
+    <h1>Start selling on Drevo</h1>
     <p>Pick how you sell. You can change plan later without losing your listings.</p>
     <h2>For individual salesmen and agents</h2>
     <p>You sell cars yourself, under your own name. Your listings go live on the marketplace and enquiries come straight to you.</p>
@@ -938,8 +950,8 @@ const STATIC_PAGES = {
   </main>`,
   }),
   "/terms": () => htmlShell({
-    title: "Terms of Service | XDrive",
-    description: `Terms of Service for the ShiftOS platform and the xdrive.my marketplace. Effective ${LEGAL_META.effectiveDate}.`,
+    title: "Terms of Service | Drevo",
+    description: `Terms of Service for the ShiftOS platform and the drevo.my marketplace. Effective ${LEGAL_META.effectiveDate}.`,
     canonical: `${SITE_URL}/terms`,
     body: `  <main>
     <h1>Terms of Service</h1>
@@ -947,8 +959,8 @@ const STATIC_PAGES = {
   </main>`,
   }),
   "/privacy": () => htmlShell({
-    title: "Privacy Policy | XDrive",
-    description: `How ShiftOS and xdrive.my collect, use and protect personal data under Malaysia's PDPA 2010. Effective ${LEGAL_META.effectiveDate}.`,
+    title: "Privacy Policy | Drevo",
+    description: `How ShiftOS and drevo.my collect, use and protect personal data under Malaysia's PDPA 2010. Effective ${LEGAL_META.effectiveDate}.`,
     canonical: `${SITE_URL}/privacy`,
     body: `  <main>
     <h1>Privacy Policy</h1>
@@ -959,11 +971,11 @@ const STATIC_PAGES = {
   }),
   // Placeholder pages with no content yet — kept out of the index until they
   // are real, or Google files them as thin/soft-404.
-  "/vehicle-services": () => htmlShell({ title: "Vehicle Services | XDrive", description: "Coming soon to XDrive.", canonical: `${SITE_URL}/vehicle-services`, robots: "noindex, follow", body: "  <main><h1>Vehicle Services</h1><p>Coming soon.</p></main>" }),
-  "/automotive-products": () => htmlShell({ title: "Automotive Products | XDrive", description: "Coming soon to XDrive.", canonical: `${SITE_URL}/automotive-products`, robots: "noindex, follow", body: "  <main><h1>Automotive Products</h1><p>Coming soon.</p></main>" }),
+  "/vehicle-services": () => htmlShell({ title: "Vehicle Services | Drevo", description: "Coming soon to Drevo.", canonical: `${SITE_URL}/vehicle-services`, robots: "noindex, follow", body: "  <main><h1>Vehicle Services</h1><p>Coming soon.</p></main>" }),
+  "/automotive-products": () => htmlShell({ title: "Automotive Products | Drevo", description: "Coming soon to Drevo.", canonical: `${SITE_URL}/automotive-products`, robots: "noindex, follow", body: "  <main><h1>Automotive Products</h1><p>Coming soon.</p></main>" }),
   "/compare": () => htmlShell({
-    title: "Compare Cars Side by Side | XDrive",
-    description: "Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs and an overall value score on XDrive.",
+    title: "Compare Cars Side by Side | Drevo",
+    description: "Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs and an overall value score on Drevo.",
     canonical: `${SITE_URL}/compare`,
     body: `  <main>
     <h1>Compare cars side by side</h1>
@@ -988,7 +1000,7 @@ const STATIC_PAGES = {
       .join("\n      ");
     return htmlShell({
       lang: "ms",
-      title: "Panduan Kereta Malaysia — XDrive",
+      title: "Panduan Kereta Malaysia — Drevo",
       description: "Koleksi panduan lengkap untuk pembeli dan penjual kereta di Malaysia — pindah milik, Puspakom, urus stok dealer, komisen salesman dan lebih banyak lagi.",
       canonical: `${SITE_URL}/articles`,
       body: `  <main>
@@ -1002,9 +1014,9 @@ const STATIC_PAGES = {
   },
   // The board's own posts are buyer-typed and expire in 30 days, so crawlers
   // get the explainer only; single posts (/find-me/<id>) are noindex below.
-  "/find-me": () => htmlShell({ title: FIND_ME_COPY.title, description: FIND_ME_COPY.description, canonical: `${SITE_URL}/find-me`, body: `  <main><h1>${esc(FIND_ME_COPY.h1)}</h1><p>${esc(FIND_ME_COPY.intro(5))}</p><p><a href="${SITE_URL}/showroom">Browse cars on XDrive</a></p></main>` }),
-  "/saved": () => htmlShell({ title: "Saved Cars | XDrive", description: "Your saved used car listings on XDrive.", canonical: `${SITE_URL}/saved`, robots: "noindex, follow", body: "  <main><h1>Saved cars</h1></main>" }),
-  "/account": () => htmlShell({ title: "My Account | XDrive", description: "Your XDrive account.", canonical: `${SITE_URL}/account`, robots: "noindex, follow", body: "  <main><h1>My account</h1></main>" }),
+  "/find-me": () => htmlShell({ title: FIND_ME_COPY.title, description: FIND_ME_COPY.description, canonical: `${SITE_URL}/find-me`, body: `  <main><h1>${esc(FIND_ME_COPY.h1)}</h1><p>${esc(FIND_ME_COPY.intro(5))}</p><p><a href="${SITE_URL}/showroom">Browse cars on Drevo</a></p></main>` }),
+  "/saved": () => htmlShell({ title: "Saved Cars | Drevo", description: "Your saved used car listings on Drevo.", canonical: `${SITE_URL}/saved`, robots: "noindex, follow", body: "  <main><h1>Saved cars</h1></main>" }),
+  "/account": () => htmlShell({ title: "My Account | Drevo", description: "Your Drevo account.", canonical: `${SITE_URL}/account`, robots: "noindex, follow", body: "  <main><h1>My account</h1></main>" }),
 };
 
 // SPA routes that are screens, not content. Everything else og.js does not
@@ -1062,7 +1074,7 @@ export default async function handler(req) {
 
   // A single Find me post: buyer-typed and short-lived, never indexed.
   if (pathname.startsWith("/find-me/")) {
-    return html(htmlShell({ title: "Wanted car | XDrive", description: FIND_ME_COPY.description, canonical: `${SITE_URL}${pathname}`, robots: "noindex, follow", body: "  <main><h1>Wanted car</h1></main>" }));
+    return html(htmlShell({ title: "Wanted car | Drevo", description: FIND_ME_COPY.description, canonical: `${SITE_URL}${pathname}`, robots: "noindex, follow", body: "  <main><h1>Wanted car</h1></main>" }));
   }
 
   // 2. Article pages
@@ -1103,18 +1115,18 @@ export default async function handler(req) {
     if (subdomain) {
       const name = dealer?.site_name || dealer?.dealership || subdomain;
       return html(buildListingHtml({
-        title: `${name} — Used Cars for Sale | xdrive.my`,
-        description: `Browse used cars for sale from ${name} on xdrive.my. Quality-checked listings, best prices and easy financing.`,
+        title: `${name} — Used Cars for Sale | drevo.my`,
+        description: `Browse used cars for sale from ${name} on drevo.my. Quality-checked listings, best prices and easy financing.`,
         h1: `Used cars from ${name}`,
         intro: `Browse the latest used cars for sale from ${name}.`,
         cars, canonical: `${baseUrl}${pathname === "/" ? "" : pathname}`, baseUrl, carBase,
       }));
     }
     const META = {
-      "/": { title: "XDrive — Used & Recon Cars for Sale in Malaysia", h1: "Used & recon cars for sale in Malaysia", desc: "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on XDrive." },
-      "/marketplace": { title: "Used Car Marketplace Malaysia — Browse & Compare | XDrive", h1: "Used car marketplace Malaysia", desc: "Malaysia's used car marketplace — browse, filter and compare thousands of quality-checked used cars from trusted dealers on XDrive." },
-      "/showroom": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
-      "/cars": { title: "Showroom — All Used Cars for Sale in Malaysia | XDrive", h1: "Used car showroom", desc: "Browse every used car for sale on XDrive — filter by brand, price, year, mileage and location across Malaysia." },
+      "/": { title: "Drevo — Used & Recon Cars for Sale in Malaysia", h1: "Used & recon cars for sale in Malaysia", desc: "Used, recon and new cars for sale in Malaysia, with asking prices, photos and seller details from local dealers and agents on Drevo." },
+      "/marketplace": { title: "Used Car Marketplace Malaysia — Browse & Compare | Drevo", h1: "Used car marketplace Malaysia", desc: "Malaysia's used car marketplace — browse, filter and compare thousands of quality-checked used cars from trusted dealers on Drevo." },
+      "/showroom": { title: "Showroom — All Used Cars for Sale in Malaysia | Drevo", h1: "Used car showroom", desc: "Browse every used car for sale on Drevo — filter by brand, price, year, mileage and location across Malaysia." },
+      "/cars": { title: "Showroom — All Used Cars for Sale in Malaysia | Drevo", h1: "Used car showroom", desc: "Browse every used car for sale on Drevo — filter by brand, price, year, mileage and location across Malaysia." },
     };
     const m = META[pathname];
     // /cars on root canonicalises to /showroom (same page); others self-canonical.
@@ -1175,11 +1187,11 @@ export default async function handler(req) {
   // private token links). A real page, so 200, but never indexed.
   if (APP_ONLY.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return html(htmlShell({
-      title: "XDrive",
-      description: "Browse used cars for sale in Malaysia on xdrive.my.",
+      title: "Drevo",
+      description: "Browse used cars for sale in Malaysia on drevo.my.",
       canonical: `${baseUrl}${pathname}`,
       robots: "noindex, follow",
-      body: `  <main><h1>XDrive</h1><p><a href="${SITE_URL}/showroom">Browse all used cars</a></p></main>`,
+      body: `  <main><h1>Drevo</h1><p><a href="${SITE_URL}/showroom">Browse all used cars</a></p></main>`,
     }));
   }
 

@@ -72,9 +72,9 @@ export default function ReferralCard({ slug, style, theme }) {
   };
 
   const share = async () => {
-    const text = "I list my cars on XDrive. Sign up with my link:";
+    const text = "I list my cars on Drevo. Sign up with my link:";
     if (navigator.share) {
-      try { await navigator.share({ title: "XDrive", text, url: link }); } catch { /* cancelled */ }
+      try { await navigator.share({ title: "Drevo", text, url: link }); } catch { /* cancelled */ }
     } else {
       window.open(`https://wa.me/?text=${encodeURIComponent(`${text} ${link}`)}`, "_blank", "noopener,noreferrer");
     }

@@ -153,7 +153,7 @@ const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDeta
   ]);
 
   const brandName = dealer?.dealership || dealer?.site_name || salesman?.dealership || salesman?.site_name || null;
-  const sellerName = salesman?.full_name || salesman?.name || brandName || 'XDrive.my';
+  const sellerName = salesman?.full_name || salesman?.name || brandName || 'Drevo.my';
   const sellerContact = salesman?.whatsapp_number || salesman?.phone || dealer?.whatsapp_number || null;
   const sellerBio = salesman?.bio || null;
   const sellerRole = salesman ? (salesman.job_title || 'Sales Consultant') : (brandName ? 'Dealership' : null);
@@ -163,7 +163,7 @@ const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDeta
   // ── Header ────────────────────────────────────────────────────────────────
   ctx.fillStyle = RED;
   ctx.fillRect(P, 58, 7, 34);
-  text(brandName || 'XDRIVE.MY', P + 22, 86, { size: 33, weight: 700 });
+  text(brandName || 'DREVO.MY', P + 22, 86, { size: 33, weight: 700 });
   text(dateStr, W - P, 74, { size: 17, color: FAINT, align: 'right' });
   text('VEHICLE FINANCING QUOTATION', W - P, 98, { size: 15, weight: 700, color: RED, align: 'right' });
 
@@ -329,7 +329,7 @@ const generateQuotationImage = async ({ dealer, salesman, sellerPageUrl, carDeta
   wrap('Valid for 7 days, subject to change without notice. All figures are estimates; final pricing subject to confirmation.', CW, 14, false)
     .forEach((ln, i) => text(ln, P, y + i * 20, { size: 14, italic: true, color: FAINT }));
   y += 46;
-  text('Generated via XDrive.my', P, y, { size: 15, weight: 700, color: RED });
+  text('Generated via Drevo.my', P, y, { size: 15, weight: 700, color: RED });
   if (sellerContact) text(`${sellerName} · ${sellerContact}`, W - P, y, { size: 15, color: SUB, align: 'right' });
 
   // Export the single frame as a JPEG the salesman can attach to any post.
@@ -519,10 +519,10 @@ const FinancingCalculator = ({
       // page, a dealer promotes their <subdomain>.xdrive.my storefront. Mirrors
       // CarDetailPage's sellerPageUrl and src/utils/sharePack.js buildShareUrl.
       const resolvedPageUrl = sellerPageUrl || (() => {
-        if (resolvedSalesman?.role === 'salesman' && resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
+        if (resolvedSalesman?.role === 'salesman' && resolvedSalesman?.slug) return `https://drevo.my/s/${resolvedSalesman.slug}`;
         if (resolvedDealer?.subdomain) return getStorefrontUrl(resolvedDealer.subdomain);
-        if (resolvedDealer?.slug) return `https://xdrive.my/s/${resolvedDealer.slug}`;
-        if (resolvedSalesman?.slug) return `https://xdrive.my/s/${resolvedSalesman.slug}`;
+        if (resolvedDealer?.slug) return `https://drevo.my/s/${resolvedDealer.slug}`;
+        if (resolvedSalesman?.slug) return `https://drevo.my/s/${resolvedSalesman.slug}`;
         return null;
       })();
 

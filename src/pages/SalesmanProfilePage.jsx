@@ -823,10 +823,10 @@ export default function SalesmanProfilePage() {
         {/* `bio` only — `about_text` is the dealer storefront's "About us". */}
         <meta name="description" content={metaDescription} />
         {/* Shared as a link constantly, so it needs its own canonical + og:url. */}
-        <link rel="canonical" href={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
-        <meta property="og:url" content={`https://xdrive.my/s/${encodeURIComponent(profile.slug || slug)}`} />
+        <link rel="canonical" href={`https://drevo.my/s/${encodeURIComponent(profile.slug || slug)}`} />
+        <meta property="og:url" content={`https://drevo.my/s/${encodeURIComponent(profile.slug || slug)}`} />
         <meta property="og:type" content="profile" />
-        <meta property="og:site_name" content="XDrive" />
+        <meta property="og:site_name" content="Drevo" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={metaDescription} />
         {/* The wide cover makes the better link preview; avatar as fallback. */}
@@ -1037,7 +1037,7 @@ export default function SalesmanProfilePage() {
         )}
 
         {/* No site header (owner, 2026-10-03): just a back button on the cover.
-            The page is the agent's own; XDrive is credited in the footer. */}
+            The page is the agent's own; Drevo is credited in the footer. */}
 
         <div className="ap-shell">
           {/* Cover: the agent's own photo, else the sky-to-sand fallback with the
@@ -1096,7 +1096,7 @@ export default function SalesmanProfilePage() {
                   <span className="ap-last">
                     {nameTail}
                     {isVerified && (
-                      <svg viewBox="0 0 24 24" role="img" aria-label="Verified by XDrive"><circle cx="12" cy="12" r="10" fill="#111827" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                      <svg viewBox="0 0 24 24" role="img" aria-label="Verified by Drevo"><circle cx="12" cy="12" r="10" fill="#111827" /><path d="M7.5 12.5l3 3 6-6.5" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     )}
                   </span>
                 </h1>
@@ -1107,15 +1107,15 @@ export default function SalesmanProfilePage() {
                   <p className="ap-works">
                     Works at{' '}
                     {dealer.subdomain
-                      ? <a href={`https://${dealer.subdomain}.xdrive.my`}>{dealer.dealership}</a>
+                      ? <a href={`https://${dealer.subdomain}.drevo.my`}>{dealer.dealership}</a>
                       : <b>{dealer.dealership}</b>}
                   </p>
                 )}
                 {(isVerified || replyLabel) && (
                   <div className="ap-creds">
-                    {isVerified && <span className="ap-cred"><ShieldCheck size={14} strokeWidth={2.2} />ID verified by XDrive</span>}
+                    {isVerified && <span className="ap-cred"><ShieldCheck size={14} strokeWidth={2.2} />ID verified by Drevo</span>}
                     {/* Reply time is MEASURED from chat (get_agent_reply_time), never typed. */}
-                    {replyLabel && <span className="ap-cred" title="Measured on XDrive chat"><Clock size={14} strokeWidth={2.2} />{replyLabel}</span>}
+                    {replyLabel && <span className="ap-cred" title="Measured on Drevo chat"><Clock size={14} strokeWidth={2.2} />{replyLabel}</span>}
                   </div>
                 )}
 
@@ -1268,13 +1268,13 @@ export default function SalesmanProfilePage() {
             </div>
           </div>
 
-          {/* Buyer safety — XDrive takes no payment for any car — beside the way
+          {/* Buyer safety — Drevo takes no payment for any car — beside the way
               to flag this agent (report_seller). */}
           <div className="ap-safe">
-            <p>XDrive never collects payment for a car. See the car and its geran before you pay any deposit, and get the deposit terms in writing.</p>
+            <p>Drevo never collects payment for a car. See the car and its geran before you pay any deposit, and get the deposit terms in writing.</p>
             <ReportListingButton sellerId={profile.id} th={LIGHT_SHEET_TH} />
           </div>
-          <p className="ap-foot">{profile.full_name} sells through <a href="https://xdrive.my">XDrive</a> · <Link to="/showroom">Browse all used cars</Link>
+          <p className="ap-foot">{profile.full_name} sells through <a href="https://drevo.my">Drevo</a> · <Link to="/showroom">Browse all used cars</Link>
             {/* Basic (Lite) page: the free page carries the invite to make one. */}
             {profile.page_basic && <><br />Selling cars? <Link to="/for-salesmen">Get your own page free</Link></>}
           </p>

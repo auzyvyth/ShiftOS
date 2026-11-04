@@ -11,7 +11,7 @@ import { matchesPathPrefix } from '../utils/routeMatch';
 const LegalModal = lazy(() => import('./LegalModal'));
 
 // The consent banner governs first-party analytics + enquiry prefill, which only
-// exist on the public marketplace (xdrive.my) and dealer storefronts (sub.xdrive.my).
+// exist on the public marketplace (drevo.my) and dealer storefronts (sub.xdrive.my).
 // It has no business on the login flow or any authenticated/internal system page, so
 // suppress it there. Path-based, not host-based: internal pages live on the same
 // hosts as the public surfaces, so the route is the real discriminator. Boundary-aware

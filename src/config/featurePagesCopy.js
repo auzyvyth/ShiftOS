@@ -38,7 +38,7 @@ export const FEATURES = {
       { icon: "Clock", title: "Holding-cost tracking", desc: "Floor-plan interest or overhead-per-day × days held, deducted automatically so ageing stock shows its real drag." },
       { icon: "Calculator", title: "Cost-floor pricing", desc: "Set your monthly overhead, fleet size and floor-plan rate once; every car shows the price you can't go below." },
       { icon: "Gauge", title: "Recon & ad-spend reconciliation", desc: "Booked recon estimate vs actual jobs, plus ad spend per unit (Mudah, Carlist, FB, TikTok), folded into gross." },
-      { icon: "Globe", title: "Bulk import & instant storefront", desc: "Import a PDF or Excel stock list in one pass, and publish any unit to your own XDrive storefront with one toggle." },
+      { icon: "Globe", title: "Bulk import & instant storefront", desc: "Import a PDF or Excel stock list in one pass, and publish any unit to your own Drevo storefront with one toggle." },
     ],
   },
 
@@ -49,7 +49,7 @@ export const FEATURES = {
     titleLead: "Every enquiry, every channel,",
     titleAccent: "one pipeline",
     sub: "Capture leads from WhatsApp, walk-ins and the marketplace, then move them through a visual pipeline until they're won — with follow-ups and test drives that never slip.",
-    seo: "ShiftOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the XDrive marketplace in one visual sales pipeline built for Malaysian dealers.",
+    seo: "ShiftOS Leads CRM — capture and manage car enquiries from WhatsApp, walk-in and the Drevo marketplace in one visual sales pipeline built for Malaysian dealers.",
     painTitle: "The old way",
     solutionTitle: "With ShiftOS",
     pains: [

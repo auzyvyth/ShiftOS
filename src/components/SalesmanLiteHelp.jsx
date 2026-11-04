@@ -30,11 +30,11 @@ const CONTENT = {
   en: {
     overview: {
       title: 'What is Salesman Lite?',
-      body: `Salesman Lite is the free way for independent car salesmen in Malaysia to get found and get the lead: your own page on XDrive, up to 10 live cars on the marketplace, and every buyer enquiry in one list. Following up and closing (reminders, call log, commission, performance) is Salesman Premium.`,
+      body: `Salesman Lite is the free way for independent car salesmen in Malaysia to get found and get the lead: your own page on Drevo, up to 10 live cars on the marketplace, and every buyer enquiry in one list. Following up and closing (reminders, call log, commission, performance) is Salesman Premium.`,
       items: [
-        { label: 'Your public storefront', desc: 'Every listing you publish appears on xdrive.my and on your personal profile link (xdrive.my/s/your-slug). Buyers can WhatsApp you directly from any listing.' },
+        { label: 'Your public storefront', desc: 'Every listing you publish appears on drevo.my and on your personal profile link (drevo.my/s/your-slug). Buyers can WhatsApp you directly from any listing.' },
         { label: 'Lead list', desc: 'Every buyer who contacts you lands here. Move them through the stages, add notes, and mark the deal won when the car sells.' },
-        { label: 'Inbox', desc: 'XDrive buyers who tap WhatsApp on your listing appear as Enquiries. Appointment requests show under Bookings.' },
+        { label: 'Inbox', desc: 'Drevo buyers who tap WhatsApp on your listing appear as Enquiries. Appointment requests show under Bookings.' },
         { label: 'Views and WhatsApp taps', desc: 'See how many buyers viewed each car and tapped WhatsApp. Close rate and where deals are lost are on Premium.' },
         { label: 'Join a dealership', desc: 'If you work with a dealer on ShiftOS, enter their invite code to merge your account. Your listings and leads carry over.' },
       ],
@@ -51,13 +51,13 @@ const CONTENT = {
     },
     listings: {
       title: 'Listings',
-      body: 'Your listings are the cars you publish to XDrive. Each published listing is live on the marketplace and on your profile link.',
+      body: 'Your listings are the cars you publish to Drevo. Each published listing is live on the marketplace and on your profile link.',
       items: [
         { label: 'Adding a listing', desc: 'Tap "+ Add Listing" at the top of the Listings tab. The form walks you through brand, model, year, price, mileage, condition, photos, and extras. Photos are the most important thing — upload at least 3 clear shots.' },
         { label: 'Quick List', desc: 'For a fast publish, use Quick List. Fill in brand, model, year, and price — the listing goes live immediately as a draft you can complete later.' },
-        { label: 'Status', desc: 'Available — visible on XDrive. Reserved — hidden from search, visible by direct link (use for deposit taken). Sold — archived from listings, marked as closed.' },
+        { label: 'Status', desc: 'Available — visible on Drevo. Reserved — hidden from search, visible by direct link (use for deposit taken). Sold — archived from listings, marked as closed.' },
         { label: 'Sharing your listing', desc: 'Each listing has a Share button that copies a direct link. Paste it in WhatsApp groups, Facebook posts, or your TikTok bio to drive traffic.' },
-                { label: 'Boost (coming soon)', desc: 'Boost pins your listing to the top of XDrive search for 7 days. Join the waitlist from the listing card.' },
+                { label: 'Boost (coming soon)', desc: 'Boost pins your listing to the top of Drevo search for 7 days. Join the waitlist from the listing card.' },
       ],
     },
     leads: {
@@ -75,9 +75,9 @@ const CONTENT = {
       title: 'Inbox',
       body: 'Inbox has two sub-tabs: Enquiries and Bookings.',
       items: [
-        { label: 'Enquiries', desc: 'When a buyer taps WhatsApp on your XDrive listing, their message is captured as an enquiry here. You can reply via WhatsApp or convert the enquiry to a lead with one tap.' },
+        { label: 'Enquiries', desc: 'When a buyer taps WhatsApp on your Drevo listing, their message is captured as an enquiry here. You can reply via WhatsApp or convert the enquiry to a lead with one tap.' },
         { label: 'Converting to lead', desc: 'Open any enquiry and tap "Add to Leads". The buyer\'s name, phone, and the linked car carry over automatically. You\'ll only need to set the stage.' },
-        { label: 'Bookings', desc: 'Viewing and test drive appointment requests from XDrive appear here. Accept, reschedule, or cancel directly from the card. Accepted bookings also appear in your Dashboard Agenda.' },
+        { label: 'Bookings', desc: 'Viewing and test drive appointment requests from Drevo appear here. Accept, reschedule, or cancel directly from the card. Accepted bookings also appear in your Dashboard Agenda.' },
         { label: 'Notification badge', desc: 'The red badge on the Inbox tab shows unread enquiries plus new booking requests. It resets when you open the relevant sub-tab.' },
       ],
     },
@@ -107,7 +107,7 @@ const CONTENT = {
       items: [
         { label: 'Profile photo', desc: 'Tap "Change photo" to upload a profile picture. This photo appears on your public profile page and on your listings.' },
         { label: 'WhatsApp number', desc: 'Your WhatsApp number is what buyers use to contact you from listings. Enter digits only — the Malaysia (+60) country code is added automatically.' },
-        { label: 'Username / Slug', desc: 'Your slug is your public profile URL: xdrive.my/s/your-slug. It\'s set during onboarding. Contact support to change it.' },
+        { label: 'Username / Slug', desc: 'Your slug is your public profile URL: drevo.my/s/your-slug. It\'s set during onboarding. Contact support to change it.' },
         { label: 'State & City', desc: 'Shown on your profile page. Helps buyers know where you\'re based.' },
         { label: 'IC Number', desc: 'Required for account verification. It is never shown publicly and is only accessible to ShiftOS admins.' },
         { label: 'Language', desc: 'Toggle between English and Bahasa Malaysia. The entire dashboard switches language instantly.' },
@@ -116,14 +116,14 @@ const CONTENT = {
     },
     faq: [
       { q: 'Is Salesman Lite really free?', a: 'Yes — forever. There is no credit card required, no trial period, and no hidden charges. We make money from dealer subscriptions, not from salesman accounts.' },
-      { q: 'How do buyers find my listings?', a: 'Your listings are published on xdrive.my, which is publicly searchable. Buyers can also reach your listings through your personal profile link (xdrive.my/s/your-slug), which you share on WhatsApp, social media, or your TikTok bio.' },
+      { q: 'How do buyers find my listings?', a: 'Your listings are published on drevo.my, which is publicly searchable. Buyers can also reach your listings through your personal profile link (drevo.my/s/your-slug), which you share on WhatsApp, social media, or your TikTok bio.' },
       { q: 'What happens to my data if I join a dealership?', a: 'Your listings and leads carry over to the dealer\'s system. The dealer\'s owner and managers can see your leads and pipeline. Nothing is deleted — it just becomes shared within the team.' },
       { q: 'Can I have more than one account?', a: 'No — one account per email address. If you need to switch between a solo account and a dealership, use the Join Dealership flow.' },
-      { q: 'How do I get my public profile link?', a: 'Your link is xdrive.my/s/[your-slug]. Your slug is shown in the Settings tab under "Username / Slug". Copy and share it anywhere.' },
+      { q: 'How do I get my public profile link?', a: 'Your link is drevo.my/s/[your-slug]. Your slug is shown in the Settings tab under "Username / Slug". Copy and share it anywhere.' },
       { q: 'How many listings can I have?', a: 'Up to 10 live cars on Salesman Lite (Available or Reserved). Sold cars don\'t count towards the limit. Salesman Premium allows 30.' },
       { q: 'I got an enquiry — what do I do?', a: 'Go to Inbox → Enquiries. Open the enquiry, tap the WhatsApp button to reply to the buyer, then tap "Add to Leads" to track the deal in your pipeline.' },
       { q: 'What does stale lead mean?', a: 'A lead is stale if no activity (note, stage change, follow-up, appointment) has been logged in 5 or more days. It\'s a reminder that the buyer may be going cold. Follow up immediately.' },
-      { q: 'Can buyers book test drives through XDrive?', a: 'Yes. Listings on XDrive have a booking button. Requests come into your Inbox → Bookings tab. You accept, reschedule, or cancel from there.' },
+      { q: 'Can buyers book test drives through Drevo?', a: 'Yes. Listings on Drevo have a booking button. Requests come into your Inbox → Bookings tab. You accept, reschedule, or cancel from there.' },
       { q: 'I need help or found a bug', a: 'WhatsApp our support line at +601111521742 or email support@xdrive.my. Please include a screenshot and your account email.' },
     ],
   },
@@ -131,11 +131,11 @@ const CONTENT = {
   ms: {
     overview: {
       title: 'Apa itu Salesman Lite?',
-      body: 'Salesman Lite ialah cara percuma untuk salesman kereta bebas di Malaysia dijumpai dan dapat lead: page sendiri di XDrive, sehingga 10 kereta aktif di marketplace, dan setiap pertanyaan pembeli dalam satu senarai. Follow up dan tutup deal (reminder, log call, komisen, prestasi) ada di Salesman Premium.',
+      body: 'Salesman Lite ialah cara percuma untuk salesman kereta bebas di Malaysia dijumpai dan dapat lead: page sendiri di Drevo, sehingga 10 kereta aktif di marketplace, dan setiap pertanyaan pembeli dalam satu senarai. Follow up dan tutup deal (reminder, log call, komisen, prestasi) ada di Salesman Premium.',
       items: [
-        { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di xdrive.my dan pada pautan profil peribadi anda (xdrive.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
+        { label: 'Halaman profil awam anda', desc: 'Setiap listing yang anda terbit akan muncul di drevo.my dan pada pautan profil peribadi anda (drevo.my/s/slug-anda). Pembeli boleh WhatsApp anda terus dari mana-mana listing.' },
         { label: 'Senarai lead', desc: 'Setiap pembeli yang hubungi anda masuk di sini. Gerakkan mereka ikut peringkat, tambah nota, dan tanda deal menang bila kereta terjual.' },
-        { label: 'Peti Masuk', desc: 'Pembeli XDrive yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
+        { label: 'Peti Masuk', desc: 'Pembeli Drevo yang mengetuk WhatsApp pada listing anda akan muncul sebagai Pertanyaan. Permintaan temujanji ditunjukkan di bawah Tempahan.' },
         { label: 'Views dan tap WhatsApp', desc: 'Lihat berapa ramai pembeli tengok setiap kereta dan tekan WhatsApp. Close rate dan di mana deal hilang ada di Premium.' },
         { label: 'Sertai pengedar', desc: 'Jika anda bekerja dengan pengedar di ShiftOS, masukkan kod jemputan mereka untuk menggabungkan akaun anda. Listing dan lead anda akan dibawa bersama.' },
       ],
@@ -152,13 +152,13 @@ const CONTENT = {
     },
     listings: {
       title: 'Listing',
-      body: 'Listing anda adalah kereta yang anda terbitkan ke XDrive. Setiap listing yang diterbitkan adalah langsung di marketplace dan pada pautan profil anda.',
+      body: 'Listing anda adalah kereta yang anda terbitkan ke Drevo. Setiap listing yang diterbitkan adalah langsung di marketplace dan pada pautan profil anda.',
       items: [
         { label: 'Menambah listing', desc: 'Ketik "+ Tambah Listing" di bahagian atas tab Listing. Borang akan membimbing anda melalui jenama, model, tahun, harga, perbatuan, keadaan, foto, dan tambahan. Foto adalah perkara terpenting — muat naik sekurang-kurangnya 3 gambar yang jelas.' },
         { label: 'Senarai Pantas', desc: 'Untuk penerbitan cepat, gunakan Senarai Pantas. Isi jenama, model, tahun, dan harga — listing akan langsung hidup sebagai draf yang boleh anda lengkapkan kemudian.' },
-        { label: 'Status', desc: 'Tersedia — kelihatan di XDrive. Ditempah — tersembunyi dari carian, kelihatan melalui pautan terus (gunakan apabila deposit telah diambil). Dijual — diarkibkan dari listing, ditanda sebagai ditutup.' },
+        { label: 'Status', desc: 'Tersedia — kelihatan di Drevo. Ditempah — tersembunyi dari carian, kelihatan melalui pautan terus (gunakan apabila deposit telah diambil). Dijual — diarkibkan dari listing, ditanda sebagai ditutup.' },
         { label: 'Berkongsi listing anda', desc: 'Setiap listing mempunyai butang Kongsi yang menyalin pautan terus. Tampalkannya dalam kumpulan WhatsApp, posting Facebook, atau bio TikTok anda untuk menarik trafik.' },
-        { label: 'Boost (akan datang)', desc: 'Boost meletakkan listing anda di bahagian teratas carian XDrive selama 7 hari. Sertai senarai menunggu dari kad listing.' },
+        { label: 'Boost (akan datang)', desc: 'Boost meletakkan listing anda di bahagian teratas carian Drevo selama 7 hari. Sertai senarai menunggu dari kad listing.' },
       ],
     },
     leads: {
@@ -176,9 +176,9 @@ const CONTENT = {
       title: 'Peti Masuk',
       body: 'Peti Masuk mempunyai dua sub-tab: Pertanyaan dan Tempahan.',
       items: [
-        { label: 'Pertanyaan', desc: 'Apabila pembeli mengetuk WhatsApp pada listing XDrive anda, mesej mereka ditangkap sebagai pertanyaan di sini. Anda boleh membalas melalui WhatsApp atau menukar pertanyaan kepada lead dengan satu ketikan.' },
+        { label: 'Pertanyaan', desc: 'Apabila pembeli mengetuk WhatsApp pada listing Drevo anda, mesej mereka ditangkap sebagai pertanyaan di sini. Anda boleh membalas melalui WhatsApp atau menukar pertanyaan kepada lead dengan satu ketikan.' },
         { label: 'Menukar kepada lead', desc: 'Buka mana-mana pertanyaan dan ketik "Tambah ke Lead". Nama pembeli, nombor telefon, dan kereta yang dikaitkan dibawa bersama secara automatik. Anda hanya perlu menetapkan peringkat.' },
-        { label: 'Tempahan', desc: 'Permintaan temujanji lawatan dan ujian pandu dari XDrive muncul di sini. Terima, jadual semula, atau batal terus dari kad. Tempahan yang diterima juga muncul dalam Agenda Papan Pemuka anda.' },
+        { label: 'Tempahan', desc: 'Permintaan temujanji lawatan dan ujian pandu dari Drevo muncul di sini. Terima, jadual semula, atau batal terus dari kad. Tempahan yang diterima juga muncul dalam Agenda Papan Pemuka anda.' },
         { label: 'Lencana notifikasi', desc: 'Lencana merah pada tab Peti Masuk menunjukkan pertanyaan yang belum dibaca ditambah permintaan tempahan baru. Ia ditetapkan semula apabila anda membuka sub-tab yang berkaitan.' },
       ],
     },
@@ -208,7 +208,7 @@ const CONTENT = {
       items: [
         { label: 'Foto profil', desc: 'Ketik "Tukar foto" untuk memuat naik gambar profil. Foto ini muncul pada halaman profil awam anda dan pada listing anda.' },
         { label: 'Nombor WhatsApp', desc: 'Nombor WhatsApp anda adalah cara pembeli menghubungi anda dari listing. Masukkan digit sahaja — kod negara Malaysia (+60) ditambah secara automatik.' },
-        { label: 'Nama pengguna / Slug', desc: 'Slug anda adalah URL profil awam anda: xdrive.my/s/slug-anda. Ia ditetapkan semasa onboarding. Hubungi sokongan untuk menukarnya.' },
+        { label: 'Nama pengguna / Slug', desc: 'Slug anda adalah URL profil awam anda: drevo.my/s/slug-anda. Ia ditetapkan semasa onboarding. Hubungi sokongan untuk menukarnya.' },
         { label: 'Negeri & Bandar', desc: 'Ditunjukkan pada halaman profil anda. Membantu pembeli mengetahui di mana anda berada.' },
         { label: 'Nombor IC', desc: 'Diperlukan untuk pengesahan akaun. Ia tidak pernah ditunjukkan kepada umum dan hanya boleh diakses oleh pentadbir ShiftOS.' },
         { label: 'Bahasa', desc: 'Togol antara Inggeris dan Bahasa Malaysia. Keseluruhan papan pemuka bertukar bahasa dengan serta-merta.' },
@@ -217,14 +217,14 @@ const CONTENT = {
     },
     faq: [
       { q: 'Adakah Salesman Lite benar-benar percuma?', a: 'Ya — selamanya. Tiada kad kredit diperlukan, tiada tempoh percubaan, dan tiada caj tersembunyi. Kami menjana wang daripada langganan pengedar, bukan daripada akaun jurujual.' },
-      { q: 'Bagaimana pembeli menemui listing saya?', a: 'Listing anda diterbitkan di xdrive.my, yang boleh dicari secara terbuka. Pembeli juga boleh mencapai listing anda melalui pautan profil peribadi anda (xdrive.my/s/slug-anda), yang anda kongsi di WhatsApp, media sosial, atau bio TikTok anda.' },
+      { q: 'Bagaimana pembeli menemui listing saya?', a: 'Listing anda diterbitkan di drevo.my, yang boleh dicari secara terbuka. Pembeli juga boleh mencapai listing anda melalui pautan profil peribadi anda (drevo.my/s/slug-anda), yang anda kongsi di WhatsApp, media sosial, atau bio TikTok anda.' },
       { q: 'Apa yang berlaku pada data saya jika saya menyertai pengedar?', a: 'Listing dan lead anda dibawa ke sistem pengedar. Pemilik dan pengurus pengedar boleh melihat lead dan saluran anda. Tiada yang dipadam — ia hanya menjadi dikongsi dalam pasukan.' },
       { q: 'Bolehkah saya mempunyai lebih dari satu akaun?', a: 'Tidak — satu akaun bagi setiap alamat e-mel. Jika anda perlu bertukar antara akaun solo dan pengedar, gunakan aliran Sertai Pengedar.' },
-      { q: 'Bagaimana saya mendapatkan pautan profil awam saya?', a: 'Pautan anda adalah xdrive.my/s/[slug-anda]. Slug anda ditunjukkan dalam tab Tetapan di bawah "Nama Pengguna / Slug". Salin dan kongsi di mana sahaja.' },
+      { q: 'Bagaimana saya mendapatkan pautan profil awam saya?', a: 'Pautan anda adalah drevo.my/s/[slug-anda]. Slug anda ditunjukkan dalam tab Tetapan di bawah "Nama Pengguna / Slug". Salin dan kongsi di mana sahaja.' },
       { q: 'Berapa banyak listing yang boleh saya ada?', a: 'Sehingga 10 kereta aktif pada Salesman Lite (Tersedia atau Ditempah). Kereta Dijual tidak dikira. Salesman Premium membenarkan 30.' },
       { q: 'Saya mendapat pertanyaan — apa yang perlu saya lakukan?', a: 'Pergi ke Peti Masuk → Pertanyaan. Buka pertanyaan, ketik butang WhatsApp untuk membalas pembeli, kemudian ketik "Tambah ke Lead" untuk menjejaki deal dalam saluran anda.' },
       { q: 'Apa maksud lead basi?', a: 'Lead adalah basi jika tiada aktiviti (nota, perubahan peringkat, susulan, temujanji) telah dilog dalam 5 hari atau lebih. Ia adalah peringatan bahawa pembeli mungkin semakin sejuk. Susulan dengan segera.' },
-      { q: 'Bolehkah pembeli menempah ujian pandu melalui XDrive?', a: 'Ya. Listing di XDrive mempunyai butang tempahan. Permintaan masuk ke tab Peti Masuk → Tempahan anda. Anda terima, jadual semula, atau batal dari sana.' },
+      { q: 'Bolehkah pembeli menempah ujian pandu melalui Drevo?', a: 'Ya. Listing di Drevo mempunyai butang tempahan. Permintaan masuk ke tab Peti Masuk → Tempahan anda. Anda terima, jadual semula, atau batal dari sana.' },
       { q: 'Saya memerlukan bantuan atau jumpa pepijat', a: 'WhatsApp talian sokongan kami di +601111521742 atau e-mel support@xdrive.my. Sila sertakan tangkapan skrin dan e-mel akaun anda.' },
     ],
   },

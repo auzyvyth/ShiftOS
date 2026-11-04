@@ -18,7 +18,7 @@ function GuideHead({ page, jsonLd }) {
     <Helmet>
       <title>{m.title}</title>
       <meta name="description" content={m.description} />
-      <link rel="canonical" href={`https://xdrive.my${m.path}`} />
+      <link rel="canonical" href={`https://drevo.my${m.path}`} />
       {jsonLd && <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>}
     </Helmet>
   );
@@ -38,7 +38,7 @@ function HowItWorksPage() {
         <div style={{ background: '#111827', padding: '56px 20px 48px', textAlign: 'center' }}>
           <p style={{ color: '#dc2626', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.14em', margin: '0 0 12px' }}>Buyer's Guide</p>
           <h1 style={{ color: 'white', fontSize: 'clamp(1.8rem,5vw,2.8rem)', fontWeight: 800, margin: '0 0 14px', lineHeight: 1.15, fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>
-            How to Buy a Car on XDrive
+            How to Buy a Car on Drevo
           </h1>
           <p style={{ color: '#9ca3af', fontSize: 16, maxWidth: 520, margin: '0 auto 28px', lineHeight: 1.6 }}>
             {GUIDE_META.how.intro}
@@ -104,7 +104,7 @@ function HowItWorksPage() {
           <div style={{ background: '#111827', borderRadius: 16, padding: '32px 28px', marginTop: 48, textAlign: 'center' }}>
             <Star size={24} color="#dc2626" style={{ marginBottom: 12 }} />
             <h3 style={{ color: 'white', fontSize: 20, fontWeight: 700, margin: '0 0 10px', fontFamily: "'Bebas Neue',sans-serif", letterSpacing: '0.03em' }}>
-              Only Certified Dealers on XDrive
+              Only Certified Dealers on Drevo
             </h3>
             <p style={{ color: '#9ca3af', fontSize: 14, maxWidth: 460, margin: '0 auto 24px', lineHeight: 1.6 }}>
               Every dealer is manually verified. No private ads, no scam listings. If a car is listed, it exists — and a real human is ready to sell it.

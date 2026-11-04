@@ -174,8 +174,8 @@ function HpPreview() {
 
 // p5 ─ one listing, four places, no copy-paste
 const CHANNELS = [
-  [Store, "Your storefront", "yourdealer.xdrive.my", "Live"],
-  [Globe, "XDrive marketplace", "xdrive.my", "Live"],
+  [Store, "Your storefront", "yourdealer.drevo.my", "Live"],
+  [Globe, "Drevo marketplace", "drevo.my", "Live"],
   [Send, "Telegram channel", "Auto-posted", "Sent"],
   [Film, "TikTok slides", "5 slides ready", "Ready"],
 ];

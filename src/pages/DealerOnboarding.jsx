@@ -98,7 +98,7 @@ const STEPS = [
   { label: 'PHONE', sub: 'Contact number' },
   { label: 'BUSINESS', sub: 'Dealership info' },
   { label: 'LOCATION', sub: 'State & city' },
-  { label: 'SUBDOMAIN', sub: 'Your XDrive URL' },
+  { label: 'SUBDOMAIN', sub: 'Your Drevo URL' },
   { label: 'SUBMIT', sub: 'Pending review' },
 ];
 
@@ -728,7 +728,7 @@ export default function DealerOnboarding() {
               <>
                 <p className="eo-eyebrow">STEP 6 OF {STEPS.length}</p>
                 <div className="eo-heading">Location</div>
-                <p className="eo-sub">Your location helps buyers find your dealership on xdrive.my.</p>
+                <p className="eo-sub">Your location helps buyers find your dealership on drevo.my.</p>
                 <label className="eo-label">STATE</label>
                 <select className="eo-select" value={form.state}
                   onChange={e => setForm(p => ({ ...p, state: e.target.value, city: '' }))}>
@@ -760,8 +760,8 @@ export default function DealerOnboarding() {
             {step === 6 && (
               <>
                 <p className="eo-eyebrow">STEP 7 OF {STEPS.length}</p>
-                <div className="eo-heading">Your XDrive URL</div>
-                <p className="eo-sub">Choose a unique subdomain for your dealership on xdrive.my. This will be your public storefront URL.</p>
+                <div className="eo-heading">Your Drevo URL</div>
+                <p className="eo-sub">Choose a unique subdomain for your dealership on drevo.my. This will be your public storefront URL.</p>
                 <label className="eo-label">SUBDOMAIN</label>
                 <div className="eo-slug-wrap">
                   <input className="eo-inp" type="text" placeholder="yourbrand" value={form.subdomain}
@@ -774,7 +774,7 @@ export default function DealerOnboarding() {
                   )}
                 </div>
                 <p className="eo-hint">
-                  {form.subdomain ? `${form.subdomain}.xdrive.my` : 'yourbrand.xdrive.my'} &middot; Letters and numbers, 3–30 chars
+                  {form.subdomain ? `${form.subdomain}.drevo.my` : 'yourbrand.drevo.my'} &middot; Letters and numbers, 3–30 chars
                 </p>
                 {err && <div className="eo-error">{err}</div>}
                 <button className="eo-btn" disabled={!canSubContinue || loading}
@@ -800,7 +800,7 @@ export default function DealerOnboarding() {
                     ['DEALERSHIP', form.dealerName],
                     ['TYPE', form.dealerType || '—'],
                     ['STATE', form.state],
-                    ['SUBDOMAIN', form.subdomain + '.xdrive.my'],
+                    ['SUBDOMAIN', form.subdomain + '.drevo.my'],
                   ].map(([k, v]) => (
                     <div key={k} className="eo-review-row">
                       <span className="eo-review-key">{k}</span>

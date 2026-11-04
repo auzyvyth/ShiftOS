@@ -33,7 +33,7 @@ const themes = {
 // DB exception -> plain words. A new code needs a line here.
 function saveError(e) {
   const m = `${e?.message || ""} ${e?.code || ""}`;
-  if (m.includes("new_car_no_price_for_zone")) return "There is no official price for your area yet. XDrive adds it soon; try again later.";
+  if (m.includes("new_car_no_price_for_zone")) return "There is no official price for your area yet. Drevo adds it soon; try again later.";
   if (m.includes("new_car_wrong_brand")) return "This model is not from the brand on your profile. Change your brand in Settings > New cars.";
   if (m.includes("new_car_model_unavailable")) return "This variant was just taken off the price list. Pick another one.";
   if (m.includes("23505") || m.includes("one_card_per_variant")) return "You already have a card for this variant.";
@@ -235,7 +235,7 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
                 </div>
               ))}
             </div>
-            <p style={{ ...sub, fontSize: 11.5, marginTop: 8 }}>{priceBasis(rows[0]?.price_zone)} You can't change it: it's {brand}'s price, and XDrive updates it for every advisor.</p>
+            <p style={{ ...sub, fontSize: 11.5, marginTop: 8 }}>{priceBasis(rows[0]?.price_zone)} You can't change it: it's {brand}'s price, and Drevo updates it for every advisor.</p>
           </>
         )}
       </div>

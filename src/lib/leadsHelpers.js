@@ -107,7 +107,7 @@ export function renderWaTemplate(str, lead, car) {
 // ─── Lead source config ────────────────────────────────────────────────────────
 
 export const SOURCE_CONFIG = {
-  drevo_enquiry: { label: 'XDrive Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
+  drevo_enquiry: { label: 'Drevo Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   enquiry:       { label: 'General Enquiry', bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   walk_in:       { label: 'Walk-In',   bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },
   mudah:         { label: 'Mudah',     bg: 'bg-gray-100', text: 'text-gray-500', border: 'border-gray-200' },

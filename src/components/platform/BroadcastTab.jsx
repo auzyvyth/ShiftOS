@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { PLAN_CONFIG } from "../../utils/planConfig";
 
-// XDrive Ops — in-app broadcast (warnings/announcements). Fans out to every
+// Drevo Ops — in-app broadcast (warnings/announcements). Fans out to every
 // recipient's notification bell via the superadmin-guarded broadcast_notification
 // RPC (one call, server-side fan-out). Email channel is intentionally deferred.
 

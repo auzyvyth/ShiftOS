@@ -22,7 +22,7 @@ const CalculatorPage = () => {
   const { t } = useTranslation();
   const sub = isSubdomain(); // subdomain storefront = dark theme
   // On a dealer subdomain, quotations should be branded to that dealer; on the
-  // root public page there is no seller yet, so the PDF falls back to XDrive.my
+  // root public page there is no seller yet, so the PDF falls back to Drevo.my
   // rather than guessing from whoever happens to be logged in.
   const { tenant } = useTenant();
 
@@ -40,7 +40,7 @@ const CalculatorPage = () => {
       <Helmet>
         <title>{CALC_META.title}</title>
         <meta name="description" content={CALC_META.description} />
-        <link rel="canonical" href="https://xdrive.my/calculator" />
+        <link rel="canonical" href="https://drevo.my/calculator" />
       </Helmet>
 
       {sub ? <Header /> : <MarketplaceHeader />}

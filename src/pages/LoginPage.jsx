@@ -885,7 +885,7 @@ export default function LoginPage() {
                 they are on the wrong page and leaves. It says what the single
                 account actually is instead. */}
             <div className="lr-hero">
-              <p className="lr-hero-eyebrow">One XDrive account</p>
+              <p className="lr-hero-eyebrow">One Drevo account</p>
               <h1 className="lr-hero-title">
                 Buy a car.<br />
                 Sell cars.<br />

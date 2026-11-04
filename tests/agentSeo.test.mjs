@@ -9,20 +9,22 @@ const is = (name, got, want) => {
 };
 const keys = (p) => agentSeoIssues(p).map((i) => i.key);
 
-is('title trims stray spaces', agentPageTitle({ full_name: ' Ali ', city: 'Klang ', state: ' Selangor' }), 'Ali — Car Agent in Klang, Selangor | XDrive');
-is('title without location', agentPageTitle({ full_name: 'Ali' }), 'Ali — Car Agent | XDrive');
-is('title falls back to slug', agentPageTitle({ slug: 'ali88' }), 'ali88 — Car Agent | XDrive');
+is('title trims stray spaces', agentPageTitle({ full_name: ' Ali ', city: 'Klang ', state: ' Selangor' }), 'Ali — Car Agent in Klang, Selangor | Drevo');
+is('title without location', agentPageTitle({ full_name: 'Ali' }), 'Ali — Car Agent | Drevo');
+is('title falls back to slug', agentPageTitle({ slug: 'ali88' }), 'ali88 — Car Agent | Drevo');
+is('business name rides along', agentPageTitle({ full_name: 'Auzyvyth', dealership: 'PremiumMotors', state: 'Kuala Lumpur' }), 'Auzyvyth (PremiumMotors) — Car Agent in Kuala Lumpur | Drevo');
+is('business same as name is not repeated', agentPageTitle({ full_name: 'Ali Motors', dealership: 'ali motors' }), 'Ali Motors — Car Agent | Drevo');
 is('bio collapses whitespace', agentPageDescription({ bio: 'Recon\n\nAlphard  Penang' }), 'Recon Alphard Penang');
 const long = agentPageDescription({ bio: 'x'.repeat(300) });
 is('long bio capped', long.length, DESC_LIMIT);
 is('dealer about_text never used', agentPageDescription({ full_name: 'Ali', about_text: 'DEALER' }).includes('DEALER'), false);
 const proton = [{ condition: 'new', brand: 'Proton' }, { condition: 'new', brand: 'Proton ' }];
-is('all new, one brand = brand advisor', agentPageTitle({ full_name: 'Yazeed', city: 'Selayang', state: 'Selangor' }, proton), 'Yazeed — Proton Sales Advisor in Selayang, Selangor | XDrive');
-is('a used car keeps Car Agent', agentPageTitle({ full_name: 'Ali' }, [...proton, { condition: 'used', brand: 'Honda' }]), 'Ali — Car Agent | XDrive');
-is('two new brands keep Car Agent', agentPageTitle({ full_name: 'Ali' }, [{ condition: 'new', brand: 'Proton' }, { condition: 'new', brand: 'Perodua' }]), 'Ali — Car Agent | XDrive');
-is('no cars keeps Car Agent', agentPageTitle({ full_name: 'Ali' }, []), 'Ali — Car Agent | XDrive');
-is('advisor sentence names the brand', agentPageDescription({ full_name: 'Yazeed', city: 'Selayang', state: 'Selangor' }, 2, proton), 'Yazeed is a Proton sales advisor in Selayang, Selangor on XDrive. Browse 2 cars for sale and message them directly.');
-is('no-bio sentence counts cars', agentPageDescription({ full_name: 'Ali' }, 1), 'Ali is a car sales agent on XDrive. Browse 1 car for sale and message them directly.');
+is('all new, one brand = brand advisor', agentPageTitle({ full_name: 'Yazeed', city: 'Selayang', state: 'Selangor' }, proton), 'Yazeed — Proton Sales Advisor in Selayang, Selangor | Drevo');
+is('a used car keeps Car Agent', agentPageTitle({ full_name: 'Ali' }, [...proton, { condition: 'used', brand: 'Honda' }]), 'Ali — Car Agent | Drevo');
+is('two new brands keep Car Agent', agentPageTitle({ full_name: 'Ali' }, [{ condition: 'new', brand: 'Proton' }, { condition: 'new', brand: 'Perodua' }]), 'Ali — Car Agent | Drevo');
+is('no cars keeps Car Agent', agentPageTitle({ full_name: 'Ali' }, []), 'Ali — Car Agent | Drevo');
+is('advisor sentence names the brand', agentPageDescription({ full_name: 'Yazeed', city: 'Selayang', state: 'Selangor' }, 2, proton), 'Yazeed is a Proton sales advisor in Selayang, Selangor on Drevo. Browse 2 cars for sale and message them directly.');
+is('no-bio sentence counts cars', agentPageDescription({ full_name: 'Ali' }, 1), 'Ali is a car sales agent on Drevo. Browse 1 car for sale and message them directly.');
 
 is('clean profile has no issues', keys({ full_name: 'Ali Hassan', city: 'Klang', state: 'Selangor', bio: 'Recon Alphard' }), []);
 is('lowercase name flagged', keys({ full_name: 'diara', city: 'Klang', state: 'Selangor', bio: 'x' }), ['name']);

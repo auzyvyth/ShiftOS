@@ -75,7 +75,7 @@ export function useSavedCars() {
       // device list, so the redirect fallbacks (email, in-app browsers) still
       // save it: fetchSavedIds merges that list on the first load after
       // sign-in. Removing never needs an account. A dealer subdomain keeps
-      // device-only saves: sign-in lives on xdrive.my and its session cannot
+      // device-only saves: sign-in lives on drevo.my and its session cannot
       // reach <sub>.xdrive.my.
       // userId is null until the first load lands, so a tap before then reads
       // the session live rather than sending a signed-in buyer to sign in.

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
-// XDrive Ops — client error monitoring. Reads two superadmin-guarded RPCs
+// Drevo Ops — client error monitoring. Reads two superadmin-guarded RPCs
 // (get_error_summary / get_error_logs). Errors are captured by src/utils/logError.js
 // from the global unhandledrejection handler + the React error boundary.
 

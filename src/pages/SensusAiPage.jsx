@@ -9,7 +9,7 @@ import * as S from "../config/sensusCopy";
 
 // SENSUS-1: landing page for Sensus AI, presented by the owner as a Sensus
 // associate. Deliberately SEPARATE from the marketplace: no MarketplaceHeader,
-// no XDrive/Drevo branding, one action (book a demo). Copy lives in
+// no Drevo/Drevo branding, one action (book a demo). Copy lives in
 // src/config/sensusCopy.js, shared with api/og.js.
 //
 // A request goes through the definer RPC `sensus_request_demo` (migration

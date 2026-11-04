@@ -1,5 +1,5 @@
 // MOBILE-6: a relative fetch('/api/...') resolves against the page's own
-// origin. On the web that's xdrive.my, so it just works. Inside the native
+// origin. On the web that's drevo.my, so it just works. Inside the native
 // Capacitor app the page is served from capacitor://localhost (iOS) or
 // https://localhost (Android) — the same relative path resolves there
 // instead and 404s, since none of the Vercel /api routes are bundled into

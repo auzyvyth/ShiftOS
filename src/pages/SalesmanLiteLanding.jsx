@@ -112,8 +112,8 @@ export default function SalesmanLiteLanding() {
         <meta property="og:title" content={t.seoTitle} />
         <meta property="og:description" content={t.seoDesc} />
         <meta property="og:url" content={CANON} />
-        <meta property="og:site_name" content="XDrive" />
-        <meta property="og:image" content="https://xdrive.my/og-default.jpg" />
+        <meta property="og:site_name" content="Drevo" />
+        <meta property="og:image" content="https://drevo.my/og-default.jpg" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={t.seoTitle} />
         <meta name="twitter:description" content={t.seoDesc} />

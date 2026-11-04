@@ -76,6 +76,6 @@ t('no offer text = no empty section', () => {
   const s = buildNewCarCaption({ listing: { ...listing, description: '  ' }, info, link });
   assert.doesNotMatch(s, /DARI SAYA/);
 });
-t('no "XDrive" anywhere in the caption', () => assert.doesNotMatch(text, /xdrive/i));
+t('no "Drevo" anywhere in the caption', () => assert.doesNotMatch(text, /drevo|xdrive/i));
 
 console.log(`\n${n} passed`);

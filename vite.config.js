@@ -50,7 +50,7 @@ export default defineConfig({
 			registerType: 'prompt',
 				injectRegister: false,
 			manifest: {
-				name: 'ShiftOS by XDrive',
+				name: 'ShiftOS by Drevo',
 				short_name: 'ShiftOS',
 				description: 'Car dealership management platform',
 				lang: 'en',

@@ -6,7 +6,7 @@
 //
 // Every number in the copy comes from the rows passed in. Nothing here may
 // state a price, rate or fact the data does not hold (see CLAUDE.md, AI trust
-// boundary + legal rules): prices are "asking prices", counts are "on XDrive".
+// boundary + legal rules): prices are "asking prices", counts are "on Drevo".
 //
 // Grouping goes through canonicalModel (src/utils/modelKey.js) — the same
 // resolver the showroom model filter uses — on top of the DB trigger
@@ -174,10 +174,10 @@ function listStates(states) {
 export function hubCopy(brand, model) {
   if (!brand) {
     return {
-      title: "Used Cars for Sale in Malaysia by Brand & Model | XDrive",
-      description: "Browse used and recon cars for sale on XDrive by brand and model. Kereta terpakai dijual — compare asking prices and contact sellers directly.",
+      title: "Used Cars for Sale in Malaysia by Brand & Model | Drevo",
+      description: "Browse used and recon cars for sale on Drevo by brand and model. Kereta terpakai dijual — compare asking prices and contact sellers directly.",
       h1: "Used cars by brand and model",
-      intro: "Every brand and model with cars for sale on XDrive right now.",
+      intro: "Every brand and model with cars for sale on Drevo right now.",
       faqs: [],
     };
   }
@@ -189,17 +189,17 @@ export function hubCopy(brand, model) {
 
   const faqs = [
     {
-      q: `How much is a used ${name} on XDrive?`,
-      a: `${h.count} used ${name} ${h.count === 1 ? "is" : "are"} listed on XDrive right now${price}${h.avgPrice && h.count > 1 ? `, averaging ${rm(h.avgPrice)}` : ""}. These are asking prices set by each seller — confirm the final price with the seller.`,
+      q: `How much is a used ${name} on Drevo?`,
+      a: `${h.count} used ${name} ${h.count === 1 ? "is" : "are"} listed on Drevo right now${price}${h.avgPrice && h.count > 1 ? `, averaging ${rm(h.avgPrice)}` : ""}. These are asking prices set by each seller — confirm the final price with the seller.`,
     },
   ];
   if (yearsTxt) {
-    faqs.push({ q: `Which years of ${name} are for sale?`, a: `Listings on XDrive cover ${yearsTxt} ${name} models.` });
+    faqs.push({ q: `Which years of ${name} are for sale?`, a: `Listings on Drevo cover ${yearsTxt} ${name} models.` });
   }
   if (model && h.byYear.length > 1) {
     faqs.push({
       q: `How much is a used ${name} by model year?`,
-      a: `Asking prices on XDrive right now: ${h.byYear.map(yearLine).join("; ")}.`,
+      a: `Asking prices on Drevo right now: ${h.byYear.map(yearLine).join("; ")}.`,
     });
   }
   const conds = Object.entries(h.conditions).sort((a, b) => b[1] - a[1]);
@@ -212,12 +212,12 @@ export function hubCopy(brand, model) {
   faqs.push({ q: `Where are the ${name} for sale located?`, a: `Cars are listed in ${listStates(h.states)}.` });
   if (!model && brand.models.length) {
     faqs.push({
-      q: `Which ${brand.brand} models are for sale on XDrive?`,
+      q: `Which ${brand.brand} models are for sale on Drevo?`,
       a: brand.models.map((m) => `${m.model} (${m.count})`).join(", ") + ".",
     });
   }
   if (h.sold > 0) {
-    faqs.push({ q: `Have ${name} been sold on XDrive before?`, a: `Yes — ${h.sold} ${name} ${h.sold === 1 ? "has" : "have"} been sold through XDrive.` });
+    faqs.push({ q: `Have ${name} been sold on Drevo before?`, a: `Yes — ${h.sold} ${name} ${h.sold === 1 ? "has" : "have"} been sold through Drevo.` });
   }
 
   // "Recon" is a big Malaysian search word, but it only goes in the title when
@@ -225,10 +225,10 @@ export function hubCopy(brand, model) {
   const recon = (h.conditions.recon || 0) > 0 ? " & Recon" : "";
 
   return {
-    title: `Used${recon} ${name} for Sale in Malaysia | XDrive`,
-    description: `${h.count} used ${name} ${carWord} for sale${price}${yearsTxt ? `, ${yearsTxt}` : ""}. ${name} terpakai dijual di ${listStates(h.states)}. Compare asking prices and contact sellers directly on XDrive.`,
+    title: `Used${recon} ${name} for Sale in Malaysia | Drevo`,
+    description: `${h.count} used ${name} ${carWord} for sale${price}${yearsTxt ? `, ${yearsTxt}` : ""}. ${name} terpakai dijual di ${listStates(h.states)}. Compare asking prices and contact sellers directly on Drevo.`,
     h1: `Used ${name} for sale`,
-    intro: `${h.count} ${name} ${carWord} for sale on XDrive${price}${yearsTxt ? ` (${yearsTxt})` : ""}, in ${listStates(h.states)}.`,
+    intro: `${h.count} ${name} ${carWord} for sale on Drevo${price}${yearsTxt ? ` (${yearsTxt})` : ""}, in ${listStates(h.states)}.`,
     faqs,
   };
 }

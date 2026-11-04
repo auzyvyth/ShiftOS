@@ -673,7 +673,7 @@ export default function HeroCarousel({ siteName, waNumber, compact = false }) {
   const [heroQuery, setHeroQuery] = useState("");
   // Same nav-only pattern as MarketplacePage's hero search (runHeroSearch):
   // the hero just carries the query, CarListingPage owns filtering + the full
-  // filter UI. /cars is the subdomain route, /showroom is xdrive.my's.
+  // filter UI. /cars is the subdomain route, /showroom is drevo.my's.
   const submitHeroSearch = (e) => {
     e.preventDefault();
     const val = heroQuery.trim();

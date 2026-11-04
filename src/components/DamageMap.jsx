@@ -13,7 +13,7 @@ const typeCfg = (code) => DAMAGE_TYPES.find(t => t.code === code) || DAMAGE_TYPE
 const markerR = (sev) => 5 + (sev || 1) * 2;
 
 /* ── Surface palettes. The map sits on light AND dark surfaces
-      (CarForm + dealer dashboard + XDrive car page are light, dealer
+      (CarForm + dealer dashboard + Drevo car page are light, dealer
       storefront car page + platform review are dark), so the caller says
       which one via `theme`. ─────────────────────────────────────────── */
 const PALETTES = {

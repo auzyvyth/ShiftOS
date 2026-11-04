@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: 'Bagaimana kira ansuran kereta 2026?',
-    a: 'Gunakan formula baki berkurangan dengan EIR. Kalkulator pinjaman XDrive di /calculator mengira ansuran bulanan dan jumlah faedah berdasarkan EIR atas baki berkurangan. Ia anggaran sahaja; kadar sebenar datang daripada bank anda.',
+    a: 'Gunakan formula baki berkurangan dengan EIR. Kalkulator pinjaman Drevo di /calculator mengira ansuran bulanan dan jumlah faedah berdasarkan EIR atas baki berkurangan. Ia anggaran sahaja; kadar sebenar datang daripada bank anda.',
   },
 ];
 
@@ -47,9 +47,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'ShiftOS by XDrive' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'ShiftOS by Drevo' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -72,15 +72,15 @@ export default function AktaSewaBeli2026Article() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -119,7 +119,7 @@ export default function AktaSewaBeli2026Article() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>ShiftOS by XDrive</span>
+              <span>ShiftOS by Drevo</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI. Ia panduan umum, bukan nasihat undang-undang atau kewangan.
@@ -177,7 +177,7 @@ export default function AktaSewaBeli2026Article() {
             <section>
               <h2 style={H2}>Contoh Kiraan: Kenapa 3.5% Flat Bukan 3.5% EIR</h2>
               <p style={P}>
-                Ilustrasi di bawah menggunakan pinjaman RM60,000 selama 7 tahun (84 bulan). Angka ini dikira dengan formula yang sama yang digunakan oleh kalkulator XDrive. Ia contoh matematik sahaja, bukan sebut harga mana-mana bank.
+                Ilustrasi di bawah menggunakan pinjaman RM60,000 selama 7 tahun (84 bulan). Angka ini dikira dengan formula yang sama yang digunakan oleh kalkulator Drevo. Ia contoh matematik sahaja, bukan sebut harga mana-mana bank.
               </p>
               <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, overflowX: 'auto' }}>
                 <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse', minWidth: 300 }}>
@@ -289,10 +289,10 @@ export default function AktaSewaBeli2026Article() {
             <section>
               <h2 style={H2}>Kira Ansuran Kereta 2026 Dengan Kaedah Baru</h2>
               <p style={P}>
-                <Link to="/calculator" style={{ color: '#dc2626', fontWeight: 600 }}>Kalkulator pinjaman kereta XDrive</Link> mengira ansuran bulanan dan jumlah faedah menggunakan EIR atas baki berkurangan, iaitu kaedah di bawah akta yang dipinda. Masukkan harga kereta, deposit, tempoh dan kadar EIR yang bank beri. Jika bank masih memberi anda angka flat, tukar dahulu ke EIR atau minta bank nyatakan EIR-nya, kerana memasukkan angka flat terus ke dalam kalkulator EIR akan memberi ansuran yang terlalu rendah.
+                <Link to="/calculator" style={{ color: '#dc2626', fontWeight: 600 }}>Kalkulator pinjaman kereta Drevo</Link> mengira ansuran bulanan dan jumlah faedah menggunakan EIR atas baki berkurangan, iaitu kaedah di bawah akta yang dipinda. Masukkan harga kereta, deposit, tempoh dan kadar EIR yang bank beri. Jika bank masih memberi anda angka flat, tukar dahulu ke EIR atau minta bank nyatakan EIR-nya, kerana memasukkan angka flat terus ke dalam kalkulator EIR akan memberi ansuran yang terlalu rendah.
               </p>
               <p style={P}>
-                Hasilnya anggaran sahaja. Kelulusan, kadar dan ansuran sebenar hanya datang daripada bank atau penyedia pembiayaan. Bila anda sudah tahu bajet bulanan, anda boleh <Link to="/showroom" style={{ color: '#dc2626' }}>lihat kereta di showroom XDrive</Link> dalam julat harga itu.
+                Hasilnya anggaran sahaja. Kelulusan, kadar dan ansuran sebenar hanya datang daripada bank atau penyedia pembiayaan. Bila anda sudah tahu bajet bulanan, anda boleh <Link to="/showroom" style={{ color: '#dc2626' }}>lihat kereta di showroom Drevo</Link> dalam julat harga itu.
               </p>
             </section>
 
@@ -327,7 +327,7 @@ export default function AktaSewaBeli2026Article() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Kira Ansuran Anda Dalam EIR</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Kalkulator XDrive menggunakan kaedah baki berkurangan. Anggaran sahaja; kadar sebenar daripada bank anda.
+                Kalkulator Drevo menggunakan kaedah baki berkurangan. Anggaran sahaja; kadar sebenar daripada bank anda.
               </p>
               <Link to="/calculator" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Buka Kalkulator

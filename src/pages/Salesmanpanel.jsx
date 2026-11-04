@@ -124,7 +124,7 @@ const LEAD_SOURCE_LABEL = {
   chat: "In-app chat",
   whatsapp: "WhatsApp",
   enquiry: "Enquiry form",
-  drevo_enquiry: "XDrive enquiry",
+  drevo_enquiry: "Drevo enquiry",
   walk_in: "Walk-in",
   referral: "Referral",
   manual: "Added manually",
@@ -1335,7 +1335,7 @@ Rules:
 
  const handleLogout = async () => {
  await supabase.auth.signOut();
- window.location.href = "https://xdrive.my/login";
+ window.location.href = "https://drevo.my/login";
  };
 
  // Send a test Telegram message to the salesman's own chat id, via the dealer's
@@ -2443,11 +2443,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ ...CARD, display: "flex", flexDirection: isMobile ? "column" : "row", gap: 10, alignItems: isMobile ? "stretch" : "center", marginBottom: 16 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Your mini page</p>
- <p style={{ margin: "3px 0 0", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>xdrive.my/s/{profile.slug}</p>
+ <p style={{ margin: "3px 0 0", fontSize: 13, color: "#cbd5e1", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>drevo.my/s/{profile.slug}</p>
  </div>
  <div style={{ display: "flex", gap: 8 }}>
  <button
- onClick={() => { navigator.clipboard.writeText(`https://xdrive.my/s/${profile.slug}`); toast.success("Mini page link copied — share it with buyers!"); }}
+ onClick={() => { navigator.clipboard.writeText(`https://drevo.my/s/${profile.slug}`); toast.success("Mini page link copied — share it with buyers!"); }}
  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontWeight: 500, fontFamily: "inherit" }}
  >
  <Copy size={12} /> Copy
@@ -2456,7 +2456,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  href={`/s/${profile.slug}`}
  target="_blank"
  rel="noopener noreferrer"
- title="Opens on this environment (preview/staging shows this build; xdrive.my is the real address to share)"
+ title="Opens on this environment (preview/staging shows this build; drevo.my is the real address to share)"
  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flex: isMobile ? 1 : "none", fontSize: 12, padding: "8px 14px", borderRadius: 8, background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.25)", color: "#93c5fd", textDecoration: "none", fontWeight: 600, fontFamily: "inherit" }}
  >
  <ExternalLink size={12} /> Preview my page <ChevronRight size={12} style={{ opacity: 0.5 }} />
@@ -7259,7 +7259,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  <div style={{ maxWidth: 560 }}>
  <div style={{ marginBottom: 24 }}>
  <p style={{ fontSize: 17, fontWeight: 700, color: '#f1f5f9', margin: '0 0 4px' }}>Profile Settings</p>
- <p style={{ fontSize: 12, color: '#4b5563', margin: 0 }}>Changes appear on your public XDrive profile page.</p>
+ <p style={{ fontSize: 12, color: '#4b5563', margin: 0 }}>Changes appear on your public Drevo profile page.</p>
  </div>
 
  <div style={cardStyle}>

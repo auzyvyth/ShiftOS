@@ -116,7 +116,7 @@ const estimateFuelCost = (cc, dealerConsumption, distanceKm) => {
    badge, so under MARKET_SAMPLE_FLOOR the verdict and the slider are withheld and
    only the raw average is shown, labelled as thin.
 
-   The wording changed too. compute_market_avg averages OTHER XDRIVE LISTINGS —
+   The wording changed too. compute_market_avg averages OTHER DREVO LISTINGS —
    asking prices, not sale prices, from a catalogue of 69 cars — so "market
    average" claimed knowledge of the Malaysian market that the query does not
    have. It now says what it actually compares against, and the method note
@@ -149,9 +149,9 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
   const ratio = price / avg;
   const band = ratio <= 0.93 ? "below" : ratio >= 1.07 ? "above" : "fair";
   const cfg = {
-    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Priced below similar XDrive listings" },
-    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "In line with similar XDrive listings" },
-    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Priced above similar XDrive listings" },
+    below: { color: isXdrive ? "#15803d" : "#4ade80", Icon: TrendingDown, label: "Priced below similar Drevo listings" },
+    fair:  { color: isXdrive ? "#1d4ed8" : "#93c5fd", Icon: Minus,        label: "In line with similar Drevo listings" },
+    above: { color: isXdrive ? "#b45309" : "#fbbf24", Icon: TrendingUp,   label: "Priced above similar Drevo listings" },
   }[band];
   const diff = Math.round(Math.abs(price - avg));
   // map ratio across a 0.85–1.15 window onto the track
@@ -160,20 +160,20 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
 
   const method = car.market_precise
     ? [
-        `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on XDrive for the same model,`,
+        `Average asking price of ${n} other listing${n === 1 ? '' : 's'} on Drevo for the same model,`,
         car.market_mileage_match === false
           ? 'within two years of this one, any mileage.'
           : 'within a year of this one and within 35,000 km.',
-        'Asking prices, not sale prices, and only cars listed on XDrive — not the whole Malaysian market.',
+        'Asking prices, not sale prices, and only cars listed on Drevo — not the whole Malaysian market.',
       ].join(' ')
-    : 'Average asking price of similar XDrive listings — asking prices, not sale prices, and only cars listed on XDrive, not the whole Malaysian market.';
+    : 'Average asking price of similar Drevo listings — asking prices, not sale prices, and only cars listed on Drevo, not the whole Malaysian market.';
 
   if (thin) {
     return (
       <div style={{ marginBottom: 16 }}>
         <details>
           <summary style={{ fontSize: 12, color: th.textSec, cursor: "pointer", listStyle: "none", lineHeight: 1.6 }}>
-            Similar XDrive listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong> · price detail
+            Similar Drevo listings average <strong style={{ color: th.text }}>RM {avg.toLocaleString("en-MY")}</strong> · price detail
           </summary>
           <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>
             {`Only ${n} comparable ${n === 1 ? 'car was' : 'cars were'} found, too few to call this price high or low. ${method}`}
@@ -200,7 +200,7 @@ const MarketPriceTag = ({ car, isXdrive, th }) => {
       <details style={{ marginTop: 8 }}>
         <summary style={{ fontSize: 11, color: th.textMuted, cursor: "pointer", listStyle: "none" }}>
           Average <strong style={{ color: th.textMuted }}>RM {avg.toLocaleString("en-MY")}</strong>
-          {` across ${n} similar XDrive listings · how is this worked out?`}
+          {` across ${n} similar Drevo listings · how is this worked out?`}
         </summary>
         <p style={{ fontSize: 11, color: th.textMuted, margin: "6px 0 0", lineHeight: 1.6 }}>{method}</p>
       </details>
@@ -353,7 +353,7 @@ function parseTags(raw) {
 }
 
 /* Every accent on this page was picked against the dark subdomain theme. On the
-   white XDrive card the same values collapse — #4ade80 on white is 1.7:1, #f87171
+   white Drevo card the same values collapse — #4ade80 on white is 1.7:1, #f87171
    is 2.9:1 — which is why the "theme leak" bugs keep reappearing one hardcode at a
    time. Same hue, darker on light, resolved at the point of use. */
 const LIGHT_ACCENT = {
@@ -420,7 +420,7 @@ function PuspakomDates({ b5, b7, color }) {
      is worse than no block, and inventing a "trading since" would be a claim,
      not a fact.
    - Self-reported and platform-checked facts are labelled differently. Years
-     trading is the dealer's own number; the verified line is XDrive's check.
+     trading is the dealer's own number; the verified line is Drevo's check.
    Rendered once and used at both breakpoints, deliberately: the two hardcoded
    copies of the sidebar are why the theme leaks in TRUST-8 exist. */
 /* TRUST-10 — the asking price is not the amount a buyer parts with, and the page
@@ -652,7 +652,7 @@ function DealerIdentity({ dealer, dealerName, th, isXdrive, anchorId, onCall }) 
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 7, marginTop: 10 }}>
             <ShieldCheck size={14} strokeWidth={2.5} style={{ color: accent, flexShrink: 0, marginTop: 1 }} />
             <p style={{ fontSize: 12, color: th.textSec, margin: 0, lineHeight: 1.6 }}>
-              Verified by XDrive — SSM certificate and the owner&apos;s IC were checked
+              Verified by Drevo — SSM certificate and the owner&apos;s IC were checked
               {dealer.verified_at ? ` on ${fmtCdpDate(dealer.verified_at)}` : ''}.
             </p>
           </div>
@@ -932,7 +932,7 @@ function useCarSchema(listing, dealer) {
       image: listing.images ?? undefined,
       url: dealer?.subdomain
         ? getStorefrontUrl(dealer.subdomain, `/cars/${listing.slug}`)
-        : `https://xdrive.my/showroom/${listing.slug}`,
+        : `https://drevo.my/showroom/${listing.slug}`,
       offers: {
         "@type": "Offer",
         price: listing.selling_price,
@@ -1046,7 +1046,7 @@ export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
   useMarketplaceTracking(isXdrive);
 
-  /* ── Light-theme colour tokens (xdrive.my only) ── */
+  /* ── Light-theme colour tokens (drevo.my only) ── */
   const th = isXdrive ? {
     pageBg:    '#F6F7F9',
     card:      '#ffffff',
@@ -2072,9 +2072,9 @@ export default function CarDetailPage() {
   const sellerPageUrl = dealer?.subdomain
     ? getStorefrontUrl(dealer.subdomain)
     : dealer?.slug
-      ? `https://xdrive.my/s/${dealer.slug}`
+      ? `https://drevo.my/s/${dealer.slug}`
       : salesmanProfile?.slug
-        ? `https://xdrive.my/s/${salesmanProfile.slug}`
+        ? `https://drevo.my/s/${salesmanProfile.slug}`
         : null;
   const sellerPageLabel = salesmanProfile && !dealer ? "Visit Agent's Page" : "Visit Dealer's Page";
   // The sidebar had two green buttons opening the SAME enquiry modal — a generic
@@ -2166,7 +2166,7 @@ export default function CarDetailPage() {
   const imgCount = images.length;
   const prevIdx = (activeIdx - 1 + imgCount) % imgCount;
   const nextIdx = (activeIdx + 1) % imgCount;
-  const siteName = dealer?.site_name || dealer?.dealership || "XDrive";
+  const siteName = dealer?.site_name || dealer?.dealership || "Drevo";
   // Chassis/generation code (e.g. "G82") so buyers searching "m4 g82" match us.
   const chassis = car ? getChassisCode(car.brand, car.model, car.year, car.variant) : null;
   const chassisSuffix = chassis ? ` (${chassis})` : "";
@@ -2190,14 +2190,14 @@ export default function CarDetailPage() {
         />
         {(() => {
           const desc = car
-            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""}${chassisSuffix} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Listed on XDrive.`
+            ? `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ""}${chassisSuffix} for sale${car.state ? ` in ${car.state}` : ' in Malaysia'}. RM ${Number(car.selling_price).toLocaleString("en-MY")}. ${car.mileage ? `${Number(car.mileage).toLocaleString("en-MY")}km` : ""}${car.transmission ? `, ${car.transmission}` : ""}${car.fuel_type ? `, ${car.fuel_type}` : ""}. Listed on Drevo.`
             : "";
-          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my';
+          const origin = typeof window !== 'undefined' ? window.location.origin : 'https://drevo.my';
           const img = car?.images?.[0] || `${origin}/og-default.jpg`;
           const url = car
             ? (dealer?.subdomain
                 ? getStorefrontUrl(dealer.subdomain, `/cars/${car.slug}`)
-                : `https://xdrive.my/showroom/${car.slug}`)
+                : `https://drevo.my/showroom/${car.slug}`)
             : origin;
           // react-helmet can't traverse a Fragment child (dev invariant crash,
           // tags dropped) — return a flat keyed array instead.
@@ -2205,7 +2205,7 @@ export default function CarDetailPage() {
             <meta key="d" name="description" content={desc} />,
             <meta key="ot" property="og:type" content="website" />,
             <meta key="ol" property="og:locale" content="en_MY" />,
-            <meta key="os" property="og:site_name" content="XDrive" />,
+            <meta key="os" property="og:site_name" content="Drevo" />,
             <meta key="oti" property="og:title" content={car ? `${car.year} ${car.brand} ${car.model} | ${siteName}` : siteName} />,
             <meta key="od" property="og:description" content={desc} />,
             <meta key="oi" property="og:image" content={img} />,
@@ -2229,9 +2229,9 @@ export default function CarDetailPage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Home", "item": typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my' },
-            { "@type": "ListItem", "position": 2, "name": "Showroom", "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my'}/showroom` },
-            { "@type": "ListItem", "position": 3, "name": carTitle, "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://xdrive.my'}/showroom/${car.slug}` }
+            { "@type": "ListItem", "position": 1, "name": "Home", "item": typeof window !== 'undefined' ? window.location.origin : 'https://drevo.my' },
+            { "@type": "ListItem", "position": 2, "name": "Showroom", "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://drevo.my'}/showroom` },
+            { "@type": "ListItem", "position": 3, "name": carTitle, "item": `${typeof window !== 'undefined' ? window.location.origin : 'https://drevo.my'}/showroom/${car.slug}` }
           ]
         })}</script>
       </Helmet>
@@ -2462,7 +2462,7 @@ export default function CarDetailPage() {
         @media (max-width: 480px) { .cdp-arrow { display: none; } }
       `}</style>
 
-      {/* ── XDrive light-theme overrides ── */}
+      {/* ── Drevo light-theme overrides ── */}
       {isXdrive && <style>{`
         body { background: #F6F7F9 !important; }
         .cdp-root { background: #F6F7F9 !important; color: #0F172A !important; }
@@ -2501,7 +2501,7 @@ export default function CarDetailPage() {
           Same landmark to a screen reader, and it gives the header's skip link
           a target on the highest-traffic buyer page. */}
       <div className="cdp-root" id="main-content" role="main" tabIndex={-1}>
-        {/* Desktop on xdrive.my gets the real site header (logo, showroom,
+        {/* Desktop on drevo.my gets the real site header (logo, showroom,
             search). It used to have only a floating back arrow, so a buyer
             landing from Google had one way out: back to Google. Phones keep the
             photo-first floating header. display:contents keeps .mh-root sticky

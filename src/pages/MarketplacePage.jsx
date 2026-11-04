@@ -658,7 +658,7 @@ export default function MarketplacePage() {
   };
 
   const pageTitle = (() => {
-    if (hotDeals) return "Hot Deal Cars in Malaysia — Best Prices | XDrive";
+    if (hotDeals) return "Hot Deal Cars in Malaysia — Best Prices | Drevo";
     const parts = [];
     if (condition === 'recon') parts.push('Recon');
     else if (condition === 'local') parts.push('Local');
@@ -666,7 +666,7 @@ export default function MarketplacePage() {
     if (bodyType) parts.push(bodyType + 's');
     const carType = parts.length ? parts.join(' ') + ' ' : '';
     const loc = state ? ` in ${state}, Malaysia` : ' in Malaysia';
-    return `Used ${carType}Cars for Sale${loc} | XDrive`;
+    return `Used ${carType}Cars for Sale${loc} | Drevo`;
   })();
 
   const pageDesc = (() => {
@@ -688,29 +688,29 @@ export default function MarketplacePage() {
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
-        <link rel="canonical" href="https://xdrive.my" />
+        <link rel="canonical" href="https://drevo.my" />
         <meta property="og:type"        content="website" />
-        <meta property="og:url"         content="https://xdrive.my" />
+        <meta property="og:url"         content="https://drevo.my" />
         <meta property="og:locale"      content="en_MY" />
-        <meta property="og:site_name"   content="XDrive" />
+        <meta property="og:site_name"   content="Drevo" />
         <meta property="og:title"       content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
-        <meta property="og:image"       content="https://xdrive.my/og-default.jpg" />
+        <meta property="og:image"       content="https://drevo.my/og-default.jpg" />
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:title"       content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
-        <meta name="twitter:image"       content="https://xdrive.my/og-default.jpg" />
+        <meta name="twitter:image"       content="https://drevo.my/og-default.jpg" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "XDrive",
-          "url": "https://xdrive.my",
+          "name": "Drevo",
+          "url": "https://drevo.my",
           "description": "Malaysia's car marketplace. New, used and recon cars from dealers and agents.",
           "potentialAction": {
             "@type": "SearchAction",
             "target": {
               "@type": "EntryPoint",
-              "urlTemplate": "https://xdrive.my?q={search_term_string}"
+              "urlTemplate": "https://drevo.my?q={search_term_string}"
             },
             "query-input": "required name=search_term_string"
           }
@@ -1468,7 +1468,7 @@ export default function MarketplacePage() {
             <p className="mp-agent-eyebrow">For car agents</p>
             <h2 className="mp-agent-h">Sell cars for a living? List yours here, free.</h2>
             <p className="mp-agent-sub">
-              Get your own XDrive page — every car you have, one link you can send a buyer,
+              Get your own Drevo page — every car you have, one link you can send a buyer,
               with a WhatsApp button on each listing. No fees, no credit card.
             </p>
           </div>

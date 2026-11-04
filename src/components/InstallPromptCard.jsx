@@ -11,7 +11,7 @@ import { Download, Share, X } from 'lucide-react';
 // gate; by the time this mounts the decision to show has already been made.
 // The name is ShiftOS on both surfaces because there is ONE manifest and it
 // installs one app: short_name 'ShiftOS' (vite.config.js) is what the home
-// screen will read, so promising a buyer "XDrive" here would hand them an icon
+// screen will read, so promising a buyer "Drevo" here would hand them an icon
 // called something else. Only the reason changes — an operator installs to work
 // out of it, a buyer installs to be reachable.
 const COPY = {

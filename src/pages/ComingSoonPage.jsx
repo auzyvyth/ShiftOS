@@ -13,7 +13,7 @@ import MarketplaceFooter from '../components/MarketplaceFooter';
 export default function ComingSoonPage({ title, description }) {
   return (
     <>
-      <Helmet><title>{title} | XDrive</title></Helmet>
+      <Helmet><title>{title} | Drevo</title></Helmet>
       <MarketplaceHeader />
       <MarketplaceSubNav />
       <main style={{ background: '#080C14', minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 20px', fontFamily: "'Outfit',sans-serif" }}>

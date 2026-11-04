@@ -69,10 +69,10 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   const { search } = useLocation();
   const isHotDeals = new URLSearchParams(search).get('hot_deals') === 'true';
 
-  const partnerWa = `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with XDrive / ShiftOS for my dealership. Can we discuss?")}`;
+  const partnerWa = `https://wa.me/${settings.support_whatsapp}?text=${encodeURIComponent("Hi! I'm interested in partnering with Drevo / ShiftOS for my dealership. Can we discuss?")}`;
 
   const BROWSE = [
-    { to: '/showroom',                  Icon: LayoutGrid, label: 'All Cars',       desc: 'Every car on XDrive' },
+    { to: '/showroom',                  Icon: LayoutGrid, label: 'All Cars',       desc: 'Every car on Drevo' },
     { to: '/showroom?condition=used',   Icon: Car,        label: 'Used Cars',      desc: 'Inspected pre-owned' },
     { to: '/showroom?condition=new',    Icon: Sparkles,   label: 'New Cars',       desc: 'Brand-new from showrooms' },
     { to: '/showroom?condition=recon',  Icon: RefreshCw,  label: 'Recon / Import', desc: 'Graded, verified imports' },
@@ -86,7 +86,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
     { to: '/shiftos#pricing',  Icon: Tag,             label: 'Dealer Pricing',      desc: 'Plans from RM299/mo' },
     // SENSUS-1: owner's call (2026-10-17) to list the Sensus AI page here.
     { to: '/sensus-ai',        Icon: Bot,             label: 'Dealership AI Agent', desc: 'Answers enquiries 24/7' },
-    { href: partnerWa,         Icon: Handshake,       label: 'Partner with XDrive', desc: 'Grow your business with us' },
+    { href: partnerWa,         Icon: Handshake,       label: 'Partner with Drevo', desc: 'Grow your business with us' },
   ];
   const GUIDES = [
     { to: '/articles',                                  Icon: BookOpen,  label: 'Semua Panduan',            desc: 'All guides & articles' },
@@ -99,7 +99,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
   // its own top-nav links for these — different constraint, more room.
   // `to`, never `href`: the sheet renders any href item as
   // <a target="_blank" rel="noopener noreferrer"> (that branch exists for the
-  // wa.me partner link), so "Hot Deals" was opening xdrive.my in a SECOND TAB.
+  // wa.me partner link), so "Hot Deals" was opening drevo.my in a SECOND TAB.
   const BROWSE_MOBILE = [
     ...BROWSE,
     ...(hasHotDeals ? [{ to: '/showroom?hot_deals=true', Icon: Flame, label: 'Hot Deals' }] : []),
@@ -435,13 +435,13 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
 
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar" ref={barRef}>
-          <Link to="/" className="mh-logo" aria-label="XDrive home">
-            <img src="/logo-xdrive.png" alt="XDrive" className="mh-logo-img" width="349" height="58" />
+          <Link to="/" className="mh-logo" aria-label="Drevo home">
+            <img src="/logo-xdrive.png" alt="Drevo" className="mh-logo-img" width="349" height="58" />
           </Link>
 
           {/* LEFT — links + mega dropdowns */}
           <nav className="mh-nav">
-            <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'XDrive', title: stats.listings ? `${stats.listings.toLocaleString()}+ cars, one place` : 'Every car, one place', sub:'New, used and recon from dealers and agents across Malaysia.', to:'/showroom', cta:'Browse all' }} />
+            <MegaNav id="browse" label="Browse Cars" items={BROWSE} accent={{ eyebrow:'Drevo', title: stats.listings ? `${stats.listings.toLocaleString()}+ cars, one place` : 'Every car, one place', sub:'New, used and recon from dealers and agents across Malaysia.', to:'/showroom', cta:'Browse all' }} />
             {hasHotDeals && (
               /* <Link>, not <a href>: an <a> to an in-app route reloads the
                  whole SPA. */

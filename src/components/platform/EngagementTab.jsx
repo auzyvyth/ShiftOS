@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import InfoHint from "../ui/InfoHint";
 
-// XDrive Ops — app engagement, as opposed to FunnelTab's marketplace-buyer
+// Drevo Ops — app engagement, as opposed to FunnelTab's marketplace-buyer
 // traffic. Reads the superadmin-guarded RPC get_platform_engagement so no
 // broad client SELECT touches push_subscriptions (owner-only RLS — a
 // superadmin .from() read comes back an EMPTY ARRAY WITH NO ERROR, same trap

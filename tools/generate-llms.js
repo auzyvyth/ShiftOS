@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Generates public/llms.txt — a curated, high-signal guide to XDrive for LLMs
+// Generates public/llms.txt — a curated, high-signal guide to Drevo for LLMs
 // and AI search engines (ChatGPT, Perplexity, Claude, Gemini). This follows the
 // llmstxt.org convention: an H1, a summary blockquote, then curated sections of
 // links with real descriptions.
@@ -20,7 +20,7 @@ import { PLAN_CONFIG } from "../src/utils/planConfig.js";
 const LITE_CAP = PLAN_CONFIG.salesman_lite.listingCap;
 const PREMIUM_CAP = PLAN_CONFIG.salesman_full.listingCap;
 
-const SITE = "https://xdrive.my";
+const SITE = "https://drevo.my";
 
 // Public, indexable articles (Malay SEO content). Keep in sync with src/App.jsx.
 const ARTICLES = [
@@ -38,18 +38,18 @@ const ARTICLES = [
   ["/articles/cara-jadi-salesman-kereta-freelance", "How to become a car salesman or freelance car agent in Malaysia: pay structures, skills and finding buyers."],
   ["/articles/akta-sewa-beli-2026-eir-pinjaman-kereta", "What the Hire-Purchase (Amendment) Act 2026 changed for car loans: flat rate and Rule of 78 abolished, EIR on reducing balance."],
   ["/articles/beli-kereta-ev-terpakai-apa-perlu-semak", "What to check before buying a used EV in Malaysia: battery health, warranty transfer, 2026 EV road tax, charging."],
-  ["/articles/harga-alphard-recon-malaysia", "Recon Toyota Alphard prices in Malaysia: asking prices by year on XDrive, 2.5 SC (AH30) vs 2.5 Z (AH40), the official UMW Toyota price, and what to check before paying a deposit."],
-  ["/articles/harga-harrier-recon-malaysia", "Recon Toyota Harrier prices in Malaysia: 2.0 G asking prices on XDrive, S/G/Z grades, and the official UMW Toyota Harrier 2.5 Hybrid compared."],
+  ["/articles/harga-alphard-recon-malaysia", "Recon Toyota Alphard prices in Malaysia: asking prices by year on Drevo, 2.5 SC (AH30) vs 2.5 Z (AH40), the official UMW Toyota price, and what to check before paying a deposit."],
+  ["/articles/harga-harrier-recon-malaysia", "Recon Toyota Harrier prices in Malaysia: 2.0 G asking prices on Drevo, S/G/Z grades, and the official UMW Toyota Harrier 2.5 Hybrid compared."],
 ];
 
-const CONTENT = `# XDrive
+const CONTENT = `# Drevo
 
-> XDrive is a Malaysian used-car platform with two sides: a public marketplace at
-> xdrive.my where buyers browse used, recon and new cars from local dealers and agents, and ShiftOS,
+> Drevo is a Malaysian used-car platform with two sides: a public marketplace at
+> drevo.my where buyers browse used, recon and new cars from local dealers and agents, and ShiftOS,
 > a used-car dealer management system (DMS) that dealers and salesmen use to run
 > their inventory, leads CRM, sales records, salesman commission and profit analytics.
 
-XDrive serves three audiences: car **buyers** (the marketplace), used-car **dealers**
+Drevo serves three audiences: car **buyers** (the marketplace), used-car **dealers**
 (the ShiftOS software, sold on monthly plans), and individual **salesmen** (a free
 and a low-cost paid tier to manage their own listings, leads and commission). The
 software is purpose-built for Malaysian workflows: Puspakom B5/B7 inspections, JPJ
@@ -58,7 +58,7 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 ## For car buyers
 - [Marketplace](${SITE}/): Browse used, recon and new cars for sale in Malaysia from local dealers and agents, with asking prices and seller details.
 - [Showroom / all listings](${SITE}/showroom): Full searchable inventory with filters for price, mileage, year, transmission, condition and location.
-- [Used cars by brand and model](${SITE}/used-cars): Every brand and model currently for sale on XDrive, each with its own page (e.g. /used-cars/toyota/alphard) listing live cars, the asking-price range, model years and locations.
+- [Used cars by brand and model](${SITE}/used-cars): Every brand and model currently for sale on Drevo, each with its own page (e.g. /used-cars/toyota/alphard) listing live cars, the asking-price range, model years and locations.
 - [Compare cars](${SITE}/compare): Compare up to 4 used cars side by side on price, monthly instalment, mileage, running costs and an overall value score.
 - [Loan calculator](${SITE}/calculator): Estimate monthly hire-purchase instalments for a used car (interest, tenure, down payment).
 
@@ -67,11 +67,11 @@ pindah milik (ownership transfer), hire-purchase (HP) financing and F&I add-ons.
 - What it replaces: Excel stock sheets, WhatsApp lead chats, manual JPJ/Puspakom tracking, printed paperwork and scattered Telegram posts — in one platform.
 ${ORDER.map((slug) => `- [${FEATURES[slug].kicker}](${SITE}/features/${slug}): ${FEATURES[slug].seo}`).join("\n")}
 - [Plans & pricing](${SITE}/plans): Every salesman and dealer plan side by side, with listing caps and seats.
-- Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a xdrive.my subdomain.
+- Key modules: real per-unit gross profit, auto customer records on a won deal, post-sale handover board (loan settlement, insurance, Puspakom B5/B7, JPJ pindah milik, road tax, geran, handover), road tax & insurance renewal reminders, and a public dealer storefront on a drevo.my subdomain.
 
 ## For salesmen
-- [XDrive for salesmen](${SITE}/for-salesmen): For Malaysian car salesmen who sell on TikTok and Facebook Live. Salesman Premium (RM35/month, first 7 days free) includes Live presentation: an instalment calculator that shows every car numbered, with price, deposit, loan and the monthly over 9, 7 and 5 years, updating when the deposit changes. Premium also adds a sorted call list with follow-up messages drafted, follow-up reminders and call logging, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, commission tracking and a Performance view. Salesman Lite (free): a page at xdrive.my/s/yourname, up to ${LITE_CAP} cars on the marketplace (each checked before it goes public), buyer enquiries by WhatsApp, in-app chat and booking requests, alerts on new leads, and a simple lead list with stages. The page itself is in Bahasa Melayu first, with an English switch.
-- [Example salesman page](${SITE}/s/premiummotors): XDrive's example Salesman Premium page, showing what a buyer sees when a salesman shares their link.
+- [Drevo for salesmen](${SITE}/for-salesmen): For Malaysian car salesmen who sell on TikTok and Facebook Live. Salesman Premium (RM35/month, first 7 days free) includes Live presentation: an instalment calculator that shows every car numbered, with price, deposit, loan and the monthly over 9, 7 and 5 years, updating when the deposit changes. Premium also adds a sorted call list with follow-up messages drafted, follow-up reminders and call logging, a loan desk, the post-sale handover checklist, AI captions and chat reply drafts, commission tracking and a Performance view. Salesman Lite (free): a page at drevo.my/s/yourname, up to ${LITE_CAP} cars on the marketplace (each checked before it goes public), buyer enquiries by WhatsApp, in-app chat and booking requests, alerts on new leads, and a simple lead list with stages. The page itself is in Bahasa Melayu first, with an English switch.
+- [Example salesman page](${SITE}/s/premiummotors): Drevo's example Salesman Premium page, showing what a buyer sees when a salesman shares their link.
 
 ## Guides & articles
 - [Guides](${SITE}/guides): Practical guides for Malaysian used-car buyers and dealers.
@@ -89,9 +89,9 @@ ${ARTICLES.map(([url, desc]) => `- [${url.split("/").pop()}](${SITE}${url}): ${d
 - Dealer Group — RM2,999/month: unlimited listings and seats (multi-branch).
 
 ## About
-- XDrive is based in Malaysia and built for the Malaysian used-car market.
+- Drevo is based in Malaysia and built for the Malaysian used-car market.
 - The marketplace lives at ${SITE}; each dealer also gets a storefront at <dealer>.xdrive.my.
-- ShiftOS is the dealer/salesman software product; XDrive is the consumer marketplace brand.
+- ShiftOS is the dealer/salesman software product; Drevo is the consumer marketplace brand.
 `;
 
 function main() {

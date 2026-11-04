@@ -4,7 +4,7 @@
 // (Amendment) Act 2026 requires for agreements from 1 June 2026, so the page
 // says so in the words people search for.
 export const CALC_META = {
-  title: "Kalkulator Loan Kereta EIR 2026 — Car Loan Calculator Malaysia | XDrive",
+  title: "Kalkulator Loan Kereta EIR 2026 — Car Loan Calculator Malaysia | Drevo",
   description:
     "Kira ansuran bulanan kereta ikut kadar faedah efektif (EIR) atas baki berkurangan, cara yang diwajibkan Akta Sewa Beli (Pindaan) 2026 bagi perjanjian baharu. Free car loan calculator for Malaysia.",
 };

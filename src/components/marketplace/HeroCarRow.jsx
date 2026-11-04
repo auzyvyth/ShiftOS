@@ -160,7 +160,7 @@ export default function HeroCarRow({ eyebrow, title, cars, viewAllHref, autoAdva
           {set.map((car) => {
             // A car with no photos yet made cdnImg() return undefined, which the
             // template literal below stringified as the literal text "url(undefined)"
-            // — the browser then requested https://xdrive.my/undefined (caught by the
+            // — the browser then requested https://drevo.my/undefined (caught by the
             // SPA catch-all rewrite, served index.html, wasted a request every load).
             // .mp-carrow-img already carries a neutral background-color fallback
             // (MarketplacePage.jsx:813), so just omit backgroundImage when there's no photo.

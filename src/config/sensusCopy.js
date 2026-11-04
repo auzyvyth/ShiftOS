@@ -3,7 +3,7 @@
 // a dealer reads and the text Google indexes can never drift.
 //
 // Sensus AI is a SEPARATE company's product (Sensus DWC LLC); the owner presents
-// it as an associate. Nothing here may say or imply it is an XDrive / Drevo
+// it as an associate. Nothing here may say or imply it is an Drevo / Drevo
 // product. Every figure below is Sensus's own (their deck, approved by Sensus for
 // public use, 2026-10-16) and is labelled as Sensus's projection, never as a
 // guaranteed result. No price is stated: it is quoted in the demo (owner's call).
