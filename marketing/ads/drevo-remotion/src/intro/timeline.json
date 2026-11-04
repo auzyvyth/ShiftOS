@@ -1,0 +1,15 @@
+{
+  "_": "The intro ad (briefs/intro.md). Same shape as src/timeline.json: [scene, seconds, chapter card before it, seconds its clock runs under the card]. Reused Premium-ad scenes keep their Premium lengths, because their exits are timed off those.",
+  "card": 0.75,
+  "scenes": [
+    ["hook", 9.0, false, 0],
+    ["budget", 5.25, true, 0.4],
+    ["contact", 3.5, true, 0.3],
+    ["page", 4.5, true, 0.2],
+    ["posters", 3.5, true, 0.4],
+    ["report", 4.0, true, 0.3],
+    ["stats", 3.0, true, 0.6],
+    ["sources", 3.5, true, 0.3],
+    ["cta", 4.5, false, 0]
+  ]
+}

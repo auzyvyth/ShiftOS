@@ -6,7 +6,7 @@ import { LISTINGS, infoFor } from './fixture.js';
 const ok = (data, extra = {}) => Promise.resolve({ data, error: null, count: 0, ...extra });
 function query(result) {
   const q = {
-    then: (a, b) => ok(result).then(a, b),
+    then: (a, b) => ok(result, { count: Array.isArray(result) ? result.length : 0 }).then(a, b),
     maybeSingle: () => ok(Array.isArray(result) ? result[0] ?? null : result),
     single: () => ok(Array.isArray(result) ? result[0] ?? null : result),
   };

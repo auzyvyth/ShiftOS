@@ -61,10 +61,11 @@ const Excel = ({ t, lang }) => {
   );
 };
 
-export const HookCalc = ({ lang }) => {
+// `copy` overrides the hook's words for other ads (the intro ad asks the viewer's question).
+export const HookCalc = ({ lang, copy }) => {
   const f = useCurrentFrame();
   const t = f / FPS;
-  const C = COPY[lang];
+  const C = { ...COPY[lang], ...copy };
   const clicks = (lang === 'en' ? calcEn : calcMs).clicks;
 
   // Excel leaves: tips over, blurs and falls out of the light
