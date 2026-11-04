@@ -1,0 +1,12 @@
+{
+  "card": 0.75,
+  "scenes": [
+    ["hook", 0, 4.0, false],
+    ["forget", 4.0, 3.0, false],
+    ["dates", 7.0, 4.0, true],
+    ["remind", 11.0, 4.5, true],
+    ["next", 15.5, 3.5, true],
+    ["cta", 19.0, 3.75, false]
+  ],
+  "dur": 22.75
+}

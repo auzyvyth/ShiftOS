@@ -219,6 +219,15 @@ Project ID: lemdkdizdlcirhbzqlos
 - Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
 
+## Marketing videos (ads) — use the `drevo-ad` skill
+Any ad or promo video: load `.claude/skills/drevo-ad/SKILL.md`. It points at the docs in
+`marketing/ads/drevo-remotion/`: `STYLE.md` (owner's rules on one page: 60% white / 30% red / 10%
+black, hard-cut red chapter card at every topic change, real app footage only, Remotion), `LESSONS.md`
+(mistakes per ad + the approval steps: script -> stills -> first 5 s -> full render), `DESIGN.md`
+(look, safe area, components), `AnimationStyle.md` (motion + sound) and `README.md` (commands). That
+folder holds both ads' source and is the template; reuse it. The finished MP4s are NOT in main/staging
+(66 MB in a public repo's history): they live on branch `ccr-b7b37fd0-l5oo8c`, `final/`. New rules go into those files, not here.
+
 ## System map — `docs/ARCHITECTURE.md`
 The one drawing of the whole system (Mermaid): surfaces, the lead-to-sale flow,
 notifications, scheduled jobs, sign-in routing, deploy path. Read it first in a new
