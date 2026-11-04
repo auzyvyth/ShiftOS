@@ -215,6 +215,11 @@ Project ID: lemdkdizdlcirhbzqlos
   photo + cover are one card; no read-only username box (the Google preview shows the link).
 
 ### Anti-slop UI rules (non-negotiable)
+- **A section never stretches across empty space on a wide screen (owner, 2026-11-04).** When
+  a card, strip or banner sits in a row with space beside it on desktop, cap it at HALF the width
+  (`max-width: 50%` from 900px up), never full width, unless the owner asks for it to fill. Phone
+  stays full width. First applied: `InviteStrip` ("Desktop is too long"). Check every new desktop
+  section against this before shipping.
 - NEVER put a decorative coloured left accent bar / vertical side-line on list rows or cards to signal status or category — it reads as generic AI slop. Convey state with a small pill/tag, a status dot, or a very subtle full-row background tint (stage/status hue at ~5-10% alpha) instead.
 - Keep colours low-saturation and DON'T stack multiple saturated accents in one component (e.g. a row of green + purple + red + amber buttons). One primary accent per card; push secondary/rarely-used actions into an overflow (⋮) menu rather than lining them all up.
 - Prefer one clear primary action visible; hide the long tail behind a kebab/overflow menu.
