@@ -14,7 +14,7 @@ const RATIO = 1124 / 1000;           // the presenter's desktop stage, as record
 const TAKE_LEN = 9.0;
 
 // A take that plays from `from` (take seconds) at `rate`, then holds its last frame.
-const Take = ({ src, takeT }) => {
+export const Take = ({ src, takeT }) => {
   const last = sec(TAKE_LEN) - 1;
   const fr = Math.min(last, Math.max(0, Math.round(takeT * FPS)));
   return (
@@ -25,7 +25,7 @@ const Take = ({ src, takeT }) => {
 };
 
 // ---------- the Excel sheet SAs run their lives on (a recreation, same GR86, flat rate) ----------
-const Excel = ({ t, lang }) => {
+export const Excel = ({ t, lang }) => {
   const typed = ['', '1', '17', '175', '1,750', '17,500'][[1.0, 1.3, 1.6, 1.9, 2.2].filter((k) => t >= k).length];
   const ok = t >= 2.7;
   const row = (label, value, opts = {}) => (

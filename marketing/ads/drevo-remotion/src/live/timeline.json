@@ -1,0 +1,13 @@
+{
+  "_": "Daily post: the whole Live presentation (briefs/live.md). Open loop: 'what is this SA using?' is answered ~10 s before the end. [scene, seconds, chapter card before it, seconds its clock runs under the card].",
+  "card": 0.75,
+  "scenes": [
+    ["hook", 3.0, false, 0],
+    ["stakes", 4.0, false, 0],
+    ["clue1", 4.0, false, 0],
+    ["clue2", 4.0, false, 0],
+    ["clue3", 4.25, false, 0],
+    ["answer", 6.0, true, 0.2],
+    ["cta", 4.0, false, 0]
+  ]
+}
