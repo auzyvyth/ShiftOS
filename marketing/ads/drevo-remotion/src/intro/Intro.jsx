@@ -4,7 +4,7 @@
 // already show the real product; new screens are real components on sample data
 // (harness/intro.jsx -> public/real/intro-<view>-<lang>.png, positions in rects.json).
 import React from 'react';
-import { AbsoluteFill, Sequence, Img, staticFile, useCurrentFrame, interpolate } from 'remotion';
+import { AbsoluteFill, Sequence, Img, Audio, staticFile, useCurrentFrame, interpolate } from 'remotion';
 import { FPS, sec, pop, clamp, ease } from '../lib';
 import { Ambient, Headline, Fine, Chip, glass, FONT, RED, INK, MUTED } from '../ui';
 import { Card } from '../scenes/Card';
@@ -190,7 +190,7 @@ const SCENES = {
 // Seconds at which each scene has settled: one still each (tools/stills.cjs).
 export const I_STILLS = Object.fromEntries(Object.keys(I_TL).map((k) => [k, +(I_TL[k][1] - (k === 'hook' ? 1.2 : 0.6)).toFixed(2)]));
 
-export const IntroAd = ({ lang = 'ms' }) => {
+export const IntroAd = ({ lang = 'ms', audio = true }) => {
   const C = COPY[lang];
   return (
     <AbsoluteFill style={{ background: '#fff', overflow: 'hidden' }}>
@@ -204,6 +204,7 @@ export const IntroAd = ({ lang = 'ms' }) => {
           <Card k={k} lang={lang} now={C.cards[k][0]} topic={C.cards[k][1]} num={C.cards[k][2]} />
         </Sequence>
       ))}
+      {audio && <Audio src={staticFile(`audio/intro-${lang}.wav`)} />}
     </AbsoluteFill>
   );
 };

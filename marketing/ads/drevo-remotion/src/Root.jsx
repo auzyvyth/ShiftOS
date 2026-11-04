@@ -9,9 +9,9 @@ export const Root = () => (
   <>
     <Composition id="DrevoAd-ms" component={Ad} durationInFrames={sec(DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms', audio: true }} />
     <Composition id="DrevoAd-en" component={Ad} durationInFrames={sec(DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en', audio: true }} />
-    <Composition id="Renewals-ms" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms' }} />
-    <Composition id="Renewals-en" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
-    <Composition id="Intro-ms" component={IntroAd} durationInFrames={sec(I_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms' }} />
-    <Composition id="Intro-en" component={IntroAd} durationInFrames={sec(I_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
+    <Composition id="Renewals-ms" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms', audio: true }} />
+    <Composition id="Renewals-en" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en', audio: true }} />
+    <Composition id="Intro-ms" component={IntroAd} durationInFrames={sec(I_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms', audio: true }} />
+    <Composition id="Intro-en" component={IntroAd} durationInFrames={sec(I_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en', audio: true }} />
   </>
 );

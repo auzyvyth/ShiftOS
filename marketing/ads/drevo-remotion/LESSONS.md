@@ -58,3 +58,7 @@ mistakes, so the next one starts from them instead of repeating them.
    Found only while writing `DESIGN.md`; fix in the next render (move it to about y 1380).
 10. **An ad needs its own sound script.** The first full-render request found the renewals ad silent.
     Write the audio cues as soon as the timing is fixed, from the same timing file.
+
+## Intro ad (2026-11-04)
+- Sound for a new ad = a new `make-audio-<ad>.cjs` reading that ad's timeline; reused scenes keep the cue offsets
+  `make-audio.cjs` gives them, shifted to the new scene clock (`at - pre`). Rendered 46.1s, -13.6 LUFS, no black frames.
