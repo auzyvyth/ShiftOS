@@ -85,16 +85,19 @@ const Ask = ({ text, at = 0.15, top }) => {
 };
 const zIn = (f) => interpolate(f / FPS, [0.2, 0.7], [0, 1], { ...clamp, easing: ease });
 
-// 0-3 s: the question. The real screen sits behind it, too blurred to read.
+// 0-3 s: the question over a sharp close-up of a real tap (owner, 2026-11-04: the blurred screen read
+// as broken). The zoom keeps the top bar out of frame, so what the screen is stays the question.
 const Hook = ({ lang }) => {
   const f = useCurrentFrame(); const t = f / FPS;
-  const p = interpolate(t, [0, 1.2], [0, 1], { ...clamp, easing: ease });
+  const calc = (lang === 'en' ? calcEn : calcMs).clicks;
+  const p = pop(f, 0, FPS, { damping: 16, stiffness: 260, mass: 0.6 });
+  const z = 1.9 * (1.12 - 0.12 * Math.min(1, p));
   return (
     <>
-      <div style={{ position: 'absolute', inset: 0, opacity: 0.5 * p, filter: 'blur(26px)' }}>
-        <Device x={50} y={760} w={980} ratio={RATIO} glow={0.6}><Take src={`takes/calc-${lang}.mp4`} takeT={2 + t} /></Device>
+      <Headline lines={COPY[lang].hook} at={0} out={LEN('hook') - 0.3} top={260} size={80} instant />
+      <div style={{ position: 'absolute', inset: 0 }}>
+        <Zoom src={`takes/calc-${lang}.mp4`} clicks={calc} takeT={1.4 + t * 0.5} fx={0.5} fy={0.33} z={z} top={640} height={600} />
       </div>
-      <Headline lines={COPY[lang].hook} at={0.05} out={LEN('hook') - 0.3} top={300} size={80} />
     </>
   );
 };
