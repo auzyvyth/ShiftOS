@@ -3170,7 +3170,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
 
   // ── Export ───────────────────────────────────────────────────────────────
   const exportName = (idx) => {
-    const d = (theme.watermarkText || listing?.dealer_name || "XDrive").replace(
+    const d = (theme.watermarkText || listing?.dealer_name || "Drevo").replace(
       /\s+/g,
       "",
     );
@@ -3230,7 +3230,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     for (let i = 0; i < total; i++) zip.file(exportName(i), await toBlob(i));
     const out = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(out);
-    const d = (theme.watermarkText || "XDrive").replace(/\s+/g, "");
+    const d = (theme.watermarkText || "Drevo").replace(/\s+/g, "");
     const c = `${listing?.brand || ""}${listing?.model || ""}`.replace(
       /\s+/g,
       "",

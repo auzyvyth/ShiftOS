@@ -60,7 +60,7 @@ export default function FeaturePage() {
       <Helmet>
         <title>{featureMetaTitle(data)}</title>
         <meta name="description" content={data.seo} />
-        <link rel="canonical" href={`https://xdrive.my/features/${slug}`} />
+        <link rel="canonical" href={`https://drevo.my/features/${slug}`} />
       </Helmet>
 
       <style>{FP_CSS}</style>
@@ -74,7 +74,7 @@ export default function FeaturePage() {
             <Logo />
             <div className="fp-nav-links">
               <Link to="/shiftos#features" className="fp-nav-link">All features</Link>
-              <a href="https://xdrive.my" target="_blank" rel="noopener noreferrer" className="fp-nav-link">Marketplace</a>
+              <a href="https://drevo.my" target="_blank" rel="noopener noreferrer" className="fp-nav-link">Marketplace</a>
               <Link to="/shiftos#pricing" className="fp-btn-primary" style={{ padding: "9px 18px", fontSize: 13 }}>
                 Start free <ArrowRight size={15} />
               </Link>
@@ -242,10 +242,10 @@ export default function FeaturePage() {
               <Link to="/shiftos#features" className="fp-nav-link">Features</Link>
               <Link to="/shiftos#pricing" className="fp-nav-link">Pricing</Link>
               <Link to="/login" className="fp-nav-link">Log in</Link>
-              <Link to="/" className="fp-nav-link">xdrive.my</Link>
+              <Link to="/" className="fp-nav-link">drevo.my</Link>
             </div>
           </div>
-          <p style={{ fontSize: 12, color: "#1f2937", marginTop: 20 }}>© {new Date().getFullYear()} XDrive · ShiftOS</p>
+          <p style={{ fontSize: 12, color: "#1f2937", marginTop: 20 }}>© {new Date().getFullYear()} Drevo · ShiftOS</p>
         </footer>
       </div>
     </div>

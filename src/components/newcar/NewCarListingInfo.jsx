@@ -197,12 +197,12 @@ export default function NewCarListingInfo({ listingId, sellerName, th }) {
           {sellerName || "This seller"} is a {info.brand} sales advisor
           {info.advisor_verified && (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: "#15803d" }}>
-              <BadgeCheck size={14} /> Verified by XDrive
+              <BadgeCheck size={14} /> Verified by Drevo
             </span>
           )}
         </p>
         <p style={{ margin: "8px 0 0", fontSize: 13, color: th.textSec, lineHeight: 1.6 }}>
-          Brand new, 0 km. The price is {info.brand}'s own price list, not set by {first}, and XDrive updates it when {info.brand} changes it.
+          Brand new, 0 km. The price is {info.brand}'s own price list, not set by {first}, and Drevo updates it when {info.brand} changes it.
           {" "}{priceBasis(info.price_zone, info.effective_from)}
         </p>
       </div>

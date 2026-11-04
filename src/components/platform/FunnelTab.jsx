@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 
-// XDrive Ops — platform-wide marketplace funnel.
+// Drevo Ops — platform-wide marketplace funnel.
 // Reads two superadmin-guarded RPCs (get_marketplace_funnel / get_marketplace_top)
 // so no broad client SELECT touches analytics_events or leads.
 
@@ -98,7 +98,7 @@ export default function FunnelTab() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
         <div>
           <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#f1f5f9" }}>Marketplace Funnel</p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Platform-wide traffic → engagement → leads across every storefront on xdrive.my</p>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#6b7280" }}>Platform-wide traffic → engagement → leads across every storefront on drevo.my</p>
         </div>
         <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: 3 }}>
           {RANGES.map(r => (

@@ -33,8 +33,8 @@ const FAQS = [
     a: 'Tidak wajib, tetapi jika mahu pasang wallbox, panduan TNB menyatakan anda perlu melantik pendawai atau kontraktor elektrik berdaftar dengan Suruhanjaya Tenaga untuk semak jumlah beban elektrik rumah. Pengecas mesti guna litar khas sendiri dari papan agihan (DB). Jika jumlah beban melebihi 10 kW, bekalan perlu dinaik taraf kepada tiga fasa melalui permohonan kepada TNB.',
   },
   {
-    q: 'Adakah XDrive memeriksa bateri kereta EV yang dijual?',
-    a: 'Tidak. XDrive ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran.',
+    q: 'Adakah Drevo memeriksa bateri kereta EV yang dijual?',
+    a: 'Tidak. Drevo ialah platform jual beli; kami tidak memeriksa kesihatan bateri mana-mana kereta. Pembeli perlu minta laporan bateri sendiri dari penjual atau pusat servis sah jenama sebelum membuat bayaran.',
   },
 ];
 
@@ -47,9 +47,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'ShiftOS by XDrive' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'ShiftOS by Drevo' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -71,15 +71,15 @@ export default function EvTerpakaiArticle() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -118,7 +118,7 @@ export default function EvTerpakaiArticle() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>ShiftOS by XDrive</span>
+              <span>ShiftOS by Drevo</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI.
@@ -251,7 +251,7 @@ export default function EvTerpakaiArticle() {
                 </ul>
               </div>
               <p style={{ ...P, marginTop: 12 }}>
-                Anda boleh lihat EV yang sedang dijual di <Link to="/showroom?fuel_type=Electric" style={{ color: '#dc2626' }}>showroom XDrive</Link> (pilih jenis bahan api Electric), dan kira anggaran bayaran bulanan dengan <Link to="/calculator" style={{ color: '#dc2626' }}>kalkulator pinjaman kereta</Link>. Ingat, XDrive ialah platform jual beli dan tidak memeriksa kesihatan bateri mana-mana kereta. Semakan bateri tetap tanggungjawab anda sebagai pembeli.
+                Anda boleh lihat EV yang sedang dijual di <Link to="/showroom?fuel_type=Electric" style={{ color: '#dc2626' }}>showroom Drevo</Link> (pilih jenis bahan api Electric), dan kira anggaran bayaran bulanan dengan <Link to="/calculator" style={{ color: '#dc2626' }}>kalkulator pinjaman kereta</Link>. Ingat, Drevo ialah platform jual beli dan tidak memeriksa kesihatan bateri mana-mana kereta. Semakan bateri tetap tanggungjawab anda sebagai pembeli.
               </p>
             </section>
 
@@ -305,7 +305,7 @@ export default function EvTerpakaiArticle() {
             </section>
 
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
-              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari EV Terpakai Di XDrive</p>
+              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Cari EV Terpakai Di Drevo</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
                 Tapis showroom ikut jenis bahan api Electric, kemudian hubungi penjual terus. Minta laporan bateri sebelum anda bayar deposit.
               </p>

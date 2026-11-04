@@ -10,7 +10,7 @@ import ProfileLoadError from "../components/ProfileLoadError";
 // breathe instead of fighting Saved Cars and Saved Searches for scroll space,
 // and so /account can show just a strip + unread count.
 export default function AccountMessagesPage() {
-  useEffect(() => { document.title = 'Messages | XDrive'; }, []);
+  useEffect(() => { document.title = 'Messages | Drevo'; }, []);
   const { checking, loadFailed } = useBuyerGuard();
 
   if (loadFailed) return <ProfileLoadError />;

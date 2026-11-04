@@ -67,7 +67,7 @@ const COPY = {
   seller: {
     ask: 'Get notified the moment a buyer messages you, even with this closed.',
     done: 'Done. New buyer messages will reach this device.',
-    ios: 'To get alerts when a buyer messages you, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    ios: 'To get alerts when a buyer messages you, add Drevo to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so new messages will only show up here.',
   },
   // The panel-wide variant. Same mechanism, but it is not standing above a
@@ -80,7 +80,7 @@ const COPY = {
   admin: {
     ask: 'Turn on alerts for this device — signups, listings awaiting review, ID checks and errors.',
     done: 'Done. Platform alerts will reach this device.',
-    ios: 'To get platform alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    ios: 'To get platform alerts on your phone, add Drevo to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so platform alerts cannot reach this device.',
   },
   // Dealer dashboard. Only the dealer's own account gets these (every
@@ -90,13 +90,13 @@ const COPY = {
   dealer_home: {
     ask: 'Turn on notifications so new enquiries, bookings and buyer messages reach this device. Leads are lost when nobody hears them.',
     done: 'Done. New enquiries, bookings and messages will reach this device.',
-    ios: 'To get alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    ios: 'To get alerts on your phone, add Drevo to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so nothing can reach this device. Allow them in the site settings.',
   },
   seller_home: {
     ask: 'Turn on notifications so a new enquiry, booking or message reaches your phone.',
     done: 'Done. New enquiries, bookings and messages will reach this device.',
-    ios: 'To get alerts on your phone, add XDrive to your home screen first — Share, then Add to Home Screen.',
+    ios: 'To get alerts on your phone, add Drevo to your home screen first — Share, then Add to Home Screen.',
     denied: 'Notifications are blocked for this site in your browser settings, so nothing can reach this device.',
   },
 };

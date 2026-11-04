@@ -4,7 +4,7 @@ import InfoHint from "../ui/InfoHint";
 import { useModalHistory } from "../../hooks/useModalHistory";
 import { purgeKycFiles, sweepOrphanKycFiles } from "../../utils/kycPurge";
 
-// XDrive Ops — identity approval queue. Every self-signup seller (dealer / solo
+// Drevo Ops — identity approval queue. Every self-signup seller (dealer / solo
 // salesman) lands here 'pending'. They are NOT locked out while they wait: since
 // 20260912b/c they use their dashboard and list cars (a salesman's car waits in the
 // cars queue; a dealer's is published directly). Approving is the identity check;

@@ -6,7 +6,7 @@ import MarketplaceHeader from '../../components/MarketplaceHeader';
 import MarketplaceFooter from '../../components/MarketplaceFooter';
 
 // Every price below is either an official launch price (sourced) or an asking
-// price on XDrive on the snapshot date. Nothing here promises a price, loan
+// price on Drevo on the snapshot date. Nothing here promises a price, loan
 // rate or approval. The live numbers are on the hub page, which this links to.
 const ARTICLE = {
   slug: 'harga-harrier-recon-malaysia',
@@ -23,7 +23,7 @@ const HUB = '/used-cars/toyota/harrier';
 const FAQS = [
   {
     q: 'Berapa harga Toyota Harrier recon di Malaysia?',
-    a: 'Pada 13 Oktober 2026, sembilan Harrier 2.0 G recon tahun 2025 diiklankan di XDrive dengan harga diminta RM182,000 hingga RM185,000, jarak 2,570 hingga 15,624 km. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Harrier XDrive.',
+    a: 'Pada 13 Oktober 2026, sembilan Harrier 2.0 G recon tahun 2025 diiklankan di Drevo dengan harga diminta RM182,000 hingga RM185,000, jarak 2,570 hingga 15,624 km. Ini harga yang diminta oleh penjual, bukan harga muktamad. Harga terkini ada di halaman Toyota Harrier Drevo.',
   },
   {
     q: 'Apa beza Harrier gred S, G dan Z?',
@@ -38,8 +38,8 @@ const FAQS = [
     a: 'Harrier recon tidak datang dengan waranti pengeluar UMW Toyota. Waranti dalam iklan datang dari dealer atau syarikat pihak ketiga. Minta buku waranti dan baca apa yang dilindungi sebelum bayar.',
   },
   {
-    q: 'Adakah XDrive memeriksa Harrier yang dijual?',
-    a: 'Tidak. XDrive ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.',
+    q: 'Adakah Drevo memeriksa Harrier yang dijual?',
+    a: 'Tidak. Drevo ialah platform jual beli dan tidak memeriksa mana-mana kereta. Minta laporan lelong asal, rekod servis dan buat pemeriksaan sendiri sebelum membayar deposit.',
   },
 ];
 
@@ -52,9 +52,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'ShiftOS by XDrive' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'ShiftOS by Drevo' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -83,15 +83,15 @@ export default function HargaHarrierReconArticle() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -130,7 +130,7 @@ export default function HargaHarrierReconArticle() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>ShiftOS by XDrive</span>
+              <span>ShiftOS by Drevo</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI.
@@ -141,10 +141,10 @@ export default function HargaHarrierReconArticle() {
 
             <section>
               <p style={P}>
-                <strong style={STRONG}>Jawapan ringkas:</strong> pada 13 Oktober 2026, Harrier 2.0 G recon tahun 2025 di XDrive diminta antara <strong style={STRONG}>RM182,000 dan RM185,000</strong>. Harrier rasmi UMW Toyota hari ini ialah 2.5 Hybrid pada <strong style={STRONG}>RM289,000</strong> atas jalan semasa pelancaran. Jadi soalan sebenar bukan &quot;recon atau rasmi&quot;, tetapi &quot;petrol 2.0 recon atau hibrid 2.5 rasmi&quot;.
+                <strong style={STRONG}>Jawapan ringkas:</strong> pada 13 Oktober 2026, Harrier 2.0 G recon tahun 2025 di Drevo diminta antara <strong style={STRONG}>RM182,000 dan RM185,000</strong>. Harrier rasmi UMW Toyota hari ini ialah 2.5 Hybrid pada <strong style={STRONG}>RM289,000</strong> atas jalan semasa pelancaran. Jadi soalan sebenar bukan &quot;recon atau rasmi&quot;, tetapi &quot;petrol 2.0 recon atau hibrid 2.5 rasmi&quot;.
               </p>
               <p style={P}>
-                Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <Link to={HUB} style={LINK}>semua Toyota Harrier dijual di XDrive</Link>.
+                Harga di bawah ialah harga yang diminta oleh penjual pada tarikh itu, bukan harga pasaran rasmi dan bukan harga muktamad. Untuk senarai terkini, lihat <Link to={HUB} style={LINK}>semua Toyota Harrier dijual di Drevo</Link>.
               </p>
             </section>
 
@@ -168,7 +168,7 @@ export default function HargaHarrierReconArticle() {
                 </table>
               </div>
               <p style={{ ...P, fontSize: 13, marginTop: 10 }}>
-                Sumber: iklan aktif di XDrive pada 13 Oktober 2026, {SNAPSHOT.reduce((a, r) => a + r.n, 0)} kereta, semuanya recon. Jurang harga yang kecil (RM3,000) antara unit yang sama tahun dan gred bermakna jarak dan keadaan lebih penting daripada harga ketika memilih.
+                Sumber: iklan aktif di Drevo pada 13 Oktober 2026, {SNAPSHOT.reduce((a, r) => a + r.n, 0)} kereta, semuanya recon. Jurang harga yang kecil (RM3,000) antara unit yang sama tahun dan gred bermakna jarak dan keadaan lebih penting daripada harga ketika memilih.
               </p>
             </section>
 
@@ -180,7 +180,7 @@ export default function HargaHarrierReconArticle() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
                 {[
                   { label: 'S', desc: 'Gred asas.' },
-                  { label: 'G', desc: 'Gred tengah, dengan pilihan Leather Package. Ini gred yang paling banyak diiklankan di XDrive sekarang.' },
+                  { label: 'G', desc: 'Gred tengah, dengan pilihan Leather Package. Ini gred yang paling banyak diiklankan di Drevo sekarang.' },
                   { label: 'Z', desc: 'Gred tertinggi, juga dengan pilihan Leather Package.' },
                 ].map(({ label, desc }) => (
                   <div key={label} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '14px 18px' }}>
@@ -265,7 +265,7 @@ export default function HargaHarrierReconArticle() {
             </section>
 
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
-              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Toyota Harrier Dijual Di XDrive</p>
+              <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Toyota Harrier Dijual Di Drevo</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
                 Harga diminta ikut tahun, jarak dan lokasi, dikemas kini setiap kali penjual menukar iklan. Hubungi penjual terus.
               </p>

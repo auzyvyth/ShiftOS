@@ -153,7 +153,7 @@ export function consumePostAuthReturn(fallback = '/account') {
   } catch { return fallback; }
 }
 
-// Chat and saving a car need a real XDrive account (owner, 2026-10-14, the
+// Chat and saving a car need a real Drevo account (owner, 2026-10-14, the
 // Mudah model). A guest's anonymous session does not count: 13 guests opened
 // chats, sellers answered 9 of them, and with no email or push on file most of
 // those replies never reached anyone.

@@ -17,13 +17,13 @@ export function buildTitle(car) {
 }
 
 // Public car URL. Prefer the dealer's own subdomain storefront, fall back to
-// the dealer's xdrive.my slug page, then the bare marketplace.
+// the dealer's drevo.my slug page, then the bare marketplace.
 export function buildShareUrl(car, dealer = {}) {
   const path = car.slug ? `/showroom/${car.slug}` : "";
   if (dealer.subdomain) return getStorefrontUrl(dealer.subdomain, path);
-  if (path) return `https://xdrive.my${path}`;
-  if (dealer.slug) return `https://xdrive.my/s/${dealer.slug}`;
-  return "https://xdrive.my";
+  if (path) return `https://drevo.my${path}`;
+  if (dealer.slug) return `https://drevo.my/s/${dealer.slug}`;
+  return "https://drevo.my";
 }
 
 // The shared facts every platform draws from. Each value is pre-formatted and

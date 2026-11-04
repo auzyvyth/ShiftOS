@@ -26,7 +26,7 @@ export default function AgentSearchPreview({ profile, slug, carCount = 0, cars }
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, minWidth: 0 }}>
           <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#f1f3f4', border: '1px solid #dadce0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#dc2626', flexShrink: 0 }}>X</div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 14, color: '#202124', lineHeight: 1.2 }}>XDrive</div>
+            <div style={{ fontSize: 14, color: '#202124', lineHeight: 1.2 }}>Drevo</div>
             <div style={{ fontSize: 12, color: '#4d5156', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {ROOT_DOMAIN} › s › {slug || 'yourname'}
             </div>

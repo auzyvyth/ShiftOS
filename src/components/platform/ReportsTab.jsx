@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { platformClient as supabase } from "../../lib/platformClient";
 
-// XDrive Ops — buyer-submitted listing reports from the public marketplace.
+// Drevo Ops — buyer-submitted listing reports from the public marketplace.
 //
 // Reads admin_list_listing_reports() and writes through
 // admin_resolve_listing_report(); both are superadmin-guarded SECURITY DEFINER
@@ -174,7 +174,7 @@ export default function ReportsTab() {
                     <p style={{ margin: 0, fontSize: 13, color: "#e2e8f0" }}>{r.dealer_name || "—"}</p>
                     <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280", wordBreak: "break-all" }}>{r.dealer_email || ""}</p>
                     {r.dealer_subdomain && (
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>{r.dealer_subdomain}.xdrive.my</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>{r.dealer_subdomain}.drevo.my</p>
                     )}
                   </div>
                   <div>

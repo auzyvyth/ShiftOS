@@ -12,7 +12,7 @@ import { ROOT_DOMAIN, SITE_URL, isOwnHost } from "../config/site";
 //   - Premium reps landed on /salesman-lite and were forwarded a second later
 //     (AuthCallbackPage, AuthConfirmPage)
 //   - a Google sign-in on staging jumped to PRODUCTION, because the salesman
-//     address was hardcoded to https://xdrive.my (AuthCallbackPage)
+//     address was hardcoded to https://drevo.my (AuthCallbackPage)
 //   - a dealer halfway through signup went to /onboarding, which App.jsx turns
 //     into /plans, so they lost their place (LoginPage, AuthConfirmPage)
 //   - a buyer confirming their email was sent to /dashboard (AuthConfirmPage)
@@ -104,8 +104,8 @@ export function resolvePostAuthRoute(profile, { session = null, buyerHome = "/ac
     }
     const home = routeForProfile(profile); // /salesman, /salesman-premium or /salesman-lite
     // Sign-in can start on www.xdrive.my or a dealer subdomain, whose stored
-    // session xdrive.my cannot see — so on prod the panel is always reached on
-    // xdrive.my with the session handed over. Off prod, stay on this host.
+    // session drevo.my cannot see — so on prod the panel is always reached on
+    // drevo.my with the session handed over. Off prod, stay on this host.
     if (prod) return { url: `${SITE_URL}${home}${handoffSuffix(session)}`, hard: true };
     return { url: home, hard: false };
   }

@@ -16,7 +16,7 @@ import { GOOGLE_CLIENT_ID, canUseGoogleIdToken, loadGsi, makeNonce } from '../li
 // Setup checklist (one-time, outside the code):
 //   1. Vercel env: VITE_GOOGLE_CLIENT_ID=<google web client id>
 //   2. Google Cloud console -> Credentials -> the Web client -> add the site
-//      origin (https://xdrive.my) to "Authorised JavaScript origins".
+//      origin (https://drevo.my) to "Authorised JavaScript origins".
 //   3. Supabase -> Auth -> Providers -> Google -> add the same client ID under
 //      "Authorized Client IDs" so signInWithIdToken accepts the One Tap token.
 

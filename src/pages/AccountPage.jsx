@@ -27,7 +27,7 @@ const STEP_LABEL = Object.fromEntries(POST_SALE_STEPS.map((s) => [s.key, s.label
 const PURCHASE_TRACKER_ENABLED = false;
 
 export default function AccountPage() {
-  useEffect(() => { document.title = 'My Account | XDrive'; }, []);
+  useEffect(() => { document.title = 'My Account | Drevo'; }, []);
   const { session, profile, setProfile, checking, loadFailed } = useBuyerGuard();
   const { savedIds, ready } = useSavedCars();
   const { cars } = useSavedCarsDetails(savedIds, ready);
@@ -424,7 +424,7 @@ export default function AccountPage() {
           <PushToggle
             userId={session?.user?.id}
             theme="light"
-            description="Get an alert on this device the moment a seller replies to you, even with XDrive closed." />
+            description="Get an alert on this device the moment a seller replies to you, even with Drevo closed." />
         </section>
 
         {/* Become a seller — Salesman Lite. Demoted to the bottom: a buyer who
@@ -435,7 +435,7 @@ export default function AccountPage() {
             <Store size={22} color="#dc2626" />
           </div>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on XDrive?</p>
+            <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#111827' }}>Want to sell cars on Drevo?</p>
             <p style={{ margin: '5px 0 0', fontSize: 13.5, color: '#6b7280', lineHeight: 1.5 }}>
               Start free with <strong style={{ color: '#dc2626' }}>Salesman Lite</strong>: list up to 10 cars, get buyer enquiries and a page of your own. No card needed.
             </p>

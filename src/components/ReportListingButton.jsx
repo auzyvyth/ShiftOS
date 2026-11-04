@@ -22,12 +22,12 @@ import { useModalHistory } from '../hooks/useModalHistory';
  *   sellerId  string  — profiles.id of an agent. Set INSTEAD of listingId to
  *                       report the agent from their page (/s/:slug); goes
  *                       through report_seller(), same table, same 3-per-24h cap.
- *   th        object  — page theme tokens (CarDetailPage runs light on xdrive.my
+ *   th        object  — page theme tokens (CarDetailPage runs light on drevo.my
  *                       and dark on dealer subdomains, so colours come from here)
  *   variant   'icon' | 'link' — 'icon' is a small unlabelled flag that sits
  *                       inline beside the price/monthly estimate. It takes its
  *                       colour from `th` because it sits on the page surface,
- *                       which is light on xdrive.my and dark on a dealer
+ *                       which is light on drevo.my and dark on a dealer
  *                       subdomain. 'link' is the text version.
  *
  * It used to be overlaid on the car photo (top-right). That collided with the
@@ -218,7 +218,7 @@ export default function ReportListingButton({ listingId, sellerId, th, variant =
             ) : (
               <>
                 <p style={{ margin: '0 0 14px', fontSize: 12, color: th?.textMuted || '#64748b', lineHeight: 1.5, fontFamily: 'var(--xd-font-body)' }}>
-                  Tell us what is wrong. Reports go to the XDrive team for review.
+                  Tell us what is wrong. Reports go to the Drevo team for review.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 14 }}>

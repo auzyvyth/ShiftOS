@@ -265,8 +265,8 @@ export default function ComparePage() {
   useEffect(() => {
     if (loading) return;
     document.title = n === 0
-      ? 'Compare Cars Side by Side | XDrive'
-      : `${cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | XDrive`;
+      ? 'Compare Cars Side by Side | Drevo'
+      : `${cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | Drevo`;
   }, [loading, n, cars]);
 
   const verdictReasons = (() => {
@@ -332,9 +332,9 @@ export default function ComparePage() {
     return (
       <>
         <Helmet>
-          <title>Car Comparison Tool — Compare Cars Side by Side | XDrive</title>
-          <meta name="description" content="Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs, specs and an overall value score. Find the best deal on XDrive." />
-          <link rel="canonical" href="https://xdrive.my/compare" />
+          <title>Car Comparison Tool — Compare Cars Side by Side | Drevo</title>
+          <meta name="description" content="Free car comparison tool. Compare up to 4 used cars side by side — price, monthly instalment, mileage, year, running costs, specs and an overall value score. Find the best deal on Drevo." />
+          <link rel="canonical" href="https://drevo.my/compare" />
         </Helmet>
         <HeaderC />
         <div style={{ minHeight: '100vh', background: pageBg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, fontFamily: "system-ui,sans-serif", padding: '72px 20px 48px', textAlign: 'center', ...cpVars }}>
@@ -369,9 +369,9 @@ export default function ComparePage() {
   return (
     <>
       <Helmet>
-        <title>{cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | XDrive</title>
-        <meta name="description" content={`Compare ${cars.map(c => [c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} side by side — price, mileage, year, running costs and value score on XDrive's car comparison tool.`} />
-        {!sub && <link rel="canonical" href="https://xdrive.my/compare" />}
+        <title>{cars.map(c => [c.year, c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} — Car Comparison | Drevo</title>
+        <meta name="description" content={`Compare ${cars.map(c => [c.brand, c.model].filter(Boolean).join(' ')).join(' vs ')} side by side — price, mileage, year, running costs and value score on Drevo's car comparison tool.`} />
+        {!sub && <link rel="canonical" href="https://drevo.my/compare" />}
       </Helmet>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap');

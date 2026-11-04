@@ -5,20 +5,20 @@
 export const GUIDE_META = {
   how: {
     path: "/guides",
-    title: "How It Works — XDrive Malaysia",
-    description: "Learn how to buy a car on XDrive Malaysia. Browse listings from approved sellers, use the finance calculator, contact sellers directly, and drive away with confidence.",
-    h1: "How to Buy a Car on XDrive",
+    title: "How It Works — Drevo Malaysia",
+    description: "Learn how to buy a car on Drevo Malaysia. Browse listings from approved sellers, use the finance calculator, contact sellers directly, and drive away with confidence.",
+    h1: "How to Buy a Car on Drevo",
     intro: "Six steps from browsing to driving — with approved sellers, transparent pricing, and no fees for buyers.",
   },
   faq: {
     path: "/guides/faq",
-    title: "FAQ — XDrive Malaysia",
-    description: "Frequently asked questions about buying a car on XDrive Malaysia. Answers on pricing, dealers, financing, and more.",
+    title: "FAQ — Drevo Malaysia",
+    description: "Frequently asked questions about buying a car on Drevo Malaysia. Answers on pricing, dealers, financing, and more.",
     h1: "Frequently Asked Questions",
   },
   buying: {
     path: "/guides/buying",
-    title: "Buyer's Guide — XDrive Malaysia",
+    title: "Buyer's Guide — Drevo Malaysia",
     description: "Expert tips for buying a car in Malaysia. Budget planning, new vs recon comparison, financing advice, and what to check before signing.",
     h1: "Buyer's Guide",
   },
@@ -28,7 +28,7 @@ export const GUIDE_STEPS = [
   {
     step: '01',
     title: 'Browse Verified Listings',
-    body: "Search by brand, budget, location, or body type. Cars on XDrive are listed by approved sellers — registered dealerships and individual car agents — and every listing shows which one you're dealing with.",
+    body: "Search by brand, budget, location, or body type. Cars on Drevo are listed by approved sellers — registered dealerships and individual car agents — and every listing shows which one you're dealing with.",
     tips: ['Use the brand filter to narrow by make', 'Filter by state to find cars near you', 'Toggle "Recon" to see imported units'],
   },
   {
@@ -47,7 +47,7 @@ export const GUIDE_STEPS = [
   {
     step: '04',
     title: 'Contact the Dealer Directly',
-    body: 'Tap Contact on any listing to reach the seller directly — WhatsApp, chat on XDrive, or a call. No middlemen, no lead-selling — your number goes to one person. Discuss availability, negotiate, and book a test drive.',
+    body: 'Tap Contact on any listing to reach the seller directly — WhatsApp, chat on Drevo, or a call. No middlemen, no lead-selling — your number goes to one person. Discuss availability, negotiate, and book a test drive.',
     tips: ['Ask for the latest OTR price', 'Confirm the unit is still available before visiting', 'Request a physical inspection report if buying recon'],
   },
   {
@@ -59,15 +59,15 @@ export const GUIDE_STEPS = [
   {
     step: '06',
     title: 'Sign & Drive',
-    body: "Once you've agreed on a price, the dealer handles the loan application, JPJ transfer, insurance, and road tax. XDrive dealers use a digital document system — no lost paperwork. You'll receive all documents in one package.",
+    body: "Once you've agreed on a price, the dealer handles the loan application, JPJ transfer, insurance, and road tax. Drevo dealers use a digital document system — no lost paperwork. You'll receive all documents in one package.",
     tips: ['Keep a copy of the sale & purchase agreement', 'Confirm the loan approval letter before paying deposit', 'Ensure road tax and insurance are valid before driving off'],
   },
 ];
 
 export const GUIDE_FAQS = [
   {
-    q: 'Who sells cars on XDrive?',
-    a: 'Two kinds of seller: registered dealerships, and individual car agents (salesmen) selling under their own name. Every seller account is reviewed by the XDrive team before it can publish cars, and listings can be held for review or removed. Each listing is labelled Dealer or Agent so you know who you are dealing with.',
+    q: 'Who sells cars on Drevo?',
+    a: 'Two kinds of seller: registered dealerships, and individual car agents (salesmen) selling under their own name. Every seller account is reviewed by the Drevo team before it can publish cars, and listings can be held for review or removed. Each listing is labelled Dealer or Agent so you know who you are dealing with.',
   },
   {
     q: 'What does "Recon" mean?',
@@ -83,7 +83,7 @@ export const GUIDE_FAQS = [
   },
   {
     q: 'How do I contact a dealer?',
-    a: 'Each listing has a Contact button that reaches the seller directly — by WhatsApp, chat on XDrive, or a phone call. No middlemen or lead brokers — your contact goes straight to the person who can close the deal.',
+    a: 'Each listing has a Contact button that reaches the seller directly — by WhatsApp, chat on Drevo, or a phone call. No middlemen or lead brokers — your contact goes straight to the person who can close the deal.',
   },
   {
     q: 'Can I compare multiple cars?',
@@ -98,8 +98,8 @@ export const GUIDE_FAQS = [
     a: 'For new loans: IC copy, 3 months payslips, 3 months bank statements, EPF statement (optional). For civil servants: EA form or letter of employment. Self-employed: 6 months bank statements + business registration. The dealer will guide you through the paperwork.',
   },
   {
-    q: 'Does XDrive charge buyers any fees?',
-    a: 'No. XDrive is completely free for buyers. Sellers pay for their plan (Salesman Lite is free) — you pay nothing to browse, contact, or compare cars.',
+    q: 'Does Drevo charge buyers any fees?',
+    a: 'No. Drevo is completely free for buyers. Sellers pay for their plan (Salesman Lite is free) — you pay nothing to browse, contact, or compare cars.',
   },
 ];
 

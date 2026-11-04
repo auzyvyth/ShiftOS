@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: 'Perlu ke saya ada laman web sendiri?',
-    a: 'Tidak semestinya. Salesman Lite di XDrive ialah akaun percuma (RM0, tiada kad kredit) yang memberi anda page sendiri di xdrive.my/s/namaanda, sehingga 10 listing aktif, dan butang WhatsApp terus kepada anda pada setiap kereta.',
+    a: 'Tidak semestinya. Salesman Lite di Drevo ialah akaun percuma (RM0, tiada kad kredit) yang memberi anda page sendiri di drevo.my/s/namaanda, sehingga 10 listing aktif, dan butang WhatsApp terus kepada anda pada setiap kereta.',
   },
 ];
 
@@ -47,9 +47,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'ShiftOS by XDrive' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'ShiftOS by Drevo' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -72,15 +72,15 @@ export default function JadiSalesmanKeretaArticle() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -119,7 +119,7 @@ export default function JadiSalesmanKeretaArticle() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>ShiftOS by XDrive</span>
+              <span>ShiftOS by Drevo</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI.
@@ -228,7 +228,7 @@ export default function JadiSalesmanKeretaArticle() {
                 <li><strong style={{ color: '#111827' }}>Jaga pelanggan lama.</strong> Pembeli yang puas hati akan rujuk kawan dan keluarga — sumber lead paling murah.</li>
               </ul>
               <p style={P}>
-                Untuk itulah kami bina <Link to="/for-salesmen" style={LINK}>Salesman Lite</Link>: akaun percuma (RM0, tiada kad kredit) untuk salesman dan agent kereta di Malaysia. Anda dapat page sendiri di <strong style={{ color: '#111827' }}>xdrive.my/s/namaanda</strong>, boleh senaraikan sehingga 10 kereta aktif di marketplace XDrive, dan setiap kereta ada butang WhatsApp yang terus kepada anda. Setiap pertanyaan masuk ke senarai lead anda, dan analitik asas menunjukkan jumlah tontonan dan klik WhatsApp bagi setiap listing. Salesman Premium (RM35 sebulan) menaikkan had kepada 30 listing dan menambah peringatan susulan, log panggilan dan penjejakan komisen.
+                Untuk itulah kami bina <Link to="/for-salesmen" style={LINK}>Salesman Lite</Link>: akaun percuma (RM0, tiada kad kredit) untuk salesman dan agent kereta di Malaysia. Anda dapat page sendiri di <strong style={{ color: '#111827' }}>drevo.my/s/namaanda</strong>, boleh senaraikan sehingga 10 kereta aktif di marketplace Drevo, dan setiap kereta ada butang WhatsApp yang terus kepada anda. Setiap pertanyaan masuk ke senarai lead anda, dan analitik asas menunjukkan jumlah tontonan dan klik WhatsApp bagi setiap listing. Salesman Premium (RM35 sebulan) menaikkan had kepada 30 listing dan menambah peringatan susulan, log panggilan dan penjejakan komisen.
               </p>
             </section>
 
@@ -309,7 +309,7 @@ export default function JadiSalesmanKeretaArticle() {
             <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 14, padding: 28, textAlign: 'center' }}>
               <p style={{ fontWeight: 700, fontSize: 18, color: '#111827', marginBottom: 8 }}>Page Percuma Untuk Agent Kereta</p>
               <p style={{ color: '#6b7280', fontSize: 14, marginBottom: 20 }}>
-                Salesman Lite: page sendiri di xdrive.my/s/namaanda, sehingga 10 kereta, pertanyaan terus ke WhatsApp anda. RM0, tiada kad kredit.
+                Salesman Lite: page sendiri di drevo.my/s/namaanda, sehingga 10 kereta, pertanyaan terus ke WhatsApp anda. RM0, tiada kad kredit.
               </p>
               <Link to="/for-salesmen" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, padding: '10px 22px', borderRadius: 10, textDecoration: 'none' }}>
                 Lihat Salesman Lite

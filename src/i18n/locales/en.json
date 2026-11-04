@@ -61,7 +61,7 @@
       "step4": "You Drive Away Happy"
     },
     "whyChoose": {
-      "title": "Why Choose XDrive?",
+      "title": "Why Choose Drevo?",
       "subtitle": "We're different from other car platforms",
       "benefit1Title": "Access to Hidden Deals",
       "benefit1Desc": "Get exclusive access to cars before they hit the market",
@@ -222,7 +222,7 @@
     "email": "Email",
     "hours": "Hours",
     "hoursText": "Mon-Sat 9AM-8PM",
-    "rights": "XDrive. All rights reserved."
+    "rights": "Drevo. All rights reserved."
   },
   "waitlist": {
     "langToggle": "Bahasa Melayu",
@@ -236,10 +236,10 @@
     "proof2Label": "To publish your first listing",
     "proof3Stat": "RM0",
     "proof3Label": "Listing fees. Ever.",
-    "feat1Title": "Free listings on xdrive.my",
+    "feat1Title": "Free listings on drevo.my",
     "feat1Sub": "Unlimited. No expiry. No credit needed.",
     "feat2Title": "Your own profile page",
-    "feat2Sub": "xdrive.my/s/yourname — shareable anywhere.",
+    "feat2Sub": "drevo.my/s/yourname — shareable anywhere.",
     "feat3Title": "Lead & enquiry tracking",
     "feat3Sub": "Pipeline board, follow-up reminders, close rate stats.",
     "formTitle": "Claim your free spot",
@@ -276,7 +276,7 @@
     "gain2": "Every enquiry auto-converts to a tracked lead. Set reminders. Never ghost a buyer again.",
     "pain3Platform": "No personal brand",
     "pain3": "You spend years building a name but you have no storefront. No profile. No link to share. Buyers can't find you.",
-    "gain3": "Your own xdrive.my/s/yourname profile — share it on TikTok, IG, WhatsApp. Buyers see ALL your cars in one place.",
+    "gain3": "Your own drevo.my/s/yourname profile — share it on TikTok, IG, WhatsApp. Buyers see ALL your cars in one place.",
     "pain4Platform": "Flying blind",
     "pain4": "You have no idea which cars get the most views, which leads are hot, or why deals fall through.",
     "gain4": "Analytics on every listing. CVR, views, WA taps, pipeline stage — know exactly what to push.",
@@ -289,7 +289,7 @@
     "ctaBottomHeadline2": "Start selling smarter.",
     "ctaBottomBody": "Join Malaysian car salespeople who are done with listing fees, ghost leads, and zero visibility. ShiftOS is built for you — and it's free.",
     "ctaBottomFormTitle": "Join the Waitlist",
-    "footerText": "© {year} ShiftOS · xdrive.my · Built for Malaysian car salespeople"
+    "footerText": "© {year} ShiftOS · drevo.my · Built for Malaysian car salespeople"
   },
   "salesmanLite": {
     "tabs": {
@@ -340,12 +340,12 @@
       "minipageTrafficBy": "Mini page traffic by platform",
       "openMinipage": "View your mini page",
       "openMinipageTitle": "Open your mini page in a new tab",
-      "openMarketplace": "View XDrive marketplace",
+      "openMarketplace": "View Drevo marketplace",
       "loanCalculator": "Loan calculator",
-      "openMarketplaceTitle": "Open the XDrive marketplace in a new tab",
+      "openMarketplaceTitle": "Open the Drevo marketplace in a new tab",
       "copy": "Copy",
       "share": "Share",
-      "shareMyListingsCaption": "Check out my car listings on XDrive",
+      "shareMyListingsCaption": "Check out my car listings on Drevo",
       "live": "Live",
       "days30": "30 days",
       "myPerformance": "My Performance",
@@ -409,7 +409,7 @@
     "checklist": {
       "intro": "Here's how to make your first sale:",
       "step1Title": "Add your first listing",
-      "step1Sub": "Upload photos, set price, publish to XDrive marketplace.",
+      "step1Sub": "Upload photos, set price, publish to Drevo marketplace.",
       "step1Cta": "Add Listing →",
       "step2Title": "Share your listing link",
       "step2Sub": "Blast it on WhatsApp groups, Facebook, TikTok.",
@@ -569,7 +569,7 @@
       "yes": "Yes",
       "no": "No",
       "srcWhatsapp": "WhatsApp",
-      "srcEnquiry": "XDrive Enquiry",
+      "srcEnquiry": "Drevo Enquiry",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Referral",
       "srcManual": "Manual"
@@ -1837,8 +1837,8 @@
       "linkCopied": "Link copied!",
       "openMiniTitle": "Open your mini-page in a new tab",
       "viewMini": "View your mini-page",
-      "openMarketTitle": "Open the XDrive marketplace in a new tab",
-      "viewMarket": "View XDrive marketplace",
+      "openMarketTitle": "Open the Drevo marketplace in a new tab",
+      "viewMarket": "View Drevo marketplace",
       "loanCalculator": "Loan calculator",
       "share": "Share",
       "shareVisits": "visits from shared links",
@@ -1933,7 +1933,7 @@
       "newSub": "Full form: every spec, photo and price field",
       "published": "Listing published!",
       "liveBarPre": "Your listings are",
-      "liveBarStrong": "live on XDrive",
+      "liveBarStrong": "live on Drevo",
       "liveBarPost": "and buyers can find you at {{url}}",
       "avgPre": "Your listings average",
       "avgStrong": "{{n}}% quality",
@@ -1952,7 +1952,7 @@
       "noReason": "No reason was given. Check the details and photos, then resubmit.",
       "editResubmit": "Edit & Resubmit",
       "notVisible": "not visible to buyers yet",
-      "liveOnXdrive": "Live on XDrive",
+      "liveOnXdrive": "Live on Drevo",
       "accepting": "accepting buyers",
       "changeStatus": "Change listing status",
       "setTo": "Set this listing to",
@@ -2287,7 +2287,7 @@
           "tag": "Distribution",
           "quote": "Posting one listing takes forever - uploading to the website, Telegram, and making TikTok content all separately.",
           "title": "List once - published everywhere in under 5 minutes",
-          "desc": "Add a car and it auto-publishes to your branded xdrive.my storefront, auto-posts to your Telegram channel, and generates ready-to-post TikTok content slides. Zero copy-paste, zero designer required."
+          "desc": "Add a car and it auto-publishes to your branded drevo.my storefront, auto-posts to your Telegram channel, and generates ready-to-post TikTok content slides. Zero copy-paste, zero designer required."
         },
         "p6": {
           "tag": "Retention",
@@ -2332,7 +2332,7 @@
         },
         "storefront": {
           "title": "Storefront & Market",
-          "desc": "Branded sub.xdrive.my catalog, auto-listing on xdrive.my marketplace, Telegram auto-post, TikTok slide studio."
+          "desc": "Branded sub.drevo.my catalog, auto-listing on drevo.my marketplace, Telegram auto-post, TikTok slide studio."
         },
         "security": {
           "title": "Security & Roles",
@@ -2385,7 +2385,7 @@
         "salesman_lite": {
           "cta": "Start Free",
           "features": [
-            "Personal storefront - xdrive.my/s/you",
+            "Personal storefront - drevo.my/s/you",
             "Lead & enquiry inbox",
             "Appointment tracking",
             "Stale-lead alerts"

@@ -79,9 +79,9 @@ export default function PlansPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: 'var(--xd-font-body)' }}>
       <Helmet>
-        <title>Plans &amp; Pricing | XDrive</title>
-        <meta name="description" content="Sell cars on XDrive. Free for individual salesmen, Premium from RM35/month (founding price), dealer plans from RM299/month with a 14-day free trial." />
-        <link rel="canonical" href="https://xdrive.my/plans" />
+        <title>Plans &amp; Pricing | Drevo</title>
+        <meta name="description" content="Sell cars on Drevo. Free for individual salesmen, Premium from RM35/month (founding price), dealer plans from RM299/month with a 14-day free trial." />
+        <link rel="canonical" href="https://drevo.my/plans" />
       </Helmet>
 
       <MarketplaceHeader />

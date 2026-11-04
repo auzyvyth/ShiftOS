@@ -17,9 +17,9 @@ is('reply: a full day is not a selling point', replyTimeLabel({ median_minutes: 
 is('reply: missing function', replyTimeLabel(null), null);
 
 is('docs: none checked says nothing', docsCheckedLine([{ docs_verified: false }]), null);
-is('docs: all', docsCheckedLine([{ docs_verified: true }, { docs_verified: true }]), 'Documents checked by XDrive on all 2 cars');
-is('docs: one car', docsCheckedLine([{ docs_verified: true }]), 'Documents checked by XDrive on this car');
-is('docs: some', docsCheckedLine([{ docs_verified: true }, {}, {}]), 'Documents checked by XDrive on 1 of 3 cars');
+is('docs: all', docsCheckedLine([{ docs_verified: true }, { docs_verified: true }]), 'Documents checked by Drevo on all 2 cars');
+is('docs: one car', docsCheckedLine([{ docs_verified: true }]), 'Documents checked by Drevo on this car');
+is('docs: some', docsCheckedLine([{ docs_verified: true }, {}, {}]), 'Documents checked by Drevo on 1 of 3 cars');
 
 is('terms: nothing set', termsLines({ handles_roadtax_insurance: true }), []);
 is('terms: real agent', termsLines({ deposit_policy: 'non_refundable', processing_fee: 300 }).map((t) => t.text), ['Non-refundable once paid.', 'RM 300']);

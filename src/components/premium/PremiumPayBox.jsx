@@ -61,7 +61,7 @@ function SaveQrButton() {
 
 export default function PremiumPayBox({ profile, lead = "" }) {
   const ref = profile?.slug || profile?.full_name || profile?.email || "";
-  const waText = `Hi, I've paid RM${PREMIUM_PRICE} for XDrive Premium. My page: ${ref}`;
+  const waText = `Hi, I've paid RM${PREMIUM_PRICE} for Drevo Premium. My page: ${ref}`;
   return (
     <div>
       <p style={{ margin: 0, fontSize: 12.5, color: "#e5e7eb", lineHeight: 1.6 }}>
@@ -73,7 +73,7 @@ export default function PremiumPayBox({ profile, lead = "" }) {
       <SaveQrButton />
       <a href={`https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(waText)}`} target="_blank" rel="noopener noreferrer"
         style={{ display: "inline-block", marginTop: 14, padding: "10px 16px", borderRadius: 8, background: "#dc2626", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-        I've paid, tell XDrive
+        I've paid, tell Drevo
       </a>
     </div>
   );

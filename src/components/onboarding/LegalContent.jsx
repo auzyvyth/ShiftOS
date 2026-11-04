@@ -21,7 +21,7 @@ function LH({ children }) {
 export default function LegalContent() {
   return (
     <div style={{ padding: "0 2px" }}>
-      <LegalSection title="TERMS OF SERVICE — ShiftOS / xdrive.my">
+      <LegalSection title="TERMS OF SERVICE — ShiftOS / drevo.my">
         <LP>Effective Date: {LEGAL_META.effectiveDate}. {TERMS.intro}</LP>
         {TERMS.sections.map((sec) => (
           <React.Fragment key={sec.h}>
@@ -31,7 +31,7 @@ export default function LegalContent() {
         ))}
       </LegalSection>
 
-      <LegalSection title="PRIVACY POLICY — ShiftOS / xdrive.my">
+      <LegalSection title="PRIVACY POLICY — ShiftOS / drevo.my">
         <LP>Effective Date: {LEGAL_META.effectiveDate}. {PRIVACY.intro}</LP>
         {PRIVACY.sections.map((sec) => (
           <React.Fragment key={sec.h}>
@@ -41,7 +41,7 @@ export default function LegalContent() {
         ))}
       </LegalSection>
 
-      <LegalSection title="DATA PROCESSING AGREEMENT — ShiftOS / xdrive.my">
+      <LegalSection title="DATA PROCESSING AGREEMENT — ShiftOS / drevo.my">
         <LP>{DPA.intro}</LP>
         {DPA.sections.map((sec) => (
           <React.Fragment key={sec.h}>

@@ -51,9 +51,9 @@ const jsonLd = {
       description: ARTICLE.description,
       datePublished: ARTICLE.datePublished,
       dateModified: ARTICLE.dateModified,
-      author: { '@type': 'Organization', name: 'XDrive Malaysia' },
-      publisher: { '@type': 'Organization', name: 'XDrive Malaysia', url: 'https://xdrive.my' },
-      url: `https://xdrive.my/articles/${ARTICLE.slug}`,
+      author: { '@type': 'Organization', name: 'Drevo Malaysia' },
+      publisher: { '@type': 'Organization', name: 'Drevo Malaysia', url: 'https://drevo.my' },
+      url: `https://drevo.my/articles/${ARTICLE.slug}`,
       inLanguage: 'ms',
     },
     {
@@ -71,15 +71,15 @@ export default function PuspakomB5B7Article() {
   return (
     <>
       <Helmet>
-        <title>{ARTICLE.title} · XDrive</title>
+        <title>{ARTICLE.title} · Drevo</title>
         <meta name="description" content={ARTICLE.description} />
         <meta property="og:title" content={ARTICLE.title} />
         <meta property="og:description" content={ARTICLE.description} />
         <meta property="og:type" content="article" />
-        <meta property="og:url" content={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <meta property="og:url" content={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <meta property="article:published_time" content={ARTICLE.datePublished} />
         <meta property="article:modified_time" content={ARTICLE.dateModified} />
-        <link rel="canonical" href={`https://xdrive.my/articles/${ARTICLE.slug}`} />
+        <link rel="canonical" href={`https://drevo.my/articles/${ARTICLE.slug}`} />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
@@ -120,7 +120,7 @@ export default function PuspakomB5B7Article() {
                 <Clock size={12} />
                 {ARTICLE.readMins} minit bacaan
               </span>
-              <span>XDrive Malaysia</span>
+              <span>Drevo Malaysia</span>
             </div>
             <p style={{ margin: '14px 0 0', fontSize: 11, color: '#b8bcc4', fontStyle: 'italic' }}>
               Artikel ini ditulis oleh AI.

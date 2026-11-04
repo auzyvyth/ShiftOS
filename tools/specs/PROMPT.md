@@ -7,7 +7,7 @@ session; the intake runs itself (`README.md` → "Automated batch intake").
 
 ---
 
-You are building the trim catalogue for XDrive, a Malaysian used-car
+You are building the trim catalogue for Drevo, a Malaysian used-car
 marketplace. Every trim you return becomes a fixed category a seller PICKS
 ("BMW M4 Competition M xDrive G82", "Toyota Alphard 2.5 Z AH40"), and every
 spec field of their listing fills from it. Sellers do not type specs. So a

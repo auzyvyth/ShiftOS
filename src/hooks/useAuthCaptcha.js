@@ -81,19 +81,19 @@ export const CAPTCHA_ERROR_MESSAGE =
  * Anything else keeps the original advice, which is the one case where a
  * refresh or an allowlist entry genuinely is the answer.
  *
- * On xdrive.my none of the first three can happen — the domain is listed and
+ * On drevo.my none of the first three can happen — the domain is listed and
  * the key is set — so a real buyer only ever sees the generic message.
  */
 export function captchaErrorMessage() {
   const host = typeof window !== 'undefined' ? window.location.hostname : 'this address';
   if (!TURNSTILE_SITE_KEY) {
-    return `Sign-in can't be verified on ${host} — this build has no Turnstile site key (VITE_TURNSTILE_SITE_KEY). Use xdrive.my.`;
+    return `Sign-in can't be verified on ${host} — this build has no Turnstile site key (VITE_TURNSTILE_SITE_KEY). Use drevo.my.`;
   }
   if (lastErrorCode === '110200') {
-    return `Sign-in is blocked on ${host} — this address isn't on the Turnstile domain list, so the check can't run (not an ad blocker). Use xdrive.my, or add this hostname to the widget in Cloudflare.`;
+    return `Sign-in is blocked on ${host} — this address isn't on the Turnstile domain list, so the check can't run (not an ad blocker). Use drevo.my, or add this hostname to the widget in Cloudflare.`;
   }
   if (lastErrorCode && lastErrorCode.startsWith('1101')) {
-    return `Sign-in is blocked on ${host} — the Turnstile site key this build was made with isn't valid. Use xdrive.my.`;
+    return `Sign-in is blocked on ${host} — the Turnstile site key this build was made with isn't valid. Use drevo.my.`;
   }
   return CAPTCHA_ERROR_MESSAGE;
 }
@@ -247,7 +247,7 @@ function mountWidget() {
         // verify you're human, check your ad blocker" whatever actually
         // happened. The one that costs the most time is 110200 — THIS HOSTNAME
         // IS NOT ON THE WIDGET'S DOMAIN LIST, which is what every Vercel
-        // preview URL hits while the widget only allows xdrive.my. An ad
+        // preview URL hits while the widget only allows drevo.my. An ad
         // blocker cannot cause that, and nothing in the app can fix it. Name it
         // in the console so the next person reads the cause instead of
         // guessing at it.

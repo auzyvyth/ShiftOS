@@ -212,7 +212,7 @@ export default function VerifyIdentity({ profile, userId, onSubmitted, onIcSaved
               Identity verified
             </p>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: P.sub, lineHeight: 1.5 }}>
-              Your cars are live on XDrive and carry the Verified badge.
+              Your cars are live on Drevo and carry the Verified badge.
             </p>
           </div>
         </div>

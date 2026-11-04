@@ -102,7 +102,7 @@ const USER_CAUSED = new Set([
  * (`auth:<where>`), so each failing step alerts on its own.
  *
  * Skips user mistakes, dropped connections, and captcha rejections off
- * xdrive.my (every Vercel preview fails the captcha by design). Never sends
+ * drevo.my (every Vercel preview fails the captcha by design). Never sends
  * the email address, and never the URL's query or hash — on /auth/callback
  * those carry the sign-in code and tokens.
  */

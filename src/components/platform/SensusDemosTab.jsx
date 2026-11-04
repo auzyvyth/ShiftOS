@@ -4,7 +4,7 @@ import { ENQUIRY_OPTIONS, DEALER_TYPES, isSensusFit } from "../../config/sensusC
 
 // SENSUS-1: demo requests from /sensus-ai (migration 20261017a). Each one has
 // already reached the owner as a Telegram + push alert (notify_ops); this is the
-// list to work through. Kept apart from Prospects on purpose: those are XDrive
+// list to work through. Kept apart from Prospects on purpose: those are Drevo
 // signups, these are Sensus sales, and the prospect triggers would mislabel them.
 // Messaging is a wa.me link the owner sends by hand.
 

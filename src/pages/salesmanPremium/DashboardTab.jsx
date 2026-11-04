@@ -198,7 +198,7 @@ export default function DashboardTab({
  <ShareMenu
  baseUrl={pageUrl}
  refSlug={profile.slug}
- waCaption={(url) => `Check out my car listings on XDrive:\n${url}`}
+ waCaption={(url) => `Check out my car listings on Drevo:\n${url}`}
  dark
  label={t("salesmanPremium.dash.share")}
  style={{ height: 44, padding: "0 18px", borderRadius: P.radius.pill, border: "none", color: P.onAccent, fontSize: 14 }}

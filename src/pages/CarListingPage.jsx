@@ -369,12 +369,12 @@ export default function CarListingPage() {
   const { addToCompare, removeFromCompare, isInCompare, compareIds } = useCompare();
   const ctaCtx = useCTAContext();
   const basePath = isMarketplace ? '/showroom' : '/cars';
-  // Bug fix (2026-08-20): this used to hardcode `https://xdrive.my${basePath}`
+  // Bug fix (2026-08-20): this used to hardcode `https://drevo.my${basePath}`
   // even on a dealer subdomain, so every dealer storefront's /cars page told
   // Google "the real version of me is the root marketplace" — a different
   // page with different inventory. Point subdomain pages at their own host.
   const canonicalUrl = isMarketplace
-    ? `https://xdrive.my${basePath}`
+    ? `https://drevo.my${basePath}`
     : getStorefrontUrl(getSubdomain(), basePath);
 
   // Subdomain storefront = dark theme (matches the rest of the dealer page);
@@ -709,7 +709,7 @@ export default function CarListingPage() {
     <>
       <Helmet>
         <title>{(() => {
-          if (hotDeals) return 'Hot Deal Cars in Malaysia — Best Prices | XDrive';
+          if (hotDeals) return 'Hot Deal Cars in Malaysia — Best Prices | Drevo';
           const parts = [];
           if (condition==='recon') parts.push('Recon');
           if (brand) parts.push(brand);
@@ -717,9 +717,9 @@ export default function CarListingPage() {
           if (bodyType) parts.push(bodyType+'s');
           const carType = parts.length ? parts.join(' ')+' ' : '';
           const loc = state ? ` in ${state}, Malaysia` : ' in Malaysia';
-          return `Used ${carType}Cars for Sale${loc} | XDrive`;
+          return `Used ${carType}Cars for Sale${loc} | Drevo`;
         })()}</title>
-        <meta name="description" content={`Browse verified cars for sale${state?' in '+state:' in Malaysia'}. Filter by brand, price, body type and more on XDrive.`}/>
+        <meta name="description" content={`Browse verified cars for sale${state?' in '+state:' in Malaysia'}. Filter by brand, price, body type and more on Drevo.`}/>
         <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"/>
         <link rel="canonical" href={canonicalUrl}/>
         <link rel="preconnect" href="https://fonts.googleapis.com"/>

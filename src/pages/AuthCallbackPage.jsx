@@ -127,7 +127,7 @@ export default function AuthCallbackPage() {
       // (utils/postAuthRoute.js), which also sends a context-less bare signup
       // stub to /choose-plan. This page's own copy sent every standalone rep to
       // /salesman-lite (Premium was forwarded a second later) and hardcoded
-      // https://xdrive.my, so a Google sign-in on staging landed on production.
+      // https://drevo.my, so a Google sign-in on staging landed on production.
       const route = resolvePostAuthRoute(profile, {
         session,
         buyerHome: role === 'buyer' ? buyerDest() : '/account',

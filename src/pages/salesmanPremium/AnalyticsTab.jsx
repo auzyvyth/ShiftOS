@@ -563,7 +563,7 @@ export default function AnalyticsTab({
 
       {/* Where the traffic actually came from. Two sources, shown apart and
           together: car listing pages (a shared car link) and the mini page
-          (xdrive.my/s/<slug> — the Instagram/TikTok bio link). The Analytics
+          (drevo.my/s/<slug> — the Instagram/TikTok bio link). The Analytics
           tab previously showed only the car half, so every visit that arrived
           through a bio link was invisible here even though the dashboard
           already had the numbers. */}

@@ -61,7 +61,7 @@
       "step4": "Anda Pandu Pergi Gembira"
     },
     "whyChoose": {
-      "title": "Kenapa Pilih XDrive?",
+      "title": "Kenapa Pilih Drevo?",
       "subtitle": "Kami berbeza dari platform kereta lain",
       "benefit1Title": "Akses kepada Tawaran Eksklusif",
       "benefit1Desc": "Dapat akses awal kepada kereta sebelum ia disenaraikan secara umum",
@@ -201,17 +201,17 @@
   },
   "login": {
     "meta": {
-      "title": "XDrive · Log Masuk"
+      "title": "Drevo · Log Masuk"
     }
   },
   "salesman": {
     "meta": {
-      "title": "XDrive · Panel Jualan"
+      "title": "Drevo · Panel Jualan"
     }
   },
   "dashboard": {
     "meta": {
-      "title": "XDrive — Papan Pemuka"
+      "title": "Drevo — Papan Pemuka"
     }
   },
   "footer": {
@@ -222,7 +222,7 @@
     "email": "E-mel",
     "hours": "Waktu Operasi",
     "hoursText": "Isnin-Sabtu 9PG-8PM",
-    "rights": "XDrive. Hak cipta terpelihara."
+    "rights": "Drevo. Hak cipta terpelihara."
   },
   "waitlist": {
     "langToggle": "English",
@@ -236,10 +236,10 @@
     "proof2Label": "Untuk terbitkan senarai pertama",
     "proof3Stat": "RM0",
     "proof3Label": "Yuran senarai. Selama-lamanya.",
-    "feat1Title": "Senarai percuma di xdrive.my",
+    "feat1Title": "Senarai percuma di drevo.my",
     "feat1Sub": "Tanpa had. Tanpa tarikh luput. Tanpa kredit diperlukan.",
     "feat2Title": "Halaman profil sendiri",
-    "feat2Sub": "xdrive.my/s/namakamu — boleh dikongsi di mana-mana.",
+    "feat2Sub": "drevo.my/s/namakamu — boleh dikongsi di mana-mana.",
     "feat3Title": "Jejak prospek & pertanyaan",
     "feat3Sub": "Papan saluran jualan, peringatan tindak lanjut, kadar penutupan.",
     "formTitle": "Tuntut tempat percuma anda",
@@ -276,7 +276,7 @@
     "gain2": "Setiap pertanyaan automatik dijadikan prospek yang dijejaki. Tetapkan peringatan. Jangan biarkan pembeli tertinggal.",
     "pain3Platform": "Tiada jenama peribadi",
     "pain3": "Anda habiskan bertahun-tahun membina nama tetapi tiada kedai sendiri. Tiada profil. Tiada pautan untuk dikongsi. Pembeli tidak dapat jumpa anda.",
-    "gain3": "Profil xdrive.my/s/namakamu sendiri — kongsi di TikTok, Instagram, WhatsApp. Pembeli lihat semua kereta anda di satu tempat.",
+    "gain3": "Profil drevo.my/s/namakamu sendiri — kongsi di TikTok, Instagram, WhatsApp. Pembeli lihat semua kereta anda di satu tempat.",
     "pain4Platform": "Tiada analitik",
     "pain4": "Anda tidak tahu kereta mana yang paling banyak dilihat, prospek mana yang panas, atau kenapa urusan gagal.",
     "gain4": "Analitik untuk setiap senarai. Kadar penukaran, tontonan, ketukan WA, peringkat saluran — tahu dengan tepat apa yang perlu ditolak.",
@@ -289,7 +289,7 @@
     "ctaBottomHeadline2": "Mula jual dengan lebih bijak.",
     "ctaBottomBody": "Sertai jurujual kereta Malaysia yang sudah penat dengan yuran senarai, prospek hilang, dan keterlihatan sifar. ShiftOS dibina untuk anda — dan ia percuma.",
     "ctaBottomFormTitle": "Sertai Senarai Menunggu",
-    "footerText": "© {year} ShiftOS · xdrive.my · Dibina untuk jurujual kereta Malaysia"
+    "footerText": "© {year} ShiftOS · drevo.my · Dibina untuk jurujual kereta Malaysia"
   },
   "salesmanLite": {
     "tabs": {
@@ -335,12 +335,12 @@
       "minipageTrafficBy": "Trafik halaman mini ikut platform",
       "openMinipage": "Lihat halaman mini anda",
       "openMinipageTitle": "Buka halaman mini anda dalam tab baharu",
-      "openMarketplace": "Lihat marketplace XDrive",
+      "openMarketplace": "Lihat marketplace Drevo",
       "loanCalculator": "Kalkulator loan",
-      "openMarketplaceTitle": "Buka marketplace XDrive dalam tab baharu",
+      "openMarketplaceTitle": "Buka marketplace Drevo dalam tab baharu",
       "copy": "Salin",
       "share": "Kongsi",
-      "shareMyListingsCaption": "Tengok senarai kereta saya di XDrive",
+      "shareMyListingsCaption": "Tengok senarai kereta saya di Drevo",
       "live": "Langsung",
       "days30": "30 hari",
       "myPerformance": "Prestasi Saya",
@@ -403,7 +403,7 @@
     "checklist": {
       "intro": "Ini cara untuk buat jualan pertama anda:",
       "step1Title": "Tambah listing pertama anda",
-      "step1Sub": "Muat naik gambar, tetapkan harga, terbitkan ke marketplace XDrive.",
+      "step1Sub": "Muat naik gambar, tetapkan harga, terbitkan ke marketplace Drevo.",
       "step1Cta": "Tambah Listing →",
       "step2Title": "Kongsi pautan listing anda",
       "step2Sub": "Sebarkan di grup WhatsApp, Facebook, TikTok.",
@@ -563,7 +563,7 @@
       "yes": "Ya",
       "no": "Tidak",
       "srcWhatsapp": "WhatsApp",
-      "srcEnquiry": "Pertanyaan XDrive",
+      "srcEnquiry": "Pertanyaan Drevo",
       "srcWalkIn": "Walk-In",
       "srcReferral": "Rujukan",
       "srcManual": "Manual"
@@ -1826,8 +1826,8 @@
       "linkCopied": "Link dah disalin!",
       "openMiniTitle": "Buka mini page anda di tab baru",
       "viewMini": "Lihat mini page anda",
-      "openMarketTitle": "Buka marketplace XDrive di tab baru",
-      "viewMarket": "Lihat marketplace XDrive",
+      "openMarketTitle": "Buka marketplace Drevo di tab baru",
+      "viewMarket": "Lihat marketplace Drevo",
       "loanCalculator": "Kalkulator loan",
       "share": "Kongsi",
       "shareVisits": "lawatan dari link yang dikongsi",
@@ -1922,7 +1922,7 @@
       "newSub": "Borang penuh: semua spek, gambar dan harga",
       "published": "Listing dah publish!",
       "liveBarPre": "Listing anda",
-      "liveBarStrong": "live di XDrive",
+      "liveBarStrong": "live di Drevo",
       "liveBarPost": "dan buyer boleh cari anda di {{url}}",
       "avgPre": "Purata listing anda",
       "avgStrong": "kualiti {{n}}%",
@@ -1941,7 +1941,7 @@
       "noReason": "Tiada sebab diberi. Semak butiran dan gambar, kemudian hantar semula.",
       "editResubmit": "Edit & hantar semula",
       "notVisible": "belum nampak kepada buyer",
-      "liveOnXdrive": "Live di XDrive",
+      "liveOnXdrive": "Live di Drevo",
       "accepting": "terima buyer",
       "changeStatus": "Tukar status listing",
       "setTo": "Tukar listing ni ke",
@@ -2276,7 +2276,7 @@
           "tag": "Pengedaran",
           "quote": "Posting satu listing ambil masa - upload website, Telegram, buat TikTok content asing-asing.",
           "title": "Senarai sekali - tersiar di mana-mana dalam bawah 5 minit",
-          "desc": "Tambah kereta dan ia tersiar automatik ke storefront berjenama xdrive.my anda, terpapar automatik ke saluran Telegram, dan menjana slaid kandungan TikTok sedia-pos. Tiada salin-tampal, tiada perlu pereka."
+          "desc": "Tambah kereta dan ia tersiar automatik ke storefront berjenama drevo.my anda, terpapar automatik ke saluran Telegram, dan menjana slaid kandungan TikTok sedia-pos. Tiada salin-tampal, tiada perlu pereka."
         },
         "p6": {
           "tag": "Pengekalan",
@@ -2321,7 +2321,7 @@
         },
         "storefront": {
           "title": "Storefront & Pasaran",
-          "desc": "Katalog sub.xdrive.my berjenama, auto-senarai di pasaran xdrive.my, auto-pos Telegram, studio slaid TikTok."
+          "desc": "Katalog sub.drevo.my berjenama, auto-senarai di pasaran drevo.my, auto-pos Telegram, studio slaid TikTok."
         },
         "security": {
           "title": "Keselamatan & Peranan",
@@ -2374,7 +2374,7 @@
         "salesman_lite": {
           "cta": "Daftar Percuma",
           "features": [
-            "Storefront peribadi - xdrive.my/s/anda",
+            "Storefront peribadi - drevo.my/s/anda",
             "Peti masuk lead & pertanyaan",
             "Jejak temujanji",
             "Amaran lead basi"

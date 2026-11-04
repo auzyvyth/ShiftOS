@@ -130,7 +130,7 @@ export function newModelCopy(brand, model, rows) {
   const name = `${brand} ${model}`;
   const priceLine = from ? `from ${rm(from)} in Peninsular Malaysia, on the road without insurance` : "official prices by region";
   return {
-    title: `New ${name} price in Malaysia | XDrive`,
+    title: `New ${name} price in Malaysia | Drevo`,
     h1: `New ${name}`,
     description: `${n} ${n === 1 ? "variant" : "variants"}, ${priceLine}. The official price is set by the brand, so compare the advisors and message one directly.`,
     intro: `${brand} sets the official price, and it is the same in every showroom in your region. What differs is the advisor: how fast they reply, where they are and what they can arrange for you. Compare them below and message one directly.`,

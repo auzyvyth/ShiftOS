@@ -383,7 +383,7 @@ function WinShareCard({ prompt, onClose, slug }) {
 
   if (!prompt) return null;
   const isGoal = prompt.kind === "goal";
-  const storeUrl = slug ? `https://xdrive.my/s/${slug}` : null;
+  const storeUrl = slug ? `https://drevo.my/s/${slug}` : null;
 
   return createPortal(
     <div
@@ -3355,7 +3355,7 @@ export default function SalesmanLite() {
                       body: {
                         dealer_id: userId,
                         channel_id: profile.telegram_chat_id,
-                        message: `Your listing is now live on XDrive!\n\n${carName}${car.selling_price ? `\nRM ${Number(car.selling_price).toLocaleString("en-MY")}` : ""}`,
+                        message: `Your listing is now live on Drevo!\n\n${carName}${car.selling_price ? `\nRM ${Number(car.selling_price).toLocaleString("en-MY")}` : ""}`,
                       },
                       headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
                     }).catch(() => {});
@@ -6965,7 +6965,7 @@ export default function SalesmanLite() {
         const name = [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" ");
         const price = car.selling_price ? `RM ${Number(car.selling_price).toLocaleString("en-MY")}` : "P.O.R";
         const monthly = car.selling_price ? Math.round(car.selling_price * 0.9 * 1.245 / 84) : null;
-        const link = car.slug ? `https://xdrive.my/cars/${car.slug}?ref=${profile?.slug || ""}` : null;
+        const link = car.slug ? `https://drevo.my/cars/${car.slug}?ref=${profile?.slug || ""}` : null;
         const brief = [
           `🚗 *${name}*`,
           `💰 ${price}${monthly ? ` (est. RM ${monthly.toLocaleString()}/mo)` : ""}`,

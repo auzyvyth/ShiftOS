@@ -79,7 +79,7 @@ const downloadListingImages = async (car) => {
 // this tab opens now lives in src/components/CarDetailPopup.jsx, shared with
 // SalesmanLite.
 // Rebuilt 2026-10-25 (SIMPLE-2) in the `premiumDark` palette, one fact once:
-// the "Live on XDrive" strip on every card (the Available tab already says it,
+// the "Live on Drevo" strip on every card (the Available tab already says it,
 // and it repeated the view count), the page-link bar (Dashboard > Your page
 // has it), the average-quality banner and the separate photo nudge (the card's
 // one "improve" line names the first fix, photos first) all went. Link moved

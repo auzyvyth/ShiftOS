@@ -33,9 +33,18 @@ export function agentRole(cars) {
   return brands.size === 1 ? `${[...brands][0]} Sales Advisor` : null;
 }
 
+// The business name the agent trades under, when it is not just their own name
+// again: buyers search "Premium Motors", and the title only carried the person.
+export function agentBusiness(p) {
+  const biz = clean(p?.dealership);
+  const key = (v) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
+  return biz && key(biz) !== key(agentName(p)) ? biz : "";
+}
+
 export function agentPageTitle(p, cars) {
   const loc = agentLocation(p);
-  return `${agentName(p)} — ${agentRole(cars) || "Car Agent"}${loc ? ` in ${loc}` : ""} | XDrive`;
+  const biz = agentBusiness(p);
+  return `${agentName(p)}${biz ? ` (${biz})` : ""} — ${agentRole(cars) || "Car Agent"}${loc ? ` in ${loc}` : ""} | Drevo`;
 }
 
 // The agent's own bio, else a sentence built only from facts we hold.
@@ -48,7 +57,7 @@ export function agentPageDescription(p, carCount = 0, carList) {
     ? ` Browse ${carCount} ${carCount === 1 ? "car" : "cars"} for sale and message them directly.`
     : "";
   const role = agentRole(carList);
-  return `${agentName(p)} is a ${role ? `${role.replace(/Sales Advisor$/, "sales advisor")}` : "car sales agent"}${loc ? ` in ${loc}` : ""} on XDrive.${cars}`;
+  return `${agentName(p)} is a ${role ? `${role.replace(/Sales Advisor$/, "sales advisor")}` : "car sales agent"}${loc ? ` in ${loc}` : ""} on Drevo.${cars}`;
 }
 
 // Plain-English problems with how the result will read, worst first. Each is
