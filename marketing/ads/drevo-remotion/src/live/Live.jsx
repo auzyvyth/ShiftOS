@@ -3,7 +3,7 @@
 // tight zooms into the real presenter recording (no top bar, no name); at ~10 s before the end the
 // camera pulls back to the whole screen. Footage: public/takes/calc-*.mp4, budget-*.mp4 (harness/record.cjs).
 import React from 'react';
-import { AbsoluteFill, Sequence, Audio, staticFile, useCurrentFrame, interpolate } from 'remotion';
+import { AbsoluteFill, Sequence, Audio, Img, staticFile, useCurrentFrame, interpolate } from 'remotion';
 import { FPS, sec, pop, clamp, ease, easeIO } from '../lib';
 import { Ambient, Headline, Fine, Chip, Device, Cursor, glass, FONT, RED, INK, MUTED } from '../ui';
 import { Card } from '../scenes/Card';
@@ -12,6 +12,8 @@ import calcMs from '../calc-ms.clicks.json';
 import calcEn from '../calc-en.clicks.json';
 import budMs from '../budget-ms.clicks.json';
 import budEn from '../budget-en.clicks.json';
+import { Shot, Ring } from '../shots';
+import RECTS from './rects.json';
 import T from './timeline.json';
 
 const RATIO = 1124 / 1000;
@@ -31,7 +33,10 @@ const COPY = {
     stakes: ['Bukan Excel.', 'Bukan kalkulator *phone.*'],
     q1: 'Berapa sebulan?', clue1: ['Satu tap,', '*monthly keluar.*'],
     q2: 'Kalau deposit 30%?', clue2: ['Tunggu,', '*ada lagi.*'],
-    q3: 'Gaji RM 10k, layak apa?', clue3: ['Ramai SA', '*tak tahu ni wujud.*'],
+    q3: 'Ada rebat tak?', clue3: ['Rebat bulan ni?', '*Tolak terus.*'],
+    q4: 'NCD saya 55%.', clue4: ['Insurans pun', '*ikut NCD viewer.*'],
+    q5: 'Gaji RM 10k, layak apa?', clue5: ['Ramai SA', '*tak tahu ni wujud.*'],
+    q6: 'Dokumen apa nak bawa?', clue6: ['Dan satu lagi,', '*terus dari live.*'],
     card: ['Jawapannya:', 'Drevo Live', '?'],
     answer: ['*Drevo Live.*', 'Satu skrin, semua jawapan.'],
     cta1: 'Nak skrin ni', cta2: 'untuk live anda?', ask: 'Komen SETUP', askSub: 'Saya setup percuma, 10 minit.',
@@ -42,7 +47,10 @@ const COPY = {
     stakes: ['Not Excel.', 'Not a *phone calculator.*'],
     q1: 'How much a month?', clue1: ['One tap,', '*the monthly is up.*'],
     q2: 'What if I put 30% down?', clue2: ['Wait,', "*there's more.*"],
-    q3: 'RM 10k salary, what fits?', clue3: ['Most SAs', "*don't know this exists.*"],
+    q3: 'Any rebate?', clue3: ['A rebate this month?', '*Taken off.*'],
+    q4: 'My NCD is 55%.', clue4: ['Insurance follows', "*the viewer's NCD.*"],
+    q5: 'RM 10k salary, what fits?', clue5: ['Most SAs', "*don't know this exists.*"],
+    q6: 'What documents do I bring?', clue6: ['And one more,', '*right from the live.*'],
     card: ['The answer:', 'Drevo Live', '?'],
     answer: ['*Drevo Live.*', 'One screen, every answer.'],
     cta1: 'Want this screen', cta2: 'for your live?', ask: 'Comment SETUP', askSub: 'I set it up free, 10 minutes.',
@@ -105,22 +113,41 @@ const Stakes = ({ lang }) => {
   );
 };
 
+// Phone screenshots (harness/live.cjs): a crop, with a crossfade from one real screen to the next.
+const PhoneShot = ({ lang, from, to, crop, ring, swap = 1.2, top = 600, width = 820 }) => {
+  const f = useCurrentFrame(); const t = f / FPS;
+  const o = interpolate(t, [swap, swap + 0.2], [0, 1], clamp);
+  return (
+    <div style={{ position: 'absolute', left: (1080 - width) / 2, top }}>
+      <Shot src={`real/live-${from}-${lang}.png`} crop={crop} width={width}>
+        {(k) => (<>
+          {to && <Img src={staticFile(`real/live-${to}-${lang}.png`)} style={{ position: 'absolute', width: 390 * k, height: 844 * k, left: -crop.x * k, top: -crop.y * k, opacity: o }} />}
+          {ring && <Ring r={ring} crop={crop} k={k} at={swap + 0.4} />}
+        </>)}
+      </Shot>
+    </div>
+  );
+};
+
 const clue = (n) => ({ lang }) => {
-  const f = useCurrentFrame(); const t = f / FPS; const C = COPY[lang];
+  const f = useCurrentFrame(); const t = f / FPS; const C = COPY[lang]; const R = RECTS[lang];
   const calc = (lang === 'en' ? calcEn : calcMs).clicks, bud = (lang === 'en' ? budEn : budMs).clicks;
   const g = zIn(f);
-  const z = [2.1, 1.75, 1.25].at(n - 1) * (1.15 - 0.15 * g);
-  const shot = n === 1 ? { src: `takes/calc-${lang}.mp4`, clicks: calc, takeT: 0.6 + t * 0.55, fx: 0.42, fy: 0.27 }
-    : n === 2 ? { src: `takes/calc-${lang}.mp4`, clicks: calc, takeT: 5.2 + t * 0.55, fx: 0.56, fy: 0.36 }
-    : { src: `takes/budget-${lang}.mp4`, clicks: bud, takeT: 3.6 + t * 1.1, fx: 0.5, fy: 0.42 };
+  const zoom = (z0, s) => <Zoom {...s} z={z0 * (1.15 - 0.15 * g)} top={620} />;
+  const pic = {
+    1: () => zoom(2.1, { src: `takes/calc-${lang}.mp4`, clicks: calc, takeT: 0.6 + t * 0.6, fx: 0.42, fy: 0.27 }),
+    2: () => zoom(1.75, { src: `takes/calc-${lang}.mp4`, clicks: calc, takeT: 5.2 + t * 0.6, fx: 0.56, fy: 0.36 }),
+    3: () => <PhoneShot lang={lang} from="rebadj" to="rebate" crop={{ x: 10, y: 172, w: 370, h: 330 }} ring={R.rebrow} swap={1.3} />,
+    4: () => zoom(1.7, { src: `takes/calc-${lang}.mp4`, clicks: calc, takeT: 2.5 + t * 0.6, fx: 0.7, fy: 0.64 }),
+    5: () => zoom(1.25, { src: `takes/budget-${lang}.mp4`, clicks: bud, takeT: 3.6 + t * 1.2, fx: 0.5, fy: 0.42 }),
+    6: () => <PhoneShot lang={lang} from="docs" crop={{ x: 10, y: 69, w: 370, h: 440 }} top={600} width={780} />,
+  }[n];
   return (
     <>
-      <Headline lines={[C.clue1, C.clue2, C.clue3].at(n - 1)} at={0.05} out={LEN(`clue${n}`) - 0.35} top={230} size={96} />
-      <Ask text={[C.q1, C.q2, C.q3].at(n - 1)} top={480} />
-      <div style={{ position: 'absolute', inset: 0, opacity: g, transform: `translateY(${(1 - g) * 80}px)` }}>
-        <Zoom {...shot} z={z} top={620} />
-      </div>
-      <Fine text={C.fine} top={1300} />
+      <Headline lines={C[`clue${n}`]} at={0.05} out={LEN(`clue${n}`) - 0.35} top={230} size={92} />
+      <Ask text={C[`q${n}`]} top={480} />
+      <div style={{ position: 'absolute', inset: 0, opacity: g, transform: `translateY(${(1 - g) * 80}px)` }}>{pic()}</div>
+      <Fine text={C.fine} top={1340} />
     </>
   );
 };
@@ -162,7 +189,7 @@ const Cta = ({ lang }) => {
   );
 };
 
-const SCENES = { hook: Hook, stakes: Stakes, clue1: clue(1), clue2: clue(2), clue3: clue(3), answer: Answer, cta: Cta };
+const SCENES = { hook: Hook, stakes: Stakes, clue1: clue(1), clue2: clue(2), clue3: clue(3), clue4: clue(4), clue5: clue(5), clue6: clue(6), answer: Answer, cta: Cta };
 
 export const LiveAd = ({ lang = 'ms', audio = true }) => {
   const C = COPY[lang];

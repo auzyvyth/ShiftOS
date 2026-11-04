@@ -16,3 +16,8 @@ Replaces the "6.44% vs 3.5%" crop post (owner: "the whole live presentation"). O
 
 Zooms keep the top bar (name, tabs) out of frame so the clues never give the answer away.
 Footage: public/takes/calc-*.mp4, budget-*.mp4 (the Premium ad's recordings of LivePresenter).
+
+## v2 (owner: "more details on the stills, more scenes"), 37.75 s
+Six clues of 3.5 s: monthly, deposit 30%, rebate (Adjust > Rebates -> the "- RM 5,000" line), NCD 55%
+(insurance RM 5,299 -> RM 2,390), salary RM 10k (Budget), documents (Docs screen). Card at 27 s, answer
+27.75-33.75, CTA to 37.75. New phone screens: harness/live.cjs. Sheets: tools/sheet.sh, two stills per scene.
