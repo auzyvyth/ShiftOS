@@ -1307,7 +1307,9 @@ export default function SalesmanProfilePage() {
             officialNew={profile?.seller_type === 'new_car' || listings.some((l) => l.is_model_card)}
             // Lite page = Lite seller = the basic presenter (LIVE-BASIC). page_basic
             // comes from salesman_has_full_page, so trials and dealer-linked reps get it all.
-            basic={!!profile?.page_basic} />
+            basic={!!profile?.page_basic}
+            // IDEA-32: only a standalone seller can invite (claim_referral).
+            canInvite={!profile?.dealer_id} />
         </Suspense>
       )}
     </>

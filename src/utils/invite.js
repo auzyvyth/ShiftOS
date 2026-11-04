@@ -13,6 +13,7 @@
 // The browser can never set profiles.referred_by itself
 // (trg_guard_profile_referral); claim_referral() decides everything.
 import { supabase } from '../supabaseClient';
+import { SITE_URL } from '../config/site';
 
 const KEY = 'xd_invite';
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -92,5 +93,26 @@ export async function claimInviteCode(input) {
 }
 
 export function inviteUrl(slug) {
-  return slug ? `https://xdrive.my/plans?invite=${encodeURIComponent(slug)}` : null;
+  return slug ? `${SITE_URL}/plans?invite=${encodeURIComponent(slug)}` : null;
+}
+
+// The message that goes with an invite link (InviteStrip, the live report).
+// Says what the tool does for the friend, never what the sender earns.
+const INVITE_TEXT = {
+  en: "I use Drevo's Live calculator for my car lives. Set it up free with my link:",
+  ms: 'Saya guna kalkulator Live Drevo masa live jual kereta. Setup free guna link saya:',
+};
+
+// Opens the phone's share sheet; on desktop (no share sheet) copies the
+// link and text. Returns 'shared' | 'copied' | 'cancelled' | 'failed'.
+export async function shareInvite(slug, lang) {
+  const url = inviteUrl(slug);
+  if (!url) return 'failed';
+  const text = INVITE_TEXT[lang === 'ms' ? 'ms' : 'en'];
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Drevo', text, url }); return 'shared'; }
+    catch (e) { if (e?.name === 'AbortError') return 'cancelled'; }
+  }
+  try { await navigator.clipboard.writeText(`${text} ${url}`); return 'copied'; }
+  catch { return 'failed'; }
 }
