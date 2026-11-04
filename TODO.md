@@ -2887,6 +2887,14 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
+  "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
+  already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
+  a year) but sits in Settings; surface it as a "Share & dapat 1 bulan free" button on the live
+  report and Dashboard. Keep it free months, never cash (Act 500; RM500 = 14 months of a RM35
+  seller). (b) Buyer-side "share this car, earn RM" = a seller paying strangers a cut of a car
+  sale: needs a legal check (referral fees on car sales, PDPA on whoever is shared to) and the
+  SA's employer's OK before any build.
 - **IDEA-31: Old-Siri style voice commands, no LLM (owner, 2026-11-03)** — a fixed set of
   commands learned from example phrases (intent + slots, like pre-LLM Siri), not a chatbot.
   Best fit: the Live presenter, where the seller's hands are busy and they are already
