@@ -1,8 +1,9 @@
 # Drevo ad style (owner-approved, 2026-11-03)
 
-The rules every Drevo marketing video follows. A new ad starts from these and from
-`LESSONS.md` (what went wrong the first time). The working example is this folder:
-`src/ui.jsx` (theme), `src/scenes/Card.jsx` (chapter card), `src/timeline.json` (timing).
+The rules every Drevo marketing video follows, on one page. The detail behind each rule:
+`DESIGN.md` (look: colour, type, layout, safe area, components, real product) and
+`AnimationStyle.md` (motion and sound). Mistakes to avoid: `LESSONS.md`. Build and render: `README.md`.
+The working examples are the two ads in this folder (Premium tour, renewals).
 
 ## Colour: 60% white, 30% red, 10% black (owner's rule, always)
 | Share | Colour | Where |
@@ -19,6 +20,11 @@ The rules every Drevo marketing video follows. A new ad starts from these and fr
 - Check it, do not eyeball it: render stills (`npx remotion still`, or a loop) and run
   `python3 tools/palette.py <dir>`. Frames between cards should land near 55 / 30 / 7, with about
   10% for photos and app screens. Chapter cards are full red by design (the colour change is the cut).
+
+## Safe area
+- TikTok covers the top ~220 px, the bottom ~480 px (more with a long caption) and a button column on
+  the right (x 900+, y 840-1500). Anything a viewer must read sits in x 60-900, y 220-1440. Headlines
+  start at y 216. Fine print goes above y 1440, never at the bottom (`DESIGN.md` section 2).
 
 ## Type
 - Outfit 700 for everything (files in `public/fonts`), loaded before frame 0.
@@ -53,5 +59,6 @@ The rules every Drevo marketing video follows. A new ad starts from these and fr
   recorded taps (`make-audio.cjs`). Final mix -14 LUFS. Music only, no voice-over.
 
 ## Process (from LESSONS.md)
-Script in words -> owner OK -> references -> one still per scene -> owner OK -> first 5 s with
-sound -> owner OK -> full render. Look at a still of every scene before sending anything.
+Script in words -> owner OK -> references -> one still per scene (`node tools/stills.cjs`) -> owner OK ->
+first 5 s with sound -> owner OK -> full render. Look at a still of every scene, in both languages,
+before sending anything.
