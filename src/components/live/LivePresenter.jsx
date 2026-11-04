@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Contact, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { supabase } from '../../supabaseClient';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
   monthlyPayment, loanTotals, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
 } from '../../utils/financing';
@@ -672,6 +672,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     if (report && !embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
   }, [report, embedded]);
   const liveWarned = useRef(false);
+  const liveToken = useRef(null); // for the End sent on pagehide (LIVE-LOG)
   useEffect(() => {
     if (!carId) return undefined;
     // A refused heartbeat used to be swallowed: if the seller's login had
@@ -691,15 +692,46 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           liveWarned.current = true;
           toast.error(t.liveSyncFailed, { duration: 6000 });
         }
-        if (!error) liveWarned.current = false;
+        if (!error) {
+          liveWarned.current = false;
+          const { data } = await supabase.auth.getSession();
+          liveToken.current = data?.session?.access_token || null;
+        }
       } catch { /* network blip: the next heartbeat retries */ }
     };
     const first = setTimeout(push, 600);
     const hb = setInterval(push, HEARTBEAT_MS);
-    return () => { clearTimeout(first); clearInterval(hb); };
+    // Back from the browser's page cache (the End on pagehide below went out):
+    // beat now, so the live reopens instead of waiting up to 4 minutes.
+    const onShow = (e) => { if (e.persisted) push(); };
+    window.addEventListener('pageshow', onShow);
+    return () => { clearTimeout(first); clearInterval(hb); window.removeEventListener('pageshow', onShow); };
   }, [carId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => {
     if (!embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
+  }, [embedded]);
+  // LIVE-LOG: closing the tab or the browser never runs the cleanup above (a
+  // normal request dies with the page), so the live stayed open in the history
+  // until it timed out. On pagehide send End as a keepalive request, which the
+  // browser finishes after the page is gone. Needs the token synchronously, so
+  // the heartbeat keeps a copy. Not on visibilitychange: a seller switching to
+  // the TikTok app on the same phone is still live.
+  useEffect(() => {
+    if (embedded) return undefined;
+    const onHide = () => {
+      const token = liveToken.current;
+      if (!token) return;
+      try {
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/set_live_listing`, {
+          method: 'POST',
+          keepalive: true,
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_listing_id: null }),
+        }).catch(() => {});
+      } catch { /* unsupported: the 10-minute timeout closes it */ }
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
   }, [embedded]);
 
   const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; };
