@@ -1155,6 +1155,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-sheet .lp-tt { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: 10px; }
         .lp-desk .lp-sheet .lp-spec { margin: 0; }
         .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
+        /* With contact on, the head is TWO rows (owner, 2026-11-04: the banner
+           under the comment line cost a row, the fit shrank the whole sheet and
+           the small print went tiny): the title, then comment line | contact. */
+        .lp-desk .lp-sheet .lp-head.lp-has-contact { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-title { flex: 0 0 100%; max-width: none; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-cta { max-width: none; display: flex; flex-direction: column; justify-content: center; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-contact { max-width: none; }
         .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "photo ncd" "rest rest"; row-gap: 6px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
@@ -1241,7 +1248,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
         /* Phone: the two figures only; how they are made up is on desktop. */
         .lp:not(.lp-desk) .lp-totals small { display: none; }
-        .lp-desk .lp-totals > div { padding: 4px 10px; }
+        .lp-desk .lp-totals > div { padding: 5px 12px; }
+        .lp-desk .lp-totals span { font-size: 13px; }
+        .lp-desk .lp-totals b { font-size: 22px; }
+        .lp-desk .lp-totals small { font-size: 13px; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 14px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
@@ -1269,8 +1279,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .08em; color: #4b5563; }
         .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 13px); }
         .lp-seg.lp-ncd button[aria-pressed="true"] { background: var(--lp-a); color: #fff; }
-        .lp-desk .lp-salary { font-size: 14px; line-height: 1.35; }
-        .lp-desk .lp-note { font-size: 12px; }
+        .lp-desk .lp-salary { font-size: 16px; line-height: 1.35; }
+        .lp-desk .lp-note { font-size: 13px; }
+        .lp-desk .lp-seg.lp-ncd > span { font-size: 13px; }
+        .lp-desk .lp-seg.lp-ncd button { height: 32px; font-size: 15px; }
 
         /* Full photo: fills the stage, never the window (owner, 2026-10-22). */
         .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
@@ -1607,7 +1619,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
         <div className="lp-card lp-sheet" key={car?.id || idx} data-in={dir > 0 ? 'next' : dir < 0 ? 'prev' : 'fade'}>
-          <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
+          <div className={`lp-head${variants.length > 1 ? ' lp-has-vars' : ''}${showContact && contact ? ' lp-has-contact' : ''}`}>
             <div className="lp-title">
               <span className="lp-num">#{idx + 1}</span>
               <div className="lp-tt">
