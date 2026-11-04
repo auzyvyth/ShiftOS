@@ -2886,6 +2886,35 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
+  "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
+  already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
+  a year) but sits in Settings; surface it as a "Share & dapat 1 bulan free" button on the live
+  report and Dashboard. Keep it free months, never cash (Act 500; RM500 = 14 months of a RM35
+  seller). (b) Buyer-side "share this car, earn RM" = a seller paying strangers a cut of a car
+  sale: needs a legal check (referral fees on car sales, PDPA on whoever is shared to) and the
+  SA's employer's OK before any build.
+- **IDEA-31: Old-Siri style voice commands, no LLM (owner, 2026-11-03)** — a fixed set of
+  commands learned from example phrases (intent + slots, like pre-LLM Siri), not a chatbot.
+  Best fit: the Live presenter, where the seller's hands are busy and they are already
+  talking: "nombor tujuh" / "show seven" opens #7, "deposit sepuluh peratus", "tujuh tahun",
+  "contact on". Maybe later a seller command bar ("add a car", "who do I call today").
+  Why: free (no AI bill), fast, works offline, cannot invent a price (it only presses buttons
+  that already exist). Constraints: browser speech-to-text sends audio to Google on Chrome and
+  is weak on iPhone; mixed BM/English hurts accuracy; a seller talks non-stop on a live, so it
+  needs push-to-talk or a wake word or it fires by accident. Test first: ~30 example phrases
+  per command from 3 real sellers, measure how often it picks the right one.
+  **Text first, in Premium (owner, same day):** an "Ask" box where the seller types "how am I
+  doing", "what should I fix", "which car is dead", "who do I call". Matched to ~10 intents
+  learned from example phrases (BM + English + typos). Each answer is a short sentence built
+  from maths that ALREADY exists (`salesPerformance.js buildSalesPerformance` / `buildInsights`,
+  `carCoach.js carNextStep` / `pickSilentCar`, `thisWeek.js buildThisWeek`) plus a button to the
+  screen that shows it. Skips the speech problems entirely. Rules: it never computes a new
+  number (one fact, one source); an unmatched question says "I can answer these:" + chips,
+  never a guess; no question text leaves the phone. Risk: it repeats Performance + This week
+  in a different place, so it must be a shortcut INTO them, not a third report. Test: log
+  (on device) which questions sellers type for 2 weeks before adding intents.
+
 - **IDEA-30: Dealers first, their own site with no Drevo link (owner, 2026-11-03)** — sign
   dealerships before salesmen, and give each a website (the `<sub>` storefront) where their own
   marketing lands, with no link back to the marketplace on it. Why: sellers want buyers, and a
