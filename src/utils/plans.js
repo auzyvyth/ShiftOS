@@ -134,10 +134,12 @@ export const DEALER_PLANS = ['dealer_starter', 'dealer_growth', 'dealer_pro'].ma
 const LITE = PLAN_CONFIG.salesman_lite;
 const CARD_WORDS = {
   en: {
-    per: '/month', free: 'Free', foundingBadge: 'Founding price',
-    lite: { name: 'Salesman Lite', desc: 'Get found and get the lead. Free, no card.', cta: 'Start free',
+    per: '/month', free: 'Free', foundingBadge: 'Founding price', self: 'Or sign up yourself',
+    lite: { name: 'Salesman Lite', desc: 'Get found and get the lead. Free, no card.', cta: 'Start free on WhatsApp',
+      wa: "Hi, I'm a car salesman and want to start on Drevo Lite (free). Can you set it up for me?",
       features: ['Basic Live presentation', `Up to ${LITE.listingCap} cars on your page`, 'Buyers reach you by WhatsApp, chat, booking', 'Alerts and a simple lead list', `${LITE_POSTERS_PER_MONTH} loan posters a month`] },
-    premium: { name: 'Salesman Premium', desc: 'Work every lead until the deal closes.', cta: `Start ${PF.trialDays} days free`,
+    premium: { name: 'Salesman Premium', desc: 'Work every lead until the deal closes.', cta: `Try ${PF.trialDays} days free on WhatsApp`,
+      wa: `Hi, I'm a car salesman and want to try Drevo Premium free for ${PF.trialDays} days. Can you set it up for me?`,
       notes: [`Or RM${PF.yearlyPrice} a year, paid once (about 2 months free).`, `Founding price for the first ${PF.foundingSpots} sellers, yours while you stay. Then RM${PF.listPrice}.`],
       features: ['Everything in Lite', 'Full Live presentation: Budget, Viewer, Docs', '"This week" call list + drafted follow-ups', 'Loan desk + unlimited loan posters', `Up to ${PF.listingCap} cars`] },
     dfy: { name: 'Done for you', desc: 'Premium, set up for you by our team.', cta: 'WhatsApp us',
@@ -145,10 +147,12 @@ const CARD_WORDS = {
       features: ['Everything in Premium', 'Your page set up for you', `Your first ${PF.doneForYouCars} cars uploaded from your photos`, 'Loan posters made for those cars', 'WhatsApp help when you get stuck'] },
   },
   ms: {
-    per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas',
-    lite: { name: 'Salesman Lite', desc: 'Senang dijumpai, dapat lead. Percuma, tak perlu kad.', cta: 'Mula percuma',
+    per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas', self: 'Atau daftar sendiri',
+    lite: { name: 'Salesman Lite', desc: 'Senang dijumpai, dapat lead. Percuma, tak perlu kad.', cta: 'Mula percuma di WhatsApp',
+      wa: 'Hi, saya salesman kereta dan nak mula guna Drevo Lite (percuma). Boleh tolong setupkan?',
       features: ['Live presentation asas', `Sampai ${LITE.listingCap} kereta di page anda`, 'Pembeli hubungi melalui WhatsApp, chat, booking', 'Alert dan senarai lead ringkas', `${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
-    premium: { name: 'Salesman Premium', desc: 'Follow up setiap lead sampai deal tutup.', cta: `Mula ${PF.trialDays} hari percuma`,
+    premium: { name: 'Salesman Premium', desc: 'Follow up setiap lead sampai deal tutup.', cta: `Cuba ${PF.trialDays} hari percuma di WhatsApp`,
+      wa: `Hi, saya salesman kereta dan nak cuba Drevo Premium percuma ${PF.trialDays} hari. Boleh tolong setupkan?`,
       notes: [`Atau RM${PF.yearlyPrice} setahun, bayar sekali (lebih kurang 2 bulan percuma).`, `Harga pengasas untuk ${PF.foundingSpots} seller pertama, kekal selagi melanggan. Lepas tu RM${PF.listPrice}.`],
       features: ['Semua dalam Lite', 'Live presentation penuh: Bajet, Penonton, Dokumen', 'Senarai call "Minggu ini" + mesej follow up', 'Loan desk + poster loan tanpa had', `Sampai ${PF.listingCap} kereta`] },
     dfy: { name: 'Kami setkan untuk anda', desc: 'Premium, disetkan oleh team kami.', cta: 'WhatsApp kami',
@@ -159,12 +163,17 @@ const CARD_WORDS = {
 
 export const PRICING_FEATURES_LABEL = { en: 'Features', ms: 'Ciri-ciri' };
 
+// Every card's button opens WhatsApp for now (owner, 2026-11-05): at a handful
+// of visitors a day the owner sets each account up by hand. The signup page is
+// still one tap away as the small "sign up yourself" link (`selfTo`).
+export const waLink = (text) => `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(text)}`;
+
 export function salesmanPricingCards(lang = 'en') {
   const w = CARD_WORDS[lang] || CARD_WORDS.en;
   return [
-    { key: 'lite', ...w.lite, price: w.free, per: '', to: PRESENTATION.salesman_lite.route },
-    { key: 'premium', ...w.premium, price: `RM${PF.price}`, per: w.per, featured: true, badge: w.foundingBadge, to: PRESENTATION.salesman_full.route },
+    { key: 'lite', ...w.lite, price: w.free, per: '', href: waLink(w.lite.wa), selfTo: PRESENTATION.salesman_lite.route, selfLabel: w.self },
+    { key: 'premium', ...w.premium, price: `RM${PF.price}`, per: w.per, featured: true, badge: w.foundingBadge, href: waLink(w.premium.wa), selfTo: PRESENTATION.salesman_full.route, selfLabel: w.self },
     { key: 'dfy', ...w.dfy, price: `RM${PF.doneForYouPrice}`, per: w.per,
-      href: `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(w.dfy.wa)}` },
+      href: waLink(w.dfy.wa) },
   ];
 }

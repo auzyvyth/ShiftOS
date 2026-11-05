@@ -1524,7 +1524,12 @@ and **Done for you RM99/month** (`doneForYouPrice`: Premium + the owner sets up 
 `doneForYouCars` cars and their posters BY HAND). Neither is a DB plan: both are Premium payments,
 logged with the console's extra buttons (`markPaid(a, {amount, months, note})`, AccountsTab.jsx,
 note `yearly` / `done_for_you`), and both are bought on WhatsApp (`OPS_WHATSAPP`, planConfig.js, the
-one copy). Both pages show Lite | Premium | Done for you, Premium in the middle (first on a phone). Never list a Done-for-you task the owner
+one copy). Both pages show Lite | Premium | Done for you, Premium in the middle (first on a phone).
+**Every pricing card's button opens WhatsApp for now (owner, 2026-11-05)**, Lite, Premium and the
+dealer cards on /plans too, with a small "Or sign up yourself" link (`selfTo`) under it: the owner
+sets accounts up by hand while traffic is a handful a day. Inside TikTok / Instagram / Facebook's
+own browser `/for-salesmen` swaps EVERY signup button for WhatsApp and drops that link (signup cannot
+finish there: Google is blocked, the confirm email opens elsewhere). Revert = `href` back to `to`. Never list a Done-for-you task the owner
 cannot actually deliver this week.
 
 ## Premium lapse -> Lite (2026-10-19, migration 20261019a)
