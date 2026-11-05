@@ -327,7 +327,7 @@ export default function SalesmanLiteLanding() {
             <p className="sll-kicker">{s.plansKicker}</p>
             <h2 className="sll-h2">{s.plansTitle}</h2>
             <div className="sll-pc">
-              <PricingCards cards={inApp ? salesmanPricingCards(lang).map((c) => (c.href ? c : { ...c, href: waHref })) : salesmanPricingCards(lang)} featuresLabel={PRICING_FEATURES_LABEL[lang] || PRICING_FEATURES_LABEL.en} />
+              <PricingCards cards={inApp ? salesmanPricingCards(lang).map((c) => ({ ...c, selfTo: undefined })) : salesmanPricingCards(lang)} featuresLabel={PRICING_FEATURES_LABEL[lang] || PRICING_FEATURES_LABEL.en} />
             </div>
 
             <div className="sll-pay">
