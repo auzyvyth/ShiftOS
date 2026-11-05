@@ -401,6 +401,16 @@ const EN = {
     ],
   },
 
+  // Shown instead of the signup buttons inside TikTok / Instagram / Facebook's
+  // own browser (owner, 2026-11-05): Google sign-in is blocked there and the
+  // email signup ends in a confirm link that opens somewhere else, so ad
+  // traffic gets a person on WhatsApp who sets the account up for them.
+  inApp: {
+    cta: "WhatsApp me, I'll set it up for you",
+    note: "Free to start. Prefer to sign up yourself? Tap the three dots (...) at the top, then Open in browser.",
+    waText: "Hi, I'm a car salesman. I saw Drevo on TikTok and want to try it. Can you set it up for me?",
+  },
+
   final: {
     titleLines: ["Your next live,", "already worked out."],
     body: "Every car you list becomes a screen with its monthlies ready.",
@@ -718,6 +728,12 @@ const MS = {
       { q: "Macam mana salesman solo nak jejak lead dan klik WhatsApp?",
         a: "Di Drevo, setiap pembeli yang tap WhatsApp, hantar chat atau buat booking masuk ke senarai lead anda dengan stage, dan anda dapat alert. Setiap kereta tunjuk jumlah view dan tap WhatsApp, jadi anda nampak kereta mana yang tarik pembeli. Percuma dengan Lite. Premium tambah reminder follow up, log panggilan dan Performance yang tunjuk di mana deal terlepas." },
     ],
+  },
+
+  inApp: {
+    cta: "WhatsApp saya, saya setupkan untuk anda",
+    note: "Percuma untuk mula. Nak daftar sendiri? Tekan tiga titik (...) di atas, kemudian Open in browser.",
+    waText: "Hi, saya salesman kereta. Saya nampak Drevo di TikTok dan nak cuba. Boleh tolong setupkan?",
   },
 
   final: {
