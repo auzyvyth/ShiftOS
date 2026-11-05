@@ -51,6 +51,13 @@ Full plan and status: `TODO.md` BRAND-1.
   switch, and flipping it is the switch.
 - "ShiftOS" (the seller/dealer software name) is retiring too, but WHAT it
   becomes is an open owner call. Don't add new "ShiftOS" text; ask if unsure.
+- **Logo = the "Split D" (owner, 2026-11-05, TEMPORARY until a final logo).** One lockup for
+  Drevo AND the seller software: `public/drevo-logo-white.png` (dark surfaces),
+  `drevo-logo-dark.png` (light), `drevo-mark.svg` / `drevo-mark-512.png` (favicon, schema logo),
+  `drevo-icon-192/512/180.png` (app icon, full red, glyph inside the maskable safe zone),
+  `drevo-badge-96.png` (white-only notification badge). Old filenames (`xdrivelogo.png`,
+  `logo-shiftos*.png`, `pwa-*.png`, `shiftos-notif-*.png`) hold the same art for outside links;
+  code points at the drevo-* names. Swapping the logo = replace these files, nothing else.
 - Never rename identifiers to match (`ShiftOSPage`, the `/shiftos` route,
   `xd_*` storage keys, DB values like `drevo_enquiry`): renaming a key resets
   every user's saved setting; renaming a route breaks links.

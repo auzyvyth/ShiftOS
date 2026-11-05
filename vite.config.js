@@ -72,8 +72,8 @@ export default defineConfig({
 				// wide stock/P&L tables that are genuinely better in landscape on a
 				// tablet, so locking to portrait would be hostile.
 				icons: [
-					{ src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-					{ src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+					{ src: '/drevo-icon-192.png', sizes: '192x192', type: 'image/png' },
+					{ src: '/drevo-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
 				],
 			},
 			workbox: {

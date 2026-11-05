@@ -2150,7 +2150,7 @@ export default function SalesmanLite() {
       localStorage.setItem('slite_last_followup_notif', String(Date.now()));
       const names = staleLeads.slice(0, 3).map(l => l.buyer_name || 'Unknown').join(', ');
       const title = `${staleLeads.length} lead${staleLeads.length !== 1 ? 's' : ''} need follow-up`;
-      const options = { body: names, tag: 'slite-followup', icon: '/shiftos-notif-icon.png', badge: '/shiftos-notif-badge.png' };
+      const options = { body: names, tag: 'slite-followup', icon: '/drevo-icon-192.png', badge: '/drevo-badge-96.png' };
       try {
         // Pages controlled by a service worker (PWA) can't use `new Notification` —
         // it throws "Illegal constructor"; must go through the SW registration instead.
@@ -6211,7 +6211,7 @@ export default function SalesmanLite() {
             }}
           >
             <div>
-              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
+              <img src="/drevo-logo-white.png" alt="Drevo" width="450" height="120" style={{ height: 15, width: "auto", display: "block" }} />
               <p
                 style={{
                   fontSize: 10,
@@ -6379,7 +6379,7 @@ export default function SalesmanLite() {
         >
           {isMobile ? (
             <>
-              <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
+              <img src="/drevo-logo-white.png" alt="Drevo" width="450" height="120" style={{ height: 15, width: "auto", display: "block" }} />
               <div style={{ flex: 1 }} />
               <GoPremiumButton onClick={goPremium} compact={isMobile} />
               <button
