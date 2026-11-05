@@ -545,7 +545,7 @@ const BRAND_LD = [
     name: "Drevo",
     alternateName: "Drevo Malaysia",
     url: SITE_URL,
-    logo: `${SITE_URL}/xdrivelogo.png`,
+    logo: `${SITE_URL}/drevo-mark-512.png`,
     description:
       "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents.",
     areaServed: "MY",

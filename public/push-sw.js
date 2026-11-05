@@ -33,8 +33,8 @@ self.addEventListener('push', (event) => {
   const tag = payload.tag || 'shiftos';
   const options = {
     body: payload.body || '',
-    icon: '/pwa-192x192.png',
-    badge: '/pwa-192x192.png',
+    icon: '/drevo-icon-192.png',
+    badge: '/drevo-badge-96.png',
     // `tag` collapses repeats: a second push with the same tag replaces the
     // first rather than stacking. Senders use ids like `appt-<uuid>`.
     tag,

@@ -10618,7 +10618,7 @@ export default function DashboardPage() {
                 surface (#EAECF0 borders, dark ink), so the white lockup would be
                 invisible on it. Same artwork, wordmark recoloured to the
                 dashboard's own text colour, red bar untouched. */}
-            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: 'auto', display: 'block' }} />
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120" style={{ height: 16, width: 'auto', display: 'block' }} />
             <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>Drevo Dashboard</p>
           </div>
           {/* Bell */}
@@ -10835,7 +10835,7 @@ export default function DashboardPage() {
                 was hidden there), so hiding both would leave a 375px dealer bar
                 with no brand at all. One mark, the lockup — not a badge saying
                 the same thing beside it. */}
-            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 14, width: 'auto', display: 'block' }} />
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120" style={{ height: 14, width: 'auto', display: 'block' }} />
           </div>
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}

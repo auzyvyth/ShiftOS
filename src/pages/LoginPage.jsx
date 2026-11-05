@@ -490,7 +490,7 @@ export default function LoginPage() {
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: "24px 16px", background: "#F7F6F2", fontFamily: "var(--xd-font-body)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#0f1115" }}>
           <span style={{ width: 30, height: 30, background: "#dc2626", borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: "'Bebas Neue', sans-serif", fontSize: 18, letterSpacing: 1 }}>S</span>
-          <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 21, width: "auto", display: "block" }} />
+          <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120" style={{ height: 21, width: "auto", display: "block" }} />
         </div>
         <div style={{ width: "min(420px, 100%)", background: "#fff", border: "1px solid #e5e7eb", borderRadius: 20, padding: "40px 36px", textAlign: "center", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}>
           <div style={{ width: 56, height: 56, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.25)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
@@ -876,7 +876,7 @@ export default function LoginPage() {
           <div className={`lr-left-content${mounted ? ' in' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
             <div className="lr-brand">
               <div className="lr-brand-mark">S</div>
-              <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" className="lr-brand-img" />
+              <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120" className="lr-brand-img" />
             </div>
 
             {/* This is now the ONE sign-in door for buyers and sellers alike, so
