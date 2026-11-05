@@ -100,7 +100,9 @@ function Shot({ s, shotRef, pending }) {
   );
 }
 
-export default function PlanTour({ copy, lang = "ms" }) {
+// ctaHref + ctaLabel: set by the landing page inside TikTok / Instagram's own
+// browser, where signup cannot finish; the button then opens WhatsApp instead.
+export default function PlanTour({ copy, lang = "ms", ctaHref, ctaLabel, onCtaClick }) {
   const reduce = useReducedMotion();
   // Opens on Premium: it shows the most tabs (Live presentation is on both
   // plans since 2026-10-18), and Lite is one tap away on the toggle.
@@ -245,7 +247,9 @@ export default function PlanTour({ copy, lang = "ms" }) {
               ))}
 
               <div className="pt-end">
-                <Link to={cfg.to} className="pt-cta">{cfg.cta} <ArrowRight size={17} /></Link>
+                {ctaHref
+                  ? <a href={ctaHref} target="_blank" rel="noopener noreferrer" className="pt-cta" onClick={onCtaClick}>{ctaLabel}</a>
+                  : <Link to={cfg.to} className="pt-cta">{cfg.cta} <ArrowRight size={17} /></Link>}
               </div>
             </motion.div>
           </AnimatePresence>

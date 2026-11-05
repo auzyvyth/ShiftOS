@@ -16,7 +16,9 @@ import { salesmanPricingCards, PRICING_FEATURES_LABEL } from "../utils/plans";
 import LiveDemo from "../components/salesmanLanding/LiveDemo";
 import PosterDemo from "../components/salesmanLanding/PosterDemo";
 import { ROOT_DOMAIN } from "../config/site";
-import { PLAN_CONFIG } from "../utils/planConfig";
+import { PLAN_CONFIG, OPS_WHATSAPP } from "../utils/planConfig";
+import { isInAppBrowser } from "../utils/installPrompt";
+import { trackEvent } from "../utils/analytics";
 import {
   CANON, SEO_KEYWORDS, SOFTWARE_LD, FAQ_LD, FAQ_LD_EN, webpageLd, EXAMPLE_PAGE,
   DEFAULT_LANG, LANG_KEY, LANDING_COPY, landingCopy,
@@ -91,6 +93,19 @@ export default function SalesmanLiteLanding() {
   const reduceMotion = useReducedMotion();
   const [lang, setLang] = useState(readLang);
   const t = landingCopy(lang);
+  // Inside TikTok / Instagram / Facebook's own browser the signup cannot be
+  // finished (Google sign-in blocked, the confirm email opens elsewhere), so
+  // every signup button becomes a WhatsApp chat with the owner instead.
+  const [inApp] = useState(isInAppBrowser);
+  const waHref = `https://wa.me/${OPS_WHATSAPP}?text=${encodeURIComponent(t.inApp.waText)}`;
+  const onWa = (where) => () => trackEvent(supabase, "landing_whatsapp_click", { metadata: { source: "for_salesmen", where } });
+  // Called as a function, not rendered as <Cta/>: a component declared in here
+  // would be a new type every render.
+  const cta = (to, className, label, where, iconSize = 18) => (inApp
+    ? <a href={waHref} target="_blank" rel="noopener noreferrer" className={className} onClick={onWa(where)}>
+        <MessageCircle size={iconSize} /> {t.inApp.cta}
+      </a>
+    : <Link to={to} className={className}>{label} <ArrowRight size={iconSize} /></Link>);
   const s = t.short;
   const pc = s.planCards;
   const switchLang = () => { const next = t.switchTo; saveLang(next); setLang(next); };
@@ -185,11 +200,9 @@ export default function SalesmanLiteLanding() {
             </ul>
 
             <div className="sll-hero-cta">
-              <Link to={PREMIUM_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
-                {s.offer.cta} <ArrowRight size={18} />
-              </Link>
-              <p className="sll-hero-bill">{s.offer.billing}</p>
-              <Link to={LITE_SIGNUP} className="sll-hero-lite">{s.offer.liteLink}</Link>
+              {cta(PREMIUM_SIGNUP, "sll-btn sll-btn-red sll-btn-lg", s.offer.cta, "hero")}
+              <p className="sll-hero-bill">{inApp ? t.inApp.note : s.offer.billing}</p>
+              {!inApp && <Link to={LITE_SIGNUP} className="sll-hero-lite">{s.offer.liteLink}</Link>}
             </div>
           </div>
         </section>
@@ -286,7 +299,7 @@ export default function SalesmanLiteLanding() {
         </section>
 
         {/* ── What you get with each plan: one real screenshot per tab ── */}
-        <PlanTour copy={t.tour} lang={lang} />
+        <PlanTour copy={t.tour} lang={lang} {...(inApp ? { ctaHref: waHref, ctaLabel: t.inApp.cta, onCtaClick: onWa("tour") } : {})} />
 
         {/* ── How it works (inverted) ── */}
         <section className="sll-dark" id="how">
@@ -303,9 +316,7 @@ export default function SalesmanLiteLanding() {
               ))}
             </motion.div>
             <div className="sll-dark-cta">
-              <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red">
-                {t.liveCta} <ArrowRight size={17} />
-              </Link>
+              {cta(LITE_SIGNUP, "sll-btn sll-btn-red", t.liveCta, "live", 17)}
             </div>
           </div>
         </section>
@@ -316,7 +327,7 @@ export default function SalesmanLiteLanding() {
             <p className="sll-kicker">{s.plansKicker}</p>
             <h2 className="sll-h2">{s.plansTitle}</h2>
             <div className="sll-pc">
-              <PricingCards cards={salesmanPricingCards(lang)} featuresLabel={PRICING_FEATURES_LABEL[lang] || PRICING_FEATURES_LABEL.en} />
+              <PricingCards cards={inApp ? salesmanPricingCards(lang).map((c) => ({ ...c, selfTo: undefined })) : salesmanPricingCards(lang)} featuresLabel={PRICING_FEATURES_LABEL[lang] || PRICING_FEATURES_LABEL.en} />
             </div>
 
             <div className="sll-pay">
@@ -355,11 +366,9 @@ export default function SalesmanLiteLanding() {
             </h2>
             <p className="sll-final-p">{t.final.body}</p>
             <div className="sll-cta-row sll-cta-center">
-              <Link to={LITE_SIGNUP} className="sll-btn sll-btn-red sll-btn-lg">
-                {t.liveCta} <ArrowRight size={18} />
-              </Link>
+              {cta(LITE_SIGNUP, "sll-btn sll-btn-red sll-btn-lg", t.liveCta, "final")}
             </div>
-            <p className="sll-final-alt"><Link to={PREMIUM_SIGNUP}>{t.final.liteLink}</Link></p>
+            {!inApp && <p className="sll-final-alt"><Link to={PREMIUM_SIGNUP}>{t.final.liteLink}</Link></p>}
             <p className="sll-microtrust sll-center">
               {t.final.trust.map((x, i) => {
                 const Icon = FINAL_TRUST_ICONS[i] || Check;
