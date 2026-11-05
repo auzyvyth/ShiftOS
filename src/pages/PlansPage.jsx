@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet';
 import MarketplaceHeader from '../components/MarketplaceHeader';
 import MarketplaceFooter from '../components/MarketplaceFooter';
 import PricingCards from '../components/pricing/PricingCards';
-import { DEALER_PLANS, salesmanPricingCards } from '../utils/plans';
+import { DEALER_PLANS, salesmanPricingCards, waLink } from '../utils/plans';
 import { supabase } from '../supabaseClient';
 import { ensureBuyerProfile } from '../lib/buyerAuth';
 
@@ -65,7 +65,9 @@ export default function PlansPage() {
   // Dealer cards have no featured card: the seller plans are where the money is now.
   const dealerCards = DEALER_PLANS.map((p) => ({
     key: p.tier, name: p.label, price: p.price.replace(/^RM /, 'RM'), per: p.priceSub,
-    desc: p.trial, cta: 'Start free trial', to: p.route, features: [...p.caps.slice(0, 1), ...p.features],
+    desc: p.trial, cta: 'Start on WhatsApp', features: [...p.caps.slice(0, 1), ...p.features],
+    href: waLink(`Hi, I run a car dealership and want to try Drevo ${p.label}. Can you set it up for us?`),
+    selfTo: p.route, selfLabel: 'Or sign up yourself',
   }));
 
   const section = (title, blurb, cards) => (

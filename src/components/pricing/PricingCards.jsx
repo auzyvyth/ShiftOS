@@ -10,7 +10,8 @@ import { Check } from "lucide-react";
  * The `featured` card (Premium) carries the only colour: a soft red glow at the
  * top, a red key button and red ticks. Every other card stays neutral on purpose.
  *
- * card = { key, name, badge?, price, per, desc, notes?, cta, to? | href?, featured?, features[] }
+ * card = { key, name, badge?, price, per, desc, notes?, cta, to? | href?, selfTo?, selfLabel?, featured?, features[] }
+ * selfTo: a small "sign up yourself" link under a WhatsApp button.
  */
 export default function PricingCards({ cards, featuresLabel = "Features" }) {
   return (
@@ -29,6 +30,7 @@ export default function PricingCards({ cards, featuresLabel = "Features" }) {
           ) : (
             <Link className="pc-btn" to={c.to}>{c.cta}</Link>
           )}
+          {c.selfTo && <Link className="pc-self" to={c.selfTo}>{c.selfLabel}</Link>}
           {/* Under the button, so every card's button sits at the same height. */}
           {c.notes?.length > 0 && (
             <div className="pc-notes">{c.notes.map((n) => <p key={n}>{n}</p>)}</div>
@@ -63,6 +65,8 @@ const CSS = `
 .pc-notes p:first-child { color: #111827; font-weight: 600; }
 .pc-btn { margin-top: 18px; display: flex; align-items: center; justify-content: center; height: 42px; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; color: #111827; background: #f6f6f7; border: 1px solid #e4e4e7; box-shadow: inset 0 1px 0 #fff; transition: background 0.15s; }
 .pc-btn:hover { background: #efeff1; }
+.pc-self { margin-top: 8px; text-align: center; font-size: 12.5px; color: #6b7280; text-decoration: underline; text-underline-offset: 2px; }
+.pc-self:hover { color: #111827; }
 .pc-feat .pc-btn { color: #fff; border: none; background: linear-gradient(180deg, #ef4444, #dc2626); box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 2px rgba(127,29,29,0.3), 0 8px 18px -8px rgba(220,38,38,0.55); }
 .pc-feat .pc-btn:hover { background: linear-gradient(180deg, #f05252, #c81e1e); }
 .pc-rule { display: flex; align-items: center; gap: 10px; margin: 20px 0 14px; }
