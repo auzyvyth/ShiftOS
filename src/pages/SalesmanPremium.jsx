@@ -1964,7 +1964,7 @@ export default function SalesmanPremium() {
  localStorage.setItem('sp_last_followup_notif', String(Date.now()));
  const names = staleLeads.slice(0, 3).map(l => l.buyer_name || i18n.t('salesmanPremium.common.unknown')).join(', ');
  const title = i18n.t('salesmanPremium.leads.needFollowUpNotif', { count: staleLeads.length });
- const options = { body: names, tag: 'sp-followup', icon: '/shiftos-notif-icon.png', badge: '/shiftos-notif-badge.png' };
+ const options = { body: names, tag: 'sp-followup', icon: '/drevo-icon-192.png', badge: '/drevo-badge-96.png' };
  try {
  // Pages controlled by a service worker (PWA) can't use `new Notification` —
  // it throws "Illegal constructor"; must go through the SW registration.
@@ -3122,7 +3122,7 @@ export default function SalesmanPremium() {
  >
  <div style={{ padding: "20px 16px 18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
  <div style={{ flex: 1, minWidth: 0 }}>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <img src="/drevo-logo-white.png" alt="Drevo" width="450" height="120" style={{ height: 16, width: "auto", display: "block" }} />
  <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>· {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}</p>
  </div>
  <button onClick={() => setMobileNavOpen(false)} aria-label={t("salesmanPremium.nav.closeNav")}
@@ -6934,7 +6934,7 @@ export default function SalesmanPremium() {
  >
  {/* Logo */}
  <div style={{ padding: "22px 24px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: "auto", display: "block" }} />
+ <img src="/drevo-logo-white.png" alt="Drevo" width="450" height="120" style={{ height: 16, width: "auto", display: "block" }} />
  <p style={{ fontSize: 10, color: "#4b5563", marginTop: 4, marginBottom: 0 }}>
  · {isPremium ? t("salesmanPremium.nav.premiumPanel") : t("salesmanPremium.nav.litePanel")}
  </p>
@@ -7065,7 +7065,7 @@ export default function SalesmanPremium() {
  )}
  {isMobile? (
  <>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
+ <img src="/drevo-logo-white.png" alt="Drevo" width="450" height="120" style={{ height: 15, width: "auto", display: "block" }} />
  <div style={{ flex: 1 }} />
  <button
  onClick={() => setNotifOpen((v) =>!v)}

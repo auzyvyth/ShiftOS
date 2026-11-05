@@ -174,9 +174,7 @@ export default function MarketplaceFooter() {
 
         {/* Brand column */}
         <div>
-          <div className="text-2xl font-black text-gray-900 tracking-tight mb-1" style={{ fontFamily: "'Bebas Neue', sans-serif", letterSpacing: '0.04em' }}>
-            <span className="text-red-600">X</span>DRIVE
-          </div>
+          <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120" className="mb-2" style={{ height: 26, width: 'auto', display: 'block' }} />
           {/* gray-500 (4.83:1). gray-400 on white is 2.54:1 — a dark-surface
               grey used on the white grid. Same swap on the column headings and
               the tier prices below. */}

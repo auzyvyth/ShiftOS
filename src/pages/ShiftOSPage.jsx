@@ -113,7 +113,7 @@ const SOFTWARE_LD = {
     "@id": "https://drevo.my/#organization",
     name: "Drevo",
     url: "https://drevo.my",
-    logo: "https://drevo.my/xdrivelogo.png",
+    logo: "https://drevo.my/drevo-mark-512.png",
     sameAs: [
       "https://facebook.com/xdrive.my",
       "https://instagram.com/xdrive.my",
@@ -538,19 +538,13 @@ function FlowConnector({ label, hot = false }) {
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function Logo({ size = 34 }) {
-  const fs = Math.round(size * 0.52);
   return (
     <Link to="/shiftos" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#e02020,#991b1b)", borderRadius: 7, transform: "rotate(6deg)", boxShadow: "0 3px 12px rgba(220,38,38,0.5)" }} />
-        <span style={{ position: "relative", fontFamily: "'Bebas Neue',sans-serif", fontSize: fs, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", height: "100%", letterSpacing: 0 }}>S</span>
-      </div>
       <div>
-        {/* The lockup replaces the gradient-filled wordmark. Height tracks the
+        {/* The Drevo lockup (mark + wordmark, one image). Height tracks the
             size prop so the nav (34) and the footer (28) stay proportional. */}
-        <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59"
-             style={{ height: Math.round(size * 0.5), width: "auto", display: "block" }} />
-        <span style={{ display: "block", fontSize: 10, color: "#6b7280", letterSpacing: "0.1em", lineHeight: 1, marginTop: 3 }}>by Drevo</span>
+        <img src="/drevo-logo-dark.png" alt="Drevo" width="450" height="120"
+             style={{ height: Math.round(size * 0.62), width: "auto", display: "block" }} />
       </div>
     </Link>
   );
