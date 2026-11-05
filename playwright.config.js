@@ -9,6 +9,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  // Only the browser specs. tests/*.test.mjs are plain node scripts run by
+  // `npm test`; without this Playwright imports (and runs) them too.
+  testMatch: /\.spec\.js$/,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
