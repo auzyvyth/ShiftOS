@@ -71,14 +71,11 @@
 > with `target: production`), not just that `git status` says clean.
 
 ## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
-Full report stays OUT of this public repo until part 1 is fixed (it shows how to break in).
+Full report stays OUT of this public repo until part 2 is fixed (it shows how to break in).
 Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 
-**1. Fix TONIGHT - live sellers are exposed (one migration, after midnight):**
-- [ ] Cost price public: the "what did it cost you" number is in the public car view. Remove it.
-- [ ] Handover steps and loan applications: a user can write rows onto someone else's deal.
-- [ ] Leads: a lead can be tied to another seller's car, then mark it sold.
-- [ ] AI limit: the daily cap can be reset from the browser (Anthropic bill).
+**1. DONE 2026-11-08 (applied by the owner, verified): cost price off the public car view, handover steps / lead-car / loan-dealer guards, AI cap write rights dropped.** Migration `20261109a_dms_tier0_security.sql`.
+   Still to do from part 1: remove the same exposure check on `vin_number` (shown masked on the car page; the raw value still ships to the browser).
 
 **2. Before ANY dealership goes live:**
 - [ ] Salesmen can see and edit the dealer's money (cost, profit, commission, Telegram token).
