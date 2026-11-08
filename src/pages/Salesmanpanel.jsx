@@ -7,6 +7,7 @@ import { Helmet } from "react-helmet";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { fetchStockBasic } from "../lib/stockBasic";
 import { useRoleRedirect } from "../hooks/useRoleRedirect";
 import { getStorefrontUrl } from "../hooks/useTenant";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
@@ -1081,11 +1082,8 @@ Rules:
  if (activeTab !== "loans" || loansLoaded || !profile?.id) return;
  setLoansLoaded(true);
  const dealerId = getDealerIdFromProfile(profile);
- supabase
- .from("stock_units")
- .select("id, brand, model, year, registration_number")
- .eq("dealer_id", dealerId)
- .then(({ data }) => setLoanStockUnits(data || []));
+ fetchStockBasic({ dealerId })
+ .then(({ data }) => setLoanStockUnits(data));
  supabase
  .from("loan_applications")
  .select(LOAN_APP_SELECT)

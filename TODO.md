@@ -70,6 +70,21 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## DEALER-1: make the dealer dashboard safe to run a business on (owner, 2026-11-08)
+Diagnosis + fix order: `docs/DEALER_DIAGNOSIS.md`. Six batches, one migration each, after midnight.
+- [ ] Batch 1 lock-down: `supabase/migrations/20261108a_dealer_lockdown.sql` QUEUED (leads own +
+  pool for salesmen, stock_units to dealer/manager/accountant, issued documents read-only).
+  Client already falls back (`src/lib/stockBasic.js`). After applying: probe as a linked salesman
+  (own leads only, pool visible, no stock_units rows, `get_dealer_stock_basic()` works).
+- [ ] Batch 2 sale integrity: one win + one deposit per car (trigger + unique index), clean the
+  Cullinan x3 and AUDIT-TEST rows, drop the car/stock writes in `confirmCloseSale`.
+- [ ] Batch 3 one profit figure: `fn_auto_deal_financial` + backfill, recon rule, unsold GP NULL, plate.
+- [ ] Batch 4 buy-price columns off `car_listings` (salesmen can still read them there).
+- [ ] Batch 5 client fixes: appointment timezone, `salesman_id` assignment, appointments today,
+  AI Manager, validation, receipt date + 5% clause (lawyer).
+- [ ] Batch 6 Deal record: agreed price + approval, `deal_payments`, receipts from the deal.
+- [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
+
 ## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,
   yours for as long as you stay. After that, RM49" (EN + BM).
