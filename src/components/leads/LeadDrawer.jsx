@@ -765,7 +765,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   async function handleAssign(uid) {
     setAssignedTo(uid);
     try {
-      const updated = await onUpdate(lead.id, { assigned_to: uid || null });
+      const updated = await onUpdate(lead.id, { assigned_to: uid || null, salesman_id: uid || null });
       if (updated) setLead(updated);
       const name = teamMembers.find(m => m.id === uid)?.full_name || 'nobody';
       await addActivity({ activity_type: 'assigned', note: `Assigned to ${name}` });
