@@ -703,29 +703,17 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     setCloseSaving(true);
     const oldStage = lead.stage;
     try {
-      const updated = await onUpdate(lead.id, { stage: 'won' });
-      setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      // The closer goes on the LEAD: the won trigger (auto_create_customer_on_won) marks the
+      // car sold and credits COALESCE(car.assigned_to, lead.salesman_id), and
+      // fn_sync_stock_unit_on_sale moves the stock unit. This used to write the car and stock
+      // here as well, after the trigger, which let a second "Won" on a sold car re-stamp
+      // sold_at and hand the first salesman's credit to someone else.
+      const patch = { stage: 'won', ...(selectedCloser ? { salesman_id: selectedCloser } : {}) };
+      const updated = await onUpdate(lead.id, patch);
+      setLead(p => ({ ...p, ...patch, ...(updated || {}) }));
       addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'won' }).catch(() => {});
 
       if (lead.car_listing_id) {
-        const soldAt = new Date().toISOString();
-        await supabase
-          .from('car_listings')
-          .update({
-            status: 'sold',
-            sold_at: soldAt,
-            assigned_to: selectedCloser || null,
-            commission_status: 'pending',
-          })
-          .eq('id', lead.car_listing_id);
-
-        // Sync stock_units so StockTab stays consistent — only update if not already sold
-        await supabase
-          .from('stock_units')
-          .update({ status: 'sold', sold_date: soldAt.slice(0, 10) })
-          .eq('listing_id', lead.car_listing_id)
-          .neq('status', 'sold');
-
         await supabase
           .from('leads')
           .update({ stage: 'lost', loss_reason: 'Sold to another buyer' })
@@ -736,8 +724,10 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
 
       setShowCloseModal(false);
       toast.success('Sale closed — inventory updated');
-    } catch {
-      toast.error('Error saving — please try again');
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.includes('car_already_won')) toast.error('This car is already sold to another buyer. Undo that sale first.');
+      else toast.error('Error saving — please try again');
     } finally {
       setCloseSaving(false);
     }

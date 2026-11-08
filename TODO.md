@@ -104,9 +104,15 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   (`src/lib/stockBasic.js`, falls back until applied); issued documents read-only; the two `car_listings`
   -> `stock_units` sync triggers run as definer so a salesman's price edit or sale still reaches stock.
   After applying: probe as a linked salesman (own leads + pool, 0 `stock_units` rows, RPC returns rows).
-- [ ] Batch 2 sale integrity: one win + one deposit per car (trigger + unique index), clean the Cullinan x3
-  and AUDIT-TEST rows, drop the car/stock writes in `confirmCloseSale` (LeadDrawer.jsx). Check first what the
-  staging "closed deal cannot move backward" commit already covers.
+- [ ] Batch 2 sale integrity: `supabase/migrations/20261109d_one_win_per_car.sql` ON STAGING, NOT APPLIED
+  (after 20261109c). Trigger `trg_lead_one_win` refuses a second Won (`car_already_won`) or a second
+  deposit (`car_has_deposit`) on a car, model cards excepted. Cleanup keeps the earliest win per car:
+  Cullinan 67b534ce loses 2 later wins, audit Vios f6e45cc9 loses 1 (moved to lost, their customer +
+  handover rows removed, like undo_car_sale). Client: `confirmCloseSale` (LeadDrawer.jsx) no longer
+  writes the car or stock; the picked closer goes on the lead's `salesman_id` so the trigger credits them.
+  Still open: confirmCloseSale marks the car's other open leads lost, against SOLD-1 (owner: they keep
+  their stage) - owner call. Lite/Premium `handleMarkWon` still write `car_listings` sold themselves (safe
+  now that a second win is refused, but the same split-brain shape).
 - [ ] Batch 3 one profit figure: `fn_auto_deal_financial` + backfill, recon rule, unsold GP NULL, plate.
 - [ ] Batch 4 buy-price columns off `car_listings` (= the HALF DONE line above).
 - [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause
