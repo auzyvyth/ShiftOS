@@ -6,7 +6,7 @@ import CarKindChooser from "./newcar/CarKindChooser";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import { Camera, Upload, X, Zap } from "lucide-react";
 import { MY_STATES as STATES } from "../utils/locations";
-import { compressListingPhoto } from "../utils/compressImage";
+import { compressListingPhoto, photoExt } from "../utils/compressImage";
 import { MIN_LISTING_PHOTOS } from "../utils/listingRules";
 
 const MAKES = ["Perodua","Proton","Toyota","Honda","Mazda","Mitsubishi","Nissan","Hyundai","Kia","BMW","Mercedes-Benz","Audi","Volkswagen","Ford","Subaru","Suzuki","Isuzu","Peugeot","Renault","Volvo","Other"];
@@ -85,7 +85,7 @@ function UsedCarFormFast({ onCreate, recon = false }) {
       const urls = await Promise.all(images.map(async (raw) => {
         // Was uploading the raw camera file (up to 3.9MB seen in storage).
         const file = await compressListingPhoto(raw);
-        const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+        const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoExt(file)}`;
         const { error: upErr } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false, contentType: file.type || "image/jpeg", cacheControl: '31536000' });
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);

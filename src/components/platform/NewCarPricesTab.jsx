@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ImagePlus, X } from "lucide-react";
 import { platformClient as supabase } from "../../lib/platformClient";
 import { NEW_CAR_BRANDS, PRICE_ZONES, rm, fmtDate, groupByModel, newModelPath, isHttpUrl } from "../../utils/newCars";
-import { compressListingPhoto } from "../../utils/compressImage";
+import { compressListingPhoto, photoExt } from "../../utils/compressImage";
 import { cdnImg } from "../../utils/img";
 
 // NEWCAR-1: the one place official new-car prices are typed in.
@@ -64,8 +64,8 @@ function ModelPhotos({ brand, model, images, onChange }) {
       try {
         const small = await compressListingPhoto(file);
         // Storage lets a user write only under their own id folder.
-        const path = `${user.id}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-        const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: "image/jpeg", cacheControl: "31536000" });
+        const path = `${user.id}/new-car-models/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoExt(small)}`;
+        const { error: e } = await supabase.storage.from("car-images").upload(path, small, { contentType: small.type || "image/jpeg", cacheControl: "31536000" });
         if (e) throw e;
         urls.push(supabase.storage.from("car-images").getPublicUrl(path).data.publicUrl);
       } catch {
