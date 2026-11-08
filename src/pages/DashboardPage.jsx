@@ -9474,7 +9474,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                 {printDoc.doc_status !== 'issued' && (
                   <button onClick={() => handleIssue(printDoc)} style={{ fontSize: 12, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)', borderRadius: 8, padding: '6px 12px', cursor: 'pointer' }}>Issue Document</button>
                 )}
-                <button onClick={() => { const w = window.open('','_blank'); w.document.write(`<html><head><title>${printDoc.doc_ref || printDoc.doc_type}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
+                <button onClick={() => { const escHtml = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); const w = window.open('','_blank'); w.document.write(`<html><head><title>${escHtml(printDoc.doc_ref || printDoc.doc_type)}</title><style>@media print{body{margin:0;}}</style></head><body>${DOMPurify.sanitize(renderDocHTML(printDoc))}</body></html>`); w.document.close(); w.print(); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-white" style={T.btnRed}><Printer className="w-3.5 h-3.5" />Print</button>
                 <button onClick={() => setPrintDoc(null)} className="text-gray-500 hover:text-gray-800 p-1"><X className="w-5 h-5" /></button>
               </div>
             </div>
@@ -10618,7 +10618,7 @@ export default function DashboardPage() {
                 surface (#EAECF0 borders, dark ink), so the white lockup would be
                 invisible on it. Same artwork, wordmark recoloured to the
                 dashboard's own text colour, red bar untouched. */}
-            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 16, width: 'auto', display: 'block' }} />
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" style={{ height: 16, width: 'auto', display: 'block' }} />
             <p style={{ fontSize: 11, color: color.textMuted, marginTop: 1 }}>Drevo Dashboard</p>
           </div>
           {/* Bell */}
@@ -10835,7 +10835,7 @@ export default function DashboardPage() {
                 was hidden there), so hiding both would leave a 375px dealer bar
                 with no brand at all. One mark, the lockup — not a badge saying
                 the same thing beside it. */}
-            <img src="/logo-shiftos-dark.png" alt="ShiftOS" width="354" height="59" style={{ height: 14, width: 'auto', display: 'block' }} />
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" style={{ height: 14, width: 'auto', display: 'block' }} />
           </div>
           <span style={{ fontSize: 12, color: color.textMuted }} className="truncate flex-1 min-w-0">
             {TITLES[activeTab]?.title}

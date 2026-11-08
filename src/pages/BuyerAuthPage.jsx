@@ -359,7 +359,7 @@ export default function BuyerAuthPage() {
         .ba-brand-mark { width: 38px; height: 38px; background: #dc2626; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: #fff; }
         /* The only Drevo wordmark is white-on-transparent. invert + hue-rotate
            turns the white to ink and leaves the red bar red. */
-        .ba-brand-img { height: 20px; width: auto; display: block; filter: invert(1) hue-rotate(180deg); }
+        .ba-brand-img { height: 20px; width: auto; display: block; }
 
         .ba-hero { position: relative; z-index: 1; }
         .ba-hero-eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #dc2626; font-weight: 600; margin-bottom: 18px; }
@@ -452,7 +452,7 @@ export default function BuyerAuthPage() {
         <div className="ba-left">
           <Link to="/" className="ba-brand">
             <div className="ba-brand-mark">X</div>
-            <img src="/logo-xdrive.png" alt="Drevo" width="349" height="58" className="ba-brand-img" />
+            <img src="/drevo-logo-dark.png" alt="Drevo" width="688" height="120" className="ba-brand-img" />
           </Link>
 
           <div className="ba-hero">

@@ -822,7 +822,7 @@ const HomePage = () => {
               name: "Drevo",
               alternateName: "Drevo Malaysia",
               url: "https://drevo.my",
-              logo: "https://drevo.my/xdrivelogo.png",
+              logo: "https://drevo.my/drevo-mark-512.png",
               description:
                 "Drevo is a Malaysian marketplace for used, recon and new cars from local dealers and agents, and the maker of ShiftOS, a used-car dealer management system (DMS).",
               areaServed: "MY",

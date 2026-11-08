@@ -33,11 +33,7 @@ function Reveal({ children, delay = 0, style }) {
 function Logo() {
   return (
     <Link to="/shiftos" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ position: "relative", width: 32, height: 32, flexShrink: 0 }}>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,#e02020,#991b1b)", borderRadius: 7, transform: "rotate(6deg)", boxShadow: "0 3px 12px rgba(220,38,38,0.5)" }} />
-        <span style={{ position: "relative", fontFamily: "'Bebas Neue',sans-serif", fontSize: 17, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>S</span>
-      </div>
-      <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 17, width: "auto", display: "block" }} />
+      <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" style={{ height: 20, width: "auto", display: "block" }} />
     </Link>
   );
 }

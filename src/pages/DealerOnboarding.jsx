@@ -176,7 +176,7 @@ function LeftPanel({ step, tier, onChangePlan }) {
     <div className="eo-left">
       <div className="eo-logo">
         <div className="eo-logo-icon">X</div>
-        <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
+        <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
       </div>
       <div className="eo-plan-badge">{cfg.label} &mdash; {cfg.price}</div>
       <button type="button" className="eo-changeplan" onClick={onChangePlan}>Change plan</button>
@@ -519,7 +519,7 @@ export default function DealerOnboarding() {
         <div style={{ width: 'min(420px, 90%)', padding: '0 20px' }}>
           <div className="eo-logo" style={{ justifyContent: 'center', marginBottom: 32 }}>
             <div className="eo-logo-icon">X</div>
-            <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
+            <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
           </div>
           <p className="eo-eyebrow" style={{ textAlign: 'center', marginBottom: 20 }}>INCOMPLETE SIGN-UP FOUND</p>
           <div style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 40, letterSpacing: 3, color: '#E8EDF5', marginBottom: 10, textAlign: 'center' }}>WELCOME BACK</div>
@@ -556,7 +556,7 @@ export default function DealerOnboarding() {
             <div className="eo-mobile-bar">
               <div className="eo-logo" style={{ marginBottom: 0 }}>
                 <div className="eo-logo-icon">X</div>
-                <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" className="eo-logo-img" />
+                <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" className="eo-logo-img" />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                 <span style={{ fontFamily: "'Bebas Neue', cursive", fontSize: 11, letterSpacing: 3, color: 'rgba(220,38,38,0.6)' }}>

@@ -436,7 +436,7 @@ export default function MarketplaceHeader({ hideAnnouncement = false }) {
       <header className={`mh-root${scrolled ? ' scrolled' : ''}${headerVisible ? '' : ' mh-hidden'}`} ref={rootRef}>
         <div className="mh-bar" ref={barRef}>
           <Link to="/" className="mh-logo" aria-label="Drevo home">
-            <img src="/logo-xdrive.png" alt="Drevo" className="mh-logo-img" width="349" height="58" />
+            <img src="/drevo-logo-white.png" alt="Drevo" className="mh-logo-img" width="688" height="120" />
           </Link>
 
           {/* LEFT — links + mega dropdowns */}

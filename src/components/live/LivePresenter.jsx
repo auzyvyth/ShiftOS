@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Contact, Expand, Info, List, Lock, Maximize2, Search, Pencil, Shrink, SlidersHorizontal, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { supabase } from '../../supabaseClient';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
   monthlyPayment, loanTotals, DEFAULT_EIR, DEFAULT_LOAN_RATIO, MAX_TENURE_YEARS, HIGH_VALUE_THRESHOLD,
 } from '../../utils/financing';
@@ -24,6 +24,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import { setLiveOpen } from '../../lib/onlinePresence';
 import { cdnImg, imgFallback } from '../../utils/img';
 import { SITE_URL } from '../../config/site';
+import { runInviteShare } from '../referral/InviteStrip';
 
 // Live presentation — the seller's full-screen view of their own cars, built
 // to be shown on a TikTok / FB live (camera on the screen, or screen-share).
@@ -195,7 +196,7 @@ const fmtPhone = (raw) => {
 // rebates, insurance + NCD, totals, salary guide, offer, variant extras, the car
 // list, colour and comment line are Premium. The upsell is in Settings and the
 // report, never on the stage (viewers see the stage).
-export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false }) {
+export default function LivePresenter({ listings, slug, sellerId, sellerName, sellerPhone, onClose, embedded = false, officialNew = false, initialLang, basic = false, canInvite = false }) {
   // "Online now" in the console counts this tab as live (src/lib/onlinePresence.js).
   // Not for the embedded demo on the marketing page, which is not a real live.
   useEffect(() => {
@@ -672,6 +673,7 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
     if (report && !embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
   }, [report, embedded]);
   const liveWarned = useRef(false);
+  const liveToken = useRef(null); // for the End sent on pagehide (LIVE-LOG)
   useEffect(() => {
     if (!carId) return undefined;
     // A refused heartbeat used to be swallowed: if the seller's login had
@@ -691,15 +693,46 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
           liveWarned.current = true;
           toast.error(t.liveSyncFailed, { duration: 6000 });
         }
-        if (!error) liveWarned.current = false;
+        if (!error) {
+          liveWarned.current = false;
+          const { data } = await supabase.auth.getSession();
+          liveToken.current = data?.session?.access_token || null;
+        }
       } catch { /* network blip: the next heartbeat retries */ }
     };
     const first = setTimeout(push, 600);
     const hb = setInterval(push, HEARTBEAT_MS);
-    return () => { clearTimeout(first); clearInterval(hb); };
+    // Back from the browser's page cache (the End on pagehide below went out):
+    // beat now, so the live reopens instead of waiting up to 4 minutes.
+    const onShow = (e) => { if (e.persisted) push(); };
+    window.addEventListener('pageshow', onShow);
+    return () => { clearTimeout(first); clearInterval(hb); window.removeEventListener('pageshow', onShow); };
   }, [carId]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => {
     if (!embedded) supabase.rpc('set_live_listing', { p_listing_id: null }).then(() => {}, () => {});
+  }, [embedded]);
+  // LIVE-LOG: closing the tab or the browser never runs the cleanup above (a
+  // normal request dies with the page), so the live stayed open in the history
+  // until it timed out. On pagehide send End as a keepalive request, which the
+  // browser finishes after the page is gone. Needs the token synchronously, so
+  // the heartbeat keeps a copy. Not on visibilitychange: a seller switching to
+  // the TikTok app on the same phone is still live.
+  useEffect(() => {
+    if (embedded) return undefined;
+    const onHide = () => {
+      const token = liveToken.current;
+      if (!token) return;
+      try {
+        fetch(`${SUPABASE_URL}/rest/v1/rpc/set_live_listing`, {
+          method: 'POST',
+          keepalive: true,
+          headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ p_listing_id: null }),
+        }).catch(() => {});
+      } catch { /* unsupported: the 10-minute timeout closes it */ }
+    };
+    window.addEventListener('pagehide', onHide);
+    return () => window.removeEventListener('pagehide', onHide);
   }, [embedded]);
 
   const onTouchStart = (e) => { touchX.current = e.touches[0].clientX; };
@@ -1122,6 +1155,13 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-desk .lp-sheet .lp-tt { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; column-gap: 10px; }
         .lp-desk .lp-sheet .lp-spec { margin: 0; }
         .lp-desk .lp-sheet .lp-head > .lp-cta { flex: none; max-width: 64%; }
+        /* With contact on, the head is TWO rows (owner, 2026-11-04: the banner
+           under the comment line cost a row, the fit shrank the whole sheet and
+           the small print went tiny): the title, then comment line | contact. */
+        .lp-desk .lp-sheet .lp-head.lp-has-contact { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: stretch; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-title { flex: 0 0 100%; max-width: none; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-cta { max-width: none; display: flex; flex-direction: column; justify-content: center; }
+        .lp-desk .lp-sheet .lp-head.lp-has-contact > .lp-contact { max-width: none; }
         .lp-desk .lp-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "ans ans" "dep dep" "photo work" "photo ncd" "rest rest"; row-gap: 6px; }
         .lp-desk .lp-ans { justify-self: center; width: 64%; align-items: center; justify-content: flex-start; gap: 6px; }
         .lp-desk .lp-ans > .lp-tens { align-self: stretch; }
@@ -1208,26 +1248,30 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-totals small { font-size: clamp(10px, 2.6cqw, 12px); color: #6b7280; }
         /* Phone: the two figures only; how they are made up is on desktop. */
         .lp:not(.lp-desk) .lp-totals small { display: none; }
-        .lp-desk .lp-totals > div { padding: 4px 10px; }
+        .lp-desk .lp-totals > div { padding: 5px 12px; }
+        .lp-desk .lp-totals span { font-size: 13px; }
+        .lp-desk .lp-totals b { font-size: 22px; }
+        .lp-desk .lp-totals small { font-size: 13px; }
         .lp-salary { font-size: clamp(12px, 3.1cqw, 14px); color: #4b5563; margin: 0; line-height: 1.4; }
         .lp-salary b { color: #0f1115; font-variant-numeric: tabular-nums; }
         .lp-note { font-size: clamp(11px, 2.8cqw, 13px); color: #6b7280; line-height: 1.4; margin: 0; }
         .lp-offer { margin: 0; padding: 7px 12px; border-radius: 8px; background: #F4F3F1; color: #0f1115; font-size: clamp(12px, 3.3cqw, 16px); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .lp-offer b { margin-right: 8px; font-size: .8em; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #4b5563; }
         .lp-head > .lp-contact { flex: 1 1 100%; }
-        .lp-contact { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 5px 12px; border: none; border-radius: 8px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; }
-        .lp-c-who { display: flex; flex-direction: column; min-width: 0; }
-        .lp-c-who small { font-family: 'Bebas Neue', sans-serif; font-size: clamp(14px, 3.8cqw, 18px); line-height: 1; letter-spacing: .04em; }
-        .lp-c-who b { min-width: 0; font-size: clamp(10px, 2.6cqw, 12px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(18px, 5.2cqw, 24px); line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        /* Contact (owner, 2026-11-04: "so small"): the NUMBER is the hero, the
+           name sits beside it in display type, "Contact me" is the quiet label.
+           Side by side, never stacked, so it stays one row high. */
+        .lp-contact { display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%; padding: 7px 16px; border: none; border-radius: 12px; background: var(--lp-a); font: inherit; color: #fff; text-align: left; min-width: 0; box-shadow: 0 6px 18px rgba(var(--lp-rgb), .28); }
+        .lp-c-who { display: flex; flex-direction: column; min-width: 0; padding-right: 14px; border-right: 1px solid rgba(255,255,255,.35); }
+        .lp-c-who small { font-size: clamp(9px, 2.4cqw, 11px); font-weight: 800; line-height: 1.1; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+        .lp-c-who b { min-width: 0; font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: clamp(17px, 4.8cqw, 22px); line-height: 1; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lp-c-who:last-child { padding-right: 0; border-right: none; }
+        .lp-c-ph { flex-shrink: 0; font-family: 'Bebas Neue', sans-serif; font-size: clamp(26px, 8cqw, 38px); line-height: .95; letter-spacing: .04em; font-variant-numeric: tabular-nums; white-space: nowrap; }
         /* Desktop head is a column: "fill 100%" would mean its HEIGHT there. */
-        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: auto; max-width: 64%; padding: 4px 14px; gap: 16px; }
-        /* Desktop: one slim line, "CONTACT ME  NAME ... PHONE" (owner, 2026-10-24:
-           the two-line banner pushed the sheet past the stage). */
-        .lp-desk .lp-c-who { flex-direction: row; align-items: baseline; gap: 8px; }
-        .lp-desk .lp-c-who small { font-size: 16px; }
-        .lp-desk .lp-c-who b { font-size: 11px; }
-        .lp-desk .lp-c-ph { font-size: 20px; }
+        .lp-desk .lp-sheet .lp-head > .lp-contact { flex: none; width: auto; max-width: 64%; padding: 6px 20px; gap: 16px; }
+        .lp-desk .lp-c-who small { font-size: 10px; }
+        .lp-desk .lp-c-who b { font-size: 22px; }
+        .lp-desk .lp-c-ph { font-size: 36px; }
         .lp-warn { margin: 0; padding: 6px 10px; border-radius: 8px; background: rgba(245,158,11,.14); color: #92400e; font-size: clamp(11px, 3cqw, 14px); font-weight: 700; line-height: 1.35; }
         .lp-warn button { margin-left: 8px; padding: 2px 8px; border: none; border-radius: 6px; background: #92400e; color: #fff; font: inherit; font-size: .9em; cursor: pointer; }
         /* NCD pills: the viewer's pick, six on one phone row. */
@@ -1235,8 +1279,10 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         .lp-seg.lp-ncd > span { padding: 0 6px 0 4px; font-size: clamp(10px, 2.8cqw, 12px); font-weight: 800; letter-spacing: .08em; color: #4b5563; }
         .lp-seg.lp-ncd button { flex: 1 1 0; min-width: 0; padding: 0 2px; height: 26px; font-size: clamp(11px, 3cqw, 13px); }
         .lp-seg.lp-ncd button[aria-pressed="true"] { background: var(--lp-a); color: #fff; }
-        .lp-desk .lp-salary { font-size: 14px; line-height: 1.35; }
-        .lp-desk .lp-note { font-size: 12px; }
+        .lp-desk .lp-salary { font-size: 16px; line-height: 1.35; }
+        .lp-desk .lp-note { font-size: 13px; }
+        .lp-desk .lp-seg.lp-ncd > span { font-size: 13px; }
+        .lp-desk .lp-seg.lp-ncd button { height: 32px; font-size: 15px; }
 
         /* Full photo: fills the stage, never the window (owner, 2026-10-22). */
         .lp-full { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; background: #0f1115; color: #fff; }
@@ -1568,12 +1614,12 @@ export default function LivePresenter({ listings, slug, sellerId, sellerName, se
         </div>
       </div>
 
-      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} basic={basic} /> : (<>
+      {report ? <LiveReport report={report} onDone={onClose} t={t} slug={slug} basic={basic} lang={lang} canInvite={canInvite} /> : (<>
       <div className="lp-body" onTouchStart={mode === 'cars' ? onTouchStart : undefined} onTouchEnd={mode === 'cars' ? onTouchEnd : undefined}>
         <div className="lp-fit" ref={fitRef}>
         {mode === 'cars' ? (
         <div className="lp-card lp-sheet" key={car?.id || idx} data-in={dir > 0 ? 'next' : dir < 0 ? 'prev' : 'fade'}>
-          <div className={variants.length > 1 ? 'lp-head lp-has-vars' : 'lp-head'}>
+          <div className={`lp-head${variants.length > 1 ? ' lp-has-vars' : ''}${showContact && contact ? ' lp-has-contact' : ''}`}>
             <div className="lp-title">
               <span className="lp-num">#{idx + 1}</span>
               <div className="lp-tt">
@@ -2292,7 +2338,7 @@ function BudgetReveal({ reveal, on, amount, viewer, queue, onViewer, onViewerDon
 
 // After the live. Counts only: this can still be on the stream, so no buyer
 // name, phone or message ever renders here.
-function LiveReport({ report, onDone, t, slug, basic }) {
+function LiveReport({ report, onDone, t, slug, basic, lang, canInvite }) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     navigator.clipboard?.writeText(`${SITE_URL}/s/${slug}`).then(() => setCopied(true), () => {});
@@ -2328,6 +2374,17 @@ function LiveReport({ report, onDone, t, slug, basic }) {
           <button type="button" className="lp-copy" onClick={copyLink}>{copied ? t.bioCopied : t.bioCopy}</button>
         </div>
       ) : null)}
+      {/* IDEA-32: right after a live is when a seller tells a friend about it.
+          Full presenter only: on Lite this slot is the Premium offer below, and
+          one ask per screen. Standalone sellers only (claim_referral refuses
+          an invite from a dealer-linked rep). Same terms as ReferralCard. */}
+      {canInvite && !basic && slug && (
+        <div className="lp-card lp-tile">
+          <span>{t.inviteTitle}</span>
+          <span>{t.inviteBody}</span>
+          <button type="button" className="lp-copy" onClick={() => runInviteShare(slug, lang)} style={{ alignSelf: 'flex-start' }}>{t.inviteBtn}</button>
+        </div>
+      )}
       <p className="lp-note">
         {t.reportNote}
       </p>

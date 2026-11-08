@@ -233,9 +233,8 @@ photo rule for now ("leave it at that").
 - [x] Premium's quick add removed from Lite/Premium (owner, 2026-11-02: not safe for solo
   sellers; it saved straight to `available`, skipping review). Every seller car goes
   through CarForm (always review). `CarFormFast.jsx` stays only on the dealer dashboard.
-  DB lock LIVE 2026-11-03 (`20261102c`, `trg_zzz_seller_car_review`; owner ran it in the SQL
-  Editor): a salesman's car going live becomes `pending_approval` on insert and on
-  pending/rejected/private -> live. Probed both paths as airymotors (rolled back).
+  Optional: a DB rule forcing a salesman's new car into review whatever form saved it
+  (must skip new-car model cards, which `new_car_add_cards` inserts as available).
 - [ ] Parked (owner's call): geran/chassis rule by condition (95% of stock is recon:
   no Malaysian geran exists; 63 of 68 chassis numbers are JDM, not 17-char VINs),
   auto-approve for trusted sellers, a DB trigger so no form can skip the rules.
@@ -324,6 +323,15 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   Cron diet (solo salesman first): `20261023a_cron_pause_marketplace_dealer.sql`
   (pauses 3, 4, 8, 9; 18 daily; 16 twice a day) - APPLIED 2026-10-23 00:32 UTC, verified in cron.job. Undo with
   cron.alter_job(id, active := true).
+- [ ] **IO-8 Freeze #4: database restarted 2026-11-05 16:52 UTC (00:52 MYT Nov 6).** Read-only check
+  2026-11-08: `pg_postmaster_start_time()` = that moment. Postgres logs are gone (free plan keeps 24 h),
+  cron history starts 2026-11-06 03:00 UTC (job 6 deletes it daily). No migration, release or new cron
+  job near it; app writes were near zero (0-5 analytics events per 10 min), and notification rows were
+  still being written at 00:20 and 00:50 MYT. Same signature as IO-7: the free Nano host stops answering
+  under no load of ours. Still open: WAL archiving runs ~11.6 x 16 MB segments/h (662 in 56.9 h since the
+  restart, ~4.4 GB/day for a 58 MB DB), down from ~24/h before IO-5 but not gone. Owner: Dashboard >
+  Reports > Database, 15:00-17:00 UTC Nov 5 (CPU, memory, swap, Disk IO budget) decides between
+  "Disk IO budget ran out" and "host starved". Real fix stays PERF-LOAD-2 (paid compute).
 - [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
   subscribes to `lead_activities`, which is not in the publication (never fires).
 
@@ -2887,6 +2895,14 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
+  "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
+  already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
+  a year) but sits in Settings; surface it as a "Share & dapat 1 bulan free" button on the live
+  report and Dashboard. Keep it free months, never cash (Act 500; RM500 = 14 months of a RM35
+  seller). (b) Buyer-side "share this car, earn RM" = a seller paying strangers a cut of a car
+  sale: needs a legal check (referral fees on car sales, PDPA on whoever is shared to) and the
+  SA's employer's OK before any build.
 - **IDEA-31: Old-Siri style voice commands, no LLM (owner, 2026-11-03)** — a fixed set of
   commands learned from example phrases (intent + slots, like pre-LLM Siri), not a chatbot.
   Best fit: the Live presenter, where the seller's hands are busy and they are already
