@@ -70,6 +70,25 @@
 > And before building: confirm what prod actually serves (Vercel deployment
 > with `target: production`), not just that `git status` says clean.
 
+## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
+Full report stays OUT of this public repo until part 1 is fixed (it shows how to break in).
+Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
+
+**1. Fix TONIGHT - live sellers are exposed (one migration, after midnight):**
+- [ ] Cost price public: the "what did it cost you" number is in the public car view. Remove it.
+- [ ] Handover steps and loan applications: a user can write rows onto someone else's deal.
+- [ ] Leads: a lead can be tied to another seller's car, then mark it sold.
+- [ ] AI limit: the daily cap can be reset from the browser (Anthropic bill).
+
+**2. Before ANY dealership goes live:**
+- [ ] Salesmen can see and edit the dealer's money (cost, profit, commission, Telegram token).
+      Fix by role in the database, not by hiding screens.
+- [ ] Delete really deletes; Mark sold makes no customer; a won deal can be dragged back.
+- [ ] Broken buttons: AI Manager, CRM AI coach, Deactivate staff, Add to Stock / import cost,
+      assign lead to a rep. Managers hit the pay wall. No alert for an unassigned booking.
+
+**3. Later:** lists stop at 1000 rows, fake "saved" toasts, UTC months, two profit numbers per car.
+
 ## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,
   yours for as long as you stay. After that, RM49" (EN + BM).
