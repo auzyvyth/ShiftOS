@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { callClaudeChat } from "../lib/callClaude";
 import { usePersistentState } from "../hooks/usePersistentState";
 import LeadsPage from "./LeadsPage";
 import OutreachHub from "../components/crm/OutreachHub";
@@ -292,22 +293,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     setCoachMessages(newHistory);
     setCoachLoading(true);
     try {
-      const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(AI_PROXY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
-          feature: 'crm_assist',
-          system: buildCoachPrompt(selected, stockData, dealerProfile),
-          messages: newHistory,
-        }),
-      });
-      const data = await res.json();
-      const reply = data?.content?.[0]?.text ?? 'Could not load advice.';
+      const reply = await callClaudeChat(newHistory, buildCoachPrompt(selected, stockData, dealerProfile), 'crm_assist');
       setCoachMessages([...newHistory, { role: 'assistant', content: reply }]);
     } catch {
       setCoachMessages([...newHistory, { role: 'assistant', content: 'Connection error.' }]);

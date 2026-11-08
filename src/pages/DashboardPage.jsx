@@ -17,6 +17,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { callClaudeChat } from "../lib/callClaude";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import {
   readCache,
@@ -3365,18 +3366,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: msg },
       ];
-      const { data, error } = await supabase.functions.invoke("ai-proxy", {
-        body: {
-          feature: "sales_manager",
-          system: ctx(),
-          messages: history,
-        },
-      });
-      if (error) throw error;
-      let reply = "Could not generate a response.";
-      if (Array.isArray(data?.content))
-        reply = data.content.find((b) => b.type === "text")?.text || reply;
-      else if (data?.completion) reply = data.completion;
+      const reply = await callClaudeChat(history, ctx(), "sales_manager");
       setMessages((p) => [...p, { role: "assistant", content: reply }]);
     } catch {
       setMessages((p) => [
