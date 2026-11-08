@@ -28,19 +28,25 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid phone number' });
   }
 
+  // Server key first. While this ran with the PUBLIC key, waitlist_lookup had to
+  // be executable by anon, so anyone could call the RPC directly (skipping this
+  // route's captcha + per-IP rate limit) and read ANY phone's queue position and
+  // referral code. With SUPABASE_SERVICE_ROLE_KEY set in prod the RPC's
+  // anon/authenticated EXECUTE is revoked (migration 20261105a) and this route is
+  // the only way in. Mirrors api/call-number.js + api/auth-account-status.js.
   const supabase = createClient(
     process.env.VITE_SUPABASE_URL || SUPABASE_URL,
-    process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    { auth: { autoRefreshToken: false, persistSession: false } },
   );
 
   // Return existing signup if phone already registered.
   //
-  // This runs as the ANON role and waitlist_signups has no anon SELECT policy
-  // (the table holds names and phone numbers, and one would expose the whole
-  // list). A plain .from().select() therefore returned null every time, so a
-  // returning person got a NEW row and a NEW queue position on every submit.
-  // waitlist_lookup is a SECURITY DEFINER RPC that answers for one phone and
-  // returns only the two fields echoed back below.
+  // waitlist_signups holds names and phone numbers, so it has no anon SELECT
+  // policy; a plain .from().select() as anon returned null every time and a
+  // returning person got a NEW row and queue position on every submit.
+  // waitlist_lookup answers for one phone and returns only the two fields
+  // echoed back below; after 20261105a only this server route may call it.
   const { data: lookup, error: selectErr } = await supabase
     .rpc('waitlist_lookup', { p_phone: phoneClean });
 

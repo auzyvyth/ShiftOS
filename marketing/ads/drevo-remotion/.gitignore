@@ -1,0 +1,7 @@
+node_modules/
+out/
+public/takes/
+public/real/
+public/audio/
+public/fonts/*.woff
+harness/*.woff

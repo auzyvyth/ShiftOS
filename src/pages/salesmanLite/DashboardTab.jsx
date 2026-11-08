@@ -11,6 +11,7 @@ import ShareMenu from "../../components/ShareMenu";
 import ChannelBreakdown from "../../components/ChannelBreakdown";
 import StarterTasks from "../../components/onboarding/StarterTasks";
 import SilentCarCard from "../../components/coach/SilentCarCard";
+import InviteStrip from "../../components/referral/InviteStrip";
 import StatSkeleton from "../../components/ui/StatSkeleton";
 
 // Dashboard tab (Salesman Lite). Redesigned 2026-11-01 in the `premiumDark`
@@ -309,6 +310,12 @@ export default function DashboardTab({
           colors={{ card: P.card, radius: P.radius.card, text: P.text, sub: P.textSec, accent: P.accent, onAccent: P.onAccent }}
           onShowMe={onShowMe}
         />
+      )}
+
+      {/* IDEA-32: the seller referral, where sellers look (not while starting out). */}
+      {!startingOut && (
+        <InviteStrip profile={profile} lang={i18n.language}
+          colors={{ card: P.card, radius: P.radius.card, text: P.text, sub: P.textSec, onAccent: P.onAccent }} />
       )}
 
       {startingOut ? (

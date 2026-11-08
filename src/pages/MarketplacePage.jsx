@@ -1000,6 +1000,16 @@ export default function MarketplacePage() {
         .mp-mode-btn[aria-pressed="true"] { background:#fff; color:#1d1d1f; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.10), 0 0 0 .5px rgba(0,0,0,.04); }
         @media (hover:hover) and (pointer:fine) { .mp-mode-btn[aria-pressed="false"]:hover { color:#1d1d1f; } }
         .mp-mode-btn:focus-visible { outline:2px solid #1d1d1f; outline-offset:2px; }
+        /* Find me sits BESIDE the mode pill, never inside it: it opens a page,
+           the pill's two segments swap the panel below (owner, 2026-11-04). */
+        .mp-mode-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:14px; }
+        .mp-mode-row .mp-mode { margin-bottom:0; }
+        .mp-findme { display:inline-flex; align-items:center; gap:6px; min-height:42px; padding:0 16px; border-radius:12px;
+          background:rgba(118,118,128,.12); color:#1d1d1f; font-family:'Outfit',sans-serif; font-size:13.5px; font-weight:600;
+          text-decoration:none; white-space:nowrap; transition:background-color .2s ease; }
+        @media (hover:hover) and (pointer:fine) { .mp-findme:hover { background:rgba(118,118,128,.2); } }
+        .mp-findme:focus-visible { outline:2px solid #1d1d1f; outline-offset:2px; }
+        @media (max-width:400px) { .mp-mode-row .mp-mode-btn { padding:0 14px; } .mp-findme { padding:0 12px; } }
         .mp-hero-links { display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; }
         .mp-hero-links > button, .mp-hero-links > a { display:inline-flex; align-items:center; gap:6px; min-height:28px; background:none; border:none; padding:0;
           color:#4b5563; font-family:'Outfit',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
@@ -1082,14 +1092,19 @@ export default function MarketplacePage() {
                   ACTIONS, not modes; they moved to the link row under the search.
                   The pill only exists once a live new-car card does (an entry
                   point over an empty view is a dead end). */}
-              {newBrands.length > 0 && (
-                <div className="mp-mode" role="group" aria-label="Car condition">
-                  {[['find', 'Used & Recon'], ['new', 'New']].map(([id, label]) => (
-                    <button key={id} type="button" aria-pressed={heroTab === id}
-                      className="mp-mode-btn" onClick={() => setHeroTab(id)}>{label}</button>
-                  ))}
-                </div>
-              )}
+              <div className="mp-mode-row">
+                {newBrands.length > 0 && (
+                  <div className="mp-mode" role="group" aria-label="Car condition">
+                    {[['find', 'Used & Recon'], ['new', 'New']].map(([id, label]) => (
+                      <button key={id} type="button" aria-pressed={heroTab === id}
+                        className="mp-mode-btn" onClick={() => setHeroTab(id)}>{label}</button>
+                    ))}
+                  </div>
+                )}
+                <Link to="/find-me" className="mp-findme">
+                  <Search size={14} aria-hidden="true" /> Find me a car
+                </Link>
+              </div>
 
               {/* New mode swaps the search bar for the brand -> model -> state
                   picker; Used & Recon (and the action tabs) keep the search. */}

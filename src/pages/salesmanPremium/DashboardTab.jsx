@@ -12,6 +12,7 @@ import StarterTasks, { hasBioLinkVisit } from "../../components/onboarding/Start
 import SalesHistorySheet from "./SalesHistorySheet";
 import StatSkeleton from "../../components/ui/StatSkeleton";
 import SilentCarCard from "../../components/coach/SilentCarCard";
+import InviteStrip from "../../components/referral/InviteStrip";
 
 // Dashboard tab (Salesman Premium). Rebuilt 2026-10-25 (SIMPLE-2) in the
 // `premiumDark` palette: each fact is shown ONCE. It used to show follow-ups
@@ -469,6 +470,13 @@ export default function DashboardTab({
  colors={{ card: P.card, radius: P.radius.card, text: P.text, sub: P.textSec, accent: P.accent, onAccent: P.onAccent }}
  onShowMe={onShareTour}
  />
+ )}
+
+ {/* IDEA-32: the seller referral, where sellers look. Not while starting out:
+     a seller with no buyer yet has nothing to vouch for. */}
+ {!startingOut && (
+ <InviteStrip profile={profile} lang={i18n.language}
+ colors={{ card: P.card, radius: P.radius.card, text: P.text, sub: P.textSec, onAccent: P.onAccent }} />
  )}
 
  {startingOut ? (

@@ -7631,7 +7631,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  }}
  >
  <div>
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
+ <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" style={{ height: 15, width: "auto", display: "block" }} />
  <p
  style={{
  fontSize: 10,
@@ -8026,7 +8026,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  gap: 8,
  }}
  >
- <img src="/logo-shiftos.png" alt="ShiftOS" width="354" height="59" style={{ height: 15, width: "auto", display: "block" }} />
+ <img src="/drevo-logo-white.png" alt="Drevo" width="688" height="120" style={{ height: 15, width: "auto", display: "block" }} />
  </div>
  <button
  onClick={() => setNotifOpen((v) =>!v)}
