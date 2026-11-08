@@ -81,8 +81,8 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 - [x] DONE 2026-11-08: 7 money tables (deal_financials, commission_rules, expense_entries,
       month_close_checklist, ad_spend, dealer_cost_settings, dealer_goals) are dealer + accountant only
       (`can_see_dealer_money`, migration `20261109b`). Tested per role.
-- [ ] STILL OPEN, needs code changes in about 10 screens: purchase price / recon cost / commission are
-      still readable by linked staff on `stock_units` and `car_listings` (one row holds both the cost and
+- [ ] HALF DONE: `stock_units` part is batch 1 below. Purchase price / recon cost / commission are
+      still readable by linked staff on `car_listings` (one row holds both the cost and
       fields they need, so a row rule cannot hide it). Plan: staff read costs through a checked function.
       Same for the dealer's Telegram bot token (move to its own table) and `dealer_products.cost_price`.
 - [ ] CODE DONE 2026-11-08, NOT on staging yet, not build-tested (npm blocked in this session): Delete archives the
@@ -96,6 +96,24 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
       unassigned booking.
 
 **3. Later:** lists stop at 1000 rows, fake "saved" toasts, UTC months, two profit numbers per car.
+
+**4. Fix batches (diagnosis kept out of the repo like the audit; ask Claude, one migration each, after midnight). Same audit as above: ONE list, do not start a second.**
+- [ ] Batch 1 lock-down: `supabase/migrations/20261109c_dealer_lockdown.sql` ON STAGING, NOT APPLIED. Needs
+  `20261109b` (applied). Salesmen read/edit only their own leads + see the unassigned pool; `stock_units` =
+  dealer/manager/accountant (`can_see_dealer_stock`), salesmen use `get_dealer_stock_basic()`
+  (`src/lib/stockBasic.js`, falls back until applied); issued documents read-only; the two `car_listings`
+  -> `stock_units` sync triggers run as definer so a salesman's price edit or sale still reaches stock.
+  After applying: probe as a linked salesman (own leads + pool, 0 `stock_units` rows, RPC returns rows).
+- [ ] Batch 2 sale integrity: one win + one deposit per car (trigger + unique index), clean the Cullinan x3
+  and AUDIT-TEST rows, drop the car/stock writes in `confirmCloseSale` (LeadDrawer.jsx). Check first what the
+  staging "closed deal cannot move backward" commit already covers.
+- [ ] Batch 3 one profit figure: `fn_auto_deal_financial` + backfill, recon rule, unsold GP NULL, plate.
+- [ ] Batch 4 buy-price columns off `car_listings` (= the HALF DONE line above).
+- [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause
+  (lawyer). (`salesman_id` on assign + AI Manager: done in part 2.)
+- [ ] Batch 6 Deal record: agreed price + approval, `deal_payments`, receipts from the deal.
+- [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
+- [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 
 ## PRICE-1: founding price + Premium featured + yearly + Done for you (built 2026-11-03)
 - [ ] Owner: review on staging, then ship. Copy reads "Founding price for the first 10 sellers,

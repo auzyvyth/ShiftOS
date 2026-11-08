@@ -792,6 +792,11 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   (4) map existing listings, (5) buyer trim filter + per-trim pages.
 
 ## DB migrations
+- **DEALER IS THE FOCUS AGAIN (owner, 2026-11-08: "that's where the money is").** The dealer
+  dashboard and its roles count as USED for the rule below: fix them, don't park them. Work list:
+  TODO `DMS-AUDIT`. The audit + diagnosis stay OUT of this public repo until the holes are fixed.
+  Lead rule (owner): a linked salesman reads/edits ONLY their own leads + sees the unassigned
+  pool (claim via `claim_lead`); dealer-side roles see all. Salesmen never see buy prices.
 - **Before EVERY migration, check it will actually be used; if not, PARK it (owner, 2026-10-28).**
   Focus is getting sellers to list. The owner will onboard dealerships by hand later, so the
   dealer dashboard has no users (on 2026-10-28, in the last 30 days 8 of 9 standalone salesmen listed and

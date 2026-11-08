@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../supabaseClient';
+import { fetchStockBasic } from '../lib/stockBasic';
 import { defaultTasksFor, computeProgress } from '../utils/postSaleSteps';
 
 // Loads the post-sale checklist for a won deal (lead). Seeds the default
@@ -34,7 +35,7 @@ export function usePostSaleTasks(lead, { initialTasks = null } = {}) {
     // profiles: does the dealership do road tax / insurance in-house?
     const [suRes, dpRes, tasksRes] = await Promise.all([
       lead?.car_listing_id
-        ? supabase.from('stock_units').select('encumbrance_status').eq('listing_id', lead.car_listing_id).maybeSingle()
+        ? fetchStockBasic({ listingId: lead.car_listing_id }).then(({ data }) => ({ data: data[0] || null }))
         : Promise.resolve({ data: null }),
       lead?.dealer_id
         ? supabase.from('profiles').select('handles_roadtax_insurance').eq('id', lead.dealer_id).maybeSingle()
