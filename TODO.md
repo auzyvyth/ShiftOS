@@ -85,9 +85,14 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
       still readable by linked staff on `stock_units` and `car_listings` (one row holds both the cost and
       fields they need, so a row rule cannot hide it). Plan: staff read costs through a checked function.
       Same for the dealer's Telegram bot token (move to its own table) and `dealer_products.cost_price`.
-- [ ] Delete really deletes; Mark sold makes no customer; a won deal can be dragged back.
-- [ ] Broken buttons: AI Manager, CRM AI coach, Deactivate staff, Add to Stock / import cost,
-      assign lead to a rep. Managers hit the pay wall. No alert for an unassigned booking.
+- [ ] CODE DONE 2026-11-08, NOT on staging yet, not build-tested (npm blocked in this session): Delete archives the
+      car (`handleDelete`); AI Manager, CRM AI coach and dealer AI chat work again (`callClaudeChat`,
+      `src/lib/callClaude.js`); assigning a lead sets `salesman_id`; linked staff follow the dealership's
+      subscription (`useSubscription.js`). Test on staging first.
+- [ ] STILL OPEN: Mark sold makes no customer (needs the "who bought it" sheet, `WhoBoughtSheet`, wired into
+      `handleMarkSold`); a won deal can be dragged backward; Deactivate staff needs a SECURITY DEFINER
+      function (DB change, after midnight); Add to Stock / import loses the purchase price; no alert for an
+      unassigned booking.
 
 **3. Later:** lists stop at 1000 rows, fake "saved" toasts, UTC months, two profit numbers per car.
 
