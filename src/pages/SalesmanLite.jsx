@@ -2558,21 +2558,15 @@ export default function SalesmanLite() {
     // so the card itself is never marked sold here.
     const isNewCarCard = !!myListings.find((c) => c.id === lead.car_listing_id)?.new_car_model_id;
     if (lead.car_listing_id && !isNewCarCard) {
-      const { error: carErr } = await supabase
-        .from("car_listings")
-        .update({ status: "sold", sold_at: now })
-        .eq("id", lead.car_listing_id);
-      if (carErr) {
-        console.error("handleMarkWon car listing:", carErr);
-        toast.error(t("salesmanLite.toast.wonButSoldFailed"));
-      } else {
+      // The won trigger (auto_create_customer_on_won) has already marked the car sold
+      // inside the lead update above; this only mirrors it on screen. It used to write
+      // the car a second time from here, a second place doing the trigger's job.
         // Mark sold in place (not remove) — the Monthly Goal panel counts
         // myListings rows with status:'sold' + sold_at this calendar month;
         // filtering the row out here made every win invisible to that count
         // until the next full reload refetched it from the DB.
         setMyListings(p => p.map(c => c.id === lead.car_listing_id ? { ...c, status: "sold", sold_at: now } : c));
         await refreshCommissionData();
-      }
     }
 
     // 4. Update local leads

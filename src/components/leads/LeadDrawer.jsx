@@ -20,6 +20,8 @@ import {
 } from '../../lib/leadsHelpers';
 import { useModalHistory } from '../../hooks/useModalHistory';
 import { offerUndoSale } from '../../utils/undoSale';
+import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from '../../utils/carBuyers';
+import { SITE_URL } from '../../config/site';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -713,14 +715,9 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       setLead(p => ({ ...p, ...patch, ...(updated || {}) }));
       addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'won' }).catch(() => {});
 
-      if (lead.car_listing_id) {
-        await supabase
-          .from('leads')
-          .update({ stage: 'lost', loss_reason: 'Sold to another buyer' })
-          .eq('car_listing_id', lead.car_listing_id)
-          .neq('id', lead.id)
-          .not('stage', 'in', '("won","closed_won","lost","closed_lost")');
-      }
+      // The car's OTHER open leads keep their stage (owner, SOLD-1): each shows
+      // "sold by another seller" with Offer another car / Mark lost, here and in
+      // the linked salesman panel. They used to be marked lost here without a word.
 
       setShowCloseModal(false);
       toast.success('Sale closed — inventory updated');
@@ -842,7 +839,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       .from('car_listings')
       .select('id, brand, model, year, selling_price, images, city, state, slug')
       .eq('dealer_id', lead.dealer_id)
-      .neq('status', 'sold')
+      .in('status', ['available', 'reserved'])
       .or(`brand.ilike.%${s}%,model.ilike.%${s}%`)
       .limit(8);
     setCarResults(data || []);
@@ -850,18 +847,48 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   }
 
   async function linkCar(carId) {
+    const before = lead;
+    const offering = before?.car_listing?.status === 'sold';
     try {
+      const picked = carResults.find(c => c.id === carId) || null;
       const updated = await onUpdate(lead.id, { car_listing_id: carId });
       if (updated) setLead(updated);
       else {
         // Fetch the car to display it
-        const { data } = await supabase.from('car_listings').select('id,brand,model,year,selling_price,images,city,state,slug').eq('id', carId).maybeSingle();
+        const { data } = await supabase.from('car_listings').select('id,brand,model,year,selling_price,images,city,state,slug,status').eq('id', carId).maybeSingle();
         setLead(p => ({ ...p, car_listing_id: carId, car_listing: data }));
       }
       setShowCarSearch(false);
       setCarSearch('');
-      toast.success('Car linked');
+      // Replacing a car another seller sold: offer the WhatsApp draft. A person sends it.
+      const digits = String(before?.phone || '').replace(/\D/g, '');
+      if (offering && picked && digits.length >= 9) {
+        const sold = before.car_listing;
+        const msg = offerAnotherCarMessage({
+          buyer: before.buyer_name,
+          seller: null,
+          soldCar: [sold.year, sold.brand, sold.model].filter(Boolean).join(' '),
+          newCar: [picked.year, picked.brand, picked.model].filter(Boolean).join(' '),
+          price: picked.selling_price,
+          link: picked.slug ? `${SITE_URL}/showroom/${picked.slug}` : null,
+          lang: 'ms',
+        });
+        toast.success('Car linked', {
+          duration: 12000,
+          action: { label: 'Send on WhatsApp', onClick: () => window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener') },
+        });
+      } else toast.success('Car linked');
     } catch { toast.error('Error linking car'); }
+  }
+
+  async function markCarSoldLost() {
+    const oldStage = lead.stage;
+    try {
+      const updated = await onUpdate(lead.id, { stage: 'lost', loss_reason: CAR_SOLD_REASON });
+      setLead(p => ({ ...p, stage: 'lost', loss_reason: CAR_SOLD_REASON, ...(updated || {}) }));
+      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'lost', note: 'Lost: car sold by another seller' }).catch(() => {});
+      toast.success('Lead marked as lost');
+    } catch { toast.error('Error saving'); }
   }
 
   // ── Manual activity log ──────────────────────────────────────────────────────
@@ -911,6 +938,26 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     section: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', marginBottom: 12 },
     divider: { height: 1, background: '#f1f3f5', margin: '16px 0' },
   };
+
+  // One car search, used to link a first car and to offer another after a sale.
+  const carSearchBox = (
+                    <div>
+                      <div style={{ position: 'relative', marginBottom: 6 }}>
+                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
+                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 0) searchCars(e.target.value); }}
+                          placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
+                      </div>
+                      {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
+                      {carResults.map(c => (
+                        <button key={c.id} onClick={() => linkCar(c.id)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
+                          <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
+                          {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
+                        </button>
+                      ))}
+                    </div>
+  );
+
 
   return (
     <>
@@ -1169,6 +1216,16 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             {/* ── Car of Interest ── */}
             <div style={w.section}>
               <p style={w.label}>Car of Interest</p>
+              {car?.status === 'sold' && isOpenLead(lead) && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                  <p style={{ fontSize: 13, color: '#111827', margin: '0 0 8px', lineHeight: 1.45 }}>This car was sold by another seller. Offer them another car.</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button onClick={() => setShowCarSearch(true)} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Offer another car</button>
+                    <button onClick={markCarSoldLost} style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: 'transparent', border: 'none', padding: '6px 8px', cursor: 'pointer' }}>Mark lost</button>
+                  </div>
+                </div>
+              )}
+              {car && showCarSearch && carSearchBox}
               {car ? (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   {carThumb && <img src={carThumb} alt={carLabel} loading="lazy" style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
@@ -1191,21 +1248,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       + Link a car
                     </button>
                   ) : (
-                    <div>
-                      <div style={{ position: 'relative', marginBottom: 6 }}>
-                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
-                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 0) searchCars(e.target.value); }}
-                          placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
-                      </div>
-                      {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
-                      {carResults.map(c => (
-                        <button key={c.id} onClick={() => linkCar(c.id)}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
-                          <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
-                          {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
-                        </button>
-                      ))}
-                    </div>
+                    carSearchBox
                   )}
                 </>
               )}

@@ -2539,19 +2539,13 @@ export default function SalesmanPremium() {
  // so the card itself is never marked sold here.
  const isNewCarCard = !!myListings.find((c) => c.id === lead.car_listing_id)?.new_car_model_id;
  if (lead.car_listing_id && !isNewCarCard) {
- const { error: carErr } = await supabase
- .from("car_listings")
- .update({ status: "sold", sold_at: now })
- .eq("id", lead.car_listing_id);
- if (carErr) {
- console.error("handleMarkWon car listing:", carErr);
- toast.error(t("salesmanPremium.errors.wonCarNotSold"));
- } else {
+ // The won trigger (auto_create_customer_on_won) has already marked the car sold
+ // inside the lead update above; this only mirrors it on screen. It used to write
+ // the car a second time from here, a second place doing the trigger's job.
  // Mark sold in place rather than filtering the row out — sold counts read
  // myListings for status 'sold' + sold_at this month.
  setMyListings((p) => p.map((c) => c.id === lead.car_listing_id? { ...c, status: "sold", sold_at: now } : c));
  await refreshCommissionData();
- }
  }
 
  setLeads((p) => p.map((l) => l.id === leadId? { ...l, stage: "won", updated_at: now } : l));

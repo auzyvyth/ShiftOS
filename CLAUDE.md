@@ -362,7 +362,10 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
   makes the customer + handover); "Add the buyer" opens Add Lead with the car filled in; only "Sold
   elsewhere" writes status alone (`{ direct: true }`). A status-only sold had no customer, handover or
   renewals (6 cars). Never add another status write to `sold` that skips this.
-- **Other open leads on a sold car keep their stage** (owner, no "missed" stage): they get
+- **Other open leads on a sold car keep their stage** (owner, no "missed" stage; dealer side too
+  since 2026-11-08: LeadDrawer, LeadGridCard "Car sold by another seller", linked panel; nothing
+  marks them lost automatically any more). A second Won on a car is refused in the DB
+  (`trg_lead_one_win`, `car_already_won`). They get
   `CarSoldLine` (offer another car = the link-car picker, or Mark lost with `CAR_SOLD_REASON` =
   'CarSold'), a `car_sold` row in This week until contacted after `sold_at`, and the win confirm says
   how many there are. Rules: `src/utils/carBuyers.js` (`npm run test:carbuyers`). Performance never

@@ -2693,6 +2693,7 @@
     "others_one": "1 pembeli lain berminat dengan kereta ini. Mereka kekal dalam pipeline anda, ditanda supaya anda boleh tawarkan kereta lain.",
     "others_other": "{{count}} pembeli lain berminat dengan kereta ini. Mereka kekal dalam pipeline anda, ditanda supaya anda boleh tawarkan kereta lain.",
     "carSoldLine": "Kereta sudah dijual kepada pembeli lain. Tawarkan kereta lain.",
+    "carSoldByOther": "Kereta ini sudah dijual oleh penjual lain. Tawarkan kereta lain.",
     "offerAnother": "Tawar kereta lain",
     "markLost": "Tanda hilang",
     "stage": {

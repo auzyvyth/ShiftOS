@@ -109,6 +109,9 @@ import {
   seedPanelCache,
 } from "../utils/panelCache";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { CarSoldLine } from "../components/sold/WhoBoughtSheet";
+import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from "../utils/carBuyers";
+import { SITE_URL } from "../config/site";
 
 // Cache namespace for this panel (keys look like `spanel_leads_<uid>`).
 const PANEL_CACHE_KEY = "spanel";
@@ -205,7 +208,7 @@ function loadJSZip() {
 
 export default function SalesmanPanel() {
  const navigate = useNavigate();
- const { t } = useTranslation();
+ const { t, i18n } = useTranslation();
  const redirectByRole = useRoleRedirect("salesman");
 
  // First-frame cache seed. This panel had NO persistent cache at all, so every
@@ -488,6 +491,8 @@ export default function SalesmanPanel() {
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
+ // "offer": the lead's car was sold by another seller; picking a car also drafts the offer.
+ const [linkCarOffer, setLinkCarOffer] = useState(false);
  const [linkCarSearch, setLinkCarSearch] = useState("");
  const [batchWALeads, setBatchWALeads] = useState(null);
  const [batchWAIdx, setBatchWAIdx] = useState(0);
@@ -506,7 +511,7 @@ export default function SalesmanPanel() {
  useModalHistory(!!batchWALeads, () => setBatchWALeads(null));
  useModalHistory(!!followUpModalLead, () => setFollowUpModalLead(null));
  useModalHistory(!!dealSheetConfigLead, () => setDealSheetConfigLead(null));
- useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarSearch(""); });
+ useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarSearch(""); setLinkCarOffer(false); });
  useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
  useModalHistory(!!waModalLead, () => setWaModalLead(null));
  useModalHistory(notifOpen, () => setNotifOpen(false));
@@ -2026,15 +2031,31 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  .eq("id", leadId);
  if (linkErr) { console.error("handleLinkCar:", linkErr); toast.error("Failed to link car"); return; }
  const car = myListings.find((c) => c.id === carId);
+ const before = leads.find((l) => l.id === leadId);
  setLeads((p) => p.map((l) =>
  l.id === leadId
 ? { ...l, car_listing_id: carId, car_listings: car
-? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price, commission_amount: car.commission_amount || null }
+? { brand: car.brand, model: car.model, year: car.year, selling_price: car.selling_price, commission_amount: car.commission_amount || null, slug: car.slug, status: car.status }
  : l.car_listings }
  : l
  ));
  setLinkCarLeadId(null);
  toast.success("Car linked to lead!");
+ // Offer mode: draft the "that car is gone, here is another" WhatsApp. A person sends it.
+ if (linkCarOffer && before?.phone && car) {
+ const sold = before.car_listings;
+ setWaModalMessage(offerAnotherCarMessage({
+ buyer: before.buyer_name,
+ seller: profile?.full_name,
+ soldCar: sold ? [sold.year, sold.brand, sold.model].filter(Boolean).join(" ") : null,
+ newCar: [car.year, car.brand, car.model, car.variant].filter(Boolean).join(" "),
+ price: car.selling_price,
+ link: car.slug ? `${SITE_URL}/showroom/${car.slug}?ref=${encodeURIComponent(profile?.slug || "")}` : null,
+ lang: i18n.language?.startsWith("ms") ? "ms" : "en",
+ }));
+ setWaModalLead({ ...before, car_listing_id: carId });
+ }
+ setLinkCarOffer(false);
  };
 
  const handleLostReason = async (leadId, reason) => {
@@ -4971,7 +4992,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
      ? pool.filter((c) => `${c.brand} ${c.model} ${c.year} ${c.variant || ""}`.toLowerCase().includes(q))
      : pool;
    return (
-     <div onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+     <div onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); setLinkCarOffer(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
        <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480, maxHeight: "70vh", display: "flex", flexDirection: "column" }}>
          <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Select a Car</p>
          <p style={{ margin: "0 0 14px", fontSize: 12, color: "#4b5563" }}>Link a car from your listings to this lead.</p>
@@ -5000,7 +5021,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
              );
            })}
          </div>
-         <button onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); }} style={{ marginTop: 12, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>Cancel</button>
+         <button onClick={() => { setLinkCarLeadId(null); setLinkCarSearch(""); setLinkCarOffer(false); }} style={{ marginTop: 12, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 13, fontWeight: 600, cursor: "pointer", width: "100%" }}>Cancel</button>
        </div>
      </div>
    );
@@ -5298,6 +5319,17 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  </div>
  )}
  </div>
+
+ {/* Another seller sold this lead's car: say so, and offer another car (SOLD-1). */}
+ {car?.status === "sold" && isOpenLead(lead) && (
+ <div style={{ padding: "0 14px" }}>
+ <CarSoldLine
+ text={t("soldPick.carSoldByOther")}
+ onOffer={() => { setLinkCarOffer(true); setLinkCarLeadId(lead.id); }}
+ onLost={() => handleLostReason(lead.id, CAR_SOLD_REASON)}
+ />
+ </div>
+ )}
 
  {/* ACTIONS */}
  <div style={{ display: "flex", gap: 6, padding: "0 14px 12px" }}>

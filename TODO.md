@@ -110,9 +110,10 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   Cullinan 67b534ce loses 2 later wins, audit Vios f6e45cc9 loses 1 (moved to lost, their customer +
   handover rows removed, like undo_car_sale). Client: `confirmCloseSale` (LeadDrawer.jsx) no longer
   writes the car or stock; the picked closer goes on the lead's `salesman_id` so the trigger credits them.
-  Still open: confirmCloseSale marks the car's other open leads lost, against SOLD-1 (owner: they keep
-  their stage) - owner call. Lite/Premium `handleMarkWon` still write `car_listings` sold themselves (safe
-  now that a second win is refused, but the same split-brain shape).
+  Done after (owner, 2026-11-08): a won deal no longer marks the car's other leads lost on the dealer
+  side; they show "Car sold by another seller" on the board card (LeadGridCard), in LeadDrawer (Offer
+  another car = car search + WhatsApp draft, Mark lost = 'CarSold') and in the linked salesman panel
+  (CarSoldLine). Lite/Premium handleMarkWon no longer write the car (the trigger does). NOT click-tested.
 - [ ] Batch 3 one profit figure: `fn_auto_deal_financial` + backfill, recon rule, unsold GP NULL, plate.
 - [ ] Batch 4 buy-price columns off `car_listings` (= the HALF DONE line above).
 - [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause

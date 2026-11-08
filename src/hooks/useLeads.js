@@ -6,7 +6,7 @@ import { redactLeadsForCache } from '../utils/panelCache';
 
 const SELECT_QUERY = `
   *,
-  car_listing:car_listing_id ( id, brand, model, year, selling_price, images ),
+  car_listing:car_listing_id ( id, brand, model, year, selling_price, images, slug, status ),
   assigned_profile:assigned_to ( id, full_name ),
   salesman_profile:salesman_id ( id, full_name )
 `;

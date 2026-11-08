@@ -10101,7 +10101,7 @@ export default function DashboardPage() {
       if (leadId) {
         // A real win: the won trigger flips the car, makes the customer and seeds the handover.
         const { data: won, error: winErr } = await supabase
-          .from("leads").update({ stage: "won" }).eq("id", leadId).select("id");
+          .from("leads").update({ stage: "won", ...(soldBy ? { salesman_id: soldBy } : {}) }).eq("id", leadId).select("id");
         if (winErr) throw winErr;
         if (!won?.length) throw new Error("lead update refused");
       }
@@ -10130,7 +10130,9 @@ export default function DashboardPage() {
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
-      toast.error("Could not mark the car as sold. Try again.");
+      toast.error(String(e?.message || "").includes("car_already_won")
+        ? "This car is already sold to another buyer. Undo that sale first."
+        : "Could not mark the car as sold. Try again.");
     }
     setMarkSoldLoading(false);
   };

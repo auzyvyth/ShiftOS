@@ -61,12 +61,12 @@ export default function WhoBoughtSheet({ car, leads, onPickLead, onAddBuyer, onS
 }
 
 // One line on a lead whose car was sold to another buyer, with its two actions.
-export function CarSoldLine({ onOffer, onLost }) {
+export function CarSoldLine({ onOffer, onLost, text }) {
   const { t } = useTranslation();
   const btn = { fontSize: 12, fontWeight: 600, padding: '6px 10px', borderRadius: PD.radius.pill, border: 'none', cursor: 'pointer', fontFamily: 'inherit' };
   return (
     <div style={{ background: PD.raised, borderRadius: PD.radius.row, padding: '9px 12px', marginBottom: 12 }}>
-      <p style={{ margin: '0 0 8px', fontSize: 13, color: PD.text, lineHeight: 1.45 }}>{t('soldPick.carSoldLine')}</p>
+      <p style={{ margin: '0 0 8px', fontSize: 13, color: PD.text, lineHeight: 1.45 }}>{text || t('soldPick.carSoldLine')}</p>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         <button onClick={onOffer} className="lk-red" style={{ ...btn, color: PD.onAccent }}>{t('soldPick.offerAnother')}</button>
         <button onClick={onLost} style={{ ...btn, background: 'transparent', color: PD.textSec }}>{t('soldPick.markLost')}</button>
