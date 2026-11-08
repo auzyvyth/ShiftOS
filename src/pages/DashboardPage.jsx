@@ -9749,6 +9749,7 @@ export default function DashboardPage() {
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
           .eq("dealer_id", dealerId)
+          .neq("status", "archived")
           .order("created_at", { ascending: false }),
         supabase
           .from("profiles")
@@ -9964,14 +9965,28 @@ export default function DashboardPage() {
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (id) => {
-    const { error } = await supabase
+    // Archive, never a hard DELETE: a real delete unlinks the car from 33 tables
+    // and strips it off buyers' chats and leads. A car with a won deal is refused
+    // by trg_guard_sold_car (offer Undo sale). Same rule as the Lite/Premium panels.
+    const { data: gone, error } = await supabase
       .from("car_listings")
-      .delete()
+      .update({ status: "archived" })
       .eq("id", id)
-      .eq("dealer_id", userId);  // explicit RLS guard
+      .eq("dealer_id", getDealerIdFromProfile(profile))  // explicit RLS guard
+      .select("id");
     if (error) {
       console.error("Delete failed:", error.message);
+      if (isWonDealBlock(error)) {
+        setDeleteId(null);
+        offerUndoSale(id, () => setListings(relistCar(id)));
+        return;
+      }
       toast.error("Could not delete listing: " + error.message);
+      return;
+    }
+    if (!gone?.length) {
+      // RLS refuses as "0 rows, no error".
+      toast.error("Could not delete listing. You may not have permission.");
       return;
     }
     setListings((p) => p.filter((l) => l.id !== id));
@@ -11955,7 +11970,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-gray-500 text-sm mb-5">
-              This will permanently remove the car listing from your inventory.
+              This removes the car from your inventory and your public page.
             </p>
             <div className="flex gap-3">
               <button
