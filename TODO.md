@@ -78,8 +78,13 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
    Still to do from part 1: remove the same exposure check on `vin_number` (shown masked on the car page; the raw value still ships to the browser).
 
 **2. Before ANY dealership goes live:**
-- [ ] Salesmen can see and edit the dealer's money (cost, profit, commission, Telegram token).
-      Fix by role in the database, not by hiding screens.
+- [x] DONE 2026-11-08: 7 money tables (deal_financials, commission_rules, expense_entries,
+      month_close_checklist, ad_spend, dealer_cost_settings, dealer_goals) are dealer + accountant only
+      (`can_see_dealer_money`, migration `20261109b`). Tested per role.
+- [ ] STILL OPEN, needs code changes in about 10 screens: purchase price / recon cost / commission are
+      still readable by linked staff on `stock_units` and `car_listings` (one row holds both the cost and
+      fields they need, so a row rule cannot hide it). Plan: staff read costs through a checked function.
+      Same for the dealer's Telegram bot token (move to its own table) and `dealer_products.cost_price`.
 - [ ] Delete really deletes; Mark sold makes no customer; a won deal can be dragged back.
 - [ ] Broken buttons: AI Manager, CRM AI coach, Deactivate staff, Add to Stock / import cost,
       assign lead to a rep. Managers hit the pay wall. No alert for an unassigned booking.
