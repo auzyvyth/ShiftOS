@@ -2094,6 +2094,16 @@ which only paid accounts can open (Premium, dealers, dealer-linked salesmen; Lit
 - **Photos are fetched with `?cors=1`** (`fetchPhoto`): the service worker holds car photos as opaque <img> copies and a CORS fetch of one fails as "Failed to fetch" (first staging test, 2026-10-23).
 - Speed (owner, 2026-10-23): about 30 s on an Oppo Reno 10 5G, 1 min 20 s on a 4 GB Chromebook. Faster path if needed: WebGPU (`onnxruntime-web/webgpu`, +~7 MB gzipped engine).
 
+## See-through car photos survive upload and show on a studio grey (ALPHA-1, 2026-11-08)
+Every car-photo upload is re-encoded on the phone (`src/utils/compressImage.js`). It used to make
+everything JPEG, which painted a cut-out's see-through pixels BLACK. Now a PNG/WebP with any
+transparent pixel is saved as WebP (PNG where the browser cannot write WebP); everything else stays
+JPEG. Upload paths name files with `photoExt(file)` and send `file.type`, never a typed `.jpg` /
+`image/jpeg`. Because only see-through photos are `.webp` / `.png`, one rule in `src/index.css`
+(`img[src*="car-images"][src*=".webp"|".png"]`) gives them a mid-grey studio backdrop on every
+surface (cards, car page, seller panels, Live presenter normal + full view): a white car vanished on
+the presenter's white box, a black one on its dark full view. Opaque photos are untouched.
+
 ## Studio backdrops behind a cut-out (BACKDROP-1, 2026-10-29) — Premium only
 After Remove BG (CUTOUT-1) the Studio offers drawn scenes BEHIND the car: Studio, Spotlight,
 Stripes, Brand (theme accent), Dusk, Light, plus a ground shadow and Car size / Car height

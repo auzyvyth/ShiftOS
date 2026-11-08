@@ -3,7 +3,7 @@ import { Camera, ChevronLeft, ImagePlus, X } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import { getDealerIdFromProfile } from "../../hooks/useProfile";
 import { groupByModel, rm, priceBasis } from "../../utils/newCars";
-import { compressListingPhoto } from "../../utils/compressImage";
+import { compressListingPhoto, photoExt } from "../../utils/compressImage";
 
 // NEWCAR-1: the add-car form for a new-car advisor (Proton / Perodua / Toyota / BYD / Honda).
 // Rendered by CarForm and CarFormFast in place of the used-car form when
@@ -112,8 +112,8 @@ export default function NewCarForm({ profile, listing, onCreate, onUpdate, onUse
     await Promise.all(list.map(async (file) => {
       try {
         const small = await compressListingPhoto(file);
-        const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-        const { error: e } = await supabase.storage.from(BUCKET).upload(path, small, { upsert: true, contentType: "image/jpeg", cacheControl: "31536000" });
+        const path = `${profile.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${photoExt(small)}`;
+        const { error: e } = await supabase.storage.from(BUCKET).upload(path, small, { upsert: true, contentType: small.type || "image/jpeg", cacheControl: "31536000" });
         if (e) throw e;
         const url = supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
         setPhotos((p) => [...p, url]);
