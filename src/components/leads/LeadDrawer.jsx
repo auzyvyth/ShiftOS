@@ -19,6 +19,7 @@ import {
   getInitials, avatarGradient,
 } from '../../lib/leadsHelpers';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { offerUndoSale } from '../../utils/undoSale';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -668,6 +669,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // ── Stage change ──────────────────────────────────────────────────────────────
   function handleStageChange(newStage) {
     if (newStage === lead.stage) return;
+    // A closed deal has a customer, handover steps and a sold car. Moving the lead
+    // backward would orphan them, so the only way out is Undo sale (undo_car_sale).
+    if (lead.stage === 'won' || lead.stage === 'closed_won') {
+      if (lead.car_listing_id) offerUndoSale(lead.car_listing_id, () => { window.location.reload(); });
+      else toast.error('This deal is closed. It cannot be moved back.');
+      return;
+    }
     if (newStage === 'lost') {
       setPendingStage('lost');
       setShowLossPanel(true);

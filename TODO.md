@@ -89,8 +89,9 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
       car (`handleDelete`); AI Manager, CRM AI coach and dealer AI chat work again (`callClaudeChat`,
       `src/lib/callClaude.js`); assigning a lead sets `salesman_id`; linked staff follow the dealership's
       subscription (`useSubscription.js`). Test on staging first.
-- [ ] STILL OPEN: Mark sold makes no customer (needs the "who bought it" sheet, `WhoBoughtSheet`, wired into
-      `handleMarkSold`); a won deal can be dragged backward; Deactivate staff needs a SECURITY DEFINER
+- [ ] CODE DONE too (same caveat): Mark sold has a "Who bought it?" pick (`MarkSoldModal`), a won deal
+      cannot be moved back (`LeadDrawer.handleStageChange` offers Undo sale).
+- [ ] STILL OPEN: Deactivate staff needs a SECURITY DEFINER
       function (DB change, after midnight); Add to Stock / import loses the purchase price; no alert for an
       unassigned booking.
 

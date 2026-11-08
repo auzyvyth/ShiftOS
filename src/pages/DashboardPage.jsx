@@ -3103,6 +3103,17 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
   // price it actually sold for, and keep following that price until someone
   // types their own figure. A figure already on the car is kept as-is.
   const [commissionConfig, setCommissionConfig] = useState(null);
+  // Who bought it: an open lead on this car. Picking one makes the sale a real win
+  // (customer, handover steps, renewals); "no buyer" is a car sold off the platform.
+  const [buyerLeads, setBuyerLeads] = useState([]);
+  const [leadId, setLeadId] = useState("");
+  useEffect(() => {
+    if (!listing.id) return;
+    supabase.from("leads").select("id, buyer_name, stage, salesman_id")
+      .eq("car_listing_id", listing.id)
+      .not("stage", "in", "(won,closed_won,lost,closed_lost)")
+      .then(({ data }) => setBuyerLeads(data || []));
+  }, [listing.id]);
   useEffect(() => {
     if (!listing.dealer_id) return;
     supabase.from("profiles").select("commission_config").eq("id", listing.dealer_id).maybeSingle()
@@ -3126,6 +3137,7 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
     soldPrice: soldPrice === "" ? null : Number(soldPrice),
     commission: commission === "" ? null : Number(commission),
     soldDate: soldDate || null,
+    leadId: leadId || null,
   });
   return (
     <div
@@ -3151,6 +3163,20 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
           </button>
         </div>
         <div className="flex flex-col gap-3 mb-5">
+          {hasListing && <div>
+            <label className={labelCls}>Who bought it?</label>
+            <select value={leadId} onChange={(e) => {
+              setLeadId(e.target.value);
+              const l = buyerLeads.find((x) => x.id === e.target.value);
+              if (l?.salesman_id && !soldBy) setSoldBy(l.salesman_id);
+            }} className={fieldCls}>
+              <option value="">No buyer on file (sold elsewhere or walk-in)</option>
+              {buyerLeads.map((l) => (
+                <option key={l.id} value={l.id}>{l.buyer_name || "Unnamed buyer"} ({l.stage})</option>
+              ))}
+            </select>
+            {!leadId && <p className="text-[11px] text-gray-500 mt-1">With no buyer, no customer record or handover steps are made.</p>}
+          </div>}
           {hasListing && <div>
             <label className={labelCls}>Sold by</label>
             <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className={fieldCls}>
@@ -10068,10 +10094,17 @@ export default function DashboardPage() {
   // Which Settings section the Verify-ID prompt should land on.
   const [settingsJump, setSettingsJump] = useState(null);
 
-  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null } = {}) => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, leadId = null } = {}) => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
+      if (leadId) {
+        // A real win: the won trigger flips the car, makes the customer and seeds the handover.
+        const { data: won, error: winErr } = await supabase
+          .from("leads").update({ stage: "won" }).eq("id", leadId).select("id");
+        if (winErr) throw winErr;
+        if (!won?.length) throw new Error("lead update refused");
+      }
       const update = {
         status: "sold",
         sold_at: new Date().toISOString(),
