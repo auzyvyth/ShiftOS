@@ -99,7 +99,7 @@ Old URLs (`/dashboard/handover`, `/dashboard/oversight`, `?sub=`) must redirect,
 ### Order of work (each step is one commit / one staging round)
 1. **Fix the broken links + delete dead code** (list above, items 1-7). ~1h, no visible move. For item 2,
    give `CRMPanel` an `initialTab` prop (and a lead id to open) and route `/dashboard/crm?sub=bookings`.
-2. **One add-on catalogue.** Keep one editor (suggest `ServicesPage`, it has the revenue stats), remove
+2. **DONE 2026-11-09. One add-on catalogue.** `ProductsCatalogue` deleted; Settings > Services is a shortcut to Storefront > Services & Add-ons. `ServicesPage` gained the activity log (`src/utils/activityLog.js`, shared), real error checks on every write, "In N listings", and the dealer id. Was: Keep one editor (suggest `ServicesPage`, it has the revenue stats), remove
    `ProductsCatalogue` from Settings, point Settings' "services" entry at it.
 3. **Today.** Merge Overview + Oversight "Eyes Here"/targets + AI Manager. Biggest drop in brain load.
    Decide with the owner what of Oversight goes to Today vs Reports > Money.

@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "../supabaseClient";
 import { usePersistentState } from "../hooks/usePersistentState";
+import { logActivity } from "../utils/activityLog";
 import { SERVICE_CATEGORY_OPTIONS } from "../utils/serviceCategories";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -128,7 +129,9 @@ function CatBadge({ category }) {
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function ServicesPage({ userId }) {
+// userId = the DEALER id (DashboardPage passes getDealerIdFromProfile). This is the
+// ONE editor of dealer_products; Settings > Services only links here.
+export default function ServicesPage({ userId, profile = null }) {
   // ── Product catalogue state ────────────────────────────────────────────────
   // Each list persists its last result (usePersistentState), so "loading"
   // below only means there is nothing to show yet.
@@ -136,6 +139,8 @@ export default function ServicesPage({ userId }) {
   const [products, setProducts, prodCached] = usePersistentState(ck('products'), []);
   const [prodFetching, setProdLoading] = useState(true);
   const prodLoading = prodFetching && !prodCached;
+  // How many cars still for sale carry each product as an included service.
+  const [inListings, setInListings] = useState({});
   const [panelOpen, setPanelOpen] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -156,13 +161,28 @@ export default function ServicesPage({ userId }) {
   const fetchProducts = async () => {
     if (!userId) return;
     setProdLoading(true);
-    const { data, error } = await supabase
-      .from("dealer_products")
-      .select("*")
-      .eq("dealer_id", userId)
-      .order("created_at", { ascending: false });
+    const [{ data, error }, { data: cars }] = await Promise.all([
+      supabase
+        .from("dealer_products")
+        .select("*")
+        .eq("dealer_id", userId)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("car_listings")
+        .select("included_services")
+        .eq("dealer_id", userId)
+        .neq("status", "sold"),
+    ]);
+    // A failed read keeps the cached list (never overwrite it with []).
     if (error) console.error("[Services] dealer_products fetch error:", error.message);
-    setProducts(data || []);
+    else setProducts(data || []);
+    if (cars) {
+      const counts = {};
+      cars.forEach((c) => (c.included_services || []).forEach((svc) => {
+        if (svc?.id) counts[svc.id] = (counts[svc.id] || 0) + 1;
+      }));
+      setInListings(counts);
+    }
     setProdLoading(false);
   };
 
@@ -336,33 +356,47 @@ export default function ServicesPage({ userId }) {
       updated_at: new Date().toISOString(),
     };
     try {
+      // supabase-js returns errors, it does not throw: check each one, or a
+      // refused write (RLS) reads as "saved".
       if (editTarget) {
-        await supabase
+        const { error } = await supabase
           .from("dealer_products")
           .update(payload)
           .eq("id", editTarget.id);
+        if (error) throw error;
+        const changes = {};
+        if (Number(editTarget.cost_price) !== payload.cost_price) changes.cost_price = { from: editTarget.cost_price, to: payload.cost_price };
+        if (Number(editTarget.selling_price) !== payload.selling_price) changes.selling_price = { from: editTarget.selling_price, to: payload.selling_price };
+        logActivity({ dealerId: userId, actor: profile, tableName: "dealer_products", recordId: editTarget.id, action: "updated", summary: `Product updated — ${payload.name}`, fieldChanges: Object.keys(changes).length ? changes : null });
       } else {
-        await supabase.from("dealer_products").insert(payload);
+        const { data: ins, error } = await supabase.from("dealer_products").insert(payload).select("id").single();
+        if (error) throw error;
+        logActivity({ dealerId: userId, actor: profile, tableName: "dealer_products", recordId: ins?.id, action: "created", summary: `Product added — ${payload.name} · sell RM ${payload.selling_price.toLocaleString()}` });
       }
       await fetchProducts();
       closePanel();
       toast.success(editTarget ? "Product updated" : "Product added");
-    } catch {
-      toast.error("Save failed");
+    } catch (e) {
+      toast.error("Save failed" + (e?.message ? `: ${e.message}` : ""));
     }
     setSaving(false);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
-    await supabase.from("dealer_products").delete().eq("id", id);
+    const target = products.find((x) => x.id === id);
+    const { error } = await supabase.from("dealer_products").delete().eq("id", id);
+    if (error) { toast.error("Could not delete: " + error.message); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: "dealer_products", recordId: id, action: "deleted", summary: `Product deleted${target ? ` — ${target.name}` : ""}` });
     setProducts((p) => p.filter((x) => x.id !== id));
     toast.success("Deleted");
   };
 
   const handleToggle = async (p) => {
     const updated = { is_active: !p.is_active };
-    await supabase.from("dealer_products").update(updated).eq("id", p.id);
+    const { error } = await supabase.from("dealer_products").update(updated).eq("id", p.id);
+    if (error) { toast.error("Could not update: " + error.message); return; }
+    logActivity({ dealerId: userId, actor: profile, tableName: "dealer_products", recordId: p.id, action: "updated", summary: `Product ${updated.is_active ? "activated" : "deactivated"} — ${p.name}` });
     setProducts((prev) =>
       prev.map((x) => (x.id === p.id ? { ...x, ...updated } : x)),
     );
@@ -645,6 +679,11 @@ export default function ServicesPage({ userId }) {
                             >
                               {pct != null ? `${pct}%` : "—"} margin
                             </span>
+                            {inListings[p.id] > 0 && (
+                              <span style={{ fontSize: 11, color: "#6b7280" }}>
+                                In {inListings[p.id]} listing{inListings[p.id] !== 1 ? "s" : ""}
+                              </span>
+                            )}
                           </div>
                         </div>
                         {/* Right controls */}

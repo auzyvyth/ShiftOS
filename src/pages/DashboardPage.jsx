@@ -10,6 +10,7 @@ import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { Helmet } from "react-helmet";
 import { toast } from "sonner";
+import { logActivity } from "../utils/activityLog";
 import { isWonDealBlock, offerUndoSale, relistCar } from "../utils/undoSale";
 import { suggestCommission, describeCommissionRule } from "../utils/commission";
 import { useDebouncedCallback } from 'use-debounce';
@@ -34,7 +35,6 @@ import { establishSessionFromHandoff } from "../lib/authHandoff";
 import SciFiLoader from "../components/SciFiLoader";
 import DealerPendingApproval from "../components/DealerPendingApproval";
 import { liveChannel } from "../lib/liveChannel";
-
 class TabErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
@@ -60,7 +60,6 @@ class TabErrorBoundary extends Component {
     return this.props.children;
   }
 }
-
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
 function SubTabBar({ tabs, active, onChange }) {
   return (
@@ -106,7 +105,7 @@ import { clearSiteProfileCache } from "../hooks/useSiteProfile";
 import useSubscription from "../hooks/useSubscription";
 import { toPlus60, isValidMyPhone, MY_PHONE_ERROR } from "../lib/phone";
 import PhoneInput from "../components/ui/PhoneInput";
-import { getCategoryCfg, PRODUCT_CATEGORY_OPTIONS } from "../utils/serviceCategories";
+import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
@@ -133,7 +132,6 @@ import {
   X,
   TrendingUp,
   DollarSign,
-  Eye,
   Menu,
   Building2,
   Clock,
@@ -171,10 +169,8 @@ import {
   Shield,
   KeyRound,
   AlertTriangle,
-  RefreshCw,
   ExternalLink,
   ChevronDown,
-  ChevronUp,
   Palette,
   Inbox,
   Gauge,
@@ -314,22 +310,6 @@ const iCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all";
 const taCls =
   "w-full bg-white border border-gray-200 rounded-lg px-3.5 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 transition-all resize-none";
-
-// Fire-and-forget audit logger — never throws, never blocks the caller
-const logActivity = ({ dealerId, actor, tableName, recordId, action, summary, fieldChanges = null }) => {
-  if (!dealerId) return;
-  supabase.from('activity_log').insert({
-    dealer_id:    dealerId,
-    actor_id:     actor?.id   || null,
-    actor_name:   actor?.full_name || actor?.email || 'Unknown',
-    actor_role:   actor?.role  || null,
-    table_name:   tableName,
-    record_id:    recordId    || null,
-    action,
-    summary,
-    field_changes: fieldChanges,
-  }).then(({ error }) => { if (error) console.warn('[activity_log]', error.message); });
-};
 
 // Inline SVG icon for the Hero Carousel sidebar nav item
 const HeroCarouselIcon = ({ className }) => (
@@ -576,278 +556,6 @@ function SettingsField({ label, hint, children }) {
   );
 }
 
-// ─── ProductsCatalogue ────────────────────────────────────────────────────────
-// Category options sourced from serviceCategories.js (single source of truth).
-const PRODUCT_CATEGORIES = PRODUCT_CATEGORY_OPTIONS;
-
-const PRODUCT_SEEDS = [
-  { name: 'Paint Protection Film', category: 'protection',  selling_price: 800, cost_price: 400 },
-  { name: 'Window Tint',           category: 'window_tint', selling_price: 350, cost_price: 150 },
-  { name: 'Extended Warranty 1yr', category: 'warranty',    selling_price: 600, cost_price: 250 },
-  { name: 'Insurance Referral',    category: 'insurance',   selling_price: 200, cost_price: 0   },
-];
-
-const EMPTY_PRODUCT_FORM = { name: '', category: 'protection', cost_price: '', selling_price: '', description: '', is_active: true };
-
-function marginColor(sell, cost) {
-  if (!sell) return '#6b7280';
-  const pct = ((sell - cost) / sell) * 100;
-  if (pct >= 40) return '#4ade80';
-  if (pct >= 20) return '#fbbf24';
-  return '#f87171';
-}
-
-function ProductsCatalogue({ dealerId, profile }) {
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [open, setOpen]           = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  useModalHistory(showModal, () => setShowModal(false), { isDirty: () => true });
-  const [editTarget, setEditTarget] = useState(null); // null = add, obj = edit
-  const [form, setForm]           = useState(EMPTY_PRODUCT_FORM);
-  const [saving, setSaving]       = useState(false);
-  const [stockCountMap, setStockCountMap] = useState({});
-
-  const fetchProducts = async () => {
-    if (!dealerId) return;
-    setLoading(true);
-    const [{ data }, { data: stockListings }] = await Promise.all([
-      supabase.from('dealer_products').select('*').eq('dealer_id', dealerId).order('created_at', { ascending: false }),
-      supabase.from('car_listings').select('included_services').eq('dealer_id', dealerId).neq('status', 'sold'),
-    ]);
-    setProducts(data || []);
-    // Build per-product stock count
-    const countMap = {};
-    (stockListings || []).forEach(car => {
-      (car.included_services || []).forEach(svc => {
-        if (svc.id) countMap[svc.id] = (countMap[svc.id] || 0) + 1;
-      });
-    });
-    setStockCountMap(countMap);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchProducts(); }, [dealerId]);
-
-  const openAdd = () => { setForm(EMPTY_PRODUCT_FORM); setEditTarget(null); setShowModal(true); };
-  const openEdit = (p) => { setForm({ name: p.name, category: p.category, cost_price: p.cost_price ?? '', selling_price: p.selling_price, description: p.description || '', is_active: p.is_active }); setEditTarget(p); setShowModal(true); };
-
-  const handleSave = async () => {
-    if (!form.name.trim() || !form.selling_price) { toast.error('Name and selling price are required'); return; }
-    setSaving(true);
-    const payload = {
-      dealer_id:     dealerId,
-      name:          form.name.trim(),
-      category:      form.category,
-      cost_price:    Number(form.cost_price) || 0,
-      selling_price: Number(form.selling_price),
-      description:   form.description.trim() || null,
-      is_active:     form.is_active,
-      updated_at:    new Date().toISOString(),
-    };
-    try {
-      if (editTarget) {
-        await supabase.from('dealer_products').update(payload).eq('id', editTarget.id);
-        const changes = {};
-        if (Number(editTarget.cost_price) !== payload.cost_price) changes.cost_price = { from: editTarget.cost_price, to: payload.cost_price };
-        if (Number(editTarget.selling_price) !== payload.selling_price) changes.selling_price = { from: editTarget.selling_price, to: payload.selling_price };
-        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: editTarget.id, action: 'updated', summary: `Product updated — ${payload.name}`, fieldChanges: Object.keys(changes).length ? changes : null });
-      } else {
-        const { data: ins } = await supabase.from('dealer_products').insert(payload).select().single();
-        logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: ins?.id, action: 'created', summary: `Product added — ${payload.name} · sell RM ${payload.selling_price.toLocaleString()}` });
-      }
-      await fetchProducts();
-      setShowModal(false);
-      toast.success(editTarget ? 'Product updated' : 'Product added');
-    } catch { toast.error('Save failed'); }
-    setSaving(false);
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this product?')) return;
-    const target = products.find(x => x.id === id);
-    await supabase.from('dealer_products').delete().eq('id', id);
-    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: id, action: 'deleted', summary: `Product deleted${target ? ` — ${target.name}` : ''}` });
-    setProducts(p => p.filter(x => x.id !== id));
-    toast.success('Deleted');
-  };
-
-  const handleToggleActive = async (p) => {
-    await supabase.from('dealer_products').update({ is_active: !p.is_active }).eq('id', p.id);
-    logActivity({ dealerId, actor: profile, tableName: 'dealer_products', recordId: p.id, action: 'updated', summary: `Product ${!p.is_active ? 'activated' : 'deactivated'} — ${p.name}` });
-    setProducts(prev => prev.map(x => x.id === p.id ? { ...x, is_active: !x.is_active } : x));
-  };
-
-  const seedProduct = async (seed) => {
-    const payload = { dealer_id: dealerId, ...seed, description: null, is_active: true };
-    await supabase.from('dealer_products').insert(payload);
-    await fetchProducts();
-    toast.success(`"${seed.name}" added`);
-  };
-
-  const catLabel = (v) => PRODUCT_CATEGORIES.find(c => c.value === v)?.label || v;
-
-  return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: '1px solid #e5e7eb', background: '#f9fafb' }}
-    >
-      {/* Collapsible header */}
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-white/[0.025] transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid rgba(220,38,38,0.2)' }}>
-            <Tag className="w-4 h-4 text-red-400" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-gray-900">Services & Add-ons</p>
-            {!loading && <p className="text-xs text-gray-600 mt-px">{products.length} product{products.length !== 1 ? 's' : ''} configured</p>}
-          </div>
-        </div>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-600" /> : <ChevronDown className="w-4 h-4 text-gray-600" />}
-      </button>
-
-      {open && (
-        <div style={{ borderTop: '1px solid #e5e7eb' }}>
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-5 py-3">
-            <p className="text-xs text-gray-500">Products your dealership sells as add-ons</p>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-red-600"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 2px 8px rgba(220,38,38,0.25)' }}
-            >
-              <PlusCircle className="w-3 h-3" />Add Product
-            </button>
-          </div>
-
-          {loading ? (
-            <div className="px-5 pb-5 space-y-2">
-              {[1,2].map(i => <div key={i} className="h-10 rounded-lg animate-pulse" style={{ background: '#f9fafb' }} />)}
-            </div>
-          ) : products.length === 0 ? (
-            <div className="px-5 pb-5">
-              <p className="text-xs text-gray-600 mb-3">Quick-start suggestions:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {PRODUCT_SEEDS.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => seedProduct(s)}
-                    className="text-left p-3 rounded-lg border transition-all hover:border-red-600/30 hover:bg-red-600/[0.04]"
-                    style={{ background: '#f9fafb', border: '1px dashed #d1d5db' }}
-                  >
-                    <p className="text-xs font-semibold text-gray-900">{s.name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">RM {s.selling_price.toLocaleString()} selling</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="px-5 pb-5">
-              <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
-                {/* Header row */}
-                <div className="grid px-3 py-2 text-xs font-bold text-gray-600 uppercase tracking-wider hidden sm:grid" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px', borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                  <span>Name</span><span>Category</span><span>Cost</span><span>Sell</span><span>Margin</span><span>Active</span><span></span>
-                </div>
-                {products.map(p => {
-                  const margin = p.selling_price ? (((p.selling_price - (p.cost_price || 0)) / p.selling_price) * 100).toFixed(1) : null;
-                  const stockCount = stockCountMap[p.id] || 0;
-                  return (
-                    <div key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <div className="grid items-center px-3 py-2.5" style={{ gridTemplateColumns: '1fr 110px 80px 80px 60px 64px 48px' }}>
-                        <div className="min-w-0">
-                          <span className="text-sm text-gray-900 font-medium truncate block">{p.name}</span>
-                          {stockCount > 0 && (
-                            <span className="text-[10px] text-cyan-400/70 font-medium">
-                              In {stockCount} listing{stockCount !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-gray-500">{catLabel(p.category)}</span>
-                        <span className="text-xs text-gray-500">{p.cost_price ? `RM ${Number(p.cost_price).toLocaleString()}` : '—'}</span>
-                        <span className="text-xs text-gray-300">RM {Number(p.selling_price).toLocaleString()}</span>
-                        <span className="text-xs font-semibold" style={{ color: marginColor(p.selling_price, p.cost_price || 0) }}>{margin ? `${margin}%` : '—'}</span>
-                        <button onClick={() => handleToggleActive(p)} className="flex items-center">
-                          {p.is_active
-                            ? <ToggleRight className="w-5 h-5 text-green-400" />
-                            : <ToggleLeft className="w-5 h-5 text-gray-600" />}
-                        </button>
-                        <div className="flex items-center gap-1.5">
-                          <button onClick={() => openEdit(p)} className="text-gray-600 hover:text-gray-900 transition-colors"><Pencil className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => handleDelete(p.id)} className="text-gray-600 hover:text-red-400 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Add / Edit Modal ── */}
-      {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="w-full max-w-md rounded-xl relative" style={{ background: '#fff', border: '1px solid #e5e7eb', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <p className="font-semibold text-gray-900 text-sm">{editTarget ? 'Edit Product' : 'Add Product'}</p>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-900"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="p-5 space-y-3.5">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Name *</label>
-                <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Paint Protection Film" className={iCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Category *</label>
-                <select value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} className={iCls} style={{ appearance: 'none' }}>
-                  {PRODUCT_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Cost Price (RM)</label>
-                  <input type="number" value={form.cost_price} onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Selling Price (RM) *</label>
-                  <input type="number" value={form.selling_price} onChange={e => setForm(p => ({ ...p, selling_price: e.target.value }))} placeholder="0" className={iCls} min="0" />
-                </div>
-              </div>
-              {form.selling_price && (
-                <p className="text-xs" style={{ color: marginColor(Number(form.selling_price), Number(form.cost_price) || 0) }}>
-                  Margin: {(((Number(form.selling_price) - (Number(form.cost_price) || 0)) / Number(form.selling_price)) * 100).toFixed(1)}%
-                </p>
-              )}
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Description (optional)</label>
-                <textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Short description…" rows={2} className={taCls} />
-              </div>
-              <div className="flex items-center justify-between py-1">
-                <span className="text-sm text-gray-500">Active</span>
-                <button onClick={() => setForm(p => ({ ...p, is_active: !p.is_active }))} className="flex items-center">
-                  {form.is_active ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-600" />}
-                </button>
-              </div>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full py-2.5 rounded-lg text-sm font-semibold text-white mt-1"
-                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', opacity: saving ? 0.7 : 1 }}
-              >
-                {saving ? 'Saving…' : editTarget ? 'Save Changes' : 'Add Product'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 function SaveBtn({ sectionKey, onClick, disabled, saving, saved }) {
   return (
     <button
@@ -1040,7 +748,7 @@ function WaTemplatesEditor({ dealerId, actor }) {
 }
 
 // ─── SettingsTab ──────────────────────────────────────────────────────────────
-function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
+function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
   const [saving, setSaving] = useState({});
   const [saved, setSaved] = useState({});
   const [errors, setErrors] = useState({});
@@ -1662,7 +1370,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
       { key: 'costs', icon: Calculator, label: 'Cost Floor', desc: 'Overhead, runner & holding costs' },
       { key: 'dealsheet', icon: FileText, label: 'Deal Sheet', desc: 'Customer proposal settings' },
       { key: 'availability', icon: Clock, label: 'Viewing Hours', desc: 'When buyers can book viewings' },
-      { key: 'services', icon: Package, label: 'Services', desc: 'Products & add-on catalogue' },
+      // The add-on catalogue has ONE home: Storefront > Services & Add-ons (ServicesPage).
+      // This entry is a shortcut there, not a second editor.
+      { key: 'services', icon: Package, label: 'Services', desc: 'Opens Storefront > Services & Add-ons' },
       { key: 'handover_ops', icon: ClipboardCheck, label: 'Handover', desc: 'Road tax & insurance handling' },
     ]},
     { group: 'Notifications', items: [
@@ -2784,7 +2494,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           <ErrMsg k="storefront" errors={errors} />
         </div>
       </SettingsSection>}
-      {effectiveNav === 'services' && <ProductsCatalogue dealerId={getDealerIdFromProfile(profile)} profile={profile} />}
+
     </div>
   );
 
@@ -2803,7 +2513,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
                   {items.map(({ key, icon: Icon, label, desc }, idx) => (
                     <button
                       key={key}
-                      onClick={() => setSettingsNav(key)}
+                      onClick={() => (key === 'services' && onOpenServices ? onOpenServices() : setSettingsNav(key))}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 13, width: '100%',
                         padding: '11px 14px', background: 'none', border: 'none',
@@ -2859,7 +2569,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
                 return (
                   <button
                     key={key}
-                    onClick={() => setSettingsNav(key)}
+                    onClick={() => (key === 'services' && onOpenServices ? onOpenServices() : setSettingsNav(key))}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '7px 10px',
                       borderRadius: 7, border: 'none', cursor: 'pointer', textAlign: 'left', marginBottom: 1,
@@ -11516,6 +11226,7 @@ export default function DashboardPage() {
               profile={profile}
               onProfileUpdate={handleProfileUpdate}
               jumpTo={settingsJump}
+              onOpenServices={() => { setStorefrontSub("services"); handleTabChange("storefront"); }}
             />
           )}
           {activeTab === "crm" && (
@@ -11543,7 +11254,7 @@ export default function DashboardPage() {
                 <HeroSlidesPage userId={userId} profile={profile} />
               )}
               {storefrontSub === "services" && (
-                <ServicesPage userId={userId} />
+                <ServicesPage userId={getDealerIdFromProfile(profile)} profile={profile} />
               )}
             </>
           )}
