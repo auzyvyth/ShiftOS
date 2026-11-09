@@ -3011,6 +3011,14 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-33: Real Puspakom data on a car page (owner, 2026-11-09)** — pull a car's Puspakom
+  inspection result so "Puspakom passed" is a fact we checked, not a seller's claim (the same
+  gap that took three article CTAs down). Blocker: Puspakom has NO public API (checked
+  2026-11-09; GiCheck app is consumer-only). Their "Pendaftaran Vendor" post is procurement
+  (tenders/RFQ to SELL them goods and services), not developer access. Only route is a direct
+  data-sharing / partner agreement with Puspakom (DRB-HICOM group), which needs a company,
+  traffic numbers and PDPA terms first. Revisit once there is revenue.
+
 - **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
   "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
   already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
