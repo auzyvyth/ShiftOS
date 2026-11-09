@@ -24,6 +24,19 @@
 
 const REFUSED = new Set(['CHANNEL_ERROR', 'TIMED_OUT']);
 
+// IO-9 (2026-11-09): only a real permission refusal falls back. A TIMED_OUT
+// join (slow realtime.authorize on a busy DB) or a CHANNEL_ERROR from a dropped
+// socket (phone sleep, wifi change) is temporary: realtime-js rejoins the
+// channel by itself. Falling back on those put a screen on postgres_changes
+// until the next reload, and seller panels stay open for days, so the
+// list_changes poller kept running (42k calls in 3.5 days, the DB's #1 query).
+const REFUSAL_RE = /unauthori[sz]ed|permission|not allowed|forbidden/i;
+export function isRefusal(status, err) {
+  if (status !== 'CHANNEL_ERROR') return false;
+  const msg = String(err?.message ?? err ?? '');
+  return REFUSAL_RE.test(msg);
+}
+
 // "salesman_id=eq.<uuid>" -> { column, value }; no filter -> { column: null };
 // anything that is not `eq` -> null (no topic can carry it).
 export function parseLiveFilter(filter) {
@@ -104,9 +117,9 @@ function attach(client, topic, binding) {
     const e = entry;
     e.channel = client.channel(topic, { config: { private: true } })
       .on('broadcast', { event: 'change' }, ({ payload }) => { deliver(client, e, payload); })
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         e.status = status;
-        if (REFUSED.has(status) && !e.legacy) {
+        if (isRefusal(status, err) && !e.legacy) {
           // Stop the private channel retrying (it would until the next reload)
           // and hand its bindings to postgres_changes.
           const dead = e.channel;

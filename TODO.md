@@ -416,8 +416,8 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
     Oct 22 decides it. Fix options: Pro plan + switch compute to Micro (free projects STAY on Nano
     after upgrading unless compute is changed), or keep Nano and cut the console poll.
   Cron diet (solo salesman first): `20261023a_cron_pause_marketplace_dealer.sql`
-  (pauses 3, 4, 8, 9; 18 daily; 16 twice a day) - APPLIED 2026-10-23 00:32 UTC, verified in cron.job. Undo with
-  cron.alter_job(id, active := true).
+  (pauses 3, 4, 8, 9; 18 daily; 16 twice a day) - APPLIED 2026-10-23 00:32 UTC. 2026-11-09 (owner: dealer
+  dashboard in use again): 4 + 8 back ON (`20261109i`, 8 now dealer/owner rows only); 3 + 9 still off.
 - [ ] **IO-8 Freeze #4: database restarted 2026-11-05 16:52 UTC (00:52 MYT Nov 6).** Read-only check
   2026-11-08: `pg_postmaster_start_time()` = that moment. Postgres logs are gone (free plan keeps 24 h),
   cron history starts 2026-11-06 03:00 UTC (job 6 deletes it daily). No migration, release or new cron
@@ -427,6 +427,19 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
   restart, ~4.4 GB/day for a 58 MB DB), down from ~24/h before IO-5 but not gone. Owner: Dashboard >
   Reports > Database, 15:00-17:00 UTC Nov 5 (CPU, memory, swap, Disk IO budget) decides between
   "Disk IO budget ran out" and "host starved". Real fix stays PERF-LOAD-2 (paid compute).
+- [ ] **IO-9 the change poller never stopped (2026-11-09).** `realtime.list_changes` is still the
+  DB's #1 query (42k calls, 449 s in 3.5 days) though every screen uses `liveChannel`. Cause:
+  `liveChannel` fell back to postgres_changes on ANY `CHANNEL_ERROR`/`TIMED_OUT`, i.e. on every
+  dropped socket (phone sleep, wifi change) or slow join (`realtime.authorize` averages 425 ms),
+  and stayed there until reload; seller panels stay open for days. Fix BUILT (branch
+  `ccr-43610c49-zkh0gj`, `src/lib/liveChannel.js` `isRefusal`, `npm run test:livechannel` 34/34):
+  only a permission refusal falls back. Next: staging, then a few days later re-check
+  `list_changes` calls and apply `20261025a` (drop the publication) once it is near zero.
+  WAL archiving since the 2026-11-05 restart: 1,042 x 16 MB segments (~16.7 GB) for a 60 MB DB,
+  12.3/h; that is Supabase's archive_timeout (2 min, not ours to change) sealing a segment for
+  any 2-minute window with a write. Real fix is still PERF-LOAD-2 (Pro + Micro compute).
+  Noise: `realtimeIdle` replay hits `lead_activities` / `dealer_notifications` with
+  `updated_at` / `last_message_at`, which those tables lack (4 errors/day in postgres logs).
 - [ ] **IO-3 dead realtime subscriptions** still in the dealer dashboard: OverviewTab
   subscribes to `lead_activities`, which is not in the publication (never fires).
 
@@ -453,10 +466,13 @@ Done 2026-10-21: SEC-4 (backup tables dropped), PREM-LAPSE leftovers (#515 + 202
   `trg_notify_salesman_enquiry` (push + Telegram, message text quoted) at 60/hr/seller. Move the
   three browser tap inserts (`StickyWhatsAppButton.jsx:54`, `ShowroomCard.jsx:459`,
   `CarCard.jsx:774`) to `/api/track` or skip notifications for nameless rows.
-- [ ] SEC-10c `is_dealer_active()` reads `subscription_status`, which means nothing for a
-  salesman: 2 live Premium sellers read "inactive", so their buyers' enquiries and bookings are
-  refused today. Breaks the "never gate a buyer's way to reach a seller" rule. Replace with a
-  live-account check (is_active + not deleted), as `create_lead_from_whatsapp` now does.
+- [ ] SEC-10c `is_dealer_active()` reads `subscription_status`, which means nothing for a salesman.
+  Re-checked 2026-11-09: WORSE than first written. It also gates `get_seller_whatsapp` (WhatsApp
+  button) and `get_listing_call_number` (Call button), so 3 live Premium sellers (bydann 6 cars,
+  drivenbyyazeed 7, shamsulsa 1) get NO WhatsApp, call, enquiry or booking from buyers.
+  Fix WRITTEN, NOT APPLIED: `supabase/migrations/20261109h_seller_reachable.sql` (salesman =
+  reachable while the account is live; dealers unchanged; dry-run on live data: 5 salesmen
+  unblocked, 0 newly blocked, dealers identical). Apply in the after-midnight slot.
 - [ ] SEC-A5 waitlist oracle: now fixable — the server key IS set on Vercel (/api/track writes
   with it, 89 events in 24h). Move `api/waitlist.js` to it, revoke `waitlist_lookup` /
   `waitlist_credit_referrer` from anon.

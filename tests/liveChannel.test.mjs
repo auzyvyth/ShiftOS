@@ -1,7 +1,7 @@
 // IO-2 live updates by Broadcast: topics, delivery through an RLS re-read,
 // shared channels, cleanup, and the postgres_changes fallback.
 // Run: npm run test:livechannel
-import { liveChannel, liveTopic, parseLiveFilter, wantsOp, liveBindings } from '../src/lib/liveChannel.js';
+import { liveChannel, liveTopic, parseLiveFilter, wantsOp, liveBindings, isRefusal } from '../src/lib/liveChannel.js';
 
 let pass = 0, fail = 0;
 const is = (name, got, want) => {
@@ -41,7 +41,7 @@ function fakeClient(rows = {}) {
     send(topic, payload) {
       c.channels.filter((ch) => ch.topic === topic).forEach((ch) => ch.handlers.forEach((h) => h.type === 'broadcast' && h.cb({ payload })));
     },
-    status(topic, s) { c.channels.filter((ch) => ch.topic === topic).forEach((ch) => ch.statusCb?.(s)); },
+    status(topic, s, err) { c.channels.filter((ch) => ch.topic === topic).forEach((ch) => ch.statusCb?.(s, err)); },
   };
   return c;
 }
@@ -113,7 +113,7 @@ is('op: INSERT only', [wantsOp('INSERT', 'INSERT'), wantsOp('INSERT', 'UPDATE')]
   let subscribed = 0;
   liveChannel(c, 'x').on('postgres_changes', { event: 'INSERT', table: 'appointments', filter: 'salesman_id=eq.u1' }, (p) => seen.push(p.eventType))
     .subscribe(() => { subscribed += 1; });
-  c.status('rt:appointments:salesman_id:u1', 'CHANNEL_ERROR');
+  c.status('rt:appointments:salesman_id:u1', 'CHANNEL_ERROR', new Error('Unauthorized: You do not have permissions to read from this Channel topic'));
   const legacy = c.channels.find((x) => x.topic.startsWith('legacy:'));
   is('fallback: private channel removed', c.removed, ['rt:appointments:salesman_id:u1']);
   is('fallback: postgres_changes with the same filter', legacy?.handlers[0]?.spec, { event: '*', schema: 'public', table: 'appointments', filter: 'salesman_id=eq.u1' });
@@ -136,6 +136,27 @@ is('op: INSERT only', [wantsOp('INSERT', 'INSERT'), wantsOp('INSERT', 'UPDATE')]
   c.status('rt:appointments:salesman_id:u1', 'SUBSCRIBED');
   c.status('rt:appointments:salesman_id:u1', 'SUBSCRIBED');
   is('status: SUBSCRIBED once all joined, never twice', calls, ['SUBSCRIBED']);
+}
+
+
+// IO-9: a timeout or a dropped socket is temporary - no fallback, the
+// private channel stays and realtime-js rejoins it.
+{
+  is('refusal: permission error', isRefusal('CHANNEL_ERROR', new Error('Unauthorized: You do not have permissions')), true);
+  is('refusal: timeout is not', isRefusal('TIMED_OUT', undefined), false);
+  is('refusal: socket error is not', isRefusal('CHANNEL_ERROR', new Error('socket closed')), false);
+  is('refusal: bare error is not', isRefusal('CHANNEL_ERROR', undefined), false);
+  const c = fakeClient();
+  let subscribed = 0;
+  liveChannel(c, 'z').on('postgres_changes', { event: '*', table: 'leads', filter: 'salesman_id=eq.u2' }, () => {})
+    .subscribe(() => { subscribed += 1; });
+  c.status('rt:leads:salesman_id:u2', 'TIMED_OUT');
+  c.status('rt:leads:salesman_id:u2', 'CHANNEL_ERROR', new Error('socket closed'));
+  is('no fallback: no legacy channel', c.channels.some((x) => x.topic.startsWith('legacy:')), false);
+  is('no fallback: private channel kept', c.removed, []);
+  is('no fallback: screen not left waiting', subscribed, 1);
+  c.status('rt:leads:salesman_id:u2', 'SUBSCRIBED');
+  is('no fallback: rejoin does not re-fire', subscribed, 1);
 }
 
 console.log(`liveChannel: ${pass} passed, ${fail} failed`);
