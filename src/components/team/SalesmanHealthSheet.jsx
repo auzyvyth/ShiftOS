@@ -15,7 +15,7 @@ import {
 // premiumLight: white blocks floating on a white sheet (shadow), no card borders.
 const INK = PL.text;
 const MUTED = PL.textMuted;
-const CARD = { background: PL.card, borderRadius: 16, boxShadow: PL.shadow };
+const CARD = { background: PL.cardBg, borderRadius: 16, boxShadow: PL.shadow };
 const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, fontWeight: 600 };
 const NUM = { fontVariantNumeric: 'tabular-nums' };
 

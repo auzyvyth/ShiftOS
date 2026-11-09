@@ -11120,7 +11120,7 @@ export default function DashboardPage() {
                   style={{
                     display: "flex", alignItems: "center", gap: 12, width: "100%",
                     padding: "14px 16px", borderRadius: 20,
-                    background: "#ffffff", border: "none",
+                    background: premiumLight.cardBg, border: "none",
                     boxShadow: premiumLight.shadow,
                     transition: "box-shadow .15s, transform .15s",
                     cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",

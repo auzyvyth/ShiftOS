@@ -114,6 +114,10 @@ export const premiumLight = {
   // border, no grey canvas). Depth comes from `shadow`, not from tone.
   canvas:  '#ffffff',
   card:    '#ffffff',                 // layer 1: every card (always with `shadow`)
+  // Owner, 2026-11-09: "a slight gradient going up from the bottom, not dark, our red".
+  // Drevo red at 6% on the bottom edge, gone by 60% of the height. Kept this faint
+  // on purpose: solid red still means urgent (dots, "Lost"), a card must not.
+  cardBg:  'linear-gradient(to top, rgba(220,38,38,0.06) 0%, rgba(220,38,38,0) 60%), #ffffff',
   // Owner, 2026-11-09: "not enough, use darker shade" (was 0.05 / 0.07).
   shadow:  '0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)',
   shadowHover: '0 3px 6px rgba(17,24,39,0.10), 0 14px 36px rgba(17,24,39,0.22)',
