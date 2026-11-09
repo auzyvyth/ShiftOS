@@ -9,6 +9,7 @@ import OutreachHub from "../components/crm/OutreachHub";
 import { liveChannel } from "../lib/liveChannel";
 import PhoneInput from '../components/ui/PhoneInput';
 import { isValidMyPhone, MY_PHONE_ERROR } from '../lib/phone';
+import { localInputToIso } from "../utils/myDay";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -1438,13 +1439,14 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   const handleAdd = async () => {
     if (addForm.buyer_phone && !isValidMyPhone(addForm.buyer_phone)) { toast.error(MY_PHONE_ERROR); return; }
+    if (!localInputToIso(addForm.scheduled_at)) { toast.error("Pick the date and time of the booking"); return; }
     setAddSaving(true);
     try {
       const { error } = await supabase.from("appointments").insert({
         dealer_id: userId,
         salesman_id: addForm.salesman_id || null,
         car_listing_id: addForm.listing_id || null,
-        appointment_date: addForm.scheduled_at,
+        appointment_date: localInputToIso(addForm.scheduled_at),
         buyer_name: addForm.buyer_name,
         buyer_phone: addForm.buyer_phone,
         notes: addForm.notes,

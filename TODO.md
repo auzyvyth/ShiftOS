@@ -131,8 +131,15 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   on a dealer car, the "Add to Stock" prompt after a new car prefills from stock and upserts (it
   inserted a second row, hit the unique listing_id and lost the typed cost, silently).
   Owner call: the dealer-side `admin` role loses the activity log (dealer/manager/accountant keep it).
-- [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause
-  (lawyer). (`salesman_id` on assign + AI Manager: done in part 2.)
+- [ ] Batch 5 screen fixes: ON STAGING 2026-11-09, not click-tested. Appointment times from the
+  dealer drawer + CRM bookings were saved as UTC (3pm showed as 11pm); now `localInputToIso`
+  (`src/utils/myDay.js`). "Appointments today" counted every future booking from the UTC date; now
+  the Malaysian day, no cancelled/no-show (`malaysiaDayBounds`, OverviewTab). AddCarForm refuses
+  year outside 1960..next year, mileage 0..2,000,000, cc 0..10,000. A draft document prints
+  "DRAFT, not issued" instead of "Date: -". Deposit receipt term 3 no longer says the 5% fee is
+  "as per the Consumer Protection Act 1999" (the Act sets no such fee, checked 2026-11-09).
+  Still open: a lawyer to read the deposit terms (is a 5% fee fair under CPA Part IIIA unfair
+  terms?), and a DB CHECK for year/mileage (other forms write those columns too).
 - [ ] Batch 6 Deal record: agreed price + approval, `deal_payments`, receipts from the deal.
 - [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)

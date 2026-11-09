@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
+import { malaysiaDayBounds } from '../utils/myDay';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Stage names, labels and colours come from the ONE stage list the leads board
@@ -137,6 +138,7 @@ async function fetchPnl(dealerId) {
 
 async function fetchOverview(dealerId) {
   const now = Date.now();
+  const today = malaysiaDayBounds();
   const [l, cl, apt, sm, acts] = await Promise.all([
     supabase.from('leads')
       .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
@@ -149,7 +151,9 @@ async function fetchOverview(dealerId) {
     supabase.from('appointments')
       .select('id, appointment_date')
       .eq('dealer_id', dealerId)
-      .gte('appointment_date', new Date().toISOString().slice(0, 10)),
+      .gte('appointment_date', today.start)
+      .lt('appointment_date', today.end)
+      .not('status', 'in', '(cancelled,no_show)'),
     supabase.from('profiles')
       .select('id, full_name, slug, role')
       .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)

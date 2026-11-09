@@ -22,6 +22,7 @@ import { useModalHistory } from '../../hooks/useModalHistory';
 import { offerUndoSale } from '../../utils/undoSale';
 import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from '../../utils/carBuyers';
 import { SITE_URL } from '../../config/site';
+import { localInputToIso } from '../../utils/myDay';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -323,7 +324,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   }, [lead?.id, lead?.dealer_id]);
 
   const handleAddAppt = async () => {
-    if (!apptForm.appointment_date) return;
+    const apptAt = localInputToIso(apptForm.appointment_date);
+    if (!apptAt) return;
     setApptSaving(true);
     const { data, error } = await supabase.from('appointments').insert({
       dealer_id: lead.dealer_id,
@@ -331,7 +333,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       car_listing_id: lead.car_listing?.id || null,
       buyer_name: lead.buyer_name || null,
       buyer_phone: lead.phone || null,
-      appointment_date: apptForm.appointment_date,
+      appointment_date: apptAt,
       booking_type: apptForm.booking_type || 'viewing',
       notes: apptForm.notes || null,
       status: 'scheduled',

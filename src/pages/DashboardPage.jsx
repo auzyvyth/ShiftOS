@@ -8905,7 +8905,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     const services    = doc.included_services_snapshot || [];
     const handoverItems = m.handover_items?.length ? m.handover_items : [...DEFAULT_HANDOVER_ITEMS];
     const exceptions  = m.exceptions_noted || '';
-    const issued      = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    // A draft has no issue date. It printed "Date: —", which reads like a real
+    // receipt with a missing date; say plainly that it is not issued.
+    const issued      = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : 'DRAFT, not issued';
     const isHandover  = doc.doc_type === 'Handover Checklist';
     const isDeposit   = doc.doc_type === 'Deposit Receipt';
     const isSales     = doc.doc_type === 'Sales Agreement';
@@ -9046,7 +9048,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         ${sect('Terms & Conditions', `
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">1. This deposit reserves the above vehicle exclusively for the buyer${payDeadline ? ` until <strong>${new Date(payDeadline).toLocaleDateString('en-MY',{day:'2-digit',month:'long',year:'numeric'})}</strong>` : ''}.</p>
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">2. <strong>If the buyer's loan/financing application is rejected by all banks:</strong> the full deposit is refundable within 14 days of written notification of rejection.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">3. <strong>If the buyer cancels for other reasons:</strong> a cancellation fee of up to 5% of the sale price may be retained by the dealer as per the Consumer Protection Act 1999.</p>
+          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">3. <strong>If the buyer cancels for other reasons:</strong> a cancellation fee of up to 5% of the sale price may be retained by the dealer.</p>
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">4. <strong>If the dealer fails to deliver the reserved vehicle:</strong> the full deposit shall be refunded to the buyer within 14 days.</p>
           <p style="font-size:12px;line-height:1.8;margin:0;">5. Disputes may be referred to the Tribunal for Consumer Claims Malaysia (TTPM).</p>
         `)}

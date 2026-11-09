@@ -80,6 +80,11 @@ const LBL = { fontSize: 12, fontWeight: 600, color: color.ink, marginBottom: 6, 
 
 const FormCtx = React.createContext(null);
 
+const YEAR_MIN = 1960;
+const YEAR_MAX = new Date().getFullYear() + 1;
+const MILEAGE_MAX = 2000000;
+const CC_MAX = 10000;
+
 function Field({ label, required, children, hint }) {
   return (
     <div>
@@ -337,13 +342,17 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
   const servicesCost = useMemo(() => form.included_services.reduce((a, s) => a + num(s.cost_price), 0), [form.included_services]);
 
   // ── Step validation ────────────────────────────────────────────────────────
+  // Sane ranges: a typo like year 20200 or mileage -5 was saved as typed.
+  const yearBad = form.year !== "" && !(num(form.year) >= YEAR_MIN && num(form.year) <= YEAR_MAX);
+  const mileageBad = form.mileage !== "" && !(num(form.mileage) >= 0 && num(form.mileage) <= MILEAGE_MAX);
+  const ccBad = form.engine_cc !== "" && !(num(form.engine_cc) >= 0 && num(form.engine_cc) <= CC_MAX);
   const stepValid = useCallback((s) => {
-    if (s === 1) return form.brand && form.model && form.year && form.mileage !== "" && form.engine_cc !== "";
+    if (s === 1) return form.brand && form.model && form.year && form.mileage !== "" && form.engine_cc !== "" && !yearBad && !mileageBad && !ccBad;
     if (s === 2) return num(form.purchase_price) > 0 && form.purchase_date && form.purchase_source;
     if (s === 3) return num(form.recon_cost) >= 0 && num(form.asking_price) > 0;
     if (s === 4) return !form.publish || form.images.length > 0;
     return true;
-  }, [form]);
+  }, [form, yearBad, mileageBad, ccBad]);
 
   const canSubmit = stepValid(1) && stepValid(2) && stepValid(3) && stepValid(4);
 
@@ -506,12 +515,12 @@ export default function AddCarForm({ onPublished, onStocked, mode, onBack, onCon
           <Field label="Make" required><FSelect k="brand" options={["", ...MAKES]} /></Field>
           <Field label="Model" required><FText k="model" ph="Civic" /></Field>
           <Field label="Variant"><FText k="variant" ph="1.5 TC-P" /></Field>
-          <Field label="Year" required><FText k="year" ph="2020" type="number" /></Field>
-          <Field label="Engine CC" required hint={decoded ? "Auto-filled from model — edit if needed" : "Used to estimate road tax"}><FText k="engine_cc" ph="1498" type="number" /></Field>
+          <Field label="Year" required hint={yearBad ? `Between ${YEAR_MIN} and ${YEAR_MAX}` : null}><FText k="year" ph="2020" type="number" /></Field>
+          <Field label="Engine CC" required hint={ccBad ? `0 to ${CC_MAX.toLocaleString()} cc` : decoded ? "Auto-filled from model — edit if needed" : "Used to estimate road tax"}><FText k="engine_cc" ph="1498" type="number" /></Field>
           <Field label="Transmission"><FSelect k="transmission" options={["Auto", "Manual"]} /></Field>
           <Field label="Fuel"><FSelect k="fuel_type" options={["Petrol", "Diesel", "Hybrid", "Electric"]} /></Field>
           <Field label="Colour"><FText k="colour" ph="White" /></Field>
-          <Field label="Mileage (km)" required><FText k="mileage" ph="45000" type="number" /></Field>
+          <Field label="Mileage (km)" required hint={mileageBad ? `0 to ${MILEAGE_MAX.toLocaleString()} km` : null}><FText k="mileage" ph="45000" type="number" /></Field>
           <Field label="Body type"><FSelect k="body_type" options={BODY_TYPES} /></Field>
           <div style={{ display: "flex", alignItems: "center", gap: 8, alignSelf: "end", paddingBottom: 10 }}>
             <input type="checkbox" id="recon" checked={form.is_recon} onChange={(e) => setVal("is_recon", e.target.checked)} />
