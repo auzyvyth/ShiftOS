@@ -1078,6 +1078,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
     monthly_overhead: "", avg_fleet_size: "", floor_plan_rate: "",
     runner_fee: "", admin_fee: "", warranty_reserve_pct: "",
   });
+  // Discount limit (batch 6a): above it, a salesman's price waits for the dealer's OK.
+  // Saved in its own write so a missing column can never break the cost save above.
+  const [discountLimit, setDiscountLimit] = useState({ amount: "", pct: "" });
   const [dealerState, setDealerState] = useState(profile?.state || '');
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
   const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
@@ -1240,6 +1243,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           runner_fee: data.runner_fee != null ? String(data.runner_fee) : "",
           admin_fee: data.admin_fee != null ? String(data.admin_fee) : "",
           warranty_reserve_pct: data.warranty_reserve_pct != null ? String(data.warranty_reserve_pct) : "",
+        });
+        setDiscountLimit({
+          amount: data.discount_limit_amount != null ? String(data.discount_limit_amount) : "",
+          pct: data.discount_limit_pct != null ? String(data.discount_limit_pct) : "",
         });
       });
   }, [settingsDealerId]);
@@ -1607,6 +1614,16 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      const lim = (v) => (v === "" || v == null ? null : Math.max(0, Number(v) || 0));
+      const { error: limErr } = await supabase.from("dealer_cost_settings")
+        .update({ discount_limit_amount: lim(discountLimit.amount), discount_limit_pct: lim(discountLimit.pct) })
+        .eq("dealer_id", settingsDealerId);
+      if (limErr) {
+        // Columns arrive with tonight's database update (20261109g).
+        if (discountLimit.amount !== "" || discountLimit.pct !== "") {
+          throw new Error("Costs saved. The discount limit can be saved after tonight's update.");
+        }
+      }
       flash("costs");
     } catch (e) {
       setErrors((p) => ({ ...p, costs: e.message }));
@@ -2577,6 +2594,22 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
               className={iCls} placeholder="e.g. 1.5" />
           </SettingsField>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <SettingsField label="Discount limit (RM off asking)">
+            <input type="number" min="0" value={discountLimit.amount}
+              onChange={(e) => setDiscountLimit(s => ({ ...s, amount: e.target.value }))}
+              className={iCls} placeholder="e.g. 2000 (blank = no limit)" />
+          </SettingsField>
+          <SettingsField label="Discount limit (% off asking)">
+            <input type="number" min="0" step="0.5" value={discountLimit.pct}
+              onChange={(e) => setDiscountLimit(s => ({ ...s, pct: e.target.value }))}
+              className={iCls} placeholder="e.g. 3 (blank = no limit)" />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500">
+          A salesman can close at a discount up to this limit on their own. Above it, the price comes to you
+          (or a manager) to approve before the deal closes. Leave both blank for no limit.
+        </p>
         <p className="text-xs text-gray-500">
           Floor-plan rate charges interest on each car's purchase price per day it sits. If both overhead and floor-plan
           are set, floor-plan takes priority. Runner fee is added on top of the RM100 JPJ government rate.
@@ -10116,10 +10149,25 @@ export default function DashboardPage() {
     try {
       if (leadId) {
         // A real win: the won trigger flips the car, makes the customer and seeds the handover.
-        const { data: won, error: winErr } = await supabase
-          .from("leads").update({ stage: "won", ...(soldBy ? { salesman_id: soldBy } : {}) }).eq("id", leadId).select("id");
-        if (winErr) throw winErr;
-        if (!won?.length) throw new Error("lead update refused");
+        // close_deal_at_price records the price as the agreed price (batch 6a); a discount over
+        // the limit from a role that cannot approve waits for the dealer instead.
+        const { data: res, error: rpcErr } = await supabase.rpc("close_deal_at_price", {
+          p_lead: leadId, p_agreed: soldPrice ?? null, p_closer: soldBy || null,
+        });
+        if (rpcErr && rpcErr.code !== "PGRST202") throw rpcErr;
+        if (res?.status === "pending") {
+          toast.success("Sent to the dealer to approve the price. The car is marked sold once they say yes.");
+          setMarkSoldListing(null);
+          setMarkSoldLoading(false);
+          return;
+        }
+        if (rpcErr) {
+          // Function not on the database yet (queued migration): the old write.
+          const { data: won, error: winErr } = await supabase
+            .from("leads").update({ stage: "won", ...(soldBy ? { salesman_id: soldBy } : {}) }).eq("id", leadId).select("id");
+          if (winErr) throw winErr;
+          if (!won?.length) throw new Error("lead update refused");
+        }
       }
       const update = {
         status: "sold",
@@ -10146,8 +10194,10 @@ export default function DashboardPage() {
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
-      toast.error(String(e?.message || "").includes("car_already_won")
+      const m = String(e?.message || "");
+      toast.error(m.includes("car_already_won")
         ? "This car is already sold to another buyer. Undo that sale first."
+        : m.includes("bad_price") ? "Enter the price agreed with the buyer."
         : "Could not mark the car as sold. Try again.");
     }
     setMarkSoldLoading(false);

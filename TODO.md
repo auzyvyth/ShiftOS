@@ -140,7 +140,22 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   "as per the Consumer Protection Act 1999" (the Act sets no such fee, checked 2026-11-09).
   Still open: a lawyer to read the deposit terms (is a 5% fee fair under CPA Part IIIA unfair
   terms?), and a DB CHECK for year/mileage (other forms write those columns too).
-- [ ] Batch 6 Deal record: agreed price + approval, `deal_payments`, receipts from the deal.
+- [ ] Batch 6a agreed price + discount approval: WRITTEN, NOT APPLIED
+  (`supabase/migrations/20261109g_deal_agreed_price.sql`, after 20261109f; local dry-run passed,
+  incl. a NULL-safety hole it caught in the caller check). `leads.agreed_price` (asking price if
+  none typed) goes to `car_listings.sold_price` + `customers.selling_price` in the won trigger.
+  Owner: approval only OVER a limit (`dealer_cost_settings.discount_limit_amount` / `_pct`, off by
+  default, set in Settings > Costs). `close_deal_at_price` closes or files a
+  `deal_price_approvals` request (push to the dealer); dealer or manager `decide_deal_price`
+  (approve = the deal closes; push to the salesman). `trg_ab_lead_win_price` enforces it on any
+  write. Screens: LeadDrawer close panel asks the price + shows the waiting request with
+  Approve / Not approved; Mark sold sends its price; the linked salesman's Won opens an
+  "Agreed price" sheet (Salesmanpanel `renderWinPriceModal`); Overview alert "N prices waiting
+  for your OK". All fall back to the old close until the migration is applied. Not click-tested.
+- [ ] Batch 6b payments (owner: salesman logs, dealer/accountant confirms; only confirmed count +
+  get a receipt): payments rows under `deal_financials`; total received / balance by trigger;
+  `leads.deposit_*` + `car_listings.deposit_amount` become copies; receipts numbered per payment
+  and filled from the deal (no retyping in DocumentsTab).
 - [ ] Click-test: why Add Listing saved commission RM600 as 0 (`AddCarForm.jsx:391`).
 - [ ] Owner: should a stock-controller role see costs too? (today dealer, manager, accountant)
 

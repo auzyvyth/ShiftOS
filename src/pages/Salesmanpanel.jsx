@@ -490,6 +490,9 @@ export default function SalesmanPanel() {
  const [followUpDate, setFollowUpDate] = useState("");
  const [followUpSaving, setFollowUpSaving] = useState(false);
  const [testDriveConfirm, setTestDriveConfirm] = useState(null);
+ // Batch 6a: a win asks for the agreed price; a discount over the dealer's limit
+ // waits for the dealer's OK (close_deal_at_price, migration 20261109g).
+ const [winPrice, setWinPrice] = useState(null); // { lead, value, saving }
  const [linkCarLeadId, setLinkCarLeadId] = useState(null);
  // "offer": the lead's car was sold by another seller; picking a car also drafts the offer.
  const [linkCarOffer, setLinkCarOffer] = useState(false);
@@ -513,6 +516,7 @@ export default function SalesmanPanel() {
  useModalHistory(!!dealSheetConfigLead, () => setDealSheetConfigLead(null));
  useModalHistory(!!linkCarLeadId, () => { setLinkCarLeadId(null); setLinkCarSearch(""); setLinkCarOffer(false); });
  useModalHistory(!!testDriveConfirm, () => setTestDriveConfirm(null));
+ useModalHistory(!!winPrice, () => setWinPrice(null));
  useModalHistory(!!waModalLead, () => setWaModalLead(null));
  useModalHistory(notifOpen, () => setNotifOpen(false));
  useModalHistory(moreOpen, () => setMoreOpen(false));
@@ -620,7 +624,7 @@ export default function SalesmanPanel() {
  // behind never scrolls under it (non-negotiable overlay rule). Keyed on every
  // overlay's open-state so it releases the moment the last one closes.
  const anyOverlayOpen = !!(
- moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || waModalLead ||
+ moreOpen || dealSheetConfigLead || linkCarLeadId || testDriveConfirm || winPrice || waModalLead ||
  logCallLeadId || followUpModalLead || (batchWALeads && batchWALeads.length) || selectedCar ||
  aiCaptionCar || broadcastCar || showAddLead || telegramSetupModal || deleteConfirmId ||
  cancelConfirmId || reminderPickerAptId || reschedulingAptId || studioCar || drawerLeadId
@@ -1856,7 +1860,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage } : l)));
  };
 
- const advanceLeadStage = (lead, newStage, force = false) => {
+ const advanceLeadStage = (lead, newStage, force = false, skipPrice = false) => {
  if (!newStage) return;
  // Confirm before a test drive moves on, and before taking a deposit (a real
  // commitment that flips the car to reserved server-side).
@@ -1868,6 +1872,11 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  const buyerName = lead.buyer_name || "Lead";
  const isWin = ["won", "closed_won"].includes(newStage);
  const carId = lead.car_listing_id || lead.car_listings?.id;
+ if (isWin && carId && !skipPrice) {
+   const ask = lead.car_listings?.selling_price;
+   setWinPrice({ lead, value: ask ? String(ask) : "", saving: false });
+   return;
+ }
  // Persist immediately so a refresh never loses the move. Undo writes the old stage back.
  setLeads((p) => p.map((l) => (l.id === leadId? { ...l, stage: newStage } : l)));
  updateLeadStage(leadId, newStage);
@@ -5025,6 +5034,77 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
        </div>
      </div>
    );
+ };
+
+ const confirmWinPrice = async () => {
+ if (!winPrice) return;
+ const { lead } = winPrice;
+ const price = Number(winPrice.value) || null;
+ if (!price || price <= 0) { toast.error("Enter the price agreed with the buyer"); return; }
+ setWinPrice((w) => ({ ...w, saving: true }));
+ const { data: res, error } = await supabase.rpc("close_deal_at_price", { p_lead: lead.id, p_agreed: price });
+ if (error && error.code === "PGRST202") {
+   // Not on the database yet (queued migration): the old one-tap win.
+   setWinPrice(null);
+   advanceLeadStage(lead, "won", true, true);
+   return;
+ }
+ if (error) {
+   setWinPrice((w) => ({ ...w, saving: false }));
+   const m = String(error.message || "");
+   toast.error(m.includes("car_already_won") ? "This car is already sold to another buyer."
+     : m.includes("forbidden") ? "This lead is not yours to close."
+     : "Could not close the deal. Try again.");
+   return;
+ }
+ setWinPrice(null);
+ if (res?.status === "pending") {
+   toast.success("Sent to your dealer to approve the price. You'll get a notification when they answer.");
+   return;
+ }
+ const carId = lead.car_listing_id || lead.car_listings?.id;
+ const soldAt = new Date().toISOString();
+ setLeads((p) => p.map((l) => (l.id === lead.id ? { ...l, stage: "won", agreed_price: price } : l)));
+ if (carId) {
+   setMyListings((p) => p.map((c) => (c.id === carId && c.status !== "sold"
+     ? { ...c, status: "sold", sold_at: soldAt, sold_price: price, assigned_to: c.assigned_to || userId }
+     : c)));
+ }
+ supabase.from("lead_activities").insert({
+   lead_id: lead.id, activity_type: "stage_changed", from_stage: lead.stage, to_stage: "won",
+   created_by: userId, dealer_id: getDealerIdFromProfile(profile),
+ }).then(() => {}, () => {});
+ toast.success(`${lead.buyer_name || "Lead"}: deal closed at RM ${price.toLocaleString()}`);
+ };
+
+ const renderWinPriceModal = () => {
+ if (!winPrice) return null;
+ const ask = Number(winPrice.lead.car_listings?.selling_price) || 0;
+ const off = ask - (Number(winPrice.value) || 0);
+ return createPortal(
+ <div onClick={() => setWinPrice(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+   <div onClick={(e) => e.stopPropagation()} style={{ background: "#111318", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "16px 16px 0 0", padding: "20px 20px 32px", width: "100%", maxWidth: 480 }}>
+     <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Close the deal</p>
+     <p style={{ margin: "0 0 16px", fontSize: 12, color: "#9ca3af" }}>{winPrice.lead.buyer_name || "Lead"}: what price did you agree?</p>
+     <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "#9ca3af", margin: "0 0 6px" }}>Agreed price (RM)</label>
+     <input type="number" inputMode="numeric" min="1" autoFocus value={winPrice.value}
+       onChange={(e) => setWinPrice((w) => ({ ...w, value: e.target.value }))}
+       style={{ width: "100%", boxSizing: "border-box", padding: "11px 13px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: "#f1f5f9", fontSize: 16, outline: "none" }} />
+     <p style={{ margin: "8px 0 16px", fontSize: 12, color: "#9ca3af", lineHeight: 1.5 }}>
+       {ask > 0 && off > 0
+         ? `RM ${off.toLocaleString()} off the asking price of RM ${ask.toLocaleString()}. If that is over your dealer's limit, it goes to them to approve first.`
+         : ask > 0 ? `Asking price RM ${ask.toLocaleString()}.` : ""}
+     </p>
+     <div style={{ display: "flex", gap: 8 }}>
+       <button onClick={() => setWinPrice(null)} style={{ flex: 1, padding: "11px 0", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#9ca3af", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+       <button onClick={confirmWinPrice} disabled={winPrice.saving} style={{ flex: 2, padding: "11px 0", borderRadius: 10, background: "#dc2626", border: "none", color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer", opacity: winPrice.saving ? 0.6 : 1 }}>
+         {winPrice.saving ? "Saving..." : "Close the deal"}
+       </button>
+     </div>
+   </div>
+ </div>,
+ document.body,
+ );
  };
 
  const renderTestDriveConfirmModal = () => {
@@ -9082,6 +9162,7 @@ Write a warm, personalised reply that greets them by name, acknowledges the spec
  {renderDealSheetModal()}
  {renderLinkCarModal()}
  {renderTestDriveConfirmModal()}
+ {renderWinPriceModal()}
  {renderWAModal()}
  {renderLogCallModal()}
  {renderFollowUpModal()}
