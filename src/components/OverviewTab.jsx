@@ -11,6 +11,7 @@ import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, A
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
+import '../theme/premiumLight.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Stage names, labels and colours come from the ONE stage list the leads board
@@ -366,7 +367,6 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           .ov-team-conv  { grid-template-columns: 1fr !important; }
           .ov-attn-grid  { grid-template-columns: 1fr !important; }
         }
-        .ov-attn:hover { box-shadow: ${PL.shadowHover} !important; transform: translateY(-1px); }
         @media (max-width: 480px) {
           .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
           .ov-conv-table { font-size: 11px !important; }
@@ -408,7 +408,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
             {alerts.map(a => (
-              <button key={a.key} className="ov-attn" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow, transition: 'box-shadow .15s, transform .15s', padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
+              <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
                   {a.urgent && <span style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: PL.accent, border: `2px solid ${PL.card}` }} />}

@@ -234,7 +234,9 @@ Project ID: lemdkdizdlcirhbzqlos
   "reference salesman premium, use that style but for dealers use light theme"). Premium's rules on a
   light surface: a PURE WHITE page with white blocks that FLOAT on a soft shadow (`PL.shadow`,
   `PL.shadowHover` for tappable cards; owner 2026-11-09) and a faint Drevo-red glow rising from the bottom
-  (`PL.cardBg`, 6% red fading out by 60% height: keep it faint, solid red still means urgent), grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
+  (`PL.cardBg`, 6% red fading out by 60% height: keep it faint, solid red still means urgent),
+  TAPPABLE cards are raised keys (`.pl-key`, `src/theme/premiumLight.css`: Premium's key recipe in light,
+  a red bottom lip, sinks 2px when pressed); read-only cards never get it, or everything looks clickable, grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
   alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),
   status pills = one grey fill with a coloured WORD. Adopted one tab at a time: Overview
   (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first.
