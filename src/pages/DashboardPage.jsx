@@ -4529,7 +4529,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data, error } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, purchase_price, base_price, recon_cost, included_services_cost")
+      // Cost comes from the stock record: a dealer car's listing holds no cost
+      // (20261109f, batch 4 — salesmen can read listings, not stock).
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, included_services_cost, stock_units(purchase_price, recon_cost)")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
@@ -4547,13 +4549,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       const cs = commission_status || 'pending';
       map[assigned_to][cs] = (map[assigned_to][cs] || 0) + amt;
       // Front gross per unit: sale - cost - recon - included services - commission.
-      // Cost basis = stock purchase price, falling back to the listing's base_price
-      // (listings with no procurement record still have a cost basis). Only counted
-      // when some cost exists, so units with zero cost don't show "full sale = profit".
-      const cost = Number(row.purchase_price) || Number(row.base_price) || 0;
+      // Only counted when the stock record has a cost, so units with zero cost
+      // don't show "full sale = profit".
+      const su = Array.isArray(row.stock_units) ? row.stock_units[0] : row.stock_units;
+      const cost = Number(su?.purchase_price) || 0;
       if (cost > 0) {
         const sale = Number(row.sold_price ?? row.selling_price) || 0;
-        map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
+        map[assigned_to].gross += sale - cost - (Number(su?.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
       }
     });
     setSoldMap(map);
@@ -9915,7 +9917,18 @@ export default function DashboardPage() {
     setActiveTab("listings");
     // Prompt to add stock purchase details
     setPendingStockListing(l);
-    setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
+    setPendingStockForm({ purchase_price: '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: '' });
+    // The cost typed in CarForm is on the stock record the database made for this
+    // car (a dealer car's listing holds no cost, 20261109f). Prefill from it.
+    supabase.from('stock_units').select('purchase_price, recon_cost').eq('listing_id', l.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setPendingStockForm((f) => ({
+          ...f,
+          purchase_price: f.purchase_price || (Number(data.purchase_price) > 0 ? String(data.purchase_price) : ''),
+          recon_cost: f.recon_cost || (Number(data.recon_cost) > 0 ? String(data.recon_cost) : ''),
+        }));
+      });
   };
   // AddCarForm already captures cost/procurement data, so no pending-stock prompt.
   const handleAddCarPublished = (l) => {
@@ -12135,6 +12148,9 @@ export default function DashboardPage() {
         <MarkSoldModal
           listing={markSoldListing}
           salesmen={salesmen}
+          // Cost from the stock record (overlaid onto the listing rows on load);
+          // a dealer car's listing itself holds none (20261109f).
+          cost={(Number(markSoldListing.purchase_price) || 0) + (Number(markSoldListing.recon_cost) || 0) || null}
           onClose={() => setMarkSoldListing(null)}
           onConfirm={handleMarkSold}
           loading={markSoldLoading}
@@ -12182,7 +12198,10 @@ export default function DashboardPage() {
                 disabled={pendingStockSaving || !pendingStockForm.purchase_price}
                 onClick={async () => {
                   setPendingStockSaving(true);
-                  await supabase.from('stock_units').insert({
+                  // Upsert: saving the car already made its stock record (trigger
+                  // auto_create_stock_unit), so a plain insert hit the unique listing_id
+                  // and the typed cost was silently lost.
+                  const { error: stockErr } = await supabase.from('stock_units').upsert({
                     dealer_id: userId,
                     listing_id: pendingStockListing.id,
                     // Mirror car identity fields from the listing
@@ -12209,8 +12228,9 @@ export default function DashboardPage() {
                     purchase_source: pendingStockForm.purchase_source || null,
                     recon_cost: Number(pendingStockForm.recon_cost) || 0,
                     status: 'in_stock',
-                  });
+                  }, { onConflict: 'listing_id' });
                   setPendingStockSaving(false);
+                  if (stockErr) { toast.error('Could not save the stock details: ' + stockErr.message); return; }
                   setPendingStockListing(null);
                 }}
                 className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"

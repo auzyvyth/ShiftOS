@@ -471,6 +471,14 @@ dealer dashboard and the console.
   (`sp_listings_` / `slite_listings_`) must be rewritten** (2026-10-19). RLS refuses as "0 rows,
   no error", and Premium never rewrote its saved copy, so a deleted car came back on reopen.
 
+## A dealer's cost lives on `stock_units` ONLY (batch 4, migration 20261109f)
+`car_listings` is read by the whole dealer team (salesmen too), and a row rule cannot hide a
+column. So on a DEALER car `purchase_price` / `base_price` / `recon_cost` are always NULL
+(`trg_zz_dealer_costs_off_listing` empties them; a new car hands them to `auto_create_stock_unit`).
+Read and write a dealer's cost through `stock_units` (dealer / accountant / manager). A solo
+seller's `base_price` stays on the listing: only they read it, and `solo_commission_is_margin` uses it.
+Never add a dealer-side read of cost from `car_listings`, or a new table that copies it there.
+
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
 - `car_listings.assigned_to = NULL` → OPEN: any salesman can feature it (salesman_listings)

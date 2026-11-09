@@ -81,10 +81,8 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 - [x] DONE 2026-11-08: 7 money tables (deal_financials, commission_rules, expense_entries,
       month_close_checklist, ad_spend, dealer_cost_settings, dealer_goals) are dealer + accountant only
       (`can_see_dealer_money`, migration `20261109b`). Tested per role.
-- [ ] HALF DONE: `stock_units` part is batch 1 below. Purchase price / recon cost / commission are
-      still readable by linked staff on `car_listings` (one row holds both the cost and
-      fields they need, so a row rule cannot hide it). Plan: staff read costs through a checked function.
-      Same for the dealer's Telegram bot token (move to its own table) and `dealer_products.cost_price`.
+- [ ] Cost on `car_listings`: batch 4 below. Still open: the dealer's Telegram bot token (move
+      to its own table) and `dealer_products.cost_price`.
 - [ ] CODE DONE 2026-11-08, NOT on staging yet, not build-tested (npm blocked in this session): Delete archives the
       car (`handleDelete`); AI Manager, CRM AI coach and dealer AI chat work again (`callClaudeChat`,
       `src/lib/callClaude.js`); assigning a lead sets `salesman_id`; linked staff follow the dealership's
@@ -122,7 +120,17 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   After apply: AccountantPanel overview reads `recon_actual` (not before: the column 400s).
   Left: handover fees / ad spend stay in the P&L modal only; deal row commission can still be
   edited apart from the car's (batch 6 Deal record).
-- [ ] Batch 4 buy-price columns off `car_listings` (= the HALF DONE line above).
+- [ ] Batch 4 dealer cost on the stock record only: WRITTEN, NOT APPLIED
+  (`supabase/migrations/20261109f_dealer_costs_off_listing.sql`, apply after 20261109e; dry-run
+  on a local Postgres passed). Dealer cars' `purchase_price` / `base_price` / `recon_cost` on
+  `car_listings` are emptied and kept empty (`trg_zz_dealer_costs_off_listing`); a new car hands
+  its cost to `auto_create_stock_unit`; a dealer-side CarForm edit moves the cost to stock, a
+  salesman's is dropped. Solo sellers keep `base_price`. Activity log + `gm_exception_alerts` =
+  money roles. Screens: TeamTab gross reads stock (DashboardPage `fetchSoldPerSalesman`), Listings
+  Mark sold gets the stock cost, CarForm edit fills "Your cost" from stock and does not require it
+  on a dealer car, the "Add to Stock" prompt after a new car prefills from stock and upserts (it
+  inserted a second row, hit the unique listing_id and lost the typed cost, silently).
+  Owner call: the dealer-side `admin` role loses the activity log (dealer/manager/accountant keep it).
 - [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause
   (lawyer). (`salesman_id` on assign + AI Manager: done in part 2.)
 - [ ] Batch 6 Deal record: agreed price + approval, `deal_payments`, receipts from the deal.
