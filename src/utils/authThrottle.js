@@ -2,7 +2,7 @@ import { supabase as mainClient } from "../supabaseClient";
 import { withTimeout } from "../config/marketplaceConfig";
 import { apiUrl } from "./apiUrl";
 
-// check / fail / gate go through the server route api/auth-throttle.js (the
+// check / fail / gate go through the server route /api/auth-throttle (lib/authThrottleHandler.js; the
 // DB functions are server-only, migration 20261109l). Any failure, timeout,
 // 429 or non-200 resolves to null and the callers below fail open.
 async function throttleApi(body) {
