@@ -7019,65 +7019,42 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                         )}
                       </div>
 
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {car.brand} {car.model}
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2, flexWrap: 'wrap' }}>
-                              {carAge != null && (
-                                <span style={{ fontSize: 11, fontWeight: 600, color: premiumLight.textMuted }}>{carAge}yr</span>
-                              )}
-                              {plate ? (
-                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 3, padding: '0 5px' }}>{plate.toUpperCase()}</span>
-                              ) : (
-                                <span style={{ fontSize: 9, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 3, padding: '0 5px' }}>no plate</span>
-                              )}
-                              {isAging && <span style={{ fontSize: 10, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '1px 7px' }}>60d+</span>}
+                      {/* Info: name, one quiet line, price + days. The checks (B7, B5,
+                          loan, published), grade and net profit open on tap in the car's
+                          record (owner, 2026-11-09: "too crowded, details on click").
+                          One red "N to sort" says there is something waiting there. */}
+                      {(() => {
+                        const toSort = u.status === 'in_stock'
+                          ? [ps.color !== '#22c55e', b5.color !== '#22c55e', (u.encumbrance_status || 'unknown') === 'unknown', isUnpublished].filter(Boolean).length
+                          : 0;
+                        const meta = [carAge != null ? `${carAge}yr` : null, plate ? plate.toUpperCase() : null].filter(Boolean).join(' · ');
+                        return (
+                          <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 600, color: premiumLight.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {car.brand} {car.model}
+                              </p>
+                              <p style={{ fontSize: 12, color: premiumLight.textMuted, margin: '3px 0 0', display: 'flex', gap: 6, minWidth: 0 }}>
+                                <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meta || 'No plate yet'}</span>
+                                {toSort > 0 && <span style={{ flexShrink: 0, whiteSpace: 'nowrap', color: premiumLight.accentText, fontWeight: 600 }}>{toSort} to sort</span>}
+                              </p>
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <p style={{ fontSize: 14, fontWeight: 700, color: premiumLight.text, margin: 0, fontVariantNumeric: 'tabular-nums' }}>
+                                RM {(stockView === 'available'
+                                  ? (Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0)
+                                  : (Number(u.sold_price) || 0)).toLocaleString()}
+                              </p>
+                              <p style={{ fontSize: 12, margin: '3px 0 0', color: isAging ? premiumLight.accentText : premiumLight.textMuted, fontWeight: isAging ? 600 : 400 }}>
+                                {stockView === 'available'
+                                  ? (days !== '—' ? `${days} days` : '—')
+                                  : (u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—')}
+                              </p>
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            {stockView === 'available' ? (
-                              <>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>RM {(Number(u.asking_price) || Number(u.car_listings?.selling_price) || 0).toLocaleString()}</p>
-                                <p style={{ fontSize: 10, color: isAging ? '#f87171' : '#9ca3af', margin: '1px 0 0' }}>{days !== '—' ? `${days}d` : '—'}</p>
-                              </>
-                            ) : (
-                              <>
-                                <p style={{ fontSize: 13, fontWeight: 700, color: premiumLight.text, margin: 0 }}>RM {(Number(u.sold_price)||0).toLocaleString()}</p>
-                                <p style={{ fontSize: 10, color: '#9ca3af', margin: '1px 0 0' }}>{u.sold_date ? new Date(u.sold_date).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—'}</p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {/* Status badges */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                          {u.status === 'in_stock' && <>
-                            <span title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days from the inspection date. Tap the card to update." style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: premiumLight.raised, color: premiumLight.textSec }}>{ps.label}</span>
-                            <span title="PUSPAKOM B5 — ownership-transfer inspection (no hard expiry; re-inspect if older than ~12 months). Tap the card to update." style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: premiumLight.raised, color: premiumLight.textSec }}>{b5.label}</span>
-                            <span title="Hire-purchase / loan encumbrance" style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: premiumLight.raised, color: premiumLight.textSec }}>{enc.label}</span>
-                            {isUnpublished && <span title="Not visible on the public marketplace" style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: premiumLight.raised, color: premiumLight.textSec }}>Not published</span>}
-                          </>}
-                          {u.appraisal?.overall && (() => {
-                            const t = u.appraisal.overall === 'A' ? { c: '#059669', b: '#6ee7b7', bg: 'rgba(52,211,153,0.12)' }
-                              : u.appraisal.overall === 'D' ? { c: '#dc2626', b: '#fca5a5', bg: 'rgba(248,113,113,0.1)' }
-                              : { c: '#b45309', b: '#fde68a', bg: '#fffbeb' };
-                            return (
-                              <span title={summarizeAppraisal(u.appraisal)} style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: t.bg, border: `1px solid ${t.b}`, color: t.c }}>
-                                Grade {u.appraisal.overall}{u.appraisal.attention_count > 0 ? ` · ${u.appraisal.attention_count}` : ''}
-                              </span>
-                            );
-                          })()}
-                          {can('view_gross') && gp != null && (
-                            <span title="Net profit after recon, services, commission, ad spend and holding" style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 999, background: premiumLight.raised, color: gp >= 0 ? premiumLight.up : premiumLight.accentText }}>
-                              Net {gp >= 0 ? '+' : '−'}RM {Math.abs(gp).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0 }} />
+                        );
+                      })()}
+                      <ChevronRight style={{ width: 16, height: 16, color: premiumLight.textMuted, flexShrink: 0 }} />
                     </div>
                   );
                 })}
@@ -7201,7 +7178,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               {/* Financial stats strip */}
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${[1, can('view_cost') ? 1 : 0, can('view_gross') ? 1 : 0].reduce((a, b) => a + b)}, 1fr)`, gap: 1, background: '#f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
                 {[
-                  { label: 'Asking',   val: u.asking_price ? `RM ${Number(u.asking_price).toLocaleString()}` : '—', color: '#111827' },
+                  { label: 'Asking',   val: (Number(u.asking_price) || Number(u.car_listings?.selling_price)) ? `RM ${(Number(u.asking_price) || Number(u.car_listings?.selling_price)).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
                   can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
                 ].filter(Boolean).map((s, i) => (
