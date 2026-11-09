@@ -61,6 +61,11 @@ class TabErrorBoundary extends Component {
   }
 }
 // Horizontal sub-tab switcher used inside merged tabs (Analytics, Storefront).
+const INVENTORY_VIEW_KEY = "xd_inventory_view";
+const INVENTORY_TABS = [
+  { id: "listings", label: "Listings" },
+  { id: "stock",    label: "Stock & costs" },
+];
 function SubTabBar({ tabs, active, onChange }) {
   return (
     <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
@@ -6132,7 +6137,7 @@ function StockStatsStrip({ dealerId }) {
     </div>
   );
 }
-const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled }) {
+const StockTab = React.memo(function StockTab({ userId, listings, profile, salesmen = [], onPublishComplete, autoTool, onToolHandled, hideSummary = false }) {
   const navigate = useNavigate();
   const { can } = usePermissions(profile);
   // Persisted so the stock table paints last-known units instantly (no IC or
@@ -6898,7 +6903,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   return (
     <>
     <div className="space-y-6">
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
+      {!hideSummary && <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 sm:gap-3">
         {summaryCards.map(({ label, val, Icon: Ic, glow, grad, spark, sparkColor }) => (
           <div key={label} className="stat-card card-top rounded-2xl overflow-hidden glass" style={{ position: 'relative' }}>
             {spark && (
@@ -6915,7 +6920,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
       <div className="rounded-xl overflow-hidden" style={T.card}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
@@ -9075,6 +9080,18 @@ export default function DashboardPage() {
   // Stock tools (CSV import / vendors / add unit) are reached from the Listings
   // "Tools" dropdown now that Stock has no nav entry — this signals which to open.
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
+  const handleTabChangeRef = useRef(null);
+  // Inventory is ONE nav item with two pills, Listings | Stock (owner, 2026-11-09).
+  // The nav item opens whichever pill the dealer last opened on this device, so
+  // they choose what they see first by using it. Routes stay /dashboard/listings
+  // and /dashboard/stock, so every old link and the Tools menu keep working.
+  const openInventory = useCallback((view) => {
+    try { localStorage.setItem(INVENTORY_VIEW_KEY, view); } catch { /* private mode */ }
+    handleTabChangeRef.current?.(view);
+  }, []);
+  const lastInventoryView = () => {
+    try { return localStorage.getItem(INVENTORY_VIEW_KEY) === "stock" ? "stock" : "listings"; } catch { return "listings"; }
+  };
   const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
   const toolsBtnRef = useRef(null);
   const [toolsBtnRect, setToolsBtnRect] = useState(null);
@@ -9415,6 +9432,7 @@ export default function DashboardPage() {
       if (gid) setOpenGroups(prev => new Set([...prev, gid]));
     });
   }, [navigate]);
+  handleTabChangeRef.current = handleTabChange;
 
   // Resolve legacy tab ids (now merged) to their new parent tab + sub-tab so
   // old deep-links and saved URLs don't render a blank pane.
@@ -10220,7 +10238,7 @@ export default function DashboardPage() {
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map(({ id, sub, Icon, label, badge }) => {
-                      const isActive = activeTab === id && (!sub || analyticsSub === sub);
+                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock")) && (!sub || analyticsSub === sub);
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
@@ -10229,6 +10247,8 @@ export default function DashboardPage() {
                             setAnalyticsSub(sub);
                             setSidebarOpen(false);
                             startTransition(() => navigate(`/dashboard/${id}?sub=${sub}`));
+                          } else if (id === "listings") {
+                            openInventory(lastInventoryView());
                           } else {
                             handleTabChange(id);
                           }
@@ -10579,6 +10599,7 @@ export default function DashboardPage() {
           {/* ── Listings Tab ── */}
           {activeTab === "listings" && (
             <>
+              <SubTabBar tabs={INVENTORY_TABS} active="listings" onChange={openInventory} />
               {/* The badge is worth nothing if nobody finds the upload step, and
                   Settings is the screen a dealer never opens. Jumps straight to
                   the Verified Badge section. */}
@@ -10588,9 +10609,6 @@ export default function DashboardPage() {
                 onStart={() => { setSettingsJump("verify"); handleTabChange("settings"); }}
               />
 
-              {/* Stock P&L stats (migrated from the Stock tab header) — shown first
-                  since revenue/value figures matter more at a glance than raw counts */}
-              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
                 {STAT_CARDS.map(({ label, val, sub, Icon, glow, spark, sparkColor }) => (
@@ -11287,10 +11305,11 @@ export default function DashboardPage() {
           )}
           {activeTab === "stock" && userId && (
             <>
-              <button onClick={() => handleTabChange("listings")} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 14, fontSize: 13, fontWeight: 600, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: "system-ui, sans-serif" }}>
-                <ChevronLeft style={{ width: 15, height: 15 }} /> Back to Inventory
-              </button>
-              <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen}
+              <SubTabBar tabs={INVENTORY_TABS} active="stock" onChange={openInventory} />
+              {/* The money figures for the stock live here, once. StockTab's own
+                  summary cards repeated them, so it is told to skip them. */}
+              <StockStatsStrip dealerId={getDealerIdFromProfile(profile)} />
+              <StockTab userId={userId} listings={listings} profile={profile} salesmen={salesmen} hideSummary
                 autoTool={stockAutoTool} onToolHandled={() => setStockAutoTool(null)}
                 onPublishComplete={(l) => setListings(p => p.some(x => x.id === l.id) ? p.map(x => x.id === l.id ? { ...x, ...l } : x) : [l, ...p])}
               />
