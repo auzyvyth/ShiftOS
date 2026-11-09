@@ -121,6 +121,7 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { premiumLight } from '../theme/tokens';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import { isOwnUrl } from '../config/site';
 import {
@@ -11120,7 +11121,7 @@ export default function DashboardPage() {
                     display: "flex", alignItems: "center", gap: 12, width: "100%",
                     padding: "14px 16px", borderRadius: 20,
                     background: "#ffffff", border: "none",
-                    boxShadow: "0 1px 2px rgba(17,24,39,0.05), 0 6px 20px rgba(17,24,39,0.07)",
+                    boxShadow: premiumLight.shadow,
                     transition: "box-shadow .15s, transform .15s",
                     cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",
                   }}

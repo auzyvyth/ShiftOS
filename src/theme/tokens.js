@@ -114,8 +114,9 @@ export const premiumLight = {
   // border, no grey canvas). Depth comes from `shadow`, not from tone.
   canvas:  '#ffffff',
   card:    '#ffffff',                 // layer 1: every card (always with `shadow`)
-  shadow:  '0 1px 2px rgba(17,24,39,0.05), 0 6px 20px rgba(17,24,39,0.07)',
-  shadowHover: '0 2px 4px rgba(17,24,39,0.06), 0 10px 28px rgba(17,24,39,0.10)',
+  // Owner, 2026-11-09: "not enough, use darker shade" (was 0.05 / 0.07).
+  shadow:  '0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)',
+  shadowHover: '0 3px 6px rgba(17,24,39,0.10), 0 14px 36px rgba(17,24,39,0.22)',
   raised:  '#f5f6f8',                 // layer 2: rows, chips, icon wells inside a card
   hover:   '#eceef1',
   line:    'rgba(17,24,39,0.06)',     // the one divider weight (inside a card only)
