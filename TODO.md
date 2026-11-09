@@ -79,8 +79,11 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
    `20261109k_mask_vin_public_view.sql` (verified: 116 cars, 0 unmasked) (same mask as `maskVin`, server side; dry-run 62/62 match, 0 unmasked).
 
 **APPLIED 2026-11-09 06:00-06:02 UTC (owner "apply all now", nobody live):** `20261109h`, `20261109j` (admin contact off the public view, search_path, report FK SET NULL), `20261109k`.
-Still waiting: `20261109l` login throttle grants: only after the branch's `api/auth-throttle.js` is on
-production, or sign-in pages lose the throttle (they fail open, sign-in still works).
+Still waiting: `20261109l` login throttle grants. The route is LIVE on production since 2026-11-09 06:33 UTC
+(#587 + #588; served by `api/auth-account-status.js?throttle=1` via a vercel.json rewrite, because Vercel
+Hobby refused a 16th function file: `api/` is at its cap, a new route needs Pro or another merge). Apply once
+the owner confirms a wrong-password sign-in on drevo.my/login still shows the attempt count. Then
+`20261025a` (drop the realtime publication) to stop the leftover polling.
 
 **2. Before ANY dealership goes live:**
 - [x] DONE 2026-11-08: 7 money tables (deal_financials, commission_rules, expense_entries,
