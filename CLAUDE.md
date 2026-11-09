@@ -232,10 +232,10 @@ Project ID: lemdkdizdlcirhbzqlos
 
 - **The dealer dashboard is moving to `premiumLight`** (`src/theme/tokens.js`, owner 2026-11-09:
   "reference salesman premium, use that style but for dealers use light theme"). Premium's rules on a
-  light surface: a PURE WHITE page with white blocks that FLOAT on a soft shadow (`PL.shadow`,
-  `PL.shadowHover` for tappable cards; owner 2026-11-09) and a faint tint rising from the bottom
-  (`PL.cardBg` + `--pl-tint` in premiumLight.css, ONE setting `PL.tint`; red was tried and dropped, the
-  owner found the pink off; slate is the current pick),
+  light surface: plain WHITE blocks that FLOAT on a soft shadow (`PL.shadow`, `PL.shadowHover` for
+  tappable cards; owner 2026-11-09) on a light grey PAGE (`PL.canvas`, the one colour setting, painted on
+  body by DashboardPage; a tint inside the cards was tried in red and slate and dropped, owner:
+  "revert to just white, what's missing is the background colouring"),
   TAPPABLE cards are raised keys (`.pl-key`, `src/theme/premiumLight.css`: Premium's key recipe in light,
   a tinted bottom lip, sinks 2px when pressed); read-only cards never get it, or everything looks clickable, grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
   alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),

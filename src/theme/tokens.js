@@ -104,22 +104,19 @@ export const premiumDark = {
 
 // The dealer dashboard's take on premiumDark (owner, 2026-11-09: "reference
 // salesman premium, use that style but light"). Same rules, light surface:
-// depth by SHADOW (white cards floating on a white page, grey rows inside a card), no
+// depth by SHADOW (white cards floating on a light grey page, grey rows inside a card), no
 // borders on cards, no tinted background with a matching solid border, red for
 // FILLS (and a dot / urgent count), one green (up) used as text only.
 // Rolled out one tab at a time (Overview first); do not mix it with the old
 // bordered cards inside one tab.
 export const premiumLight = {
-  // Owner, 2026-11-09: pure white page, blocks FLOAT on a soft shadow (no
-  // border, no grey canvas). Depth comes from `shadow`, not from tone.
-  canvas:  '#ffffff',
+  // Owner, 2026-11-09: white blocks FLOAT on a soft shadow, no border. The
+  // cards are plain white (a tint rising from the bottom was tried in red, then
+  // slate, and dropped: "revert to just white"); the COLOUR is the page behind
+  // them, `canvas`. One setting; DashboardPage paints body with it.
+  canvas:  '#eef0f4',                 // cool light grey
   card:    '#ffffff',                 // layer 1: every card (always with `shadow`)
-  // The card's tint (owner, 2026-11-09): a slight gradient rising from the bottom
-  // and the bottom lip of tappable cards. First Drevo red; the owner found the
-  // pink "throwing me off". ONE setting: `tint` (space-separated RGB) drives
-  // cardBg here and `--pl-tint` in premiumLight.css.
-  tint:    '71 85 105',               // slate
-  cardBg:  'linear-gradient(to top, rgb(71 85 105 / .07) 0%, rgb(71 85 105 / 0) 60%), #ffffff',
+  cardBg:  '#ffffff',
   // Owner, 2026-11-09: "not enough, use darker shade" (was 0.05 / 0.07).
   shadow:  '0 2px 4px rgba(17,24,39,0.08), 0 10px 28px rgba(17,24,39,0.16)',
   shadowHover: '0 3px 6px rgba(17,24,39,0.10), 0 14px 36px rgba(17,24,39,0.22)',

@@ -233,7 +233,7 @@ const STYLES = `
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  body { background: #ffffff; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
+  body { background: ${premiumLight.canvas}; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
 
   /* ── Sidebar nav ── */
   .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
