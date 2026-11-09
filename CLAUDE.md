@@ -244,8 +244,12 @@ Project ID: lemdkdizdlcirhbzqlos
   a tinted bottom lip, sinks 2px when pressed); read-only cards never get it, or everything looks clickable, grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
   alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),
   status pills = one grey fill with a coloured WORD. Adopted one tab at a time: Overview
-  (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM, Listings, Stock, Settings.
+  (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first,
+  then Inventory (Listings | Stock & costs, the stock record and its P&L; `src/components/inventory/
+  InventoryUi.jsx`). Old screens that tinted a whole pill with a hex now pass it to `plPill(hex)` /
+  `plWord(hex)` (`src/theme/plStatus.js`): grey fill, the word carries good/bad. Action rows are grey
+  with ink words; only the one main action is red.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold, Settings.
   Do not mix the two looks inside one tab.
 
 ### Anti-slop UI rules (non-negotiable)

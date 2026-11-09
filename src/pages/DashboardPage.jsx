@@ -126,6 +126,7 @@ import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { premiumLight } from '../theme/tokens';
 import '../theme/premiumLight.css';
+import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import { isOwnUrl } from '../config/site';
@@ -449,33 +450,13 @@ function CostProcurementForm({ listing, dealerId, onClose }) {
   );
 }
 
+// premiumLight (owner, 2026-11-09): one grey pill; the days turn red from 30.
 const AgeBadge = React.memo(function AgeBadge({ createdAt }) {
   const d = getListingAge(createdAt);
-  if (d < 15)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
-        <Clock className="w-3 h-3" />
-        {d === 0 ? "Today" : `${d}d`}
-      </span>
-    );
-  if (d < 25)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-400/10 text-amber-400 border border-amber-400/20">
-        <Clock className="w-3 h-3" />
-        {d}d
-      </span>
-    );
-  if (d < 30)
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-400/10 text-orange-400 border border-orange-400/20">
-        <Clock className="w-3 h-3" />
-        {d}d
-      </span>
-    );
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-600 border border-red-500/25">
-      <Clock className="w-3 h-3" />
-      {d}d
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: premiumLight.raised, color: d >= 30 ? premiumLight.accentText : premiumLight.textSec }}>
+      <Clock style={{ width: 12, height: 12 }} />
+      {d === 0 ? "Today" : `${d}d`}
     </span>
   );
 });
@@ -7092,17 +7073,22 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
         const carYear = car?.year ? Number(car.year) : null;
         const carAge = carYear ? currentYear - carYear : null;
 
-        const ACTION_BTN = (label, desc, color, bg, border, onClick) => (
-          <button onClick={onClick}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 14px', background: bg, border: `1px solid ${border}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "system-ui,sans-serif", transition: 'opacity 0.15s' }}
-            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'} onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color, margin: 0 }}>{label}</p>
-              <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>{desc}</p>
-            </div>
-            <ChevronRight style={{ width: 14, height: 14, color: '#d1d5db', flexShrink: 0, marginTop: 2 }} />
-          </button>
-        );
+        // premiumLight (owner, 2026-11-09): every action is the same grey row with
+        // ink words. Only the main action ('primary') is red. No per-row colours.
+        const ACTION_BTN = (label, desc, kind, _bg, _border, onClick) => {
+          const primary = kind === 'primary';
+          return (
+            <button onClick={onClick}
+              style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: primary ? premiumLight.accent : premiumLight.raised, border: 'none', borderRadius: premiumLight.radius.row, cursor: 'pointer', textAlign: 'left', width: '100%', fontFamily: "system-ui,sans-serif", transition: 'background 0.15s' }}
+              onMouseEnter={e => { if (!primary) e.currentTarget.style.background = premiumLight.hover; }} onMouseLeave={e => { if (!primary) e.currentTarget.style.background = premiumLight.raised; }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: primary ? '#fff' : premiumLight.text, margin: 0 }}>{label}</p>
+                <p style={{ fontSize: 11, color: primary ? 'rgba(255,255,255,0.85)' : premiumLight.textMuted, margin: '2px 0 0' }}>{desc}</p>
+              </div>
+              <ChevronRight style={{ width: 15, height: 15, color: primary ? '#fff' : premiumLight.textMuted, flexShrink: 0 }} />
+            </button>
+          );
+        };
 
         // Only show spec rows that have values
         const SPEC_ROWS = [
@@ -7132,7 +7118,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             <div
               onClick={e => e.stopPropagation()}
               style={{
-                background: '#fff', borderRadius: 16, width: '100%', maxWidth: isMobile ? 540 : 880,
+                background: '#fff', borderRadius: premiumLight.radius.card, width: '100%', maxWidth: isMobile ? 540 : 880,
                 maxHeight: isMobile ? '88vh' : '90vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                 overscrollBehavior: 'contain',
                 boxShadow: '0 24px 80px rgba(0,0,0,0.28)',
@@ -7161,13 +7147,13 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   </p>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
                     {car.year && <span style={{ fontSize: 12, color: '#6b7280' }}>{car.year}</span>}
-                    {carAge != null && <span style={{ fontSize: 11, fontWeight: 700, color: carAge >= 10 ? '#f87171' : carAge >= 5 ? '#fbbf24' : '#34d399' }}>{carAge}yr</span>}
+                    {carAge != null && <span style={{ fontSize: 12, color: premiumLight.textMuted }}>· {carAge}yr</span>}
                     {plate ? (
-                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: '#374151', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1px 6px' }}>{plate.toUpperCase()}</span>
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: premiumLight.textSec, background: premiumLight.raised, borderRadius: 6, padding: '2px 7px' }}>{plate.toUpperCase()}</span>
                     ) : (
                       <span style={{ fontSize: 10, color: '#9ca3af', border: '1px dashed #d1d5db', borderRadius: 4, padding: '1px 6px' }}>no plate</span>
                     )}
-                    {isAging && <span style={{ fontSize: 10, fontWeight: 700, color: '#f87171' }}>{daysNum}d in stock</span>}
+                    {isAging && <span style={{ fontSize: 11, fontWeight: 700, color: premiumLight.accentText }}>{daysNum}d in stock</span>}
                   </div>
                 </div>
                 <button onClick={() => setDetailUnit(null)} style={{ width: 30, height: 30, borderRadius: '50%', background: '#f3f4f6', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280', flexShrink: 0 }}>
@@ -7180,7 +7166,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 {[
                   { label: 'Asking',   val: (Number(u.asking_price) || Number(u.car_listings?.selling_price)) ? `RM ${(Number(u.asking_price) || Number(u.car_listings?.selling_price)).toLocaleString()}` : '—', color: '#111827' },
                   can('view_cost')  ? { label: 'Cost',    val: costBasis(u) > 0 ? `RM ${costBasis(u).toLocaleString()}` : '—', color: '#374151' } : null,
-                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? '#9ca3af' : gp >= 0 ? '#059669' : '#dc2626' } : null,
+                  can('view_gross') ? { label: 'Net P&L', val: gp != null ? `${gp >= 0 ? '+' : '−'}RM ${Math.abs(gp).toLocaleString()}` : '—', color: gp == null ? premiumLight.textMuted : gp >= 0 ? premiumLight.up : premiumLight.accentText } : null,
                 ].filter(Boolean).map((s, i) => (
                   <div key={i} style={{ background: '#fff', padding: '10px 14px', textAlign: 'center' }}>
                     <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>{s.label}</p>
@@ -7215,12 +7201,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 <div style={{ padding: '12px 16px', borderBottom: '1px solid #f3f4f6' }}>
                   <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 8px' }}>Certifications &amp; Status</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${ps.color}15`, border: `1px solid ${ps.color}30`, color: ps.color, cursor: 'pointer' }}>B7 · {ps.label.replace('B7 ', '')}</button>
-                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${b5.color}15`, border: `1px solid ${b5.color}30`, color: b5.color, cursor: 'pointer' }}>B5 · {b5.label.replace('B5 ', '')}</button>
-                    <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={{ fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 6, background: `${enc.color}15`, border: `1px solid ${enc.color}30`, color: enc.color, cursor: 'pointer' }}>{enc.label}</button>
+                    <button onClick={() => handleUpdatePuspakom(u)} title="PUSPAKOM B7 — hire-purchase inspection, valid 30 days. Tap to update." style={plPill(ps.color)}>B7 · {ps.label.replace('B7 ', '')}</button>
+                    <button onClick={() => handleUpdateB5(u)} title="PUSPAKOM B5 — ownership-transfer inspection. Tap to update." style={plPill(b5.color)}>B5 · {b5.label.replace('B5 ', '')}</button>
+                    <button onClick={() => handleUpdateEncumbrance(u)} title="Tap to cycle: clear → under HP → unknown" style={plPill(enc.color)}>{enc.label}</button>
                     {isUnpublished && (
                       <button onClick={() => handlePublishFromStock(u)} disabled={publishingStockId === u.id}
-                        style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, background: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', cursor: publishingStockId === u.id ? 'default' : 'pointer', opacity: publishingStockId === u.id ? 0.6 : 1 }}>
+                        style={{ ...plPill('#dc2626'), fontWeight: 700, cursor: publishingStockId === u.id ? 'default' : 'pointer', opacity: publishingStockId === u.id ? 0.6 : 1 }}>
                         {publishingStockId === u.id ? 'Publishing…' : 'Not published — tap to publish'}
                       </button>
                     )}
@@ -7231,12 +7217,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               {/* Actions — child modals open ON TOP of this drawer (z-10000 > z-9999) */}
               <div style={{ padding: '12px 16px 4px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <p style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, margin: '0 0 2px' }}>Actions</p>
-                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', '#059669', 'rgba(5,150,105,0.06)', '#6ee7b7', () => fetchPnl(u))}
-                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', '#d97706', 'rgba(245,158,11,0.06)', '#fde68a', () => fetchReconJobs(u))}
-                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', '#db2777', 'rgba(236,72,153,0.06)', '#fbcfe8', () => openAdSpend(u))}
-                {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', '#7c3aed', 'rgba(124,58,237,0.06)', '#ddd6fe', () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
-                {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', '#6b7280', '#f9fafb', '#e5e7eb', () => fetchHistory(u))}
-                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', '#2563eb', 'rgba(37,99,235,0.06)', '#bfdbfe', () => setSoldTarget(u))}
+                {u.status === 'in_stock' && ACTION_BTN('Mark as Sold', 'Record the final sale price and close out this unit', 'primary', null, null, () => setSoldTarget(u))}
+                {ACTION_BTN('View P&L',         'Full profit breakdown — cost, recon, commission, holding, add-ons', null, null, null, () => fetchPnl(u))}
+                {ACTION_BTN('Recon Jobs',        'Log and track all reconditioning work and costs', null, null, null, () => fetchReconJobs(u))}
+                {can('view_cost') && ACTION_BTN('Ad Spend',   'Track advertising spend (Mudah, Carsome, Facebook, etc.)', null, null, null, () => openAdSpend(u))}
+                {can('view_cost') && ACTION_BTN('Edit Costs','Update purchase price and recon cost (sale price is set on the listing)', null, null, null, () => { setEditPriceUnit(u); setEditPriceForm({ purchase_price: String(u.purchase_price||''), recon_cost: String(u.recon_cost||'') }); })}
+                {ACTION_BTN('Activity History',  'See all edits, updates, and status changes for this unit', null, null, null, () => fetchHistory(u))}
               </div>
               </div>{/* /RIGHT column */}
               </div>{/* /body grid */}
@@ -7246,7 +7232,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 <AppraisalChecklist value={apprDraft} onChange={setApprDraft} />
                 <div style={{ marginTop: 12 }}>
                   <button onClick={() => handleSaveAppraisal(u)} disabled={apprSaving}
-                    style={{ fontSize: 13, fontWeight: 600, padding: '9px 18px', borderRadius: 8, cursor: apprSaving ? 'default' : 'pointer', color: '#fff', background: '#dc2626', border: 'none', opacity: apprSaving ? 0.6 : 1 }}>
+                    style={{ fontSize: 13, fontWeight: 600, padding: '10px 18px', borderRadius: premiumLight.radius.row, cursor: apprSaving ? 'default' : 'pointer', color: '#fff', background: premiumLight.text, border: 'none', opacity: apprSaving ? 0.6 : 1 }}>
                     {apprSaving ? 'Saving…' : 'Save appraisal'}
                   </button>
                 </div>
@@ -7325,11 +7311,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                 </div>
               </div>
               {/* Intake checklist reminder */}
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '10px 12px' }}>
-                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2">Intake checklist</p>
+              <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: '10px 12px' }}>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2">Intake checklist</p>
                 {['Physical inspection done', 'Geran / registration card sighted', 'Keys + spare key received', 'Service history noted', 'Photos uploaded to listing'].map(item => (
-                  <p key={item} className="text-[11px] text-green-800 m-0 flex items-center gap-1.5 mb-1">
-                    <span style={{ width: 12, height: 12, borderRadius: 2, border: '1.5px solid #16a34a', display: 'inline-block', flexShrink: 0 }} />
+                  <p key={item} className="text-[11px] text-gray-700 m-0 flex items-center gap-1.5 mb-1">
+                    <span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid #9ca3af', display: 'inline-block', flexShrink: 0 }} />
                     {item}
                   </p>
                 ))}
@@ -7473,9 +7459,9 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       reasons.push(`RM ${v.commission.toLocaleString()} sales commission`);
                     if (v.adSpend > 0 && v.adSpend >= Math.abs(v.netPnl) * 0.4)
                       reasons.push(`RM ${v.adSpend.toLocaleString()} ad spend`);
-                    const tone = loss ? { bg: '#fef2f2', bd: '#fecaca', tx: '#b91c1c', ic: '#dc2626' }
-                               : thin ? { bg: '#fffbeb', bd: '#fde68a', tx: '#b45309', ic: '#d97706' }
-                                      : { bg: '#f0fdf4', bd: '#bbf7d0', tx: '#15803d', ic: '#16a34a' };
+                    // premiumLight: one grey block; only the headline word carries the verdict.
+                    const word = loss || thin ? premiumLight.accentText : premiumLight.up;
+                    const tone = { bg: premiumLight.raised, bd: 'transparent', tx: premiumLight.textSec, ic: word, head: word };
                     const headline = loss
                       ? `Losing RM ${Math.abs(v.netPnl).toLocaleString()} on this unit`
                       : thin
@@ -7488,11 +7474,11 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                         : `RM ${spread.toLocaleString()} spread over buy price survives all costs.`;
                     const aging = v.holdingDays > 60 && !v.isSold && v.dailyHold > 0;
                     return (
-                      <div style={{ background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 10, padding: '12px 14px', marginBottom: 8 }}>
+                      <div style={{ background: tone.bg, borderRadius: premiumLight.radius.row, padding: '12px 14px', marginBottom: 8 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {loss ? <AlertTriangle style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />
                                 : <TrendingUp style={{ width: 16, height: 16, color: tone.ic, flexShrink: 0 }} />}
-                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.tx }}>{headline}</span>
+                          <span style={{ fontSize: 13.5, fontWeight: 700, color: tone.head }}>{headline}</span>
                         </div>
                         <p style={{ fontSize: 12, color: tone.tx, opacity: 0.92, margin: '6px 0 0', lineHeight: 1.45 }}>{body}</p>
                         {aging && <p style={{ fontSize: 11, color: tone.tx, opacity: 0.82, margin: '5px 0 0', lineHeight: 1.4 }}>Aged {v.holdingDays} days — every extra day adds RM {Math.round(v.dailyHold).toLocaleString()}. Repricing to move it stops the bleed.</p>}
@@ -7518,14 +7504,14 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                     ].filter(([, v]) => v > 0).map(([label, val]) => (
                       <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                         <span style={{ color: '#6b7280' }}>{label}</span>
-                        <span style={{ color: '#f87171' }}>− RM {Number(val).toLocaleString()}</span>
+                        <span style={{ color: premiumLight.textSec }}>− RM {Number(val).toLocaleString()}</span>
                       </div>
                     ))}
                     {/* Recon estimate vs actual reconciliation (DMS-5) — only when an estimate was booked */}
                     {pnlData.reconActual > 0 && pnlData.reconEst > 0 && pnlData.reconActual !== pnlData.reconEst && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 2, marginBottom: 3, paddingLeft: 8 }}>
                         <span style={{ color: '#9ca3af' }}>↳ vs RM {pnlData.reconEst.toLocaleString()} estimate</span>
-                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? '#f59e0b' : '#059669' }}>
+                        <span style={{ color: pnlData.reconActual > pnlData.reconEst ? premiumLight.accentText : premiumLight.up }}>
                           {pnlData.reconActual > pnlData.reconEst ? `+${(pnlData.reconActual - pnlData.reconEst).toLocaleString()} over` : `${(pnlData.reconEst - pnlData.reconActual).toLocaleString()} under`}
                         </span>
                       </div>
@@ -7537,7 +7523,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                     )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
                       <span style={{ color: '#374151' }}>Front gross</span>
-                      <span style={{ color: pnlData.frontGross >= 0 ? '#059669' : '#f87171' }}>
+                      <span style={{ color: pnlData.frontGross >= 0 ? premiumLight.up : premiumLight.accentText }}>
                         {pnlData.frontGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.frontGross).toLocaleString()}
                       </span>
                     </div>
@@ -7560,12 +7546,12 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       {pnlData.addonCost > 0 && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 3 }}>
                           <span style={{ color: '#6b7280' }}>Add-on cost</span>
-                          <span style={{ color: '#f87171' }}>− RM {pnlData.addonCost.toLocaleString()}</span>
+                          <span style={{ color: premiumLight.textSec }}>− RM {pnlData.addonCost.toLocaleString()}</span>
                         </div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginTop: 6, paddingTop: 6, borderTop: '1px dashed #e5e7eb' }}>
                         <span style={{ color: '#374151' }}>Back gross</span>
-                        <span style={{ color: pnlData.backGross >= 0 ? '#059669' : '#f87171' }}>
+                        <span style={{ color: pnlData.backGross >= 0 ? premiumLight.up : premiumLight.accentText }}>
                           {pnlData.backGross < 0 ? '− ' : ''}RM {Math.abs(pnlData.backGross).toLocaleString()}
                         </span>
                       </div>
@@ -7575,7 +7561,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                   <div style={{ padding: '14px 0 4px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>Total Gross</span>
-                      <span style={{ fontSize: 20, fontFamily: "'Bebas Neue',cursive", color: pnlData.netPnl >= 0 ? '#34d399' : '#f87171', letterSpacing: 1 }}>
+                      <span style={{ fontSize: 20, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: pnlData.netPnl >= 0 ? premiumLight.up : premiumLight.accentText }}>
                         {pnlData.netPnl < 0 ? '− ' : ''}RM {Math.abs(pnlData.netPnl).toLocaleString()}
                       </span>
                     </div>
@@ -7708,8 +7694,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
                   {/* Add job form */}
                   {showReconAdd ? (
-                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: 14 }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
+                    <div style={{ background: premiumLight.raised, borderRadius: premiumLight.radius.row, padding: 14 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: premiumLight.textSec, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>New Recon Job</p>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <input value={reconForm.title} onChange={e => setReconForm(f => ({ ...f, title: e.target.value }))} placeholder="Job title *" style={{ gridColumn: '1/-1', ...{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 12px', fontSize: 13, outline: 'none', boxSizing: 'border-box' } }} />
                         <select value={reconForm.category} onChange={e => setReconForm(f => ({ ...f, category: e.target.value }))} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '8px 10px', fontSize: 12, outline: 'none', appearance: 'none' }}>
@@ -7727,7 +7713,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: 8, background: '#fffbeb', border: '1px dashed #fbbf24', color: '#d97706', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => setShowReconAdd(true)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, width: '100%', padding: '9px', borderRadius: premiumLight.radius.row, background: premiumLight.raised, border: 'none', color: premiumLight.text, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                       + Add Recon Job
                     </button>
                   )}
@@ -7752,7 +7738,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
             <div className="overflow-y-auto flex-1 p-5">
               {csvRows.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '24px 0' }}>
-                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#fef2f2', border: '2px dashed #fca5a5', borderRadius: 10, color: '#dc2626', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => csvInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: premiumLight.raised, border: '2px dashed #d1d5db', borderRadius: premiumLight.radius.row, color: premiumLight.text, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     <Upload style={{ width: 16, height: 16 }} />Choose CSV File
                   </button>
                   {csvError && <p style={{ fontSize: 12, color: '#dc2626', textAlign: 'center' }}>{csvError}</p>}
@@ -7837,7 +7823,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                               </div>
                               {v.notes && <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 3 }}>{v.notes}</p>}
                             </div>
-                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? '#16a34a' : '#9ca3af', background: v.is_active ? '#f0fdf4' : '#f3f4f6', border: `1px solid ${v.is_active ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 5, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                            <button onClick={() => handleToggleVendor(v.id, !v.is_active)} style={{ fontSize: 10, fontWeight: 600, color: v.is_active ? premiumLight.up : premiumLight.textMuted, background: premiumLight.raised, border: 'none', borderRadius: 999, padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
                               {v.is_active ? 'Active' : 'Inactive'}
                             </button>
                           </div>
@@ -9695,24 +9681,28 @@ export default function DashboardPage() {
 
   const STATUS = {
     available: {
+      word: premiumLight.up,
       label: "Available",
       dot: "bg-emerald-400",
       cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
       next: "reserved",
     },
     reserved: {
+      word: premiumLight.text,
       label: "Reserved",
       dot: "bg-amber-400",
       cls: "bg-amber-400/10 text-amber-400 border-amber-400/20",
       next: "sold",
     },
     sold: {
+      word: premiumLight.textMuted,
       label: "Sold",
       dot: "bg-red-400",
       cls: "bg-blue-400/10 text-blue-400 border-blue-400/20",
       next: "available",
     },
     unpublished: {
+      word: premiumLight.textMuted,
       label: "Unpublished",
       dot: "bg-gray-400",
       cls: "bg-gray-400/10 text-gray-500 border-gray-400/20",
@@ -9739,22 +9729,21 @@ export default function DashboardPage() {
         <button
           onClick={() => !busy && setOpen(o => !o)}
           disabled={busy}
-          className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium border transition-all ${cfg.cls} ${busy ? "opacity-50 cursor-wait" : "hover:opacity-75 cursor-pointer"}`}
+          // premiumLight: one grey pill, the WORD carries the status colour.
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 999, border: 'none', background: premiumLight.raised, color: cfg.word, fontSize: 12, fontWeight: 600, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.5 : 1, fontFamily: 'inherit' }}
         >
-          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${busy ? "animate-pulse bg-gray-400" : cfg.dot}`} />
           {busy ? "…" : cfg.label}
-          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+          <ChevronDown style={{ width: 12, height: 12, color: premiumLight.textMuted }} />
         </button>
         {open && (
-          <div className="absolute left-0 top-full mt-1 z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+          <div style={{ position: 'absolute', left: 0, top: '100%', marginTop: 6, zIndex: 50, background: '#fff', borderRadius: 12, boxShadow: premiumLight.shadow, padding: 4, minWidth: 140 }}>
             {Object.entries(STATUS).map(([key, val]) => (
               <button
                 key={key}
                 onClick={() => { if (key !== s) handleStatus(listing.id, key); setOpen(false); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${key === s ? "opacity-40 cursor-default" : "hover:bg-gray-800 cursor-pointer"}`}
+                style={{ display: 'flex', width: '100%', textAlign: 'left', padding: '8px 10px', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: key === s ? 700 : 500, color: val.word, background: key === s ? premiumLight.raised : 'transparent', cursor: key === s ? 'default' : 'pointer', fontFamily: 'inherit' }}
               >
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${val.dot}`} />
-                <span className={val.cls.split(" ")[1]}>{val.label}</span>
+                {val.label}
               </button>
             ))}
           </div>
@@ -10684,7 +10673,7 @@ export default function DashboardPage() {
                                 {/* Grade */}
                                 <td style={{ padding: '12px 16px' }}>
                                   {l.auction_grade
-                                    ? <span style={{ fontSize: 11, fontWeight: 700, color: extGC, background: `${extGC}15`, border: `1px solid ${extGC}28`, borderRadius: 5, padding: '2px 8px', display: 'inline-block' }}>{l.auction_grade}</span>
+                                    ? <span style={{ fontSize: 12, fontWeight: 700, color: premiumLight.text, background: premiumLight.raised, borderRadius: 999, padding: '3px 9px', display: 'inline-block' }}>{l.auction_grade}</span>
                                     : l.condition
                                       ? <span style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{l.condition}</span>
                                       : <span style={{ color: '#374151', fontSize: 12 }}>—</span>
@@ -10753,7 +10742,7 @@ export default function DashboardPage() {
                                     if (rtD === null || rtD > 30) return null;
                                     const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
                                     const lbl = rtD < 0 ? 'Road tax exp.' : `RT ${Math.ceil(rtD)}d`;
-                                    return <span style={{ display: 'block', marginTop: 5, fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{lbl}</span>;
+                                    return <span style={{ display: 'block', width: 'fit-content', marginTop: 5, fontSize: 10, fontWeight: 700, color: plWord(c), background: premiumLight.raised, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap' }}>{lbl}</span>;
                                   })()}
                                 </td>
                               </tr>
@@ -10832,7 +10821,7 @@ export default function DashboardPage() {
                                 const rtD = l.road_tax_expiry ? (new Date(l.road_tax_expiry) - Date.now()) / 86400000 : null;
                                 if (rtD === null || rtD > 30) return null;
                                 const c = rtD < 0 ? '#ef4444' : rtD <= 7 ? '#f97316' : '#fbbf24';
-                                return <span style={{ fontSize: 9, fontWeight: 700, color: c, background: `${c}15`, border: `1px solid ${c}30`, borderRadius: 4, padding: '1px 5px' }}>{rtD < 0 ? 'RT exp.' : `RT ${Math.ceil(rtD)}d`}</span>;
+                                return <span style={{ fontSize: 10, fontWeight: 700, color: plWord(c), background: premiumLight.raised, borderRadius: 999, padding: '2px 8px' }}>{rtD < 0 ? 'RT exp.' : `RT ${Math.ceil(rtD)}d`}</span>;
                               })()}
                               {Array.isArray(l.included_services) && l.included_services.length > 0 && (
                                 <button
