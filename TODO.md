@@ -75,7 +75,13 @@ Full report stays OUT of this public repo until part 2 is fixed (it shows how to
 Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 
 **1. DONE 2026-11-08 (applied by the owner, verified): cost price off the public car view, handover steps / lead-car / loan-dealer guards, AI cap write rights dropped.** Migration `20261109a_dms_tier0_security.sql`.
-   Still to do from part 1: remove the same exposure check on `vin_number` (shown masked on the car page; the raw value still ships to the browser).
+   Still to do from part 1: `vin_number` raw in `public_car_listings`. Fix WRITTEN, NOT APPLIED:
+   `20261109k_mask_vin_public_view.sql` (same mask as `maskVin`, server side; dry-run 62/62 match, 0 unmasked).
+
+**TONIGHT'S QUEUE (after 00:00 MYT, nobody live), in this order:** `20261109h` seller reachable (urgent:
+3 Premium sellers get no WhatsApp/call/enquiry/booking), `20261109j` DB hygiene, `20261109k` VIN mask.
+NOT tonight: `20261109l` login throttle grants: only after the branch's `api/auth-throttle.js` is on
+production, or sign-in pages lose the throttle (they fail open, sign-in still works).
 
 **2. Before ANY dealership goes live:**
 - [x] DONE 2026-11-08: 7 money tables (deal_financials, commission_rules, expense_entries,
