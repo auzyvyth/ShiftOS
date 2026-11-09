@@ -232,8 +232,8 @@ Project ID: lemdkdizdlcirhbzqlos
 
 - **The dealer dashboard is moving to `premiumLight`** (`src/theme/tokens.js`, owner 2026-11-09:
   "reference salesman premium, use that style but for dealers use light theme"). Premium's rules on a
-  light surface: white cards on the `#f1f2f4` canvas, depth by tone (grey rows / icon wells inside a
-  card), NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
+  light surface: a PURE WHITE page with white blocks that FLOAT on a soft shadow (`PL.shadow`,
+  `PL.shadowHover` for tappable cards; owner 2026-11-09), grey rows / icon wells inside a card, NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
   alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),
   status pills = one grey fill with a coloured WORD. Adopted one tab at a time: Overview
   (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first.

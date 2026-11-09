@@ -12,10 +12,10 @@ import {
 // own (the score's parts come from the DB too), so it can never disagree with
 // the table or the daily alert. Light dealer-dashboard surface, quiet-terminal rules.
 
-// premiumLight: depth by tone (white cards on the grey canvas), no card borders.
+// premiumLight: white blocks floating on a white sheet (shadow), no card borders.
 const INK = PL.text;
 const MUTED = PL.textMuted;
-const CARD = { background: PL.card, borderRadius: 16 };
+const CARD = { background: PL.card, borderRadius: 16, boxShadow: PL.shadow };
 const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, fontWeight: 600 };
 const NUM = { fontVariantNumeric: 'tabular-nums' };
 
@@ -60,7 +60,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
         style={{ background: PL.canvas, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0', fontFamily: 'system-ui, sans-serif' }}
       >
         {/* Header */}
-        <div style={{ background: PL.card, padding: '16px 16px 14px', display: 'flex', gap: 12, alignItems: 'center', position: 'sticky', top: 0 }}>
+        <div style={{ background: PL.card, borderBottom: `1px solid ${PL.line}`, padding: '16px 16px 14px', display: 'flex', gap: 12, alignItems: 'center', position: 'sticky', top: 0 }}>
           {s.avatar_url
             ? <img src={s.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: 22, objectFit: 'cover', flexShrink: 0 }} />
             : <div style={{ width: 44, height: 44, borderRadius: 22, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>}

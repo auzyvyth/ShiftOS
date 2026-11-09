@@ -89,7 +89,7 @@ const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase'
 function KpiCard({ label, value, sub, trend }) {
   const up = trend != null && trend >= 0;
   return (
-    <div style={{ background: PL.card, borderRadius: PL.radius.card, padding: '16px 18px', minWidth: 0 }}>
+    <div style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px', minWidth: 0 }}>
       <p style={MICRO}>{label}</p>
       <p style={{ fontSize: 26, fontWeight: 700, color: PL.text, margin: '8px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
       <p style={{ fontSize: 11, color: PL.textMuted, margin: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -107,7 +107,7 @@ function KpiCard({ label, value, sub, trend }) {
 
 function Panel({ children, style }) {
   return (
-    <div style={{ background: PL.card, borderRadius: PL.radius.card, padding: '18px 20px', minWidth: 0, ...style }}>
+    <div style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '18px 20px', minWidth: 0, ...style }}>
       {children}
     </div>
   );
@@ -331,12 +331,12 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <style>{`
           @keyframes ov-shimmer { 0%,100%{opacity:1} 50%{opacity:0.45} }
-          .ov-skel { background:#eceef1; border-radius:6px; animation:ov-shimmer 1.4s ease-in-out infinite; }
+          .ov-skel { background:#eef0f3; border-radius:6px; animation:ov-shimmer 1.4s ease-in-out infinite; }
           @media(max-width:640px){.ov-kpi-grid{grid-template-columns:1fr 1fr !important}}
         `}</style>
         <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ background: PL.card, borderRadius: PL.radius.card, padding: '16px 18px' }}>
+            <div key={i} style={{ background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '16px 18px' }}>
               <div className="ov-skel" style={{ width: '40%', height: 10, marginBottom: 12 }} />
               <div className="ov-skel" style={{ width: '60%', height: 22, marginBottom: 8 }} />
               <div className="ov-skel" style={{ width: '40%', height: 11 }} />
@@ -366,7 +366,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           .ov-team-conv  { grid-template-columns: 1fr !important; }
           .ov-attn-grid  { grid-template-columns: 1fr !important; }
         }
-        .ov-attn:hover { background: ${PL.hover} !important; }
+        .ov-attn:hover { box-shadow: ${PL.shadowHover} !important; transform: translateY(-1px); }
         @media (max-width: 480px) {
           .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
           .ov-conv-table { font-size: 11px !important; }
@@ -400,7 +400,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           detail: 'check the bookings board', go: 'crm',
         });
         if (alerts.length === 0) return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.card, borderRadius: PL.radius.card, padding: '14px 18px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.card, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 18px' }}>
             <CheckCircle2 style={{ width: 16, height: 16, color: PL.up }} />
             <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. No cold leads or aged stock need you.</p>
           </div>
@@ -408,7 +408,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
             {alerts.map(a => (
-              <button key={a.key} className="ov-attn" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.card, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
+              <button key={a.key} className="ov-attn" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.card, border: 'none', borderRadius: PL.radius.card, boxShadow: PL.shadow, transition: 'box-shadow .15s, transform .15s', padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
                   {a.urgent && <span style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: PL.accent, border: `2px solid ${PL.card}` }} />}

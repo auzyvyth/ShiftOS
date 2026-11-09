@@ -104,14 +104,18 @@ export const premiumDark = {
 
 // The dealer dashboard's take on premiumDark (owner, 2026-11-09: "reference
 // salesman premium, use that style but light"). Same rules, light surface:
-// depth by TONE (white cards on a grey canvas, grey rows inside a card), no
+// depth by SHADOW (white cards floating on a white page, grey rows inside a card), no
 // borders on cards, no tinted background with a matching solid border, red for
 // FILLS (and a dot / urgent count), one green (up) used as text only.
 // Rolled out one tab at a time (Overview first); do not mix it with the old
 // bordered cards inside one tab.
 export const premiumLight = {
-  canvas:  '#f1f2f4',
-  card:    '#ffffff',                 // layer 1: every card
+  // Owner, 2026-11-09: pure white page, blocks FLOAT on a soft shadow (no
+  // border, no grey canvas). Depth comes from `shadow`, not from tone.
+  canvas:  '#ffffff',
+  card:    '#ffffff',                 // layer 1: every card (always with `shadow`)
+  shadow:  '0 1px 2px rgba(17,24,39,0.05), 0 6px 20px rgba(17,24,39,0.07)',
+  shadowHover: '0 2px 4px rgba(17,24,39,0.06), 0 10px 28px rgba(17,24,39,0.10)',
   raised:  '#f5f6f8',                 // layer 2: rows, chips, icon wells inside a card
   hover:   '#eceef1',
   line:    'rgba(17,24,39,0.06)',     // the one divider weight (inside a card only)
