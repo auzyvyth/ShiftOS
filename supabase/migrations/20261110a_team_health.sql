@@ -119,18 +119,24 @@ as $fn$
         else 'active' end as status
     from per_rep pr
   ),
-  scored as (
+  -- Points per part, so the screen can show how a score was made (never
+  -- re-computed in the app). Only meaningful when there is a score.
+  parts as (
     select j.*,
-      case when j.status in ('never', 'inactive', 'new') or j.leads_30d < 3 then null
-      else least(100, round(
-          (j.won_30d::numeric / j.leads_30d) * 100 * 0.35
-        + (case when j.reply_min is null then 0 when j.reply_min <= 15 then 100
-                when j.reply_min >= 240 then 0
-                else 100 - (j.reply_min - 15) * (100.0 / 225.0) end) * 0.25
-        + (j.worked_30d::numeric / j.leads_30d) * 100 * 0.20
-        + least(100, coalesce(j.avg_gp, 0) / 50) * 0.10
-        + coalesce(j.doc_rate, 0) * 100 * 0.10))::int end as score
+      case when j.leads_30d > 0 then round((j.won_30d::numeric / j.leads_30d) * 35, 1) else 0 end as pt_conv,
+      round((case when j.reply_min is null then 0 when j.reply_min <= 15 then 100
+                  when j.reply_min >= 240 then 0
+                  else 100 - (j.reply_min - 15) * (100.0 / 225.0) end)::numeric * 0.25, 1) as pt_reply,
+      case when j.leads_30d > 0 then round((j.worked_30d::numeric / j.leads_30d) * 20, 1) else 0 end as pt_follow,
+      round((least(100, coalesce(j.avg_gp, 0) / 50) * 0.10)::numeric, 1) as pt_gross,
+      round((coalesce(j.doc_rate, 0) * 10)::numeric, 1) as pt_docs
     from judged j
+  ),
+  scored as (
+    select p.*,
+      case when p.status in ('never', 'inactive', 'new') or p.leads_30d < 3 then null
+      else least(100, round(p.pt_conv + p.pt_reply + p.pt_follow + p.pt_gross + p.pt_docs))::int end as score
+    from parts p
   )
   select coalesce(jsonb_agg(jsonb_build_object(
       'id', s.id,
@@ -149,6 +155,9 @@ as $fn$
       'avg_gp', case when s.avg_gp is not null then round(s.avg_gp::numeric, 0) end,
       'doc_rate_pct', case when s.doc_rate is not null then round(s.doc_rate::numeric * 100, 0) end,
       'score', s.score,
+      'score_parts', case when s.score is not null then jsonb_build_object(
+        'conversion', s.pt_conv, 'reply', s.pt_reply, 'follow_through', s.pt_follow,
+        'gross', s.pt_gross, 'docs', s.pt_docs) end,
       -- What needs the owner's attention, worst first. Codes only; the words
       -- live in the app (src/utils/teamHealth.js).
       'issues', to_jsonb(array_remove(array[

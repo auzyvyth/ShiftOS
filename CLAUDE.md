@@ -148,6 +148,12 @@ I am not reading this to be impressed. Explain things in SIMPLE terms.
 - When something has a gotcha, say the consequence in one line ("change this key and
   all 8 existing subscriptions die silently"), not a paragraph of theory.
 
+## Show me what you built — screenshots, every time (owner, 2026-11-09)
+For ANY visible change, take screenshots of the real component (phone 375px and desktop) and send
+them with SendUserFile before saying it is done. Show the realistic states, not just the happy one
+(e.g. a salesman doing well AND one doing badly, the pop-up opened). Render with mocked data when no
+live account shows that state; say which data is mocked. A change the owner cannot see is not done.
+
 ## Stack
 React + Vite, Supabase, Tailwind CSS, deployed on Vercel
 

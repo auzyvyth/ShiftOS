@@ -46,7 +46,7 @@ export function noScoreReason(s) {
 }
 
 export function fmtMinutes(m) {
-  if (m == null) return '-';
+  if (m == null) return '—';
   if (m < 60) return `${Math.round(m)}m`;
   if (m < 60 * 48) return `${Math.round(m / 60)}h`;
   return `${Math.round(m / 1440)}d`;
@@ -54,3 +54,34 @@ export function fmtMinutes(m) {
 
 // Rows the owner should look at first (the table header count).
 export const needsAttention = (rows) => (rows || []).filter((s) => (s.issues || []).length > 0).length;
+
+// What the owner can do about each issue. One short line, no promises.
+export function issueAdvice(code) {
+  switch (code) {
+    case 'inactive':           return 'Ask if they are still selling. If not, move their leads to someone active.';
+    case 'never':              return 'Check they received their login, or remove the account.';
+    case 'quiet':              return 'A quick check-in now stops it becoming a lost week.';
+    case 'untouched':          return 'Those buyers are waiting. Remind them, or reassign the leads.';
+    case 'slow_reply':         return 'Buyers move on within hours. Push notifications on their phone help.';
+    case 'low_follow_through': return 'New leads are coming in but not being contacted.';
+    case 'no_sales':           return 'Plenty of leads, no closes yet. Worth a look at how they follow up.';
+    default:                   return null;
+  }
+}
+
+// The score's parts, in order, with what each is out of (the DB sends points).
+export const SCORE_PARTS = [
+  { key: 'conversion',     label: 'Leads turned into sales', max: 35 },
+  { key: 'reply',          label: 'Reply speed',             max: 25 },
+  { key: 'follow_through', label: 'Leads followed up',       max: 20 },
+  { key: 'gross',          label: 'Profit per car',          max: 10 },
+  { key: 'docs',           label: 'Loan documents complete', max: 10 },
+];
+
+export function lastActiveText(s) {
+  if (!s.last_active_at) return 'No activity recorded yet';
+  const d = s.days_quiet ?? 0;
+  if (d === 0) return 'Active today';
+  if (d === 1) return 'Last active yesterday';
+  return `Last active ${d} days ago`;
+}

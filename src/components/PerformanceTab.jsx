@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
+import SalesmanHealthSheet from './team/SalesmanHealthSheet';
 import { STATUS, TONE, issueText, noScoreReason, fmtMinutes, needsAttention } from '../utils/teamHealth';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
@@ -136,23 +137,34 @@ function EngagementTooltip({ active, payload, label }) {
 
 export default function PerformanceTab({ dealerId, listings = [] }) {
   const [range, setRange] = useState(30);
+  const [openRep, setOpenRep] = useState(null); // the salesman whose detail pop-up is open
 
   // All four loads are cached (stale-while-revalidate, per-dealer) so the tab
   // paints instantly on revisit and refreshes in the background / daily.
   const { data: scoresRaw, loading: teamLoading } = useCachedFetch(
     dealerId ? `perf:scores:${dealerId}` : null,
-    async () => (await supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId })).data || [],
+    // Throw on a failed read so useCachedFetch keeps the last good copy on
+    // screen. Returning [] here wiped the team table on every DB stall.
+    async () => {
+      const { data, error } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: dealerId });
+      if (error) throw error;
+      return data || [];
+    },
     { enabled: !!dealerId },
   );
   const scores = scoresRaw || [];
 
   const { data: stockRaw, loading: stockLoading } = useCachedFetch(
     dealerId ? `perf:stock:${dealerId}` : null,
-    async () => (await supabase
-      .from('stock_units')
-      .select('id, purchase_date, status, purchase_price, recon_cost, brand, model, year, asking_price')
-      .eq('dealer_id', dealerId)
-      .neq('status', 'sold')).data || [],
+    async () => {
+      const { data, error } = await supabase
+        .from('stock_units')
+        .select('id, purchase_date, status, purchase_price, recon_cost, brand, model, year, asking_price')
+        .eq('dealer_id', dealerId)
+        .neq('status', 'sold');
+      if (error) throw error;
+      return data || [];
+    },
     { enabled: !!dealerId },
   );
   const stock = useMemo(() => stockRaw || [], [stockRaw]);
@@ -162,11 +174,13 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
     async () => {
       const since = new Date();
       since.setDate(since.getDate() - range);
-      return (await supabase
+      const { data, error } = await supabase
         .from('analytics_events')
         .select('event_type, created_at, session_id, car_id, car_name, metadata')
         .eq('dealer_id', dealerId)
-        .gte('created_at', since.toISOString())).data || [];
+        .gte('created_at', since.toISOString());
+      if (error) throw error;
+      return data || [];
     },
     { enabled: !!dealerId },
   );
@@ -180,6 +194,8 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         supabase.rpc('get_dealer_slug_analytics', { p_dealer_id: dealerId }),
         supabase.rpc('get_dealer_daily_analytics', { p_dealer_id: dealerId }),
       ]);
+      const err = carRes.error || slugRes.error || dailyRes.error;
+      if (err) throw err;
       return { car: carRes.data || [], slug: slugRes.data || [], daily: dailyRes.data || [] };
     },
     { enabled: !!dealerId },
@@ -330,12 +346,12 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         <PerfSectionHeader
           icon={Users}
           label="Team Performance"
-          desc="Last 30 days. Activity counts only what each salesman did themselves"
+          desc="Last 30 days. Activity counts only what each salesman did themselves. Tap a name for details"
           right={
             teamLoading ? null :
             <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>
               {needsAttention(scores) > 0
-                ? `${scores.length} on team · ${needsAttention(scores)} need attention`
+                ? `${needsAttention(scores)} need attention`
                 : `${scores.length} on team`}
             </span>
           }
@@ -358,7 +374,16 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               </thead>
               <tbody>
                 {scores.map((s, i) => (
-                  <tr key={s.id || i} style={{ borderBottom: i < scores.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                  <tr
+                    key={s.id || i}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setOpenRep(s)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenRep(s); } }}
+                    title="See details"
+                    className="perf-row"
+                    style={{ borderBottom: i < scores.length - 1 ? '1px solid #f3f4f6' : 'none', cursor: 'pointer' }}
+                  >
                     <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#9ca3af', width: 28 }}>#{i + 1}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -384,7 +409,7 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
                         ? <ScoreBar score={s.score} />
                         : <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{noScoreReason(s) || '—'}</span>}
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.conv_rate != null ? `${s.conv_rate}%` : '—'}</td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.conv_rate != null && (s.leads_30d ?? 0) >= 3 ? `${Number(s.conv_rate).toFixed(1)}%` : '—'}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: s.avg_response_min > 120 ? '#dc2626' : s.avg_response_min > 60 ? '#d97706' : '#16a34a' }}>
                       {s.avg_response_min != null ? fmtMinutes(s.avg_response_min) : '—'}
                     </td>
@@ -398,6 +423,9 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
           </div>
         )}
       </SectionShell>
+
+      {openRep && <SalesmanHealthSheet person={openRep} onClose={() => setOpenRep(null)} />}
+      <style>{`.perf-row:hover{background:#f9fafb}.perf-row:focus-visible{outline:2px solid #111827;outline-offset:-2px}`}</style>
 
       {/* ── Listings & Inventory ──────────────────────────────────────────────── */}
       <SectionShell>
