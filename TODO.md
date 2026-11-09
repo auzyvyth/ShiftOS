@@ -148,8 +148,8 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 - [ ] Deploy the repo version (owner's go): adds `notify_ops` alerts (key `err:account_purge`) on
   any failure, one summary log line per run, and `?dry=1` (lists what is due, deletes nothing).
   Then call it once with `?dry=1` to prove the path end to end.
-- [ ] **Owner: `iskandar` is still soft-deleted (since 2026-10-31), so the 2026-11-30 02:30 UTC
-  run will HARD-DELETE it.** If it is being kept, restore it in the console before then.
+- `iskandar` deleted their own account on 2026-10-31; owner (2026-11-09): let the purge wipe it
+  on the 2026-11-30 run as normal. The earlier "kept on purpose" note is void.
 - [ ] Fix `listing_reports.resolved_by` FK to ON DELETE SET NULL (a deleted admin who resolved
   a report would block their own purge). Low priority; next migration slot.
 
