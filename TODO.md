@@ -96,62 +96,14 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 **3. Later:** lists stop at 1000 rows, fake "saved" toasts, UTC months, two profit numbers per car.
 
 **4. Fix batches (diagnosis kept out of the repo like the audit; ask Claude, one migration each, after midnight). Same audit as above: ONE list, do not start a second.**
-- [ ] Batch 1 lock-down: `supabase/migrations/20261109c_dealer_lockdown.sql` ON STAGING, NOT APPLIED. Needs
-  `20261109b` (applied). Salesmen read/edit only their own leads + see the unassigned pool; `stock_units` =
-  dealer/manager/accountant (`can_see_dealer_stock`), salesmen use `get_dealer_stock_basic()`
-  (`src/lib/stockBasic.js`, falls back until applied); issued documents read-only; the two `car_listings`
-  -> `stock_units` sync triggers run as definer so a salesman's price edit or sale still reaches stock.
-  After applying: probe as a linked salesman (own leads + pool, 0 `stock_units` rows, RPC returns rows).
-- [ ] Batch 2 sale integrity: `supabase/migrations/20261109d_one_win_per_car.sql` ON STAGING, NOT APPLIED
-  (after 20261109c). Trigger `trg_lead_one_win` refuses a second Won (`car_already_won`) or a second
-  deposit (`car_has_deposit`) on a car, model cards excepted. Cleanup keeps the earliest win per car:
-  Cullinan 67b534ce loses 2 later wins, audit Vios f6e45cc9 loses 1 (moved to lost, their customer +
-  handover rows removed, like undo_car_sale). Client: `confirmCloseSale` (LeadDrawer.jsx) no longer
-  writes the car or stock; the picked closer goes on the lead's `salesman_id` so the trigger credits them.
-  Done after (owner, 2026-11-08): a won deal no longer marks the car's other leads lost on the dealer
-  side; they show "Car sold by another seller" on the board card (LeadGridCard), in LeadDrawer (Offer
-  another car = car search + WhatsApp draft, Mark lost = 'CarSold') and in the linked salesman panel
-  (CarSoldLine). Lite/Premium handleMarkWon no longer write the car (the trigger does). NOT click-tested.
-- [ ] Batch 3 one profit figure: WRITTEN, NOT APPLIED (`supabase/migrations/20261109e_one_profit.sql`,
-  apply after 20261109d; dry-run on a local Postgres passed). `stock_units.gross_profit` = THE
-  figure (sold only); recon = larger of estimate and jobs (`stock_recon_effective`, client
-  `src/utils/reconCost.js`); deal_financials copies costs + deposit and its GP takes commission;
-  plate + buy price on new units; `gm_pnl_snapshot` money roles only + reads the stored GP.
-  After apply: AccountantPanel overview reads `recon_actual` (not before: the column 400s).
-  Left: handover fees / ad spend stay in the P&L modal only; deal row commission can still be
-  edited apart from the car's (batch 6 Deal record).
-- [ ] Batch 4 dealer cost on the stock record only: WRITTEN, NOT APPLIED
-  (`supabase/migrations/20261109f_dealer_costs_off_listing.sql`, apply after 20261109e; dry-run
-  on a local Postgres passed). Dealer cars' `purchase_price` / `base_price` / `recon_cost` on
-  `car_listings` are emptied and kept empty (`trg_zz_dealer_costs_off_listing`); a new car hands
-  its cost to `auto_create_stock_unit`; a dealer-side CarForm edit moves the cost to stock, a
-  salesman's is dropped. Solo sellers keep `base_price`. Activity log + `gm_exception_alerts` =
-  money roles. Screens: TeamTab gross reads stock (DashboardPage `fetchSoldPerSalesman`), Listings
-  Mark sold gets the stock cost, CarForm edit fills "Your cost" from stock and does not require it
-  on a dealer car, the "Add to Stock" prompt after a new car prefills from stock and upserts (it
-  inserted a second row, hit the unique listing_id and lost the typed cost, silently).
-  Owner call: the dealer-side `admin` role loses the activity log (dealer/manager/accountant keep it).
-- [ ] Batch 5 screen fixes: ON STAGING 2026-11-09, not click-tested. Appointment times from the
-  dealer drawer + CRM bookings were saved as UTC (3pm showed as 11pm); now `localInputToIso`
-  (`src/utils/myDay.js`). "Appointments today" counted every future booking from the UTC date; now
-  the Malaysian day, no cancelled/no-show (`malaysiaDayBounds`, OverviewTab). AddCarForm refuses
-  year outside 1960..next year, mileage 0..2,000,000, cc 0..10,000. A draft document prints
-  "DRAFT, not issued" instead of "Date: -". Deposit receipt term 3 no longer says the 5% fee is
-  "as per the Consumer Protection Act 1999" (the Act sets no such fee, checked 2026-11-09).
-  Still open: a lawyer to read the deposit terms (is a 5% fee fair under CPA Part IIIA unfair
-  terms?), and a DB CHECK for year/mileage (other forms write those columns too).
-- [ ] Batch 6a agreed price + discount approval: WRITTEN, NOT APPLIED
-  (`supabase/migrations/20261109g_deal_agreed_price.sql`, after 20261109f; local dry-run passed,
-  incl. a NULL-safety hole it caught in the caller check). `leads.agreed_price` (asking price if
-  none typed) goes to `car_listings.sold_price` + `customers.selling_price` in the won trigger.
-  Owner: approval only OVER a limit (`dealer_cost_settings.discount_limit_amount` / `_pct`, off by
-  default, set in Settings > Costs). `close_deal_at_price` closes or files a
-  `deal_price_approvals` request (push to the dealer); dealer or manager `decide_deal_price`
-  (approve = the deal closes; push to the salesman). `trg_ab_lead_win_price` enforces it on any
-  write. Screens: LeadDrawer close panel asks the price + shows the waiting request with
-  Approve / Not approved; Mark sold sends its price; the linked salesman's Won opens an
-  "Agreed price" sheet (Salesmanpanel `renderWinPriceModal`); Overview alert "N prices waiting
-  for your OK". All fall back to the old close until the migration is applied. Not click-tested.
+- LIVE 2026-11-09 (owner "migrate then push", ~11:40 MYT, nobody live): batches 1-6a. DB applied as
+  blocks c+d and e by the owner in the SQL Editor, f+g by Claude (`20261109fg_dealer_costs_and_agreed_price`,
+  rewritten with no DROP so no approval prompt; the activity-log policy was ALTERed in place). Probed as a
+  linked salesman: 0 stock rows, 0 other reps' leads, 0 activity rows, 0 dealer costs on listings; 17 cars via
+  `get_dealer_stock_basic`. Prod = PR #586 (`d521d8e`). Rules now in CLAUDE.md + docs/ARCHITECTURE.md.
+- [ ] Follow-ups from batches 1-6a: AccountantPanel overview can now read `stock_units.recon_actual`
+  (`AccountantPanel.jsx:324`, `:354`); a lawyer to read the deposit terms (is a 5% fee fair under CPA
+  Part IIIA?); a DB CHECK for year/mileage; nothing in 1-6a has been click-tested on a real device.
 - [ ] Batch 6b payments (owner: salesman logs, dealer/accountant confirms; only confirmed count +
   get a receipt): payments rows under `deal_financials`; total received / balance by trigger;
   `leads.deposit_*` + `car_listings.deposit_amount` become copies; receipts numbered per payment
@@ -175,9 +127,8 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   30 days ago (`purge-deleted-accounts/index.ts` cutoff); the Oct 5-8 accounts were 26-29 days old
   on Nov 3. Runs on Nov 2 and Nov 8 answered 200 (auth fine) with no delete errors logged. The only
   blocking foreign key is `listing_reports.resolved_by -> profiles` (NO ACTION).
-- [ ] Deploy the repo version (owner's go): adds `notify_ops` alerts (key `err:account_purge`) on
-  any failure, one summary log line per run, and `?dry=1` (lists what is due, deletes nothing).
-  Then call it once with `?dry=1` to prove the path end to end.
+- Deployed v6 2026-11-09 with ops alerts (`err:account_purge`) + `?dry=1`; dry run from the DB with the
+  cron key answered 200, 0 due.
 - `iskandar` deleted their own account on 2026-10-31; owner (2026-11-09): let the purge wipe it
   on the 2026-11-30 run as normal. The earlier "kept on purpose" note is void.
 - [ ] Fix `listing_reports.resolved_by` FK to ON DELETE SET NULL (a deleted admin who resolved
