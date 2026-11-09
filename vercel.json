@@ -65,6 +65,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/auth-throttle",
+      "destination": "/api/auth-account-status?throttle=1"
+    },
+    {
       "source": "/sitemap.xml",
       "destination": "/api/sitemap"
     },

@@ -11,10 +11,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { verifyTurnstile, clientIp } from '../lib/turnstile.js';
 import { applyCors } from '../lib/cors.js';
+import { authThrottleHandler } from '../lib/authThrottleHandler.js';
 
 const SUPABASE_URL = 'https://lemdkdizdlcirhbzqlos.supabase.co';
 
 export default async function handler(req, res) {
+  // /api/auth-throttle lands here via a vercel.json rewrite (function cap).
+  if (req.query?.throttle === '1') return authThrottleHandler(req, res);
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
