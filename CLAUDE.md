@@ -2425,6 +2425,15 @@ enquiries. Both were granted to `anon`.
    (`common.closeUnsaved`); a multi-step form wrapper (ListingFormModal, CarFormModal) asks
    every time. Proven by a Playwright harness of 15 back-gesture cases, not by reading.
 
+## The installed app never shows Chrome's black bar (owner, 2026-11-09)
+In the home-screen app, Android opens ANY new-tab link (`target="_blank"`, `window.open`) and any
+page on another origin in Chrome's in-app browser: a black bar with X, title and address on top.
+- Our own pages: `src/components/StayInApp.jsx` (mounted once in App.jsx) turns a new-tab open of a
+  same-origin page into an in-app page change, only when installed. Never add a per-button fix.
+- Never send a signed-in user to another origin: the dealer dashboard is `drevo.my/dashboard`
+  (`postAuthRoute.js`), never `<sub>.drevo.my/dashboard`. A dealer subdomain is the buyers' storefront.
+- Still opens the bar, by design: the storefront subdomain, Facebook share, other websites.
+
 ## Red buttons are raised keys, Lite AND Premium (owner, 2026-11-01)
 Every red (accent-filled) button in the seller panels uses `.lk-red` from
 `src/pages/salesmanLite/keys.css` (one gradient + four shadows, sinks 2px on press);
