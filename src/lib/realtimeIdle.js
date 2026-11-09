@@ -25,7 +25,26 @@ const REPLAY_LIMIT = 200;
 const REJOIN_WAIT_MS = 1500;
 // Tried in order; a table's first existing column is remembered (the tables
 // were built in the dashboard, so the repo cannot say which they have).
+// Only for a table NOT in KNOWN_TIME_COLUMNS; the probe runs at most once per
+// table per session (the answer, even "none", is cached).
 const TIME_COLUMNS = ['updated_at', 'last_message_at', 'created_at'];
+// Real columns, checked against the live DB 2026-11-09. Probing the wrong
+// column logs a Postgres error each time (lead_activities.updated_at,
+// dealer_notifications.last_message_at...), so known tables skip the probe.
+// A new table with a live listener: add it here.
+export const KNOWN_TIME_COLUMNS = {
+  appointments: 'updated_at',
+  car_listings: 'updated_at',
+  chat_messages: 'created_at',
+  chat_threads: 'last_message_at',
+  dealer_notifications: 'created_at',
+  lead_activities: 'created_at',
+  leads: 'updated_at',
+  profiles: 'created_at',
+  salesman_notifications: 'created_at',
+  stock_units: 'updated_at',
+  whatsapp_enquiries: 'updated_at',
+};
 
 // "salesman_id=eq.<uuid>" -> { column, value }. Only `eq` is used in the app;
 // anything else returns null and that listener is not replayed.
@@ -46,8 +65,12 @@ export function replayEvent(row, since, listenFor) {
 
 const timeColumnCache = new Map(); // table -> column | null
 
-async function timeColumnFor(client, table) {
+export async function timeColumnFor(client, table) {
   if (timeColumnCache.has(table)) return timeColumnCache.get(table);
+  if (Object.prototype.hasOwnProperty.call(KNOWN_TIME_COLUMNS, table)) {
+    timeColumnCache.set(table, KNOWN_TIME_COLUMNS[table]);
+    return KNOWN_TIME_COLUMNS[table];
+  }
   let found = null;
   for (const col of TIME_COLUMNS) {
     // eslint-disable-next-line no-await-in-loop
@@ -57,6 +80,9 @@ async function timeColumnFor(client, table) {
   timeColumnCache.set(table, found);
   return found;
 }
+
+// Test hook.
+export function _resetTimeColumnCache() { timeColumnCache.clear(); }
 
 async function replayBinding(client, binding, since) {
   const f = binding?.filter || {};

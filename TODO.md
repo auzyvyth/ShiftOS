@@ -417,7 +417,7 @@ realtime subscription removed. See CLAUDE.md "Disk IO is WRITES here".
     after upgrading unless compute is changed), or keep Nano and cut the console poll.
   Cron diet (solo salesman first): `20261023a_cron_pause_marketplace_dealer.sql`
   (pauses 3, 4, 8, 9; 18 daily; 16 twice a day) - APPLIED 2026-10-23 00:32 UTC. 2026-11-09 (owner: dealer
-  dashboard in use again): 4 + 8 back ON (`20261109i`, 8 now dealer/owner rows only); 3 + 9 still off.
+  dashboard in use again): 4, 8, 9 back ON (`20261109i`, 8 now dealer/owner rows only; 9 feeds market_avg_price on the car view); 3 still off.
 - [ ] **IO-8 Freeze #4: database restarted 2026-11-05 16:52 UTC (00:52 MYT Nov 6).** Read-only check
   2026-11-08: `pg_postmaster_start_time()` = that moment. Postgres logs are gone (free plan keeps 24 h),
   cron history starts 2026-11-06 03:00 UTC (job 6 deletes it daily). No migration, release or new cron

@@ -9,9 +9,13 @@
 --                                means nothing for a salesman (Premium = plan_expires_at).
 -- STILL OFF on purpose:
 --   3 notify-price-alerts        marketplace buyers, not the dealer dashboard
---   9 refresh-market-price-stats nothing in src/ api/ or the DB reads
---                                market_price_stats; one run took 1,087 s inside
---                                the 2026-10-22 freeze. Drop it in a cleanup round.
+-- ALSO ON again (correction, same day):
+--   9 refresh-market-price-stats  the 20261023a note said nothing reads
+--                                market_price_stats; wrong: public_car_listings
+--                                joins it for market_avg_price (car page, cards,
+--                                compare), stale since Oct 23. The aggregate takes
+--                                ~24 ms on today's 142 cars; the 1,087 s run was
+--                                the freeze, not the job.
 
 select cron.alter_job(job_id := 4, active := true);
 select cron.alter_job(job_id := 8, active := true, command := $c$
@@ -22,3 +26,4 @@ select cron.alter_job(job_id := 8, active := true, command := $c$
       AND trial_ends_at IS NOT NULL
       AND trial_ends_at < now();
   $c$);
+select cron.alter_job(job_id := 9, active := true);
