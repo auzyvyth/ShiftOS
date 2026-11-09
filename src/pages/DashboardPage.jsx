@@ -203,6 +203,7 @@ import {
   Activity,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { effectiveRecon } from "../utils/reconCost";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -7165,8 +7166,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     const purchasePrice  = Number(unit.purchase_price) || 0;
     const reconEst       = Number(unit.recon_cost) || 0;
     const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
-    const reconCost      = reconJobsList.length > 0 ? reconActual : reconEst;
+    // One rule with the stored profit (stock_recon_effective): the larger of the two.
+    const reconCost      = effectiveRecon(reconEst, reconJobsList);
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
     const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);

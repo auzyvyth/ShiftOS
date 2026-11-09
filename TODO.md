@@ -114,7 +114,14 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
   side; they show "Car sold by another seller" on the board card (LeadGridCard), in LeadDrawer (Offer
   another car = car search + WhatsApp draft, Mark lost = 'CarSold') and in the linked salesman panel
   (CarSoldLine). Lite/Premium handleMarkWon no longer write the car (the trigger does). NOT click-tested.
-- [ ] Batch 3 one profit figure: `fn_auto_deal_financial` + backfill, recon rule, unsold GP NULL, plate.
+- [ ] Batch 3 one profit figure: WRITTEN, NOT APPLIED (`supabase/migrations/20261109e_one_profit.sql`,
+  apply after 20261109d; dry-run on a local Postgres passed). `stock_units.gross_profit` = THE
+  figure (sold only); recon = larger of estimate and jobs (`stock_recon_effective`, client
+  `src/utils/reconCost.js`); deal_financials copies costs + deposit and its GP takes commission;
+  plate + buy price on new units; `gm_pnl_snapshot` money roles only + reads the stored GP.
+  After apply: AccountantPanel overview reads `recon_actual` (not before: the column 400s).
+  Left: handover fees / ad spend stay in the P&L modal only; deal row commission can still be
+  edited apart from the car's (batch 6 Deal record).
 - [ ] Batch 4 buy-price columns off `car_listings` (= the HALF DONE line above).
 - [ ] Batch 5 client fixes: appointment timezone, appointments today, validation, receipt date + 5% clause
   (lawyer). (`salesman_id` on assign + AI Manager: done in part 2.)

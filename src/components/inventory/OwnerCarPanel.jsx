@@ -7,6 +7,7 @@ import {
   Pencil, X, Plus, Trash2, UserCheck, Clock,
 } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { effectiveRecon } from '../../utils/reconCost';
 
 const rm = (n) => 'RM ' + Math.round(Number(n) || 0).toLocaleString();
 const fmtD = (d) => { try { return new Date(d).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }); } catch { return '—'; } };
@@ -154,7 +155,7 @@ export default function OwnerCarPanel({ listing, userId, salesmenById = {}, tool
     const purchasePrice = Number(unit.purchase_price) || 0;
     const reconEst = Number(unit.recon_cost) || 0;
     const reconActual = recon.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    const reconCost = recon.length > 0 ? reconActual : reconEst;
+    const reconCost = effectiveRecon(reconEst, recon); // one rule, see utils/reconCost.js
     const servicesCost = Number(listing.included_services_cost) || 0;
     const commission = Number(listing.commission_amount) || 0;
     const handoverCost = tasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
