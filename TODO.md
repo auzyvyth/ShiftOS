@@ -71,6 +71,7 @@
 > with `target: production`), not just that `git status` says clean.
 
 ## DMS-AUDIT: dealer dashboard audit (2026-11-08) - read this, it is short
+**Restructure plan + 2026-11-09 handoff: `docs/DEALER_DASHBOARD_PLAN.md`** (15 tabs -> 6, duplicates, broken links; branch `ccr-10f2178f-k01t0b` not on staging; team-health migration `20261110a` queued).
 Full report stays OUT of this public repo until part 2 is fixed (it shows how to break in).
 Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 
