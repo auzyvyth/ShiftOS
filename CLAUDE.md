@@ -132,6 +132,10 @@ memory.
   product, check it against real law before it ships, not after a user catches it.
 
 ## How to talk to me — plain English + always show me the code
+- **Every viewable change comes with screenshots, unasked (owner, 2026-11-09).** When a change
+  shows on screen, send desktop + phone (375px) screenshots with SendUserFile before reporting it
+  done. A logged-in screen with no test account = a Playwright run against `vite preview` with the
+  Supabase calls answered by mock rows; say it is mock data.
 I am not reading this to be impressed. Explain things in SIMPLE terms.
 - Use plain words. If a technical term is unavoidable, define it in half a sentence
   the first time ("VAPID keys — the keypair that proves to Google/Apple that a push
