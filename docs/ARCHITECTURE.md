@@ -173,6 +173,7 @@ flowchart LR
 | 16 ask-viewing-outcomes | hourly :17, 01-13 | asks sellers how a past viewing went |
 | 17 notify-seller-unread | every 15 min | email sellers about unseen leads |
 | like-digest | 04:00 daily | one push per seller: how many buyers saved their cars since the last digest (the first save on a car pushes at once, `notify_seller_on_like`) |
+| team-health-daily | 01:00 daily | `notify_team_health()`: one push per dealer when a linked salesman went inactive (14d+), never started, or has leads with no follow-up; repeats an issue at most weekly (`team_health_alerts`) |
 | sweep-premium-lapses | hourly :41 | Premium ending in 3 days / ended pushes; hides cars over the Lite cap when Premium lapses (renewal unhides them) |
 
 ### JPJ data, end to end

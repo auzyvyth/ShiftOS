@@ -1448,6 +1448,20 @@ car. Sources are the page's existing `leads`/`customers` state plus `useNudges`
   value, rate or approval), and no auto-send: Message opens WhatsApp with the
   text and the human presses send.
 
+## Dealer's view of its salesmen: ONE set of rules, in the DB (TEAM-HEALTH, 2026-11-09)
+`_team_health(dealer)` (migration `20261110a`) is the only place that judges a linked salesman.
+`gm_salesman_scores` (Analytics > Performance) and the daily owner push `notify_team_health`
+(cron `team-health-daily`, 01:00 UTC) both call it; words for its codes: `src/utils/teamHealth.js`.
+- Activity = the salesman's OWN actions (their lead_activities, chat replies, activity_log). Never
+  `leads.updated_at` or anything the dealer did on their lead: `diara` scored 90 after 45 idle days
+  because the dealer created, assigned and won a lead for her.
+- Status active / quiet (7d) / inactive (14d) / never / new. No score when inactive, never, new or
+  under 3 leads in 30 days: the screen says why. No free points.
+- A lead given to a salesman sets `salesman_id` (their panel reads it), not only `assigned_to`
+  (`trg_lead_salesman_from_assigned`, which also refuses a salesman from another dealer).
+- Rules, not AI: every alert line quotes a real count. One roll-up push per dealer per day, the
+  same issue at most weekly. Do not add a second scoring copy on any screen.
+
 ## Performance tab (Salesman Premium) — DIAGNOSIS only, never a call list
 `src/utils/salesPerformance.js` (all the maths, pure + unit-tested via
 `npm run test:perf`) + `src/pages/salesmanPremium/AnalyticsTab.jsx` (UI) +

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { supabase } from '../supabaseClient';
 import { useCachedFetch } from '../hooks/useCachedFetch';
 import { Users, Car, Globe, AlertTriangle, TrendingUp, Eye, Share2, BarChart2 } from 'lucide-react';
+import { STATUS, TONE, issueText, noScoreReason, fmtMinutes, needsAttention } from '../utils/teamHealth';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush } from 'recharts';
 
 const fmtRM = (n) =>
@@ -64,6 +65,18 @@ function ScoreBar({ score }) {
       </div>
       <span style={{ fontSize: 12, fontWeight: 700, color, minWidth: 22, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{score}</span>
     </div>
+  );
+}
+
+// Small one-word pill; the WORD carries the meaning, the colour only backs it.
+function StatusPill({ status }) {
+  const st = STATUS[status];
+  if (!st) return null;
+  const t = TONE[st.tone];
+  return (
+    <span style={{ fontSize: 10, fontWeight: 700, color: t.fg, background: t.bg, border: `1px solid ${t.bd}`, borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+      {st.label}
+    </span>
   );
 }
 
@@ -317,11 +330,13 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
         <PerfSectionHeader
           icon={Users}
           label="Team Performance"
-          desc="Salesman scores, conversion rates & response times — last 30 days"
+          desc="Last 30 days. Activity counts only what each salesman did themselves"
           right={
             teamLoading ? null :
             <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: '#f3f4f6', borderRadius: 6, padding: '3px 10px' }}>
-              {scores.length} active
+              {needsAttention(scores) > 0
+                ? `${scores.length} on team · ${needsAttention(scores)} need attention`
+                : `${scores.length} on team`}
             </span>
           }
         />
@@ -344,21 +359,34 @@ export default function PerformanceTab({ dealerId, listings = [] }) {
               <tbody>
                 {scores.map((s, i) => (
                   <tr key={s.id || i} style={{ borderBottom: i < scores.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
-                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: i === 0 ? '#dc2626' : '#9ca3af', width: 28 }}>#{i + 1}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontWeight: 700, color: '#9ca3af', width: 28 }}>#{i + 1}</td>
                     <td style={{ padding: '12px 14px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         {s.avatar_url
                           ? <img src={s.avatar_url} alt="" style={{ width: 28, height: 28, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
                           : <div style={{ width: 28, height: 28, borderRadius: 14, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>
                         }
-                        <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{s.name || '—'}</span>
-                        {i === 0 && <span style={{ fontSize: 9, fontWeight: 700, color: '#dc2626', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, padding: '1px 5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Top</span>}
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{s.name || '—'}</span>
+                            <StatusPill status={s.status} />
+                          </div>
+                          {(s.issues || []).length > 0 && (
+                            <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2, whiteSpace: 'nowrap' }}>
+                              {s.issues.map((c) => issueText(c, s)).filter(Boolean).slice(0, 2).join(' · ')}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td style={{ padding: '12px 14px', textAlign: 'right' }}><ScoreBar score={s.score || 0} /></td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                      {s.score != null
+                        ? <ScoreBar score={s.score} />
+                        : <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{noScoreReason(s) || '—'}</span>}
+                    </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.conv_rate != null ? `${s.conv_rate}%` : '—'}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: s.avg_response_min > 120 ? '#dc2626' : s.avg_response_min > 60 ? '#d97706' : '#16a34a' }}>
-                      {s.avg_response_min != null ? (s.avg_response_min < 60 ? `${s.avg_response_min}m` : `${Math.round(s.avg_response_min / 60)}h`) : '—'}
+                      {s.avg_response_min != null ? fmtMinutes(s.avg_response_min) : '—'}
                     </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.avg_gp != null ? fmtRMShort(s.avg_gp) : '—'}</td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: 13, color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{s.doc_rate_pct != null ? `${s.doc_rate_pct}%` : '—'}</td>

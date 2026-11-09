@@ -139,7 +139,7 @@ async function fetchPnl(dealerId) {
 async function fetchOverview(dealerId) {
   const now = Date.now();
   const today = malaysiaDayBounds();
-  const [l, cl, apt, sm, acts, priceReq] = await Promise.all([
+  const [l, cl, apt, sm, acts, priceReq, teamAct] = await Promise.all([
     supabase.from('leads')
       .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
       .eq('dealer_id', dealerId)
@@ -167,6 +167,9 @@ async function fetchOverview(dealerId) {
       .select('id', { count: 'exact', head: true })
       .eq('dealer_id', dealerId)
       .eq('status', 'pending'),
+    // Each person's OWN last action (leads they worked, chat replies they sent,
+    // logged actions). The same source the Team tab uses.
+    supabase.rpc('get_team_activity', { p_dealer_id: dealerId }),
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
@@ -179,7 +182,13 @@ async function fetchOverview(dealerId) {
 
   const leadsById = Object.fromEntries(allLeads.map(l => [l.id, l]));
 
+  // "Active today" = something the person did THEMSELVES. It used to fall back
+  // to leads.updated_at, which moves whenever the DEALER edits that rep's lead,
+  // so a salesman who had not signed in for 45 days showed as active.
   const lastActivityByUser = {};
+  for (const r of (teamAct?.error ? [] : teamAct?.data || [])) {
+    if (r.user_id && r.last_active_at) lastActivityByUser[r.user_id] = r.last_active_at;
+  }
   for (const a of activities) {
     if (!a.created_by) continue;
     const cur = lastActivityByUser[a.created_by];
@@ -191,12 +200,9 @@ async function fetchOverview(dealerId) {
   const TERMINAL_STAGES = ['won','closed_won','lost','closed_lost'];
   const activeLeads = allLeads.filter(l => !TERMINAL_STAGES.includes(l.stage));
   const leadsPerSm  = {};
-  const lastLeadTouchSm = {};
   for (const l of allLeads) {
     if (!l.salesman_id) continue;
     if (activeLeads.includes(l)) leadsPerSm[l.salesman_id] = (leadsPerSm[l.salesman_id] || 0) + 1;
-    const cur = lastLeadTouchSm[l.salesman_id];
-    if (!cur || new Date(l.updated_at) > new Date(cur)) lastLeadTouchSm[l.salesman_id] = l.updated_at;
   }
 
   const stageCounts = {};
@@ -226,7 +232,7 @@ async function fetchOverview(dealerId) {
     : 0;
 
   const teamRows = staff.map((s, idx) => {
-    const lastAct = lastActivityByUser[s.id] || lastLeadTouchSm[s.id] || null;
+    const lastAct = lastActivityByUser[s.id] || null;
     return {
       id: s.id,
       name: s.full_name || s.slug || 'Team',

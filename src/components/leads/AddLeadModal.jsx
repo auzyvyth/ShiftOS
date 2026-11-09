@@ -86,7 +86,10 @@ export default function AddLeadModal({ onClose, onAdd, teamMembers = [] }) {
         car_listing_id: form.car_listing_id || null,
         employment_type:form.employment_type || null,
         income_bracket: form.income_bracket  || null,
+        // Both columns: the salesman's own panel reads salesman_id, so a lead
+        // saved with only assigned_to never showed up for the rep it was given to.
         assigned_to:    form.assigned_to     || null,
+        salesman_id:    form.assigned_to     || null,
         notes:          form.notes.trim()    || null,
         follow_up_at:   form.follow_up_at    || null,
       };
