@@ -203,7 +203,7 @@ export default function RevOpsPage({ userId }) {
       // RevOps and Overview disagree on the same month's numbers.
       // Three independent reads, run together (they were serial: three round
       // trips to Sydney back to back before the first tile could fill).
-      const [{ data: pnl, error: pnlErr }, { count: activeCount }, { count: activeLeads }] = await Promise.all([
+      const [{ data: pnl, error: pnlErr }, { count: activeCount, error: stockErr }, { count: activeLeads, error: leadsCountErr }] = await Promise.all([
         supabase.rpc("gm_pnl_snapshot", { p_dealer_id: userId }),
         // Active listings for stock turn
         supabase
@@ -219,6 +219,9 @@ export default function RevOpsPage({ userId }) {
           .not("stage", "in", "(won,closed_won,lost,closed_lost)"),
       ]);
       if (pnlErr) console.error("[RevOps] gm_pnl_snapshot error:", pnlErr.message);
+      // A failed read keeps the numbers already on screen (saved copy); writing
+      // zeros here showed "RM 0 this month" whenever the database was slow.
+      if (pnlErr || stockErr || leadsCountErr || !pnl) { setRevLoading(false); return; }
 
       setRevData({
         revMTD: Number(pnl?.mtd?.revenue) || 0,
@@ -245,6 +248,7 @@ export default function RevOpsPage({ userId }) {
         .eq("dealer_id", userId)
         .gte("created_at", since);
       if (leadsErr) console.error("[RevOps] leads fetch error:", leadsErr.message);
+      if (leadsErr) { setLeadLoading(false); return; } // keep the saved numbers
 
       const all = leads || [];
       const total = all.length;
@@ -280,7 +284,7 @@ export default function RevOpsPage({ userId }) {
 
       const { data: scores, error: scoresErr } = await supabase.rpc('gm_salesman_scores', { p_dealer_id: userId });
       if (scoresErr) console.error("[RevOps] gm_salesman_scores error:", scoresErr.message);
-      setSalesmanScores(
+      else setSalesmanScores(
         (scores || [])
           .filter(s => s.avg_response_min != null)
           .sort((a, b) => a.avg_response_min - b.avg_response_min)
@@ -308,6 +312,7 @@ export default function RevOpsPage({ userId }) {
         .in("leads.stage", ["won", "closed_won"])
         .gte("leads.updated_at", monthStart);
       if (addonErr) console.error("[RevOps] deal_products fetch error:", addonErr.message);
+      if (addonErr) { setAddonLoading(false); return; } // keep the saved numbers
 
       // Won leads this month (for attachment rate denominator) — both won variants
       const { count: wonCount } = await supabase
