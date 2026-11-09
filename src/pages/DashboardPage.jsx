@@ -5,7 +5,7 @@ import SuspendedBanner from "../components/SuspendedBanner";
 import ReportBugButton from "../components/ReportBugButton";
 import AvailabilityEditor from "../components/AvailabilityEditor";
 import ShareMenu from "../components/ShareMenu";
-import { cdnImg } from "../utils/img";
+import { cdnImg, imgFallback } from "../utils/img";
 import { buildCaption } from "../utils/sharePack";
 import { createPortal } from 'react-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Brush, ResponsiveContainer } from "recharts";
@@ -3558,7 +3558,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           {l.images?.[0] ? (
-                            <img src={l.images[0]} alt="" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
+                            <img src={cdnImg(l.images[0], 64, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0" />
                           ) : (
                             <div className="w-8 h-8 rounded-lg bg-gray-100 flex-shrink-0" />
                           )}
@@ -3619,7 +3619,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
                           <img
-                            src={l.images[0]}
+                            src={cdnImg(l.images[0], 64, 70)}
+                            onError={imgFallback(l.images[0])}
+                            loading="lazy"
+                            decoding="async"
                             alt=""
                             className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
@@ -3686,7 +3689,10 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
                       <div className="flex items-center gap-3">
                         {l.images?.[0] ? (
                           <img
-                            src={l.images[0]}
+                            src={cdnImg(l.images[0], 64, 70)}
+                            onError={imgFallback(l.images[0])}
+                            loading="lazy"
+                            decoding="async"
                             alt=""
                             className="w-8 h-8 rounded-lg object-cover bg-gray-100 flex-shrink-0"
                           />
@@ -7648,7 +7654,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
                       {/* Thumbnail */}
                       <div style={{ width: 68, height: 50, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {thumb ? (
-                          <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
+                          <img src={cdnImg(thumb, 160, 70)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (!e.target.dataset.fb) { e.target.dataset.fb = '1'; e.target.src = thumb; } else { e.target.style.display = 'none'; } }} />
                         ) : (
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round">
                             <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
@@ -7811,7 +7817,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px 14px', borderBottom: '1px solid #f3f4f6' }}>
                 <div style={{ width: 72, height: 52, borderRadius: 10, overflow: 'hidden', flexShrink: 0, background: '#f3f4f6', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {thumb ? (
-                    <img src={thumb} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { e.target.style.display = 'none'; }} />
+                    <img src={cdnImg(thumb, 160, 70)} alt="" loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={e => { if (!e.target.dataset.fb) { e.target.dataset.fb = '1'; e.target.src = thumb; } else { e.target.style.display = 'none'; } }} />
                   ) : (
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="17.5" r="2.5"/></svg>
                   )}
@@ -9266,7 +9272,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                     {selectedListing ? (
                       <>
                         {selectedListing.images?.[0] ? (
-                          <img src={selectedListing.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
+                          <img src={cdnImg(selectedListing.images[0], 96, 70)} onError={imgFallback(selectedListing.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                         ) : (
                           <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#6b7280' }} /></div>
                         )}
@@ -9306,7 +9312,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
                               onMouseEnter={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = '#f9fafb'; }}
                               onMouseLeave={e => { if (genForm.listing_id !== l.id) e.currentTarget.style.background = 'transparent'; }}>
                               {l.images?.[0] ? (
-                                <img src={l.images[0]} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
+                                <img src={cdnImg(l.images[0], 96, 70)} onError={imgFallback(l.images[0])} alt="" style={{ width: 44, height: 34, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" decoding="async" />
                               ) : (
                                 <div style={{ width: 44, height: 34, borderRadius: 6, background: '#f3f4f6', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#6b7280' }} /></div>
                               )}
@@ -9679,7 +9685,8 @@ export default function DashboardPage() {
   const sidebarBellRef = useRef(null);
   const [sidebarBellRect, setSidebarBellRect] = useState(null);
   const closeNotif = () => { setNotifOpen(false); setSidebarBellRect(null); };
-  const [notifications,    setNotifications]    = useState([]);
+  // Cached per dealer so the bell shows its count on the first frame.
+  const [notifications,    setNotifications]    = usePersistentState(userId ? `dash_notifs:${userId}` : null, []);
   const [notifOpen,        setNotifOpen]        = useState(false);
   useModalHistory(notifOpen, () => setNotifOpen(false));
   const [pendingStockListing, setPendingStockListing] = useState(null);
@@ -9808,7 +9815,7 @@ export default function DashboardPage() {
       }
 
       const dealerId = getDealerIdFromProfile(p);
-      const [{ data: cars, error: carsError }, { data: sm }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
+      const [{ data: cars, error: carsError }, { data: sm, error: smError }, { data: stockCost }, { data: dealProducts }] = await Promise.all([
         supabase
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
@@ -9846,15 +9853,17 @@ export default function DashboardPage() {
           addonNet[d.listing_id] = (addonNet[d.listing_id] || 0) + (Number(d.sold_price) || 0) - (Number(d.dealer_products?.cost_price) || 0);
         });
         setAddonNetByListing(addonNet);
-        setListings(carsError ? [] : merged);
-        setSalesmen(sm || []);
+        // A failed read (DB stall / timeout) keeps whatever is on screen — the
+        // cached grid — instead of blanking it to "no cars".
+        if (!carsError) setListings(merged);
+        if (!smError) setSalesmen(sm || []);
         setLoading(false);
         // Cache the listings table + team roster for the next cold start. Skipped
         // on a failed read so one bad response can't overwrite a good cache with
         // an empty grid.
         if (!carsError) {
           writeCache(`${PANEL_CACHE_KEY}_listings_${uid}`, merged);
-          writeCache(`${PANEL_CACHE_KEY}_salesmen_${uid}`, sm || []);
+          if (!smError) writeCache(`${PANEL_CACHE_KEY}_salesmen_${uid}`, sm || []);
         }
       }
     };
@@ -9931,7 +9940,7 @@ export default function DashboardPage() {
     const reload = () =>
       supabase.from('dealer_notifications').select('*').eq('dealer_id', userId)
         .order('created_at', { ascending: false }).limit(20)
-        .then(({ data }) => setNotifications(data || []));
+        .then(({ data, error }) => { if (!error) setNotifications(data || []); });
     reload();
     const ch = liveChannel(supabase, `notifs_${userId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dealer_notifications', filter: `dealer_id=eq.${userId}` }, reload)
@@ -11416,7 +11425,7 @@ export default function DashboardPage() {
                                 {/* Thumbnail */}
                                 <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
                                   {l.images?.[0]
-                                    ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                    ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
                                   }
                                 </td>
@@ -11569,7 +11578,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                               {/* Image */}
                               {l.images?.[0]
-                                ? <img src={l.images[0]} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
+                                ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                 : <div style={{ width: 80, height: 60, borderRadius: 10, background: '#f9fafb', border: '1px solid #e5e7eb', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 18, height: 18, color: '#374151' }} /></div>
                               }
                               {/* Info */}

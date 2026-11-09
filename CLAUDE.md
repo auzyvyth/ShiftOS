@@ -2287,7 +2287,7 @@ Both displayed in separate labelled sections in the P&L modal.
 The database stalls (see DB migrations), so no dashboard screen may wait on the
 network before showing anything. Two layers, both purged on logout:
 - Panel bootstrap data (profile, listings, leads, enquiries, appts): `seedPanelCache`,
-  window `PANEL_SEED_TTL` (7 days) in `src/utils/panelCache.js`.
+  window `PANEL_SEED_TTL` (30 days, = the idle sign-out) in `src/utils/panelCache.js`.
 - Every tab's own data: `usePersistentState(key, initial, { redact })`
   (`src/hooks/usePersistentState.js`) in place of the `useState` the fetch fills.
   Pattern: `const [rows, setRows, cached] = usePersistentState(...)`, then
