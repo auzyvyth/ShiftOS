@@ -1,4 +1,4 @@
--- 20261109j db hygiene. NOT applied yet. Three small fixes (a fourth was checked and skipped, see end).
+-- 20261109j db hygiene. APPLIED 2026-11-09 06:01 UTC. Three small fixes (a fourth was checked and skipped, see end).
 -- The tool wraps this in begin/commit.
 
 -- 1. public_dealer_profiles handed the platform admin's email and phone to anyone who could read the view.
