@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight, AlertTriangle, CreditCard, Eye, Inbox } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
 import { premiumLight as PL } from '../theme/tokens';
@@ -145,9 +145,9 @@ async function fetchPnl(dealerId) {
 async function fetchOverview(dealerId) {
   const now = Date.now();
   const today = malaysiaDayBounds();
-  const [l, cl, apt, sm, acts, priceReq, teamAct] = await Promise.all([
+  const [l, cl, apt, sm, acts, priceReq, teamAct, exc] = await Promise.all([
     supabase.from('leads')
-      .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
+      .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id, first_response_at')
       .eq('dealer_id', dealerId)
       .order('updated_at', { ascending: false })
       .limit(300),
@@ -178,6 +178,8 @@ async function fetchOverview(dealerId) {
     // Each person's OWN last action (leads they worked, chat replies they sent,
     // logged actions). The same source the Team tab uses.
     supabase.rpc('get_team_activity', { p_dealer_id: dealerId }),
+    // The exceptions GM Oversight's "Eyes Here" used to list (one alert list now).
+    supabase.rpc('gm_exception_alerts', { p_dealer_id: dealerId }),
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
@@ -235,6 +237,11 @@ async function fetchOverview(dealerId) {
     .filter(l => (now - new Date(l.updated_at)) / 86400000 >= COLD_DAYS)
     .sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
   const coldLeadsCount = coldLeads.length;
+
+  // New leads nobody has answered for 30+ minutes (moved here from RevOps' strip).
+  const unanswered = allLeads
+    .filter(l => canonicalStage(l.stage) === 'new' && !l.first_response_at && (now - new Date(l.created_at)) > 30 * 60000)
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const coldOldestDays = coldLeadsCount
     ? Math.floor((now - new Date(coldLeads[0].updated_at)) / 86400000)
     : 0;
@@ -271,6 +278,11 @@ async function fetchOverview(dealerId) {
     priceWaiting: priceReq?.error ? 0 : (priceReq?.count || 0),
     // The oldest one: the alert opens that lead, not the whole list.
     priceLeadId: priceReq?.error ? null : (priceReq?.data?.[0]?.lead_id || null),
+    unansweredCount: unanswered.length,
+    unansweredOldestH: unanswered.length ? Math.floor((now - new Date(unanswered[0].created_at)) / 3600000) : 0,
+    // gm_exception_alerts; a failed read = no exceptions shown, never a fake all-clear
+    // for these specifically (they simply do not appear).
+    exceptions: exc?.error ? null : (exc?.data || null),
   };
 }
 
@@ -389,6 +401,32 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           detail: snapshot.priceWaiting > 1 ? 'a discount over your limit · opens the oldest' : 'a discount over your limit · tap to decide',
           go: 'crm', query: snapshot.priceLeadId ? { lead: snapshot.priceLeadId } : undefined,
         });
+        if (snapshot.unansweredCount > 0) alerts.push({
+          key: 'unanswered', urgent: true, Icon: Inbox,
+          label: `${snapshot.unansweredCount} new lead${snapshot.unansweredCount === 1 ? '' : 's'} not answered`,
+          detail: `waiting 30 min+ · oldest ${snapshot.unansweredOldestH}h`, go: 'crm',
+        });
+        const ex = snapshot.exceptions || {};
+        if (ex.loss_makers?.length) alerts.push({
+          key: 'loss', urgent: true, Icon: AlertTriangle,
+          label: `${ex.loss_makers.length} car${ex.loss_makers.length === 1 ? '' : 's'} priced below cost`,
+          detail: ex.loss_makers.slice(0, 3).map(x => x.name).join(', '), go: 'stock',
+        });
+        if (ex.stuck_hp > 0) alerts.push({
+          key: 'hp', urgent: true, Icon: CreditCard,
+          label: `${ex.stuck_hp} HP submission${ex.stuck_hp === 1 ? '' : 's'} stuck`,
+          detail: 'no bank answer in 7d+', go: 'hp',
+        });
+        if (ex.expired_b7 > 0 || ex.missing_b7 > 0) alerts.push({
+          key: 'b7', urgent: ex.expired_b7 > 0, Icon: AlertTriangle,
+          label: `${(ex.expired_b7 || 0) + (ex.missing_b7 || 0)} unit${(ex.expired_b7 || 0) + (ex.missing_b7 || 0) === 1 ? '' : 's'} need PUSPAKOM B7`,
+          detail: [ex.expired_b7 > 0 && `${ex.expired_b7} expired`, ex.missing_b7 > 0 && `${ex.missing_b7} missing`].filter(Boolean).join(' · '), go: 'stock',
+        });
+        if (ex.anomalies_7d > 0) alerts.push({
+          key: 'anomaly', urgent: false, Icon: Eye,
+          label: `${ex.anomalies_7d} unusual edit${ex.anomalies_7d === 1 ? '' : 's'} this week`,
+          detail: 'see the activity trail', go: 'team', query: { trail: 'anomaly' },
+        });
         if (snapshot.coldLeadsCount > 0) alerts.push({
           key: 'cold', urgent: true, Icon: MessageCircle,
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
@@ -407,11 +445,11 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         if (alerts.length === 0) return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 18px' }}>
             <CheckCircle2 style={{ width: 16, height: 16, color: PL.up }} />
-            <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. No cold leads or aged stock need you.</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. Nothing needs you right now.</p>
           </div>
         );
         return (
-          <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
+          <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
             {alerts.map(a => (
               <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go, a.query)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

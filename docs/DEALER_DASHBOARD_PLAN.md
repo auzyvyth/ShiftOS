@@ -101,7 +101,16 @@ Old URLs (`/dashboard/handover`, `/dashboard/oversight`, `?sub=`) must redirect,
    give `CRMPanel` an `initialTab` prop (and a lead id to open) and route `/dashboard/crm?sub=bookings`.
 2. **DONE 2026-11-09. One add-on catalogue.** `ProductsCatalogue` deleted; Settings > Services is a shortcut to Storefront > Services & Add-ons. `ServicesPage` gained the activity log (`src/utils/activityLog.js`, shared), real error checks on every write, "In N listings", and the dealer id. Was: Keep one editor (suggest `ServicesPage`, it has the revenue stats), remove
    `ProductsCatalogue` from Settings, point Settings' "services" entry at it.
-3. **Today.** Merge Overview + Oversight "Eyes Here"/targets + AI Manager. Biggest drop in brain load.
+3. **Today: Oversight part DONE 2026-11-09.** Research: managers land on `/manager` (ManagerPanel) and never
+   saw Oversight; only the dealer owner did, so it was a second owner overview, not a GM role view. Split:
+   - Overview's alert strip is THE one "needs you" list: + `gm_exception_alerts` (below cost, stuck HP,
+     B7 expired/missing, unusual edits) + "new lead not answered 30 min" (was RevOps' strip, now deleted).
+   - Reports > Revenue (`RevOpsPage`) ends with Monthly Targets + What Drove Revenue.
+   - Team ends with the Activity Trail (`?trail=anomaly` from the alert).
+   - Revenue Trend + the 4 KPI cards were duplicates of Overview: dropped. `/dashboard/oversight` -> Overview.
+   - Parts live in `src/components/reports/ReportSections.jsx` (was OversightTab.jsx).
+   Still open for Today: AI Manager as a card instead of a tab. Was:
+   Merge Overview + Oversight "Eyes Here"/targets + AI Manager. Biggest drop in brain load.
    Decide with the owner what of Oversight goes to Today vs Reports > Money.
 4. **Cars** (Inventory + Stock) and **Sold** (Handover + Customers + Documents).
 5. **Reports**: every number once, shared queries. Prefer the DB RPCs that already exist

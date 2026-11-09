@@ -97,7 +97,7 @@ const ServicesPage     = React.lazy(() => import("./ServicesPage"));
 const AISalesManager   = React.lazy(() => import("../components/AISalesManager"));
 const PerformanceTab   = React.lazy(() => import("../components/PerformanceTab"));
 const HPBoard          = React.lazy(() => import("../components/HPBoard"));
-const OversightTab     = React.lazy(() => import("../components/OversightTab"));
+const AuditTrail       = React.lazy(() => import("../components/reports/ReportSections").then(m => ({ default: m.AuditTrail })));
 const OverviewTab      = React.lazy(() => import("../components/OverviewTab"));
 const PostSaleBoard    = React.lazy(() => import("../components/postsale/PostSaleBoard"));
 const MarketDemandTab  = React.lazy(() => import("../components/MarketDemandTab"));
@@ -212,7 +212,7 @@ const PANEL_CACHE_KEY = "dash";
 // identical copies in three scopes, so a new tab had to be added to all three
 // or its group quietly stopped opening.
 const TAB_TO_GROUP = {
-  overview: "g_reports", analytics: "g_reports", oversight: "g_reports",
+  overview: "g_reports", analytics: "g_reports",
   crm: "g_sales",       hp: "g_sales",
   listings: "g_inventory", add: "g_inventory", stock: "g_inventory", market: "g_inventory",
   handover: "g_operations", customers: "g_operations", documents: "g_operations",
@@ -9421,6 +9421,9 @@ export default function DashboardPage() {
       services:    { tab: "storefront", sub: ["storefront", "services"] },
       hero:        { tab: "storefront", sub: ["storefront", "hero"] },
       ai_manager:  { tab: "ai_manager", sub: [] },
+      // GM Oversight was split up (2026-11-09): alerts -> Overview, targets +
+      // what drove revenue -> Revenue, activity trail -> Team.
+      oversight:   { tab: "overview",   sub: [] },
       // Merged into Leads / CRM. Old notifications (link_to) and saved URLs
       // still carry these; without the alias they open a blank pane.
       enquiries:   { tab: "crm", sub: [] },
@@ -9440,6 +9443,7 @@ export default function DashboardPage() {
 
   // CRM sub-tab + a lead to open, read from the URL (/dashboard/crm?sub=bookings,
   // /dashboard/crm?lead=<id>) so Overview alerts land on the exact place.
+  const teamTrail = useMemo(() => new URLSearchParams(location.search).get('trail') || 'all', [location.search]);
   const crmQuery = useMemo(() => {
     const p = new URLSearchParams(location.search);
     return { sub: p.get('sub'), lead: p.get('lead') };
@@ -9878,7 +9882,6 @@ export default function DashboardPage() {
         { id: "analytics", sub: "revenue",    Icon: DollarSign, label: "Revenue" },
         { id: "analytics", sub: "performance", Icon: TrendingUp, label: "Performance" },
         { id: "analytics", sub: "listings",   Icon: Car, label: "Listings" },
-        { id: "oversight", Icon: Shield,      label: "GM Oversight" },
       ],
     },
     {
@@ -11198,7 +11201,7 @@ export default function DashboardPage() {
               {/* No sub-tab bar: Revenue / Performance / Listings are already three
                   sidebar items, and the page title names the one that is open. */}
               {analyticsSub === "revenue" && userId && (
-                <RevOpsPage userId={userId} onNavigateToStock={() => handleTabChange("stock")} onNavigateToLeads={() => handleTabChange("crm")} />
+                <RevOpsPage userId={getDealerIdFromProfile(profile)} />
               )}
               {analyticsSub === "performance" && userId && (
                 <Suspense fallback={<div style={{ padding: 40, textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>Loading…</div>}>
@@ -11219,7 +11222,21 @@ export default function DashboardPage() {
             </>
           )}
           {activeTab === "team" && (
-            <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+            <>
+              <TeamTab managerDealership={profile?.dealership} dealerId={getDealerIdFromProfile(profile)} profile={profile} />
+              {/* Who did what, when (was GM Oversight's Activity Trail). Overview's
+                  "unusual edits" alert opens it with ?trail=anomaly. */}
+              <div style={{ marginTop: 24 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>Activity Trail</p>
+                <Suspense fallback={null}>
+                  <AuditTrail
+                    key={teamTrail}
+                    dealerId={getDealerIdFromProfile(profile)}
+                    initialFilter={teamTrail === "anomaly" ? "anomaly" : "all"}
+                  />
+                </Suspense>
+              </div>
+            </>
           )}
           {activeTab === "settings" && profile && (
             <SettingsTab
@@ -11280,9 +11297,6 @@ export default function DashboardPage() {
               </div>
               <HPBoard dealerId={getDealerIdFromProfile(profile)} />
             </div>
-          )}
-          {activeTab === "oversight" && userId && (
-            <OversightTab dealerId={getDealerIdFromProfile(profile)} onNavigate={handleTabChange} />
           )}
           {activeTab === "customers" && userId && (
             <CustomersTab dealerId={getDealerIdFromProfile(profile)} />
