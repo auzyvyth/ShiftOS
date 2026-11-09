@@ -291,7 +291,6 @@ export default function OverviewTab({ dealerId, onNavigate }) {
     const bump = () => refreshRef.current();
     subRef.current = liveChannel(supabase, `overview-${dealerId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads',          filter: `dealer_id=eq.${dealerId}` }, bump)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_activities', filter: `dealer_id=eq.${dealerId}` }, bump)
       .subscribe();
     return () => { subRef.current?.unsubscribe(); };
   }, [dealerId]);

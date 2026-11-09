@@ -18,6 +18,7 @@ const PROTECTED = new Set([
   '/api/ai-messages',
   '/api/car-specs',
   '/api/auth-account-status',
+  '/api/auth-throttle',
 ]);
 
 // Per-IP sliding-window limits
@@ -42,6 +43,10 @@ const LIMITS = {
   // window where TURNSTILE_SECRET is unset and verifyTurnstile fails open.
   // A real login retries a handful of times a minute at most.
   '/api/auth-account-status': { window: '60 s', max: 10, prefix: 'rl:acctstatus' },
+  // Login throttle + auth-email gate. One sign-in attempt is a check plus at
+  // most one fail; a reset/magic-link tap is one gate call. Room for a few
+  // retries per minute and phones sharing a carrier IP.
+  '/api/auth-throttle':       { window: '60 s', max: 20, prefix: 'rl:auththrottle' },
 };
 
 let limiters = null;
@@ -131,5 +136,5 @@ export default async function middleware(req) {
 }
 
 export const config = {
-  matcher: ['/', '/showroom', '/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status'],
+  matcher: ['/', '/showroom', '/api/enquiry', '/api/whatsapp-lead', '/api/booking', '/api/call-number', '/api/wa', '/api/track', '/api/waitlist', '/api/ai-messages', '/api/car-specs', '/api/auth-account-status', '/api/auth-throttle'],
 };

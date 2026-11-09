@@ -1,5 +1,26 @@
 import { supabase as mainClient } from "../supabaseClient";
 import { withTimeout } from "../config/marketplaceConfig";
+import { apiUrl } from "./apiUrl";
+
+// check / fail / gate go through the server route api/auth-throttle.js (the
+// DB functions are server-only, migration 20261109l). Any failure, timeout,
+// 429 or non-200 resolves to null and the callers below fail open.
+async function throttleApi(body) {
+  try {
+    const res = await withTimeout(
+      fetch(apiUrl("/api/auth-throttle"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+      GATE_TIMEOUT_MS,
+    );
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
 // Every check below fails OPEN, but a stalled database does not fail a request,
 // it HANGS it, and a hang never reaches the catch. That is how the magic-link
@@ -23,9 +44,10 @@ const GATE_TIMEOUT_MS = 6000;
 // there is one implementation and every page imports it.
 //
 // `client` is a parameter because /platform runs on the isolated
-// `platformClient` session (its own storageKey). Same project, same anon key,
-// so the RPCs resolve identically — but the CLEAR call must go through the
-// client that actually holds the new session, see below.
+// `platformClient` session (its own storageKey). check / fail / gate go
+// through the server route and ignore it (kept so callers need no change);
+// the CLEAR call must go through the client that actually holds the new
+// session, see below.
 
 // How many wrong passwords before the page offers "reset your password".
 // Deliberately the same number as the DB lock, so the lock and the way out of
@@ -44,8 +66,7 @@ export async function throttleCheck(email, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { allowed: true, secondsLeft: 0 };
   try {
-    const { data } = await withTimeout(client.rpc("login_throttle_check", { p_email: clean }), GATE_TIMEOUT_MS);
-    const row = Array.isArray(data) ? data[0] : data;
+    const row = await throttleApi({ action: "check", email: clean });
     if (row && row.allowed === false) {
       return { allowed: false, secondsLeft: row.seconds_left || 60 };
     }
@@ -64,8 +85,7 @@ export async function throttleFail(email, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { locked: false, secondsLeft: 0, attempts: 0 };
   try {
-    const { data } = await withTimeout(client.rpc("login_throttle_fail", { p_email: clean }), GATE_TIMEOUT_MS);
-    const row = Array.isArray(data) ? data[0] : data;
+    const row = await throttleApi({ action: "fail", email: clean });
     return {
       locked: !!row?.locked,
       secondsLeft: row?.seconds_left || 60,
@@ -127,11 +147,7 @@ export async function emailActionGate(email, action, client = mainClient) {
   const clean = (email || "").trim().toLowerCase();
   if (!clean) return { allowed: true, secondsLeft: 0, message: "" };
   try {
-    const { data } = await withTimeout(client.rpc("auth_email_action_gate", {
-      p_email: clean,
-      p_action: action,
-    }), GATE_TIMEOUT_MS);
-    const row = Array.isArray(data) ? data[0] : data;
+    const row = await throttleApi({ action: "gate", email: clean, emailAction: action });
     if (row && row.allowed === false) {
       const secs = row.seconds_left || 60;
       const mins = Math.ceil(secs / 60);
