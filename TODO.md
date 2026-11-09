@@ -140,12 +140,18 @@ Ask Claude for it; it was in the session scratchpad, `audit/00-SUMMARY.md`.
 - [ ] SA Studio teardown: sastudiox.my is blocked in this cloud session's network list; allow it
   or send screenshots.
 
-## OPS-PURGE: nightly account purge deletes nothing (found 2026-11-03)
-- [ ] `purge-deleted-accounts-daily` (cron 02:30 UTC) reports "succeeded" every night, yet
-  accounts soft-deleted on 2026-10-05..08 were still there on 2026-11-03 (past the 30 days).
-  pg_cron only means "the HTTP call went out". Check the function's response in
-  `net._http_response` / edge logs (401 again, or a deleteUser FK failure). The owner had the
-  15 deleted accounts removed by hand that day (all but `iskandar`, kept on purpose).
+## OPS-PURGE: nightly account purge — re-checked 2026-11-09, the job works
+- Finding: the Nov 3 alarm was most likely a false one. The purge removes accounts deleted MORE than
+  30 days ago (`purge-deleted-accounts/index.ts` cutoff); the Oct 5-8 accounts were 26-29 days old
+  on Nov 3. Runs on Nov 2 and Nov 8 answered 200 (auth fine) with no delete errors logged. The only
+  blocking foreign key is `listing_reports.resolved_by -> profiles` (NO ACTION).
+- [ ] Deploy the repo version (owner's go): adds `notify_ops` alerts (key `err:account_purge`) on
+  any failure, one summary log line per run, and `?dry=1` (lists what is due, deletes nothing).
+  Then call it once with `?dry=1` to prove the path end to end.
+- [ ] **Owner: `iskandar` is still soft-deleted (since 2026-10-31), so the 2026-11-30 02:30 UTC
+  run will HARD-DELETE it.** If it is being kept, restore it in the console before then.
+- [ ] Fix `listing_reports.resolved_by` FK to ON DELETE SET NULL (a deleted admin who resolved
+  a report would block their own purge). Low priority; next migration slot.
 
 ## LAUNCH-1212: money before the 12 Dec ads (owner's birthday) — planned 2026-10-31
 Owner: Supabase Pro in ~2 days; at least RM200 on ads around 12 Dec; xdrive.my renewed
