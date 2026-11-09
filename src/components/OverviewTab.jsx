@@ -7,9 +7,10 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2, ChevronRight } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
 import { malaysiaDayBounds } from '../utils/myDay';
+import { premiumLight as PL } from '../theme/tokens';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Stage names, labels and colours come from the ONE stage list the leads board
@@ -29,16 +30,19 @@ const ROLE_LABELS = {
   accountant: 'Accounts', fi_officer: 'F&I', owner: 'Owner',
   dealer: 'Owner', superadmin: 'Owner',
 };
-const SOURCE_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#F97316', '#EC4899'];
+// Told apart by lightness, not hue (premiumLight: no blue / purple / amber).
+const SOURCE_COLORS = PL.ramp;
 const ACTIVE_STAGES = STAGE_ORDER.filter(s => s !== 'won' && s !== 'lost');
-const AVATAR_COLORS = ['#3B82F6','#8B5CF6','#F59E0B','#10B981','#F97316','#EC4899','#DC2626','#06B6D4'];
+const AVATAR_COLORS = [PL.raised];
+// One neutral icon well for every kind; only the outcome words carry colour
+// (Sold = green text, Lost = red text).
 const ACT_CFG = {
-  whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle,   color: '#16A34A', bg: '#F0FDF4' },
-  stage_changed:  { label: 'Stage',    icon: ArrowRightLeft,  color: '#3B82F6', bg: '#EFF6FF' },
-  note_added:     { label: 'Note',     icon: FileText,        color: '#6B7280', bg: '#F9FAFB' },
-  created:        { label: 'New lead', icon: UserPlus,        color: '#8B5CF6', bg: '#F5F3FF' },
-  won:            { label: 'Sold',     icon: CheckCircle2,    color: '#16A34A', bg: '#F0FDF4' },
-  lost:           { label: 'Lost',     icon: TrendingDown,    color: '#DC2626', bg: '#FEF2F2' },
+  whatsapp_sent:  { label: 'WhatsApp', icon: MessageCircle,   color: PL.textSec },
+  stage_changed:  { label: 'Stage',    icon: ArrowRightLeft,  color: PL.textSec },
+  note_added:     { label: 'Note',     icon: FileText,        color: PL.textSec },
+  created:        { label: 'New lead', icon: UserPlus,        color: PL.textSec },
+  won:            { label: 'Sold',     icon: CheckCircle2,    color: PL.up },
+  lost:           { label: 'Lost',     icon: TrendingDown,    color: PL.accentText },
 };
 const WON_STAGES  = ['won', 'closed_won'];
 const LOST_STAGES = ['lost', 'closed_lost'];
@@ -78,31 +82,32 @@ function isActiveToday(ts) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, sub, trend, iconColor }) {
+const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: PL.textMuted, fontWeight: 600, margin: 0 };
+
+// A tile states ONE number. No coloured icon square, no border: a white card
+// on the grey canvas. The change vs last month is coloured TEXT, no pill.
+function KpiCard({ label, value, sub, trend }) {
   const up = trend != null && trend >= 0;
   return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ width: 36, height: 36, borderRadius: 9, background: iconColor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Icon style={{ width: 18, height: 18, color: iconColor }} />
-        </div>
+    <div style={{ background: PL.card, borderRadius: PL.radius.card, padding: '16px 18px', minWidth: 0 }}>
+      <p style={MICRO}>{label}</p>
+      <p style={{ fontSize: 26, fontWeight: 700, color: PL.text, margin: '8px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
+      <p style={{ fontSize: 11, color: PL.textMuted, margin: 0, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         {trend != null && (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, fontWeight: 600, color: up ? '#16A34A' : '#DC2626', background: up ? '#F0FDF4' : '#FEF2F2', borderRadius: 6, padding: '2px 7px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontWeight: 600, color: up ? PL.up : PL.accentText, fontVariantNumeric: 'tabular-nums' }}>
             {up ? <TrendingUp style={{ width: 11, height: 11 }} /> : <TrendingDown style={{ width: 11, height: 11 }} />}
-            {Math.abs(trend).toFixed(1)}%
+            {up ? '+' : '-'}{Math.abs(trend).toFixed(1)}%
           </span>
         )}
-      </div>
-      <p style={{ fontSize: 24, fontWeight: 700, color: '#111827', margin: '12px 0 2px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{value}</p>
-      <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', margin: 0 }}>{label}</p>
-      {sub && <p style={{ fontSize: 11, color: '#9CA3AF', margin: '2px 0 0' }}>{sub}</p>}
+        {sub && <span>{sub}</span>}
+      </p>
     </div>
   );
 }
 
 function Panel({ children, style }) {
   return (
-    <div style={{ background: '#FFFFFF', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px', ...style }}>
+    <div style={{ background: PL.card, borderRadius: PL.radius.card, padding: '18px 20px', minWidth: 0, ...style }}>
       {children}
     </div>
   );
@@ -110,14 +115,14 @@ function Panel({ children, style }) {
 
 function SectionHeader({ title, sub, live }) {
   return (
-    <div style={{ marginBottom: 14, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+    <div style={{ marginBottom: 14, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
       <div>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: 0 }}>{title}</p>
-        {sub && <p style={{ fontSize: 11, color: '#9CA3AF', margin: '2px 0 0' }}>{sub}</p>}
+        <p style={{ fontSize: 14, fontWeight: 700, color: PL.text, margin: 0 }}>{title}</p>
+        {sub && <p style={{ fontSize: 11, color: PL.textMuted, margin: '2px 0 0' }}>{sub}</p>}
       </div>
       {live && (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#16A34A', fontWeight: 600 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#16A34A', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: PL.textMuted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: PL.up, display: 'inline-block' }} />
           Live
         </span>
       )}
@@ -326,13 +331,13 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <style>{`
           @keyframes ov-shimmer { 0%,100%{opacity:1} 50%{opacity:0.45} }
-          .ov-skel { background:#F3F4F6; border-radius:6px; animation:ov-shimmer 1.4s ease-in-out infinite; }
+          .ov-skel { background:#eceef1; border-radius:6px; animation:ov-shimmer 1.4s ease-in-out infinite; }
           @media(max-width:640px){.ov-kpi-grid{grid-template-columns:1fr 1fr !important}}
         `}</style>
         <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ background: '#fff', border: '1px solid #EAECF0', borderRadius: 12, padding: '18px 20px' }}>
-              <div className="ov-skel" style={{ width: 36, height: 36, borderRadius: 9, marginBottom: 12 }} />
+            <div key={i} style={{ background: PL.card, borderRadius: PL.radius.card, padding: '16px 18px' }}>
+              <div className="ov-skel" style={{ width: '40%', height: 10, marginBottom: 12 }} />
               <div className="ov-skel" style={{ width: '60%', height: 22, marginBottom: 8 }} />
               <div className="ov-skel" style={{ width: '40%', height: 11 }} />
             </div>
@@ -361,6 +366,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           .ov-team-conv  { grid-template-columns: 1fr !important; }
           .ov-attn-grid  { grid-template-columns: 1fr !important; }
         }
+        .ov-attn:hover { background: ${PL.hover} !important; }
         @media (max-width: 480px) {
           .ov-kpi-grid   { grid-template-columns: 1fr 1fr !important; }
           .ov-conv-table { font-size: 11px !important; }
@@ -371,43 +377,47 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       {/* ── Needs Attention strip ── */}
       {(() => {
         const alerts = [];
+        // Urgent = a red dot. Info = no dot. Everything else is ink on a white
+        // card: no tinted background with a matching solid border.
         if (snapshot.priceWaiting > 0) alerts.push({
-          key: 'price', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: DollarSign,
+          key: 'price', urgent: true, Icon: DollarSign,
           label: `${snapshot.priceWaiting} price${snapshot.priceWaiting === 1 ? '' : 's'} waiting for your OK`,
           detail: 'a discount over your limit · open the lead to decide', go: 'crm',
         });
         if (snapshot.coldLeadsCount > 0) alerts.push({
-          key: 'cold', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: MessageCircle,
+          key: 'cold', urgent: true, Icon: MessageCircle,
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,
           detail: `no reply in 5d+ · oldest ${snapshot.coldOldestDays}d`, go: 'crm',
         });
         if (snapshot.stale > 0) alerts.push({
-          key: 'stale', tone: '#D97706', bg: '#FFFBEB', border: '#FDE68A', Icon: Clock,
+          key: 'stale', urgent: false, Icon: Clock,
           label: `${snapshot.stale} aged unit${snapshot.stale === 1 ? '' : 's'}`,
           detail: 'on lot 30d+ · review price', go: 'listings',
         });
         if (snapshot.aptsToday > 0) alerts.push({
-          key: 'appt', tone: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE', Icon: Calendar,
+          key: 'appt', urgent: false, Icon: Calendar,
           label: `${snapshot.aptsToday} appointment${snapshot.aptsToday === 1 ? '' : 's'} today`,
           detail: 'check the bookings board', go: 'crm',
         });
         if (alerts.length === 0) return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 12, padding: '12px 16px' }}>
-            <CheckCircle2 style={{ width: 16, height: 16, color: '#16A34A' }} />
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#15803D', margin: 0 }}>All clear — no cold leads or aged stock needing attention.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.card, borderRadius: PL.radius.card, padding: '14px 18px' }}>
+            <CheckCircle2 style={{ width: 16, height: 16, color: PL.up }} />
+            <p style={{ fontSize: 13, fontWeight: 600, color: PL.text, margin: 0 }}>All clear. No cold leads or aged stock need you.</p>
           </div>
         );
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
             {alerts.map(a => (
-              <button key={a.key} onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 11, textAlign: 'left', background: a.bg, border: `1px solid ${a.border}`, borderRadius: 12, padding: '12px 14px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', transition: 'filter 0.12s' }} onMouseEnter={e => e.currentTarget.style.filter = 'brightness(0.98)'} onMouseLeave={e => e.currentTarget.style.filter = 'none'}>
-                <div style={{ width: 34, height: 34, borderRadius: 9, background: '#fff', border: `1px solid ${a.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <a.Icon style={{ width: 16, height: 16, color: a.tone }} />
+              <button key={a.key} className="ov-attn" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.card, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
+                <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
+                  {a.urgent && <span style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: PL.accent, border: `2px solid ${PL.card}` }} />}
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: a.tone, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label}</p>
-                  <p style={{ fontSize: 11, color: '#6B7280', margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.detail}</p>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: PL.text, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.label}</p>
+                  <p style={{ fontSize: 11.5, color: PL.textMuted, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.detail}</p>
                 </div>
+                <ChevronRight style={{ width: 16, height: 16, color: PL.textMuted, flexShrink: 0 }} />
               </button>
             ))}
           </div>
@@ -416,10 +426,10 @@ export default function OverviewTab({ dealerId, onNavigate }) {
 
       {/* ── KPI Row ── */}
       <div className="ov-kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 14 }}>
-        <KpiCard icon={Layers}     label="Open Leads"       value={snapshot.activeLeads}    sub="Active pipeline"                                                iconColor="#3B82F6" />
-        <KpiCard icon={Car}        label="Active Listings"  value={snapshot.activeListings}  sub={snapshot.stale ? `${snapshot.stale} stale 30d+` : 'All fresh'} iconColor="#8B5CF6" />
-        <KpiCard icon={DollarSign} label="MTD Units Sold"   value={mtd.units ?? 0}           sub="Month to date" trend={unitTrend}                              iconColor="#10B981" />
-        <KpiCard icon={TrendingUp} label="MTD Gross"        value={fmt(mtd.gross_profit)}    sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'No sales yet'} trend={gpTrend} iconColor="#DC2626" />
+        <KpiCard label="Open leads"       value={snapshot.activeLeads}    sub="active pipeline" />
+        <KpiCard label="Active listings"  value={snapshot.activeListings} sub={snapshot.stale ? `${snapshot.stale} on lot 30d+` : 'all under 30 days'} />
+        <KpiCard label="Sold this month"  value={mtd.units ?? 0}          sub="vs last month" trend={unitTrend} />
+        <KpiCard label="Gross this month" value={fmt(mtd.gross_profit)}   sub={mtd.avg_margin ? `${mtd.avg_margin}% margin` : 'no sales yet'} trend={gpTrend} />
       </div>
 
       {/* ── Revenue + Stock ── */}
@@ -429,30 +439,27 @@ export default function OverviewTab({ dealerId, onNavigate }) {
             <SectionHeader title="Revenue — Last 30 Days" sub={`MTD ${fmt(mtd.revenue)}  ·  prev ${fmt(lmtd.revenue)}`} />
             <ResponsiveContainer width="100%" height={130}>
               <LineChart data={sparkData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <CartesianGrid strokeDasharray="3 3" stroke={PL.raised} />
                 <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
                 <YAxis hide />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #EAECF0', background: '#fff' }} formatter={(v) => [fmt(v), 'Revenue']} />
-                <Line type="monotone" dataKey="rev" stroke="#DC2626" strokeWidth={2} dot={false} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', background: PL.card, boxShadow: '0 4px 16px rgba(17,24,39,0.12)' }} formatter={(v) => [fmt(v), 'Revenue']} />
+                <Line type="monotone" dataKey="rev" stroke={PL.accent} strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </Panel>
         )}
         <Panel>
-          <SectionHeader title="Stock Snapshot" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+          <SectionHeader title="Stock" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {[
-              { label: 'Avg Days on Lot', value: `${snapshot.avgDays}d`,               icon: Clock,      color: '#F59E0B' },
-              { label: 'Stale (30d+)',    value: snapshot.stale,                        icon: Car,        color: '#EF4444' },
-              { label: 'Appts Today',     value: snapshot.aptsToday,                    icon: Calendar,   color: '#3B82F6' },
-              { label: 'Capital Tied',    value: fmt(pnl?.inventory?.capital_tied),     icon: DollarSign, color: '#8B5CF6' },
-            ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Icon style={{ width: 14, height: 14, color }} />
-                  <span style={{ fontSize: 12, color: '#6B7280' }}>{label}</span>
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{value}</span>
+              { label: 'Average days on lot', value: `${snapshot.avgDays}d` },
+              { label: 'On lot 30 days+',     value: snapshot.stale, warn: snapshot.stale > 0 },
+              { label: 'Appointments today',  value: snapshot.aptsToday },
+              { label: 'Capital tied up',     value: fmt(pnl?.inventory?.capital_tied) },
+            ].map(({ label, value, warn }) => (
+              <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: PL.raised, borderRadius: PL.radius.row, padding: '10px 12px' }}>
+                <span style={{ fontSize: 12, color: PL.textSec }}>{label}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: warn ? PL.accentText : PL.text, fontVariantNumeric: 'tabular-nums' }}>{value}</span>
               </div>
             ))}
           </div>
@@ -469,11 +476,9 @@ export default function OverviewTab({ dealerId, onNavigate }) {
             <ResponsiveContainer width="100%" height={Math.max(140, pipelineData.length * 28)}>
               <BarChart data={pipelineData} layout="vertical" margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
                 <XAxis type="number" hide />
-                <YAxis type="category" dataKey="stage" tick={{ fontSize: 11, fill: '#6B7280' }} tickLine={false} axisLine={false} width={90} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #EAECF0' }} />
-                <Bar dataKey="count" radius={[0, 5, 5, 0]} maxBarSize={14}>
-                  {pipelineData.map((e) => <Cell key={e.stage} fill={e.color} />)}
-                </Bar>
+                <YAxis type="category" dataKey="stage" tick={{ fontSize: 11, fill: PL.textSec }} tickLine={false} axisLine={false} width={90} />
+                <Tooltip cursor={{ fill: PL.raised }} contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 16px rgba(17,24,39,0.12)' }} />
+                <Bar dataKey="count" fill={PL.text} radius={[0, 6, 6, 0]} maxBarSize={14} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -484,7 +489,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
           {sourceData.length === 0 ? (
             <div>
               <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>No leads yet.</p>
-              <p style={{ fontSize: 11, color: '#D1D5DB', marginTop: 4, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 11, color: PL.textMuted, marginTop: 4, lineHeight: 1.5 }}>
                 Source is set when a salesman adds a lead — Walk-In, WhatsApp, Facebook, Mudah, Carlist, TikTok, Instagram, Referral.
               </p>
             </div>
@@ -504,9 +509,9 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                   <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: SOURCE_COLORS[i % SOURCE_COLORS.length], display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: '#374151' }}>{s.name}</span>
+                      <span style={{ fontSize: 12, color: PL.textSec }}>{s.name}</span>
                     </div>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: '#111827' }}>{s.value}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: PL.text, fontVariantNumeric: 'tabular-nums' }}>{s.value}</span>
                   </div>
                 ))}
               </div>
@@ -528,24 +533,24 @@ export default function OverviewTab({ dealerId, onNavigate }) {
               {teamRows.map((r) => (
                 <div key={r.id}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 6px', borderRadius: 8, transition: 'background 0.15s', cursor: 'default' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#F7F8FA'}
+                  onMouseEnter={e => e.currentTarget.style.background = PL.raised}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: r.avatarColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff' }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: PL.text }}>
                       {r.name.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: r.isActive ? '#22C55E' : '#9CA3AF', border: '2px solid #fff' }} />
+                    <span style={{ position: 'absolute', bottom: 1, right: 1, width: 10, height: 10, borderRadius: '50%', background: r.isActive ? PL.up : '#c4c8cf', border: `2px solid ${PL.card}` }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: '#111827', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</p>
                       {r.role && (
-                        <span style={{ fontSize: 9, fontWeight: 700, color: '#6B7280', background: '#F3F4F6', borderRadius: 4, padding: '1px 5px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.role}</span>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: PL.textMuted, background: PL.raised, borderRadius: PL.radius.pill, padding: '2px 7px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{r.role}</span>
                       )}
                     </div>
                     <p style={{ fontSize: 11, margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <span style={{ color: r.isActive ? '#16A34A' : '#9CA3AF' }}>
+                      <span style={{ color: r.isActive ? PL.up : PL.textMuted }}>
                         {r.isActive ? 'Online' : (r.lastActivity ? timeAgo(r.lastActivity) : 'Away')}
                       </span>
                       {r.active > 0 && (
@@ -578,8 +583,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                 const stage = a.to_stage ? stageLabel(a.to_stage) : null;
                 const note  = a.note ? (a.note.length > 48 ? a.note.slice(0, 45) + '…' : a.note) : null;
                 return (
-                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: i > 0 ? '1px solid #F3F4F6' : undefined }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0', borderTop: i > 0 ? `1px solid ${PL.line}` : undefined }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 10, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                       <Icon style={{ width: 13, height: 13, color: cfg.color }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -597,7 +602,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
                       </div>
                       <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>{who} · {timeAgo(a.created_at)}</p>
                     </div>
-                    <span className="ov-conv-col-hide" style={{ fontSize: 10, fontWeight: 600, color: cfg.color, background: cfg.bg, borderRadius: 5, padding: '2px 7px', flexShrink: 0, alignSelf: 'center' }}>
+                    <span className="ov-conv-col-hide" style={{ fontSize: 10, fontWeight: 700, color: cfg.color, background: PL.raised, borderRadius: PL.radius.pill, padding: '3px 9px', flexShrink: 0, alignSelf: 'center', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                       {cfg.label}
                     </span>
                   </div>

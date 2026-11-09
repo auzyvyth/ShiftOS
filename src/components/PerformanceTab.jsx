@@ -75,7 +75,7 @@ function StatusPill({ status }) {
   if (!st) return null;
   const t = TONE[st.tone];
   return (
-    <span style={{ fontSize: 10, fontWeight: 700, color: t.fg, background: t.bg, border: `1px solid ${t.bd}`, borderRadius: 4, padding: '1px 6px', whiteSpace: 'nowrap' }}>
+    <span style={{ fontSize: 10, fontWeight: 700, color: t.fg, background: t.bg, borderRadius: 999, padding: '2px 8px', whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '.06em' }}>
       {st.label}
     </span>
   );

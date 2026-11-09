@@ -13,11 +13,13 @@ export const STATUS = {
   new:      { label: 'New',             tone: 'neutral' },
 };
 
+// premiumLight pills: ONE grey fill for every status, the WORD carries the
+// colour (no tinted background with a matching border). bd = bg on purpose.
 export const TONE = {
-  good:    { fg: '#15803d', bg: '#f0fdf4', bd: '#bbf7d0' },
-  warn:    { fg: '#b45309', bg: '#fffbeb', bd: '#fde68a' },
-  bad:     { fg: '#b91c1c', bg: '#fef2f2', bd: '#fecaca' },
-  neutral: { fg: '#4b5563', bg: '#f3f4f6', bd: '#e5e7eb' },
+  good:    { fg: '#047857', bg: '#f5f6f8', bd: '#f5f6f8' },
+  warn:    { fg: '#4b5563', bg: '#f5f6f8', bd: '#f5f6f8' },
+  bad:     { fg: '#b91c1c', bg: '#f5f6f8', bd: '#f5f6f8' },
+  neutral: { fg: '#6b7280', bg: '#f5f6f8', bd: '#f5f6f8' },
 };
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

@@ -230,6 +230,16 @@ Project ID: lemdkdizdlcirhbzqlos
   (VerifyIdentity, AvailabilityEditor, PushToggle, ChangePasswordCard, ReferralCard, MyNewModels);
   photo + cover are one card; no read-only username box (the Google preview shows the link).
 
+- **The dealer dashboard is moving to `premiumLight`** (`src/theme/tokens.js`, owner 2026-11-09:
+  "reference salesman premium, use that style but for dealers use light theme"). Premium's rules on a
+  light surface: white cards on the `#f1f2f4` canvas, depth by tone (grey rows / icon wells inside a
+  card), NO card borders, NO tinted background with a matching solid border (the old pink/amber/blue
+  alert cards), red for fills + an urgent dot, green (`up`) as text only, charts by lightness (`ramp`),
+  status pills = one grey fill with a coloured WORD. Adopted one tab at a time: Overview
+  (`OverviewTab.jsx` + the AI Sales Manager card) and the team table + `SalesmanHealthSheet` first.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM, Listings, Stock, Settings.
+  Do not mix the two looks inside one tab.
+
 ### Anti-slop UI rules (non-negotiable)
 - **A section never stretches across empty space on a wide screen (owner, 2026-11-04).** When
   a card, strip or banner sits in a row with space beside it on desktop, cap it at HALF the width

@@ -231,7 +231,7 @@ const STYLES = `
 
   *, *::before, *::after { box-sizing: border-box; }
 
-  body { background: #F7F8FA; color: #0F172A; font-family: system-ui, sans-serif; }
+  body { background: #f1f2f4; color: #0F172A; font-family: system-ui, sans-serif; } /* premiumLight.canvas */
 
   /* ── Sidebar nav ── */
   .nav-item { border-left: 2px solid transparent; transition: all 0.15s; border-radius: 7px; }
@@ -11115,19 +11115,20 @@ export default function DashboardPage() {
               {profile?.plan !== "dealer_starter" && (
                 <button
                   onClick={() => handleTabChange("ai_manager")}
+                  className="ov-attn"
                   style={{
-                    display: "flex", alignItems: "center", gap: 10, width: "100%",
-                    padding: "10px 14px", borderRadius: 10,
-                    background: "rgba(37,99,235,0.06)", border: "1px solid rgba(37,99,235,0.18)",
+                    display: "flex", alignItems: "center", gap: 12, width: "100%",
+                    padding: "14px 16px", borderRadius: 20,
+                    background: "#ffffff", border: "none",
                     cursor: "pointer", fontFamily: "system-ui,sans-serif", textAlign: "left",
                   }}
                 >
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.12)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <Bot size={16} color="#3b82f6" />
+                  <div style={{ width: 38, height: 38, borderRadius: 12, background: "#f5f6f8", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Bot size={17} color="#111827" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1e3a8a" }}>AI Sales Manager</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#111827" }}>AI Sales Manager</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#6b7280" }}>Morning briefing, stale stock alerts, team activity</p>
                   </div>
                   <ChevronRight size={16} color="#6b7280" />
                 </button>

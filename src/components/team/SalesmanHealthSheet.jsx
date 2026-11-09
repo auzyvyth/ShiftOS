@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { premiumLight as PL } from '../../theme/tokens';
 import {
   STATUS, TONE, issueText, issueAdvice, noScoreReason, fmtMinutes, SCORE_PARTS, lastActiveText,
 } from '../../utils/teamHealth';
@@ -11,15 +12,16 @@ import {
 // own (the score's parts come from the DB too), so it can never disagree with
 // the table or the daily alert. Light dealer-dashboard surface, quiet-terminal rules.
 
-const INK = '#111827';
-const MUTED = '#6b7280';
-const LINE = '#e5e7eb';
+// premiumLight: depth by tone (white cards on the grey canvas), no card borders.
+const INK = PL.text;
+const MUTED = PL.textMuted;
+const CARD = { background: PL.card, borderRadius: 16 };
 const MICRO = { fontSize: 10, letterSpacing: '.08em', textTransform: 'uppercase', color: MUTED, fontWeight: 600 };
 const NUM = { fontVariantNumeric: 'tabular-nums' };
 
 function Tile({ label, value, note }) {
   return (
-    <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '10px 12px', minWidth: 0 }}>
+    <div style={{ ...CARD, padding: '12px 14px', minWidth: 0 }}>
       <div style={MICRO}>{label}</div>
       <div style={{ ...NUM, fontSize: 22, fontWeight: 700, color: INK, marginTop: 2 }}>{value}</div>
       {note && <div style={{ fontSize: 11, color: MUTED, marginTop: 1 }}>{note}</div>}
@@ -55,17 +57,17 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
         aria-modal="true"
         aria-label={`${s.name || 'Salesman'} performance`}
         onClick={(e) => e.stopPropagation()}
-        style={{ background: '#f9fafb', width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0', fontFamily: 'system-ui, sans-serif' }}
+        style={{ background: PL.canvas, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', borderRadius: '14px 14px 0 0', fontFamily: 'system-ui, sans-serif' }}
       >
         {/* Header */}
-        <div style={{ background: '#fff', borderBottom: `1px solid ${LINE}`, padding: '16px 16px 14px', display: 'flex', gap: 12, alignItems: 'center', position: 'sticky', top: 0 }}>
+        <div style={{ background: PL.card, padding: '16px 16px 14px', display: 'flex', gap: 12, alignItems: 'center', position: 'sticky', top: 0 }}>
           {s.avatar_url
             ? <img src={s.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: 22, objectFit: 'cover', flexShrink: 0 }} />
-            : <div style={{ width: 44, height: 44, borderRadius: 22, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>}
+            : <div style={{ width: 44, height: 44, borderRadius: 22, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, color: '#374151', flexShrink: 0 }}>{(s.name || '?')[0].toUpperCase()}</div>}
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 16, fontWeight: 700, color: INK }}>{s.name || 'Salesman'}</span>
-              {st && <span style={{ fontSize: 10, fontWeight: 700, color: tone.fg, background: tone.bg, border: `1px solid ${tone.bd}`, borderRadius: 4, padding: '1px 6px' }}>{st.label}</span>}
+              {st && <span style={{ fontSize: 10, fontWeight: 700, color: tone.fg, background: tone.bg, borderRadius: 999, padding: '2px 8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>{st.label}</span>}
             </div>
             <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{lastActiveText(s)}</div>
           </div>
@@ -75,7 +77,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
               ? <div style={{ ...NUM, fontSize: 22, fontWeight: 700, color: INK }}>{s.score}<span style={{ fontSize: 12, color: MUTED, fontWeight: 600 }}>/100</span></div>
               : <div style={{ fontSize: 12, fontWeight: 600, color: MUTED, marginTop: 4 }}>{noScoreReason(s) || '—'}</div>}
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ border: `1px solid ${LINE}`, background: '#fff', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+          <button onClick={onClose} aria-label="Close" style={{ border: 'none', background: PL.raised, borderRadius: 999, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
             <X size={16} color={MUTED} />
           </button>
         </div>
@@ -85,13 +87,13 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
           <section>
             <div style={{ ...MICRO, marginBottom: 8 }}>What needs your attention</div>
             {issues.length === 0 ? (
-              <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '12px 14px', fontSize: 13, color: INK }}>
+              <div style={{ ...CARD, padding: '12px 14px', fontSize: 13, color: INK }}>
                 Nothing. They are working their leads.
               </div>
             ) : (
-              <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10 }}>
+              <div style={CARD}>
                 {issues.map((c, i) => (
-                  <div key={c} style={{ padding: '11px 14px', borderTop: i ? '1px solid #f3f4f6' : 'none' }}>
+                  <div key={c} style={{ padding: '12px 14px', borderTop: i ? `1px solid ${PL.line}` : 'none' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: INK }}>{issueText(c, s)}</div>
                     <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{issueAdvice(c)}</div>
                   </div>
@@ -114,7 +116,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
           {/* How the score is made */}
           <section>
             <div style={{ ...MICRO, marginBottom: 8 }}>How the score is made</div>
-            <div style={{ background: '#fff', border: `1px solid ${LINE}`, borderRadius: 10, padding: '12px 14px' }}>
+            <div style={{ ...CARD, padding: '14px' }}>
               {parts ? SCORE_PARTS.map((p) => {
                 const v = Number(parts[p.key] || 0);
                 return (
@@ -123,7 +125,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
                       <span>{p.label}</span>
                       <span style={{ ...NUM, color: MUTED }}><b style={{ color: INK }}>{Math.round(v)}</b> / {p.max}</span>
                     </div>
-                    <div style={{ height: 6, borderRadius: 3, background: '#f3f4f6', overflow: 'hidden' }}>
+                    <div style={{ height: 6, borderRadius: 3, background: PL.raised, overflow: 'hidden' }}>
                       <div style={{ width: `${Math.min(100, (v / p.max) * 100)}%`, height: '100%', background: INK, borderRadius: 3 }} />
                     </div>
                   </div>
@@ -135,7 +137,7 @@ export default function SalesmanHealthSheet({ person: s, onClose }) {
                     : 'A score needs at least 3 new leads in 30 days. Fewer than that is luck, not a pattern.'}
                 </div>
               )}
-              <div style={{ fontSize: 11, color: MUTED, borderTop: '1px solid #f3f4f6', paddingTop: 8, marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: MUTED, borderTop: `1px solid ${PL.line}`, paddingTop: 8, marginTop: 2 }}>
                 Only counts what {s.name || 'they'} did themselves. Changes you make on their leads do not count.
               </div>
             </div>
