@@ -17,6 +17,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../supabaseClient";
+import { callClaudeChat } from "../lib/callClaude";
 import { getDealerIdFromProfile } from "../hooks/useProfile";
 import {
   readCache,
@@ -202,6 +203,7 @@ import {
   Activity,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
+import { effectiveRecon } from "../utils/reconCost";
 
 // Cache namespace for the dealer dashboard (keys look like `dash_listings_<uid>`).
 // Deliberately keyed on the AUTH uid, not the dealer id: a manager and their
@@ -1076,6 +1078,9 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
     monthly_overhead: "", avg_fleet_size: "", floor_plan_rate: "",
     runner_fee: "", admin_fee: "", warranty_reserve_pct: "",
   });
+  // Discount limit (batch 6a): above it, a salesman's price waits for the dealer's OK.
+  // Saved in its own write so a missing column can never break the cost save above.
+  const [discountLimit, setDiscountLimit] = useState({ amount: "", pct: "" });
   const [dealerState, setDealerState] = useState(profile?.state || '');
   const [dealerCity, setDealerCity]   = useState(profile?.city  || '');
   const [dealerAddress, setDealerAddress] = useState(profile?.location || '');
@@ -1238,6 +1243,10 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
           runner_fee: data.runner_fee != null ? String(data.runner_fee) : "",
           admin_fee: data.admin_fee != null ? String(data.admin_fee) : "",
           warranty_reserve_pct: data.warranty_reserve_pct != null ? String(data.warranty_reserve_pct) : "",
+        });
+        setDiscountLimit({
+          amount: data.discount_limit_amount != null ? String(data.discount_limit_amount) : "",
+          pct: data.discount_limit_pct != null ? String(data.discount_limit_pct) : "",
         });
       });
   }, [settingsDealerId]);
@@ -1605,6 +1614,16 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
         updated_at: new Date().toISOString(),
       });
       if (error) throw error;
+      const lim = (v) => (v === "" || v == null ? null : Math.max(0, Number(v) || 0));
+      const { error: limErr } = await supabase.from("dealer_cost_settings")
+        .update({ discount_limit_amount: lim(discountLimit.amount), discount_limit_pct: lim(discountLimit.pct) })
+        .eq("dealer_id", settingsDealerId);
+      if (limErr) {
+        // Columns arrive with tonight's database update (20261109g).
+        if (discountLimit.amount !== "" || discountLimit.pct !== "") {
+          throw new Error("Costs saved. The discount limit can be saved after tonight's update.");
+        }
+      }
       flash("costs");
     } catch (e) {
       setErrors((p) => ({ ...p, costs: e.message }));
@@ -2575,6 +2594,22 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo }) {
               className={iCls} placeholder="e.g. 1.5" />
           </SettingsField>
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <SettingsField label="Discount limit (RM off asking)">
+            <input type="number" min="0" value={discountLimit.amount}
+              onChange={(e) => setDiscountLimit(s => ({ ...s, amount: e.target.value }))}
+              className={iCls} placeholder="e.g. 2000 (blank = no limit)" />
+          </SettingsField>
+          <SettingsField label="Discount limit (% off asking)">
+            <input type="number" min="0" step="0.5" value={discountLimit.pct}
+              onChange={(e) => setDiscountLimit(s => ({ ...s, pct: e.target.value }))}
+              className={iCls} placeholder="e.g. 3 (blank = no limit)" />
+          </SettingsField>
+        </div>
+        <p className="text-xs text-gray-500">
+          A salesman can close at a discount up to this limit on their own. Above it, the price comes to you
+          (or a manager) to approve before the deal closes. Leave both blank for no limit.
+        </p>
         <p className="text-xs text-gray-500">
           Floor-plan rate charges interest on each car's purchase price per day it sits. If both overhead and floor-plan
           are set, floor-plan takes priority. Runner fee is added on top of the RM100 JPJ government rate.
@@ -3102,6 +3137,17 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
   // price it actually sold for, and keep following that price until someone
   // types their own figure. A figure already on the car is kept as-is.
   const [commissionConfig, setCommissionConfig] = useState(null);
+  // Who bought it: an open lead on this car. Picking one makes the sale a real win
+  // (customer, handover steps, renewals); "no buyer" is a car sold off the platform.
+  const [buyerLeads, setBuyerLeads] = useState([]);
+  const [leadId, setLeadId] = useState("");
+  useEffect(() => {
+    if (!listing.id) return;
+    supabase.from("leads").select("id, buyer_name, stage, salesman_id")
+      .eq("car_listing_id", listing.id)
+      .not("stage", "in", "(won,closed_won,lost,closed_lost)")
+      .then(({ data }) => setBuyerLeads(data || []));
+  }, [listing.id]);
   useEffect(() => {
     if (!listing.dealer_id) return;
     supabase.from("profiles").select("commission_config").eq("id", listing.dealer_id).maybeSingle()
@@ -3125,6 +3171,7 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
     soldPrice: soldPrice === "" ? null : Number(soldPrice),
     commission: commission === "" ? null : Number(commission),
     soldDate: soldDate || null,
+    leadId: leadId || null,
   });
   return (
     <div
@@ -3150,6 +3197,20 @@ function MarkSoldModal({ listing, salesmen = [], onClose, onConfirm, loading, sh
           </button>
         </div>
         <div className="flex flex-col gap-3 mb-5">
+          {hasListing && <div>
+            <label className={labelCls}>Who bought it?</label>
+            <select value={leadId} onChange={(e) => {
+              setLeadId(e.target.value);
+              const l = buyerLeads.find((x) => x.id === e.target.value);
+              if (l?.salesman_id && !soldBy) setSoldBy(l.salesman_id);
+            }} className={fieldCls}>
+              <option value="">No buyer on file (sold elsewhere or walk-in)</option>
+              {buyerLeads.map((l) => (
+                <option key={l.id} value={l.id}>{l.buyer_name || "Unnamed buyer"} ({l.stage})</option>
+              ))}
+            </select>
+            {!leadId && <p className="text-[11px] text-gray-500 mt-1">With no buyer, no customer record or handover steps are made.</p>}
+          </div>}
           {hasListing && <div>
             <label className={labelCls}>Sold by</label>
             <select value={soldBy} onChange={(e) => setSoldBy(e.target.value)} className={fieldCls}>
@@ -3365,18 +3426,7 @@ function AnalyticsTab({ listings, profile, salesmen = [], onEditListing, onSelec
         ...messages.map((m) => ({ role: m.role, content: m.content })),
         { role: "user", content: msg },
       ];
-      const { data, error } = await supabase.functions.invoke("ai-proxy", {
-        body: {
-          feature: "sales_manager",
-          system: ctx(),
-          messages: history,
-        },
-      });
-      if (error) throw error;
-      let reply = "Could not generate a response.";
-      if (Array.isArray(data?.content))
-        reply = data.content.find((b) => b.type === "text")?.text || reply;
-      else if (data?.completion) reply = data.completion;
+      const reply = await callClaudeChat(history, ctx(), "sales_manager");
       setMessages((p) => [...p, { role: "assistant", content: reply }]);
     } catch {
       setMessages((p) => [
@@ -4512,7 +4562,9 @@ function TeamTab({ managerDealership, dealerId, profile }) {
     if (!dealerId) return;
     const { data, error } = await supabase
       .from("car_listings")
-      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, purchase_price, base_price, recon_cost, included_services_cost")
+      // Cost comes from the stock record: a dealer car's listing holds no cost
+      // (20261109f, batch 4 — salesmen can read listings, not stock).
+      .select("assigned_to, commission_amount, commission_status, sold_price, selling_price, included_services_cost, stock_units(purchase_price, recon_cost)")
       .eq("dealer_id", dealerId)
       .eq("status", "sold")
       .not("assigned_to", "is", null);
@@ -4530,13 +4582,13 @@ function TeamTab({ managerDealership, dealerId, profile }) {
       const cs = commission_status || 'pending';
       map[assigned_to][cs] = (map[assigned_to][cs] || 0) + amt;
       // Front gross per unit: sale - cost - recon - included services - commission.
-      // Cost basis = stock purchase price, falling back to the listing's base_price
-      // (listings with no procurement record still have a cost basis). Only counted
-      // when some cost exists, so units with zero cost don't show "full sale = profit".
-      const cost = Number(row.purchase_price) || Number(row.base_price) || 0;
+      // Only counted when the stock record has a cost, so units with zero cost
+      // don't show "full sale = profit".
+      const su = Array.isArray(row.stock_units) ? row.stock_units[0] : row.stock_units;
+      const cost = Number(su?.purchase_price) || 0;
       if (cost > 0) {
         const sale = Number(row.sold_price ?? row.selling_price) || 0;
-        map[assigned_to].gross += sale - cost - (Number(row.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
+        map[assigned_to].gross += sale - cost - (Number(su?.recon_cost) || 0) - (Number(row.included_services_cost) || 0) - amt;
       }
     });
     setSoldMap(map);
@@ -7149,8 +7201,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
     const purchasePrice  = Number(unit.purchase_price) || 0;
     const reconEst       = Number(unit.recon_cost) || 0;
     const reconActual    = reconJobsList.reduce((s, j) => s + (Number(j.cost) || 0), 0);
-    // Real money out: use actual logged recon jobs when any exist, else the booked estimate.
-    const reconCost      = reconJobsList.length > 0 ? reconActual : reconEst;
+    // One rule with the stored profit (stock_recon_effective): the larger of the two.
+    const reconCost      = effectiveRecon(reconEst, reconJobsList);
     const servicesCost   = Number(unit.car_listings?.included_services_cost) || 0;
     const commission     = Number(unit.car_listings?.commission_amount) || 0;
     const handoverCost   = handoverTasks.filter((t) => t.status !== 'na').reduce((s, t) => s + (Number(t.cost) || 0), 0);
@@ -8886,7 +8938,9 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
     const services    = doc.included_services_snapshot || [];
     const handoverItems = m.handover_items?.length ? m.handover_items : [...DEFAULT_HANDOVER_ITEMS];
     const exceptions  = m.exceptions_noted || '';
-    const issued      = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+    // A draft has no issue date. It printed "Date: —", which reads like a real
+    // receipt with a missing date; say plainly that it is not issued.
+    const issued      = doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'long', year: 'numeric' }) : 'DRAFT, not issued';
     const isHandover  = doc.doc_type === 'Handover Checklist';
     const isDeposit   = doc.doc_type === 'Deposit Receipt';
     const isSales     = doc.doc_type === 'Sales Agreement';
@@ -9027,7 +9081,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
         ${sect('Terms & Conditions', `
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">1. This deposit reserves the above vehicle exclusively for the buyer${payDeadline ? ` until <strong>${new Date(payDeadline).toLocaleDateString('en-MY',{day:'2-digit',month:'long',year:'numeric'})}</strong>` : ''}.</p>
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">2. <strong>If the buyer's loan/financing application is rejected by all banks:</strong> the full deposit is refundable within 14 days of written notification of rejection.</p>
-          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">3. <strong>If the buyer cancels for other reasons:</strong> a cancellation fee of up to 5% of the sale price may be retained by the dealer as per the Consumer Protection Act 1999.</p>
+          <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">3. <strong>If the buyer cancels for other reasons:</strong> a cancellation fee of up to 5% of the sale price may be retained by the dealer.</p>
           <p style="font-size:12px;line-height:1.8;margin:0 0 8px;">4. <strong>If the dealer fails to deliver the reserved vehicle:</strong> the full deposit shall be refunded to the buyer within 14 days.</p>
           <p style="font-size:12px;line-height:1.8;margin:0;">5. Disputes may be referred to the Tribunal for Consumer Claims Malaysia (TTPM).</p>
         `)}
@@ -9759,6 +9813,7 @@ export default function DashboardPage() {
           .from("car_listings")
           .select("id,slug,brand,model,variant,year,base_price,selling_price,original_price,mileage,transmission,fuel_type,body_type,state,city,colour,condition,registration_date,specs,options,features,images,status,created_at,dealer_id,assigned_to,commission_amount,sold_at,included_services,included_services_cost,recon_cost,auction_grade,interior_grade,is_recon,import_country,auction_house,local_reg_date,chassis_status,damage_map,financing_type,payment_type,loan_eligible,engine_cc,horsepower,cylinders,doors,seats,fuel_consumption,previous_owners,plate_number,vin_number,engine_number,road_tax_expiry,warranty_months,deposit_amount,video_url,car_documents,reserved_by,reserved_at")
           .eq("dealer_id", dealerId)
+          .neq("status", "archived")
           .order("created_at", { ascending: false }),
         supabase
           .from("profiles")
@@ -9897,7 +9952,18 @@ export default function DashboardPage() {
     setActiveTab("listings");
     // Prompt to add stock purchase details
     setPendingStockListing(l);
-    setPendingStockForm({ purchase_price: l.base_price ? String(l.base_price) : '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: l.recon_cost ? String(l.recon_cost) : '' });
+    setPendingStockForm({ purchase_price: '', purchase_date: new Date().toISOString().slice(0,10), purchase_source: 'Direct Buy', recon_cost: '' });
+    // The cost typed in CarForm is on the stock record the database made for this
+    // car (a dealer car's listing holds no cost, 20261109f). Prefill from it.
+    supabase.from('stock_units').select('purchase_price, recon_cost').eq('listing_id', l.id).maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setPendingStockForm((f) => ({
+          ...f,
+          purchase_price: f.purchase_price || (Number(data.purchase_price) > 0 ? String(data.purchase_price) : ''),
+          recon_cost: f.recon_cost || (Number(data.recon_cost) > 0 ? String(data.recon_cost) : ''),
+        }));
+      });
   };
   // AddCarForm already captures cost/procurement data, so no pending-stock prompt.
   const handleAddCarPublished = (l) => {
@@ -9974,14 +10040,28 @@ export default function DashboardPage() {
   }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDelete = async (id) => {
-    const { error } = await supabase
+    // Archive, never a hard DELETE: a real delete unlinks the car from 33 tables
+    // and strips it off buyers' chats and leads. A car with a won deal is refused
+    // by trg_guard_sold_car (offer Undo sale). Same rule as the Lite/Premium panels.
+    const { data: gone, error } = await supabase
       .from("car_listings")
-      .delete()
+      .update({ status: "archived" })
       .eq("id", id)
-      .eq("dealer_id", userId);  // explicit RLS guard
+      .eq("dealer_id", getDealerIdFromProfile(profile))  // explicit RLS guard
+      .select("id");
     if (error) {
       console.error("Delete failed:", error.message);
+      if (isWonDealBlock(error)) {
+        setDeleteId(null);
+        offerUndoSale(id, () => setListings(relistCar(id)));
+        return;
+      }
       toast.error("Could not delete listing: " + error.message);
+      return;
+    }
+    if (!gone?.length) {
+      // RLS refuses as "0 rows, no error".
+      toast.error("Could not delete listing. You may not have permission.");
       return;
     }
     setListings((p) => p.filter((l) => l.id !== id));
@@ -10063,10 +10143,32 @@ export default function DashboardPage() {
   // Which Settings section the Verify-ID prompt should land on.
   const [settingsJump, setSettingsJump] = useState(null);
 
-  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null } = {}) => {
+  const handleMarkSold = async ({ soldBy = null, soldPrice = null, commission = null, leadId = null } = {}) => {
     if (!markSoldListing) return;
     setMarkSoldLoading(true);
     try {
+      if (leadId) {
+        // A real win: the won trigger flips the car, makes the customer and seeds the handover.
+        // close_deal_at_price records the price as the agreed price (batch 6a); a discount over
+        // the limit from a role that cannot approve waits for the dealer instead.
+        const { data: res, error: rpcErr } = await supabase.rpc("close_deal_at_price", {
+          p_lead: leadId, p_agreed: soldPrice ?? null, p_closer: soldBy || null,
+        });
+        if (rpcErr && rpcErr.code !== "PGRST202") throw rpcErr;
+        if (res?.status === "pending") {
+          toast.success("Sent to the dealer to approve the price. The car is marked sold once they say yes.");
+          setMarkSoldListing(null);
+          setMarkSoldLoading(false);
+          return;
+        }
+        if (rpcErr) {
+          // Function not on the database yet (queued migration): the old write.
+          const { data: won, error: winErr } = await supabase
+            .from("leads").update({ stage: "won", ...(soldBy ? { salesman_id: soldBy } : {}) }).eq("id", leadId).select("id");
+          if (winErr) throw winErr;
+          if (!won?.length) throw new Error("lead update refused");
+        }
+      }
       const update = {
         status: "sold",
         sold_at: new Date().toISOString(),
@@ -10092,7 +10194,11 @@ export default function DashboardPage() {
       // per-salesman gross on mount, so no out-of-scope refetch is needed here.
     } catch (e) {
       console.error(e);
-      toast.error("Could not mark the car as sold. Try again.");
+      const m = String(e?.message || "");
+      toast.error(m.includes("car_already_won")
+        ? "This car is already sold to another buyer. Undo that sale first."
+        : m.includes("bad_price") ? "Enter the price agreed with the buyer."
+        : "Could not mark the car as sold. Try again.");
     }
     setMarkSoldLoading(false);
   };
@@ -11965,7 +12071,7 @@ export default function DashboardPage() {
               </button>
             </div>
             <p className="text-gray-500 text-sm mb-5">
-              This will permanently remove the car listing from your inventory.
+              This removes the car from your inventory and your public page.
             </p>
             <div className="flex gap-3">
               <button
@@ -12094,6 +12200,9 @@ export default function DashboardPage() {
         <MarkSoldModal
           listing={markSoldListing}
           salesmen={salesmen}
+          // Cost from the stock record (overlaid onto the listing rows on load);
+          // a dealer car's listing itself holds none (20261109f).
+          cost={(Number(markSoldListing.purchase_price) || 0) + (Number(markSoldListing.recon_cost) || 0) || null}
           onClose={() => setMarkSoldListing(null)}
           onConfirm={handleMarkSold}
           loading={markSoldLoading}
@@ -12141,7 +12250,10 @@ export default function DashboardPage() {
                 disabled={pendingStockSaving || !pendingStockForm.purchase_price}
                 onClick={async () => {
                   setPendingStockSaving(true);
-                  await supabase.from('stock_units').insert({
+                  // Upsert: saving the car already made its stock record (trigger
+                  // auto_create_stock_unit), so a plain insert hit the unique listing_id
+                  // and the typed cost was silently lost.
+                  const { error: stockErr } = await supabase.from('stock_units').upsert({
                     dealer_id: userId,
                     listing_id: pendingStockListing.id,
                     // Mirror car identity fields from the listing
@@ -12168,8 +12280,9 @@ export default function DashboardPage() {
                     purchase_source: pendingStockForm.purchase_source || null,
                     recon_cost: Number(pendingStockForm.recon_cost) || 0,
                     status: 'in_stock',
-                  });
+                  }, { onConflict: 'listing_id' });
                   setPendingStockSaving(false);
+                  if (stockErr) { toast.error('Could not save the stock details: ' + stockErr.message); return; }
                   setPendingStockListing(null);
                 }}
                 className="btn-shimmer flex-1 px-4 py-2.5 rounded-xl text-sm text-white font-semibold"

@@ -362,7 +362,10 @@ If a lead ever doesn't show for a rep, check `resolve_lead_salesman`, not the pa
   makes the customer + handover); "Add the buyer" opens Add Lead with the car filled in; only "Sold
   elsewhere" writes status alone (`{ direct: true }`). A status-only sold had no customer, handover or
   renewals (6 cars). Never add another status write to `sold` that skips this.
-- **Other open leads on a sold car keep their stage** (owner, no "missed" stage): they get
+- **Other open leads on a sold car keep their stage** (owner, no "missed" stage; dealer side too
+  since 2026-11-08: LeadDrawer, LeadGridCard "Car sold by another seller", linked panel; nothing
+  marks them lost automatically any more). A second Won on a car is refused in the DB
+  (`trg_lead_one_win`, `car_already_won`). They get
   `CarSoldLine` (offer another car = the link-car picker, or Mark lost with `CAR_SOLD_REASON` =
   'CarSold'), a `car_sold` row in This week until contacted after `sold_at`, and the win confirm says
   how many there are. Rules: `src/utils/carBuyers.js` (`npm run test:carbuyers`). Performance never
@@ -462,11 +465,19 @@ the DB was busy, and stripped the car off buyers' chats and leads. `archived` is
 excluded by `public_car_listings`, the listing cap and the one-card-per-model index; the
 panels load listings with `.neq("status","archived")`. A won-deal car is refused
 (`car_has_won_deal`) and offers Undo sale. Still hard-deleting, and still blocked by FKs
-with no ON DELETE rule (`ai_caption_logs`, `broadcast_logs`, `service_packages`): the
+with no ON DELETE rule (`ai_caption_logs`, `service_packages`; `broadcast_logs` no longer blocks): the
 dealer dashboard and the console.
 - **The update must `.select("id")` and check a row came back, and the device copy
   (`sp_listings_` / `slite_listings_`) must be rewritten** (2026-10-19). RLS refuses as "0 rows,
   no error", and Premium never rewrote its saved copy, so a deleted car came back on reopen.
+
+## A dealer's cost lives on `stock_units` ONLY (batch 4, migration 20261109f)
+`car_listings` is read by the whole dealer team (salesmen too), and a row rule cannot hide a
+column. So on a DEALER car `purchase_price` / `base_price` / `recon_cost` are always NULL
+(`trg_zz_dealer_costs_off_listing` empties them; a new car hands them to `auto_create_stock_unit`).
+Read and write a dealer's cost through `stock_units` (dealer / accountant / manager). A solo
+seller's `base_price` stays on the listing: only they read it, and `solo_commission_is_margin` uses it.
+Never add a dealer-side read of cost from `car_listings`, or a new table that copies it there.
 
 ## Car ownership model — assignment is an EXCLUSIVITY lock
 Two ways a salesman ends up selling a car, reconciled by one rule:
@@ -792,6 +803,11 @@ instruction — run the intake yourself, do not ask first. Full runbook:
   (4) map existing listings, (5) buyer trim filter + per-trim pages.
 
 ## DB migrations
+- **DEALER IS THE FOCUS AGAIN (owner, 2026-11-08: "that's where the money is").** The dealer
+  dashboard and its roles count as USED for the rule below: fix them, don't park them. Work list:
+  TODO `DMS-AUDIT`. The audit + diagnosis stay OUT of this public repo until the holes are fixed.
+  Lead rule (owner): a linked salesman reads/edits ONLY their own leads + sees the unassigned
+  pool (claim via `claim_lead`); dealer-side roles see all. Salesmen never see buy prices.
 - **Before EVERY migration, check it will actually be used; if not, PARK it (owner, 2026-10-28).**
   Focus is getting sellers to list. The owner will onboard dealerships by hand later, so the
   dealer dashboard has no users (on 2026-10-28, in the last 30 days 8 of 9 standalone salesmen listed and
@@ -2489,6 +2505,14 @@ on a phone) and rings each link where it sits (`data-tour-id`).
 - Always read the target file first before editing
 - One concern per session: data OR layout OR styling OR mobile
 - Never use emojis in UI code, commit messages, or responses
+
+## DMS audit lessons (2026-11-08) - four rules, tasks are in TODO.md DMS-AUDIT
+1. **Never commit a security audit to this repo before the hole is fixed.** The repo is PUBLIC.
+2. **Nothing a seller types as private goes in `public_car_listings`** (cost `base_price` was there).
+3. **"Same dealer" is not "allowed".** Money tables (stock, deal financials, commission, costs) need a
+   ROLE check in RLS, not only `dealer_id = get_my_dealer_id()`. Hiding a screen protects nothing.
+4. **A row's own ids prove nothing.** A policy or SECURITY DEFINER trigger that acts on `lead_id` /
+   `car_listing_id` / `dealer_id` from the row must check they belong to the caller's dealer.
 
 ## Dealer dashboard audit — pending fixes (2026-06-06)
 Full report: AUDIT_DEALER_DASHBOARD.md. Root cause across all: drift between two

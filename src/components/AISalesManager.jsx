@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { callClaudeChat } from '../lib/callClaude';
 
 const ROLE_LABELS = {
   salesman: 'Salesman',
@@ -88,15 +88,7 @@ export default function AISalesManager({ snapshot, dealerName }) {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke('ai-proxy', {
-        body: {
-          feature: 'sales_manager',
-          system: buildSystemPrompt(snapshot, dealerName),
-          messages: next,
-        },
-      });
-      if (error) throw error;
-      const reply = data?.content?.[0]?.text || data?.completion || 'No response from AI.';
+      const reply = await callClaudeChat(next, buildSystemPrompt(snapshot, dealerName), 'sales_manager');
       setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(prev => [

@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, Car, DollarSign, Layers, Clock, Calendar, MessageCircle, ArrowRightLeft, FileText, UserPlus, CheckCircle2 } from 'lucide-react';
 import { liveChannel } from "../lib/liveChannel";
+import { malaysiaDayBounds } from '../utils/myDay';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // Stage names, labels and colours come from the ONE stage list the leads board
@@ -137,7 +138,8 @@ async function fetchPnl(dealerId) {
 
 async function fetchOverview(dealerId) {
   const now = Date.now();
-  const [l, cl, apt, sm, acts] = await Promise.all([
+  const today = malaysiaDayBounds();
+  const [l, cl, apt, sm, acts, priceReq] = await Promise.all([
     supabase.from('leads')
       .select('id, stage, lead_source, created_at, updated_at, buyer_name, salesman_id')
       .eq('dealer_id', dealerId)
@@ -149,7 +151,9 @@ async function fetchOverview(dealerId) {
     supabase.from('appointments')
       .select('id, appointment_date')
       .eq('dealer_id', dealerId)
-      .gte('appointment_date', new Date().toISOString().slice(0, 10)),
+      .gte('appointment_date', today.start)
+      .lt('appointment_date', today.end)
+      .not('status', 'in', '(cancelled,no_show)'),
     supabase.from('profiles')
       .select('id, full_name, slug, role')
       .or(`dealer_id.eq.${dealerId},id.eq.${dealerId}`)
@@ -159,6 +163,10 @@ async function fetchOverview(dealerId) {
       .eq('dealer_id', dealerId)
       .order('created_at', { ascending: false })
       .limit(50),
+    supabase.from('deal_price_approvals')
+      .select('id', { count: 'exact', head: true })
+      .eq('dealer_id', dealerId)
+      .eq('status', 'pending'),
   ]);
   // A failed leads read must not overwrite a good cached overview with zeros —
   // throwing keeps the last snapshot on screen (useCachedFetch keeps old data).
@@ -244,12 +252,15 @@ async function fetchOverview(dealerId) {
     stageCounts, sourceCounts, teamRows, avgDays, stale,
     coldLeadsCount, coldOldestDays,
     aptsToday: aptsToday.length, recentActivities,
+    // Prices waiting for the dealer's OK (batch 6a). A failed read (table not on the
+    // database yet) counts as none.
+    priceWaiting: priceReq?.error ? 0 : (priceReq?.count || 0),
   };
 }
 
 const EMPTY_SNAPSHOT = {
   activeLeads: 0, activeListings: 0, stageCounts: {}, sourceCounts: {},
-  teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0,
+  teamRows: [], avgDays: 0, stale: 0, coldLeadsCount: 0, coldOldestDays: 0, priceWaiting: 0,
   aptsToday: 0, recentActivities: [],
 };
 
@@ -355,6 +366,11 @@ export default function OverviewTab({ dealerId, onNavigate }) {
       {/* ── Needs Attention strip ── */}
       {(() => {
         const alerts = [];
+        if (snapshot.priceWaiting > 0) alerts.push({
+          key: 'price', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: DollarSign,
+          label: `${snapshot.priceWaiting} price${snapshot.priceWaiting === 1 ? '' : 's'} waiting for your OK`,
+          detail: 'a discount over your limit · open the lead to decide', go: 'crm',
+        });
         if (snapshot.coldLeadsCount > 0) alerts.push({
           key: 'cold', tone: '#DC2626', bg: '#FEF2F2', border: '#FECACA', Icon: MessageCircle,
           label: `${snapshot.coldLeadsCount} cold lead${snapshot.coldLeadsCount === 1 ? '' : 's'}`,

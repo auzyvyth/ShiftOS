@@ -1,5 +1,6 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
+import { isOpenLead } from '../../utils/carBuyers';
 import {
   getInitials, avatarGradient, getLeadAgeDays, ageTextColor, isLeadStale, canonicalStage,
 } from '../../lib/leadsHelpers';
@@ -20,6 +21,8 @@ export default function LeadGridCard({ lead, onOpen }) {
   const needsPing  = isLeadStale(lead);
   // SF-2b: a lead at deposit_taken has reserved its linked car. Surface who.
   const isReserved = canonicalStage(lead.stage) === 'deposit_taken' && !!car;
+  // SOLD-1: another seller sold this lead's car; the drawer offers another car.
+  const carSoldToOther = car?.status === 'sold' && isOpenLead(lead);
   const created    = lead.created_at
     ? new Date(lead.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: '2-digit' })
     : null;
@@ -103,6 +106,17 @@ export default function LeadGridCard({ lead, onOpen }) {
           borderRadius: 6, padding: '2px 7px', marginBottom: 8,
         }}>
           Reserved{ownerFirst ? ` by ${ownerFirst}` : ''}
+        </div>
+      )}
+
+      {carSoldToOther && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          fontSize: 10, fontWeight: 700, color: '#b91c1c',
+          background: '#fef2f2', border: '1px solid #fecaca',
+          borderRadius: 6, padding: '2px 7px', marginBottom: 8,
+        }}>
+          Car sold by another seller
         </div>
       )}
 

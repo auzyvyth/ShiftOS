@@ -2676,6 +2676,7 @@
     "others_one": "1 other buyer was looking at this car. They stay in your pipeline, marked so you can offer them another car.",
     "others_other": "{{count}} other buyers were looking at this car. They stay in your pipeline, marked so you can offer them another car.",
     "carSoldLine": "Car sold to another buyer. Offer them another car.",
+    "carSoldByOther": "This car was sold by another seller. Offer them another car.",
     "offerAnother": "Offer another car",
     "markLost": "Mark lost",
     "stage": {

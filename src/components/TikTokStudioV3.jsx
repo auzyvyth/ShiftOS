@@ -566,26 +566,7 @@ async function getAIUsage(dealerId) {
     .maybeSingle();
   return data?.count || 0;
 }
-async function incrementAIUsage(dealerId) {
-  const today = new Date().toISOString().slice(0, 10);
-  const { data } = await supabase
-    .from("ai_usage")
-    .select("id,count")
-    .eq("dealer_id", dealerId)
-    .eq("date", today)
-    .maybeSingle();
-  if (data) {
-    await supabase
-      .from("ai_usage")
-      .update({ count: data.count + 1 })
-      .eq("id", data.id);
-    return data.count + 1;
-  }
-  await supabase
-    .from("ai_usage")
-    .insert({ dealer_id: dealerId, date: today, count: 1 });
-  return 1;
-}
+// The server counts every AI request (record_ai_request); the browser only reads the count.
 
 // ─── AI: canvas edit command ──────────────────────────────────────────────────
 async function applyAICommand(command, elements, theme, selectedElementId) {
@@ -2820,8 +2801,7 @@ export default function TikTokStudioV3({ listing, onClose, backdrops = false }) 
     setGenError(null);
     try {
       if (userId) {
-        const newCount = await incrementAIUsage(userId);
-        setAiUsage((u) => ({ ...u, count: newCount }));
+        setAiUsage((u) => ({ ...u, count: (u.count || 0) + 1 }));
       }
       const result = await applyAICommand(
         cmd,

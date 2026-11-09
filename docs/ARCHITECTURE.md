@@ -114,8 +114,11 @@ flowchart TD
   W & E & BK & CH & FM --> R --> L
   MAN --> L
 
+  L -->|dealer-side win at a price<br/>close_deal_at_price| G{{"over the dealer's<br/>discount limit?"}}
+  G -->|yes| PA[("deal_price_approvals<br/>pending → dealer / manager<br/>decide_deal_price")]
+  PA -->|approved| L
   L -->|seller moves stage to won,<br/>from any screen| T["DB trigger<br/>auto_create_customer_on_won"]
-  T --> S1["car_listings.status = sold<br/>+ sold_at + assigned_to"]
+  T --> S1["car_listings.status = sold<br/>+ sold_at + sold_price = agreed_price<br/>+ assigned_to"]
   T --> S2["customers row"]
   T --> S3["post_sale_tasks<br/>8-step handover checklist"]
   S3 -->|insurance / road tax step ticked| X["trg_sync_customer_expiry<br/>→ customers expiry dates"]
@@ -125,6 +128,10 @@ flowchart TD
 ```
 
 Undoing a sale: only `undo_car_sale(listing_id)`; `trg_guard_sold_car` blocks anything else.
+
+The price a deal closed at is `leads.agreed_price` (the asking price if nobody typed one). On a dealer
+car, `trg_ab_lead_win_price` refuses a win over the dealer's discount limit unless the dealer or a
+manager closes it or approved it; solo sellers and new-car model cards have no limit.
 
 ---
 
@@ -224,6 +231,7 @@ change them; each is applied on its own.
 |---|---|
 | Why didn't a lead reach a rep? | `resolve_lead_salesman` (DB) |
 | Why isn't a sale counted? | `auto_create_customer_on_won` trigger on `leads` |
+| Why is a win waiting / refused for price? | `close_deal_at_price`, `trg_ab_lead_win_price`, `deal_price_approvals`, limit in `dealer_cost_settings.discount_limit_*` |
 | Why no push? | `push_subscriptions`, `push_to_users`, `send-push` |
 | Who is live right now, by name? | `get_live_sellers()` (superadmin, reads `seller_live_state`), `src/hooks/useLiveSellers.js` (console Home) |
 | Who has gone Live, how often, how long? | `live_sessions` (one row per live, written only by `set_live_listing`; a live with no heartbeat for 10 min is closed as `timeout`), read by `get_live_history(days)` (superadmin) |

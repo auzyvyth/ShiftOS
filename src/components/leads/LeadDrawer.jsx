@@ -19,6 +19,10 @@ import {
   getInitials, avatarGradient,
 } from '../../lib/leadsHelpers';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { offerUndoSale } from '../../utils/undoSale';
+import { isOpenLead, offerAnotherCarMessage, CAR_SOLD_REASON } from '../../utils/carBuyers';
+import { SITE_URL } from '../../config/site';
+import { localInputToIso } from '../../utils/myDay';
 
 // ─── Shared input style ────────────────────────────────────────────────────────
 const inp = {
@@ -159,6 +163,12 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [selectedCloser, setSelectedCloser] = useState('');
   const [closeSaving, setCloseSaving] = useState(false);
+  // Batch 6a: the agreed price, and a discount over the dealer's limit waits for
+  // the dealer or a manager (close_deal_at_price / decide_deal_price, migration 20261109g).
+  const [agreedPrice, setAgreedPrice] = useState('');
+  const [priceRequest, setPriceRequest] = useState(null);
+  const [canApprove, setCanApprove] = useState(false);
+  const [deciding, setDeciding] = useState(false);
   const [carSearch, setCarSearch]     = useState('');
   const [carResults, setCarResults]   = useState([]);
   const [carSearching, setCarSearching] = useState(false);
@@ -320,7 +330,8 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   }, [lead?.id, lead?.dealer_id]);
 
   const handleAddAppt = async () => {
-    if (!apptForm.appointment_date) return;
+    const apptAt = localInputToIso(apptForm.appointment_date);
+    if (!apptAt) return;
     setApptSaving(true);
     const { data, error } = await supabase.from('appointments').insert({
       dealer_id: lead.dealer_id,
@@ -328,7 +339,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       car_listing_id: lead.car_listing?.id || null,
       buyer_name: lead.buyer_name || null,
       buyer_phone: lead.phone || null,
-      appointment_date: apptForm.appointment_date,
+      appointment_date: apptAt,
       booking_type: apptForm.booking_type || 'viewing',
       notes: apptForm.notes || null,
       status: 'scheduled',
@@ -618,6 +629,21 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       });
   }, [lead?.id]);
 
+  // A price waiting for approval on this lead (read fails quietly until the table exists).
+  const loadPriceRequest = useCallback(async () => {
+    if (!lead?.id) return;
+    const { data } = await supabase.from('deal_price_approvals')
+      .select('id, asking_price, agreed_price, created_at, requester:requested_by(full_name)')
+      .eq('lead_id', lead.id).eq('status', 'pending').maybeSingle();
+    setPriceRequest(data || null);
+  }, [lead?.id]);
+  useEffect(() => { loadPriceRequest(); }, [loadPriceRequest]);
+  useEffect(() => {
+    if (!lead?.dealer_id) return;
+    supabase.rpc('can_approve_dealer_discount', { p_dealer: lead.dealer_id })
+      .then(({ data }) => setCanApprove(data === true));
+  }, [lead?.dealer_id]);
+
   if (!lead) return null;
 
   const days     = getLeadAgeDays(lead.created_at);
@@ -668,6 +694,13 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   // ── Stage change ──────────────────────────────────────────────────────────────
   function handleStageChange(newStage) {
     if (newStage === lead.stage) return;
+    // A closed deal has a customer, handover steps and a sold car. Moving the lead
+    // backward would orphan them, so the only way out is Undo sale (undo_car_sale).
+    if (lead.stage === 'won' || lead.stage === 'closed_won') {
+      if (lead.car_listing_id) offerUndoSale(lead.car_listing_id, () => { window.location.reload(); });
+      else toast.error('This deal is closed. It cannot be moved back.');
+      return;
+    }
     if (newStage === 'lost') {
       setPendingStage('lost');
       setShowLossPanel(true);
@@ -675,6 +708,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     }
     if (newStage === 'won') {
       setSelectedCloser(lead.salesman_id || lead.assigned_to || '');
+      setAgreedPrice(lead.car_listing?.selling_price ? String(lead.car_listing.selling_price) : '');
       setShowCloseModal(true);
       return;
     }
@@ -695,43 +729,66 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     setCloseSaving(true);
     const oldStage = lead.stage;
     try {
-      const updated = await onUpdate(lead.id, { stage: 'won' });
-      setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      // The closer goes on the LEAD: the won trigger (auto_create_customer_on_won) marks the
+      // car sold and credits COALESCE(car.assigned_to, lead.salesman_id), and
+      // fn_sync_stock_unit_on_sale moves the stock unit. This used to write the car and stock
+      // here as well, after the trigger, which let a second "Won" on a sold car re-stamp
+      // sold_at and hand the first salesman's credit to someone else.
+      const price = Number(agreedPrice) || null;
+      const { data: res, error: rpcErr } = await supabase.rpc('close_deal_at_price', {
+        p_lead: lead.id, p_agreed: price, p_closer: selectedCloser || null,
+      });
+      if (rpcErr && rpcErr.code !== 'PGRST202') throw rpcErr;
+      if (res?.status === 'pending') {
+        setShowCloseModal(false);
+        loadPriceRequest();
+        toast.success('Sent to the dealer to approve the price. The deal closes once they say yes.');
+        return;
+      }
+      let updated;
+      if (rpcErr) {
+        // close_deal_at_price is not on the database yet (queued migration): close the old way.
+        const patch = { stage: 'won', ...(selectedCloser ? { salesman_id: selectedCloser } : {}) };
+        updated = await onUpdate(lead.id, patch);
+        setLead(p => ({ ...p, ...patch, ...(updated || {}) }));
+      } else {
+        updated = await onUpdate(lead.id, {}); // re-read the row the function wrote
+        setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      }
       addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'won' }).catch(() => {});
 
-      if (lead.car_listing_id) {
-        const soldAt = new Date().toISOString();
-        await supabase
-          .from('car_listings')
-          .update({
-            status: 'sold',
-            sold_at: soldAt,
-            assigned_to: selectedCloser || null,
-            commission_status: 'pending',
-          })
-          .eq('id', lead.car_listing_id);
-
-        // Sync stock_units so StockTab stays consistent — only update if not already sold
-        await supabase
-          .from('stock_units')
-          .update({ status: 'sold', sold_date: soldAt.slice(0, 10) })
-          .eq('listing_id', lead.car_listing_id)
-          .neq('status', 'sold');
-
-        await supabase
-          .from('leads')
-          .update({ stage: 'lost', loss_reason: 'Sold to another buyer' })
-          .eq('car_listing_id', lead.car_listing_id)
-          .neq('id', lead.id)
-          .not('stage', 'in', '("won","closed_won","lost","closed_lost")');
-      }
+      // The car's OTHER open leads keep their stage (owner, SOLD-1): each shows
+      // "sold by another seller" with Offer another car / Mark lost, here and in
+      // the linked salesman panel. They used to be marked lost here without a word.
 
       setShowCloseModal(false);
       toast.success('Sale closed — inventory updated');
-    } catch {
-      toast.error('Error saving — please try again');
+    } catch (e) {
+      const msg = String(e?.message || '');
+      if (msg.includes('car_already_won')) toast.error('This car is already sold to another buyer. Undo that sale first.');
+      else if (msg.includes('bad_price')) toast.error('Enter the price agreed with the buyer.');
+      else if (msg.includes('discount_needs_approval')) toast.error('This price is over the discount limit and needs the dealer to approve it.');
+      else toast.error('Error saving — please try again');
     } finally {
       setCloseSaving(false);
+    }
+  }
+
+  async function decidePrice(approve) {
+    if (!priceRequest) return;
+    setDeciding(true);
+    const { data, error } = await supabase.rpc('decide_deal_price', { p_approval: priceRequest.id, p_approve: approve });
+    setDeciding(false);
+    if (error) { toast.error('Could not save your answer. Try again.'); return; }
+    setPriceRequest(null);
+    if (data?.status === 'approved') {
+      const updated = await onUpdate(lead.id, {}).catch(() => null);
+      setLead(p => ({ ...p, stage: 'won', ...(updated || {}) }));
+      toast.success('Price approved. The deal is closed.');
+    } else if (data?.status === 'expired') {
+      toast('This lead was already closed, so the request was dropped.');
+    } else {
+      toast.success('Not approved. The salesman has been told.');
     }
   }
 
@@ -765,7 +822,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   async function handleAssign(uid) {
     setAssignedTo(uid);
     try {
-      const updated = await onUpdate(lead.id, { assigned_to: uid || null });
+      const updated = await onUpdate(lead.id, { assigned_to: uid || null, salesman_id: uid || null });
       if (updated) setLead(updated);
       const name = teamMembers.find(m => m.id === uid)?.full_name || 'nobody';
       await addActivity({ activity_type: 'assigned', note: `Assigned to ${name}` });
@@ -844,7 +901,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
       .from('car_listings')
       .select('id, brand, model, year, selling_price, images, city, state, slug')
       .eq('dealer_id', lead.dealer_id)
-      .neq('status', 'sold')
+      .in('status', ['available', 'reserved'])
       .or(`brand.ilike.%${s}%,model.ilike.%${s}%`)
       .limit(8);
     setCarResults(data || []);
@@ -852,18 +909,48 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
   }
 
   async function linkCar(carId) {
+    const before = lead;
+    const offering = before?.car_listing?.status === 'sold';
     try {
+      const picked = carResults.find(c => c.id === carId) || null;
       const updated = await onUpdate(lead.id, { car_listing_id: carId });
       if (updated) setLead(updated);
       else {
         // Fetch the car to display it
-        const { data } = await supabase.from('car_listings').select('id,brand,model,year,selling_price,images,city,state,slug').eq('id', carId).maybeSingle();
+        const { data } = await supabase.from('car_listings').select('id,brand,model,year,selling_price,images,city,state,slug,status').eq('id', carId).maybeSingle();
         setLead(p => ({ ...p, car_listing_id: carId, car_listing: data }));
       }
       setShowCarSearch(false);
       setCarSearch('');
-      toast.success('Car linked');
+      // Replacing a car another seller sold: offer the WhatsApp draft. A person sends it.
+      const digits = String(before?.phone || '').replace(/\D/g, '');
+      if (offering && picked && digits.length >= 9) {
+        const sold = before.car_listing;
+        const msg = offerAnotherCarMessage({
+          buyer: before.buyer_name,
+          seller: null,
+          soldCar: [sold.year, sold.brand, sold.model].filter(Boolean).join(' '),
+          newCar: [picked.year, picked.brand, picked.model].filter(Boolean).join(' '),
+          price: picked.selling_price,
+          link: picked.slug ? `${SITE_URL}/showroom/${picked.slug}` : null,
+          lang: 'ms',
+        });
+        toast.success('Car linked', {
+          duration: 12000,
+          action: { label: 'Send on WhatsApp', onClick: () => window.open(`https://wa.me/${digits}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener') },
+        });
+      } else toast.success('Car linked');
     } catch { toast.error('Error linking car'); }
+  }
+
+  async function markCarSoldLost() {
+    const oldStage = lead.stage;
+    try {
+      const updated = await onUpdate(lead.id, { stage: 'lost', loss_reason: CAR_SOLD_REASON });
+      setLead(p => ({ ...p, stage: 'lost', loss_reason: CAR_SOLD_REASON, ...(updated || {}) }));
+      addActivity({ activity_type: 'stage_changed', from_stage: oldStage, to_stage: 'lost', note: 'Lost: car sold by another seller' }).catch(() => {});
+      toast.success('Lead marked as lost');
+    } catch { toast.error('Error saving'); }
   }
 
   // ── Manual activity log ──────────────────────────────────────────────────────
@@ -913,6 +1000,26 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
     section: { background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', marginBottom: 12 },
     divider: { height: 1, background: '#f1f3f5', margin: '16px 0' },
   };
+
+  // One car search, used to link a first car and to offer another after a sale.
+  const carSearchBox = (
+                    <div>
+                      <div style={{ position: 'relative', marginBottom: 6 }}>
+                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
+                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 0) searchCars(e.target.value); }}
+                          placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
+                      </div>
+                      {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
+                      {carResults.map(c => (
+                        <button key={c.id} onClick={() => linkCar(c.id)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
+                          <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
+                          {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
+                        </button>
+                      ))}
+                    </div>
+  );
+
 
   return (
     <>
@@ -1079,6 +1186,27 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
           <div style={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 20px 24px', background: '#f9fafb' }}>
 
             {/* Loss reason panel */}
+            {priceRequest && (
+              <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#111827', margin: '0 0 4px' }}>Price waiting for approval</p>
+                <p style={{ fontSize: 12, color: '#374151', margin: '0 0 10px' }}>
+                  RM {Number(priceRequest.agreed_price).toLocaleString()} agreed, asking RM {Number(priceRequest.asking_price).toLocaleString()}
+                  {' '}(RM {(Number(priceRequest.asking_price) - Number(priceRequest.agreed_price)).toLocaleString()} off)
+                  {priceRequest.requester?.full_name ? `. Asked by ${priceRequest.requester.full_name}.` : '.'}
+                </p>
+                {canApprove ? (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => decidePrice(false)} disabled={deciding}
+                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#f3f4f6', border: '1px solid #e5e7eb', color: '#374151', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Not approved</button>
+                    <button onClick={() => decidePrice(true)} disabled={deciding}
+                      style={{ flex: 1, padding: '8px', borderRadius: 6, background: '#dc2626', border: 'none', color: 'white', fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: deciding ? 0.6 : 1 }}>Approve and close the deal</button>
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 11, color: '#6b7280', margin: 0 }}>The dealer or a manager decides. The deal closes when they approve.</p>
+                )}
+              </div>
+            )}
+
             {showCloseModal && (
               <div style={{ background: '#fff', border: '1px solid #a7f3d0', borderRadius: 10, padding: 16, marginBottom: 12 }}>
                 <p style={{ fontSize: 13, fontWeight: 700, color: '#059669', margin: '0 0 4px' }}>Who closed this sale?</p>
@@ -1095,6 +1223,20 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                     <option key={m.id} value={m.id}>{m.full_name}</option>
                   ))}
                 </select>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', margin: '0 0 4px' }}>Agreed price (RM)</label>
+                <input
+                  type="number" inputMode="numeric" min="1"
+                  value={agreedPrice}
+                  onChange={e => setAgreedPrice(e.target.value)}
+                  style={{ width: '100%', boxSizing: 'border-box', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '9px 13px', color: '#111827', fontSize: 13, outline: 'none', marginBottom: 4 }}
+                />
+                {(() => {
+                  const ask = Number(lead.car_listing?.selling_price) || 0;
+                  const off = ask - (Number(agreedPrice) || 0);
+                  return ask > 0 && Number(agreedPrice) > 0 && off > 0
+                    ? <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 12px' }}>RM {off.toLocaleString()} off the asking price of RM {ask.toLocaleString()}. Over the dealer's limit, it waits for approval.</p>
+                    : <div style={{ height: 8 }} />;
+                })()}
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     onClick={() => setShowCloseModal(false)}
@@ -1171,6 +1313,16 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
             {/* ── Car of Interest ── */}
             <div style={w.section}>
               <p style={w.label}>Car of Interest</p>
+              {car?.status === 'sold' && isOpenLead(lead) && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                  <p style={{ fontSize: 13, color: '#111827', margin: '0 0 8px', lineHeight: 1.45 }}>This car was sold by another seller. Offer them another car.</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button onClick={() => setShowCarSearch(true)} style={{ fontSize: 12, fontWeight: 600, color: '#fff', background: '#dc2626', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>Offer another car</button>
+                    <button onClick={markCarSoldLost} style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', background: 'transparent', border: 'none', padding: '6px 8px', cursor: 'pointer' }}>Mark lost</button>
+                  </div>
+                </div>
+              )}
+              {car && showCarSearch && carSearchBox}
               {car ? (
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   {carThumb && <img src={carThumb} alt={carLabel} loading="lazy" style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />}
@@ -1193,21 +1345,7 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       + Link a car
                     </button>
                   ) : (
-                    <div>
-                      <div style={{ position: 'relative', marginBottom: 6 }}>
-                        <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
-                        <input autoFocus value={carSearch} onChange={e => { setCarSearch(e.target.value); if (e.target.value.length > 0) searchCars(e.target.value); }}
-                          placeholder="Search brand or model…" style={{ ...w.inp, paddingLeft: 32 }} className="ld-inp" />
-                      </div>
-                      {carSearching && <p style={{ fontSize: 11, color: '#9ca3af' }}>Searching…</p>}
-                      {carResults.map(c => (
-                        <button key={c.id} onClick={() => linkCar(c.id)}
-                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', marginBottom: 4, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', textAlign: 'left' }}>
-                          <span style={{ fontSize: 12, color: '#111827' }}>{c.year} {c.brand} {c.model}</span>
-                          {c.selling_price && <span style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>RM {c.selling_price.toLocaleString()}</span>}
-                        </button>
-                      ))}
-                    </div>
+                    carSearchBox
                   )}
                 </>
               )}

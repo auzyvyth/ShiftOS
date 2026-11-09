@@ -67,7 +67,7 @@ import LegalModal from "../components/LegalModal";
 import { useCTAContext, buildWaUrl } from "../hooks/useCTAContext";
 import { captureRef, getRef } from "../utils/refTracking";
 import { loadBuyerDetails, saveBuyerDetails } from "../utils/consent";
-import { isSubdomain, getStorefrontUrl } from "../hooks/useTenant";
+import useTenant, { isSubdomain, getStorefrontUrl } from "../hooks/useTenant";
 import { geranStatusLabel } from "../utils/trustDocs";
 import { trackEvent, getSlugFromURL } from "../utils/analytics";
 import { apiUrl } from "../utils/apiUrl";
@@ -1044,6 +1044,10 @@ function SellerStrip({ cars, title, th }) {
 /* ─── main ─── */
 export default function CarDetailPage() {
   const isXdrive = !isSubdomain();
+  // On a dealer's own site only THAT dealer's cars may open. The route took any
+  // slug, so a competitor's car (or any seller's) showed inside the dealership's
+  // branded, dark storefront as if it were theirs.
+  const { tenant: pageTenant, loading: pageTenantLoading } = useTenant();
   useMarketplaceTracking(isXdrive);
 
   /* ── Light-theme colour tokens (drevo.my only) ── */
@@ -1960,7 +1964,12 @@ export default function CarDetailPage() {
   }
 
   /* ── early returns ── */
-  if (loading) return <Skeleton preview={getCarPreview(slug)} />;
+  const foreignCar = !isXdrive && !!car && !!pageTenant?.id && car.dealer_id !== pageTenant.id;
+  useEffect(() => {
+    // The car belongs to someone else: send the buyer to the main marketplace page for it.
+    if (foreignCar) window.location.replace(`${SITE_URL}/showroom/${car.slug || car.id}`);
+  }, [foreignCar]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (loading || foreignCar || (!isXdrive && pageTenantLoading)) return <Skeleton preview={foreignCar ? null : getCarPreview(slug)} />;
   if (loadError || notFound) {
     const browseTo = isSubdomain() ? "/cars" : "/showroom";
     if (loadError)

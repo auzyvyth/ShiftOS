@@ -905,6 +905,10 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
   // exempt rather than forced into a "reason unavailable" the buyer would read
   // as a red flag.
   const isNewCar = form.condition === "new";
+  // Editing a car on the dealer side: its cost is on the stock record, which a
+  // linked salesman cannot read, so "Your cost" may be blank and is not required.
+  // Solo sellers (salesman, no dealer) still have to give theirs.
+  const costOptional = !!listing && !(profile?.role === "salesman" && !profile?.dealer_id);
   const geranSatisfied = isNewCar || !!docInSlot("registration_card") || !!form.geranReason;
   // 5 photos for a new listing; an edit of an older car keeps its own count.
   const minPhotos = minPhotosFor(listing ? (Array.isArray(listing.images) ? listing.images.filter(Boolean).length : 0) : null);
@@ -1079,12 +1083,19 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     if (!listing?.id || !dealerId) return;
     supabase
       .from("stock_units")
-      .select("encumbrance_status")
+      .select("encumbrance_status, purchase_price")
       .eq("listing_id", listing.id)
       .eq("dealer_id", dealerId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data) setForm((f) => ({ ...f, encumbranceStatus: data.encumbrance_status || "unknown" }));
+        // A dealer car's cost lives on the stock record, not the listing
+        // (20261109f), so an edit fills "Your cost" from here. Only the dealer,
+        // accountant and manager can read it; a salesman gets no row.
+        if (data) setForm((f) => ({
+          ...f,
+          encumbranceStatus: data.encumbrance_status || "unknown",
+          basePrice: f.basePrice || (Number(data.purchase_price) > 0 ? String(data.purchase_price) : ""),
+        }));
       });
   }, [listing?.id, dealerId]);
 
@@ -1732,7 +1743,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     if (step === 1) return photosOk;
     if (step === 2) return form.brand && form.model && form.year && form.mileage && form.colour && form.condition;
     if (step === 3) return form.bodyType && form.fuelType;
-    if (step === 4) return form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice;
+    if (step === 4) return form.state && form.city && (form.basePrice || isNewCar || costOptional) && form.sellingPrice;
     if (step === 5) return listing ? true : geranSatisfied;
     return true;
   };
@@ -1751,7 +1762,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
     if (s === 3) return intakeDone ? [] : [[!form.bodyType, "Body type"], [!form.fuelType, "Fuel type"]].filter(([m]) => m).map(([, l]) => l);
     if (s === 4) return [
       [!form.state, "State"], [!form.city, "City"],
-      ...(intakeDone ? [] : [[!form.basePrice && !isNewCar, "Base price"], [!form.sellingPrice, "Selling price"]]),
+      ...(intakeDone ? [] : [[!form.basePrice && !isNewCar && !costOptional, "Base price"], [!form.sellingPrice, "Selling price"]]),
     ].filter(([m]) => m).map(([, l]) => l);
     if (s === 5)
       return listing || geranSatisfied
@@ -2137,7 +2148,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
       // so only require what this form still shows.
       case 2: return intakeDone ? !!form.condition : !!(form.brand && form.model && form.year && form.mileage && form.colour && form.condition);
       case 3: return intakeDone ? true : !!(form.bodyType && form.fuelType);
-      case 4: return !!(form.state && form.city) && (intakeDone ? true : !!((form.basePrice || isNewCar) && form.sellingPrice));
+      case 4: return !!(form.state && form.city) && (intakeDone ? true : !!((form.basePrice || isNewCar || costOptional) && form.sellingPrice));
       case 5: return listing ? true : geranSatisfied;
       case 6: return true;
       default: return false;
@@ -3190,7 +3201,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <p className="text-xs text-gray-500">What buyers see on the listing.</p>
         </div>
       ) },
-    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: !isNewCar, answered: !!form.basePrice, focus: "always",
+    { key: "cost", title: "What did it cost you?", skip: !!intakeDone, required: !isNewCar && !costOptional, answered: !!form.basePrice, focus: "always",
       render: ({ inputRef }) => (
         <div className="space-y-3">
           <BigNumber inputRef={inputRef} value={form.basePrice} onChange={(v) => set("basePrice", v)} prefix="RM" placeholder="e.g. 38,000" />
@@ -4258,7 +4269,7 @@ function UsedCarForm({ onCreate, listing, onUpdate, defaultValues, onBack, intak
           <button
             type="button"
             onClick={() => handleSubmit()}
-            disabled={uploading || (capError && !keepPrivate) || !(photosOk && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar) && form.sellingPrice)}
+            disabled={uploading || (capError && !keepPrivate) || !(photosOk && form.brand && form.model && form.year && form.state && form.city && (form.basePrice || isNewCar || costOptional) && form.sellingPrice)}
             className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {uploading ? (

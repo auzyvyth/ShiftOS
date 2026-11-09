@@ -2,12 +2,14 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { X, MessageCircle, Save, FileText, PlusCircle, Trash2, Plus, Bell, MapPin, Calendar, Phone, User } from "lucide-react";
 import { supabase } from "../supabaseClient";
+import { callClaudeChat } from "../lib/callClaude";
 import { usePersistentState } from "../hooks/usePersistentState";
 import LeadsPage from "./LeadsPage";
 import OutreachHub from "../components/crm/OutreachHub";
 import { liveChannel } from "../lib/liveChannel";
 import PhoneInput from '../components/ui/PhoneInput';
 import { isValidMyPhone, MY_PHONE_ERROR } from '../lib/phone';
+import { localInputToIso } from "../utils/myDay";
 
 // ─── Shared style tokens (mirror DashboardPage) ────────────────────────────────
 const T = {
@@ -292,22 +294,7 @@ Never reveal the cost basis or GP room to the buyer. That's internal only.`;
     setCoachMessages(newHistory);
     setCoachLoading(true);
     try {
-      const AI_PROXY = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/ai/messages` : '/api/ai-messages';
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(AI_PROXY, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
-          feature: 'crm_assist',
-          system: buildCoachPrompt(selected, stockData, dealerProfile),
-          messages: newHistory,
-        }),
-      });
-      const data = await res.json();
-      const reply = data?.content?.[0]?.text ?? 'Could not load advice.';
+      const reply = await callClaudeChat(newHistory, buildCoachPrompt(selected, stockData, dealerProfile), 'crm_assist');
       setCoachMessages([...newHistory, { role: 'assistant', content: reply }]);
     } catch {
       setCoachMessages([...newHistory, { role: 'assistant', content: 'Connection error.' }]);
@@ -1452,13 +1439,14 @@ function BookingsTab({ userId, listings, salesmen }) {
 
   const handleAdd = async () => {
     if (addForm.buyer_phone && !isValidMyPhone(addForm.buyer_phone)) { toast.error(MY_PHONE_ERROR); return; }
+    if (!localInputToIso(addForm.scheduled_at)) { toast.error("Pick the date and time of the booking"); return; }
     setAddSaving(true);
     try {
       const { error } = await supabase.from("appointments").insert({
         dealer_id: userId,
         salesman_id: addForm.salesman_id || null,
         car_listing_id: addForm.listing_id || null,
-        appointment_date: addForm.scheduled_at,
+        appointment_date: localInputToIso(addForm.scheduled_at),
         buyer_name: addForm.buyer_name,
         buyer_phone: addForm.buyer_phone,
         notes: addForm.notes,
