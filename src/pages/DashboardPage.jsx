@@ -211,6 +211,11 @@ const PANEL_CACHE_KEY = "dash";
 // Which sidebar group owns each tab. Module scope on purpose: this was three
 // identical copies in three scopes, so a new tab had to be added to all three
 // or its group quietly stopped opening.
+// Tabs whose content opens with its own heading (or a sub-tab bar naming it):
+// the dashboard's title block is not drawn above them. Analytics > Revenue
+// (RevOpsPage) and > Listings (AnalyticsTab) are handled by sub-tab.
+const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "add", "market", "hp", "storefront", "ai_manager"]);
+
 const TAB_TO_GROUP = {
   overview: "g_reports", analytics: "g_reports",
   crm: "g_sales",       hp: "g_sales",
@@ -10493,6 +10498,10 @@ export default function DashboardPage() {
         )}
 
         <div className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {/* The page title is said ONCE. Tabs that draw their own heading (or a
+              sub-tab bar that names the page) skip this one; it used to sit on top
+              of them, e.g. "Revenue" above "Revenue Operations" (owner, 2026-11-09). */}
+          {TITLES[activeTab] && !(OWN_HEADING_TABS.has(activeTab) || (activeTab === "analytics" && analyticsSub !== "performance")) && (
           <div className="hidden sm:block mb-3 sm:mb-4">
             <h1 style={{ fontSize: 18, fontWeight: 700, color: color.ink, letterSpacing: '-0.01em', margin: 0 }}>
               {TITLES[activeTab]?.title}
@@ -10502,6 +10511,7 @@ export default function DashboardPage() {
             </p>
             <div className="mt-3 h-px" style={{ background: '#EAECF0' }} />
           </div>
+          )}
 
           {/* Push is REQUIRED on the dealer account: no "Not now", and it sits
               above every tab until this device is subscribed. Both dealers had

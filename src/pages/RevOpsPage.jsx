@@ -373,27 +373,16 @@ export default function RevOpsPage({ userId }) {
             lineHeight: 1,
           }}
         >
-          Revenue Operations
+          Revenue
         </h1>
         <p style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-          Your dealership at a glance
+          Sales, gross and add-on revenue
         </p>
       </div>
 
       {/* ── Section 1: Revenue Overview ──────────────────────────────────── */}
+      {/* No "Revenue Overview" label: the page heading already says Revenue. */}
       <div>
-        <p
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#4b5563",
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            marginBottom: 10,
-          }}
-        >
-          Revenue Overview
-        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard
             label="Total Revenue This Month"
