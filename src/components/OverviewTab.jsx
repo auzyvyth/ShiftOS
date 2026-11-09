@@ -170,9 +170,11 @@ async function fetchOverview(dealerId) {
       .order('created_at', { ascending: false })
       .limit(50),
     supabase.from('deal_price_approvals')
-      .select('id', { count: 'exact', head: true })
+      .select('lead_id, created_at', { count: 'exact' })
       .eq('dealer_id', dealerId)
-      .eq('status', 'pending'),
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true })
+      .limit(1),
     // Each person's OWN last action (leads they worked, chat replies they sent,
     // logged actions). The same source the Team tab uses.
     supabase.rpc('get_team_activity', { p_dealer_id: dealerId }),
@@ -267,6 +269,8 @@ async function fetchOverview(dealerId) {
     // Prices waiting for the dealer's OK (batch 6a). A failed read (table not on the
     // database yet) counts as none.
     priceWaiting: priceReq?.error ? 0 : (priceReq?.count || 0),
+    // The oldest one: the alert opens that lead, not the whole list.
+    priceLeadId: priceReq?.error ? null : (priceReq?.data?.[0]?.lead_id || null),
   };
 }
 
@@ -382,7 +386,8 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         if (snapshot.priceWaiting > 0) alerts.push({
           key: 'price', urgent: true, Icon: DollarSign,
           label: `${snapshot.priceWaiting} price${snapshot.priceWaiting === 1 ? '' : 's'} waiting for your OK`,
-          detail: 'a discount over your limit · open the lead to decide', go: 'crm',
+          detail: snapshot.priceWaiting > 1 ? 'a discount over your limit · opens the oldest' : 'a discount over your limit · tap to decide',
+          go: 'crm', query: snapshot.priceLeadId ? { lead: snapshot.priceLeadId } : undefined,
         });
         if (snapshot.coldLeadsCount > 0) alerts.push({
           key: 'cold', urgent: true, Icon: MessageCircle,
@@ -397,7 +402,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         if (snapshot.aptsToday > 0) alerts.push({
           key: 'appt', urgent: false, Icon: Calendar,
           label: `${snapshot.aptsToday} appointment${snapshot.aptsToday === 1 ? '' : 's'} today`,
-          detail: 'check the bookings board', go: 'crm',
+          detail: 'check the bookings board', go: 'crm', query: { sub: 'bookings' },
         });
         if (alerts.length === 0) return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: PL.cardBg, borderRadius: PL.radius.card, boxShadow: PL.shadow, padding: '14px 18px' }}>
@@ -408,7 +413,7 @@ export default function OverviewTab({ dealerId, onNavigate }) {
         return (
           <div className="ov-attn-grid" style={{ display: 'grid', gridTemplateColumns: `repeat(${alerts.length},1fr)`, gap: 10 }}>
             {alerts.map(a => (
-              <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
+              <button key={a.key} className="pl-key" onClick={() => onNavigate?.(a.go, a.query)} style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', background: PL.cardBg, border: 'none', borderRadius: PL.radius.card, padding: '14px 16px', cursor: onNavigate ? 'pointer' : 'default', width: '100%', fontFamily: 'inherit', minWidth: 0 }}>
                 <div style={{ position: 'relative', width: 38, height: 38, borderRadius: 12, background: PL.raised, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <a.Icon style={{ width: 17, height: 17, color: PL.text }} />
                   {a.urgent && <span style={{ position: 'absolute', top: -2, right: -2, width: 10, height: 10, borderRadius: '50%', background: PL.accent, border: `2px solid ${PL.card}` }} />}

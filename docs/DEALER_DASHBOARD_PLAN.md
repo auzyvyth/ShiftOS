@@ -55,6 +55,17 @@ query. That is the brain load. It is structure, not looks.
 | Storefront | Storefront tab (hero) AND Settings > Front Page + Settings > Storefront Content |
 
 ### Broken or dead (verified by reading the code, not clicked)
+**ALL 7 FIXED on 2026-11-09 (step 1, branch `claude/new-session-xem5pv`).** What changed:
+- RevOps "Open leads" -> `crm`. `handleTabChange(tab, query)` now takes a query.
+- `CRMPanel` takes `initialTab` / `openLeadId` / `onTabChange` from the URL
+  (`/dashboard/crm?sub=bookings`, `?lead=<id>`); `/dashboard/bookings` and `/outreach` redirect there.
+  Overview: appointments -> Bookings; "price waiting" -> opens the OLDEST pending lead.
+- `onOpenDoc` reaches `LeadDrawer`: "Make deposit receipt / sales agreement" under Deposit.
+- `EnquiriesTab` (CRMPanel) and `MarketplaceAnalyticsTab` + helpers + the recharts import deleted (~1,530 lines).
+- `outreach` dropped from TITLES; analytics title names the open sub; the analytics SubTabBar is gone.
+- HPBoard / CustomersTab use `getDealerIdFromProfile(profile)`. Still on `userId` (harmless while
+  only the dealer logs in, same pattern): CRMPanel, RevOps, Services, Stock, Documents, PriceEditModal.
+
 1. RevOps "Open leads" goes to tab `"leads"`, which does not exist: `DashboardPage.jsx:11806`
    (`onNavigateToLeads={() => handleTabChange("leads")}`). Should be `crm`.
 2. Overview alerts land in the wrong place (`OverviewTab.jsx:385-400`): "appointments today" -> `crm`

@@ -134,7 +134,7 @@ function calcRoadTaxEst(cc) {
 // rule, not an insurance one (owner, 2026-10-18).
 
 // ─── Main Drawer ──────────────────────────────────────────────────────────────
-export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [] }) {
+export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDelete, teamMembers = [], onOpenDoc }) {
   useModalHistory(true, onClose);
   const [lead, setLead]               = useState(initialLead);
   const [editingField, setEditingField] = useState(null); // 'name' | 'phone'
@@ -1422,6 +1422,23 @@ export default function LeadDrawer({ lead: initialLead, onClose, onUpdate, onDel
                       style={{ ...w.inp, background: '#fff' }} className="ld-inp" />
                   </div>
                 </div>
+                {/* Opens Documents with this buyer + car filled in. Closes the
+                    drawer first (overlay rule 3). */}
+                {onOpenDoc && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    {['Deposit Receipt', 'Sales Agreement'].map(docType => (
+                      <button key={docType}
+                        onClick={() => {
+                          const data = { doc_type: docType, buyer_name: lead.buyer_name || '', buyer_phone: lead.phone || '', listing_id: lead.car_listing_id || '' };
+                          onClose();
+                          onOpenDoc(data);
+                        }}
+                        style={{ fontSize: 12, fontWeight: 600, color: '#111827', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '6px 12px', cursor: 'pointer' }}>
+                        Make {docType.toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
