@@ -3011,6 +3011,13 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-34: Live presenter: two variants side by side + a colour row (owner's screenshots,
+  2026-11-10)** — SAs on TikTok live use spreadsheets that show two variants next to each other
+  (Saga Executive vs Premium: price, rebate, loan, 5/7/9 years) and the colours a model comes in.
+  Ours shows one variant at a time (chips) and no colours. Viewers also ask waiting time / stock.
+  Not built: check it fits the camera-safe stage first. Competitor prices seen the same day:
+  "AutoKira" 3-in-1 kit (CRM sheet + loan calculator + TikTok live calculator) RM15 one-time.
+
 - **IDEA-33: DMS ad video with Higgsfield AI footage (owner, 2026-11-10)** — after the Live
   ad, make a dealer-software video and "connect with Higgsfield" (AI video). Limits: the app on
   screen must stay a real recording (STYLE.md), so Higgsfield is for scene footage only (showroom,

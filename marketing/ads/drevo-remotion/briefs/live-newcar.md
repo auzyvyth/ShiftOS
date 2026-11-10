@@ -66,6 +66,29 @@ Also cut one STATIC image from the approved hook still for a Meta click-to-Whats
 4. `drevo.my` must open the app (`src/config/site.js` still says `xdrive.my`).
 5. Harness: record with `?basic=1&new=1` for scenes 1-4 and the full presenter for the Premium scene.
 
+## Market seen 2026-11-10 (owner's screenshots, not stored here) and what it changes
+- **A second seller, "AutoKira", sells a "3 in 1 sales kit" for RM15**: CRM prospect tracker + car loan
+  calculator (a "loan eligibility report" with "Chance Lulus") + TikTok Live calculator. So "Excel
+  calculator: RM70" is not the market price, and quoting it would be cherry-picking. DROP the number.
+- "Zweet Data" has a second ad with 16.5K likes, 270 comments, 475 shares: "Close deal lagi laju!",
+  "Buat Live TikTok? Wajib Ada Calculator Ni!", button "PM sekarang untuk demo". The demand and the
+  format (static image, click-to-WhatsApp, a demo offer) are proven.
+- Two SAs seen using sheets on a live: one films a laptop with two variants SIDE BY SIDE and a tab per
+  model; one runs a split screen with his phone number over the camera and a colour row under the car.
+  Their rows are price, insurance, NCD, rebate, down payment, loan, 9 / 7 / 5 years: exactly what the
+  free presenter now has. Viewers also ask about waiting time and stock, which no calculator answers.
+- What every sheet stops at: the number. None has a page for the viewer to land on, none records the
+  lead. Ours does (bio link -> `/s/:slug` -> WhatsApp tap -> lead list, `resolve_lead_salesman`), free on Lite.
+- We never copy "Chance Lulus": our Loan check lists what gets a file declined, never a chance.
+
+### Script v3 hook (proposed, replaces the RM70 line; the rest of v2 stays)
+Pick one:
+- **V3-A (my pick):** "Excel bagi nombor. / *Drevo bagi lead.*" / "Excel gives a number. / *Drevo gives the lead.*"
+  then 2.5-5 s "Kalkulator live. / *Percuma.*" with the deposit tap. Last scene before the CTA shows the
+  viewer landing on the seller's page and the lead appearing in the list (sample data).
+- V3-B: "Masih bayar untuk Excel? / *Drevo: percuma.*" / "Still paying for Excel? / *Drevo is free.*" (price-led, no number).
+CTA line under either: "Kalkulator live + page sendiri + senarai lead: percuma." (all three are on Lite.)
+
 ## Competitor seen 2026-11-10 ("Zweet Data", owner's screenshot, not stored here)
 A static image ad with a "Chat on WhatsApp" button selling a spreadsheet loan calculator per brand:
 "Tool Wajib Setiap SA", "Kira loan depan customer dalam 10 saat". One car at a time, the SA's phone number
