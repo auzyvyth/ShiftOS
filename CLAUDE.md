@@ -256,8 +256,11 @@ Project ID: lemdkdizdlcirhbzqlos
   (one shared branch, `K = PL | PD`, in PostSaleBoard + PostSaleChecklist), cards on a shadow, and a deal
   opens as the `HandoverSheet` pop-up like Premium. The dealer keeps "N in processing" (its pill has no
   badge). Linked panel (`dark`) and Premium (`premium`) unchanged.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold > Documents,
-  Settings.
+  Sold > Documents (2026-11-10, `DocumentsTab` in DashboardPage.jsx): type pills (`DOC_TYPE_PILL` short labels)
+  + search + the ONE red button (New document); rows not a 7-column table; a draft's Issue is the dark key;
+  the three pop-ups are portalled with a scroll lock. Still uncached (IC + address). The pop-ups' insides
+  are the old light look. Sold is now done.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Settings.
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).

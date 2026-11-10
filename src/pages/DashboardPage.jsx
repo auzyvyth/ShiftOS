@@ -135,7 +135,7 @@ import { getListingGaps } from "../utils/listingCompleteness";
 import { mergePendingTag } from "../utils/pendingTag";
 import { useDealerSnapshot } from '../hooks/useDealerSnapshot';
 import { usePersistentState } from '../hooks/usePersistentState';
-import { premiumLight } from '../theme/tokens';
+import { premiumLight, premiumLight as PL } from '../theme/tokens';
 import '../theme/premiumLight.css';
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
@@ -7960,6 +7960,8 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
 
 // ─── DocumentsTab ─────────────────────────────────────────────────────────────
 const DOC_TYPES = ['Sales Agreement', 'Deposit Receipt', 'Handover Checklist'];
+// Short pill labels: the full names did not fit one row beside the search box.
+const DOC_TYPE_PILL = { 'Sales Agreement': 'Agreements', 'Deposit Receipt': 'Receipts', 'Handover Checklist': 'Checklists' };
 const DOC_TYPE_PREFIX = { 'Sales Agreement': 'SA', 'Deposit Receipt': 'DR', 'Handover Checklist': 'HC' };
 const DEFAULT_HANDOVER_ITEMS = [
   'Geran (Vehicle Ownership Certificate) — original',
@@ -8016,6 +8018,13 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
   const [listingSearch, setListingSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   useModalHistory(!!deleteId, () => setDeleteId(null));
+  // Documents pop-ups sit above the page (portal) with the page locked behind them.
+  const docOverlayOpen = showGen || !!printDoc || !!deleteId;
+  useEffect(() => {
+    if (!docOverlayOpen) return undefined;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [docOverlayOpen]);
   const [newHandoverItem, setNewHandoverItem] = useState('');
   const [linkedStock, setLinkedStock] = useState(null);
   const [emailSendingId, setEmailSendingId] = useState(null);
@@ -8545,96 +8554,74 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
 
   return (
     <div className="space-y-4">
-      {/* ── Document list ── */}
-      <div className="rounded-xl overflow-hidden" style={T.card}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: 0 }}>
-            Documents
-            {filteredDocs.length !== documents.length && <span style={{ fontSize: 12, fontWeight: 400, color: '#9ca3af', marginLeft: 8 }}>{filteredDocs.length} of {documents.length}</span>}
-          </h2>
-          <button onClick={() => setShowGen(true)} className="flex items-center gap-2 text-sm font-semibold text-white px-3 py-1.5 rounded-lg" style={T.btnRed}><FileText className="w-3.5 h-3.5" />Generate</button>
+      {/* ── Document list (premiumLight, 2026-11-10). The Sold pill names the page, so
+          no second "Documents" heading; type is a pill row, not a drop-down; the one red
+          button is New document; a draft's Issue is the dark key. ── */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+          <StatusPills
+            items={[{ key: '', label: 'All', count: documents.length }, ...DOC_TYPES.map(t => ({ key: t, label: DOC_TYPE_PILL[t] || t, count: documents.filter(d => d.doc_type === t).length }))]}
+            active={docTypeFilter} onChange={setDocTypeFilter} />
         </div>
-
-        {/* Search + filter bar */}
-        <div style={{ display: 'flex', gap: 8, padding: '10px 16px', borderBottom: '1px solid #f3f4f6', background: '#fafafa', flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 160 }}>
-            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 13, height: 13, color: '#9ca3af', pointerEvents: 'none' }} />
-            <input
-              value={docSearch} onChange={e => setDocSearch(e.target.value)}
-              placeholder="Search ref, buyer, car…"
-              style={{ width: '100%', paddingLeft: 30, paddingRight: docSearch ? 28 : 10, paddingTop: 6, paddingBottom: 6, fontSize: 12, border: '1px solid #e5e7eb', borderRadius: 7, outline: 'none', background: '#fff', color: '#111827', boxSizing: 'border-box' }}
-            />
-            {docSearch && (
-              <button onClick={() => setDocSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0, display: 'flex' }}><X style={{ width: 12, height: 12 }} /></button>
-            )}
-          </div>
-          <select value={docTypeFilter} onChange={e => setDocTypeFilter(e.target.value)} style={{ fontSize: 12, padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 7, background: '#fff', color: '#374151', outline: 'none', flexShrink: 0 }}>
-            <option value="">All Types</option>
-            {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+        <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 320 }}>
+          <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: PL.textMuted, pointerEvents: 'none' }} />
+          <input value={docSearch} onChange={e => setDocSearch(e.target.value)} placeholder="Search ref, buyer, car"
+            style={{ ...INV_INPUT, paddingLeft: 32, background: PL.card, boxShadow: PL.shadow }} />
         </div>
-
-        <div className="table-wrap">
-          {loading ? (
-            <p className="text-gray-500 text-sm p-6">Loading…</p>
-          ) : documents.length === 0 ? (
-            <p className="text-gray-500 text-sm p-6">No documents generated yet.</p>
-          ) : filteredDocs.length === 0 ? (
-            <p className="text-gray-500 text-sm p-6">No documents match your search.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  {['Ref', 'Type', 'Buyer', 'Car', 'Status', 'Date', ''].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#6b7280', fontWeight: 500, textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredDocs.map(doc => (
-                  <tr key={doc.id} style={{ borderBottom: '1px solid #f3f4f6' }} onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '12px 14px', fontSize: 11, fontFamily: 'monospace', color: '#6b7280', whiteSpace: 'nowrap' }}>{doc.doc_ref || '—'}</td>
-                    <td style={{ padding: '12px 14px' }}><span style={{ fontSize: 11, fontWeight: 600, color: '#93c5fd', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: 6, padding: '2px 8px', whiteSpace: 'nowrap' }}>{doc.doc_type}</span></td>
-                    <td style={{ padding: '12px 14px', color: '#111827', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap' }}>{doc.buyer_name || '—'}</td>
-                    <td style={{ padding: '12px 14px', color: '#9ca3af', fontSize: 13 }}>{doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : '—')}</td>
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {doc.doc_status === 'issued'
-                        ? <span style={{ fontSize: 10, fontWeight: 700, color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '2px 8px' }}>Issued</span>
-                        : <span style={{ fontSize: 10, fontWeight: 700, color: '#f59e0b', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 6, padding: '2px 8px' }}>Draft</span>
-                      }
-                    </td>
-                    <td style={{ padding: '12px 14px', color: '#6b7280', fontSize: 12, whiteSpace: 'nowrap' }}>{doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY') : '—'}</td>
-                    <td style={{ padding: '12px 14px' }}>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => setPrintDoc(doc)} className="flex items-center gap-1.5" style={{ fontSize: 11, color: '#6b7280', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}><Printer className="w-3 h-3" />View</button>
-                        {doc.doc_status !== 'issued' && (
-                          <button onClick={() => handleIssue(doc)} style={{ fontSize: 11, fontWeight: 600, color: '#22c55e', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Issue</button>
-                        )}
-                        {doc.doc_status === 'issued' && (
-                          <button
-                            onClick={() => handleSendEmail(doc)}
-                            disabled={emailSendingId === doc.id}
-                            title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email — edit doc to add one'}
-                            style={{ fontSize: 11, fontWeight: 600, color: doc.buyer_email ? '#3b82f6' : '#9ca3af', background: doc.buyer_email ? 'rgba(59,130,246,0.08)' : '#f9fafb', border: `1px solid ${doc.buyer_email ? 'rgba(59,130,246,0.25)' : '#e5e7eb'}`, borderRadius: 6, padding: '4px 10px', cursor: doc.buyer_email ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap', opacity: emailSendingId === doc.id ? 0.5 : 1 }}
-                          >
-                            {emailSendingId === doc.id ? 'Sending…' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
-                          </button>
-                        )}
-                        {doc.doc_status !== 'issued' && (
-                          <button onClick={() => setDeleteId(doc.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', padding: 4, display: 'flex', borderRadius: 5 }} onMouseEnter={e => e.currentTarget.style.color = '#dc2626'} onMouseLeave={e => e.currentTarget.style.color = '#d1d5db'}><Trash2 style={{ width: 13, height: 13 }} /></button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <button onClick={() => setShowGen(true)} style={{ ...INV_GHOST_BTN, background: PL.accent, color: PL.onAccent }}>
+          <FileText style={{ width: 14, height: 14 }} />New document
+        </button>
       </div>
 
+      <div style={{ ...INV_CARD, padding: 8 }}>
+        {loading ? (
+          <p style={{ padding: '28px 16px', margin: 0, fontSize: 14, color: PL.textMuted }}>Loading…</p>
+        ) : filteredDocs.length === 0 ? (
+          <p style={{ padding: '36px 16px', margin: 0, fontSize: 14, color: PL.textMuted, textAlign: 'center' }}>
+            {documents.length === 0 ? 'No documents yet. Make a sales agreement or deposit receipt from a buyer\'s lead, or press New document.' : 'No document matches that search.'}
+          </p>
+        ) : filteredDocs.map((doc, i) => {
+          const issued = doc.doc_status === 'issued';
+          const car = doc.metadata?.car_label || (doc.car_brand ? `${doc.car_year || ''} ${doc.car_brand} ${doc.car_model || ''}`.trim() : null);
+          const btn = { ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12 };
+          return (
+            <div key={doc.id} className="doc-row" style={{ display: 'grid', gap: '8px 16px', alignItems: 'center', padding: '12px 10px', borderTop: i ? `1px solid ${PL.line}` : 'none' }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: PL.text }}>
+                  {doc.buyer_name || 'No buyer named'}
+                  <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, color: issued ? PL.textMuted : PL.accentText }}>{issued ? 'Issued' : 'Draft'}</span>
+                </p>
+                <p style={{ margin: '2px 0 0', fontSize: 12, color: PL.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {[doc.doc_type, car, doc.issued_at ? new Date(doc.issued_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' }) : null].filter(Boolean).join(' · ')}
+                  {doc.doc_ref && <span style={{ fontFamily: 'monospace', marginLeft: 6 }}>{doc.doc_ref}</span>}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={() => setPrintDoc(doc)} style={btn}><Printer style={{ width: 13, height: 13 }} />View</button>
+                {issued ? (
+                  <button onClick={() => handleSendEmail(doc)} disabled={!doc.buyer_email || emailSendingId === doc.id}
+                    title={doc.buyer_email ? `Send to ${doc.buyer_email}` : 'No buyer email. Open the document to add one.'}
+                    style={{ ...btn, opacity: !doc.buyer_email || emailSendingId === doc.id ? 0.5 : 1, cursor: doc.buyer_email ? 'pointer' : 'not-allowed' }}>
+                    {emailSendingId === doc.id ? 'Sending…' : !doc.buyer_email ? 'No email' : doc.email_sent_at ? 'Resend' : 'Send to buyer'}
+                  </button>
+                ) : (
+                  <>
+                    <button onClick={() => handleIssue(doc)} style={{ ...btn, background: PL.text, color: '#fff' }}>Issue</button>
+                    <button onClick={() => setDeleteId(doc.id)} aria-label="Delete draft" style={{ ...btn, padding: 8, color: PL.textMuted }}><Trash2 style={{ width: 14, height: 14 }} /></button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <style>{`
+        .doc-row { grid-template-columns: 1fr; }
+        @media (min-width: 760px) { .doc-row { grid-template-columns: minmax(0,1fr) auto; } }
+      `}</style>
+
       {/* ── Generate Modal ── */}
-      {showGen && (
+      {showGen && createPortal(
         <div className="fixed inset-0 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" style={{ background: 'rgba(0,0,0,0.78)' }}>
           <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-lg max-h-[92vh] flex flex-col" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-5 border-b border-gray-100">
@@ -8898,10 +8885,10 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             })()}
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ── Print Preview Modal ── */}
-      {printDoc && (
+      {printDoc && createPortal(
         <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4" style={{ background: 'rgba(0,0,0,0.85)' }}>
           <div className="rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
@@ -8933,10 +8920,10 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             <div className="overflow-y-auto" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderDocHTML(printDoc)) }} />
           </div>
         </div>
-      )}
+      , document.body)}
 
       {/* ── Delete Confirmation ── */}
-      {deleteId && (
+      {deleteId && createPortal(
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="rounded-2xl p-6 max-w-xs w-full mx-4" style={{ background: '#fff', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', margin: '0 0 6px' }}>Delete document?</h3>
@@ -8947,7 +8934,7 @@ function DocumentsTab({ userId, listings, prefillDocData, onClearPrefill, profil
             </div>
           </div>
         </div>
-      )}
+      , document.body)}
     </div>
   );
 }
