@@ -1584,10 +1584,13 @@ catalogue, and the full page (banner, bio, social links, job title, specialisati
   calculator basic").** The only real trial users used Live and nothing else, and all of Live
   was free, so a lapsed trial lost nothing. `LivePresenter basic` (passed by
   `SalesmanProfilePage.jsx` as `profile.page_basic`, so trials and dealer-linked reps get it all)
-  keeps one car: price, deposit chips, monthly + tenures, working (price, deposit, loan, rate),
-  bank notes, contact, language. Everything else is Premium: Budget + Viewer, Docs, rebates,
-  insurance + NCD, totals, salary guide, offer, variant extras, car list / typed #N, colour,
-  comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
+  keeps one car: price, deposit chips, monthly + tenures, working (price, insurance, rebate,
+  deposit, loan, rate), NCD pills, bank notes, contact, language. **Rebate + insurance/NCD are
+  FREE again (owner, 2026-11-10):** the ad says the free presenter does what a paid spreadsheet
+  calculator does, so it must; both are typed on their own line (Adjust > Rebates, the
+  every-car list, stays Premium, so on Lite a used car has no rebate line). Everything else is
+  Premium: Budget + Viewer, Docs, totals, salary guide, offer, variant extras, car list /
+  typed #N, colour, comment line. The upsell sits in Settings and on the report, NEVER on the stage (viewers see
   it). Every seller still sees the button; `set_live_listing` has no plan check. Copy:
   `/for-salesmen` + plan cards say "basic" on Lite and list "Full Live presentation" first in
   `SALESMAN_PREMIUM_FEATURE_LINES` (group `live`, kept out of the grouped cards). A Live

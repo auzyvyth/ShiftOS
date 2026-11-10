@@ -23,8 +23,8 @@ const en = {
   liveEnded: 'Live ended',
   // Lite's basic presenter (LIVE-BASIC): what Premium adds, said once in
   // Settings and once on the report. Never on the stage itself.
-  basicNote: 'Premium adds Budget, Viewer, Docs, rebates, insurance with NCD, your own colour and comment line.',
-  basicReport: 'Premium turns this into the full Live: Budget and Viewer for "what fits my salary?", Docs, rebates, insurance with NCD.',
+  basicNote: 'Premium adds Budget, Viewer, Docs, rebates for every car in one list, your own colour and comment line.',
+  basicReport: 'Premium turns this into the full Live: Budget and Viewer for "what fits my salary?", Docs, totals and the salary guide.',
   basicReportCta: 'See Premium',
   langLabel: 'Presenter language',
   showContact: 'Show contact',
@@ -219,8 +219,8 @@ const ms = {
   docsNote: 'Setiap bank ada senarai sendiri dan mungkin minta lebih.',
   docsPrivacy: 'Jangan kongsi IC atau slip gaji di ruang komen.',
   liveEnded: 'Live tamat',
-  basicNote: 'Premium tambah Bajet, Penonton, Dokumen, rebat, insurans dengan NCD, warna dan ayat komen sendiri.',
-  basicReport: 'Premium jadikan ini Live penuh: Bajet dan Penonton untuk "gaji saya dapat kereta apa?", Dokumen, rebat, insurans dengan NCD.',
+  basicNote: 'Premium tambah Bajet, Penonton, Dokumen, rebat semua kereta dalam satu senarai, warna dan ayat komen sendiri.',
+  basicReport: 'Premium jadikan ini Live penuh: Bajet dan Penonton untuk "gaji saya dapat kereta apa?", Dokumen, jumlah bayaran dan panduan gaji.',
   basicReportCta: 'Lihat Premium',
   langLabel: 'Bahasa paparan',
   showContact: 'Tunjuk hubungan',

@@ -1,119 +1,82 @@
-# Brief: the Live ad for new-car SAs (draft script, waiting for the owner's OK)
+# Brief: the free Live calculator ad for new-car SAs (script v2, waiting for the owner's OK)
 
 Step 3 of the process in the `drevo-ad` skill: words only. Stills come after the owner approves this.
-Owner's ask (2026-11-10): a video for Salesman Premium aimed at new-car sellers who do live
-presentations, plus autopost to Instagram / Facebook / TikTok. Autopost is NOT in this ad (see the end).
+Owner's direction (2026-11-10): the hook is "a spreadsheet calculator costs RM70, ours is free", and
+rebate + insurance moved into the free presenter so the claim is true.
 
 ## Who it is for
-A Proton / Perodua / Toyota / Honda / BYD sales advisor who goes live on TikTok and gets the same
-three comments all night: "bulanan berapa?", "deposit 0 boleh?", "gaji 3k lepas tak?".
+A Proton / Perodua / Toyota / Honda / BYD sales advisor who goes live on TikTok and answers
+"bulanan berapa?", "rebat ada?", "NCD saya 45%" all night, today from a paid spreadsheet.
 
-## What the app really does (all checked in code)
-| What | Where | Plan |
-|---|---|---|
-| Tap a deposit chip, the monthly rolls to the new figure; three tenure tiles | `src/components/live/LivePresenter.jsx` (`DepositChip`, `RollingNumber`) | Lite (basic) + Premium |
-| Viewer view: type the viewer's take-home pay, get the dearest car that fits + a ladder of the stock | `LivePresenter.jsx` `budgetView`, `revealPick` in `src/utils/liveMaths.js` | Premium |
-| Variant chips on a model card: price, monthly and "what this variant adds" follow the pick | `useNewCarVariant`, `variantExtras` in `liveMaths.js` | Premium |
-| Rebate typed in place, insurance estimate with NCD pills | `LivePresenter.jsx` `rebateEdit`, `src/utils/motorInsurance.js` | Premium |
-| No phone number, link or QR on screen unless the seller taps Contact | `LivePresenter.jsx` (contact OFF by default) | all |
-| Official price list per zone for 5 brands, cards made by ticking models | `new_car_models`, `new_car_add_cards()` | all |
-| A 7-day Premium trial gets the FULL presenter | `PLAN_CONFIG.salesman_full.trialDays`, `page_basic` false on trial | - |
+## What the FREE presenter does (checked in code and on screen, 2026-11-10)
+| What | Where |
+|---|---|
+| Tap a deposit chip, the monthly rolls; 9 / 7 / 5 year tiles | `src/components/live/LivePresenter.jsx` (`DepositChip`, `RollingNumber`) |
+| Rebate typed on its own line (new cars), loan and monthly follow | `LivePresenter.jsx` `rebateEdit`; free since 2026-11-10 |
+| Insurance estimate in the loan, NCD pills (0 to 55%), or type the insurer's figure | `LivePresenter.jsx` `insFor`, `src/utils/motorInsurance.js`; free since 2026-11-10 |
+| Rate as EIR or the bank's flat rate (converted per tenure) | `src/utils/financing.js` `flatToEir` |
+| Official price per zone for 5 brands, cards made by ticking models | `new_car_models`, `new_car_add_cards()` |
+| No phone number, link or QR on screen unless the seller taps Contact | contact OFF by default |
+Tested on the harness (`harness/main.jsx?basic=1&new=1`) at 375x667 and 1366x768: fits with no scroll;
+175,000 + 2,918 insurance - 3,000 rebate - 17,200 deposit = 157,718 loan.
+
+Premium only (the ad's last scene): Viewer + Budget ("gaji 3k dapat kereta apa?"), Docs, variant extras,
+totals, salary guide, the every-car rebate list, colour, comment line, car list.
+
+## What the free one does NOT do (so the ad never says "everything")
+- Budget view ("ikut bajet customer") is Premium. The ad says "deposit, rebat, insurans", never "semua".
+- On Lite a used / recon car has no rebate line (the every-car list is Premium). The ad shows a new car.
+- Not live yet: the change is on branch `ccr-abb5c812-3sxmyn`. The ad cannot run before it is in production.
 
 ## Real usage today (read-only, 2026-11-10)
-- 10 standalone sellers, 6 of them sell new cars, 5 on Premium time right now, 0 payments logged.
+- 10 standalone sellers, 6 sell new cars, 5 on Premium time now, 0 payments logged (all 10 founding spots open).
 - 37 live new-car model cards. Prices held for BYD, Honda, Perodua, Proton, Toyota.
-- So the founding offer (RM35 for the first 10 payers) is still true: nobody has paid yet.
 
 ## Rules for this ad
-- **Sample viewers only.** The @name and pay on screen are made up, labelled "Contoh data / Sample data".
-- **Never approval.** Every monthly is the presenter's own maths with "Anggaran. Bank yang tentukan." /
-  "Estimate. The bank decides." on screen. "Fits your budget", never "lulus" / "approved".
-- **Car photos must be the owner's own.** Model-card stock photos need the brand's written permission
-  (Copyright Act 1987 s.36). No brand logo drawn; the car's name as text is fine.
-- **No TikTok UI or logo drawn.** The comment in the hook is our own white chip, not a copy of TikTok's.
-- **Do not promise "your live is safe from strikes".** Say only what is true: no number, no link on screen.
-- No invented numbers ("answer 50 comments", "3x more leads"). "One tap" is true and is the claim.
+- **RM70 needs proof on file**: a dated screenshot of the competitor's price, kept by the owner. Fine print
+  on the hook: "Harga kalkulator Excel berbayar, dilihat Nov 2026." Never name them. No screenshot = use
+  the fallback hook below (no number).
+- **"Percuma" must be plain**: Lite is free with no card and no end date. Say so; do not let the 7-day
+  Premium trial read as the free part (CPA 1999 s.10, s.14 free offers).
+- **Never approval.** Every monthly is the presenter's maths with "Anggaran. Bank yang tentukan."
+- **Insurance is an estimate** and is labelled so on the app's own row.
+- Sample viewer in the Premium scene, labelled "Contoh data". Owner's own car photos only (Copyright Act
+  1987 s.36 for stock model photos). No brand logo, no TikTok UI, no Excel UI or logo drawn.
+- No "your live is safe from strikes", no invented numbers.
 
-## Hook: three options (pick one)
-| | Line 1 / *line 2* (BM) | EN | Why |
-|---|---|---|---|
-| **A (my pick)** | Gaji RM3,000. / *Dapat kereta apa?* | Pay RM3,000. / *Which car fits?* | It is the exact comment every live gets, in the owner's own words (REVEAL-1). An SA recognises it in one second, and it also stops ordinary viewers. |
-| B | Viewer tanya bulanan. / *Jawab satu tap.* | They ask the monthly. / *Answer in one tap.* | Says the benefit straight. Weaker stop: no question to be curious about. |
-| C | Masih kira guna Excel / *masa live?* | Still using Excel / *on your live?* | Names the pain. The first ad already used the Excel angle. |
-
-## Draft script, one topic, ~24 s (hook A)
-Retention is ~10%, so seconds 0-5 carry problem, payoff and offer. The rest is for the few who stay.
-
-| Time | Picture (real presenter, recorded) | Headline BM / EN |
+## Script v2, ~26 s
+| Time | Picture (real free presenter, recorded) | Headline BM / EN |
 |---|---|---|
-| 0-2.5 s | A white comment chip drops in: "@aiman: gaji 3k dapat kereta apa?". Monitor on the red floor shows the presenter, Viewer view, empty. | "Gaji RM3,000. / *Dapat kereta apa?*" / "Pay RM3,000. / *Which car fits?*" |
-| 2.5-5 s | Same shot, one move: 3000 is typed, the answer car lands with its monthly, the ladder fills. Black pill: "Drevo Live · 7 hari percuma" / "Drevo Live · 7 days free". | "Jawab masa live. / *Satu tap.*" / "Answer it live. / *One tap.*" |
-| Card 1: "Bulanan" / "Monthly" | Cars screen: tap 10% deposit, the big monthly rolls; tap the 9-year tile. | "Tap deposit. / *Bulanan terus tukar.*" / "Tap the deposit. / *Monthly follows.*" |
-| Card 2: "Varian" / "Variant" | Tap a dearer variant chip: price, monthly and the "what it adds" strip change. | "Tukar varian. / *Harga ikut sekali.*" / "Switch variant. / *Price follows.*" |
-| Card 3: "Rebat" / "Rebate" | Tap the rebate line, type the month's rebate, loan and monthly drop. NCD pill tapped. | "Rebat bulan ni? / *Taip, siap.*" / "This month's rebate? / *Type it. Done.*" |
-| 20-24 s | CTA as in the renewals ad | "Cuba Premium / *7 hari percuma.*" + "RM35 sebulan untuk 10 penjual pertama, kemudian RM49" + drevo.my |
+| 0-2.5 s | Phone on the red floor, presenter open on a new car, big monthly on screen. | "Kalkulator Excel: RM70. / *Drevo: percuma.*" / "Excel calculator: RM70. / *Drevo: free.*" |
+| 2.5-5 s | Same shot, one move: tap 10% deposit, the monthly rolls; tap the 9-year tile. Black pill: "Percuma. Tiada kad." / "Free. No card." | "Deposit, rebat, insurans. / *Satu tap, masa live.*" / "Deposit, rebate, insurance. / *One tap, on your live.*" |
+| Card 1: "Rebat" / "Rebate" | Tap the Rebate line, type 3000, loan and monthly drop. | "Rebat bulan ni? / *Taip, siap.*" / "This month's rebate? / *Type it. Done.*" |
+| Card 2: "Insurans" / "Insurance" | Tap NCD 45%: insurance, loan and monthly change. | "NCD 45%? / *Tap sekali.*" / "45% NCD? / *One tap.*" |
+| Card 3: "Premium" | Viewer view: 3000 typed, the answer car lands, the ladder fills. Small tag "Premium · 7 hari percuma". | "Gaji RM3,000. / *Dapat kereta apa?*" / "Pay RM3,000. / *Which car fits?*" |
+| 22-26 s | CTA | "Kalkulator live: / *percuma.*" + drevo.my + "Premium: 7 hari percuma, RM35 sebulan untuk 10 penjual pertama, kemudian RM49" |
 
-Fine print (above y 1440, every app scene): "Contoh data. Anggaran sahaja, bank yang tentukan." /
-"Sample data. Estimates only, the bank decides."
+Fallback hook (no price proof): "Kalkulator loan berbayar? / *Drevo: percuma.*" / "Paying for a loan calculator? / *Drevo is free.*"
+Fine print (above y 1440, app scenes): "Anggaran sahaja, bank yang tentukan." / "Estimates only, the bank decides."
 
-Cut on purpose: Docs screen, salary guide, colour picker, live report, "no number on screen". Five
-features in 24 s is already the limit; each one more costs the hook's viewers nothing but dilutes the tail.
+Also cut one STATIC image from the approved hook still for a Meta click-to-WhatsApp ad (the competitor's format).
 
 ## Open before stills
-1. Owner picks the hook (A / B / C) and OKs the script.
-2. Which car and whose photos: the owner's own photos of one new model (X50?) on `premiummotors` or `airyproton`.
-3. `drevo.my` must open the app before the ad runs (`src/config/site.js` still says `xdrive.my`).
-4. Harness: a `harness/live.html` mounting the real `LivePresenter` on sample cars (new file; the two
-   existing harness pages cover the calculator and the Sold tab only).
+1. Owner OKs script v2, and sends the RM70 screenshot (or picks the fallback hook).
+2. Which new car and the owner's own photos of it.
+3. The free rebate + insurance change tested on staging, then released (after midnight rule).
+4. `drevo.my` must open the app (`src/config/site.js` still says `xdrive.my`).
+5. Harness: record with `?basic=1&new=1` for scenes 1-4 and the full presenter for the Premium scene.
+
+## Competitor seen 2026-11-10 ("Zweet Data", owner's screenshot, not stored here)
+A static image ad with a "Chat on WhatsApp" button selling a spreadsheet loan calculator per brand:
+"Tool Wajib Setiap SA", "Kira loan depan customer dalam 10 saat". One car at a time, the SA's phone number
+printed on the sheet, brand logos drawn, rates shown as 3.00% / 2.60% (read as flat; do not claim this
+about them without checking their product).
 
 ## Autopost (Zernio): not in this ad, and not on the free plan (checked 2026-11-10)
-The ad may only sell what exists (CPA 1999 s.10, same rule as the "AI coming" card). Autopost is not built.
-- Zernio's free allowance is 2 connected accounts for OUR whole Zernio account, not 2 per seller.
-  After that: $6 per account a month (accounts 3-10), $3 (11-100), $1 (101+). Posts are unlimited.
-- One seller connecting Instagram + TikTok = 2 accounts = about $12 a month at the first tier, more than
-  the RM35 they pay. At 10 sellers (20 accounts) the bill is about $78 a month against RM350 revenue.
-- Facebook: the API posts to PAGES only. Not a personal profile, not Marketplace, not groups, which is
-  where SAs actually sell. Instagram needs a Business or Creator account.
-- TikTok: Zernio's app has a shared daily cap on direct posts across all its customers (their docs).
-- Could not open docs.zernio.com from this session (host not allowed); figures are from search results
-  of that page plus two reviews. Re-read the live pricing page before any decision.
-Options, cheapest first: (1) pilot on the 2 free accounts with the owner's own Instagram + TikTok, cost 0;
-(2) put autopost in "Done for you" (RM99), where $12 fits; (3) Premium add-on priced above its cost;
-(4) our own TikTok + Meta apps (free per post, weeks of app review each). See TODO IDEA-16.
+Not built, so not advertised. Zernio's free allowance is 2 connected accounts for OUR whole account, not
+per seller; then $6 / account / month (3-10), $3 (11-100), $1 (101+). One seller with Instagram + TikTok
+is about $12, more than RM35. Facebook API = Pages only; Instagram needs a Business / Creator account.
+Next step if wanted: pilot on the 2 free accounts with the owner's own Instagram + TikTok. See TODO IDEA-16.
 
 ## DMS video: later
-Not before the DMS-AUDIT holes are closed. Higgsfield (AI video) can only make scene footage around the
-app (a showroom, a handover): the app itself must still be the real recording (STYLE.md), and never an
-AI-made car presented as stock.
-
-## Competitor ad seen by the owner (2026-11-10): "Zweet Data" calculator
-A static image ad with a "Chat on WhatsApp" button, selling a spreadsheet loan calculator per brand.
-Their lines: "Tool Wajib Setiap SA", "Kira loan depan customer dalam 10 saat", "Tunjuk kiraan LIVE ikut
-bajet customer", "Adjust deposit, interest, dan loan tahun terus masa live", "customer terus DM nak booking".
-What it tells us:
-- The market already knows "a calculator for my live". We do not need to explain the category.
-- A sheet works ONE car at a time. It cannot answer "gaji 3k dapat kereta apa?" across the stock. Ours
-  can (Viewer view), so hook A is the gap, and "10 saat" vs "satu tap" is ours to win.
-- Their sheet prints the SA's phone number on the calculator. TikTok can strike a live for that; ours keeps it off.
-- Their sheets show 3.00% / 2.60%, which read as flat rates. Ours converts to EIR (`src/utils/financing.js`).
-  Do NOT say this about them in an ad without checking their product first.
-- They draw Honda / Proton / Perodua logos. We do not (no brand permission).
-- Theirs is paid. Our basic Live calculator is FREE on Lite (LIVE-BASIC). That is the strongest counter.
-Changes proposed to the script (owner to OK):
-1. Second hook line becomes "Excel tak boleh jawab. / *Drevo satu tap.*" / "A spreadsheet can't. / *Drevo, one tap.*"
-   (never name the competitor).
-2. CTA leads with free: "Kalkulator live: *percuma.*" then "Premium 7 hari percuma · RM35 sebulan untuk
-   10 penjual pertama, kemudian RM49".
-3. Also cut a STATIC image from the approved stills for a Meta click-to-WhatsApp ad, the format they
-   use: cheap, and it lands in the owner's WhatsApp, which is how accounts are set up today.
-
-## Owner's hook direction (2026-11-10): "Excel calculator costs RM70. Ours is free."
-Blocked on one product fact: the FREE (Lite) presenter does not do what their sheet does. Their sheet has
-rebate, insurance with NCD and a budget view; ours hides all three on Lite (`LivePresenter.jsx:532`
-rebates, `:550` insurance, Budget tab). "Everything the Excel does, free" would be a false claim today
-(CPA 1999 s.10). Two ways to make it true, owner to pick:
-1. Move rebate + insurance/NCD into the free presenter (reverses part of LIVE-BASIC, 2026-11-01). Budget,
-   Viewer, variant extras, Docs, colour, car list stay Premium. Then: free = the Excel, Premium = what Excel cannot do.
-2. Keep the gate and claim less: "Kalkulator live percuma" with no "everything".
-RM70 on screen needs proof kept on file (a dated screenshot of their price) and must not be worded as
-what every Excel calculator costs. Draft hook if (1): "Kalkulator Excel: RM70. / *Drevo: percuma.*"
+Not before the DMS-AUDIT holes are closed. Higgsfield only for scene footage around the app (TODO IDEA-33).
