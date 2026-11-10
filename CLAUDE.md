@@ -255,6 +255,12 @@ Project ID: lemdkdizdlcirhbzqlos
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
   The switches live on the device only (`xd_autopost_preview_<dealerId>`). Going real = Zernio: its key in an
   edge function secret, never the browser; posting fires from the DB when a car goes live, not from a screen.
+- **Listings tools (owner 2026-11-10):** each row shows views + enquiry taps, last 30 days
+  (`InterestCell`, `get_dealer_car_analytics(p_days 30)`, kept on the device, placeholder until loaded).
+  "Select" picks cars for `BulkBar` (`src/components/inventory/BulkBar.jsx`): status Available / Reserved /
+  Unpublished and price up/down by RM or %, same `original_price` rule as `PriceEditModal`. Never add Sold to
+  the bulk menu: a sale goes through the won deal. Window sticker (`WindowSticker.jsx`, from the car's detail
+  panel): one A4 page, QR to `/showroom/<slug>?src=sticker` (counted as "Window sticker").
   Do not mix the two looks inside one tab.
 
 ### Anti-slop UI rules (non-negotiable)

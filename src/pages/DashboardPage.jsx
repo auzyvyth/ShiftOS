@@ -128,6 +128,8 @@ import { premiumLight } from '../theme/tokens';
 import '../theme/premiumLight.css';
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
+import { WindowStickerSheet } from '../components/inventory/WindowSticker';
+import { BulkBar, BulkPriceSheet } from '../components/inventory/BulkBar';
 import { AutoPostButton, AutoPostSheet, AutoPostSettings, useAutoPost } from '../components/autopost/AutoPost';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import { isOwnUrl } from '../config/site';
@@ -5480,11 +5482,41 @@ function parseTags(raw) {
 
 const DRAWER_GRADE_COLORS = { S:'#a78bfa', 5:'#34d399', '4.5':'#6ee7b7', 4:'#fbbf24', '3.5':'#fb923c', 3:'#93c5fd', R:'#ef4444', RA:'#3b82f6', 2:'#1d4ed8', 1:'#1e3a8a' };
 
+// Listings row: counted views + enquiry taps (WhatsApp, call, booking), last 30 days.
+// null = still loading: a placeholder, never a 0.
+function InterestCell({ stats, compact }) {
+  if (!stats) {
+    return <span aria-label="Loading" style={{ display: 'inline-block', width: compact ? 70 : 54, height: compact ? 12 : 28, borderRadius: 6, background: premiumLight.raised }} />;
+  }
+  const none = !stats.views && !stats.enq;
+  if (compact) {
+    return (
+      <span style={{ fontSize: 11, color: none ? premiumLight.textMuted : premiumLight.textSec, fontWeight: 500 }}>
+        {none ? 'No views yet' : `${stats.views} views · ${stats.enq} enq.`}
+      </span>
+    );
+  }
+  return (
+    <div title="Last 30 days. Views count only buyers who allowed analytics, so the real number is higher.">
+      <p style={{ fontSize: 13, color: none ? premiumLight.textMuted : premiumLight.text, fontWeight: 600, margin: 0 }}>{stats.views} views</p>
+      <p style={{ fontSize: 11, color: stats.enq ? premiumLight.up : premiumLight.textMuted, margin: '2px 0 0', fontWeight: stats.enq ? 600 : 400 }}>{stats.enq} enquir{stats.enq === 1 ? 'y' : 'ies'}</p>
+    </div>
+  );
+}
+
+function SelectTick({ on }) {
+  return (
+    <span style={{ position: 'absolute', top: 4, left: 4, zIndex: 1, width: 20, height: 20, borderRadius: 6, background: on ? premiumLight.text : '#fff', boxShadow: '0 0 0 1.5px ' + (on ? premiumLight.text : '#9ca3af'), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {on && <Check style={{ width: 13, height: 13, color: '#fff' }} />}
+    </span>
+  );
+}
+
 function ListingDetailDrawer({
   listing, salesmen, salesmenById, onClose, onUpdate, onDelete,
   setEditListing, setPriceEditListing, setMarkSoldListing,
   setDeleteId, copyListing, copiedListingId, dealerSubdomain, dealerSlug, handleAssign, handleUnassign,
-  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio,
+  handleStatus, updatingStatus, getListingAge, userId, profile, openStudio, openSticker,
 }) {
   useModalHistory(true, onClose);
   const { can } = usePermissions(profile);
@@ -5846,6 +5878,13 @@ function ListingDetailDrawer({
                 {!isSold && (
                   <button onClick={() => setCalcOpen(true)} style={{ ...btnBase, border: '1px solid rgba(220,38,38,0.3)', color: '#dc2626' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
                     <Calculator style={{ width: 14, height: 14, flexShrink: 0 }} />Financing Calc
+                  </button>
+                )}
+
+                {/* Window sticker: an A4 page for the windscreen, QR to the car page */}
+                {openSticker && !isSold && (
+                  <button onClick={() => openSticker(listing)} style={{ ...btnBase, border: '1px solid #e5e7eb', color: '#111827' }} onMouseEnter={e => e.currentTarget.style.background='#f9fafb'} onMouseLeave={e => e.currentTarget.style.background='#ffffff'}>
+                    <Printer style={{ width: 14, height: 14, flexShrink: 0 }} />Window Sticker
                   </button>
                 )}
 
@@ -9015,6 +9054,19 @@ export default function DashboardPage() {
   const handleTabChangeRef = useRef(null);
   const [addCarOpen, setAddCarOpen] = useState(false);
   const [autoPostOpen, setAutoPostOpen] = useState(false);
+  const [stickerCar, setStickerCar] = useState(null);
+  // Select several cars and change them at once (INV-BULK).
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const toggleSelected = (id) => setSelectedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const exitSelect = () => { setSelectMode(false); setSelectedIds(new Set()); };
+  // Views + enquiries per car on the Listings rows (INV-INTEREST), last 30 days.
+  // Kept on the device so the numbers paint at once; null = not loaded yet (a
+  // placeholder shows, never a 0).
+  const interestDealer = getDealerIdFromProfile(profile);
+  const [carInterest, setCarInterest] = usePersistentState(interestDealer ? `inv_interest:${interestDealer}` : null, null);
   const autoPost = useAutoPost(getDealerIdFromProfile(profile));
   // Inventory is ONE nav item with two pills, Listings | Stock (owner, 2026-11-09).
   // The nav item opens whichever pill the dealer last opened on this device, so
@@ -9471,6 +9523,81 @@ export default function DashboardPage() {
     setAssignToast({ listingId, msg: "Unassigned" });
     setTimeout(() => setAssignToast(null), 2000);
   };
+  useEffect(() => {
+    if (activeTab !== 'listings' || !interestDealer) return undefined;
+    let off = false;
+    supabase.rpc('get_dealer_car_analytics', { p_dealer_id: interestDealer, p_days: 30 }).then(({ data, error }) => {
+      if (off || error) return; // a failed read keeps what is on the device
+      const m = {};
+      (data || []).forEach(r => {
+        m[r.car_id] = { views: Number(r.views) || 0, enq: (Number(r.whatsapp) || 0) + (Number(r.calls) || 0) + (Number(r.bookings) || 0) };
+      });
+      setCarInterest(m);
+    });
+    return () => { off = true; };
+  }, [activeTab, interestDealer]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Leaving Listings, or changing the status pill, drops the selection.
+  useEffect(() => { exitSelect(); }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectedCars = listings.filter(l => selectedIds.has(l.id));
+
+  // Bulk status. Sold cars are skipped (a sold car leaves 'sold' only through
+  // undo_car_sale) and 'sold' is not offered at all. The .in() guard reads the
+  // server's status, so a car sold elsewhere a second ago is not relisted.
+  const bulkStatus = async (status) => {
+    const targets = selectedCars.filter(l => l.status !== 'sold' && (l.status || 'available') !== status);
+    const skippedSold = selectedCars.filter(l => l.status === 'sold').length;
+    if (!targets.length) { toast(skippedSold ? 'Sold cars cannot be changed here.' : 'Those cars already have that status.'); return; }
+    setBulkBusy(true);
+    let ok = 0, failed = 0, capHit = false;
+    const updated = {};
+    for (const l of targets) {
+      const { data, error } = await supabase.from('car_listings').update({ status })
+        .eq('id', l.id).in('status', ['available', 'reserved', 'unpublished']).select();
+      if (error || !data?.length) {
+        failed++;
+        if (error?.message?.includes('listing_cap_exceeded')) capHit = true;
+        continue;
+      }
+      ok++;
+      updated[l.id] = data[0];
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: l.id, action: 'status_changed', summary: `Status ${l.status || 'available'} → ${status} (bulk) — ${l.brand || ''} ${l.model || ''} ${l.year || ''}`.trim(), fieldChanges: { status: { from: l.status || 'available', to: status } } });
+    }
+    setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
+    setBulkBusy(false);
+    exitSelect();
+    if (capHit) toast.error(`Changed ${ok}. Your plan's listing limit stopped the rest.`);
+    else if (failed) toast.error(`Changed ${ok}, ${failed} could not be changed. Try those again.`);
+    else toast.success(`Changed ${ok} car${ok === 1 ? '' : 's'}${skippedSold ? `. Skipped ${skippedSold} sold` : ''}.`);
+  };
+
+  // Bulk price: the same rule as one car (PriceEditModal): a first drop keeps the
+  // old price as original_price (the "was" price + hot deal), a price back at or
+  // above it clears it.
+  const bulkPrice = async (changes) => {
+    setBulkBusy(true);
+    let ok = 0, failed = 0;
+    const updated = {};
+    for (const { car, from, to } of changes) {
+      const orig = car.original_price || null;
+      const payload = { selling_price: to };
+      if (orig && to >= orig) payload.original_price = null;
+      else if (!orig && to < from) payload.original_price = from;
+      const { data, error } = await supabase.from('car_listings').update(payload).eq('id', car.id).neq('status', 'sold').select();
+      if (error || !data?.length) { failed++; continue; }
+      ok++;
+      updated[car.id] = data[0];
+      logActivity({ dealerId: userId, actor: profile, tableName: 'car_listings', recordId: car.id, action: 'price_changed', summary: `Price changed from RM ${from.toLocaleString()} to RM ${to.toLocaleString()} (bulk) — ${car.brand} ${car.model} ${car.year}`, fieldChanges: { selling_price: { from, to } } });
+    }
+    setListings(p => p.map(l => updated[l.id] ? { ...l, ...updated[l.id] } : l));
+    setBulkBusy(false);
+    setBulkPriceOpen(false);
+    exitSelect();
+    if (failed) toast.error(`Changed ${ok} price${ok === 1 ? '' : 's'}, ${failed} failed. Try those again.`);
+    else toast.success(`Changed ${ok} price${ok === 1 ? '' : 's'}.`);
+  };
+
   const handleStatus = async (id, status) => {
     setUpdatingStatus(id);
     try {
@@ -10603,10 +10730,11 @@ export default function DashboardPage() {
                   )}
 
                   {/* ── Status pills ── */}
-                  <div style={{ padding: '14px 16px 12px' }}>
+                  <div style={{ padding: '14px 16px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                     <StatusPills
                       active={statusFilter}
-                      onChange={setStatusFilter}
+                      onChange={(k) => { setStatusFilter(k); setSelectedIds(new Set()); }}
                       items={[
                         { key: 'available', label: 'Available', count: listings.filter(l => (l.status || 'available') === 'available').length },
                         { key: 'reserved', label: 'Reserved', count: listings.filter(l => l.status === 'reserved').length },
@@ -10615,7 +10743,32 @@ export default function DashboardPage() {
                         { key: 'unpublished', label: 'Unpublished', count: listings.filter(l => l.status === 'unpublished').length },
                       ].filter(t => t.count > 0 || t.key === 'available' || t.key === statusFilter)}
                     />
+                    </div>
+                    {filteredListings.length > 0 && statusFilter !== 'sold' && (
+                      <button
+                        onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+                        style={{ ...INV_GHOST_BTN, padding: '7px 12px', fontSize: 12, flexShrink: 0, background: selectMode ? premiumLight.text : premiumLight.raised, color: selectMode ? '#fff' : premiumLight.text }}
+                      >
+                        {selectMode ? 'Done' : 'Select'}
+                      </button>
+                    )}
                   </div>
+                  <BulkBar
+                    count={selectedIds.size}
+                    total={filteredListings.length}
+                    busy={bulkBusy}
+                    onSelectAll={() => setSelectedIds(new Set(filteredListings.map(l => l.id)))}
+                    onClear={exitSelect}
+                    onStatus={bulkStatus}
+                    onPrice={() => setBulkPriceOpen(true)}
+                  />
+                  <BulkPriceSheet
+                    open={bulkPriceOpen}
+                    cars={selectedCars.filter(l => l.status !== 'sold')}
+                    busy={bulkBusy}
+                    onClose={() => setBulkPriceOpen(false)}
+                    onApply={bulkPrice}
+                  />
                   <div style={{ height: 1, background: premiumLight.line }} />
 
                 {loading ? (
@@ -10639,10 +10792,10 @@ export default function DashboardPage() {
                       {/* Cost / Recon / Gross columns removed (2026-11-09): a dealer's cost
                           lives on stock_units only (batch 4), so on car_listings they were
                           always blank. The Stock & costs pill shows them. */}
-                      <table style={{ width: '100%', minWidth: 860, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
+                      <table style={{ width: '100%', minWidth: 940, borderCollapse: 'collapse', fontFamily: "system-ui, sans-serif" }}>
                         <thead>
                           <tr style={{ borderBottom: `1px solid ${premiumLight.line}` }}>
-                            {['', 'Vehicle', 'Price', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
+                            {['', 'Vehicle', 'Price', 'Interest (30d)', 'Year / Km', 'Grade', 'Seller', 'Age', 'Status'].map((h, i) => (
                               <th key={i} style={{ ...INV_MICRO, padding: '11px 16px', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
                             ))}
                           </tr>
@@ -10658,13 +10811,14 @@ export default function DashboardPage() {
                             return (
                               <tr
                                 key={l.id}
-                                onClick={() => setDetailListing(l)}
-                                style={{ borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1 }}
+                                onClick={() => (selectMode ? toggleSelected(l.id) : setDetailListing(l))}
+                                style={{ borderBottom: `1px solid ${premiumLight.line}`, cursor: 'pointer', transition: 'background 0.12s', opacity: isSold ? 0.5 : 1, background: selectedIds.has(l.id) ? premiumLight.raised : undefined }}
                                 onMouseEnter={e => e.currentTarget.style.background = premiumLight.raised}
                                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                               >
                                 {/* Thumbnail */}
-                                <td style={{ padding: '12px 8px 12px 16px', width: 84 }}>
+                                <td style={{ padding: '12px 8px 12px 16px', width: 84, position: 'relative' }}>
+                                  {selectMode && <SelectTick on={selectedIds.has(l.id)} />}
                                   {l.images?.[0]
                                     ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 72, height: 48, borderRadius: 8, objectFit: 'cover', display: 'block', filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
                                     : <div style={{ width: 72, height: 48, borderRadius: 8, background: '#f9fafb', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Car style={{ width: 16, height: 16, color: '#374151' }} /></div>
@@ -10686,6 +10840,10 @@ export default function DashboardPage() {
                                       <span style={{ fontSize: 10, fontWeight: 700, color: premiumLight.accentText, background: premiumLight.raised, borderRadius: 999, padding: '1px 7px' }}>−{pct}%</span>
                                     </div>
                                   )}
+                                </td>
+                                {/* Interest: counted views + enquiry taps, last 30 days */}
+                                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                                  <InterestCell stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} />
                                 </td>
                                 {/* Year / Km */}
                                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
@@ -10788,10 +10946,11 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={l.id}
-                            onClick={() => setDetailListing(l)}
-                            style={{ padding: '14px 16px', borderBottom: `1px solid ${premiumLight.line}`, opacity: isSold ? 0.55 : 1, cursor: 'pointer' }}
+                            onClick={() => (selectMode ? toggleSelected(l.id) : setDetailListing(l))}
+                            style={{ padding: '14px 16px', borderBottom: `1px solid ${premiumLight.line}`, opacity: isSold ? 0.55 : 1, cursor: 'pointer', background: selectedIds.has(l.id) ? premiumLight.raised : undefined }}
                           >
-                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', position: 'relative' }}>
+                              {selectMode && <SelectTick on={selectedIds.has(l.id)} />}
                               {/* Image */}
                               {l.images?.[0]
                                 ? <img src={cdnImg(l.images[0], 160, 70)} onError={imgFallback(l.images[0])} alt="" loading="lazy" decoding="async" style={{ width: 80, height: 60, borderRadius: 10, objectFit: 'cover', flexShrink: 0, filter: isSold ? 'grayscale(0.7) brightness(0.7)' : 'none' }} />
@@ -10822,6 +10981,7 @@ export default function DashboardPage() {
                             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 9, paddingLeft: 92 }}>
                               {(l.vin || l.vin_number) && <span style={{ fontSize: 10, color: '#4b5563', fontFamily: 'monospace', letterSpacing: '0.04em' }}>{(l.vin || l.vin_number).trim()}</span>}
                               {l.mileage && <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 500 }}>{Number(l.mileage).toLocaleString()} km</span>}
+                              <InterestCell compact stats={carInterest ? (carInterest[l.id] || { views: 0, enq: 0 }) : null} />
                               {l.state && <><span style={{ color: '#1f2937', fontSize: 10 }}>·</span><span style={{ fontSize: 11, color: '#6b7280' }}>{l.state}</span></>}
                               {(() => {
                                 const sm = l.assigned_to ? salesmenById[l.assigned_to] : null;
@@ -10875,6 +11035,7 @@ export default function DashboardPage() {
                     {visibleCount < filteredListings.length && (
                       <div ref={sentinelRef} style={{ height: 1 }} />
                     )}
+                    {selectedIds.size > 0 && <div style={{ height: 96 }} />}
                   </>
                 )}
                 </div>
@@ -11146,6 +11307,7 @@ export default function DashboardPage() {
           setPriceEditListing={setPriceEditListing}
           setMarkSoldListing={setMarkSoldListing}
           setDeleteId={setDeleteId}
+          openSticker={(l) => { setDetailListing(null); setStickerCar(l); }}
           copyListing={copyListing}
           copiedListingId={copiedListingId}
           dealerSubdomain={dealerSubdomain}
@@ -11332,6 +11494,12 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      <WindowStickerSheet
+        car={stickerCar}
+        dealerName={profile?.dealership || profile?.site_name}
+        onClose={() => setStickerCar(null)}
+      />
 
       {priceEditListing && (
         <PriceEditModal

@@ -89,6 +89,7 @@ export const CHANNEL_META = {
   google:      { label: "Google",      color: "#4285F4" },
   copy:        { label: "Copied link", color: "#6b7280" },
   share:       { label: "Shared link", color: "#a78bfa" },
+  sticker:     { label: "Window sticker", color: "#6b7280" },
   direct:      { label: "Direct",      color: "#94a3b8" },
 };
 
