@@ -3182,6 +3182,10 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   login, the first buyer can forward the file or link to every seller group, so it sells
   once per group chat; locking it to an account turns it back into a Lite signup.
 
+  **Competitor seen 2026-11-10: "Zweet Data"** runs a Meta click-to-WhatsApp image ad for a paid
+  spreadsheet calculator ("Tool Wajib Setiap SA", "kira loan depan customer dalam 10 saat", for
+  lives). One car at a time, SA's phone printed on it. Our basic Live calculator is free on Lite.
+  Notes: `marketing/ads/drevo-remotion/briefs/live-newcar.md`.
 - **IDEA-19: "Get verified" asks only after the first car, and comes back on a
   rhythm (owner, 2026-10-18)** — closeable, then returns after a gap (owner's
   sketch: skip 2 days, then 1 day). Today: the checklist's last row (INTRO-1), and

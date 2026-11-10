@@ -85,3 +85,24 @@ Options, cheapest first: (1) pilot on the 2 free accounts with the owner's own I
 Not before the DMS-AUDIT holes are closed. Higgsfield (AI video) can only make scene footage around the
 app (a showroom, a handover): the app itself must still be the real recording (STYLE.md), and never an
 AI-made car presented as stock.
+
+## Competitor ad seen by the owner (2026-11-10): "Zweet Data" calculator
+A static image ad with a "Chat on WhatsApp" button, selling a spreadsheet loan calculator per brand.
+Their lines: "Tool Wajib Setiap SA", "Kira loan depan customer dalam 10 saat", "Tunjuk kiraan LIVE ikut
+bajet customer", "Adjust deposit, interest, dan loan tahun terus masa live", "customer terus DM nak booking".
+What it tells us:
+- The market already knows "a calculator for my live". We do not need to explain the category.
+- A sheet works ONE car at a time. It cannot answer "gaji 3k dapat kereta apa?" across the stock. Ours
+  can (Viewer view), so hook A is the gap, and "10 saat" vs "satu tap" is ours to win.
+- Their sheet prints the SA's phone number on the calculator. TikTok can strike a live for that; ours keeps it off.
+- Their sheets show 3.00% / 2.60%, which read as flat rates. Ours converts to EIR (`src/utils/financing.js`).
+  Do NOT say this about them in an ad without checking their product first.
+- They draw Honda / Proton / Perodua logos. We do not (no brand permission).
+- Theirs is paid. Our basic Live calculator is FREE on Lite (LIVE-BASIC). That is the strongest counter.
+Changes proposed to the script (owner to OK):
+1. Second hook line becomes "Excel tak boleh jawab. / *Drevo satu tap.*" / "A spreadsheet can't. / *Drevo, one tap.*"
+   (never name the competitor).
+2. CTA leads with free: "Kalkulator live: *percuma.*" then "Premium 7 hari percuma · RM35 sebulan untuk
+   10 penjual pertama, kemudian RM49".
+3. Also cut a STATIC image from the approved stills for a Meta click-to-WhatsApp ad, the format they
+   use: cheap, and it lands in the owner's WhatsApp, which is how accounts are set up today.
