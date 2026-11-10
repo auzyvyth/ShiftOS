@@ -128,6 +128,7 @@ import { premiumLight } from '../theme/tokens';
 import '../theme/premiumLight.css';
 import { plWord, plPill } from '../theme/plStatus';
 import { InventorySwitch, StatusPills, InvTile, AddCarSheet, AddCarButton, NeedsAttentionMenu, INV_CARD, INV_INPUT, INV_GHOST_BTN, INV_MICRO } from '../components/inventory/InventoryUi';
+import { AutoPostButton, AutoPostSheet, AutoPostSettings, useAutoPost } from '../components/autopost/AutoPost';
 import { calcMonthly, DEFAULT_EIR, monthlyPayment, RATE_BASIS, rateLabel } from '../utils/financing';
 import { isOwnUrl } from '../config/site';
 import {
@@ -205,6 +206,7 @@ import {
   Film,
   ShieldCheck,
   Activity,
+  Share2,
 } from "lucide-react";
 import ProfileLoadError from "../components/ProfileLoadError";
 import { effectiveRecon } from "../utils/reconCost";
@@ -1355,6 +1357,7 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
     ]},
     { group: 'Storefront', items: [
       { key: 'frontpage', icon: Globe, label: 'Homepage', desc: 'Hero banner, CTA & announcement' },
+      { key: 'autopost', icon: Share2, label: 'Auto-post', desc: 'Post every car to your socials once' },
       { key: 'storefront', icon: Settings, label: 'Page Content', desc: 'About, photos & layout' },
     ]},
     { group: 'Operations', items: [
@@ -2321,6 +2324,16 @@ function SettingsTab({ profile, onProfileUpdate, jumpTo, onOpenServices }) {
         <div className="flex justify-end pt-1">
           <SaveBtn sectionKey="costs" onClick={saveCostSettings} saving={saving} saved={saved} />
         </div>
+      </SettingsSection>}
+      {effectiveNav === 'autopost' && <SettingsSection
+        title="Auto-post"
+        subtitle="Set it once. Every car you add goes out to the accounts you switch on."
+        icon={Share2}
+        iconColor="text-gray-700"
+        iconBg="#f5f6f8"
+        iconBorder="#f5f6f8"
+      >
+        <AutoPostSettings dealerId={settingsDealerId} />
       </SettingsSection>}
       {effectiveNav === 'telegram' && <SettingsSection
         title="Notifications"
@@ -6004,7 +6017,10 @@ function stockCostBasis(u) {
 // stockNetProfit() below is just front + addonNet for callers that only want
 // one combined number (row badges, loss filter).
 function stockNetProfitParts(u, ctx = {}) {
-  const { cfg = {}, ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  const { ads = {}, handover = {}, addRev = {}, addCost = {} } = ctx;
+  // `cfg` is null until dealer_cost_settings answers, and the cars paint first from the
+  // device copy, so a default of {} (undefined only) was not enough: Stock crashed on reopen.
+  const cfg = ctx.cfg || {};
   const cost = stockCostBasis(u);
   const c = u.car_listings || {};
   const isSold = u.status === 'sold';
@@ -6328,7 +6344,7 @@ const StockTab = React.memo(function StockTab({ userId, listings, profile, sales
   // "In loss" filter, the row Net badge and the Listings stats strip via one shared
   // helper so all three agree.
   const netProfit = (u) => stockNetProfit(u, {
-    cfg: costCfg, ads: costExtras.ads, handover: costExtras.handover,
+    cfg: costCfg || {}, ads: costExtras.ads, handover: costExtras.handover,
     addRev: costExtras.addRev, addCost: costExtras.addCost,
   });
 
@@ -8998,6 +9014,8 @@ export default function DashboardPage() {
   const [stockAutoTool,    setStockAutoTool]    = useState(null);
   const handleTabChangeRef = useRef(null);
   const [addCarOpen, setAddCarOpen] = useState(false);
+  const [autoPostOpen, setAutoPostOpen] = useState(false);
+  const autoPost = useAutoPost(getDealerIdFromProfile(profile));
   // Inventory is ONE nav item with two pills, Listings | Stock (owner, 2026-11-09).
   // The nav item opens whichever pill the dealer last opened on this device, so
   // they choose what they see first by using it. Routes stay /dashboard/listings
@@ -10500,12 +10518,12 @@ export default function DashboardPage() {
               <div style={{ ...INV_CARD, overflow: 'hidden', fontFamily: "system-ui, sans-serif" }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 16px 0', flexWrap: 'wrap' }}>
-                    <div style={{ position: 'relative', flex: '1 1 140px', minWidth: 0 }}>
+                    <div style={{ position: 'relative', flex: '1 1 100px', minWidth: 0 }}>
                       <Search style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: premiumLight.textMuted, pointerEvents: 'none' }} />
                       <input
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search brand, model, VIN"
+                        placeholder="Search cars"
                         style={{ ...INV_INPUT, padding: '9px 30px 9px 32px' }}
                       />
                       {searchQuery && (
@@ -10522,8 +10540,15 @@ export default function DashboardPage() {
                       <span className="inv-sm-hide">Filters</span>
                       {activeFilterCount > 0 && <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.8 }}>{activeFilterCount}</span>}
                     </button>
+                    <AutoPostButton onCount={autoPost.onCount} onClick={() => setAutoPostOpen(true)} />
                     <AddCarButton onClick={() => setAddCarOpen(true)} />
                   </div>
+                  <AutoPostSheet
+                    open={autoPostOpen}
+                    onClose={() => setAutoPostOpen(false)}
+                    state={autoPost.state}
+                    onSetup={() => { setSettingsJump("autopost"); handleTabChange("settings"); }}
+                  />
 
                   {/* ── Collapsible filter panel ── */}
                   {showFilters && (

@@ -250,6 +250,11 @@ Project ID: lemdkdizdlcirhbzqlos
   `plWord(hex)` (`src/theme/plStatus.js`): grey fill, the word carries good/bad. Action rows are grey
   with ink words; only the one main action is red.
   Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold, Settings.
+- **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
+  `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
+  (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
+  The switches live on the device only (`xd_autopost_preview_<dealerId>`). Going real = Zernio: its key in an
+  edge function secret, never the browser; posting fires from the DB when a car goes live, not from a screen.
   Do not mix the two looks inside one tab.
 
 ### Anti-slop UI rules (non-negotiable)
