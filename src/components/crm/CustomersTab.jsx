@@ -13,7 +13,11 @@ const redactCustomers = (rows) => (rows || []).map(({ ic_number, ...rest }) => r
 // tables the dealer dashboard reads, so a salesman's edits (expiry dates, notes,
 // service plans) are immediately visible to owner/manager and vice-versa.
 // salesmanId (optional): scope to customers from leads this salesman closed.
-export default function CustomersTab({ dealerId, salesmanId = null }) {
+// handover (optional): the page's useHandover() instance. The dealer dashboard's
+// Sold tab passes the one it also gives the Handover board, so the progress
+// figure is read once, not fetched again here. Without it (linked salesman
+// panel) this tab still reads post_sale_tasks itself.
+export default function CustomersTab({ dealerId, salesmanId = null, handover = null }) {
   const cacheKey = dealerId ? `customers:${salesmanId || 'all'}:${dealerId}` : null;
   const [customers, setCustomers, cached] = usePersistentState(cacheKey, [], { redact: redactCustomers });
   const [loading, setLoading] = useState(true);
@@ -52,9 +56,10 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
       const list = data || [];
       setCustomers(list);
 
-      // Handover progress for all leads in one query
+      // Handover progress for all leads in one query (skipped when the page shares
+      // its handover state: that already holds every won deal's steps).
       const leadIds = list.map(c => c.lead_id).filter(Boolean);
-      if (leadIds.length > 0) {
+      if (!handover && leadIds.length > 0) {
         const { data: tasks } = await supabase
           .from("post_sale_tasks").select("lead_id, status").in("lead_id", leadIds);
         const map = {};
@@ -74,7 +79,7 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [dealerId, salesmanId]);
+  }, [dealerId, salesmanId, !!handover]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const today = new Date();
   const expiryColor = (diff) => diff === null ? "#6b7280" : diff < 0 ? "#f87171" : diff <= 30 ? "#fbbf24" : "#4ade80";
@@ -177,7 +182,11 @@ export default function CustomersTab({ dealerId, salesmanId = null }) {
             {filtered.map(c => {
               const rtDiff  = c.road_tax_expiry  ? (new Date(c.road_tax_expiry)  - today) / 86400000 : null;
               const insDiff = c.insurance_expiry ? (new Date(c.insurance_expiry) - today) / 86400000 : null;
-              const progress = c.lead_id ? (handoverMap[c.lead_id] ?? null) : null;
+              // -1 from useHandover = steps not loaded yet: show nothing rather than 0%.
+              const shared = handover && c.lead_id ? handover.progressByLead[c.lead_id] : undefined;
+              const progress = !c.lead_id ? null
+                : handover ? (shared == null || shared < 0 ? null : shared)
+                : (handoverMap[c.lead_id] ?? null);
               const pkgs = packagesMap[c.customer_id] || packagesMap[c.id] || [];
               const isExpanded = expandedPkg === c.id;
               return (

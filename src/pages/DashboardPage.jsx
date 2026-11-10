@@ -66,6 +66,16 @@ const INVENTORY_TABS = [
   { id: "listings", label: "Listings" },
   { id: "stock",    label: "Stock & costs" },
 ];
+// Sold = what happens after the win: Handover | Customers | Documents, ONE nav
+// item (owner, 2026-11-10), same shape as Inventory. Routes stay
+// /dashboard/handover, /customers, /documents so every old link keeps working.
+const SOLD_VIEW_KEY = "xd_sold_view";
+const SOLD_TABS = [
+  { id: "handover",  label: "Handover" },
+  { id: "customers", label: "Customers" },
+  { id: "documents", label: "Documents" },
+];
+const SOLD_IDS = new Set(SOLD_TABS.map(t => t.id));
 function SubTabBar({ tabs, active, onChange }) {
   return (
     <div className="flex gap-1 mb-3" style={{ borderBottom: '1px solid #EAECF0' }}>
@@ -113,6 +123,7 @@ import PhoneInput from "../components/ui/PhoneInput";
 import { getCategoryCfg } from "../utils/serviceCategories";
 import OwnerCarPanel from "../components/inventory/OwnerCarPanel";
 import CustomersTab from "../components/crm/CustomersTab";
+import useHandover from "../hooks/useHandover";
 import AppraisalChecklist, { summarizeAppraisal } from "../components/AppraisalChecklist";
 import PushToggle from "../components/PushToggle";
 import DamageMap from "../components/DamageMap";
@@ -225,7 +236,7 @@ const PANEL_CACHE_KEY = "dash";
 // Tabs whose content opens with its own heading (or a sub-tab bar naming it):
 // the dashboard's title block is not drawn above them. Analytics > Revenue
 // (RevOpsPage) and > Listings (AnalyticsTab) are handled by sub-tab.
-const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "add", "market", "hp", "storefront", "ai_manager"]);
+const OWN_HEADING_TABS = new Set(["crm", "listings", "stock", "documents", "handover", "customers", "add", "market", "hp", "storefront", "ai_manager"]);
 
 const TAB_TO_GROUP = {
   overview: "g_reports", analytics: "g_reports",
@@ -9083,6 +9094,17 @@ export default function DashboardPage() {
   const lastInventoryView = () => {
     try { return localStorage.getItem(INVENTORY_VIEW_KEY) === "stock" ? "stock" : "listings"; } catch { return "listings"; }
   };
+  // ONE handover state for the Handover and Customers pills (CLAUDE.md "One post-sale
+  // state"): Customers used to run its own post_sale_tasks query for the same %.
+  // Loads only while a Sold pill is open, so no other tab gains a query.
+  const soldHandover = useHandover(SOLD_IDS.has(activeTab) && userId ? getDealerIdFromProfile(profile) : null);
+  const openSold = useCallback((view) => {
+    try { localStorage.setItem(SOLD_VIEW_KEY, view); } catch { /* private mode */ }
+    handleTabChangeRef.current?.(view);
+  }, []);
+  const lastSoldView = () => {
+    try { const v = localStorage.getItem(SOLD_VIEW_KEY); return SOLD_IDS.has(v) ? v : "handover"; } catch { return "handover"; }
+  };
   const [toolsMenuOpen,    setToolsMenuOpen]    = useState(false);
   const toolsBtnRef = useRef(null);
   const [toolsBtnRect, setToolsBtnRect] = useState(null);
@@ -9997,11 +10019,9 @@ export default function DashboardPage() {
       ],
     },
     {
-      id: "g_operations", Icon: ClipboardCheck, label: "Operations",
+      id: "g_operations", Icon: ClipboardCheck, label: "After the sale",
       items: [
-        { id: "handover",  Icon: ClipboardCheck, label: "Handover" },
-        { id: "customers", Icon: UserCheck,       label: "Customers" },
-        { id: "documents", Icon: FileText,         label: "Documents" },
+        { id: "handover",  Icon: ClipboardCheck, label: "Sold" },
       ],
     },
     {
@@ -10278,7 +10298,7 @@ export default function DashboardPage() {
                 {isOpen && (
                   <div style={{ marginTop: 1, marginLeft: 12, paddingLeft: 10, borderLeft: '1px solid #EAECF0', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {group.items.map(({ id, sub, Icon, label, badge }) => {
-                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock")) && (!sub || analyticsSub === sub);
+                      const isActive = (activeTab === id || (id === "listings" && activeTab === "stock") || (id === "handover" && SOLD_IDS.has(activeTab))) && (!sub || analyticsSub === sub);
                       return (
                         <button
                           key={sub ? `${id}_${sub}` : id}
@@ -10289,6 +10309,8 @@ export default function DashboardPage() {
                             startTransition(() => navigate(`/dashboard/${id}?sub=${sub}`));
                           } else if (id === "listings") {
                             openInventory(lastInventoryView());
+                          } else if (id === "handover") {
+                            openSold(lastSoldView());
                           } else {
                             handleTabChange(id);
                           }
@@ -11273,6 +11295,9 @@ export default function DashboardPage() {
               />
             </>
           )}
+          {SOLD_IDS.has(activeTab) && (
+            <InventorySwitch tabs={SOLD_TABS} active={activeTab} onChange={openSold} />
+          )}
           {activeTab === "documents" && (
             <DocumentsTab userId={userId} listings={listings} prefillDocData={prefillDocData} onClearPrefill={() => setPrefillDocData(null)} profile={profile} />
           )}
@@ -11286,10 +11311,10 @@ export default function DashboardPage() {
             </div>
           )}
           {activeTab === "customers" && userId && (
-            <CustomersTab dealerId={getDealerIdFromProfile(profile)} />
+            <CustomersTab dealerId={getDealerIdFromProfile(profile)} handover={soldHandover} />
           )}
           {activeTab === "handover" && userId && (
-            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} />
+            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} />
           )}
           {activeTab === "market" && userId && (
             <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />

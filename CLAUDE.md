@@ -336,6 +336,12 @@ listings, add, leads, analytics, team, hero, stock, enquiries, bookings, documen
 Dealer dashboard NAV (DashboardPage.jsx NAV array): overview, crm, listings, add, stock, hp, handover, analytics, team, customers, outreach, ai_manager, documents, storefront
   ↳ oversight was split up 2026-11-09 (alerts -> Overview, targets + what drove revenue -> Revenue, activity trail -> Team); `/dashboard/oversight` redirects to Overview. Overview's alert strip is the ONE "needs you" list: never add a second one to another tab.
   ↳ handover = post-sale lifecycle board (PostSaleBoard). Salesman panel also has a "handover" tab scoped to their own won deals.
+  ↳ **Sold = ONE nav item, three pills: Handover | Customers | Documents (owner, 2026-11-10)**, same shape
+    as Inventory (`SOLD_TABS`, `openSold`, `InventorySwitch`). Routes stay `/dashboard/handover`,
+    `/customers`, `/documents`, so old links and notifications still land. ONE `useHandover` instance
+    (`soldHandover`, loads only while a Sold pill is open) feeds `PostSaleBoard controller` AND
+    `CustomersTab handover`: Customers used to query `post_sale_tasks` itself for the same %. Do not split
+    the three back into separate nav items. Next: one dealer-sale tab plan in `docs/DEALER_DASHBOARD_PLAN.md`.
 
 ## Won = sold: one trigger does everything (DO NOT split this brain again)
 A lead reaching `won`/`closed_won` is the SINGLE source of truth for a closed deal.
