@@ -37,7 +37,7 @@ function specRows(car) {
   return rows.filter(([, v]) => v != null && v !== '');
 }
 
-export function WindowStickerSheet({ car, dealerName, onClose }) {
+export function WindowStickerSheet({ car, dealerName, scans, onClose }) {
   const open = !!car;
   useModalHistory(open, onClose);
   const [qr, setQr] = useState(null);
@@ -80,7 +80,9 @@ export function WindowStickerSheet({ car, dealerName, onClose }) {
       <div className="ws-bar" style={{ position: 'sticky', top: 0, zIndex: 1, display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: '#fff', boxShadow: PL.shadow }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: PL.text }}>Window sticker</p>
-          <p style={{ margin: '2px 0 0', fontSize: 12, color: PL.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>A4 page. Print it or save as PDF.</p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, color: PL.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {scans == null ? 'A4 page. Print it or save as PDF.' : `${scans} scan${scans === 1 ? '' : 's'} in the last 30 days`}
+          </p>
         </div>
         <button onClick={() => window.print()} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 14px', fontSize: 13, fontWeight: 700, color: '#fff', background: PL.accent, border: 'none', borderRadius: PL.radius.row, cursor: 'pointer', fontFamily: 'inherit' }}>
           <Printer style={{ width: 15, height: 15 }} /> Print
