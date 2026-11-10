@@ -15,5 +15,21 @@ export const LISTINGS = [
   car('5676687b-0534-4953-bec3-08b8534d3354', 'land-rover-defender-2023-5676', 2023, 'Land Rover', 'Defender', '90', 270000, 2000, 10000, 'Pickup', 'Black', 'Auto', 'defender-90-2023.jpg'),
 ];
 
+// A Proton advisor's line-up for the Live ad: the platform's own official Peninsular prices
+// (new_car_models, read 2026-11-10). The photo is a placeholder until the owner supplies their own
+// (stock model photos need the brand's permission).
+const fresh = (id, model, variant, price, cc, body) => ({
+  id, slug: `proton-${model.toLowerCase()}-demo`, year: 2026, brand: 'Proton', model, variant, selling_price: price, condition: 'new',
+  engine_cc: cc, mileage: 0, body_type: body, fuel_type: 'Petrol', transmission: 'Auto', colour: '', is_model_card: false,
+  stock_photos: false, status: 'available', state: 'Selangor', city: 'Shah Alam', images: ['/photos/placeholder.svg'],
+});
+export const PROTON = [
+  fresh('11111111-0000-4000-8000-000000000001', 'Saga', '1.5 Executive', 44990, 1499, 'Sedan'),
+  fresh('11111111-0000-4000-8000-000000000002', 'Persona', '1.6 Standard', 47800, 1597, 'Sedan'),
+  fresh('11111111-0000-4000-8000-000000000003', 'S70', '1.5 Lite', 59800, 1499, 'Sedan'),
+  fresh('11111111-0000-4000-8000-000000000004', 'X50', '1.5TD Executive', 89800, 1499, 'SUV'),
+  fresh('11111111-0000-4000-8000-000000000005', 'X70', '1.5TD Executive', 106800, 1499, 'SUV'),
+];
+
 // No model cards here, so the new-car lookups find nothing.
 export function infoFor() { return null; }

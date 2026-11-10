@@ -1,0 +1,12 @@
+{
+  "card": 0.75,
+  "scenes": [
+    ["hook", 0, 2.5, false],
+    ["free", 2.5, 2.5, false],
+    ["rebate", 5.0, 4.5, true],
+    ["lead", 9.5, 4.5, true],
+    ["viewer", 14.0, 4.5, true],
+    ["cta", 18.5, 4.0, false]
+  ],
+  "dur": 22.5
+}

@@ -103,3 +103,14 @@ Next step if wanted: pilot on the 2 free accounts with the owner's own Instagram
 
 ## DMS video: later
 Not before the DMS-AUDIT holes are closed. Higgsfield only for scene footage around the app (TODO IDEA-33).
+
+## Stills (2026-11-10, hook V3-A)
+`final/live-stills-ms.jpg` / `-en.jpg`, and one start + end frame per scene in `final/live-frames/<lang>/`.
+Scenes: `src/live/Live.jsx` (compositions `Live-ms` / `Live-en`), timing `src/live/timeline.json`.
+App screens: harness running, then `node harness/live.cjs` -> `public/real/live-*.png` + `src/live/rects.json`
+(fonts first: `cp ../../../api/_fonts/outfit-latin-*.woff harness/ && cp harness/*.woff public/fonts/`).
+Colour check (non-card frames): about 54 white / 36 red / 5 black. Red runs a little over 30.
+Higgsfield prompts per scene: `briefs/live-higgsfield.md`.
+Known in these stills: the car photo is a placeholder; the push text is English in both cuts (the DB writes
+it in English); in Viewer view at phone width the "Almost" row cuts the car's name to "#4 2..." (app layout,
+`src/components/live/LivePresenter.jsx`, not fixed here).
