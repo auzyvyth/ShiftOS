@@ -11314,7 +11314,7 @@ export default function DashboardPage() {
             <CustomersTab dealerId={getDealerIdFromProfile(profile)} handover={soldHandover} />
           )}
           {activeTab === "handover" && userId && (
-            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} />
+            <PostSaleBoard dealerId={getDealerIdFromProfile(profile)} controller={soldHandover} theme="plight" />
           )}
           {activeTab === "market" && userId && (
             <MarketDemandTab dealerId={getDealerIdFromProfile(profile)} />

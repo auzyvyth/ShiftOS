@@ -252,8 +252,12 @@ Project ID: lemdkdizdlcirhbzqlos
   Sold > Customers (2026-11-10, `crm/CustomersTab.jsx`, shared with the linked panel): one Renewals switch
   (All | Road tax due | Insurance due) replaced four tiles + the pink banner; rows not an 8-column table;
   edit pop-up portalled, its save checks the row came back.
-  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold > Handover +
-  Documents, Settings.
+  Sold > Handover (2026-11-10): `PostSaleBoard theme="plight"` = Premium's board rules on `PL` tokens
+  (one shared branch, `K = PL | PD`, in PostSaleBoard + PostSaleChecklist), cards on a shadow, and a deal
+  opens as the `HandoverSheet` pop-up like Premium. The dealer keeps "N in processing" (its pill has no
+  badge). Linked panel (`dark`) and Premium (`premium`) unchanged.
+  Not yet: the rest of Analytics > Performance (Listings, Traffic), CRM + LeadDrawer, Sold > Documents,
+  Settings.
 - **Auto-post (ZERNIO-1, owner 2026-11-10) is a PREVIEW: nothing is connected, nothing posts.**
   `src/components/autopost/AutoPost.jsx`: the Listings "Auto-post" button + sheet, and Settings > Auto-post
   (one master switch, a switch per platform, three rules: post when live, update on price drop, SOLD on sale).
@@ -455,7 +459,7 @@ never said the buyer had moved into handover at all.
   still refreshes in the background, its three reads in parallel; a tap bumps `edits` so a late
   read never un-ticks a step. Premium opens a deal as a POP-UP (`HandoverSheet` in
   PostSaleBoard.jsx, `theme="premium"` only; portal, scroll lock, `useModalHistory`); the dealer
-  dashboard and linked panel keep the inline expand.
+  dashboard (since 2026-11-10, `theme="plight"`) opens it the same way; the linked panel keeps the inline expand.
 - `PostSaleChecklist` reports its live steps up via `onTasksChange` so a ticked step moves
   the percentage on every surface at once. That callback is held in a REF inside the
   checklist — parents pass an inline arrow, so keying the effect on it would re-fire every
