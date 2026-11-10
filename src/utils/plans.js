@@ -42,7 +42,7 @@ import { LITE_POSTERS_PER_MONTH } from './loanPoster.js';
 // No AI line (owner, 2026-10-28: "we don't have that yet"). Do not list an AI
 // feature here until it ships for sellers.
 const SALESMAN_PREMIUM_FEATURE_LINES = [
-  { group: 'live', en: 'Full Live presentation: Budget + Viewer, Docs, rebates, insurance', ms: 'Live presentation penuh: Bajet + Penonton, Dokumen, rebat, insurans' },
+  { group: 'live', en: 'Full Live presentation: Budget + Viewer, Docs, totals, salary guide', ms: 'Live presentation penuh: Bajet + Penonton, Dokumen, jumlah bayaran, panduan gaji' },
   { group: 'dash', en: '"This week" call list + drafted follow-ups', ms: 'Senarai call "Minggu ini" + mesej follow up siap ditulis' },
   { group: 'dash', en: 'Follow-up reminders + call log', ms: 'Reminder follow up + log panggilan' },
   { group: 'leads', en: 'WhatsApp all your quiet leads in one go', ms: 'WhatsApp semua lead yang senyap sekali gus' },
@@ -66,7 +66,7 @@ const PRESENTATION = {
       'Your own page at drevo.my/s/yourname',
       'Cars listed on the Drevo marketplace',
       'Buyers reach you by WhatsApp, chat + booking',
-      'Basic Live presentation for TikTok / FB lives',
+      'Live loan calculator for TikTok / FB lives: deposit, rebate, insurance + NCD',
       'Alerts on new leads',
       'Simple lead list with stages',
       'Views + WhatsApp taps for each car',
@@ -137,7 +137,7 @@ const CARD_WORDS = {
     per: '/month', free: 'Free', foundingBadge: 'Founding price', self: 'Or sign up yourself',
     lite: { name: 'Salesman Lite', desc: 'Get found and get the lead. Free, no card.', cta: 'Start free on WhatsApp',
       wa: "Hi, I'm a car salesman and want to start on Drevo Lite (free). Can you set it up for me?",
-      features: ['Basic Live presentation', `Up to ${LITE.listingCap} cars on your page`, 'Buyers reach you by WhatsApp, chat, booking', 'Alerts and a simple lead list', `${LITE_POSTERS_PER_MONTH} loan posters a month`] },
+      features: ['Live loan calculator: rebate + insurance', `Up to ${LITE.listingCap} cars on your page`, 'Buyers reach you by WhatsApp, chat, booking', 'Alerts and a simple lead list', `${LITE_POSTERS_PER_MONTH} loan posters a month`] },
     premium: { name: 'Salesman Premium', desc: 'Work every lead until the deal closes.', cta: `Try ${PF.trialDays} days free on WhatsApp`,
       wa: `Hi, I'm a car salesman and want to try Drevo Premium free for ${PF.trialDays} days. Can you set it up for me?`,
       notes: [`Or RM${PF.yearlyPrice} a year, paid once (about 2 months free).`, `Founding price for the first ${PF.foundingSpots} sellers, yours while you stay. Then RM${PF.listPrice}.`],
@@ -150,7 +150,7 @@ const CARD_WORDS = {
     per: '/bulan', free: 'Percuma', foundingBadge: 'Harga pengasas', self: 'Atau daftar sendiri',
     lite: { name: 'Salesman Lite', desc: 'Senang dijumpai, dapat lead. Percuma, tak perlu kad.', cta: 'Mula percuma di WhatsApp',
       wa: 'Hi, saya salesman kereta dan nak mula guna Drevo Lite (percuma). Boleh tolong setupkan?',
-      features: ['Live presentation asas', `Sampai ${LITE.listingCap} kereta di page anda`, 'Pembeli hubungi melalui WhatsApp, chat, booking', 'Alert dan senarai lead ringkas', `${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
+      features: ['Kalkulator loan live: rebat + insurans', `Sampai ${LITE.listingCap} kereta di page anda`, 'Pembeli hubungi melalui WhatsApp, chat, booking', 'Alert dan senarai lead ringkas', `${LITE_POSTERS_PER_MONTH} poster loan sebulan`] },
     premium: { name: 'Salesman Premium', desc: 'Follow up setiap lead sampai deal tutup.', cta: `Cuba ${PF.trialDays} hari percuma di WhatsApp`,
       wa: `Hi, saya salesman kereta dan nak cuba Drevo Premium percuma ${PF.trialDays} hari. Boleh tolong setupkan?`,
       notes: [`Atau RM${PF.yearlyPrice} setahun, bayar sekali (lebih kurang 2 bulan percuma).`, `Harga pengasas untuk ${PF.foundingSpots} seller pertama, kekal selagi melanggan. Lepas tu RM${PF.listPrice}.`],
