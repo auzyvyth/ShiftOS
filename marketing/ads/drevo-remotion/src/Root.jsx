@@ -4,6 +4,7 @@ import { Ad } from './Ad';
 import { FPS, W, H, DUR, sec } from './lib';
 import { RenewalsAd, R_DUR } from './renewals/Renewals';
 import { LiveAd, L_DUR } from './live/Live';
+import { LiveStory, S_DUR } from './live/LiveStory';
 
 export const Root = () => (
   <>
@@ -13,5 +14,7 @@ export const Root = () => (
     <Composition id="Renewals-en" component={RenewalsAd} durationInFrames={sec(R_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
     <Composition id="Live-ms" component={LiveAd} durationInFrames={sec(L_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms', audio: false }} />
     <Composition id="Live-en" component={LiveAd} durationInFrames={sec(L_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en', audio: false }} />
+    <Composition id="Story-ms" component={LiveStory} durationInFrames={sec(S_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'ms' }} />
+    <Composition id="Story-en" component={LiveStory} durationInFrames={sec(S_DUR)} fps={FPS} width={W} height={H} defaultProps={{ lang: 'en' }} />
   </>
 );

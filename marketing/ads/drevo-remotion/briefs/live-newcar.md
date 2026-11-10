@@ -114,3 +114,33 @@ Higgsfield prompts per scene: `briefs/live-higgsfield.md`.
 Known in these stills: the car photo is a placeholder; the push text is English in both cuts (the DB writes
 it in English); in Viewer view at phone width the "Almost" row cuts the car's name to "#4 2..." (app layout,
 `src/components/live/LivePresenter.jsx`, not fixed here).
+
+## Story cut (2026-11-10): the owner rejected the first stills
+"Your stills suck, it doesn't show the whole live presentation", with a reference reel (three "premium
+motion graphics" ads for a notes app). What the reference does, and what the story cut copies:
+- A story before the product: one universal truth, a big word per beat, the product named only at the end.
+- Paper, black and ONE red. A heavy serif italic for the word, spaced serif capitals for the turn, small
+  mono labels, a red label on the key phrase. Grain, dot grids, a barcode as texture.
+- One object per frame (hourglass, bust, puzzle), large, slowly drifting. Light and dark frames alternate.
+What ours does better than the first stills: the presenter is shown WHOLE in a phone, with one part enlarged beside it.
+
+| Beat | Time | Words BM / EN | Picture |
+|---|---|---|---|
+| 1 | 0-2.2 s | "Live" · setiap malam, [soalan sama] / every night, [same questions] | Ring light + phone (drawn), three comment cards |
+| 2 | 2.2-4.4 s | Excel cuma BAGI NOMBOR · ITU SAJA / Excel only GIVES A NUMBER · THAT'S ALL | Night frame, a grid, one cell "480" |
+| 3 | 4.4-6.8 s | "Drevo" BAGI LEAD / GIVES THE LEAD | Red beam onto the real lead notification |
+| 4 | 6.8-10.2 s | kalkulator live · "Percuma." / "Free." | Whole free presenter; tap 9 years, 591 -> 480 |
+| 5 | 10.2-13.4 s | rebat, insurans, NCD · "Satu tap." / "One tap." | Whole presenter; the working enlarged |
+| 6 | 13.4-17 s | gaji RM3,000 · "Dapat apa?" / "Which car?" | Whole Viewer screen (Premium), the answer enlarged |
+| 7 | 17-20.5 s | Kalkulator live. Page sendiri. Senarai lead. "Percuma." + drevo.my | The Drevo wordmark, a red road |
+
+Stills: `final/live-story-stills-ms.jpg` / `-en.jpg`, frames in `final/live-story-frames/<lang>/`.
+Code: `src/live/LiveStory.jsx` (compositions `Story-ms` / `Story-en`), timing `src/live/story.json`.
+Fonts: Playfair Display + DM Mono (both OFL), copied from `@fontsource` into `public/fonts/`
+(`npm i --no-save @fontsource/playfair-display @fontsource/dm-mono`).
+
+Breaks with STYLE.md, for the owner to confirm before they become rules:
+1. Serif + mono type (STYLE.md: Outfit only). 2. Warm paper, not pure white, and one all-black frame.
+3. No red chapter cards (the reference cuts straight from beat to beat). 4. No red floor.
+5. The sale lands by 6.8 s, not 5 s: beats 1-2 are the stop, beat 3 is the claim.
+Still open: the car photo is a placeholder; "Excel" is named as a word (no logo, no screenshot).
