@@ -37,7 +37,7 @@ answers from `fixture.js` and `globalThis.__STUB_TABLES`.
 
 ```sh
 npm install                          # in this folder only; root `npm ci` fails (xlsx CDN)
-cp ../drevo-premium/*.woff harness/ && cp harness/*.woff public/fonts/
+cp ../../../api/_fonts/outfit-latin-*.woff harness/ && mkdir -p public/fonts && cp harness/*.woff public/fonts/   # Outfit; Bebas from ../drevo-premium if present
 node_modules/.bin/vite --config harness/vite.config.mjs &     # harness on :5199
 
 # product footage (gitignored, so regenerate it)
@@ -45,10 +45,12 @@ node harness/record.cjs calc ms public/takes      # + calc en, budget ms, budget
 cp public/takes/*.clicks.json src/
 node harness/tools.cjs                            # public/real/: posters + cut-out
 node harness/sold.cjs                             # public/real/sold-*.png + src/renewals/rects.json
+node harness/live.cjs                             # public/real/live-*.png + src/live/rects.json (PW=$(npm root -g)/playwright if the root has node_modules)
 
 # sound
 node make-audio.cjs                               # public/audio/mix-<lang>.wav
 node make-audio-renewals.cjs                      # public/audio/renewals-<lang>.wav
+node make-audio-live.cjs                          # public/audio/live-<lang>.wav
 ```
 
 The browser is Playwright's Chromium (`remotion.config.js` points at it). Never run `playwright install`.
