@@ -58,3 +58,19 @@ mistakes, so the next one starts from them instead of repeating them.
    Found only while writing `DESIGN.md`; fix in the next render (move it to about y 1380).
 10. **An ad needs its own sound script.** The first full-render request found the renewals ad silent.
     Write the audio cues as soon as the timing is fixed, from the same timing file.
+
+## Ad 3: free Live calculator (2026-11-10). What the owner rejected, and why
+1. **Do not slice the product into crops.** The first stills showed pieces of the presenter in white
+   cards; the owner: "it doesn't show the whole live presentation". Show the WHOLE screen first, on the
+   device sellers really use it on (a monitor: they film the desktop layout), then point at one part.
+2. **Ask for the reference before the first stills.** The house look (white room, red floor, chapter
+   cards) was assumed; the owner had a reference reel in mind (paper, black and one red, a big serif
+   word per beat, one object per frame). Lesson 3 of ad 1 again.
+3. **Check the claim against the product, then change the product.** "Everything the paid sheets do,
+   free" was false until rebate + insurance/NCD were opened to the free presenter (same day).
+4. **Do not quote one competitor's price as the market's.** "Excel calculator: RM70" died when a
+   RM15 kit turned up an hour later. The hook became what no sheet can do: the lead.
+5. **A video model is the wrong tool for app screens.** It redraws every pixel, so a digit can change:
+   a false price in an ad. Use it for objects with no text; render screens and type here.
+6. **A change on screen = a cut between two real captures** (before / after the tap), never a number
+   animated by hand.

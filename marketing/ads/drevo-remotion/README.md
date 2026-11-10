@@ -46,11 +46,13 @@ cp public/takes/*.clicks.json src/
 node harness/tools.cjs                            # public/real/: posters + cut-out
 node harness/sold.cjs                             # public/real/sold-*.png + src/renewals/rects.json
 node harness/live.cjs                             # public/real/live-*.png + src/live/rects.json (PW=$(npm root -g)/playwright if the root has node_modules)
+node harness/live-desk.cjs                        # public/real/desk-*.png + src/live/desk-rects.json (desktop presenter; same PW note)
 
 # sound
 node make-audio.cjs                               # public/audio/mix-<lang>.wav
 node make-audio-renewals.cjs                      # public/audio/renewals-<lang>.wav
 node make-audio-live.cjs                          # public/audio/live-<lang>.wav
+node make-audio-story.cjs                         # public/audio/story-<lang>.wav (the Live ad, story cut)
 ```
 
 The browser is Playwright's Chromium (`remotion.config.js` points at it). Never run `playwright install`.

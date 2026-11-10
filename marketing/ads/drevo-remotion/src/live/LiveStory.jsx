@@ -1,12 +1,12 @@
 // The Live ad, story cut (briefs/live-newcar.md, "Story cut"). Look taken from the owner's reference
 // reel (2026-11-10): paper, black and ONE red; a big serif word per beat; one object per frame; small
-// mono labels. The app is still the REAL Live presenter, shown WHOLE in a phone, with one part enlarged
-// beside it (public/real/live-*.png + rects.json from harness/live.cjs).
+// mono labels. The app is still the REAL Live presenter, shown WHOLE at DESKTOP size on a monitor (owner,
+// 2026-11-10: "make it the desktop version"): public/real/desk-*.png + desk-rects.json from harness/live-desk.cjs.
 import React from 'react';
-import { AbsoluteFill, Sequence, Img, staticFile, useCurrentFrame, interpolate, delayRender, continueRender } from 'remotion';
+import { AbsoluteFill, Sequence, Img, Audio, staticFile, useCurrentFrame, interpolate, delayRender, continueRender } from 'remotion';
 import { FPS, sec, pop, clamp, ease } from '../lib';
 import { FONT, RED, INK } from '../ui';
-import RECTS from './rects.json';
+import DESK from './desk-rects.json';
 import TIMING from './story.json';
 
 export const S_TL = TIMING.scenes;
@@ -94,46 +94,41 @@ const Drift = ({ children, from = 1.04, to = 1, style }) => {
 };
 
 // ---------- the app ----------
-// The WHOLE presenter screen in a phone (390x844 capture at 3x).
-const Phone = ({ view, lang, x, y, w, rot = 0, children }) => {
-  const k = w / 390;
+// The WHOLE presenter stage at desktop size (864x768 capture at 2x) on a monitor.
+const SW = 864, SH = 768;
+const Monitor = ({ view, lang, x, y, w, children }) => {
+  const k = w / SW;
   return (
-    <div style={{ position: 'absolute', left: x, top: y, padding: 12, borderRadius: 56, background: 'linear-gradient(160deg,#26231f,#0b0a09)', transform: `rotate(${rot}deg)`,
-      boxShadow: '0 70px 120px rgba(14,12,11,0.34), 0 16px 34px rgba(14,12,11,0.22)' }}>
-      <div style={{ position: 'relative', width: w, height: 844 * k, borderRadius: 46, overflow: 'hidden', background: '#fff' }}>
-        <Img src={staticFile(`real/live-${view}-${lang}.png`)} style={{ width: w, height: 844 * k }} />
-        {children?.(k)}
+    <div style={{ position: 'absolute', left: x, top: y }}>
+      <div style={{ padding: 10, borderRadius: 26, background: 'linear-gradient(160deg,#26231f,#0b0a09)', boxShadow: '0 70px 120px rgba(14,12,11,0.34), 0 16px 34px rgba(14,12,11,0.22)' }}>
+        <div style={{ position: 'relative', width: w, height: SH * k, borderRadius: 16, overflow: 'hidden', background: '#fff' }}>
+          <Img src={staticFile(`real/desk-${view}-${lang}.png`)} style={{ width: w, height: SH * k }} />
+          {children?.(k)}
+        </div>
       </div>
+      <div style={{ margin: '0 auto', width: 150, height: 54, background: 'linear-gradient(180deg,#0b0a09,#26231f)' }} />
+      <div style={{ margin: '0 auto', width: 430, height: 20, borderRadius: 10, background: '#16130f', boxShadow: '0 26px 40px rgba(14,12,11,0.3)' }} />
     </div>
   );
 };
-// One part of that same screen, enlarged on a paper card beside the phone.
-const Loupe = ({ view, lang, crop, x, y, w, rot = -3, at = 0.6, children }) => {
-  const f = useCurrentFrame(); const p = pop(f, at);
-  const k = w / crop.w;
-  return (
-    <div style={{ position: 'absolute', left: x, top: y, opacity: Math.min(1, p * 1.5), transform: `rotate(${rot}deg) scale(${0.9 + 0.1 * Math.min(1, p)})` }}>
-      <div style={{ position: 'relative', width: w, height: crop.h * k, borderRadius: 26, overflow: 'hidden', background: '#fff', border: `5px solid ${INK}`,
-        boxShadow: '0 50px 90px rgba(14,12,11,0.36), 0 12px 26px rgba(14,12,11,0.22)' }}>
-        <Img src={staticFile(`real/live-${view}-${lang}.png`)} style={{ position: 'absolute', width: 390 * k, height: 844 * k, left: -crop.x * k, top: -crop.y * k }} />
-        {children?.(k)}
-      </div>
-    </div>
-  );
-};
-const Ring = ({ r, crop, k, at }) => {
+const Ring = ({ r, k, at, pad = 4 }) => {
   const f = useCurrentFrame();
   const p = interpolate(f / FPS, [at, at + 0.35], [0, 1], { ...clamp, easing: ease });
-  return <div style={{ position: 'absolute', left: (r.x - crop.x - 3) * k, top: (r.y - crop.y - 3) * k, width: (r.w + 6) * k, height: (r.h + 6) * k, borderRadius: 10 * k, border: `5px solid ${RED}`, opacity: p, transform: `scale(${1.2 - 0.2 * p})` }} />;
+  if (!r || p <= 0) return null;
+  return <div style={{ position: 'absolute', left: (r.x - pad) * k, top: (r.y - pad) * k, width: (r.w + pad * 2) * k, height: (r.h + pad * 2) * k, borderRadius: 10 * k, border: `6px solid ${RED}`, opacity: p, transform: `scale(${1.15 - 0.15 * p})`, boxShadow: '0 0 34px rgba(220,38,38,.4)' }} />;
 };
-const Tap = ({ r, crop, k, at }) => {
+const Tap = ({ r, k, at }) => {
   const f = useCurrentFrame(); const t = f / FPS;
-  const move = interpolate(t, [at - 0.7, at - 0.05], [0, 1], { ...clamp, easing: ease });
-  const x = (r.x - crop.x + r.w / 2) * k, y = (r.y - crop.y + r.h / 2) * k;
+  const move = interpolate(t, [at - 0.8, at - 0.05], [0, 1], { ...clamp, easing: ease });
+  const x = (r.x + r.w / 2) * k, y = (r.y + r.h / 2) * k;
+  const since = t - at; const ring = since > 0 && since < 0.5 ? since / 0.5 : null;
   return (
-    <svg width="60" height="60" viewBox="0 0 24 24" style={{ position: 'absolute', left: x - 8 + (1 - move) * 150, top: y - 5 + (1 - move) * 220, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.5))' }}>
-      <path d="M4 2l15 11-7 1-3 7z" fill="#0B0C0F" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
-    </svg>
+    <>
+      {ring !== null && <div style={{ position: 'absolute', left: x - 50, top: y - 50, width: 100, height: 100, borderRadius: 50, border: `5px solid ${RED}`, opacity: 1 - ring, transform: `scale(${0.3 + ring * 1.1})` }} />}
+      <svg width="64" height="64" viewBox="0 0 24 24" style={{ position: 'absolute', left: x - 8 + (1 - move) * 220, top: y - 5 + (1 - move) * 300, transform: `scale(${since > 0 && since < 0.12 ? 0.82 : 1})`, filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.5))' }}>
+        <path d="M4 2l15 11-7 1-3 7z" fill="#0B0C0F" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
+      </svg>
+    </>
   );
 };
 const Push = ({ lang, style }) => (
@@ -228,46 +223,43 @@ const Lead = ({ lang }) => {
     </Paper>
   );
 };
-// 4-6. The whole presenter in a phone, one part of it enlarged beside it.
-const AppBeat = ({ lang, k, view, loupe, word, pre, tag, children, swapAt, before }) => {
-  const f = useCurrentFrame();
-  const v = swapAt != null && f / FPS < swapAt ? before : view;
+// 4-6. The whole presenter on a monitor. Each change on screen is a cut between two REAL captures.
+const AppBeat = ({ lang, views, word, pre, tag, children }) => {
+  const f = useCurrentFrame(); const t = f / FPS;
+  const view = views.reduce((v, [at, name]) => (t >= at ? name : v), views[0][1]);
   return (
     <Paper>
-      <Dots x={640} y={236} cols={9} rows={5} />
+      <Dots x={640} y={236} cols={9} rows={4} />
       <In at={0.02} y={20} style={{ left: 70, top: 232 }}><Label>{pre}</Label></In>
       <In at={0.12} y={40} style={{ left: 64, top: 280, font: `italic 900 ${word.length > 9 ? 150 : 176}px/1 ${SERIF}`, color: RED, letterSpacing: -5 }}>{word}</In>
-      <Drift from={1.03} style={{ transformOrigin: '30% 70%' }}>
-        <Phone view={v} lang={lang} x={36} y={500} w={548} rot={-2} />
+      {tag && <In at={1.0} y={20} style={{ left: 70, top: 478 }}><span style={{ display: 'inline-block', background: INK, color: '#fff', font: `500 30px ${MONO}`, padding: '10px 20px', borderRadius: 8 }}>{tag}</span></In>}
+      <Drift from={1.025} style={{ transformOrigin: '50% 80%' }}>
+        <Monitor view={view} lang={lang} x={40} y={570} w={980}>{children}</Monitor>
       </Drift>
-      <Loupe view={v} lang={lang} crop={loupe.crop} x={loupe.x} y={loupe.y} w={loupe.w} rot={loupe.rot ?? 3} at={0.55}>{children}</Loupe>
-      {tag && <In at={1.3} y={20} style={{ left: 640, top: loupe.tagY }}><span style={{ display: 'inline-block', background: INK, color: '#fff', font: `500 30px ${MONO}`, padding: '12px 22px', borderRadius: 8 }}>{tag}</span></In>}
-      <div style={{ position: 'absolute', left: 640, right: 50, top: loupe.fineY ?? 1300, font: `500 22px/1.4 ${MONO}`, color: 'rgba(14,12,11,0.6)' }}>{COPY[lang].fine}</div>
+      <div style={{ position: 'absolute', left: 600, right: 50, top: 484, textAlign: 'right', font: `500 21px/1.4 ${MONO}`, color: 'rgba(14,12,11,0.6)' }}>{COPY[lang].fine}</div>
     </Paper>
   );
 };
 const Free = ({ lang }) => {
-  const C = COPY[lang].free; const R = RECTS[`free9-${lang}`];
-  const crop = { x: 14, y: 196, w: 362, h: 124 };
+  const C = COPY[lang].free; const R = DESK[`free9-${lang}`];
   return (
-    <AppBeat lang={lang} view="free9" before="free" swapAt={1.5} pre={C.pre} word={C.word} tag={C.tag} loupe={{ crop, x: 430, y: 800, w: 620, tagY: 1050, fineY: 1150 }}>
-      {(k) => <Tap r={R.ten9} crop={crop} k={k} at={1.5} />}
+    <AppBeat lang={lang} views={[[0, 'free'], [1.5, 'free9']]} pre={C.pre} word={C.word} tag={C.tag}>
+      {(k) => <Tap r={R.ten9} k={k} at={1.5} />}
     </AppBeat>
   );
 };
 const Rebate = ({ lang }) => {
-  const C = COPY[lang].rebate; const R = RECTS[`rebate-${lang}`];
-  const crop = { x: R.brk.x - 6, y: R.brk.y - 4, w: R.brk.w + 12, h: R.brk.h + 46 };
+  const C = COPY[lang].rebate; const R = DESK[`rebate-${lang}`];
+  const pill = { x: R.ncd.x + R.ncd.w * 0.725, y: R.ncd.y + 2, w: R.ncd.w * 0.125, h: R.ncd.h - 4 };
   return (
-    <AppBeat lang={lang} view="rebate" before="free9" swapAt={1.2} pre={C.pre} word={C.word} loupe={{ crop, x: 470, y: 720, w: 580, fineY: 1300 }}>
-      {(k) => <Ring r={R.reb} crop={crop} k={k} at={1.25} />}
+    <AppBeat lang={lang} views={[[0, 'free9'], [1.0, 'rebate1'], [2.0, 'rebate']]} pre={C.pre} word={C.word}>
+      {(k) => (<><Ring r={R.reb} k={k} at={1.0} pad={2} /><Ring r={pill} k={k} at={2.0} pad={1} /></>)}
     </AppBeat>
   );
 };
 const Viewer = ({ lang }) => {
   const C = COPY[lang].viewer;
-  const crop = { x: 16, y: 500, w: 358, h: 166 };
-  return <AppBeat lang={lang} view="viewer" pre={C.pre} word={C.word} tag={C.tag} loupe={{ crop, x: 430, y: 820, w: 620, tagY: 1140, fineY: 1240 }} />;
+  return <AppBeat lang={lang} views={[[0, 'viewer0'], [1.3, 'viewer']]} pre={C.pre} word={C.word} tag={C.tag} />;
 };
 // 7. End card: the road and the name.
 const Cta = ({ lang }) => {
@@ -293,8 +285,9 @@ const Cta = ({ lang }) => {
 };
 
 const SCENES = { live: Live, excel: Excel, lead: Lead, free: Free, rebate: Rebate, viewer: Viewer, cta: Cta };
-export const LiveStory = ({ lang = 'ms' }) => (
+export const LiveStory = ({ lang = 'ms', audio = false }) => (
   <AbsoluteFill style={{ background: PAPER }}>
+    {audio && <Audio src={staticFile(`audio/story-${lang}.wav`)} />}
     {S_TL.map(([k, at, len]) => { const S = SCENES[k]; return <Sequence key={k} from={sec(at)} durationInFrames={sec(len)}><S lang={lang} /></Sequence>; })}
   </AbsoluteFill>
 );

@@ -144,3 +144,11 @@ Breaks with STYLE.md, for the owner to confirm before they become rules:
 3. No red chapter cards (the reference cuts straight from beat to beat). 4. No red floor.
 5. The sale lands by 6.8 s, not 5 s: beats 1-2 are the stop, beat 3 is the claim.
 Still open: the car photo is a placeholder; "Excel" is named as a word (no logo, no screenshot).
+
+### Desktop, and rendered here (owner, 2026-11-10: "half right, make it the desktop version, just make the mp4 here, use Remotion")
+Beats 4-6 now show the presenter at DESKTOP size, whole, on a monitor (the layout sellers film), not a phone.
+Captures: harness running, then `PW=$(npm root -g)/playwright node harness/live-desk.cjs` ->
+`public/real/desk-*.png` + `src/live/desk-rects.json`. Every change on screen is a cut between two real
+captures (591 -> 480 on the 9-year tap; 470 with RM1,000 rebate; 462 with 45% NCD). Sound: `node make-audio-story.cjs`.
+Full render: `npx remotion render src/index.js Story-ms out/raw-story-ms.mp4 --props='{"lang":"ms","audio":true}'`
+then the ffmpeg finish in README. Higgsfield is not used in this cut.
