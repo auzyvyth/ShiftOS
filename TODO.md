@@ -3011,6 +3011,13 @@ Background (from the idea):
 Raw ideas as they come up in conversation, so none get lost. Not vetted,
 not scoped, not prioritized — just parked here until picked up on purpose.
 
+- **IDEA-33: DMS ad video with Higgsfield AI footage (owner, 2026-11-10)** — after the Live
+  ad, make a dealer-software video and "connect with Higgsfield" (AI video). Limits: the app on
+  screen must stay a real recording (STYLE.md), so Higgsfield is for scene footage only (showroom,
+  handover); never an AI-made car shown as stock. Its API is pay-per-generation (top-up, no
+  subscription; commercial use allowed per their blog, re-read the live terms). Blocked on:
+  DMS-AUDIT holes closed first (do not advertise the dealer side before), and money for credits.
+
 - **IDEA-32: "Share & earn" made visible (owner, 2026-11-04)** — seen on a dealer app: a
   "Share & Earn RM500" button on every car listing. Two halves: (a) SA-refers-SA: the reward
   already exists (`ReferralCard.jsx`, 30 days Premium per invited seller who pays twice, max 12
@@ -3191,6 +3198,14 @@ not scoped, not prioritized — just parked here until picked up on purpose.
   sellers, and bot-posting breaks Meta's rules, so the honest build is one-tap
   copy + photos per platform with the seller pressing post (same "human sends"
   line as AI). Real photos only, never AI-made car images.
+  **Zernio checked 2026-11-10 (owner wants autopost to IG / FB / TikTok for Premium):** the
+  free plan is 2 connected accounts for OUR whole account, not per seller; then $6 / account /
+  month (3-10), $3 (11-100), $1 (101+). One seller with IG + TikTok costs about $12, more than
+  the RM35 they pay. Facebook API = Pages only (no profile, Marketplace or groups); Instagram
+  needs a Business / Creator account. Cheapest next step: pilot on the 2 free accounts with the
+  owner's own IG + TikTok; then either inside "Done for you" (RM99) or a priced add-on. The
+  Zernio key lives in an edge function, never the browser; the seller approves each post.
+  Details: `marketing/ads/drevo-remotion/briefs/live-newcar.md`.
 - **IDEA-17: Article "Stop losing commission to another rep" (2026-10-11)** — a
   real pain from a seller whose sale was taken; the boss said "at least he bought
   with us". Angle: a timestamped lead record is your receipt (lead created_at,
