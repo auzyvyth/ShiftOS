@@ -106,3 +106,14 @@ Changes proposed to the script (owner to OK):
    10 penjual pertama, kemudian RM49".
 3. Also cut a STATIC image from the approved stills for a Meta click-to-WhatsApp ad, the format they
    use: cheap, and it lands in the owner's WhatsApp, which is how accounts are set up today.
+
+## Owner's hook direction (2026-11-10): "Excel calculator costs RM70. Ours is free."
+Blocked on one product fact: the FREE (Lite) presenter does not do what their sheet does. Their sheet has
+rebate, insurance with NCD and a budget view; ours hides all three on Lite (`LivePresenter.jsx:532`
+rebates, `:550` insurance, Budget tab). "Everything the Excel does, free" would be a false claim today
+(CPA 1999 s.10). Two ways to make it true, owner to pick:
+1. Move rebate + insurance/NCD into the free presenter (reverses part of LIVE-BASIC, 2026-11-01). Budget,
+   Viewer, variant extras, Docs, colour, car list stay Premium. Then: free = the Excel, Premium = what Excel cannot do.
+2. Keep the gate and claim less: "Kalkulator live percuma" with no "everything".
+RM70 on screen needs proof kept on file (a dated screenshot of their price) and must not be worded as
+what every Excel calculator costs. Draft hook if (1): "Kalkulator Excel: RM70. / *Drevo: percuma.*"
